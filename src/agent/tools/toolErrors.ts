@@ -1,6 +1,6 @@
 import type { ZodError } from 'zod/v4'
 import { AbortError, ShellError } from 'src/shared/errors.js'
-import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/agent/messages/messages.js'
+import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/agent/messages/constants.js'
 
 export function formatError(error: unknown): string {
   if (error instanceof AbortError) {
@@ -18,12 +18,7 @@ export function formatError(error: unknown): string {
 
 export function getErrorParts(error: Error): string[] {
   if (error instanceof ShellError) {
-    return [
-      `Exit code ${error.code}`,
-      error.interrupted ? INTERRUPT_MESSAGE_FOR_TOOL_USE : '',
-      error.stderr,
-      error.stdout,
-    ]
+    return [...shellErrorHead(error.code, error.interrupted), error.stderr, error.stdout]
   }
   const parts = [error.message]
   if ('stderr' in error && typeof error.stderr === 'string') {
@@ -33,6 +28,20 @@ export function getErrorParts(error: Error): string[] {
     parts.push(error.stdout)
   }
   return parts
+}
+
+/** The parts `formatError` puts before a ShellError's own output. */
+function shellErrorHead(code: number, interrupted: boolean): string[] {
+  return [`Exit code ${code}`, interrupted ? INTERRUPT_MESSAGE_FOR_TOOL_USE : '']
+}
+
+/**
+ * The text `formatError` puts before a failing shell run's output, newline
+ * included — what a page of that output has to leave room for so the error
+ * stays under the shell's line.
+ */
+export function shellErrorPrefix(code: number, interrupted: boolean): string {
+  return `${shellErrorHead(code, interrupted).filter(Boolean).join('\n')}\n`
 }
 
 /**

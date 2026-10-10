@@ -30,8 +30,8 @@
     {
       "name": "error: a failing Bash run that spilled is not saved, its tail lost",
       "source": "src/tools/BashTool/BashTool.tsx",
-      "find": "        const spill = await saveShellSpill(result);\n        const errorOutput = spill ?",
-      "replace": "        const spill = undefined;\n        const errorOutput = spill ?"
+      "find": "        const saved = await saveSpilledRun(result);\n        const errorOutput = saved\n",
+      "replace": "        const saved = undefined;\n        const errorOutput = saved\n"
     }
   ]
 }

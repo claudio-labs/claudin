@@ -10,9 +10,9 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  *
  * The gate here is a pure function on the shape of the result; the decision to
  * honour it lives in GrepTool.call(), which owns the map building. Splitting
- * them keeps the policy testable and lets the replay bench
- * (scripts/bench/perf/grep-summarizer-replay.ts --pivot) evaluate candidate
- * thresholds over recorded results without booting the tool.
+ * them keeps the policy testable and let a replay bench (grep-summarizer-replay,
+ * retired 2026-10-10) evaluate candidate thresholds over recorded results
+ * without booting the tool.
  *
  * Measured over every recorded session transcript in
  * ~/.claudin/projects/-home-viudes-projects-claudin (5,109 content-mode Grep
@@ -23,7 +23,7 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  *   cluster at 10-60, well under the 250 default.
  * - the shipping policy pivots 64 results, replacing 620,647 chars of lines
  *   with 139,016 chars of map: **6.6% of all content-mode Grep chars saved
- *   outright, 3.7% on top of what the summarizer already saves losslessly** —
+ *   outright, 3.7% on top of what the summarizer then saved losslessly** —
  *   the second number is the one that justifies a lossy mode change.
  * - loosening to `files ≥ 3` would reach 8.6% / 4.3% and `files ≥ 8` drops to
  *   4.1% / 2.7%. Five is the deliberate middle: a search that landed in three

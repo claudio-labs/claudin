@@ -15,13 +15,16 @@
  * emission for an id records the exact bytes, and every later rewriter —
  * over any view — replays them.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
 } from 'src/agent/compact/stableStubState.js'
-import { buildLargeToolResultMessage } from 'src/agent/tools/toolResultStorage.js'
+import { buildLargeToolResultMessage, processPreMappedToolResultBlock } from 'src/agent/tools/toolResultStorage.js'
 import { _resetCacheProfileForTesting } from 'src/agent/cache/cacheProfile.js'
 import {
   createAssistantMessage,
@@ -46,7 +49,9 @@ const PREVIEW = buildLargeToolResultMessage(
   2_000,
 )
 
-const STUB_FORM = /\[clipped: ~\d+ tokens from Bash( — head preserved)?\]$/
+// The page names its file, so the stub names it too: the model can read the
+// result back instead of running the call again.
+const STUB_FORM = /\[clipped: ~\d+ tokens from Bash( — head preserved)?; the full result is saved at \/tmp\/claudin-s3-test\/tool-output\.txt\]$/
 
 function makeEngineMessages(content: string): Message[] {
   const assistant = createAssistantMessage({
@@ -176,5 +181,45 @@ describe('control — stub determinism for an unchanging content view', () => {
     const once = applyStableStubs(messages)
     const twice = applyStableStubs(once)
     expect(contentOf(twice)).toBe(contentOf(once))
+  })
+})
+
+// A result shipped whole was saved all the same (SAVE_WHOLE_FROM_CHARS), so the
+// stub that clips it names the copy: the model reads it back instead of running
+// the call again. Without a copy the stub is the plain one.
+describe('a clipped whole result names its saved copy', () => {
+  // Under Bash's line and past SAVE_WHOLE_FROM_CHARS.
+  const WHOLE = FULL_CONTENT.slice(0, 40_000)
+  const prevConfigDir = process.env.CLAUDIN_CONFIG_DIR
+  const testConfigDir = join(tmpdir(), `claudin-stub-copy-${process.pid}-${Date.now()}`)
+  beforeAll(() => {
+    process.env.CLAUDIN_CONFIG_DIR = testConfigDir
+    mkdirSync(testConfigDir, { recursive: true })
+  })
+  afterAll(() => {
+    if (prevConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = prevConfigDir
+    rmSync(testConfigDir, { recursive: true, force: true })
+  })
+
+  test('saved by storage, the stub points at the file holding these exact bytes', async () => {
+    setProfile('0')
+    const out = await processPreMappedToolResultBlock(
+      { type: 'tool_result', tool_use_id: TOOL_USE_ID, content: WHOLE },
+      { name: TOOL_NAME, maxResultSizeChars: 50_000 },
+    )
+    // Under the line: it ships whole, and is saved all the same.
+    expect(out.content).toBe(WHOLE)
+    addClippedIds([TOOL_USE_ID])
+    const stub = contentOf(applyStableStubs(makeEngineMessages(WHOLE)))
+    const path = /; the full result is saved at (\S+)\]$/.exec(stub)![1]!
+    expect(readFileSync(path, 'utf8')).toBe(WHOLE)
+  })
+
+  test('never saved, the stub stays the plain one', () => {
+    setProfile('0')
+    addClippedIds([TOOL_USE_ID])
+    const stub = contentOf(applyStableStubs(makeEngineMessages(`${FULL_CONTENT}\nnever saved`)))
+    expect(stub).toMatch(/^\[clipped: ~\d+ tokens from Bash\]$/)
   })
 })

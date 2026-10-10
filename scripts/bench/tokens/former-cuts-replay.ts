@@ -74,7 +74,7 @@ const row = (tool: string): Row => {
 
 /** Whether a page and the file it points at give back `original`, line for line. */
 function pageHolds(message: string, original: string): boolean {
-  const shown = Number(/^Lines 1-(\d+) are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(message)?.[1] ?? NaN)
+  const shown = Number(/^Lines 1-(\d+) of \d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(message)?.[1] ?? NaN)
   const path = /Full output saved to: (\S+)\n/.exec(message)?.[1]
   if (!Number.isFinite(shown) || !path) return false
   const page = message.slice(message.indexOf('\n\n') + 2, message.lastIndexOf('\n</persisted-output>'))

@@ -55,7 +55,15 @@ paths:
 - Chars +19% on those results: Glob −46%, Grep +15.5%, WebFetch +170% (paged at its 50k line). Median +0.9k chars per session.
 - Audit round-trip over 4,103 transcripts: 0 lost, 0 reordered, 0 fake headers.
 
-**Errors too (10-10, same branch).** `formatError` (toolErrors.ts) no longer keeps 5k + 5k: a tool's error text ships whole under its line and is paged past it (`pageErrorText`, toolResultStorage.ts), the file named by a hash of the text so a retry of the same failure writes nothing new. A failing shell run that spilled (`saveShellSpill`, shellToolResultMappers.ts) is paged from its saved file before it throws, leaving `SHELL_ERROR_PREFIX_ROOM` for `Exit code N`, so the last lines of a failing suite — its summary — are always in the file. Probes: `errorPaging.json`. E2E 22 (failing run under the line, whole) and 23 (120k failing run, paged, summary in the file).
+**Errors too (10-10, same branch).** `formatError` (toolErrors.ts) no longer keeps 5k + 5k: a tool's error text ships whole under its line and is paged past it (`pageErrorText`, toolResultStorage.ts), the file named by a hash of the text so a retry of the same failure writes nothing new. A failing shell run that spilled (`saveSpilledRun` → `pageFailedShellRun`, shellToolResultMappers.ts) is paged from its saved file before it throws, sized to the exact prefix `formatError` adds (`shellErrorPrefix`, toolErrors.ts), so the last lines of a failing suite — its summary — are always in the file. Probes: `errorPaging.json`. E2E 22 (failing run under the line, whole) and 23 (120k failing run, paged, summary in the file).
+
+**Third audit round (10-10, three agents) — fixed on the branch.**
+- A save that fails no longer ships the result whole: `toolResultFiles.ts` tries the session dir, then `$TMPDIR/claudin-tool-results/<session>`; saved nowhere, `pageUnsaved` still pages it under the line and says the rest was not kept.
+- Past 64 MB (`MAX_SAVED_OUTPUT_BYTES`) the page says "only its first N is saved", never "Full output saved".
+- The pointer gives the line count ("Lines 1-K of N"), so the end of a failing run is one Read away; a line longer than the page is fetched by byte (`tail -c +B`), the unit Bash counts in.
+- A saved file's page has `MIN_PAGE_CHARS` (4k) of room: a PowerShell error with huge stderr no longer gives a 0-char page.
+- A result shipped whole from `SAVE_WHOLE_FROM_CHARS` (6k) is saved too, and the relief clip stub names the copy (`savedCopyOf`, `; the full result is saved at …`), so a clipped result is read back instead of re-run — the gap the deleted `source=` used to fill.
+- Spill I/O moved beside storage (`adoptOutputFile`, `pageSavedFile`); `SHELL_ERROR_PREFIX_ROOM` is gone.
 
 **What still bounds a result.** Each tool's own limits are unchanged and out of scope: Grep `head_limit` 250 + offset, Glob 100 + offset, WebFetch 100k → model summary, MCP 25k tokens → its own spill. Old results are bounded by relief/microcompact. The Bash filter's one cut (#282) is a separate decision.
 

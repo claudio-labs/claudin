@@ -42,7 +42,7 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
-import { mapShellResultToToolResultBlockParam, pageSpilledShellRun, saveShellSpill, SHELL_ERROR_PREFIX_ROOM } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam, pageFailedShellRun, saveSpilledRun } from 'src/tools/shellToolResultMappers.js';
 import { applyBashOutputFilter, planBashFilterForExecution, runShellCommand, shouldFilterOutput } from 'src/tools/BashTool/runShellCommand.js';
 const EOL = '\n';
 // Progress display constants
@@ -382,21 +382,25 @@ export const BashTool = buildTool({
         }
       }
 
-      // Annotate output with sandbox violations if any (stderr is in stdout).
-      const outputWithSbFailures = safeAnnotateStderrWithSandboxFailures(input.command, result.stdout || '');
       if (result.preSpawnError) {
         throw new Error(result.preSpawnError);
       }
       if (interpretationResult.isError && !isInterrupt) {
-        // stderr is merged into stdout (merged fd); outputWithSbFailures
-        // already has the full output. Pass '' for stdout to avoid
-        // duplication in getErrorParts() and processBashCommand.
-        // A failing run that spilled keeps only its first chunk in stdout:
-        // its error is the page of the whole saved output instead, so the
-        // end of a long failing run — where the failure usually is — is
-        // never lost.
-        const spill = await saveShellSpill(result);
-        const errorOutput = spill ? safeAnnotateStderrWithSandboxFailures(input.command, pageSpilledShellRun(spill, SHELL_ERROR_PREFIX_ROOM + safeAnnotateStderrWithSandboxFailures(input.command, '').length, result.stdout || '')) : outputWithSbFailures;
+        // stderr is merged into stdout (merged fd), so the whole output goes
+        // in stderr, annotated with any sandbox violations; '' for stdout
+        // avoids duplication in getErrorParts() and processBashCommand.
+        // A failing run that spilled kept only its first chunk in stdout: its
+        // error is the page of the whole saved output instead, whose pointer
+        // names the file's line count, so the end of a long failing run —
+        // where the failure usually is — is one Read away.
+        const saved = await saveSpilledRun(result);
+        const errorOutput = saved
+          ? safeAnnotateStderrWithSandboxFailures(input.command, pageFailedShellRun(saved, {
+              code: result.code,
+              interrupted: result.interrupted,
+              others: safeAnnotateStderrWithSandboxFailures(input.command, '')
+            }))
+          : safeAnnotateStderrWithSandboxFailures(input.command, result.stdout || '');
         throw new ShellError('', errorOutput, result.code, result.interrupted);
       }
       wasInterrupted = result.interrupted;
@@ -409,9 +413,9 @@ export const BashTool = buildTool({
 
     // Large output: the file on disk has more than getMaxOutputLength() bytes
     // and stdout only its first chunk. Save the file where the page points.
-    const spill = await saveShellSpill(result);
-    const persistedOutputPath = spill?.path;
-    const persistedOutputSize = spill?.size;
+    const saved = await saveSpilledRun(result);
+    const persistedOutputPath = saved?.filepath;
+    const persistedOutputSize = saved?.originalSize;
     const commandType = input.command.split(' ')[0];
 
     // Log code indexing tool usage
@@ -456,6 +460,8 @@ export const BashTool = buildTool({
       dangerouslyDisableSandbox: 'dangerouslyDisableSandbox' in input ? input.dangerouslyDisableSandbox as boolean | undefined : undefined,
       persistedOutputPath,
       persistedOutputSize,
+      persistedOutputSavedBytes: saved?.savedBytes,
+      persistedOutputLines: saved?.lines,
       ...(reducedExitCode !== undefined && {
         reducedExitCode
       }),

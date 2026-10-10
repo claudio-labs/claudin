@@ -566,8 +566,8 @@ describe("CLAUDIN_BASH_READ_LANE — a pure file read keeps every line", () => {
     );
   });
 
-  // Above it the whole read would cross Bash's 30k result cap and be saved to a
-  // file with a 2 KB preview, which is worse than the cut.
+  // Above it the whole read would cross Bash's 30k line and be paged behind a
+  // pointer, the floor's cut being the smaller result.
   test("over 28k chars it is still cut to 30 lines", () => {
     const out = on.applyBashFilterToStdout(OVER, false, planFor(on, LOOP));
     expect(out).toStartWith('<bash-output-filtered original="" lines="30/665"');

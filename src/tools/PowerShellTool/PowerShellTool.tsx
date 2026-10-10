@@ -31,7 +31,7 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
-import { mapShellResultToToolResultBlockParam, pageSpilledShellRun, saveShellSpill, SHELL_ERROR_PREFIX_ROOM } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam, pageFailedShellRun, saveSpilledRun } from 'src/tools/shellToolResultMappers.js';
 import { interpretCommandResult } from 'src/tools/PowerShellTool/commandSemantics.js';
 import { powershellToolHasPermission } from 'src/tools/PowerShellTool/powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/PowerShellTool/prompt.js';
@@ -254,6 +254,8 @@ const outputSchema = lazySchema(() => z.object({
   isImage: z.boolean().optional().describe('Flag to indicate if stdout contains image data'),
   persistedOutputPath: z.string().optional().describe('Path to persisted full output when too large for inline'),
   persistedOutputSize: z.number().optional().describe('Total output size in bytes when persisted'),
+  persistedOutputSavedBytes: z.number().optional().describe('Bytes of the output kept on disk, fewer than its size past 64 MB'),
+  persistedOutputLines: z.number().optional().describe('Line count of the persisted output, for its page'),
   backgroundTaskId: z.string().optional().describe('ID of the background task if command is running in background'),
   backgroundedByUser: z.boolean().optional().describe('True if the user manually backgrounded the command with Ctrl+B'),
   assistantAutoBackgrounded: z.boolean().optional().describe('True if the command was auto-backgrounded by the assistant-mode blocking budget')
@@ -522,16 +524,18 @@ export const PowerShellTool = buildTool({
       if (interpretation.isError && !isInterrupt) {
         // A failing run that spilled keeps only its first chunk in stdout:
         // page the whole saved output instead, as a passing run does.
-        const spill = await saveShellSpill(result);
-        const errorStdout = spill ? pageSpilledShellRun(spill, SHELL_ERROR_PREFIX_ROOM + (result.stderr || '').length, stdout) : stdout;
+        const saved = await saveSpilledRun(result);
+        const errorStdout = saved
+          ? pageFailedShellRun(saved, { code: result.code, interrupted: result.interrupted, others: result.stderr || '' })
+          : stdout;
         throw new ShellError(errorStdout, result.stderr || '', result.code, result.interrupted);
       }
 
       // Large output: the file on disk has more than getMaxOutputLength()
       // bytes and stdout only its first chunk. Save the file where the page points.
-      const spill = await saveShellSpill(result);
-      const persistedOutputPath = spill?.path;
-      const persistedOutputSize = spill?.size;
+      const saved = await saveSpilledRun(result);
+      const persistedOutputPath = saved?.filepath;
+      const persistedOutputSize = saved?.originalSize;
 
       // Cap image dimensions + size if present (CC-304 — see
       // resizeShellImageOutput). Scope the decoded buffer so it can be
@@ -559,7 +563,9 @@ export const PowerShellTool = buildTool({
           returnCodeInterpretation: interpretation.message,
           isImage,
           persistedOutputPath,
-          persistedOutputSize
+          persistedOutputSize,
+          persistedOutputSavedBytes: saved?.savedBytes,
+          persistedOutputLines: saved?.lines
         }
       };
     } finally {

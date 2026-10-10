@@ -60,7 +60,7 @@ function keepLastLines(body: string, n: number): string {
  * The read lane, on by default since 2026-10-09; `CLAUDIN_BASH_READ_LANE=0`
  * turns it off, and every read takes the cut again. A read the model directed
  * (readLane.ts) — whole files, slices it bounded, matches in files it named —
- * comes back whole, byte for byte, instead of capped or summarized; a pure
+ * comes back whole, byte for byte, instead of capped; a pure
  * print of files too long for that keeps the whole files that fit
  * (`overBudgetFileRead`). Read once at module load, like the cap's own
  * kill-switch in floor.ts.
@@ -77,10 +77,10 @@ function keepLastLines(body: string, n: number): string {
 const READ_LANE = !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_READ_LANE);
 
 /**
- * The largest read the read lane leaves whole. Bash persists a
- * result over 30k chars (`maxResultSizeChars`, BashTool.tsx) and hands the
- * model a 2 KB preview, which is worse than the cut; the margin keeps the
- * wrapper and the notes after it under that line. Above it a read that only
+ * The largest read the read lane leaves whole. Bash pages a result over 30k
+ * chars (`maxResultSizeChars`, BashTool.tsx) behind a pointer to its saved
+ * file; the margin keeps the wrapper and the notes after it under that line,
+ * so a read that fits is shown in one piece. Above it a read that only
  * prints files is cut to whole files (`overBudgetFileRead`), and any other
  * takes the cap exactly as it always has.
  */
@@ -112,8 +112,8 @@ function isUncutFileRead(rawStdout: string, plan: PreExecPlan): boolean {
  * stdout then holds only the first 30 KB — and only when it prints nothing but
  * files: BashTool then keeps the whole files that fit and names the rest
  * (`fitWholeFiles`, BashTool/creditShownFiles.ts) before this filter runs,
- * where the cap would keep 30 lines and a spill a 2 KB preview of a saved file
- * the model reads back whole.
+ * where the cap would keep 30 lines and a spill its first page, the rest left
+ * for the model to read back.
  *
  * Null with the flag off, and for a read with a listing segment (`ls`, `git
  * ls-files`, `wc`): a page of names is output the cap was made for, not a run

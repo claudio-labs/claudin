@@ -242,7 +242,7 @@ const FAILING_SPILL = bash(`seq -f 'test %g ok' 1 6000; echo 'SUMMARY: 3 failed'
 const FAILING_SPILL_LINES = [...Array.from({ length: 6000 }, (_, i) => `test ${i + 1} ok`), 'SUMMARY: 3 failed']
 /** The page's pointer, the page itself and the saved file, or null when the result is no page. */
 function readPage(text: string): { shown: number; page: string[]; file: string[] } | null {
-  const pointer = /^Lines 1-(\d+) are below; Read the file with offset=(\d+) and limit=\d+ for the next page\.$/m.exec(text)
+  const pointer = /^Lines 1-(\d+) of \d+ are below; Read the file with offset=(\d+) and limit=\d+ for the next page\.$/m.exec(text)
   const path = /Full output saved to: (\S+)\n/.exec(text)?.[1]
   if (!pointer || Number(pointer[2]) !== Number(pointer[1]) + 1 || !path || !existsSync(path)) return null
   const page = text.slice(text.indexOf('\n\n') + 2, text.indexOf('\n</persisted-output>'))

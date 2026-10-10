@@ -692,11 +692,11 @@ async function main() {
     console.log('                        drives the clip → re-read loop, which needs the SAME range re-Read)')
     console.log('  --file-list=a.ts,b.ts (override the pool; keep every file under the auto-outline')
     console.log('                        threshold — 250 lines / 10k chars — or Reads return outlines, not bodies)')
-    console.log('  --workload=files|json|prose (json: big-json fixture each turn — TOOL_RESULT_JSON_COMPRESSION;')
+    console.log('  --workload=files|json|prose (json: big-json fixture each turn, paged past its line;')
     console.log('                               prose: repo-grounded explanation Qs — VERBOSITY_STEERING, measures OUTPUT tokens + dumps answers)')
     console.log('  --a-env=KEY=VAL --b-env=KEY=VAL (per-side env so the SAME binary can be A/B\'d with a flag toggled)')
     console.log('  e.g. --a=claudindev --b=claudindev --workload=json --turns=20 --runs=3 \\')
-    console.log('         --a-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=0 --b-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1')
+    console.log('         --a-env=CLAUDIN_BASH_ONE_CUT=0 --b-env=CLAUDIN_BASH_ONE_CUT=1')
     console.log('  e.g. --a=claudindev --b=claudindev --workload=prose --runs=3 \\')
     console.log('         --a-env=CLAUDIN_VERBOSITY_STEERING=0 --b-env=CLAUDIN_VERBOSITY_STEERING=1')
     return

@@ -36,7 +36,7 @@ function failingOutput(n: number): string {
 
 /** The page's line count and the saved file, from a paged error. */
 function readPage(text: string): { shown: number; page: string; file: string } {
-  const shown = Number(/^Lines 1-(\d+) are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(text)![1])
+  const shown = Number(/^Lines 1-(\d+) of \d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(text)![1])
   const path = /Full output saved to: (\S+)\n/.exec(text)![1]!
   const page = text.slice(text.indexOf('\n\n') + 2, text.indexOf('\n</persisted-output>'))
   return { shown, page, file: readFileSync(path, 'utf8') }

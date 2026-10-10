@@ -1,12 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { copyFile, link, stat, truncate } from 'fs/promises'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
-import {
-  buildLargeToolResultMessage,
-  ensureToolResultsDir,
-  getToolResultPath,
-  readSavedHead,
-} from 'src/agent/tools/toolResultStorage.js'
+import { shellErrorPrefix } from 'src/agent/tools/toolErrors.js'
+import { adoptOutputFile, pageSavedFile, type SavedOutput } from 'src/agent/tools/toolResultStorage.js'
 import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js'
 import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
@@ -21,7 +16,9 @@ import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
  *
  * What deliberately stays at the call sites: BashTool's `structuredContent`
  * early return (only Bash produces it) and everything about the backgrounding
- * lifecycle itself. This module only formats what the run already produced.
+ * lifecycle itself. This module formats what the run produced; a run too
+ * large for its result is saved and paged by storage (`adoptOutputFile`,
+ * `pageSavedFile`), and this module only says how much room the page gets.
  */
 
 const EOL = '\n'
@@ -46,6 +43,10 @@ export type ShellToolResultData = {
   assistantAutoBackgrounded?: boolean
   persistedOutputPath?: string | null
   persistedOutputSize?: number
+  /** Set when only part of the output could be kept (`adoptOutputFile`). */
+  persistedOutputSavedBytes?: number
+  /** The saved output's line count, for its page. */
+  persistedOutputLines?: number
   /**
    * A note on a file read, after stdout: the files a read too long to show
    * whole left out, and the ones that count as read (BashTool's
@@ -100,54 +101,31 @@ export function buildShellBackgroundInfo({
   return `Command running in background with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`
 }
 
-/** The most of a run's output kept on disk for the model to page through. */
-const MAX_SPILL_BYTES = 64 * 1024 * 1024
-
-/**
- * Room a failing run's page leaves for what `formatError` puts in front of it
- * (`Exit code N`) — the rest of the error text is measured by the caller.
- */
-export const SHELL_ERROR_PREFIX_ROOM = 64
-
-export type ShellSpill = { path: string; size: number }
-
 /**
  * A run whose output passed what it keeps in memory wrote all of it to a task
- * file: link that file into the session's tool results, where its page points.
- * Past 64 MB the file is truncated first. Called for a failing run too — its
- * error is paged from the same file. Undefined when nothing spilled, or the
- * file is gone.
+ * file: storage saves it where its page will point. Called for a failing run
+ * too, whose error is paged from the same file. Undefined when nothing
+ * spilled, or the file is gone.
  */
-export async function saveShellSpill(result: { outputFilePath?: string; outputTaskId?: string }): Promise<ShellSpill | undefined> {
-  if (!result.outputFilePath || !result.outputTaskId) return undefined
-  try {
-    const { size } = await stat(result.outputFilePath)
-    await ensureToolResultsDir()
-    const dest = getToolResultPath(result.outputTaskId)
-    if (size > MAX_SPILL_BYTES) await truncate(result.outputFilePath, MAX_SPILL_BYTES)
-    try {
-      await link(result.outputFilePath, dest)
-    } catch {
-      await copyFile(result.outputFilePath, dest)
-    }
-    return { path: dest, size }
-  } catch {
-    return undefined
-  }
+export function saveSpilledRun(result: { outputFilePath?: string; outputTaskId?: string }): Promise<SavedOutput | undefined> {
+  if (!result.outputFilePath || !result.outputTaskId) return Promise.resolve(undefined)
+  return adoptOutputFile(result.outputFilePath, result.outputTaskId)
 }
 
 /**
- * The page of a run that spilled, cut from the saved file's own head rather
- * than from stdout — the output filter, the blank-line strip and a byte cap
- * ending mid-line all reshape stdout — so its line numbers are the file's.
- * `room` is what the rest of the result needs, so the whole of it stays under
- * the shells' line and storage never pages it again. `fallback` is used when
- * the file cannot be read.
+ * What a failing run that spilled carries as its output in its ShellError:
+ * the page of its saved output, sized to leave room for exactly what
+ * `formatError` puts around it — `others` is the rest of the error's own text
+ * (Bash's sandbox note, PowerShell's stderr) — so the error stays under the
+ * shells' line and the tool loop never pages it again. Every consumer of a
+ * ShellError reads the page and its pointer, not a first chunk.
  */
-export function pageSpilledShellRun(spill: ShellSpill, room: number, fallback: string): string {
-  const budget = SHELL_RESULT_MAX_CHARS - room
-  const head = readSavedHead(spill.path, Math.max(budget, 0))
-  return buildLargeToolResultMessage({ filepath: spill.path, originalSize: spill.size }, head ?? fallback, budget, false)
+export function pageFailedShellRun(
+  saved: SavedOutput,
+  around: { code: number; interrupted: boolean; others: string },
+): string {
+  const room = shellErrorPrefix(around.code, around.interrupted).length + around.others.length + 1
+  return pageSavedFile(saved, SHELL_RESULT_MAX_CHARS - room, '')
 }
 
 /**
@@ -180,9 +158,14 @@ export function mapShellResultToToolResultBlockParam(
   if (data.persistedOutputPath) {
     // A run too large for its result saved its output whole: page it, leaving
     // room for the lines after the page.
-    processedStdout = pageSpilledShellRun(
-      { path: data.persistedOutputPath, size: data.persistedOutputSize ?? 0 },
-      after.reduce((n, part) => n + part!.length + 1, 0),
+    processedStdout = pageSavedFile(
+      {
+        filepath: data.persistedOutputPath,
+        originalSize: data.persistedOutputSize,
+        savedBytes: data.persistedOutputSavedBytes,
+        lines: data.persistedOutputLines,
+      },
+      SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0),
       normalizedStdout,
     )
   }

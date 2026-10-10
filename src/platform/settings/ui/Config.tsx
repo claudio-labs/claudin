@@ -1211,7 +1211,7 @@ export function Config({
       formattedChanges.push(`${globalConfig.narrationHistoryRedactionEnabled ? 'Enabled' : 'Disabled'} narration history redaction`);
     }
     if (globalConfig.toolResultSummarizerEnabled !== initialConfig.current.toolResultSummarizerEnabled) {
-      formattedChanges.push(`${globalConfig.toolResultSummarizerEnabled ? 'Enabled' : 'Disabled'} tool result summarizer`);
+      formattedChanges.push(`${globalConfig.toolResultSummarizerEnabled ? 'Enabled' : 'Disabled'} tool result compaction`);
     }
     if (globalConfig.autoBackgroundAgentsEnabled !== initialConfig.current.autoBackgroundAgentsEnabled) {
       formattedChanges.push(`${globalConfig.autoBackgroundAgentsEnabled === true ? 'Enabled' : 'Disabled'} auto-background agents`);

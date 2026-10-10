@@ -1,17 +1,19 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 
 import {
   buildLargeToolResultMessage,
   getSessionSpillDir,
   pageForModel,
+  pageUnsaved,
   processPreMappedToolResultBlock,
   processToolResultBlock,
   unlinkSessionSpillDir,
 } from 'src/agent/tools/toolResultStorage.ts'
+import { resultDirs } from 'src/agent/tools/toolResultFiles.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 
 describe('unlinkSessionSpillDir', () => {
@@ -100,6 +102,67 @@ describe('unlinkSessionSpillDir', () => {
   })
 })
 
+// When the config dir cannot take the file, the result is saved under the
+// system temp dir; when nothing can, it still never ships past its line.
+describe('a result that cannot be saved where it should be', () => {
+  const prevConfigDir = process.env.CLAUDIN_CONFIG_DIR
+  // A regular file where the config dir should be: nothing can be made under it.
+  const blocked = join(tmpdir(), `claudin-test-blocked-${process.pid}-${Date.now()}`)
+  beforeAll(() => {
+    writeFileSync(blocked, 'not a directory')
+    process.env.CLAUDIN_CONFIG_DIR = blocked
+  })
+  afterAll(() => {
+    if (prevConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = prevConfigDir
+    rmSync(blocked, { force: true })
+    rmSync(resultDirs()[1]!, { recursive: true, force: true })
+  })
+
+  const text = Array.from({ length: 3_000 }, (_, i) => `row ${i + 1}: ${'q'.repeat(40)}`).join('\n')
+
+  test('is saved under the temp dir instead, and paged from there', async () => {
+    const out = await processPreMappedToolResultBlock(
+      { type: 'tool_result', tool_use_id: 'toolu_blocked', content: text },
+      { name: 'SomeTool', maxResultSizeChars: 10_000 },
+    )
+    const message = String(out.content)
+    expect(message.length).toBeLessThanOrEqual(10_000)
+    const path = /Full output saved to: (\S+)\n/.exec(message)![1]!
+    expect(path.startsWith(tmpdir())).toBe(true)
+    expect(readFileSync(path, 'utf8')).toBe(text)
+  })
+
+  test('saved nowhere, the result is still paged under its line, never shipped whole', async () => {
+    // The temp-dir fallback blocked too: a regular file where its directory should be.
+    const fallback = resultDirs()[1]!
+    rmSync(fallback, { recursive: true, force: true })
+    mkdirSync(dirname(fallback), { recursive: true })
+    writeFileSync(fallback, 'not a directory')
+    try {
+      const out = await processPreMappedToolResultBlock(
+        { type: 'tool_result', tool_use_id: 'toolu_nowhere', content: text },
+        { name: 'SomeTool', maxResultSizeChars: 10_000 },
+      )
+      const message = String(out.content)
+      expect(message.length).toBeLessThanOrEqual(10_000)
+      expect(message).toContain('and it could not be saved (')
+      expect(message).not.toContain('Full output saved')
+    } finally {
+      rmSync(fallback, { force: true })
+    }
+  })
+
+  test('with nowhere to save, the first page still fits, and says the rest was not kept', () => {
+    const message = pageUnsaved(text, 10_000, 'EACCES')
+    expect(message.length).toBeLessThanOrEqual(10_000)
+    expect(message).toContain('and it could not be saved (EACCES)')
+    const shown = Number(/^Lines 1-(\d+) of 3000 are below\. The rest could not be kept: narrow the call/m.exec(message)![1])
+    const page = message.slice(message.indexOf('\n\n') + 2, message.lastIndexOf('\n</persisted-output>'))
+    expect(page).toBe(text.split('\n').slice(0, shown).join('\n'))
+  })
+})
+
 // Nothing is cut under the line: an agent report ships as it came, blocks and
 // all, whatever its middle holds (Explore quotes the lines a caller edits from).
 describe('an agent report under its line', () => {
@@ -145,7 +208,7 @@ describe('paging past the persistence line', () => {
 
   /** The pointer's line count, the page, and the saved file, from a paged message. */
   function readPage(message: string): { shown: number; page: string; file: string } {
-    const pointer = /^Lines 1-(\d+) are below; Read the file with offset=(\d+) and limit=(\d+) for the next page\.$/m.exec(message)!
+    const pointer = /^Lines 1-(\d+) of \d+ are below; Read the file with offset=(\d+) and limit=(\d+) for the next page\.$/m.exec(message)!
     expect(Number(pointer[2])).toBe(Number(pointer[1]) + 1)
     expect(Number(pointer[3])).toBe(Number(pointer[1]))
     const path = /Full output saved to: (\S+)\n/.exec(message)![1]!
@@ -177,15 +240,22 @@ describe('paging past the persistence line', () => {
     const message = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 20_000)
     expect(message.length).toBeLessThanOrEqual(20_000)
     expect(message.split('\n')[1]).toStartWith('Output too large (')
-    expect(message.split('\n')[2]).toMatch(/^Lines 1-\d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/)
+    expect(message.split('\n')[2]).toMatch(/^Lines 1-\d+ of \d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/)
     const shown = Number(/Lines 1-(\d+)/.exec(message)![1])
     expect(message).toContain(`\n\n${text.split('\n').slice(0, shown).join('\n')}\n</persisted-output>`)
   })
 
-  test('a first line longer than the page still fits the line, and says how to go on', () => {
-    const message = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: 40_000 }, 'y'.repeat(40_000), 30_000)
+  test('a first line longer than the page fits the line, and names the byte to go on from', () => {
+    // Multibyte, so a char offset and a byte offset differ.
+    const text = 'é'.repeat(40_000)
+    const message = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 30_000)
     expect(message.length).toBeLessThanOrEqual(30_000)
-    expect(message).toMatch(/^Line 1 alone is longer than this page: its first (\d+) chars are below\. Read cannot split a line; fetch the rest with Bash, from character \d+\.$/m)
+    const m = /^Line 1 alone is longer than this page: its first (\d+) chars \((\d+) bytes\) are below\. Read cannot split a line; fetch the rest with Bash: tail -c \+(\d+) '\/tmp\/x\.txt' \| head -c 100000$/m.exec(message)!
+    const page = message.slice(message.indexOf('\n\n') + 2, message.lastIndexOf('\n</persisted-output>'))
+    expect(page.length).toBe(Number(m[1]))
+    expect(Buffer.byteLength(page)).toBe(Number(m[2]))
+    // tail -c +B starts at byte B, 1-based: the page and the rest join exactly.
+    expect(Buffer.concat([Buffer.from(page), Buffer.from(text).subarray(Number(m[3]) - 1)]).toString()).toBe(text)
   })
 
   test('a result past its line is saved whole and paged: page + the file from the pointer = the original', async () => {

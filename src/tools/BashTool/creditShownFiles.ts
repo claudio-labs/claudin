@@ -85,14 +85,15 @@ import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.j
 import { isWholeFileView } from 'src/tools/shared/readBeforeEditMessages.js'
 import { fileLinesOf } from 'src/tools/shared/servedRegion.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js'
 
 const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
 
 /**
  * BashTool's `maxResultSizeChars`: over it the harness saves the result to a
- * file and the model gets a 2 KB preview.
+ * file and the model gets its first page.
  */
-const PERSISTED_ABOVE_CHARS = 30_000
+const PERSISTED_ABOVE_CHARS = SHELL_RESULT_MAX_CHARS
 
 /** Files checked per command, however wide its globs. */
 const MAX_CANDIDATES = 32
@@ -503,7 +504,7 @@ export type FittedRead = {
  * `stdout` cut back to the whole files that fit in `budget` chars, and the
  * files it leaves out by name: the pass-through's answer to a pure read too
  * long for one result (`overBudgetFileRead`, outputFilter/Bash/index.ts),
- * where the cap would keep 30 lines of it and a spill a 2 KB preview.
+ * where the cap would keep 30 lines of it and a spill its first page.
  *
  * The files are taken in the order the command names them, each found after
  * the one before it — its bytes or its `cat -n` rendering, from the start of a

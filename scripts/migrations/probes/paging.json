@@ -1,7 +1,8 @@
 {
   "test": [
     "src/agent/tools/toolResultStorage.test.ts",
-    "src/tools/shellToolResultMappers.test.ts"
+    "src/tools/shellToolResultMappers.test.ts",
+    "src/agent/compact/stableStubState.stub-byte-stability.test.ts"
   ],
   "source": "src/agent/tools/toolResultStorage.ts",
   "probes": [
@@ -17,13 +18,14 @@
     },
     {
       "name": "page: the budget forgets the envelope, so the message passes the line",
-      "find": "  const budget = maxChars - frame('', '').length - longest\n",
-      "replace": "  const budget = maxChars\n"
+      "find": "  const budget = maxChars - frame('', '').length - longest\n  const { page, shownLines } = pageForModel(text, Math.max(budget, 0), complete)\n",
+      "replace": "  const budget = maxChars\n  const { page, shownLines } = pageForModel(text, Math.max(budget, 0), complete)\n"
     },
     {
       "name": "page: the budget sizes only the line-number pointer, so a long first line passes the line",
-      "find": "  const longest = Math.max(pointerFor(Number.MAX_SAFE_INTEGER, 0).length, pointerFor(0, Number.MAX_SAFE_INTEGER).length)\n",
-      "replace": "  const longest = pointerFor(Number.MAX_SAFE_INTEGER, 0).length\n"
+      "find": "    pointerFor(0, most, most, most, saved.filepath).length,\n",
+      "replace": "    0,\n",
+      "source": "src/agent/tools/toolResultStorage.ts"
     },
     {
       "name": "page: a head's cut-short last line is counted as shown",
@@ -32,25 +34,75 @@
     },
     {
       "name": "page: a repeated id reuses whatever file it named",
-      "find": "  const filepath = getToolResultPath(`${toolUseId}-${hash}`)\n",
-      "replace": "  const filepath = getToolResultPath(toolUseId)\n"
+      "find": "  return `${toolUseId}-${createHash('sha256').update(text).digest('hex').slice(0, 12)}.txt`\n",
+      "replace": "  return `${toolUseId}.txt`\n",
+      "source": "src/agent/tools/toolResultFiles.ts"
     },
     {
       "name": "page: text blocks are saved as JSON again",
-      "find": "      : content.map(block => (block.type === 'text' ? block.text : '')).join('\\n')\n",
-      "replace": "      : JSON.stringify(content, null, 2)\n"
+      "find": "  return texts.join('\\n')\n",
+      "replace": "  return JSON.stringify(content, null, 2)\n",
+      "source": "src/agent/tools/toolResultFiles.ts"
     },
     {
       "name": "shell: the page is cut from stdout, not the saved file",
-      "source": "src/tools/shellToolResultMappers.ts",
-      "find": "  return buildLargeToolResultMessage({ filepath: spill.path, originalSize: spill.size }, head ?? fallback, budget, false)\n",
-      "replace": "  return buildLargeToolResultMessage({ filepath: spill.path, originalSize: spill.size }, fallback, budget, false)\n"
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "  return buildLargeToolResultMessage({ ...saved, originalSize }, head?.text ?? fallback, budget, {\n",
+      "replace": "  return buildLargeToolResultMessage({ ...saved, originalSize }, fallback, budget, {\n"
     },
     {
       "name": "shell: the page forgets the lines after it",
       "source": "src/tools/shellToolResultMappers.ts",
-      "find": "      after.reduce((n, part) => n + part!.length + 1, 0),\n",
-      "replace": "      0,\n"
+      "find": "      SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0),\n",
+      "replace": "      SHELL_RESULT_MAX_CHARS,\n"
+    },
+    {
+      "name": "save: no fallback dir, so a blocked config dir loses the file",
+      "source": "src/agent/tools/toolResultFiles.ts",
+      "find": "  return [getToolResultsDir(), getFallbackResultsDir()]\n",
+      "replace": "  return [getToolResultsDir()]\n"
+    },
+    {
+      "name": "save: saved nowhere, the result ships past its line",
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "      : { ...toolResultBlock, content: pageUnsaved(text, threshold, result.error) }\n",
+      "replace": "      : toolResultBlock\n"
+    },
+    {
+      "name": "cap: past 64 MB the page still says the full output is saved",
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "    saved.savedBytes !== undefined && saved.savedBytes < saved.originalSize\n",
+      "replace": "    false\n"
+    },
+    {
+      "name": "pointer: the line count is left out",
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "  const of = totalLines === undefined ? '' : ` of ${totalLines}`\n",
+      "replace": "  const of = ''\n"
+    },
+    {
+      "name": "page: a saved file gets no minimum room, so a crowded error pages 0 chars",
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "  const budget = Math.max(maxChars, MIN_PAGE_CHARS)\n",
+      "replace": "  const budget = maxChars\n"
+    },
+    {
+      "name": "relief: a result shipped whole is never saved, so its clip names no copy",
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "    if (size >= SAVE_WHOLE_FROM_CHARS && Number.isFinite(threshold)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "relief: the stub never names the saved copy",
+      "source": "src/agent/compact/stableStubState/clipStubText.ts",
+      "find": "  const saved = savedCopyOf(toolUseId, content)\n",
+      "replace": "  const saved = undefined\n"
+    },
+    {
+      "name": "save: a file where the dir should be counts as saved",
+      "source": "src/agent/tools/toolResultFiles.ts",
+      "find": "      // Its EEXIST is a file where the directory should be, not a saved result.\n      lastError = error\n      continue\n",
+      "replace": "      if (getErrnoCode(error) === 'EEXIST') return { path }\n      lastError = error\n      continue\n"
     }
   ]
 }

@@ -33,7 +33,7 @@ import {
 } from 'src/tools/BashTool/runShellCommand.js'
 import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { getBytesSaved, resetBytesSaved } from 'src/agent/context/tokensSaved.js'
-import { SHELL_ERROR_PREFIX_ROOM } from 'src/tools/shellToolResultMappers.js'
+import { shellErrorPrefix } from 'src/agent/tools/toolErrors.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -562,7 +562,7 @@ async function loadFilter(passthrough: boolean): Promise<BashFilter> {
 
 describe('a pure read too long to show whole — fitOverBudgetRead', () => {
   // Twenty modules, ~59k printed: the dump session-cache-ab 20260924-170553 r1
-  // got as a saved file with a 2 KB preview, and read back whole.
+  // got as a saved file with a preview, and read back whole.
   const LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
   let dir: string
   let on: BashFilter
@@ -791,16 +791,16 @@ describe('call() with both flags on — what reaches the result', () => {
   })
 
   // A failing run that spilled kept only its first 30k in stdout; its error
-  // is the page of the whole saved output, so its end — the summary — is
-  // never lost.
+  // is the page of the whole saved output, so its end — the summary — is on
+  // disk, at the line count the pointer gives.
   test('a failing run past 30k: the error is a page of the saved file, which holds the summary', () => {
     const output = failedSpill.failed!.output
     expect(failedSpill.failed!.code).toBe(1)
     expect(output).toStartWith('<persisted-output>')
-    // The page leaves room for what formatError puts in front of it, so the
-    // error still fits Bash's line and the tool loop never pages it again.
-    expect(output.length).toBeLessThanOrEqual(30_000 - SHELL_ERROR_PREFIX_ROOM)
-    const shown = Number(/^Lines 1-(\d+) are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(output)![1])
+    // The page leaves room for exactly what formatError puts in front of it,
+    // so the error still fits Bash's line and the tool loop never pages it again.
+    expect(`${shellErrorPrefix(1, false)}${output}`.length).toBeLessThanOrEqual(30_000)
+    const shown = Number(/^Lines 1-(\d+) of \d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(output)![1])
     const file = readFileSync(/Full output saved to: (\S+)\n/.exec(output)![1]!, 'utf8').trimEnd().split('\n')
     expect(file.at(-1)).toBe('SUMMARY: 3 failed')
     expect(file).toHaveLength(6001)
