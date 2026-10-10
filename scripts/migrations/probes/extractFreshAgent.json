@@ -1,0 +1,36 @@
+{
+  "test": ["src/memory/extract/extractMemories.freshAgent.test.ts"],
+  "source": "src/memory/extract/extractMemories.ts",
+  "probes": [
+    {
+      "name": "the window starts at a human turn, never on a tool_result",
+      "find": "  const start = messages.findIndex((m, i) => i > cursor && isHumanTurn(m))\n",
+      "replace": "  const start = messages.findIndex((m, i) => i > cursor)\n"
+    },
+    {
+      "name": "the fresh agent reads only the messages since the cursor",
+      "find": "      forkContextMessages: messagesSinceCursor(params.forkContextMessages, sinceUuid),\n",
+      "replace": "      forkContextMessages: params.forkContextMessages,\n"
+    },
+    {
+      "name": "without an agentType a turn calls the session's model",
+      "find": "      agentType: 'extract_memories',\n",
+      "replace": ""
+    },
+    {
+      "name": "the fresh agent's model reaches its options",
+      "find": "      options: { ...parent.options, mainLoopModel: model },\n",
+      "replace": "      options: parent.options,\n"
+    },
+    {
+      "name": "the fresh agent runs at its own effort",
+      "find": "          effortValue,\n",
+      "replace": ""
+    },
+    {
+      "name": "the fresh agent never prompts for permission",
+      "find": "            shouldAvoidPermissionPrompts: true,\n",
+      "replace": "            shouldAvoidPermissionPrompts: false,\n"
+    }
+  ]
+}

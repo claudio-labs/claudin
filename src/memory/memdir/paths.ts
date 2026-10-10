@@ -82,10 +82,16 @@ export function isExtractMemoriesEnabled(): boolean {
  * directly in an `if` condition.
  *
  * Interactive sessions only: a `-p` run ends before a background fork could
- * report back.
+ * report back. CLAUDIN_EXTRACT_MEMORIES_HEADLESS=1 lets a `-p` run extract
+ * too, and wait for it before exiting (drainPendingExtraction) — what
+ * scripts/bench/ab/extract-memories-ab.ts measures through.
  */
 export function isExtractModeActive(): boolean {
-  return isExtractMemoriesEnabled() && !getIsNonInteractiveSession()
+  return (
+    isExtractMemoriesEnabled() &&
+    (!getIsNonInteractiveSession() ||
+      isEnvTruthy(process.env.CLAUDIN_EXTRACT_MEMORIES_HEADLESS))
+  )
 }
 
 const DEFAULT_EXTRACTION_TURN_INTERVAL = 15

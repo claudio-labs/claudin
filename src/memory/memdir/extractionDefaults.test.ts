@@ -20,6 +20,7 @@ import {
 const ENV = [
   'CLAUDIN_EXTRACT_MEMORIES',
   'CLAUDIN_EXTRACT_MEMORIES_EVERY',
+  'CLAUDIN_EXTRACT_MEMORIES_HEADLESS',
   'CLAUDIN_MEMORY_PAST_CONTEXT',
 ] as const
 const saved = new Map(ENV.map(name => [name, process.env[name]]))
@@ -50,6 +51,19 @@ describe('memory extraction', () => {
 
   test('CLAUDIN_EXTRACT_MEMORIES=0 turns it off', () => {
     setIsInteractive(true)
+    process.env.CLAUDIN_EXTRACT_MEMORIES = '0'
+    expect(isExtractModeActive()).toBe(false)
+  })
+
+  test('CLAUDIN_EXTRACT_MEMORIES_HEADLESS=1 runs it in a non-interactive one', () => {
+    setIsInteractive(false)
+    process.env.CLAUDIN_EXTRACT_MEMORIES_HEADLESS = '1'
+    expect(isExtractModeActive()).toBe(true)
+  })
+
+  test('CLAUDIN_EXTRACT_MEMORIES=0 wins over CLAUDIN_EXTRACT_MEMORIES_HEADLESS=1', () => {
+    setIsInteractive(false)
+    process.env.CLAUDIN_EXTRACT_MEMORIES_HEADLESS = '1'
     process.env.CLAUDIN_EXTRACT_MEMORIES = '0'
     expect(isExtractModeActive()).toBe(false)
   })
