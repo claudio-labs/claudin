@@ -72,10 +72,10 @@
  *      edit of it in Bash, whose result names the file; p2 (--resume) carries no
  *      "was modified" note for it
  *  18. own writes off — the default: p2 carries the note
- *  19. lossless summarizer on — the default: a Grep with 42 matches and their
- *      context, past the cut's 10 per file, reaches the model whole
- *  20. lossless summarizer off — CLAUDIN_TOOL_RESULT_LOSSLESS=0: the same Grep is
- *      cut to 10 matches and a "+32 more" count
+ *  19. compaction: a Grep with 42 matches and their context, past the old
+ *      cut's 10 per file, reaches the model whole
+ *  20. paging: a Bash result past its 30k line comes back as its first lines
+ *      exactly and a pointer; the saved file holds the whole output
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -215,13 +215,24 @@ const MIXED_READ = bash('cat a.ts b.ts; sed -n 1,140p big.ts; echo ----; head -c
 const ERROR_LOG = bash("sed '150s/$/ error: boom/' big.ts")
 const ERROR_TEXT = 'error: boom'
 
-// Scenarios 19-20: the lossless summarizer (CLAUDIN_TOOL_RESULT_LOSSLESS).
+// Scenarios 19-20: tool results are compacted, never cut, and paged past their line.
 /** Every seventh line of big.ts says alpha: 42 matches, past the cut's 10 per file, ±2 lines of context each. */
 const GREP_ALPHA = (ws: string): Step => ({
   tool: 'Grep',
   input: { pattern: 'alpha', path: join(ws, 'big.ts'), output_mode: 'content', '-n': true, '-C': 2 },
 })
 const ALPHA_LINES = Array.from({ length: 42 }, (_, i) => bigLine(7 * (i + 1)))
+/** ~47k chars of JSON, which the Bash filter never cuts: past Bash's 30k line. */
+const JSON_DUMP = bash(`python3 -c "import json; print(json.dumps(list(range(7000)), indent=1))"`)
+const JSON_DUMP_LINES = ['[', ...Array.from({ length: 7000 }, (_, i) => ` ${i}${i < 6999 ? ',' : ''}`), ']']
+/** The page's pointer, the page itself and the saved file, or null when the result is no page. */
+function readPage(text: string): { shown: number; page: string[]; file: string[] } | null {
+  const pointer = /^Lines 1-(\d+) are below; Read the file from line (\d+) for the rest\.$/m.exec(text)
+  const path = /Full output saved to: (\S+)\n/.exec(text)?.[1]
+  if (!pointer || Number(pointer[2]) !== Number(pointer[1]) + 1 || !path || !existsSync(path)) return null
+  const page = text.slice(text.indexOf('\n\n') + 2, text.indexOf('\n</persisted-output>'))
+  return { shown: Number(pointer[1]), page: page.split('\n'), file: readFileSync(path, 'utf8').trimEnd().split('\n') }
+}
 const READ_A = (ws: string): Step => ({ tool: 'Read', input: { file_path: join(ws, 'a.ts') } })
 const PYTHON_EDIT_A: Step = {
   tool: 'Bash',
@@ -639,8 +650,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '19',
-    title: 'lossless summarizer on: a Grep past the cut keeps every match',
-    // Unset on purpose: on by default.
+    title: 'compaction: a Grep past the old cut keeps every match',
     env: {},
     files: BIG_FILES,
     script: ws => [{ prompt: 'Find alpha in big.ts.', steps: [GREP_ALPHA(ws), DONE] }],
@@ -653,13 +663,21 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '20',
-    title: 'lossless summarizer off (the control for 19)',
-    env: { CLAUDIN_TOOL_RESULT_LOSSLESS: '0' },
+    title: 'paging: a Bash result past its line is paged, not cut',
+    env: {},
     files: BIG_FILES,
-    script: ws => [{ prompt: 'Find alpha in big.ts.', steps: [GREP_ALPHA(ws), DONE] }],
+    script: () => [{ prompt: 'Dump the numbers.', steps: [JSON_DUMP, DONE] }],
     expect: run => [
-      onResult(run, 0, 0, 'p1 the cut keeps 10 matches and counts the rest', r =>
-        r.text.includes('<tool-result-summary') && r.text.includes('+32 more matches') && !r.text.includes(ALPHA_LINES[41]!),
+      onResult(run, 0, 0, 'p1 the page is the first lines exactly, under the line, and nothing is summarized', r => {
+        const paged = readPage(r.text)
+        return (
+          !r.isError && r.text.startsWith('<persisted-output>') && r.text.length <= 31_000 && paged !== null &&
+          paged.shown > 100 && paged.page.join('\n') === JSON_DUMP_LINES.slice(0, paged.shown).join('\n') &&
+          !r.text.includes('<tool-result-summary') && !r.text.includes(CUT_TEXT)
+        )
+      }),
+      onResult(run, 0, 0, 'p1 the saved file holds every line, the pointer\'s included', r =>
+        readPage(r.text)?.file.join('\n') === JSON_DUMP_LINES.join('\n'),
       ),
     ],
   },

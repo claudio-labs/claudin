@@ -1,39 +1,65 @@
 ---
 name: summarizer-lossless
-description: Since 2026-10-10 a tool result ships whole while it fits under its tool's persistence line — Grep/Glob regrouped without losing a line, the rest as it came — and is cut only past it (CLAUDIN_TOOL_RESULT_LOSSLESS=0 brings the cuts back); 4,103 transcripts round-trip byte-exact, replay +12.5% chars, Glob −46%
+description: Since 2026-10-10 no tool result is cut — Grep/Glob are regrouped without losing a byte (toolResultCompaction.ts), and a result past its tool's persistence line is paged (first lines + a pointer, the rest read by offset), replacing the 2 KB preview; the summarizer's 7 cut strategies, source= reversibility, 2 build features and skipsResultSummarizer are deleted
 type: project
-scope: tool-results/summarizer
+scope: tool-results/compaction
 impact: functional
 paths:
   - "src/agent/tools/toolResultStorage.ts"
-  - "src/agent/tools/toolResultSummarizer.ts"
-  - "src/agent/tools/toolResultSummarizer/grep.ts"
-  - "src/agent/tools/toolResultSummarizer/glob.ts"
+  - "src/agent/tools/toolResultCompaction.ts"
+  - "src/agent/tools/toolResultCompaction/grep.ts"
+  - "src/agent/tools/toolResultCompaction/glob.ts"
+  - "src/tools/shellToolResultMappers.ts"
 ---
 
-**Decision (user, 2026-10-10, branch `perf/summarizer-lossless`, stacked on #282):** whole under the line, cut past it.
-- `keepWholeUnderLine` (toolResultStorage.ts) runs `maybeCompactToolResult`. If the result fits under the persistence line, measured by persistence's own `contentSize`, it ships; only otherwise does `maybeSummarizeToolResult` (the cut, unchanged) run. Lines: Grep 20k, Bash 30k, others 50k.
-- Only two regroups exist, and each puts every byte back.
-  - `compactGrepOutput`: rg's order; each run of one file's lines under `--- path ---` (`NN:text` a match, `NN-text` context); `--` and every other line stay as rg printed them. A file earns a header only with a match line of its own, so a misread path (`phase-0-plan.md` taken as file `phase`, line 0) never names a fake file. A run earns one only when the header pays for itself. It bails if a line printed raw would read as a header or as a numbered line.
-  - `compactGlobOutput`: adjacent paths under their `dir/`, order kept. It bails on a path that starts with a space.
-- Bash, WebFetch, Agent and MCP results ship as they came while they fit.
-- `<tool-result-compacted tool= strategy=>` carries no `original`/`kept`. It is not `isSummarizedContent`, so nothing is persisted for it, and it is idempotent.
+**Decision (user, 2026-10-10, branch `perf/summarizer-lossless`, stacked on #282):** compact, never cut. Past the line, page.
 
-**Rejected in the first draft (two audit agents, 10-10):**
-- Folding repeated lines into `line (×N)`, and minifying JSON. Neither fired once over 4,103 transcripts. The fold was ambiguous with real ` (×N)` lines, and minifying broke an Edit `old_string` copied from a `cat x.json`.
-- Re-sorting Grep files by match count, moving unparsed lines to the end, and `… same as` back-references. All three lost order or misattributed lines.
-- A `persistAboveChars = Infinity` parameter on the summarizer. Any caller that forgot it never cut. The rule now lives in storage.
-- A header for every attributed run (second draft). Misread paths got headers naming files that do not exist: 303 corpus results, 24 of them count listings.
+**The pipeline.** `processPreMappedToolResultBlock` runs `maybeCompactToolResult`, then `maybePersistLargeToolResult`. Nothing else touches a result.
 
-**Why:** the user asked for no cuts, only lossless compaction. Two free censuses priced it.
-- `summarizer-lossless-replay.ts`, 14 days, 517 replayed cuts:
-  - 456 regrouped, 56 whole, 5 still cut;
-  - chars +12.5%: Grep +15.5%, Bash +53%, WebFetch +55%, Glob −46%;
-  - per session: median +0.9k chars.
-- Audit round-trip over all 4,103 transcripts, decoded in order:
-  - Grep 1,297 + 1,078 and Glob 125 + 62 results came back exact, with 0 reordered and 0 lost;
-  - 0 headers name a file without a match;
-  - the only loss left is the cut past the line: 11 Grep and 9 WebFetch results.
-- `cut-refetch-census.ts`, 09-26..10-10: Grep summaries were re-fetched less often than uncut Grep >3k (11/18% against 19/24%). Bash summaries were re-fetched at 32–67% (already gone on reads since #282). Persisted 2 KB previews at 33–100%: that preview is the fallback this avoids.
+**Compaction.** `src/agent/tools/toolResultCompaction*`, renamed from `toolResultSummarizer*` in a pure `git mv` commit.
+- It applies to Grep and Glob output from 3,000 chars up. Everything else ships as it came.
+- `compactGrepOutput` keeps rg's order and puts each run of one file under `--- path ---`. `--` and every other line stay as rg printed them.
+  - A file gets a header only if it has a match line of its own, so a misread path never names a fake file.
+  - A run gets a header only when the header pays for itself.
+  - It bails on any line that would read as a header or a numbered line.
+- `compactGlobOutput` puts adjacent paths under their `dir/`, keeping the order.
+- Both are byte-reversible. The envelope is `<tool-result-compacted tool= strategy=>`, with no sizes.
+- Off switches, names unchanged because they live in users' settings: `CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER` and the `toolResultSummarizerEnabled` config.
 
-**Evidence:** `toolResultSummarizer.lossless.test.ts` decodes every regroup back in order, byte for byte, pins the line at exactly the threshold, and covers misread paths and runs that do not pay. Storage-path cut tests (`integration`, `toolResultCodeOutline`, the storage hook test) set `=0`. Break-probe `losslessSummarizer.json` has 18 probes, all red. `read-credit-e2e.ts` scenarios 19-20 run on the bundle.
+**Paging.** `buildLargeToolResultMessage(saved, text, maxChars)` produces a single message.
+- Contents, in order:
+  - `<persisted-output>`;
+  - the size and the file path;
+  - `Lines 1-K are below; Read the file from line K+1 for the rest.`;
+  - lines 1–K exactly, as many as fit under the tool's line.
+- The pointer comes first, so a relief stub that keeps the head keeps the pointer too.
+- Lines per tool are unchanged: Grep 20k, Bash/Git 30k, the rest 50k.
+- Storage's spill and Bash's own >30k spill both page. Bash pages from the untrimmed stdout, so the line numbers match the file.
+- Text-block arrays are saved as joined `.txt`, not JSON, so `Read` offsets address lines.
+
+**Deleted.**
+- The summarizer's cut strategies: Bash head-tail-errors, the Grep cut, Glob top-50, WebFetch, Agent/MCP head-tail, json-structural and code-outline.
+- `jsonArrayCompress.ts`, `makeReversibleIfElided` / `source=`, and the build features `TOOL_RESULT_JSON_COMPRESSION` and `TOOL_RESULT_CODE_OUTLINE`.
+- `Tool.skipsResultSummarizer`, `UNSUMMARIZED_AGENT_TYPES` and `CLAUDIN_TOOL_RESULT_LOSSLESS`.
+- The benches `grep-summarizer-replay`, `json-salient-probe` and `code-outline-ab`.
+- `collapseIdenticalRuns` and `collapseDigitTemplates` moved to `outputFilter/Bash/collapse.ts`, since the Bash filter is their only user.
+
+**Rejected on the way (two audit agents, 10-10).**
+- Folding into `line (×N)`, and JSON minify: ambiguous, and they broke an Edit `old_string`. Neither fired once in the corpus.
+- Re-sorting Grep by match count, and `… same as` back-references: both lost order.
+- A header on every run: misread paths produced fake file names in 303 corpus results.
+- Keeping the cut past the line, and the 2 KB preview: the model re-fetched after 33–100% of previews.
+
+**Measured (free).** `summarizer-lossless-replay.ts`, 14 days, 520 real cuts replayed through the live pipeline.
+- 459 regrouped, 56 whole, 5 paged (1 Grep, 4 WebFetch). 0 cut. 0 broken pages: page plus file gives back the original every time.
+- Chars +19% on those results: Glob −46%, Grep +15.5%, WebFetch +170% (paged at its 50k line). Median +0.9k chars per session.
+- Audit round-trip over 4,103 transcripts: 0 lost, 0 reordered, 0 fake headers.
+
+**What still bounds a result.** Each tool's own limits are unchanged and out of scope: Grep `head_limit` 250 + offset, Glob 100 + offset, WebFetch 100k → model summary, MCP 25k tokens → its own spill. Old results are bounded by relief/microcompact. The Bash filter's one cut (#282) is a separate decision.
+
+**Evidence.**
+- `toolResultCompaction.test.ts`: in-order decoders, 11 real rg fixtures and the line boundary.
+- `toolResultStorage.test.ts`: page + file = original.
+- `shellToolResultMappers.test.ts`: the Bash offset.
+- Break-probe: `losslessSummarizer.json` and `paging.json`, every probe red.
+- `read-credit-e2e.ts` scenarios 19 (compaction) and 20 (paging) on the bundle.
