@@ -19,6 +19,7 @@ import {
   bashToolHasPermission,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
+import { compileUntil } from 'src/tools/WaitForTool/untilRegex.js'
 
 const DEFAULT_SETTLE_S = 3
 const DEFAULT_INTERVAL_S = 1
@@ -155,7 +156,7 @@ export const WaitForTool = buildTool({
   async validateInput(input): Promise<ValidationResult> {
     if (input.until !== undefined) {
       try {
-        new RegExp(input.until)
+        compileUntil(input.until)
       } catch (e) {
         return {
           result: false,
@@ -238,7 +239,7 @@ export const WaitForTool = buildTool({
     const timeoutMs = (input.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000
     const signal = toolUseContext.abortController.signal
     // Validated in validateInput; compiled once here.
-    const untilRe = until === undefined ? null : new RegExp(until)
+    const untilRe = until === undefined ? null : compileUntil(until)
 
     const startedAt = Date.now()
     const remaining = () => timeoutMs - (Date.now() - startedAt)

@@ -80,6 +80,34 @@ describe('WaitForTool', () => {
     expect(ok?.result).toBe(true)
   })
 
+  test('until: a leading (?s) or (?i) is read as flags, as PCRE and Python spell them', async () => {
+    // The census saw this rejected three times, always to wait for CI rows
+    // spread over several lines; JavaScript has no global inline flag group.
+    const census = await WaitForTool.validateInput?.(
+      { command: 'ls', description: 'd', until: '(?s)^(?!.*pending).*(pass|fail)' } as never,
+    )
+    expect(census?.result).toBe(true)
+
+    const dotAll = await WaitForTool.call(
+      { command: "printf 'pass\\nsmoke'", until: '(?s)pass.smoke', interval_s: 0.2, timeout_s: 5, description: 'd' },
+      makeCtx(),
+    )
+    expect(dotAll.data.matched).toBe(true)
+
+    const caseless = await WaitForTool.call(
+      { command: 'echo ready', until: '(?i)READY', interval_s: 0.2, timeout_s: 5, description: 'd' },
+      makeCtx(),
+    )
+    expect(caseless.data.matched).toBe(true)
+  })
+
+  test('until: a flag JavaScript does not have is still an invalid regex', async () => {
+    const bad = await WaitForTool.validateInput?.(
+      { command: 'ls', description: 'd', until: '(?x) READY # spaced' } as never,
+    )
+    expect(bad?.result).toBe(false)
+  })
+
   test('until: `.` stays on one line unless the pattern asks otherwise', async () => {
     // No implicit flags: a pattern written for one line must not start matching
     // across two, which would end a wait early on output it was not waiting for.
