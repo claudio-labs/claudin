@@ -28,8 +28,30 @@ import { describe, expect, test } from 'bun:test'
 import {
   getCoordinatorSystemPrompt,
   getCoordinatorUserContext,
+  listWorkerTools,
   matchSessionMode,
 } from 'src/agent/coordinator/coordinatorMode.ts'
+
+describe('listWorkerTools — what a coordinator is told its workers hold', () => {
+  test('only the tools this build assembled, so a killswitched one is not advertised', () => {
+    // WaitFor killswitched (CLAUDIN_DISABLE_WAITFOR_TOOL), PowerShell absent on Linux.
+    const listed = listWorkerTools(new Set(['Bash', 'Read', 'Edit', 'Grep', 'Git'])).split(', ')
+    expect(listed).toContain('Git')
+    expect(listed).not.toContain('WaitFor')
+    expect(listed).not.toContain('PowerShell')
+  })
+
+  test('never the internal ones, and in a stable order', () => {
+    const listed = listWorkerTools(new Set(['SendMessage', 'StructuredOutput', 'Read', 'Bash', 'Grep']))
+    expect(listed).toBe('Bash, Grep, Read')
+  })
+
+  test('the coordinator context asks the tool registry, not the allowlist alone', () => {
+    // The branch that renders it is behind COORDINATOR_MODE, false under bun test.
+    const src = readFileSync(fileURLToPath(new URL('./coordinatorMode.ts', import.meta.url)), 'utf8')
+    expect(src).toContain(': listWorkerTools(new Set(getToolsForDefaultPreset()))')
+  })
+})
 
 describe('matchSessionMode — a resumed session takes the mode it was saved in', () => {
   // isCoordinatorMode() is false under bun test, so "current" is always normal.
@@ -51,7 +73,8 @@ describe('matchSessionMode — a resumed session takes the mode it was saved in'
     try {
       delete process.env.CLAUDIN_COORDINATOR_MODE
       expect(matchSessionMode('coordinator')).toBe('Entered coordinator mode to match resumed session.')
-      expect(process.env.CLAUDIN_COORDINATOR_MODE).toBe('1')
+      // String(): tsc narrows the variable to undefined after the delete above.
+      expect(String(process.env.CLAUDIN_COORDINATOR_MODE)).toBe('1')
     } finally {
       restore()
     }

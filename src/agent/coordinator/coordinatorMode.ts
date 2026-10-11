@@ -68,14 +68,14 @@ export function getCoordinatorUserContext(
     return {}
   }
 
+  // Required here, not imported: tools.ts requires this module as it loads.
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+  const { getToolsForDefaultPreset } = require('src/tools/tools.js') as typeof import('src/tools/tools.js')
   const workerTools = isEnvTruthy(process.env.CLAUDIN_SIMPLE)
     ? [BASH_TOOL_NAME, FILE_READ_TOOL_NAME, FILE_EDIT_TOOL_NAME]
         .sort()
         .join(', ')
-    : Array.from(ASYNC_AGENT_ALLOWED_TOOLS)
-        .filter(name => !INTERNAL_WORKER_TOOLS.has(name))
-        .sort()
-        .join(', ')
+    : listWorkerTools(new Set(getToolsForDefaultPreset()))
 
   let content = `Workers spawned via the ${AGENT_TOOL_NAME} tool have access to these tools: ${workerTools}`
 
@@ -89,6 +89,18 @@ export function getCoordinatorUserContext(
   }
 
   return { workerToolsContext: content }
+}
+
+/**
+ * The tools a coordinator is told its workers hold: the async allowlist, minus
+ * the internal ones, minus any tool this build did not assemble. The allowlist
+ * alone advertised a killswitched Git or WaitFor — and PowerShell on Linux.
+ */
+export function listWorkerTools(available: ReadonlySet<string>): string {
+  return Array.from(ASYNC_AGENT_ALLOWED_TOOLS)
+    .filter(name => available.has(name) && !INTERNAL_WORKER_TOOLS.has(name))
+    .sort()
+    .join(', ')
 }
 
 export function getCoordinatorSystemPrompt(): string {
