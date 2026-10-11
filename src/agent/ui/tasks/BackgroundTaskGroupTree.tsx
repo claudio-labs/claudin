@@ -1,7 +1,7 @@
 import figures from 'figures';
 import { useEffect, useMemo } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
-import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
+import { type BackgroundTaskState, isListedBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
@@ -129,7 +129,7 @@ export function buildFooterTaskRows(
   // own tree) and the foregrounded task (shown in the main UI, not the footer).
   const base = Object.values(tasks ?? {}).filter(
     (t): t is BackgroundTaskState =>
-      isBackgroundTask(t) && t.type !== 'in_process_teammate' && t.id !== foregroundedTaskId,
+      isListedBackgroundTask(t) && t.type !== 'in_process_teammate' && t.id !== foregroundedTaskId,
   );
 
   const sorted = [...base].sort((a, b) => {

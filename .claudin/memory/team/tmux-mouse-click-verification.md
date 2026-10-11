@@ -113,6 +113,8 @@ named that path. Point the whole config at the scratchpad instead:
 
 Launching from the repo cwd without `CLAUDIN_DISABLE_RULE_MAP_SYNC=1` (the
 killswitch named in the startup message) rewrites the counts in
-`.claudin/rules/search-strategy.md` at startup ("Navigation map updated"). That
+`.claudin/rules/search-strategy.md` at startup ("Navigation map updated") — at
+the end of the first turn once [[rule-map-end-of-turn]] lands, so a zero-turn
+UI check is then safe without it. That
 leaves a tracked-file change in the branch diff, and it shows up in `/diff`'s own
 file list during the check.

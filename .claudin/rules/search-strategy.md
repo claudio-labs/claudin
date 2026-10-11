@@ -25,7 +25,7 @@ src/
 │   ├── prompts/ (31)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (38)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
 │   ├── ui/ (166)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
-│   ├── tools/ (45)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
+│   ├── tools/ (33)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
 │   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
 │   │                              thresholds, markers, contentShape, and decisionRecord, which is
@@ -63,7 +63,7 @@ src/
 │   │                              itself is agent/cache/ (→ cache.md)
 │   ├── ui/ (38)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
 │   └── (adding a preset? use the /add-provider-preset skill)
-├── tools/ (682)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
+├── tools/ (751)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
 │   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()
 │   ├── tools.ts                 ← dynamic registry (sandbox/plan/coordinator/MCP-aware)
 │   ├── BashTool/                ← shell execution, permissions, sandbox
@@ -166,7 +166,7 @@ src/
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (54)                ← plugin discovery, install, marketplace, dxt/, hooks/ (4)
-├── memory/ (70)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+├── memory/ (80)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, autoDream/, session/, ui/, and instructions/ —
 │                                  memdir/pathScopedMemories.ts is the on-demand loader (a
 │                                  memory with `paths:` rides the rules' nested_memory lane),
@@ -177,7 +177,8 @@ src/
 │                                  predicates, nestedDirectories, externalIncludes); the memoized
 │                                  getMemoryFiles and getClaudeMds stay in the root,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
-│                                  THIS file's tree and counts at session start
+│                                  THIS file's tree and counts at the end of a turn, when
+│                                  ruleMapScheduler sees the git index move (/map is its command)
 ├── skills/ (28)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
 ├── shared/ (162)                ← cross-cutting primitives ONLY — a subsystem here is a bug.
 │   │                              moduleBoundaries.test.ts pins how many imports reach UP from

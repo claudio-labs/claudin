@@ -132,6 +132,9 @@ export function evictTerminalTask(
     if (!task) return prev
     if (!isTerminalTaskStatus(task.status)) return prev
     if (!task.notified) return prev
+    // Pinned by a view showing it (pinTerminalTask) — the viewer's release
+    // evicts it instead.
+    if (task.displayUntil === Number.POSITIVE_INFINITY) return prev
     // Panel grace period — blocks eviction until deadline passes.
     // 'retain' in task narrows to LocalAgentTaskState (the only type with
     // that field); evictAfter is optional so 'evictAfter' in task would
@@ -142,6 +145,59 @@ export function evictTerminalTask(
     const { [taskId]: _, ...remainingTasks } = prev.tasks
     return { ...prev, tasks: remainingTasks }
   })
+}
+
+/** Arms an eviction; a parameter so a test can run it without waiting. */
+export type ScheduleEviction = (evict: () => void, delayMs: number) => void
+
+const scheduleUnref: ScheduleEviction = (evict, delayMs) => {
+  setTimeout(evict, delayMs).unref?.()
+}
+
+/**
+ * Keeps a finished task listed (`displayUntil`, read by
+ * isListedBackgroundTask) for `ms`, then evicts it — for work that ends too
+ * fast to be seen ending otherwise. The task must already be terminal and
+ * notified, or the eviction is a no-op.
+ */
+export function holdTerminalTask(
+  taskId: string,
+  setAppState: SetAppState,
+  ms: number,
+  schedule: ScheduleEviction = scheduleUnref,
+): void {
+  const until = Date.now() + ms
+  updateTaskState<TaskState>(taskId, setAppState, task =>
+    // A view that pinned it while it was still running keeps its pin.
+    task.displayUntil === Number.POSITIVE_INFINITY
+      ? task
+      : { ...task, displayUntil: until },
+  )
+  schedule(() => evictTerminalTask(taskId, setAppState), ms)
+}
+
+/**
+ * Keeps a task listed while something shows it, past any deadline — held or
+ * still running, so a sync that finishes under an open view stays too. The
+ * viewer must call releaseTerminalTask when it closes.
+ */
+export function pinTerminalTask(taskId: string, setAppState: SetAppState): void {
+  updateTaskState<TaskState>(taskId, setAppState, task => ({
+    ...task,
+    displayUntil: Number.POSITIVE_INFINITY,
+  }))
+}
+
+/** Ends a pin: a finished task has been seen, so it leaves now. */
+export function releaseTerminalTask(
+  taskId: string,
+  setAppState: SetAppState,
+): void {
+  updateTaskState<TaskState>(taskId, setAppState, task => ({
+    ...task,
+    displayUntil: undefined,
+  }))
+  evictTerminalTask(taskId, setAppState)
 }
 
 /**
@@ -175,6 +231,9 @@ export async function generateTaskAttachments(state: AppState): Promise<{
         case 'completed':
         case 'failed':
         case 'killed':
+          // Still on screen by design (holdTerminalTask / pinTerminalTask);
+          // its own timer or viewer evicts it.
+          if (taskState.displayUntil !== undefined) continue
           // Evict terminal tasks — they've been consumed and can be GC'd
           evictedTaskIds.push(taskState.id)
           continue

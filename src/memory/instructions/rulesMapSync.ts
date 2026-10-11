@@ -19,10 +19,11 @@
  *    so. We only restructure files we wrote.
  *
  * Both modes are subject to the same drift tolerance, and that is what makes
- * running this at every session start free: a count inside tolerance is carried
- * over verbatim, so an unchanged structure re-renders byte-identical and no
- * write happens. Regeneration without that carry-over rewrote the file on every
- * single added file, which is the opposite of the intended cost.
+ * running this at the end of every turn that moved the index free: a count
+ * inside tolerance is carried over verbatim, so an unchanged structure
+ * re-renders byte-identical and no write happens. Regeneration without that
+ * carry-over rewrote the file on every single added file, which is the
+ * opposite of the intended cost.
  *
  * Pure: string in, string out. All I/O and every gate live at the call site.
  */
@@ -133,7 +134,7 @@ function replaceLineCount(
  * Heals the numbers a map states, leaving every other byte alone.
  *
  * Returns the content unchanged when nothing drifted past the tolerance, which
- * is what makes running this on every session start free: a repo that gained
+ * is what makes running this after every index change free: a repo that gained
  * two files produces no write at all.
  */
 export function healRuleMap(input: RuleMapSyncInput): string {
@@ -283,12 +284,25 @@ function existingTreeDepth(content: string): number {
 export function existingAnnotations(content: string): Map<string, string> {
   const annotations = new Map<string, string>()
   for (const claim of extractRuleClaims(content).dirCounts) {
-    const gloss = claim.line.split(TREE_ANNOTATION_RE)[1]?.trim()
+    const gloss = glossOf(claim.line)
     if (gloss !== undefined && gloss.length > 0) {
       annotations.set(claim.path, gloss)
     }
   }
   return annotations
+}
+
+/**
+ * Everything after a line's first `←`, or undefined when it has none. The
+ * whole remainder, not the first segment: a gloss may hold an arrow of its
+ * own (`← the loop ← being split`), and a regenerate that kept only `the loop`
+ * deleted the rest.
+ */
+function glossOf(line: string): string | undefined {
+  const arrow = TREE_ANNOTATION_RE.exec(line)
+  return arrow === null
+    ? undefined
+    : line.slice(arrow.index + arrow[0].length).trim()
 }
 
 /** The entry side of a tree line: the connectors, the name and the count. */
@@ -379,12 +393,6 @@ export function generateRuleMap(trackedFiles: readonly string[]): string {
 }
 
 /**
- * The content a project's map should have, or null when it already has it.
- *
- * Null is the common case and the reason this is cheap enough to run at every
- * session start.
- */
-/**
  * Whether this repo's code groups into directories worth drawing.
  *
  * A flat repo — every source file at the root, or spread across directories
@@ -399,6 +407,12 @@ function hasRenderableTree(trackedFiles: readonly string[]): boolean {
   return renderModuleTree(trackedFiles).length > 0
 }
 
+/**
+ * The content a project's map should have, or null when it already has it.
+ *
+ * Null is the common case and the reason this is cheap enough to run at the
+ * end of every turn that moved the index.
+ */
 export function syncRuleMap(input: RuleMapSyncInput): string | null {
   const { content, trackedFiles } = input
   if (trackedFiles.length === 0) return null
@@ -407,7 +421,7 @@ export function syncRuleMap(input: RuleMapSyncInput): string | null {
     return hasRenderableTree(trackedFiles) ? generateRuleMap(trackedFiles) : null
   }
 
-  if (content.includes(MAP_MARKER)) {
+  if (ruleMapKind(content) === 'generated') {
     // Gutting a map we wrote is worse than leaving it stale: the fence is where
     // the annotations live, and emptying it discards every one of them.
     if (!hasRenderableTree(trackedFiles)) return null
@@ -415,8 +429,247 @@ export function syncRuleMap(input: RuleMapSyncInput): string | null {
     return regenerated === content ? null : regenerated
   }
 
+  // Hand-written, or generated with text in its tree that a regenerate would
+  // drop: numbers only, so nothing a human wrote is lost.
   const healed = healRuleMap(input)
   return healed === content ? null : healed
+}
+
+/** One `(N)` a sync moved. `from: null` is a new entry, `to: null` a dropped one. */
+export type DirCountChange = {
+  path: string
+  from: number | null
+  to: number | null
+}
+
+/** The counts that differ between two versions of a map, in the order `after` draws them. */
+export function diffRuleMapCounts(
+  before: string,
+  after: string,
+): DirCountChange[] {
+  const claimed = (content: string): Map<string, number> =>
+    new Map(
+      extractRuleClaims(content).dirCounts.map(claim => [
+        claim.path,
+        claim.claimed,
+      ]),
+    )
+  const was = claimed(before)
+  const now = claimed(after)
+  const changes: DirCountChange[] = []
+  for (const [path, to] of now) {
+    const from = was.get(path) ?? null
+    if (from !== to) changes.push({ path, from, to })
+  }
+  for (const [path, from] of was) {
+    if (!now.has(path)) changes.push({ path, from, to: null })
+  }
+  return changes
+}
+
+/** How many moved counts a summary names before it counts the rest. */
+const MAX_LISTED_CHANGES = 3
+
+/** `src/tools/ 682→751`, `src/new/ (new, 12)`, `src/old/ (gone)`. */
+export function formatDirCountChange(change: DirCountChange): string {
+  if (change.from === null) return `${change.path} (new, ${change.to})`
+  if (change.to === null) return `${change.path} (gone)`
+  return `${change.path} ${change.from}→${change.to}`
+}
+
+/** The moved counts as one clause, capped so a big regenerate stays one line. */
+function summarizeDirCountChanges(
+  changes: readonly DirCountChange[],
+): string {
+  const listed = changes.slice(0, MAX_LISTED_CHANGES).map(formatDirCountChange)
+  const rest = changes.length - listed.length
+  return rest > 0 ? `${listed.join(', ')} and ${rest} more` : listed.join(', ')
+}
+
+/**
+ * What a write did, as the one clause every surface prints after naming the
+ * file — the transcript notice, the footer row, `/map status`:
+ * `updated · src/tools/ 682→751`, `created · 12 directories`, or a bare
+ * `updated` for a heal whose counts did not move.
+ */
+export function describeRuleMapWrite(write: {
+  status: 'created' | 'healed'
+  changes: readonly DirCountChange[]
+}): string {
+  if (write.status === 'created') {
+    const dirs = write.changes.length
+    return `created · ${dirs} ${dirs === 1 ? 'directory' : 'directories'}`
+  }
+  const moved = summarizeDirCountChanges(write.changes)
+  return moved.length > 0 ? `updated · ${moved}` : 'updated'
+}
+
+const COUNT_IN_ENTRY_RE = /\(\d[\d,]*\)/g
+/** The connectors and indentation in front of a tree entry. */
+const TREE_PREFIX_RE = /^[\s│├└─]*/
+const CRLF_RE = /\r\n/g
+
+/**
+ * A tree line with its counts masked and the padding before `←` collapsed:
+ * the two things a heal changes on a line, and nothing else.
+ */
+function maskCounts(line: string): string {
+  const [entry = line, ...gloss] = line.split(TREE_ANNOTATION_RE)
+  const masked = entry.replace(COUNT_IN_ENTRY_RE, '(#)').trimEnd()
+  return gloss.length === 0 ? masked : `${masked} ← ${gloss.join(' ← ')}`
+}
+
+type TreeEntryLine = {
+  path: string
+  /** The entry without its connectors, counts masked: what a heal may not change. */
+  masked: string
+  /** The entry side alone — `core/ (#)` when nobody wrote beside it. */
+  head: string
+}
+
+/**
+ * A map split where a regenerate splits it: the text it keeps as written
+ * (everything outside the tree, frontmatter included), the lines inside the
+ * tree that are not entries, and the entries themselves.
+ */
+function readTree(content: string): {
+  outside: string
+  freeText: string[]
+  entries: TreeEntryLine[]
+} {
+  const lines = content.split('\n')
+  const fence = findTreeFence(lines)
+  if (fence === null) return { outside: content, freeText: [], entries: [] }
+  const claims = new Map(
+    extractRuleClaims(content).dirCounts.map(claim => [
+      claim.lineNumber - 1,
+      claim,
+    ]),
+  )
+  const freeText: string[] = []
+  const entries: TreeEntryLine[] = []
+  for (let index = fence.open + 1; index < fence.close; index++) {
+    const line = lines[index] ?? ''
+    const claim = claims.get(index)
+    if (claim === undefined) {
+      if (line.trim().length > 0) freeText.push(line)
+      continue
+    }
+    const entry = line.replace(TREE_PREFIX_RE, '')
+    entries.push({
+      path: claim.path,
+      masked: maskCounts(entry),
+      head: maskCounts(entry.split(TREE_ANNOTATION_RE)[0] ?? entry),
+    })
+  }
+  return {
+    outside: [...lines.slice(0, fence.open + 1), ...lines.slice(fence.close)].join(
+      '\n',
+    ),
+    freeText,
+    entries,
+  }
+}
+
+/**
+ * - **generated**: carries {@link MAP_MARKER} and holds nothing a regenerate
+ *   would drop, so its whole tree is redrawn.
+ * - **edited**: carries the marker, but somebody wrote inside the tree — a
+ *   line that is not an entry, text beside an entry's count, the same
+ *   directory twice. Redrawing would delete that, so it heals like a
+ *   hand-written map until the text is moved after a `←` or out of the tree.
+ * - **hand-written**: no marker; only its numbers are ever touched.
+ */
+export type RuleMapKind = 'generated' | 'edited' | 'hand-written'
+
+export function ruleMapKind(content: string): RuleMapKind {
+  if (!content.includes(MAP_MARKER)) return 'hand-written'
+  const { freeText, entries } = readTree(content)
+  if (freeText.length > 0) return 'edited'
+  const seen = new Set<string>()
+  for (const entry of entries) {
+    if (seen.has(entry.path)) return 'edited'
+    seen.add(entry.path)
+    if (entry.head !== `${lastSegment(entry.path)} (#)`) return 'edited'
+  }
+  return 'generated'
+}
+
+/** Line for line, once the counts are masked: all a numbers-only heal changes. */
+function onlyCountsMoved(committed: string, working: string): boolean {
+  const before = committed.split('\n')
+  const after = working.split('\n')
+  if (before.length !== after.length) return false
+  const claimLines = new Set(
+    [
+      ...extractRuleClaims(committed).dirCounts,
+      ...extractRuleClaims(working).dirCounts,
+    ].map(claim => claim.lineNumber - 1),
+  )
+  return before.every((line, index) => {
+    const other = after[index] ?? ''
+    if (line === other) return true
+    return claimLines.has(index) && maskCounts(line) === maskCounts(other)
+  })
+}
+
+/**
+ * Whether every difference between the committed map and the working copy is
+ * one this module would have made — so an uncommitted map can still be healed.
+ *
+ * Answering from the two versions instead of from a record of our last write
+ * keeps it correct across sessions, machines and a teammate's pull.
+ * A wrong "yes" deletes somebody's uncommitted text, so every doubt answers no.
+ *
+ *  - **Hand-written or edited** (committed): only `(N)` counts move, so the
+ *    versions must agree line for line once the counts are masked.
+ *  - **Generated** (committed): only the tree is redrawn, so everything outside
+ *    it must agree and nothing but entries may sit inside it. Each entry must
+ *    read as committed apart from its counts and connectors; one the
+ *    regenerate added must read exactly `name/ (N) ← TODO`; and one it
+ *    dropped must be a directory that now holds too few files to be drawn —
+ *    which needs `trackedFiles`, so without them any dropped entry answers no.
+ */
+export function isHealerOnlyDiff(
+  committedRaw: string,
+  workingRaw: string,
+  trackedFiles?: readonly string[],
+): boolean {
+  // A checkout with autocrlf has CRLF on disk and LF in the blob.
+  const committed = committedRaw.replace(CRLF_RE, '\n')
+  const working = workingRaw.replace(CRLF_RE, '\n')
+  if (committed === working) return true
+  if (committed.includes(MAP_MARKER) !== working.includes(MAP_MARKER)) {
+    return false
+  }
+  if (ruleMapKind(committed) !== 'generated') {
+    return onlyCountsMoved(committed, working)
+  }
+
+  const before = readTree(committed)
+  const after = readTree(working)
+  if (before.outside !== after.outside) return false
+  if (after.freeText.length > 0) return false
+
+  const was = new Map(before.entries.map(entry => [entry.path, entry.masked]))
+  // A second copy of an entry is held to the same line as the first, so a
+  // duplicate carrying a different note fails here like any other edit.
+  const now = new Set<string>()
+  for (const entry of after.entries) {
+    now.add(entry.path)
+    const expected =
+      was.get(entry.path) ??
+      `${lastSegment(entry.path)} (#) ← ${TODO_ANNOTATION}`
+    if (entry.masked !== expected) return false
+  }
+  if ([...was.keys()].every(path => now.has(path))) return true
+  if (trackedFiles === undefined) return false
+  const extensions = dominantSourceExtensions(trackedFiles)
+  return [...was.keys()].every(
+    path =>
+      now.has(path) ||
+      countTrackedSources(trackedFiles, path, extensions) < MIN_DIR_FILES,
+  )
 }
 
 /**
@@ -447,8 +700,8 @@ function findTreeFence(
  * The counts to carry over verbatim: every one still inside the tolerance.
  *
  * Without this a regenerate emits exact numbers, so one added file rewrites the
- * map — and since this runs at session start, that is a write and a notice on
- * essentially every session in a repo under development.
+ * map — and since this runs whenever the index moves, that is a write and a
+ * notice on essentially every commit in a repo under development.
  */
 function countsToRetain(
   content: string,

@@ -36,6 +36,10 @@ export function footerRowAction(
       return isContainerStoppable(task) ? 'stop' : null
     case 'mcp_server':
       return isMcpServerDisconnectable(task) ? 'disconnect' : null
+    case 'rule_map':
+      // A sync runs for milliseconds and holds no process; there is nothing
+      // for `x` to stop, and the row leaves on its own.
+      return null
     default:
       return 'stop'
   }

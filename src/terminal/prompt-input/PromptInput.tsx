@@ -107,7 +107,7 @@ import { AutoModeOptInDialog } from 'src/permissions/ui/AutoModeOptInDialog.js';
 import { BridgeDialog } from 'src/platform/bridge/BridgeDialog.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { useCoordinatorTaskCount } from 'src/agent/ui/CoordinatorAgentStatus.js';
-import { getFooterPanelLayout, getVisibleAgentTasks } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { getFooterPanelLayout, getVisibleAgentTasks, hasHeldTaskRows } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 import { resolveFooterTreeRow } from 'src/agent/ui/tasks/footerSelection.js';
 import { toggleFooterTasksCollapsed } from 'src/agent/ui/tasks/footerSummary.js';
 import { killBackgroundTask } from 'src/agent/ui/tasks/taskActions.js';
@@ -497,10 +497,11 @@ function PromptInput({
   // pill must stay navigable whenever the panel has rows — not just when
   // something is running.
   const hasPanelRows = useMemo(() => getVisibleAgentTasks(tasks).length > 0, [tasks]);
+  const hasHeldRows = useMemo(() => hasHeldTaskRows(tasks, foregroundedTaskId), [tasks, foregroundedTaskId]);
   // Where the summary header / agent rows / tree rows sit in the unified
   // cursor. Derived in one place so no handler re-inlines the offsets.
   const footerLayout = useMemo(() => getFooterPanelLayout(tasks), [tasks]);
-  const tasksFooterVisible = (runningTaskCount > 0 || hasPanelRows) && !shouldHideTasksFooter(tasks, showSpinnerTree);
+  const tasksFooterVisible = (runningTaskCount > 0 || hasPanelRows || hasHeldRows) && !shouldHideTasksFooter(tasks, showSpinnerTree);
   const teamsFooterVisible = cachedTeams.length > 0;
   const footerItems = useMemo(() => [tasksFooterVisible && 'tasks', tmuxFooterVisible && 'tmux', teamsFooterVisible && 'teams', bridgeFooterVisible && 'bridge', companionFooterVisible && 'companion'].filter(Boolean) as FooterItem[], [tasksFooterVisible, tmuxFooterVisible, teamsFooterVisible, bridgeFooterVisible, companionFooterVisible]);
 

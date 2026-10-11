@@ -30,8 +30,9 @@ export type FooterSummarySegment = {
   count: number
   /** How many of `count` already finished and are only still on screen
    * because their eviction deadline has not passed. Agents only: every other
-   * group is filtered by `isBackgroundTask`, which drops anything that is not
-   * running or pending. */
+   * group is filtered by `isListedBackgroundTask`, which drops anything that
+   * is not running or pending unless it carries a `displayUntil` — and those
+   * are notices whose count is the whole message. */
   finished: number
   /** Theme color for the icon when an agent needs attention. */
   tone?: 'error' | 'warning'

@@ -1,5 +1,6 @@
 import { feature } from 'bun:bundle'
 import { initAutoDream } from 'src/memory/autoDream/autoDream.js'
+import { initRuleMapSync } from 'src/memory/instructions/ruleMapScheduler.js'
 import { initMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -23,6 +24,7 @@ export function startBackgroundHousekeeping(): void {
     extractMemoriesModule!.initExtractMemories()
   }
   initAutoDream()
+  initRuleMapSync()
   void autoUpdateMarketplacesAndPluginsInBackground()
 
   let needsCleanup = true

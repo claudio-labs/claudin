@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { TaskState } from 'src/agent/tasks/types.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import { hasHeldTaskRows } from 'src/agent/ui/tasks/footerTaskGeometry.js'
 import {
   buildFooterSummarySegments,
   formatSegmentCount,
@@ -38,6 +39,43 @@ function agent(
 function asRecord(...tasks: TaskState[]): AppState['tasks'] {
   return Object.fromEntries(tasks.map(t => [t.id, t])) as AppState['tasks']
 }
+
+function mapNotice(id: string, displayUntil?: number): TaskState {
+  return {
+    id,
+    type: 'rule_map',
+    status: 'completed',
+    notified: true,
+    displayUntil,
+    result: null,
+    startTime: 1,
+  } as unknown as TaskState
+}
+
+describe('a finished navigation-map notice', () => {
+  test('gets its own segment while it is held on screen', () => {
+    const segments = buildFooterSummarySegments(
+      asRecord(shell('s1'), mapNotice('n1', Date.now() + 60_000)),
+      undefined,
+    )
+    expect(segments.map(s => s.key)).toEqual(['shells', 'maps'])
+    expect(segments[1]).toMatchObject({ count: 1, finished: 0 })
+  })
+
+  test('a finished task nobody held is not listed', () => {
+    expect(buildFooterSummarySegments(asRecord(mapNotice('n1')), undefined)).toEqual([])
+  })
+
+  test('makes the footer reachable even when nothing else is in it', () => {
+    expect(hasHeldTaskRows(asRecord(mapNotice('n1', Date.now() + 60_000)))).toBe(true)
+    expect(hasHeldTaskRows(asRecord(mapNotice('n1')))).toBe(false)
+    // A running shell is offered by the running count already.
+    expect(hasHeldTaskRows(asRecord(shell('s1')))).toBe(false)
+    // Nor does a task that has not started count as one held on screen.
+    const pending = { ...shell('s2'), status: 'pending' } as unknown as TaskState
+    expect(hasHeldTaskRows(asRecord(pending))).toBe(false)
+  })
+})
 
 describe('buildFooterSummarySegments', () => {
   test('emits nothing when there is no background work', () => {

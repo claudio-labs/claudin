@@ -18,6 +18,9 @@ export type TaskType =
   // connection state AppState already carries, so a server that fell over is
   // visible without opening /mcp.
   | 'mcp_server'
+  // A notice, not a process: the navigation map was just written. Listed for
+  // a few seconds after it finished (TaskStateBase.displayUntil), then evicted.
+  | 'rule_map'
 
 export type TaskStatus =
   | 'pending'
@@ -61,6 +64,13 @@ export type TaskStateBase = {
   outputFile: string
   outputOffset: number
   notified: boolean
+  /**
+   * A finished task still listed in the footer and the background-tasks
+   * dialog until this time, so work that ends in milliseconds can still be
+   * seen ending. Set through holdTerminalTask (which also arms the eviction),
+   * and pushed to Infinity while a view shows the task (pinTerminalTask).
+   */
+  displayUntil?: number
 }
 
 export type LocalShellSpawnInput = {
@@ -91,6 +101,7 @@ const TASK_ID_PREFIXES: Record<string, string> = {
   local_workflow: 'w',
   monitor_mcp: 'm',
   dream: 'd',
+  rule_map: 'n',
 }
 
 // Get task ID prefix

@@ -349,10 +349,11 @@ export function BackgroundTask(t0: Props) {
       // TaskStatusText on.
       return <Text>{truncate(taskRowLabel(task), activityLimit, true)}</Text>;
     case "mcp_server":
-      // Same shape, same reason as `container` above. The label already carries
-      // the glyph and the connection state, so there is no TaskStatusText here
-      // either — the task status is `running` in every connection state and
-      // would say nothing.
+    case "rule_map":
+      // Same shape, same reason as `container` above. The label already
+      // carries the state: an MCP row's glyph and connection (its task status
+      // is `running` in every connection state and would say nothing), and a
+      // map notice's account of what the write did.
       return <Text>{truncate(taskRowLabel(task), activityLimit, true)}</Text>;
   }
 }

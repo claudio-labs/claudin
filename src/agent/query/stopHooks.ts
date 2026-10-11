@@ -47,6 +47,7 @@ import {
   shouldWarnGoalCheckIncomplete,
 } from 'src/agent/goal/goal.js'
 import { executeAutoDream } from 'src/memory/autoDream/autoDream.js'
+import { executeRuleMapSync } from 'src/memory/instructions/ruleMapScheduler.js'
 import { executePromptSuggestion } from 'src/terminal/prompt-suggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import {
@@ -117,6 +118,12 @@ export async function* handleStopHooks(
     }
     if (!toolUseContext.agentId) {
       void executeAutoDream(stopHookContext, toolUseContext.appendSystemMessage)
+      // The navigation map, synced in the session that moved the tree rather
+      // than at the next one's start. Usually two stats and no spawn.
+      void executeRuleMapSync({
+        appendSystemMessage: toolUseContext.appendSystemMessage,
+        setAppState: toolUseContext.setAppState,
+      })
     }
   }
 

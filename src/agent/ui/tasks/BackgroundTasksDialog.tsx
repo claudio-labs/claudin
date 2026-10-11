@@ -24,7 +24,8 @@ import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js'
 import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
 import type { McpServerTaskState } from 'src/agent/tasks/McpServerTask/types.js';
 import { isMcpServerDisconnectable } from 'src/agent/tasks/McpServerTask/types.js';
-import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
+import type { RuleMapTaskState } from 'src/agent/tasks/RuleMapTask/RuleMapTask.js';
+import { type BackgroundTaskState, isListedBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
 import { taskRowLabel } from 'src/agent/ui/tasks/taskRowLabel.js';
 import { killBackgroundTask } from 'src/agent/ui/tasks/taskActions.js';
 import type { DeepImmutable } from 'src/shared/types/utils.js';
@@ -48,6 +49,7 @@ import { DreamDetailDialog } from 'src/agent/ui/tasks/DreamDetailDialog.js';
 import { InProcessTeammateDetailDialog } from 'src/agent/ui/tasks/InProcessTeammateDetailDialog.js';
 import { McpServerDetailDialog } from 'src/agent/ui/tasks/McpServerDetailDialog.js';
 import { RemoteSessionDetailDialog } from 'src/agent/ui/tasks/RemoteSessionDetailDialog.js';
+import { RuleMapDetailDialog } from 'src/agent/ui/tasks/RuleMapDetailDialog.js';
 import { ShellDetailDialog } from 'src/agent/ui/tasks/ShellDetailDialog.js';
 type ViewState = {
   mode: 'list';
@@ -118,6 +120,12 @@ type ListItem = {
   task: DeepImmutable<McpServerTaskState>;
 } | {
   id: string;
+  type: 'rule_map';
+  label: string;
+  status: string;
+  task: DeepImmutable<RuleMapTaskState>;
+} | {
+  id: string;
   type: 'leader';
   label: string;
   status: 'running';
@@ -137,7 +145,7 @@ const MonitorMcpDetailDialog = feature('MONITOR_TOOL') ? (require('./MonitorMcpD
 
 // Helper to get filtered background tasks (excludes foregrounded local_agent)
 function getSelectableBackgroundTasks(tasks: Record<string, TaskState> | undefined, foregroundedTaskId: string | undefined): TaskState[] {
-  const backgroundTasks = Object.values(tasks ?? {}).filter(isBackgroundTask);
+  const backgroundTasks = Object.values(tasks ?? {}).filter(task => isListedBackgroundTask(task));
   return backgroundTasks.filter(task => !(task.type === 'local_agent' && task.id === foregroundedTaskId));
 }
 export function BackgroundTasksDialog({
@@ -194,10 +202,12 @@ export function BackgroundTasksDialog({
     containerTasks,
     mcpServerTasks,
     dreamTasks: dreamTasks_0,
+    ruleMapTasks: ruleMapTasks_0,
     allSelectableItems
   } = useMemo(() => {
-    // Filter to only show running/pending background tasks, matching the status bar count
-    const backgroundTasks = Object.values(typedTasks ?? {}).filter(isBackgroundTask);
+    // Filter to only show running/pending background tasks, matching the status
+    // bar count — plus a finished notice still inside its displayUntil.
+    const backgroundTasks = Object.values(typedTasks ?? {}).filter(task_1 => isListedBackgroundTask(task_1));
     const allItems_0 = backgroundTasks.map(toListItem);
     const sorted = allItems_0.sort((a, b) => {
       const aStatus = a.status;
@@ -217,6 +227,7 @@ export function BackgroundTasksDialog({
     const containers = sorted.filter(item_12 => item_12.type === 'container');
     const mcpServers = sorted.filter(item_13 => item_13.type === 'mcp_server');
     const dreamTasks = sorted.filter(item_4 => item_4.type === 'dream');
+    const ruleMapTasks = sorted.filter(item_14 => item_14.type === 'rule_map');
     // In spinner-tree mode, exclude teammates from the dialog (they appear in the tree)
     const teammates = showSpinnerTree ? [] : sorted.filter(item_5 => item_5.type === 'in_process_teammate');
     // Add leader entry when there are teammates, so users can foreground back to leader
@@ -235,13 +246,14 @@ export function BackgroundTasksDialog({
       containerTasks: containers,
       mcpServerTasks: mcpServers,
       dreamTasks,
+      ruleMapTasks,
       teammateTasks: [...leaderItem, ...teammates],
       // Order MUST match JSX render order (teammates \u2192 bash \u2192 monitorMcp \u2192
-      // containers \u2192 mcpServers \u2192 remote \u2192 agent \u2192 workflows \u2192 dream) so \u2193/\u2191
+      // containers \u2192 mcpServers \u2192 remote \u2192 agent \u2192 workflows \u2192 dream \u2192 maps) so \u2193/\u2191
       // navigation moves the cursor visually downward. That order is also
       // FOOTER_GROUP_ORDER's, so the cursor walks the same sequence here as in
       // the inline footer tree.
-      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...containers, ...mcpServers, ...remote, ...agent, ...workflows, ...dreamTasks]
+      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...containers, ...mcpServers, ...remote, ...agent, ...workflows, ...dreamTasks, ...ruleMapTasks]
     };
   }, [typedTasks, foregroundedTaskId, showSpinnerTree]);
   const currentSelection = allSelectableItems[selectedIndex] ?? null;
@@ -338,7 +350,7 @@ export function BackgroundTasksDialog({
       const task = (typedTasks ?? {})[viewState.itemId];
       // Workflow tasks get a grace: their detail view stays open through
       // completion so the user sees the final state before eviction.
-      if (!task || task.type !== 'local_workflow' && !isBackgroundTask(task)) {
+      if (!task || task.type !== 'local_workflow' && !isListedBackgroundTask(task)) {
         // Task was removed or is no longer a background task (e.g. killed).
         // If we skipped the list on mount, close the dialog entirely.
         if (skippedListOnMount.current) {
@@ -412,6 +424,10 @@ export function BackgroundTasksDialog({
         // Same shape as the container arm: `x` parks a confirmation that
         // PromptInput renders above this dialog, so cancelling comes back here.
         return <McpServerDetailDialog task={task_0} onDone={onDone} onBack={goBackToList} onDisconnect={isMcpServerDisconnectable(task_0) ? () => killBackgroundTask(task_0, setAppState) : undefined} key={`mcp-${task_0.id}`} />;
+      case 'rule_map':
+        return <RuleMapDetailDialog task={task_0} onDone={() => onDone('Background tasks dialog dismissed', {
+          display: 'system'
+        })} onBack={goBackToList} key={`rule-map-${task_0.id}`} />;
     }
   }
   const runningBashCount = count(bashTasks, _ => _.status === 'running');
@@ -530,6 +546,15 @@ export function BackgroundTasksDialog({
                   {dreamTasks_0.map(item_11 => <Item key={item_11.id} item={item_11} isSelected={item_11.id === currentSelection?.id} />)}
                 </Box>
               </Box>}
+
+            {ruleMapTasks_0.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 || workflowTasks.length > 0 || dreamTasks_0.length > 0 ? 1 : 0}>
+                <Text dimColor>
+                  <Text bold>{'  '}Maps</Text> ({ruleMapTasks_0.length})
+                </Text>
+                <Box flexDirection="column">
+                  {ruleMapTasks_0.map(item_15 => <Item key={item_15.id} item={item_15} isSelected={item_15.id === currentSelection?.id} />)}
+                </Box>
+              </Box>}
           </Box>}
       </Dialog>
     </Box>;
@@ -558,6 +583,8 @@ export function toListItem(task: BackgroundTaskState): ListItem {
       return { id: task.id, type: 'container', label, status: task.status, task };
     case 'mcp_server':
       return { id: task.id, type: 'mcp_server', label, status: task.status, task };
+    case 'rule_map':
+      return { id: task.id, type: 'rule_map', label, status: task.status, task };
     default:
       // LocalWorkflowTaskState resolves to `any` via the LocalWorkflowTask
       // stub module (feature('AGENT_WORKFLOWS') source not mirrored in this

@@ -15,7 +15,7 @@ import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/permissions/PermissionMode.js';
 import { BackgroundTaskStatus } from 'src/agent/ui/tasks/BackgroundTaskStatus.js';
-import { getFooterPanelLayout, getVisibleAgentTasks } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { getFooterPanelLayout, getVisibleAgentTasks, hasHeldTaskRows } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { count } from 'src/shared/data/array.js';
@@ -237,6 +237,11 @@ function ModeIndicator({
   // them here so a lone agent doesn't render an empty pill (a stray " · " left by
   // BackgroundTaskStatus returning null) instead of just the "↓ to manage" hint.
   const runningTaskCount = useMemo(() => count(Object.values(tasks), t => isBackgroundTask(t) && !isPanelAgentTask(t)), [tasks]);
+  // A finished task held on screen (holdTerminalTask) is a tree row the cursor
+  // can reach, so it earns the same hints as a running one — without counting
+  // as running work anywhere else.
+  const foregroundedTaskId = useAppState((s_fg: AppState) => s_fg.foregroundedTaskId);
+  const hasHeldRows = useMemo(() => hasHeldTaskRows(tasks, foregroundedTaskId), [tasks, foregroundedTaskId]);
   const tasksV2 = useTasksV2();
   const hasTaskItems = tasksV2 !== undefined && tasksV2.length > 0;
   const escShortcut = useShortcutDisplay('chat:cancel', 'Chat', 'esc').toLowerCase();
@@ -325,7 +330,7 @@ function ModeIndicator({
     // Even with teammate pills, surface a tasks-nav hint when non-teammate bg
     // tasks (shells/monitors/etc.) are also running — otherwise the user has
     // no discoverable path to the tree that's rendering below the byline.
-    const hasNonTeammateBg = Object.values(tasks).some(t_bgnt => isBackgroundTask(t_bgnt) && t_bgnt.type !== 'in_process_teammate');
+    const hasNonTeammateBg = hasHeldRows || Object.values(tasks).some(t_bgnt => isBackgroundTask(t_bgnt) && t_bgnt.type !== 'in_process_teammate');
     const tasksNavHint = hasNonTeammateBg && showHint ? [<Text dimColor key="manage-tasks-tm">
         <KeyboardShortcutHint shortcut="↓" action="navigate tasks" />
       </Text>] : [];
@@ -349,7 +354,7 @@ function ModeIndicator({
   // agent panel — see PromptInputFooter), NOT here: this byline must stay a
   // single top-of-footer line. `showTasksTree` is kept only to drive the
   // navigate hint and the empty-state height guards below.
-  const showTasksTree = hasBackgroundTasks && !hasTeammatePills && !shouldHideTasksFooter(tasks, showSpinnerTree);
+  const showTasksTree = (hasBackgroundTasks || hasHeldRows) && !hasTeammatePills && !shouldHideTasksFooter(tasks, showSpinnerTree);
   if (parts.length === 0 && !showTasksTree && showHint) {
     if (!modePart) {
       parts.push(<Text dimColor key="shortcuts-hint">

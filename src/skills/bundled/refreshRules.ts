@@ -23,11 +23,12 @@ import { registerBundledSkill } from 'src/skills/bundledSkills.js'
  */
 /**
  * The create branch is gone: `src/memory/instructions/ruleMapAutoSync.ts`
- * writes `search-strategy.md` at session start in every project, so by the time
- * anyone runs this skill the file exists. What is left for the model is the
- * half a generator cannot do — whether each entry describes what the directory
- * actually holds — and that is also the half that carries the risk, since a map
- * which misdirects is worse than no map.
+ * writes `search-strategy.md` at the end of a turn in every project (and
+ * `/map sync` on demand), so by the time anyone runs this skill the file
+ * exists. What is left for the model is the half a generator cannot do —
+ * whether each entry describes what the directory actually holds — and that is
+ * also the half that carries the risk, since a map which misdirects is worse
+ * than no map.
  */
 
 async function buildPrompt(): Promise<string> {

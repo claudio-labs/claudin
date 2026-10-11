@@ -72,8 +72,10 @@ statement in it is one the checker re-derives. So a map is now written in every
 project and kept current, and it is allowed to say very little:
 
 - `rulesClaims.ts` — extraction, pure. `rulesLint.ts` — report. `rulesMapSync.ts`
-  — rewrite. `ruleMapAutoSync.ts` — run at session start, killswitch
-  `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`.
+  — rewrite. `ruleMapAutoSync.ts` — the I/O sync, killswitch
+  `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`; `ruleMapScheduler.ts` runs it at the end of
+  each turn (not at session start since branch `feat/rule-map-end-of-turn`), and
+  `/map` is its command — [[rule-map-end-of-turn]].
 - **A hand-written map is healed, never restructured** (numbers only). **A
   generated one is regenerated whole**, with `←` annotations carried across by
   the directory's FULL path — keying them by bare name gave `src/ui/` and

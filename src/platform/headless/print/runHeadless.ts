@@ -64,6 +64,7 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { isExtractModeActive } from 'src/memory/memdir/paths.js'
+import { drainPendingRuleMapSync } from 'src/memory/instructions/ruleMapScheduler.js'
 import { getCanUseToolFn } from 'src/platform/headless/print/permissionGlue.js'
 import { handleRewindFiles } from 'src/platform/headless/print/controlHandlers.js'
 import { loadInitialMessages } from 'src/platform/headless/print/sessionLoad.js'
@@ -541,6 +542,9 @@ export async function runHeadless(
   if (feature('EXTRACT_MEMORIES') && isExtractModeActive()) {
     await extractMemoriesModule!.drainPendingExtraction()
   }
+  // Same reason, for the navigation map: a `-p` run is often the only turn
+  // its process will see, and the write must not be cut off mid-rename.
+  await drainPendingRuleMapSync()
 
   gracefulShutdownSync(
     lastMessage?.type === 'result' && lastMessage?.is_error ? 1 : 0,

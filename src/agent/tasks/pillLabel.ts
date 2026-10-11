@@ -46,9 +46,10 @@ export function getPillLabel(tasks: BackgroundTaskState[]): string {
         return n === 1 ? '1 monitor' : `${n} monitors`
       case 'dream':
         return 'dreaming'
+      case 'rule_map':
+        return 'mapping'
     }
   }
 
   return `${n} background ${n === 1 ? 'task' : 'tasks'}`
 }
-
