@@ -1,6 +1,6 @@
 ---
 name: devtool-error-census-2026-10-11
-description: Dev-tool error census 2026-10-05..11 (Git 527 calls/27 errors, WaitFor 125/4, RunTests 65/3, Typecheck 29/0, Build 17/0) — 6 harness bugs plus 2 softer ones, all fixed on branch fix/devtool-error-census with 31+10 break-probes; 4 follow-ups left open
+description: Dev-tool error census 2026-10-05..11 (Git 527 calls/27 errors, WaitFor 125/4, RunTests 65/3, Typecheck 29/0, Build 17/0) — 6 harness bugs, 2 softer ones and the 4 follow-ups the reviews found, all fixed in PR 288 with 30+10+11 break-probes
 type: project
 ---
 
@@ -30,19 +30,28 @@ without an error flag.
    stricter in JS). `isReadOnly` uses Bash's verdict over `setup && command`.
 7. `ASYNC_AGENT_ALLOWED_TOOLS` gains Git and WaitFor (background + resumed agents).
 
-**Open follow-ups, found by the elegance review:** a resume passes
-`isAsync: true`, which also picks the tool POOL, so any tool outside the async
-allowlist (LSP, Monitor, ReportFindings…) still vanishes on resume — persist
-the first run's async-ness in `AgentMetadata` like `readOnly`. WaitFor's
-`isConcurrencySafe` is still unconditionally true. Coordinator mode lists the
-allowlist, not the assembled pool, so a killswitched tool is still
-advertised. Any degraded Typecheck run on a clean tree still records its
-(empty) parse as the baseline.
+**Follow-ups, fixed in the same PR:**
+- A resume runs async, and the same flag picked its tools, so any tool outside
+  the allowlist vanished. `resolveRunTools` (`AgentTool/toolFilter.ts`) takes the
+  filter separately; `runAgent` records `toolFilter` in `AgentMetadata` (like
+  `readOnly`), resume passes it back, and so does a run sent to the background
+  mid-task (`AgentTool.tsx`), which had the same hole. A background run never
+  holds Agent. Legacy metadata resumes on the async filter.
+- Container registered background tasks through the caller's `setAppState`, a
+  no-op in background agents; now `setAppStateForTasks` first, like Bash.
+- WaitFor `isConcurrencySafe` follows the read-only verdict, like Bash.
+- Coordinator mode lists `listWorkerTools(registry)`, not the raw allowlist.
+- A degraded Typecheck run resolves its baseline as `ignore`, never captured.
+
+Still open, by choice: the coordinator list ignores deny rules (workers are
+built with them applied); runAgent/resumeAgent stay at ~4%/15% coverage —
+their loop needs a live model, so the wiring is pinned on the source.
 
 **Not code:** `git config --global rebase.autoStash true` would remove the pull
 bucket outright; the dirty files were always the harness's own writes.
 
 **How to apply:** re-run the census a week after the merge; expect the Git
 "no such tool", WaitFor regex and pull buckets at 0. Specs:
-`scripts/migrations/probes/devtoolErrorCensus.json` and `devtoolCensusPins.json`.
+`scripts/migrations/probes/devtoolErrorCensus.json`, `devtoolCensusPins.json`
+and `devtoolCensusFollowups.json`.
 Related: [[tool-error-census-2026-09-20]].
