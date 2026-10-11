@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { resetBaselineDirectoryCacheForTesting } from 'src/tools/TypecheckTool/baseline.js'
@@ -239,5 +240,46 @@ describe('runTypecheck — scoping and excerpts', () => {
       options(cwd, 'echo "a.ts(2,7): error TS1: bad name."; exit 1'),
     )
     expect(result.diagnostics[0]?.excerpt).toContain('const two = 2')
+  })
+})
+
+/** Same isolation as baseline.test.ts: the outcome depends on nothing but this repo. */
+function git(cwd: string, args: string[]): void {
+  execFileSync('git', args, {
+    cwd,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      HOME: cwd,
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_AUTHOR_NAME: 'test',
+      GIT_AUTHOR_EMAIL: 'test@example.invalid',
+      GIT_COMMITTER_NAME: 'test',
+      GIT_COMMITTER_EMAIL: 'test@example.invalid',
+    },
+  })
+}
+
+/** A clean repository, with `.claudin/` ignored so the baseline cache cannot dirty it. */
+function cleanRepo(): string {
+  const root = sandbox()
+  writeFileSync(join(root, '.gitignore'), '.claudin/\n')
+  writeFileSync(join(root, 'a.ts'), 'export const a = 1\n')
+  git(root, ['init', '-q'])
+  git(root, ['add', '.'])
+  git(root, ['commit', '-qm', 'init'])
+  return root
+}
+
+describe('runTypecheck — the baseline a run records', () => {
+  test('a checker that printed diagnostics on a clean tree records them as the backlog', async () => {
+    const cwd = cleanRepo()
+    const result = await runTypecheck(
+      options(cwd, 'echo "a.ts(1,14): error TS2322: Type \'string\' is not assignable."; exit 2'),
+    )
+    expect(result.baseline.kind).toBe('captured')
+    expect(result.preExistingCount).toBe(1)
+    expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(true)
   })
 })
