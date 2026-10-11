@@ -15,10 +15,16 @@ function source(relPath: string): string {
   return readFileSync(join(SRC, relPath), 'utf8')
 }
 
+/** Whole-line `//` comments, so a pattern can span a block without matching them. */
+const LINE_COMMENT_RE = /^[ \t]*\/\/.*$/gm
+
 describe('navigation-map sync wiring', () => {
   test('the end of a main-thread turn runs it, inside the block that runs auto-dream', () => {
-    expect(source('agent/query/stopHooks.ts')).toMatch(
-      /if \(!toolUseContext\.agentId\) \{\s*void executeAutoDream\([^)]*\)\s*(\/\/[^\n]*\s*)*void executeRuleMapSync\(\{/,
+    // Comments are dropped first rather than matched by a repeated group: a
+    // nested quantifier over them backtracks exponentially (CodeQL, #287).
+    const code = source('agent/query/stopHooks.ts').replace(LINE_COMMENT_RE, '')
+    expect(code).toMatch(
+      /if \(!toolUseContext\.agentId\) \{\s*void executeAutoDream\([^)]*\)\s*void executeRuleMapSync\(\{/,
     )
   })
 
