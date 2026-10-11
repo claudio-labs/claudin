@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.1.42 — 2026-10-11
+
+### ✨ Features
+
+- feat(memory): sync the navigation map at the end of a turn, add /map (#287) (ac0302c2)
+- feat(mcp): show elapsed time on collapsed mcp calls (#284) (a55ca1cb)
+- feat(memory): add a global memory shared by every project (#281) (e4691b74)
+- feat(providers): register claude haiku 5.5 as the default haiku tier (#279) (fcd9093a)
+- feat(tui): show up to 12 rows in the suggestion menu (#278) (248c532e)
+
+### 🐛 Bug Fixes
+
+- fix(diff): keep the checklist in the chat column beside the panel (#285) (9e15eeb1)
+
+### ⚡ Performance
+
+- perf(memory): measure the memory extraction on haiku 5.5, rejected (#286) (37ea7bde)
+- perf(tool-results): compact tool results, never cut them (#283) (cf78225f)
+- perf(bash): show model-directed reads whole and cut bash output once (#282) (d87510f0)
+- perf(cache): stop the rewrites the 10-09 census found (#280) (39e5cfa3)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.41 — 2026-10-07
 
 ### 📦 Dependencies
