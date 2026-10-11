@@ -73,10 +73,22 @@ describe('WaitForTool', () => {
       { command: 'ls', description: 'd', until: '(' } as never,
     )
     expect(bad?.result).toBe(false)
+    expect(bad?.result === false && bad.message).toStartWith('Invalid `until` regex: ')
     const ok = await WaitForTool.validateInput?.(
       { command: 'ls', description: 'd', until: 'READY' } as never,
     )
     expect(ok?.result).toBe(true)
+  })
+
+  test('until: `.` stays on one line unless the pattern asks otherwise', async () => {
+    // No implicit flags: a pattern written for one line must not start matching
+    // across two, which would end a wait early on output it was not waiting for.
+    const { data } = await WaitForTool.call(
+      { command: "printf 'pass\\nsmoke'", until: 'pass.smoke', interval_s: 0.2, timeout_s: 1, description: 'd' },
+      makeCtx(),
+    )
+    expect(data.matched).toBe(false)
+    expect(data.reason).toBe('timeout')
   })
 
   test('until: returns as soon as a background writer produces the match', async () => {
