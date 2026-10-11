@@ -5,6 +5,7 @@ import {
 } from 'src/tools/shared/outputFilter/Bash/index.js'
 import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import { exec } from 'src/shared/proc/Shell.js'
+import { sleep } from 'src/shared/sleep.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import { GIT_NO_PROMPT_ENV } from 'src/vcs/git/noPromptEnv.js'
@@ -16,7 +17,7 @@ import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
 import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
 import { applyGitDelta } from 'src/tools/GitTool/delta.js'
 import { oneLineCommand } from 'src/tools/GitTool/display.js'
-import { diagnoseGitFailure, isEnvironmentalFailure } from 'src/tools/GitTool/errors.js'
+import { diagnoseGitFailure, isEnvironmentalFailure, reportsNoChecksYet } from 'src/tools/GitTool/errors.js'
 import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
@@ -64,6 +65,15 @@ const WATCH_IDLE_TIMEOUT_MS = 120_000
 const SIGTERM_EXIT = 143
 /** Documented by `gh pr checks`: it finished a pass, the checks are pending. */
 const GH_CHECKS_PENDING_EXIT = 8
+/**
+ * `gh pr checks --watch` right after a push exits 1 with "no checks reported":
+ * GitHub has not registered the workflow runs yet, so the watch has nothing to
+ * wait on. It is asked again every `NO_CHECKS_RETRY_MS` for up to
+ * `NO_CHECKS_GRACE_MS`; checks usually register within seconds, and a branch
+ * with no workflow at all still comes back in a minute and a half.
+ */
+const NO_CHECKS_GRACE_MS = 90_000
+const NO_CHECKS_RETRY_MS = 10_000
 
 export type RunGitBatchOptions = {
   commands: readonly string[]
@@ -102,6 +112,9 @@ export type RunGitBatchOptions = {
    * a test cannot wait two minutes to prove the watchdog fires.
    */
   idleTimeoutMs?: number
+  /** Override `NO_CHECKS_GRACE_MS` / `NO_CHECKS_RETRY_MS`, for the same reason. */
+  noChecksGraceMs?: number
+  noChecksRetryMs?: number
 }
 
 /**
@@ -254,6 +267,33 @@ function pendingChecksStall(command: string, code: number, ranMs: number): GitSt
 }
 
 /**
+ * Run a command, and when it is a `gh pr checks` watch that found no checks
+ * yet, keep asking until they appear, the grace runs out, or the caller aborts.
+ * The retries spend the watch's own timeout, never more.
+ */
+async function runWaitingForChecks(
+  command: string,
+  params: Parameters<typeof runOneCommand>[0],
+  graceMs: number,
+  retryMs: number,
+): Promise<CommandRun> {
+  const startedAt = Date.now()
+  let run = await runOneCommand(params)
+  if (!params.watch || ghCommandPair(command) !== 'pr checks') return run
+  while (
+    run.code === 1 &&
+    reportsNoChecksYet(run.text) &&
+    Date.now() - startedAt + retryMs < Math.min(graceMs, params.timeoutMs) &&
+    !params.abortSignal.aborted
+  ) {
+    await sleep(retryMs, params.abortSignal)
+    if (params.abortSignal.aborted) break
+    run = await runOneCommand({ ...params, timeoutMs: params.timeoutMs - (Date.now() - startedAt) })
+  }
+  return run
+}
+
+/**
  * Whether a batch goes on past a failed command. `&&` semantics are what the
  * model meant by a burst — running `git commit` after `git add` failed is worse
  * than stopping — but a failed READ with only reads behind it threatens
@@ -298,7 +338,7 @@ export async function runGitBatch(
     let stopsBatch = false
     try {
       const onProgress = opts.onProgress
-      const run = await runOneCommand({
+      const run = await runWaitingForChecks(command, {
         effectiveCommand,
         watch,
         timeoutMs:
@@ -317,7 +357,7 @@ export async function runGitBatch(
                 silentMs,
               })
           : undefined,
-      })
+      }, opts.noChecksGraceMs ?? NO_CHECKS_GRACE_MS, opts.noChecksRetryMs ?? NO_CHECKS_RETRY_MS)
       const rawStdout = run.text
       const stall = run.stall ?? pendingChecksStall(command, run.code, run.ranMs)
 

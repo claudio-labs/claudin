@@ -35,6 +35,12 @@ export type FakeGhRule = {
   holdMs?: number
   /** Write `stdout` this many times (default 1) — a stack of refreshes. */
   repeat?: number
+  /**
+   * Answer only the first N invocations this rule matches, then let the next
+   * rule take over — how a test says "no checks yet, then checks". Counted
+   * from the invocation log, so call `clearInvocations()` before relying on it.
+   */
+  times?: number
 }
 
 export type FakeGh = {
@@ -132,8 +138,14 @@ const FAKE_GH_SOURCE: readonly string[] = [
   '  process.exit(70)',
   '}',
   'const rules = Array.isArray(manifest.rules) ? manifest.rules : []',
+  "const history = readFileSync(join(dir, 'invocations.jsonl'), 'utf8')",
+  "  .split('\\n')",
+  '  .filter(Boolean)',
+  "  .map(line => JSON.parse(line).join(' '))",
+  'const hits = (r, text) => (r.regex ? new RegExp(r.match).test(text) : text.includes(r.match))',
+  '// The log already holds this invocation, so the first one counts as 1.',
   'const matched = rules.find(r =>',
-  '  r.regex ? new RegExp(r.match).test(joined) : joined.includes(r.match),',
+  "  hits(r, joined) && (typeof r.times !== 'number' || history.filter(h => hits(r, h)).length <= r.times),",
   ')',
   'const rule = matched || manifest.fallback || {}',
   "const repeat = typeof rule.repeat === 'number' ? rule.repeat : 1",

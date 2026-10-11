@@ -336,6 +336,18 @@ describe('gh', () => {
     expect(diagnose('gh pr view', 1, output)).toContain('No pull request matches')
   })
 
+  test('a failed check says where the failing step is', () => {
+    // `gh pr checks` exits 1 when a check failed; the rows are tab-separated.
+    const output = runFakeGh(['pr', 'checks', '4'], {
+      match: '',
+      stdout: 'smoke-and-tests\tfail\t32s\thttps://github.com/o/r/actions/runs/38076085366/job/114283200164\t\n',
+      exitCode: 1,
+    })
+    const line = diagnose('gh pr checks 4', 1, output)
+    expect(line).toContain('A check failed')
+    expect(line).toContain('gh run view <run-id> --log-failed')
+  })
+
   test('a git diagnosis never leaks into a gh command', () => {
     // `nothing to commit` is a git signature; a gh failure carrying it must not
     // be diagnosed as a commit problem.

@@ -91,6 +91,10 @@ const GH_RATE_LIMIT_RE = /API rate limit exceeded/
 /** The shell's own message when `gh` is absent — `exec()` runs through bash. */
 const GH_NOT_FOUND_RE = /gh[^\n]*: command not found|executable file not found/
 const GH_NO_PR_RE = /no pull requests found|Could not resolve to a PullRequest/i
+/** `gh pr checks` before GitHub registered any run for the branch. */
+const GH_NO_CHECKS_RE = /^no checks reported on the '.+' branch/m
+/** A `gh pr checks` row — name, state, elapsed, URL, tab-separated — in the failed state. */
+const GH_FAILED_CHECK_RE = /\tfail\t/
 
 /** Global git flags that take a value, so the subcommand is not the next token. */
 const GLOBAL_FLAGS_WITH_VALUE: ReadonlySet<string> = new Set([
@@ -232,6 +236,11 @@ export function isEnvironmentalFailure(command: string, exitCode: number, output
   )
 }
 
+/** `gh pr checks` before GitHub registered any run for the branch — `run.ts` waits on it in a watch. */
+export function reportsNoChecksYet(output: string): boolean {
+  return GH_NO_CHECKS_RE.test(output)
+}
+
 /** Exported for the tests, which assert the sentence rather than the fold. */
 export function diagnose(
   command: string,
@@ -345,6 +354,12 @@ function diagnoseGh(output: string): string | null {
   }
   if (NOT_A_REPO_RE.test(output)) {
     return 'Not inside a git repository, so `gh` cannot tell which repo you mean. Change directory, or pass `--repo owner/name`.'
+  }
+  if (GH_NO_CHECKS_RE.test(output)) {
+    return 'No checks are registered for this branch yet. After a push they usually appear within a minute — a `--watch` waits that long for them — and if they never do, no workflow runs on this branch.'
+  }
+  if (GH_FAILED_CHECK_RE.test(output)) {
+    return "A check failed — `gh` exits 1 for that. `gh run view <run-id> --log-failed` shows the failing step; the run id is in the check's URL."
   }
   return null
 }
