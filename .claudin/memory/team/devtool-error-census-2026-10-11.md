@@ -1,40 +1,48 @@
 ---
 name: devtool-error-census-2026-10-11
-description: Dev-tool error census 2026-10-05..11 (Git 527 calls/27 errors, WaitFor 125/4, RunTests 65/3, Typecheck 29/0, Build 17/0) — 6 harness bugs confirmed, 2 of them silent misreports in Build/Typecheck; none fixed yet
+description: Dev-tool error census 2026-10-05..11 (Git 527 calls/27 errors, WaitFor 125/4, RunTests 65/3, Typecheck 29/0, Build 17/0) — 6 harness bugs plus 2 softer ones, all fixed on branch fix/devtool-error-census with 31+10 break-probes; 4 follow-ups left open
 type: project
 ---
 
 Paired tool_use↔tool_result over every transcript since 2026-10-05, deduped
 by tool_use id (`devtool-census.ts` + `followups.ts` in that session's
-scratchpad, ~50 lines each — rebuild rather than hunt).
+scratchpad, ~50 lines each — rebuild rather than hunt). Of 27 Git errors, 17
+were the tool's to fix; Build and Typecheck each gave one false answer
+without an error flag.
 
-**Harness bugs, each confirmed in code and reproduced or traced:**
-1. Background and resumed agents have no Git: `ASYNC_AGENT_ALLOWED_TOOLS`
-   (`src/tools/constants/tools.ts`) lists RunTests/Typecheck/Build but not Git,
-   and `resumeAgent.ts` always runs `isAsync: true`. Two readOnly Code agents
-   used Git, were resumed by SendMessage and got "No such tool available: Git".
-2. WaitFor `until` is `new RegExp(until)` with no flags. The model writes
-   `(?s)…` to match across lines; JS rejects that global inline flag (3 errors).
-3. `gh pr checks --watch` right after a push exits 1 with "no checks reported"
-   (2 cases, 2–4 extra calls each). Also, exit 1 for a failed check takes the
-   error lane and stops the batch, while only exit 8 counts as a stall (`run.ts` `pendingChecksStall`).
-4. Build: cargo `workRe` is `/^\s*Compiling\b/m` (`BuildTool/noOp.ts`), so a
-   `cargo check`/`clippy` that printed `Checking …` reports "up to date,
-   nothing rebuilt". Reproduced on a fresh crate. Silent, so no is_error.
-5. Typecheck: a checker that never ran (exit 127, mise "No version is set
-   for shim") is reported as "~N errors scraped" (`TypecheckTool/budget.ts`).
-6. Git `UNSTAGED_BLOCKS_RE` (`errors.ts`) needs `cannot <word>:`, so "cannot pull
-   with rebase:" gets no diagnosis. This is the biggest bucket (7 + 1). The user
-   has `pull.rebase=true` and no `rebase.autoStash`, and the dirty files are
-   always the harness's own writes (team memory, rule-map `search-strategy.md`).
-   `git pull --autostash` recovers in one call.
+**Fixed (branch `fix/devtool-error-census`, one commit per item):**
+1. Build: cargo `workRe` counts `Checking` too (`BuildTool/noOp.ts`); a
+   `cargo check` was reported "up to date, nothing rebuilt". The opt-in live
+   cargo suite had been dead since the reorg (fixtures wrote `src/platform/main.rs`).
+2. Typecheck/Build/RunTests: `detectLauncherFailure` (`shared/diagnostics/`)
+   sends a tool that never started (shell not-found, zsh, pyenv, mise/asdf
+   shim without a version, bare exit 127) to the `runError` lane instead of
+   "~N errors scraped". Anchored on the launcher's prefix, because that lane
+   drops the raw tail. A clean-tree Typecheck no longer baselines that empty run.
+3. Git: `git pull` refused for a dirty tree under a rebasing pull gets a
+   diagnosis naming `git pull --autostash` (the biggest bucket, 7 + 1).
+4. Git: a failed READ no longer stops a batch whose rest are reads, unless it
+   is environmental (no repo, gh signed out/throttled/missing, timeout).
+5. Git: `gh pr checks --watch` waits up to 90s for checks to register; "no
+   checks" and a failed check (pr checks only) get diagnoses; an abort during
+   the wait reports as an interruption.
+6. WaitFor: a leading `(?s)`/`(?i)`/`(?m)` becomes RegExp flags (`u` left out:
+   stricter in JS). `isReadOnly` uses Bash's verdict over `setup && command`.
+7. `ASYNC_AGENT_ALLOWED_TOOLS` gains Git and WaitFor (background + resumed agents).
 
-**Softer:** `git rev-parse … @{u}` on an unpushed branch stopped a read batch 4×
-(the PR protocol says "whether the branch tracks a remote"; `git status -sb`
-never fails). **Normal:** conflicts, pathspec typos, >10 commands, `$` guard,
-skip cascades, plan mode, classifier `stop_reason=refusal` on bench RunTests.
+**Open follow-ups, found by the elegance review:** a resume passes
+`isAsync: true`, which also picks the tool POOL, so any tool outside the async
+allowlist (LSP, Monitor, ReportFindings…) still vanishes on resume — persist
+the first run's async-ness in `AgentMetadata` like `readOnly`. WaitFor's
+`isConcurrencySafe` is still unconditionally true. Coordinator mode lists the
+allowlist, not the assembled pool, so a killswitched tool is still
+advertised. Any degraded Typecheck run on a clean tree still records its
+(empty) parse as the baseline.
 
-**How to apply:** fix 4 and 5 first, since they make false claims without
-an error flag. Re-run the census after the fixes land and expect the Git
-"no such tool", WaitFor regex and pull buckets at 0. Related:
-[[tool-error-census-2026-09-20]].
+**Not code:** `git config --global rebase.autoStash true` would remove the pull
+bucket outright; the dirty files were always the harness's own writes.
+
+**How to apply:** re-run the census a week after the merge; expect the Git
+"no such tool", WaitFor regex and pull buckets at 0. Specs:
+`scripts/migrations/probes/devtoolErrorCensus.json` and `devtoolCensusPins.json`.
+Related: [[tool-error-census-2026-09-20]].
