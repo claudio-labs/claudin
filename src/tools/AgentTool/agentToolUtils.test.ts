@@ -15,8 +15,10 @@ import {
 import { WEB_RESEARCHER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
+import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 
 // Only `name` is read by filterToolsForAgent/resolveAgentTools.
 const tool = (name: string): Tool => ({ name }) as unknown as Tool
@@ -167,5 +169,18 @@ describe('filterToolsForAgent — a background agent can message', () => {
       isAsync: true,
     })
     expect(result.map(t => t.name)).toEqual([SEND_MESSAGE_TOOL_NAME])
+  })
+})
+
+describe('filterToolsForAgent — an async agent keeps Git and WaitFor', () => {
+  it('keeps both, so a resume (always async) finds the Git its first run used', () => {
+    // Two resumed agents in the 10-05..11 census called Git and got "No such
+    // tool available".
+    const result = filterToolsForAgent({
+      tools: [tool(GIT_TOOL_NAME), tool(WAITFOR_TOOL_NAME), tool(AGENT_TOOL_NAME)],
+      isBuiltIn: false,
+      isAsync: true,
+    })
+    expect(result.map(t => t.name)).toEqual([GIT_TOOL_NAME, WAITFOR_TOOL_NAME])
   })
 })

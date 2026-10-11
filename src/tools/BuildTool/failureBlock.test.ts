@@ -102,6 +102,16 @@ describe('isUpToDate', () => {
     ).toBe(false)
   })
 
+  test('cargo: `check` and `clippy` say Checking, and that is work too', () => {
+    // Captured from `cargo check` on a fresh crate (2026-10-11). Read as "up to
+    // date", a check that type-checked the whole crate reported nothing rebuilt.
+    const check = [
+      '    Checking app v0.1.0 (/p)',
+      '    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.07s',
+    ].join('\n')
+    expect(isUpToDate('cargo', check, 0)).toBe(false)
+  })
+
   test('make and ninja announce it in words', () => {
     expect(isUpToDate('make', "make: Nothing to be done for 'all'.", 0)).toBe(true)
     expect(isUpToDate('ninja', 'ninja: no work to do.', 0)).toBe(true)

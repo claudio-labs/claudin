@@ -3,7 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
-- [Navigation map syncs at the end of a turn, /map (10-10, branch)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
+- [Navigation map syncs at the end of a turn, /map (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
 - [Every MCP call collapses, with a batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) — Calling/Called; errored calls leave the group
 - [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut; paged past the line (10-10)](decisions/summarizer-lossless.md)
 - [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — `CLAUDIN_GLOBAL_MEMORY=0`
@@ -103,6 +103,7 @@
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Tool error census 09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs fixed
+- [Dev-tool error census 10-05..11 + fixes](devtool-error-census-2026-10-11.md) — 12 Git/WaitFor/Build/Typecheck/RunTests/agent bugs fixed in PR 288; resume keeps first run's toolFilter
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate census #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features

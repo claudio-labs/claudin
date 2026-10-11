@@ -1,0 +1,73 @@
+{
+  "test": [
+    "src/tools/BuildTool/run.test.ts",
+    "src/tools/RunTestsTool/RunTestsTool.test.ts",
+    "src/tools/TypecheckTool/run.test.ts",
+    "src/tools/GitTool/errors.test.ts",
+    "src/tools/GitTool/batch.test.ts",
+    "src/tools/GitTool/families.test.ts",
+    "src/tools/WaitForTool/WaitForTool.test.ts"
+  ],
+  "source": "src/tools/BuildTool/run.ts",
+  "probes": [
+    {
+      "name": "Build drops the raw tail of an unreadable failure",
+      "comment": "Pinned before the 2026-10-11 census fixes: a degraded failure that is not a launcher failure must keep reporting what it printed.",
+      "find": "    stdoutTail: parsed.degraded ? tail(text.trim(), STDOUT_TAIL_CHARS) : undefined,",
+      "replace": "    stdoutTail: undefined,"
+    },
+    {
+      "name": "Build reports a cancelled run as something else",
+      "find": "      return { ok: false, message: 'The build was interrupted before completing.' }",
+      "replace": "      return { ok: false, message: 'The build failed.' }"
+    },
+    {
+      "name": "Build treats the wall ceiling as an ordinary exit",
+      "find": "    if (result.code === SIGTERM_EXIT) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "RunTests reports a cancelled run as something else",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "      return notRun(framework, plan.command, 'Test run was interrupted before completing.', exitCode)",
+      "replace": "      return notRun(framework, plan.command, 'Test run failed.', exitCode)"
+    },
+    {
+      "name": "RunTests drops the tail of a passing suite under a failed exit",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "    result.stdoutTail = tail(`${stdout}\\n${stderr}`.trim(), STDOUT_TAIL_CHARS)\n  }\n\n  if (result.degraded) {",
+      "replace": "    void 0\n  }\n\n  if (result.degraded) {"
+    },
+    {
+      "name": "Typecheck never records a baseline",
+      "source": "src/tools/TypecheckTool/run.ts",
+      "find": "    mode: parsed.degraded ? 'ignore' : opts.baselineMode,",
+      "replace": "    mode: 'ignore',"
+    },
+    {
+      "name": "Git loses the no-pull-request diagnosis",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (GH_NO_PR_RE.test(output)) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "Git never stops a batch after a failure",
+      "comment": "A failed write and an environmental failure (not a repo, gh unauthenticated) still stop the batch after the census fixes; the existing batch/families tests are what guard that.",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    if (stopsBatch) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "WaitFor rewords an invalid until",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "          message: `Invalid \\`until\\` regex: ${e instanceof Error ? e.message : String(e)}`,",
+      "replace": "          message: `Bad regex: ${e instanceof Error ? e.message : String(e)}`,"
+    },
+    {
+      "name": "WaitFor makes . cross lines by default",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": " : new RegExp(source)\n}",
+      "replace": " : new RegExp(source, 's')\n}"
+    }
+  ]
+}

@@ -26,7 +26,7 @@ import {
   stagedRepo,
   writeRepoFile,
 } from 'src/tools/GitTool/__fixtures__/repo.js'
-import { formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
+import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 import type { GitBatchResult } from 'src/tools/GitTool/types.js'
 
 /**
@@ -368,6 +368,20 @@ describe('fetch / pull / push against a local bare origin', () => {
     expect(ran.text).toContain('already up to date')
   })
 
+  test('a pull refused over a dirty tree comes back with the way forward', async () => {
+    const { path } = repoWithOrigin()
+    git(path, ['config', 'pull.rebase', 'true'])
+    writeRepoFile(path, 'src/app.ts', 'dirty\n')
+
+    const ran = await runIn(path, ['git pull', 'git log --oneline -1'])
+
+    expect(ran.codes[0]).not.toBe(0)
+    expect(ran.text).toStartWith('$ git pull\n`git pull` is rebasing')
+    expect(ran.text).toContain('git pull --autostash')
+    // A pull writes, so the read after it still waits.
+    expect(ran.result.notRun).toEqual(['git log --oneline -1'])
+  })
+
   test('a rejected push explains that the remote moved on', async () => {
     const { path } = repoBehindOrigin()
 
@@ -485,6 +499,36 @@ describe('batches', () => {
     expect(ran.result.notRun).toEqual(['git log -1'])
     expect(ran.text).toContain('Stopped because')
     expect(ran.text).toContain('git log -1')
+  })
+
+  test('a failed read does not cost the reads after it', async () => {
+    // The pre-PR read the census saw four times: `@{u}` fails on a branch that
+    // was never pushed, and stopping there withheld the log and diff behind it.
+    const root = repoWithCommits()
+
+    const ran = await runIn(root, [
+      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+      'git log --oneline -1',
+    ])
+
+    expect(ran.codes[0]).not.toBe(0)
+    expect(ran.codes[1]).toBe(0)
+    expect(ran.result.notRun).toEqual([])
+    expect(ran.text).not.toContain('Stopped because')
+    // Still an error: one of the commands did fail.
+    expect(batchFailed(ran.result)).toBe(true)
+  })
+
+  test('a failed read still stops a write behind it', async () => {
+    const root = repoWithCommits()
+    pinCommitIdentity(root)
+
+    const ran = await runIn(root, [
+      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+      'git commit --allow-empty -m "after the read"',
+    ])
+
+    expect(ran.result.notRun).toEqual(['git commit --allow-empty -m "after the read"'])
   })
 })
 

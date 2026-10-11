@@ -17,7 +17,9 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import {
   bashToolHasPermission,
+  commandHasAnyCd,
 } from 'src/tools/BashTool/bashPermissions.js'
+import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 
 const DEFAULT_SETTLE_S = 3
@@ -114,18 +116,58 @@ function formatStatus(output: Output): string {
   return `[${WAITFOR_TOOL_NAME}: ${output.reason} after ${secs}s, ${output.polls} poll${output.polls === 1 ? '' : 's'}]`
 }
 
+/**
+ * `(?s)…` is how PCRE and Python turn on dot-all, and the model writes it that
+ * way to match CI rows spread over several lines. JavaScript has no global
+ * inline group — only the scoped `(?s:…)` — so `new RegExp` threw, and the
+ * 2026-10-05..11 census saw three waits refused for it. A leading group of
+ * `i`, `m` and `s` becomes those flags; anything else is left for `new RegExp`
+ * to reject as before. `u` stays out: in JavaScript it is a stricter mode that
+ * rejects escapes like `\-`, not the no-op it is in Python.
+ */
+const LEADING_FLAGS_RE = /^\(\?([ims]+)\)/
+
+/** @throws SyntaxError when `until` is not a valid regex. */
+function compileUntil(source: string): RegExp {
+  const leading = LEADING_FLAGS_RE.exec(source)
+  return leading ? new RegExp(source.slice(leading[0].length), leading[1]) : new RegExp(source)
+}
+
+/**
+ * Everything the call will run, as one shell command: the setup and the poll
+ * are judged together by every gate that reads a command — permissions, the
+ * auto-mode classifier and the read-only check.
+ */
+function shellCommandOf(input: { command: string; setup?: string }): string {
+  return input.setup ? `${input.setup} && ${input.command}` : input.command
+}
+
+/**
+ * Bash's own read-only verdict over that command, so a wait on a task's output
+ * file runs in plan mode, and beside other tools, exactly where the same
+ * `tail` through Bash would.
+ */
+function writesNothing(input: { command: string; setup?: string }): boolean {
+  const command = shellCommandOf(input)
+  return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'
+}
+
 export const WaitForTool = buildTool({
   name: WAITFOR_TOOL_NAME,
   searchHint: 'wait until a command output matches or settles',
   clearableResult: true,
   maxResultSizeChars: 10_000,
 
-  isConcurrencySafe() {
-    return true
+  isConcurrencySafe(input) {
+    return writesNothing(input)
+  },
+
+  isReadOnly(input) {
+    return writesNothing(input)
   },
 
   toAutoClassifierInput(input) {
-    return input.setup ? `${input.setup} && ${input.command}` : input.command
+    return shellCommandOf(input)
   },
 
   // Every `if` condition on a WaitFor hook matches, covering both the setup and
@@ -141,8 +183,7 @@ export const WaitForTool = buildTool({
   async checkPermissions(input, context) {
     // Delegate to the bash permission system — both the setup and the poll
     // are shell commands, so the same rules apply to their conjunction.
-    const command = input.setup ? `${input.setup} && ${input.command}` : input.command
-    const bashDecision = await bashToolHasPermission({ command }, context)
+    const bashDecision = await bashToolHasPermission({ command: shellCommandOf(input) }, context)
     // Bash's verdict, never its `updatedInput`: that is Bash-shaped
     // (`{ command }`) and the harness applies it verbatim, which dropped
     // until/settle_s/interval_s/timeout_s and folded `setup` into every poll.
@@ -155,7 +196,7 @@ export const WaitForTool = buildTool({
   async validateInput(input): Promise<ValidationResult> {
     if (input.until !== undefined) {
       try {
-        new RegExp(input.until)
+        compileUntil(input.until)
       } catch (e) {
         return {
           result: false,
@@ -238,7 +279,7 @@ export const WaitForTool = buildTool({
     const timeoutMs = (input.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000
     const signal = toolUseContext.abortController.signal
     // Validated in validateInput; compiled once here.
-    const untilRe = until === undefined ? null : new RegExp(until)
+    const untilRe = until === undefined ? null : compileUntil(until)
 
     const startedAt = Date.now()
     const remaining = () => timeoutMs - (Date.now() - startedAt)

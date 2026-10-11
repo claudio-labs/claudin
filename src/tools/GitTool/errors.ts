@@ -23,6 +23,8 @@
  * more informative: it names WHICH operation is unfinished.
  */
 
+import { ghCommandPair } from 'src/tools/GitTool/grammar.js'
+
 /** Show at most this many conflicted paths before collapsing the rest. */
 const MAX_LISTED_PATHS = 10
 
@@ -64,7 +66,9 @@ const CONTINUE_HINT_RE = /git (rebase|cherry-pick|revert|merge|am) --continue/
 
 const WOULD_OVERWRITE_RE =
   /^error: Your local changes to the following files would be overwritten by (\w+):/m
-const UNSTAGED_BLOCKS_RE = /^error: cannot (\w+): You have unstaged changes/m
+/** "cannot rebase: …", and the pull form "cannot pull with rebase: …", unstaged or staged. */
+const UNSTAGED_BLOCKS_RE =
+  /^error: cannot (pull with rebase|\w+): (?:You have unstaged changes|Your index contains uncommitted changes)/m
 
 // --- branch / remote ---------------------------------------------------------
 
@@ -89,6 +93,12 @@ const GH_RATE_LIMIT_RE = /API rate limit exceeded/
 /** The shell's own message when `gh` is absent — `exec()` runs through bash. */
 const GH_NOT_FOUND_RE = /gh[^\n]*: command not found|executable file not found/
 const GH_NO_PR_RE = /no pull requests found|Could not resolve to a PullRequest/i
+/** `gh pr checks` before GitHub registered any run for the branch. */
+const GH_NO_CHECKS_RE = /^no checks reported on the '.+' branch/m
+/** A `gh pr checks` row — name, state, elapsed, URL, tab-separated — in the failed state. */
+const GH_FAILED_CHECK_RE = /\tfail\t/
+/** `gh` failures every later `gh` command in a batch would repeat. */
+const GH_ENVIRONMENT_RES: readonly RegExp[] = [GH_NOT_AUTHENTICATED_RE, GH_RATE_LIMIT_RE, GH_NOT_FOUND_RE]
 
 /** Global git flags that take a value, so the subcommand is not the next token. */
 const GLOBAL_FLAGS_WITH_VALUE: ReadonlySet<string> = new Set([
@@ -216,6 +226,23 @@ export function diagnoseGitFailure(
   return output.trim() ? `${diagnosis}\n\n${output}` : diagnosis
 }
 
+/**
+ * A failure about where the batch runs rather than about the command, so going
+ * on would only repeat it: no repository, or `gh` signed out, throttled (each
+ * repeat spends quota) or missing. A timeout counts too — not because the next
+ * read would fail, but because each could cost another full timeout. "No
+ * commits yet" does not: `git status` still answers there.
+ */
+export function isEnvironmentalFailure(command: string, exitCode: number, output: string): boolean {
+  if (exitCode === SIGTERM_EXIT || NOT_A_REPO_RE.test(output)) return true
+  return isGh(command) && GH_ENVIRONMENT_RES.some(re => re.test(output))
+}
+
+/** `gh pr checks` before GitHub registered any run for the branch — `run.ts` waits on it in a watch. */
+export function reportsNoChecksYet(output: string): boolean {
+  return GH_NO_CHECKS_RE.test(output)
+}
+
 /** Exported for the tests, which assert the sentence rather than the fold. */
 export function diagnose(
   command: string,
@@ -227,7 +254,7 @@ export function diagnose(
   if (exitCode === SIGTERM_EXIT) {
     return 'The command was still running when the timeout stopped it, so anything below is partial. Pass a larger `timeout` if it legitimately takes that long.'
   }
-  if (isGh(command)) return diagnoseGh(output)
+  if (isGh(command)) return diagnoseGh(command, output)
 
   // Repository-level failures first: they explain every later symptom.
   if (NOT_A_REPO_RE.test(output)) {
@@ -261,6 +288,12 @@ export function diagnose(
   }
   const unstaged = UNSTAGED_BLOCKS_RE.exec(output)
   if (unstaged) {
+    // A rebasing pull (pull.rebase, or `--rebase`) has a one-step way through:
+    // `--autostash`. Without it the model spent 1-3 calls on a stash/fetch/merge
+    // of its own.
+    if (unstaged[1] === 'pull with rebase') {
+      return '`git pull` is rebasing, and a rebase needs a clean tree. `git pull --autostash` stashes your changes, pulls and puts them back in one step — nothing was changed.'
+    }
     return `\`git ${unstaged[1] ?? 'rebase'}\` needs a clean tree. Commit or \`git stash\` your changes first — nothing was changed.`
   }
 
@@ -308,7 +341,7 @@ export function diagnose(
   return null
 }
 
-function diagnoseGh(output: string): string | null {
+function diagnoseGh(command: string, output: string): string | null {
   if (GH_NOT_AUTHENTICATED_RE.test(output)) {
     return '`gh` is not authenticated. Run `gh auth login` (or set `GH_TOKEN`) before using the forge commands.'
   }
@@ -323,6 +356,12 @@ function diagnoseGh(output: string): string | null {
   }
   if (NOT_A_REPO_RE.test(output)) {
     return 'Not inside a git repository, so `gh` cannot tell which repo you mean. Change directory, or pass `--repo owner/name`.'
+  }
+  if (GH_NO_CHECKS_RE.test(output)) {
+    return 'No checks are registered for this branch yet. After a push they usually appear within seconds — a `--watch` waits up to 90s for them — and if they never do, no workflow runs on this branch.'
+  }
+  if (ghCommandPair(command) === 'pr checks' && GH_FAILED_CHECK_RE.test(output)) {
+    return "A check failed — `gh` exits 1 for that. `gh run view <run-id> --log-failed` shows the failing step; the run id is in the check's URL."
   }
   return null
 }

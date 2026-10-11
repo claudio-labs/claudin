@@ -5,6 +5,7 @@ import {
 } from 'src/tools/shared/outputFilter/Bash/index.js'
 import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import { exec } from 'src/shared/proc/Shell.js'
+import { sleep } from 'src/shared/sleep.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import { GIT_NO_PROMPT_ENV } from 'src/vcs/git/noPromptEnv.js'
@@ -16,8 +17,8 @@ import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
 import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
 import { applyGitDelta } from 'src/tools/GitTool/delta.js'
 import { oneLineCommand } from 'src/tools/GitTool/display.js'
-import { diagnoseGitFailure } from 'src/tools/GitTool/errors.js'
-import { ghCommandPair, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
+import { diagnoseGitFailure, isEnvironmentalFailure, reportsNoChecksYet } from 'src/tools/GitTool/errors.js'
+import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
   GitCommandOutcome,
@@ -64,6 +65,15 @@ const WATCH_IDLE_TIMEOUT_MS = 120_000
 const SIGTERM_EXIT = 143
 /** Documented by `gh pr checks`: it finished a pass, the checks are pending. */
 const GH_CHECKS_PENDING_EXIT = 8
+/**
+ * `gh pr checks --watch` right after a push exits 1 with "no checks reported":
+ * GitHub has not registered the workflow runs yet, so the watch has nothing to
+ * wait on. It is asked again every `NO_CHECKS_RETRY_MS` for up to
+ * `NO_CHECKS_GRACE_MS`; checks usually register within seconds, and a branch
+ * with no workflow at all still comes back in a minute and a half.
+ */
+const NO_CHECKS_GRACE_MS = 90_000
+const NO_CHECKS_RETRY_MS = 10_000
 
 export type RunGitBatchOptions = {
   commands: readonly string[]
@@ -102,6 +112,9 @@ export type RunGitBatchOptions = {
    * a test cannot wait two minutes to prove the watchdog fires.
    */
   idleTimeoutMs?: number
+  /** Override `NO_CHECKS_GRACE_MS` / `NO_CHECKS_RETRY_MS`, for the same reason. */
+  noChecksGraceMs?: number
+  noChecksRetryMs?: number
 }
 
 /**
@@ -253,6 +266,48 @@ function pendingChecksStall(command: string, code: number, ranMs: number): GitSt
   return { reason: 'pending', ranMs, silentMs: 0 }
 }
 
+/**
+ * Run a `gh pr checks` watch, asking again while it finds no checks yet, until
+ * they appear, the grace runs out, or the caller aborts. The retries spend the
+ * watch's own timeout, never more, and an abort during the wait reports as
+ * one, not as the last "no checks" answer.
+ */
+async function runWaitingForChecks(
+  params: Parameters<typeof runOneCommand>[0],
+  graceMs: number,
+  retryMs: number,
+): Promise<CommandRun> {
+  const startedAt = Date.now()
+  let run = await runOneCommand(params)
+  while (
+    run.code === 1 &&
+    reportsNoChecksYet(run.text) &&
+    Date.now() - startedAt + retryMs < Math.min(graceMs, params.timeoutMs)
+  ) {
+    await sleep(retryMs, params.abortSignal)
+    if (params.abortSignal.aborted) return { ...run, interrupted: true }
+    run = await runOneCommand({ ...params, timeoutMs: params.timeoutMs - (Date.now() - startedAt) })
+  }
+  return run
+}
+
+/**
+ * Whether a failed command stops the rest of its batch. `&&` semantics are what
+ * the model meant by a burst — running `git commit` after `git add` failed is
+ * worse than stopping — but when the failed command and everything after it
+ * are reads, nothing can go wrong by going on, and stopping only withholds
+ * answers: `git rev-parse @{u}` on a branch never pushed cost the rest of a
+ * pre-PR read four times in the 2026-10-05..11 census. An abort still stops
+ * it, and so does an environmental failure, which the rest would repeat.
+ */
+function failureStopsBatch(commandsFromHere: readonly string[], run: CommandRun, output: string): boolean {
+  return (
+    run.interrupted ||
+    !commandsFromHere.every(isReadOnlyGitCommand) ||
+    isEnvironmentalFailure(commandsFromHere[0] ?? '', run.code, output)
+  )
+}
+
 export async function runGitBatch(
   opts: RunGitBatchOptions,
 ): Promise<GitBatchResult> {
@@ -278,9 +333,10 @@ export async function runGitBatch(
         : `cd ${quote([opts.cwd])} && ${plan.effectiveCommand}`
 
     let outcome: GitCommandOutcome
+    let stopsBatch = false
     try {
       const onProgress = opts.onProgress
-      const run = await runOneCommand({
+      const params: Parameters<typeof runOneCommand>[0] = {
         effectiveCommand,
         watch,
         timeoutMs:
@@ -299,7 +355,15 @@ export async function runGitBatch(
                 silentMs,
               })
           : undefined,
-      })
+      }
+      const run =
+        watch && ghCommandPair(command) === 'pr checks'
+          ? await runWaitingForChecks(
+              params,
+              opts.noChecksGraceMs ?? NO_CHECKS_GRACE_MS,
+              opts.noChecksRetryMs ?? NO_CHECKS_RETRY_MS,
+            )
+          : await runOneCommand(params)
       const rawStdout = run.text
       const stall = run.stall ?? pendingChecksStall(command, run.code, run.ranMs)
 
@@ -338,6 +402,9 @@ export async function runGitBatch(
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),
       }
+      // A stall is not a failure, so it never stops the rest: `["gh pr checks
+      // --watch", "gh pr view"]` still delivers the second one.
+      stopsBatch = isError && failureStopsBatch(opts.commands.slice(index), run, filtered)
     } catch (e) {
       logError(`Git: exec failed for \`${command}\` — ${String(e)}`)
       return {
@@ -349,11 +416,7 @@ export async function runGitBatch(
 
     outcomes.push(outcome)
 
-    // `&&` semantics — a burst is what the model meant, and running `git
-    // commit` after `git add` failed is worse than stopping. A stall is not a
-    // failure, so it does not stop the rest: `["gh pr checks --watch",
-    // "gh pr view"]` still delivers the second one.
-    if (!outcome.stall && (outcome.exitCode !== 0 || outcome.interrupted)) {
+    if (stopsBatch) {
       return { outcomes, notRun: opts.commands.slice(index + 1).map(String) }
     }
   }

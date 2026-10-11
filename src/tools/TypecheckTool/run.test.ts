@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { resetBaselineDirectoryCacheForTesting } from 'src/tools/TypecheckTool/baseline.js'
@@ -78,15 +79,35 @@ afterAll(() => {
 })
 
 describe('runTypecheck — the checker did not do its job', () => {
-  test('a missing binary is degraded, never a clean bill of health', async () => {
+  test('a missing binary could not run, never a clean bill of health', async () => {
     // The dangerous failure: exit 127 with no parseable output must not render
     // as "no diagnostics", which is what a naive `diagnostics.length === 0`
-    // would say about a checker that never ran.
+    // would say about a checker that never ran — nor as type errors, which is
+    // what the text scrape made of the shell's complaint.
     const result = await runTypecheck(options(sandbox(), 'definitely-not-a-real-checker-xyz'))
-    expect(result.degraded).toBe(true)
     expect(result.exitCode).toBe(127)
-    expect(result.errors).toBeGreaterThan(0)
-    expect(formatCheckResult(result)).toStartWith('⚠')
+    expect(result.runError).toBe('`definitely-not-a-real-checker-xyz` is not installed or not on PATH')
+    expect(result.errors).toBe(0)
+    expect(formatCheckResult(result)).toStartWith('Typecheck could not run: ')
+  })
+
+  test('a version-manager shim with no version selected never ran either', async () => {
+    // The 2026-10-08 legendarr run: exit 1, and three `mise ERROR` lines that
+    // came back as "~3 errors scraped from text".
+    const mise = "printf 'mise ERROR No version is set for shim: pyright\\nmise ERROR Run with --verbose\\n' >&2; exit 1"
+    const result = await runTypecheck(options(sandbox(), mise, { checker: 'pyright' }))
+    expect(result.runError).toBe('the `pyright` shim has no version selected (mise/asdf)')
+    expect(formatCheckResult(result)).not.toContain('scraped')
+  })
+
+  test('a checker that ran is reported as itself, even beside a not-found line', async () => {
+    // A project script can print the shell's wording on its way to the real
+    // checker; once a diagnostic was parsed, the checker clearly ran.
+    const result = await runTypecheck(
+      options(sandbox(), 'echo "bash: line 1: lint-helper: command not found" >&2; echo "src/a.ts(1,1): error TS1: real."; exit 2'),
+    )
+    expect(result.runError).toBeUndefined()
+    expect(result.diagnostics).toHaveLength(1)
   })
 
   test('unreadable failing output keeps a raw tail instead of inventing positions', async () => {
@@ -239,5 +260,64 @@ describe('runTypecheck — scoping and excerpts', () => {
       options(cwd, 'echo "a.ts(2,7): error TS1: bad name."; exit 1'),
     )
     expect(result.diagnostics[0]?.excerpt).toContain('const two = 2')
+  })
+})
+
+/** Same isolation as baseline.test.ts: the outcome depends on nothing but this repo. */
+function git(cwd: string, args: string[]): void {
+  execFileSync('git', args, {
+    cwd,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      HOME: cwd,
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_AUTHOR_NAME: 'test',
+      GIT_AUTHOR_EMAIL: 'test@example.invalid',
+      GIT_COMMITTER_NAME: 'test',
+      GIT_COMMITTER_EMAIL: 'test@example.invalid',
+    },
+  })
+}
+
+/** A clean repository, with `.claudin/` ignored so the baseline cache cannot dirty it. */
+function cleanRepo(): string {
+  const root = sandbox()
+  writeFileSync(join(root, '.gitignore'), '.claudin/\n')
+  writeFileSync(join(root, 'a.ts'), 'export const a = 1\n')
+  git(root, ['init', '-q'])
+  git(root, ['add', '.'])
+  git(root, ['commit', '-qm', 'init'])
+  return root
+}
+
+describe('runTypecheck — the baseline a run records', () => {
+  test('a checker that printed diagnostics on a clean tree records them as the backlog', async () => {
+    const cwd = cleanRepo()
+    const result = await runTypecheck(
+      options(cwd, 'echo "a.ts(1,14): error TS2322: Type \'string\' is not assignable."; exit 2'),
+    )
+    expect(result.baseline.kind).toBe('captured')
+    expect(result.preExistingCount).toBe(1)
+    expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(true)
+  })
+
+  test('a run nothing could parse records nothing, even on a clean tree', async () => {
+    // Its parse is empty, so recording it would file HEAD's backlog as zero
+    // diagnostics and report every real one as new on the next readable run.
+    const cwd = cleanRepo()
+    const result = await runTypecheck(options(cwd, 'echo "something went sideways"; exit 2'))
+    expect(result.degraded).toBe(true)
+    expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(false)
+  })
+
+  test('a checker that never started records nothing, even on a clean tree', async () => {
+    // Recording its empty output as HEAD's backlog would report every real
+    // error as newly introduced once the checker works.
+    const cwd = cleanRepo()
+    const result = await runTypecheck(options(cwd, 'definitely-not-a-real-checker-xyz'))
+    expect(result.runError).toContain('not installed')
+    expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(false)
   })
 })

@@ -1187,3 +1187,57 @@ describe('runTests — the shell wrapper', () => {
     expect(result.stdoutTail).toContain('sentinel: from a subshell')
   }, 30_000)
 })
+
+describe('runTests — a run that did not pass', () => {
+  function run(command: string, abortSignal = new AbortController().signal): Promise<TestResult> {
+    return runTests({ command, framework: 'unknown', cwd: process.cwd(), abortSignal, timeoutMs: 30_000 })
+  }
+
+  test('a failing test is a failing test', async () => {
+    const result = await run("printf 'not ok 1 - adds two numbers\\n1..1\\n'; exit 1")
+    expect(result.runError).toBeUndefined()
+    expect(result.failed).toBe(1)
+    expect(result.failures[0]?.name).toContain('adds two numbers')
+    expect(formatTestResult(result)).toStartWith('✗ unknown · ')
+  }, 30_000)
+
+  test('every test passing under a failed exit keeps the tail, and is not a green run', async () => {
+    const result = await run("printf 'ok 1 - adds two numbers\\n1..1\\ncoverage below threshold\\n'; exit 3")
+    expect(result.failed).toBe(0)
+    expect(result.exitCode).toBe(3)
+    expect(result.stdoutTail).toContain('coverage below threshold')
+    expect(formatTestResult(result)).toContain('but the runner exited 3')
+  }, 30_000)
+
+  test('a runner that is not installed could not start, rather than one failed test', async () => {
+    const result = await run('definitely-not-a-real-runner-xyz -q')
+    expect(result.runError).toBe('`definitely-not-a-real-runner-xyz` is not installed or not on PATH')
+    expect(formatTestResult(result)).toStartWith('Test run could not start: ')
+  }, 30_000)
+
+  test("a failing test whose output carries the shell's not-found line is still a failing test", async () => {
+    // A test of a CLI can print exactly what a missing runner prints. Once a
+    // test case was read (TAP here), that line belongs to the test.
+    const result = await run(
+      "printf 'not ok 1 - runs the cli\\n1..1\\n'; printf 'bash: line 1: deploy: command not found\\n' >&2; exit 1",
+    )
+    expect(result.runError).toBeUndefined()
+    expect(result.failed).toBe(1)
+  }, 30_000)
+
+  test('a scraped run that passed tests did start, whatever its output says', async () => {
+    // No structured reporter, so the scrape decides — and three passed tests
+    // prove the runner ran.
+    const result = await run("printf '3 passed\\n'; printf 'bash: line 1: deploy: command not found\\n' >&2; exit 1")
+    expect(result.degraded).toBe(true)
+    expect(result.runError).toBeUndefined()
+  }, 30_000)
+
+  test('a run cancelled before it starts says so', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const result = await run('sleep 5', controller.signal)
+    expect(result.runError).toBe('Test run was interrupted before completing.')
+    expect(formatTestResult(result)).toStartWith('Test run could not start:')
+  }, 30_000)
+})

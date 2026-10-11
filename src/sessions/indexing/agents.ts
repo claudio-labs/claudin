@@ -41,6 +41,10 @@ export type AgentMetadata = {
    * is looked up again by agentType, which alone would hand a research agent
    * its write tools back. */
   readOnly?: boolean
+  /** The filter that picked the first run's tools. A resume always runs in the
+   * background, and keeps this filter instead of the background allowlist.
+   * Absent in metadata written before 2026-10-11, which resumes as before. */
+  toolFilter?: 'sync' | 'async'
 }
 
 /**

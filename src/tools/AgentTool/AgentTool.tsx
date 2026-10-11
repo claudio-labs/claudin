@@ -978,6 +978,7 @@ export const AgentTool = buildTool({
                       ...runAgentParams,
                       isAsync: true,
                       // Agent is now running in background
+                      toolFilter: 'sync', // …with the tools it started with (toolFilter.ts)
                       override: {
                         ...runAgentParams.override,
                         agentId: asAgentId(backgroundedTaskId),

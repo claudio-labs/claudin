@@ -1,0 +1,79 @@
+{
+  "test": [
+    "src/tools/TypecheckTool/run.test.ts",
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/agent/coordinator/coordinatorMode.test.ts",
+    "src/tools/AgentTool/toolFilter.test.ts",
+    "src/tools/AgentTool/resumeAgent.test.ts",
+    "src/tools/ContainerTool/ContainerTool.test.ts"
+  ],
+  "source": "src/tools/TypecheckTool/run.ts",
+  "probes": [
+    {
+      "name": "Typecheck baselines a run nothing could parse",
+      "comment": "The four follow-ups the elegance review of the 2026-10-05..11 census fixes left open.",
+      "find": "    mode: parsed.degraded ? 'ignore' : opts.baselineMode,",
+      "replace": "    mode: opts.baselineMode,"
+    },
+    {
+      "name": "WaitFor runs beside other tools whatever it does",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "  isConcurrencySafe(input) {\n    return writesNothing(input)",
+      "replace": "  isConcurrencySafe(input) {\n    return true"
+    },
+    {
+      "name": "The coordinator lists the allowlist as written",
+      "source": "src/agent/coordinator/coordinatorMode.ts",
+      "find": "    .filter(name => available.has(name) && !INTERNAL_WORKER_TOOLS.has(name))",
+      "replace": "    .filter(name => !INTERNAL_WORKER_TOOLS.has(name))"
+    },
+    {
+      "name": "The coordinator context stops asking the tool registry",
+      "source": "src/agent/coordinator/coordinatorMode.ts",
+      "find": "    : listWorkerTools(new Set(getToolsForDefaultPreset()))",
+      "replace": "    : listWorkerTools(new Set(ASYNC_AGENT_ALLOWED_TOOLS))"
+    },
+    {
+      "name": "A resume is filtered by how it runs again",
+      "source": "src/tools/AgentTool/toolFilter.ts",
+      "find": "  const resolved = resolveAgentTools(agentDefinition, availableTools, filter === 'async')",
+      "replace": "  const resolved = resolveAgentTools(agentDefinition, availableTools, runsAsync)"
+    },
+    {
+      "name": "A background resume keeps Agent",
+      "source": "src/tools/AgentTool/toolFilter.ts",
+      "find": "  if (!runsAsync || filter === 'async') return resolved",
+      "replace": "  if (runsAsync || !runsAsync) return resolved"
+    },
+    {
+      "name": "The Agent strip misses a legacy alias",
+      "source": "src/tools/AgentTool/toolFilter.ts",
+      "find": "resolved.resolvedTools.filter(tool => !toolMatchesName(tool, AGENT_TOOL_NAME))",
+      "replace": "resolved.resolvedTools.filter(tool => tool.name !== AGENT_TOOL_NAME)"
+    },
+    {
+      "name": "A resume forgets the recorded pool",
+      "source": "src/tools/AgentTool/resumeAgent.ts",
+      "find": "    toolFilter: meta?.toolFilter ?? 'async',",
+      "replace": "    toolFilter: 'async',"
+    },
+    {
+      "name": "runAgent stops recording the pool",
+      "source": "src/tools/AgentTool/runAgent.ts",
+      "find": "    toolFilter,\n  }).catch(",
+      "replace": "  }).catch("
+    },
+    {
+      "name": "A run sent to the background mid-task switches filter",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "                      toolFilter: 'sync', // …with the tools it started with (toolFilter.ts)\n",
+      "replace": ""
+    },
+    {
+      "name": "Container registers a background task through a no-op",
+      "source": "src/tools/ContainerTool/ContainerTool.ts",
+      "find": "    setAppState: (context.setAppStateForTasks ?? context.setAppState) as never,",
+      "replace": "    setAppState: context.setAppState as never,"
+    }
+  ]
+}

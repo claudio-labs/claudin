@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { formatBuildResult } from 'src/tools/BuildTool/budget.js'
 import { lastNonEmptyLine } from 'src/tools/BuildTool/progressLine.js'
 import { collectArtifacts, runBuild, stripProgressRewrites, type RunOptions } from 'src/tools/BuildTool/run.js'
 import type { TreeSnapshot } from 'src/tools/BuildTool/treeActivity.js'
@@ -116,5 +117,61 @@ describe('runBuild — the idle watchdog', () => {
     const result = await runBuild(options('sleep 20', { sampleTree: async () => null }))
     expect(result.stall?.reason).toBe('idle')
     expect(result.stall?.cpuIdleMs).toBeUndefined()
+  }, 30_000)
+})
+
+describe('runBuild — a build that did not succeed', () => {
+  function options(command: string, over: Partial<RunOptions> = {}): RunOptions {
+    return {
+      command,
+      system: 'make',
+      cwd: process.cwd(),
+      abortSignal: new AbortController().signal,
+      timeoutMs: 30_000,
+      idleTimeoutMs: 60_000,
+      severity: 'errors',
+      alsoDetected: [],
+      ...over,
+    }
+  }
+
+  test('a failure no parser can read is degraded, with a count and the raw tail', async () => {
+    const result = await runBuild(options("printf 'the linker exploded\\n'; exit 2"))
+    expect(result.runError).toBeUndefined()
+    expect(result.degraded).toBe(true)
+    expect(result.exitCode).toBe(2)
+    // A non-zero exit with nothing recognisable still counts as one error.
+    expect(result.errors).toBe(1)
+    expect(result.stdoutTail).toContain('the linker exploded')
+    expect(formatBuildResult(result)).toContain('could not parse the build output')
+  }, 30_000)
+
+  test('a build tool that is not installed could not run, rather than failing with errors', async () => {
+    const result = await runBuild(options('definitely-not-a-real-build-tool-xyz all'))
+    expect(result.exitCode).toBe(127)
+    expect(result.runError).toBe('`definitely-not-a-real-build-tool-xyz` is not installed or not on PATH')
+    expect(formatBuildResult(result)).toStartWith('Build could not run: ')
+  }, 30_000)
+
+  test('a build that ran is reported as itself, even beside a not-found line', async () => {
+    const result = await runBuild(
+      options("printf 'bash: line 1: ccache: command not found\\nsrc/a.c:3:5: error: unknown type name\\n'; exit 2"),
+    )
+    expect(result.runError).toBeUndefined()
+    expect(result.errors).toBe(1)
+  }, 30_000)
+
+  test('a build cancelled before it starts says so instead of reporting a failure', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const result = await runBuild(options('sleep 5', { abortSignal: controller.signal }))
+    expect(result.runError).toBe('The build was interrupted before completing.')
+    expect(formatBuildResult(result)).toStartWith('Build could not run: The build was interrupted')
+  }, 30_000)
+
+  test('a build that reaches the wall ceiling is a stall, not a failure', async () => {
+    const result = await runBuild(options('sleep 20', { timeoutMs: 1_500 }))
+    expect(result.stall?.reason).toBe('ceiling')
+    expect(result.runError).toBeUndefined()
   }, 30_000)
 })

@@ -1,6 +1,6 @@
 ---
 name: rule-map-end-of-turn
-description: Since 2026-10-11 (branch feat/rule-map-end-of-turn, PR open) the navigation map is synced at the end of a main-thread turn, not at startup, with a stateless dirty gate, a rule_map footer task and the /map command; an automatic LLM annotation fork was rejected
+description: Since PR 287 (merged 2026-10-11) the navigation map is synced at the end of a main-thread turn, not at startup, with a stateless dirty gate, a rule_map footer task and the /map command; an automatic LLM annotation fork was rejected
 type: project
 scope: memory/instructions (navigation map), agent/tasks
 impact: functional

@@ -63,7 +63,6 @@ describe('WaitForTool', () => {
       WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 601 })
         .success,
     ).toBe(false)
-    expect(WaitForTool.isConcurrencySafe?.()).toBe(true)
     expect(WaitForTool.name).toBe('WaitFor')
     expect(WaitForTool.userFacingName()).toBe('Wait')
   })
@@ -73,10 +72,73 @@ describe('WaitForTool', () => {
       { command: 'ls', description: 'd', until: '(' } as never,
     )
     expect(bad?.result).toBe(false)
+    expect(bad?.result === false && bad.message).toStartWith('Invalid `until` regex: ')
     const ok = await WaitForTool.validateInput?.(
       { command: 'ls', description: 'd', until: 'READY' } as never,
     )
     expect(ok?.result).toBe(true)
+  })
+
+  test('until: a leading (?s) or (?i) is read as flags, as PCRE and Python spell them', async () => {
+    // The census saw this rejected three times, always to wait for CI rows
+    // spread over several lines; JavaScript has no global inline flag group.
+    const census = await WaitForTool.validateInput?.(
+      { command: 'ls', description: 'd', until: '(?s)^(?!.*pending).*(pass|fail)' } as never,
+    )
+    expect(census?.result).toBe(true)
+
+    const dotAll = await WaitForTool.call(
+      { command: "printf 'pass\\nsmoke'", until: '(?s)pass.smoke', interval_s: 0.2, timeout_s: 5, description: 'd' },
+      makeCtx(),
+    )
+    expect(dotAll.data.matched).toBe(true)
+
+    const caseless = await WaitForTool.call(
+      { command: 'echo ready', until: '(?i)READY', interval_s: 0.2, timeout_s: 5, description: 'd' },
+      makeCtx(),
+    )
+    expect(caseless.data.matched).toBe(true)
+  })
+
+  test('until: `.` stays on one line unless the pattern asks otherwise', async () => {
+    // No implicit flags: a pattern written for one line must not start matching
+    // across two, which would end a wait early on output it was not waiting for.
+    const { data } = await WaitForTool.call(
+      { command: "printf 'pass\\nsmoke'", until: 'pass.smoke', interval_s: 0.2, timeout_s: 1, description: 'd' },
+      makeCtx(),
+    )
+    expect(data.matched).toBe(false)
+    expect(data.reason).toBe('timeout')
+  })
+
+  test('until: a flag JavaScript does not have is still an invalid regex', async () => {
+    const bad = await WaitForTool.validateInput?.(
+      { command: 'ls', description: 'd', until: '(?x) READY # spaced' } as never,
+    )
+    expect(bad?.result).toBe(false)
+  })
+
+  test('read-only exactly when its setup and poll only read, so plan mode lets it watch', () => {
+    // The census saw a wait on a task's output file refused in plan mode, where
+    // the same `tail` through Bash would have run.
+    const input = (fields: { command: string; setup?: string }) => ({ description: 'd', ...fields }) as never
+    expect(WaitForTool.isReadOnly(input({ command: 'tail -c 400 package.json; ls src' }))).toBe(true)
+    expect(WaitForTool.isReadOnly(input({ command: 'rm -f stale.out' }))).toBe(false)
+    // The setup runs too, so it counts.
+    expect(WaitForTool.isReadOnly(input({ setup: 'rm -f stale.out', command: 'cat package.json' }))).toBe(false)
+  })
+
+  test('a wait that only reads runs beside other tools', () => {
+    const input = { command: 'tail -c 400 package.json', description: 'd' } as never
+    expect(WaitForTool.isConcurrencySafe(input)).toBe(true)
+  })
+
+  test('a wait that writes — in its poll or its setup — does not, like Bash', () => {
+    // A `tmux send-keys` setup or an `rm` poll ran in parallel with whatever
+    // else the response held, while the same command through Bash would wait.
+    const input = (fields: { command: string; setup?: string }) => ({ description: 'd', ...fields }) as never
+    expect(WaitForTool.isConcurrencySafe(input({ command: 'rm -f stale.out' }))).toBe(false)
+    expect(WaitForTool.isConcurrencySafe(input({ setup: 'rm -f stale.out', command: 'cat package.json' }))).toBe(false)
   })
 
   test('until: returns as soon as a background writer produces the match', async () => {

@@ -54,3 +54,23 @@ describe('readOnly reaches the metadata a resume reads', () => {
     expect(resume).toContain('readOnly: meta?.readOnly,')
   })
 })
+
+describe('the tool filter reaches the metadata a resume reads', () => {
+  test('runAgent picks tools by it and writes it, and a resume passes it on', () => {
+    const runAgent = readFileSync(new URL('./runAgent.ts', import.meta.url), 'utf8')
+    const resume = readFileSync(new URL('./resumeAgent.ts', import.meta.url), 'utf8')
+    expect(runAgent).toContain("toolFilter = isAsync ? 'async' : 'sync',")
+    expect(runAgent).toContain('resolveRunTools(agentDefinition, availableTools, isAsync, toolFilter)')
+    // Anywhere inside that one call's object, in any position.
+    expect(runAgent).toMatch(/writeAgentMetadata\(agentId, \{(?:(?!\}\)\.catch)[\s\S])*\btoolFilter,/)
+    // Metadata written before the filter was recorded resumes as it always did.
+    expect(resume).toContain("toolFilter: meta?.toolFilter ?? 'async',")
+  })
+
+  test('a foreground run sent to the background mid-task keeps its filter too', () => {
+    // The continuation re-enters runAgent with isAsync: true; without this it
+    // lost LSP or Container mid-task, and recorded the background filter.
+    const agentTool = readFileSync(new URL('./AgentTool.tsx', import.meta.url), 'utf8')
+    expect(agentTool).toMatch(/isAsync: true,\n\s*\/\/ Agent is now running in background\n\s*toolFilter: 'sync',/)
+  })
+})

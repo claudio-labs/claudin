@@ -4,6 +4,7 @@ import { exec } from 'src/shared/proc/Shell.js'
 import { logError } from 'src/shared/log.js'
 import { readFullShellOutput } from 'src/platform/shell/fullOutput.js'
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
+import { detectLauncherFailure } from 'src/tools/shared/diagnostics/launcherFailure.js'
 import { tailLabel } from 'src/tools/shared/progressTail.js'
 import { buildDossier } from 'src/tools/RunTestsTool/dossier.js'
 import { parseTestOutput } from 'src/tools/RunTestsTool/parsers/index.js'
@@ -73,6 +74,22 @@ function tail(text: string, max: number): string {
 /** POSIX single-quoting, so a path with spaces or quotes survives the shell. */
 function singleQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
+/** A run that produced no test results at all, and why. */
+function notRun(framework: Framework, command: string, runError: string, exitCode: number): TestResult {
+  return {
+    framework,
+    command,
+    total: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    failures: [],
+    degraded: true,
+    exitCode,
+    runError,
+  }
 }
 
 export async function runTests(opts: RunOptions): Promise<TestResult> {
@@ -151,33 +168,11 @@ ${plan.command}
     stderr = result.stderr
     exitCode = result.code
     if (result.interrupted) {
-      return {
-        framework,
-        command: plan.command,
-        total: 0,
-        passed: 0,
-        failed: 0,
-        skipped: 0,
-        failures: [],
-        degraded: true,
-        exitCode,
-        runError: 'Test run was interrupted before completing.',
-      }
+      return notRun(framework, plan.command, 'Test run was interrupted before completing.', exitCode)
     }
   } catch (e) {
     logError(`RunTests: exec failed — ${String(e)}`)
-    return {
-      framework,
-      command: plan.command,
-      total: 0,
-      passed: 0,
-      failed: 0,
-      skipped: 0,
-      failures: [],
-      degraded: true,
-      exitCode: 1,
-      runError: e instanceof Error ? e.message : String(e),
-    }
+    return notRun(framework, plan.command, e instanceof Error ? e.message : String(e), 1)
   } finally {
     if (taskId) TaskOutput.stopPolling(taskId)
   }
@@ -199,6 +194,11 @@ ${plan.command}
 
   const parseInput: ParseInput = { stdout, stderr, exitCode, reportContent }
   const result = parseTestOutput(framework, plan.command, parseInput)
+
+  // Once a test case was read, launcher wording in the output belongs to the
+  // test, not to a runner that never started.
+  const notStarted = result.degraded && result.passed === 0 ? detectLauncherFailure(parseInput) : null
+  if (notStarted) return notRun(framework, plan.command, notStarted, exitCode)
 
   enrichFailuresWithStackLocation(result.failures)
   refineFailureLinesFromStdout(result.failures, stdout, framework)
