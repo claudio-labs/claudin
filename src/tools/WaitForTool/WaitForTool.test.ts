@@ -63,7 +63,6 @@ describe('WaitForTool', () => {
       WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 601 })
         .success,
     ).toBe(false)
-    expect(WaitForTool.isConcurrencySafe?.()).toBe(true)
     expect(WaitForTool.name).toBe('WaitFor')
     expect(WaitForTool.userFacingName()).toBe('Wait')
   })
@@ -132,6 +131,14 @@ describe('WaitForTool', () => {
   test('a wait that only reads runs beside other tools', () => {
     const input = { command: 'tail -c 400 package.json', description: 'd' } as never
     expect(WaitForTool.isConcurrencySafe(input)).toBe(true)
+  })
+
+  test('a wait that writes — in its poll or its setup — does not, like Bash', () => {
+    // A `tmux send-keys` setup or an `rm` poll ran in parallel with whatever
+    // else the response held, while the same command through Bash would wait.
+    const input = (fields: { command: string; setup?: string }) => ({ description: 'd', ...fields }) as never
+    expect(WaitForTool.isConcurrencySafe(input({ command: 'rm -f stale.out' }))).toBe(false)
+    expect(WaitForTool.isConcurrencySafe(input({ setup: 'rm -f stale.out', command: 'cat package.json' }))).toBe(false)
   })
 
   test('until: returns as soon as a background writer produces the match', async () => {

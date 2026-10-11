@@ -142,21 +142,29 @@ function shellCommandOf(input: { command: string; setup?: string }): string {
   return input.setup ? `${input.setup} && ${input.command}` : input.command
 }
 
+/**
+ * Bash's own read-only verdict over that command, so a wait on a task's output
+ * file runs in plan mode, and beside other tools, exactly where the same
+ * `tail` through Bash would.
+ */
+function writesNothing(input: { command: string; setup?: string }): boolean {
+  const command = shellCommandOf(input)
+  return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'
+}
+
 export const WaitForTool = buildTool({
   name: WAITFOR_TOOL_NAME,
   searchHint: 'wait until a command output matches or settles',
   clearableResult: true,
   maxResultSizeChars: 10_000,
 
-  isConcurrencySafe() {
-    return true
+  // Bash's rule: only a wait that writes nothing may run beside other tools.
+  isConcurrencySafe(input) {
+    return writesNothing(input)
   },
 
-  // Bash's own verdict, so a wait on a task's output file runs in plan mode
-  // exactly where the same `tail` through Bash would.
   isReadOnly(input) {
-    const command = shellCommandOf(input)
-    return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'
+    return writesNothing(input)
   },
 
   toAutoClassifierInput(input) {
