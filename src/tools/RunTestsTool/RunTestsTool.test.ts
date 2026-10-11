@@ -1187,3 +1187,33 @@ describe('runTests — the shell wrapper', () => {
     expect(result.stdoutTail).toContain('sentinel: from a subshell')
   }, 30_000)
 })
+
+describe('runTests — a run that did not pass', () => {
+  function run(command: string, abortSignal = new AbortController().signal): Promise<TestResult> {
+    return runTests({ command, framework: 'unknown', cwd: process.cwd(), abortSignal, timeoutMs: 30_000 })
+  }
+
+  test('a failing test is a failing test', async () => {
+    const result = await run("printf 'not ok 1 - adds two numbers\\n1..1\\n'; exit 1")
+    expect(result.runError).toBeUndefined()
+    expect(result.failed).toBe(1)
+    expect(result.failures[0]?.name).toContain('adds two numbers')
+    expect(formatTestResult(result)).toStartWith('✗ unknown · ')
+  }, 30_000)
+
+  test('every test passing under a failed exit keeps the tail, and is not a green run', async () => {
+    const result = await run("printf 'ok 1 - adds two numbers\\n1..1\\ncoverage below threshold\\n'; exit 3")
+    expect(result.failed).toBe(0)
+    expect(result.exitCode).toBe(3)
+    expect(result.stdoutTail).toContain('coverage below threshold')
+    expect(formatTestResult(result)).toContain('but the runner exited 3')
+  }, 30_000)
+
+  test('a run cancelled before it starts says so', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const result = await run('sleep 5', controller.signal)
+    expect(result.runError).toBe('Test run was interrupted before completing.')
+    expect(formatTestResult(result)).toStartWith('Test run could not start:')
+  }, 30_000)
+})
