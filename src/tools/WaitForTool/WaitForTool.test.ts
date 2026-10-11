@@ -129,6 +129,11 @@ describe('WaitForTool', () => {
     expect(WaitForTool.isReadOnly(input({ setup: 'rm -f stale.out', command: 'cat package.json' }))).toBe(false)
   })
 
+  test('a wait that only reads runs beside other tools', () => {
+    const input = { command: 'tail -c 400 package.json', description: 'd' } as never
+    expect(WaitForTool.isConcurrencySafe(input)).toBe(true)
+  })
+
   test('until: returns as soon as a background writer produces the match', async () => {
     const file = join(dir, 'x')
     writeFileSync(file, 'waiting\n')
