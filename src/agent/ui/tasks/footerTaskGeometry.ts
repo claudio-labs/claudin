@@ -3,7 +3,7 @@
 
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
-import { isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js'
+import { isListedBackgroundTask, type TaskState } from 'src/agent/tasks/types.js'
 import { isMcpServerTask, mcpTaskStatusInput } from 'src/agent/tasks/McpServerTask/types.js'
 import { mcpBucket, type McpBucket } from 'src/mcp/serverStatus.js'
 import { isTerminalStatus } from 'src/agent/ui/tasks/taskStatusUtils.js'
@@ -19,6 +19,7 @@ export type FooterGroupKey =
   | 'remote'
   | 'workflows'
   | 'dreams'
+  | 'maps'
 
 /** Render order, top to bottom — and, because the footer cursor walks the rows
  * in render order, the navigation order too. The tree
@@ -33,6 +34,7 @@ export const FOOTER_GROUP_ORDER: readonly FooterGroupKey[] = [
   'remote',
   'workflows',
   'dreams',
+  'maps',
 ]
 
 /** The word for each group. Shared so the tree's `Shells (2)` header and the
@@ -46,6 +48,7 @@ export const FOOTER_GROUP_LABELS: Record<FooterGroupKey, string> = {
   remote: 'Remote',
   workflows: 'Workflows',
   dreams: 'Dreams',
+  maps: 'Maps',
 }
 
 /** `mcp` is the one group that nests: its rows are partitioned again by
@@ -186,6 +189,8 @@ export function matchGroupKey(t: TaskState): FooterGroupKey | undefined {
       return 'workflows'
     case 'dream':
       return 'dreams'
+    case 'rule_map':
+      return 'maps'
     default:
       return undefined
   }
@@ -201,7 +206,7 @@ export function getFooterGroupCounts(
   const counts = new Map<FooterGroupKey, number>()
   if (!tasks) return counts
   for (const t of Object.values(tasks)) {
-    if (!isBackgroundTask(t)) continue
+    if (!isListedBackgroundTask(t)) continue
     if (t.type === 'in_process_teammate') continue
     if (t.id === foregroundedTaskId) continue
     const key = matchGroupKey(t)
@@ -209,6 +214,26 @@ export function getFooterGroupCounts(
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
   return counts
+}
+
+/**
+ * Whether the tree holds a finished task kept on screen (holdTerminalTask) —
+ * the same rows getFooterGroupCounts lists, minus every task still in flight.
+ * The footer cursor is offered while something is running or the panel has
+ * rows; without this, a notice listed on its own could be seen but never
+ * reached.
+ */
+export function hasHeldTaskRows(
+  tasks: AppState['tasks'],
+  foregroundedTaskId?: string,
+): boolean {
+  return Object.values(tasks).some(
+    t =>
+      isTerminalStatus(t.status) &&
+      t.displayUntil !== undefined &&
+      t.id !== foregroundedTaskId &&
+      matchGroupKey(t) !== undefined,
+  )
 }
 
 /**
@@ -226,7 +251,7 @@ export function getMcpBucketCounts(
   for (const bucket of MCP_BUCKET_ORDER) counts.set(bucket, 0)
   if (!tasks) return counts
   for (const t of Object.values(tasks)) {
-    if (!isBackgroundTask(t)) continue
+    if (!isListedBackgroundTask(t)) continue
     if (t.id === foregroundedTaskId) continue
     if (!isMcpServerTask(t)) continue
     const bucket = mcpBucket(mcpTaskStatusInput(t))

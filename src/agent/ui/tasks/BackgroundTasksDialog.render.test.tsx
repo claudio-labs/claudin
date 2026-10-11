@@ -77,3 +77,72 @@ describe('BackgroundTasksDialog with a container row', () => {
     expect(out).not.toContain('x to stop')
   })
 })
+
+const MAP_NOTICE = taskFixture('rule_map', {
+  status: 'completed',
+  notified: true,
+  displayUntil: Date.now() + 60_000,
+  result: {
+    status: 'healed',
+    path: '.claudin/rules/search-strategy.md',
+    changes: [
+      { path: 'src/tools/', from: 682, to: 751 },
+      { path: 'src/memory/', from: 70, to: 80 },
+      { path: 'src/agent/tools/', from: 45, to: 33 },
+      { path: 'src/new/', from: null, to: 12 },
+    ],
+  },
+})
+
+describe('BackgroundTasksDialog with a navigation-map notice', () => {
+  test('lists a finished notice in its own section', async () => {
+    const out = await renderDialog({ b1: TASK_FIXTURES.local_bash!, n1: MAP_NOTICE })
+    expect(out).toContain('Maps (1)')
+    expect(out).toContain('search-strategy.md · updated · src/tools/ 682→751')
+    expect(out.indexOf('Maps (1)')).toBeGreaterThan(out.indexOf('npm run dev'))
+  })
+
+  test('a first map lists only as many directories as the terminal has rows for', async () => {
+    // A created map names every directory it drew — up to 80 — and Dialog
+    // does not clip, so an unbounded list grows past a short terminal.
+    const changes = Array.from({ length: 80 }, (_, i) => ({
+      path: `src/d${String(i).padStart(2, '0')}/`,
+      from: null,
+      to: 5,
+    }))
+    const created = taskFixture('rule_map', {
+      status: 'completed',
+      notified: true,
+      displayUntil: Date.now() + 60_000,
+      result: { status: 'created', path: '.claudin/rules/search-strategy.md', changes },
+    })
+    const out = await renderDialog({ n1: created })
+    expect(out).toContain('src/d00/ (new, 5)')
+    expect(out).not.toContain('src/d79/')
+    expect(out).toMatch(/… and \d+ more/)
+  })
+
+  test('the open detail view pins the notice, so its eviction cannot close it', async () => {
+    const pinned: unknown[] = []
+    const state = { ...getDefaultAppState(), tasks: { n1: MAP_NOTICE } }
+    await renderToString(
+      <AppStateProvider
+        initialState={state as never}
+        onChangeAppState={({ newState }) => {
+          pinned.push(newState.tasks.n1?.displayUntil)
+        }}
+      >
+        <BackgroundTasksDialog onDone={() => {}} toolUseContext={{} as never} />
+      </AppStateProvider>,
+      100,
+    )
+    expect(pinned).toContain(Number.POSITIVE_INFINITY)
+  })
+
+  test('a lone notice opens on every count it moved, past the row cap', async () => {
+    const out = await renderDialog({ n1: MAP_NOTICE })
+    expect(out).toContain('Navigation map')
+    expect(out).toContain('src/agent/tools/ 45→33')
+    expect(out).toContain('src/new/ (new, 12)')
+  })
+})

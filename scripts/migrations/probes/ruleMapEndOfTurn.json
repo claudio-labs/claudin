@@ -1,0 +1,301 @@
+{
+  "test": [
+    "src/memory/instructions/",
+    "src/commands/init.test.ts",
+    "src/commands/map/",
+    "src/agent/tasks/RuleMapTask/",
+    "src/agent/tasks/framework.hold.test.ts",
+    "src/agent/ui/tasks/"
+  ],
+  "source": "src/memory/instructions/ruleMapScheduler.ts",
+  "probes": [
+    {
+      "name": "the scheduler is a no-op until initialized",
+      "find": "  const d = deps\n  if (d === null) return Promise.resolve()",
+      "replace": "  const d = deps ?? defaultDeps()"
+    },
+    {
+      "name": "an unchanged fingerprint skips the turn",
+      "find": "if (before !== null && fingerprintKey(before) === lastFingerprint) return",
+      "replace": "if (false) return"
+    },
+    {
+      "name": "a write takes in the map stat it produced",
+      "find": ": fingerprintKey({ index: before.index, map: after.map })",
+      "replace": ": fingerprintKey(before)"
+    },
+    {
+      "name": "a write does not absorb an index change made while it ran",
+      "find": ": fingerprintKey({ index: before.index, map: after.map })",
+      "replace": ": fingerprintKey(after)"
+    },
+    {
+      "name": "a command's sync does not absorb an index change either",
+      "find": "        await remember(d, root, before, outcome)",
+      "replace": "        await remember(d, root, await d.fingerprint(root), outcome)"
+    },
+    {
+      "name": "a failed run is retried next turn",
+      "find": "    before === null ||\n    (outcome.status === 'skipped' && outcome.reason === 'error')\n",
+      "replace": "    before === null\n"
+    },
+    {
+      "name": "a turn ending mid-sync joins it",
+      "find": "if (inFlight === null) void exclusive(() => runTurn(d, turn))",
+      "replace": "void runTurn(d, turn)"
+    },
+    {
+      "name": "a command waits for a turn already syncing",
+      "find": "  while (inFlight !== null) await inFlight\n  const run = work()",
+      "replace": "  const run = work()"
+    },
+    {
+      "name": "the headless drain waits for a queued sync too",
+      "find": "export async function drainPendingRuleMapSync(): Promise<void> {\n  while (inFlight !== null) await inFlight\n}",
+      "replace": "export async function drainPendingRuleMapSync(): Promise<void> {\n  await inFlight\n}"
+    },
+    {
+      "name": "/map off stops the end-of-turn sync",
+      "find": "    if (d.disabledForProject()) return\n",
+      "replace": ""
+    },
+    {
+      "name": "/init respects /map off",
+      "find": "      if (respectSwitch && d.disabledForProject()) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "a caller that reports the outcome gets no notice",
+      "find": "  if (outcome.status === 'skipped' || turn.announce === false) return outcome\n",
+      "replace": "  if (outcome.status === 'skipped') return outcome\n"
+    },
+    {
+      "name": "headless registers no footer task",
+      "find": "const setAppState = d.interactive() ? turn.setAppState : undefined",
+      "replace": "const setAppState = turn.setAppState"
+    },
+    {
+      "name": "a modification this module made is not the user's",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": "return committed === null || !isHealerOnlyDiff(committed, working, trackedFiles)",
+      "replace": "return true"
+    },
+    {
+      "name": "a staged, never-committed map falls back to the index",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": " ??\n    (await gitRaw(root, ['show', `:./${RULE_MAP_GIT_PATH}`]))",
+      "replace": ""
+    },
+    {
+      "name": "the committed map is found from a subdirectory root",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": "(await gitRaw(root, ['show', `HEAD:./${RULE_MAP_GIT_PATH}`])) ??\n    (await gitRaw(root, ['show', `:./${RULE_MAP_GIT_PATH}`]))",
+      "replace": "(await gitRaw(root, ['show', `HEAD:${RULE_MAP_GIT_PATH}`])) ??\n    (await gitRaw(root, ['show', `:${RULE_MAP_GIT_PATH}`]))"
+    },
+    {
+      "name": "an unreadable file list is an error, not 'not a git repo'",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": "    if (trackedFiles === null) return { status: 'skipped', reason: 'error' }",
+      "replace": "    if (trackedFiles === null) return { status: 'skipped', reason: 'not a git repo' }"
+    },
+    {
+      "name": "a hand-written heal is recognized by its masked counts",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "return claimLines.has(index) && maskCounts(line) === maskCounts(other)",
+      "replace": "return false"
+    },
+    {
+      "name": "every entry must read as committed apart from its counts",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "    if (entry.masked !== expected) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "a note inside the generated tree belongs to the user",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "  if (after.freeText.length > 0) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "a dropped entry is ours only if its directory died",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "      countTrackedSources(trackedFiles, path, extensions) < MIN_DIR_FILES,",
+      "replace": "      true,"
+    },
+    {
+      "name": "a CRLF checkout compares as LF",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "  const working = workingRaw.replace(CRLF_RE, '\\n')",
+      "replace": "  const working = workingRaw"
+    },
+    {
+      "name": "a gloss is kept whole past an arrow of its own",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "    : line.slice(arrow.index + arrow[0].length).trim()",
+      "replace": "    : line.split(TREE_ANNOTATION_RE)[1]?.trim()"
+    },
+    {
+      "name": "text beside an entry's count makes the map edited",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "    if (entry.head !== `${lastSegment(entry.path)} (#)`) return 'edited'\n",
+      "replace": ""
+    },
+    {
+      "name": "an edited map heals numbers only",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "  if (ruleMapKind(content) === 'generated') {",
+      "replace": "  if (content.includes(MAP_MARKER)) {"
+    },
+    {
+      "name": "/init syncs the map before its prompt",
+      "source": "src/commands/init.ts",
+      "find": "    await syncRuleMapIfEnabled({",
+      "replace": "    void ({"
+    },
+    {
+      "name": "/init announces through the command context",
+      "source": "src/commands/init.ts",
+      "find": "      appendSystemMessage: context?.appendSystemMessage,\n",
+      "replace": ""
+    },
+    {
+      "name": "a held notice is listed",
+      "source": "src/agent/tasks/types.ts",
+      "find": "return task.displayUntil !== undefined",
+      "replace": "return false"
+    },
+    {
+      "name": "holding a task arms its eviction",
+      "source": "src/agent/tasks/framework.ts",
+      "find": "  schedule(() => evictTerminalTask(taskId, setAppState), ms)\n",
+      "replace": ""
+    },
+    {
+      "name": "the per-turn GC leaves a held task to its own timer",
+      "source": "src/agent/tasks/framework.ts",
+      "find": "          if (taskState.displayUntil !== undefined) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "a pinned task survives its eviction",
+      "source": "src/agent/tasks/framework.ts",
+      "find": "    if (task.displayUntil === Number.POSITIVE_INFINITY) return prev\n",
+      "replace": ""
+    },
+    {
+      "name": "releasing a pin evicts a finished task",
+      "source": "src/agent/tasks/framework.ts",
+      "find": "    displayUntil: undefined,\n  }))\n  evictTerminalTask(taskId, setAppState)\n",
+      "replace": "    displayUntil: undefined,\n  }))\n"
+    },
+    {
+      "name": "the detail view pins the notice while open",
+      "source": "src/agent/ui/tasks/RuleMapDetailDialog.tsx",
+      "find": "    pinTerminalTask(task.id, setAppState);\n",
+      "replace": ""
+    },
+    {
+      "name": "the detail view caps its list to the terminal",
+      "source": "src/agent/ui/tasks/RuleMapDetailDialog.tsx",
+      "find": "  const shown = changes.length > budget ? changes.slice(0, budget - 1) : changes;",
+      "replace": "  const shown = changes;"
+    },
+    {
+      "name": "a pinned row that wrote nothing stops saying mapping",
+      "source": "src/agent/ui/tasks/ruleMapRowLabel.ts",
+      "find": "  return task.status === 'running' ? 'mapping…' : 'nothing to write'",
+      "replace": "  return 'mapping…'"
+    },
+    {
+      "name": "the dialog maps a rule_map task instead of throwing",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "    case 'rule_map':\n      return { id: task.id, type: 'rule_map', label, status: task.status, task };\n",
+      "replace": ""
+    },
+    {
+      "name": "the dialog opens a notice's detail view",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "      case 'rule_map':\n        return <RuleMapDetailDialog",
+      "replace": "      case 'rule_map':\n        return null && <RuleMapDetailDialog"
+    },
+    {
+      "name": "the dialog row renders a notice",
+      "source": "src/agent/ui/tasks/BackgroundTask.tsx",
+      "find": "    case \"rule_map\":\n",
+      "replace": ""
+    },
+    {
+      "name": "a rule_map task belongs to the Maps group",
+      "source": "src/agent/ui/tasks/footerTaskGeometry.ts",
+      "find": "    case 'rule_map':\n      return 'maps'\n",
+      "replace": ""
+    },
+    {
+      "name": "a held notice makes the footer reachable",
+      "source": "src/agent/ui/tasks/footerTaskGeometry.ts",
+      "find": "      t.displayUntil !== undefined &&\n      t.id !== foregroundedTaskId &&",
+      "replace": "      false &&\n      t.id !== foregroundedTaskId &&"
+    },
+    {
+      "name": "the footer cursor is offered for a held notice",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "(runningTaskCount > 0 || hasPanelRows || hasHeldRows)",
+      "replace": "(runningTaskCount > 0 || hasPanelRows)"
+    },
+    {
+      "name": "the footer hint is offered for a held notice",
+      "source": "src/terminal/prompt-input/PromptInputFooterLeftSide.tsx",
+      "find": "(hasBackgroundTasks || hasHeldRows) && !hasTeammatePills",
+      "replace": "hasBackgroundTasks && !hasTeammatePills"
+    },
+    {
+      "name": "a rule_map row offers no x",
+      "source": "src/agent/ui/tasks/footerRowAction.ts",
+      "find": "    case 'rule_map':\n      // A sync runs for milliseconds and holds no process; there is nothing\n      // for `x` to stop, and the row leaves on its own.\n      return null\n",
+      "replace": ""
+    },
+    {
+      "name": "a write names what moved",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": "      changes: diffRuleMapCounts(content, next),",
+      "replace": "      changes: [],"
+    },
+    {
+      "name": "/map speaks the user's words for a skip",
+      "source": "src/commands/map/map.ts",
+      "find": "  killswitch: `${RULE_MAP_KILLSWITCH} is set`,",
+      "replace": "  killswitch: 'killswitch',"
+    },
+    {
+      "name": "/map shows only the switch that applies",
+      "source": "src/commands/map/map.ts",
+      "find": "  return ['/map sync', ...toggle, '/map annotate'].join(' · ')",
+      "replace": "  return '/map sync · /map off · /map on · /map annotate'"
+    },
+    {
+      "name": "the end of a main-thread turn runs the sync",
+      "source": "src/agent/query/stopHooks.ts",
+      "find": "      void executeRuleMapSync({\n",
+      "replace": "      void ({\n"
+    },
+    {
+      "name": "the session arms the scheduler",
+      "source": "src/platform/backgroundHousekeeping.ts",
+      "find": "  initRuleMapSync()\n",
+      "replace": ""
+    },
+    {
+      "name": "a headless run drains the sync before exit",
+      "source": "src/platform/headless/print/runHeadless.ts",
+      "find": "  await drainPendingRuleMapSync()\n",
+      "replace": ""
+    },
+    {
+      "name": "control: retuning how long a notice stays listed breaks nothing",
+      "expect": "green",
+      "source": "src/agent/tasks/RuleMapTask/RuleMapTask.ts",
+      "find": "export const RULE_MAP_DISPLAY_MS = 8_000",
+      "replace": "export const RULE_MAP_DISPLAY_MS = 9_000"
+    }
+  ]
+}

@@ -43,6 +43,7 @@ exports[`slash-command registry — characterization the registered bindings mat
   "init",
   "installGitHubApp",
   "installSlackApp",
+  "map",
   "mcp",
   "memory",
   "model",

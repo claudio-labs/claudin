@@ -30,6 +30,7 @@ const GROUP_ICONS: Record<FooterGroupKey, string> = {
   remote: '\u{f015f}', // nf-md-cloud
   workflows: '\u{f1049}', // nf-md-graph
   dreams: '\u{f04b2}', // nf-md-sleep
+  maps: '\u{f0645}', // nf-md-file_tree
 }
 
 /**

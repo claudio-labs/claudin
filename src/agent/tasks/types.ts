@@ -1,6 +1,7 @@
 // Union of all concrete task state types
 // Use this for components that need to work with any task type
 
+import { isTerminalTaskStatus } from 'src/agent/Task.js'
 import type { DreamTaskState } from 'src/agent/tasks/DreamTask/DreamTask.js'
 import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js'
 import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js'
@@ -10,6 +11,7 @@ import type { LocalWorkflowTaskState } from './LocalWorkflowTask/LocalWorkflowTa
 import type { McpServerTaskState } from 'src/agent/tasks/McpServerTask/types.js'
 import type { MonitorMcpTaskState } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js'
 import type { RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
+import type { RuleMapTaskState } from 'src/agent/tasks/RuleMapTask/RuleMapTask.js'
 
 export type TaskState =
   | LocalShellTaskState
@@ -21,6 +23,7 @@ export type TaskState =
   | DreamTaskState
   | ContainerTaskState
   | McpServerTaskState
+  | RuleMapTaskState
 
 // Task types that can appear in the background tasks indicator
 export type BackgroundTaskState =
@@ -33,6 +36,7 @@ export type BackgroundTaskState =
   | DreamTaskState
   | ContainerTaskState
   | McpServerTaskState
+  | RuleMapTaskState
 
 /**
  * Check if a task should be shown in the background tasks indicator.
@@ -49,6 +53,25 @@ export function isBackgroundTask(task: TaskState): task is BackgroundTaskState {
     return false
   }
   return true
+}
+
+/**
+ * Whether the footer and the background-tasks dialog list a task: every
+ * background task, plus a finished one held on screen (`displayUntil`, set by
+ * holdTerminalTask — whose timer, not this check, decides when it leaves).
+ *
+ * Separate from `isBackgroundTask` on purpose. That one also answers "is
+ * there still work in flight" — the headless turn loop waits on it, and the
+ * running-task pill, the running counts and the kill hints read it — so a
+ * finished task must keep answering no there even while it is still listed.
+ */
+export function isListedBackgroundTask(task: TaskState): task is BackgroundTaskState {
+  // Terminal first: the two unions are the same set, so a failed
+  // isBackgroundTask guard would narrow `task` to never.
+  if (isTerminalTaskStatus(task.status)) {
+    return task.displayUntil !== undefined
+  }
+  return isBackgroundTask(task)
 }
 
 /**

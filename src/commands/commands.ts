@@ -33,6 +33,7 @@ import importCommand from 'src/commands/import/index.js'
 import init from 'src/commands/init.js'
 import installGitHubApp from 'src/commands/install-github-app/index.js'
 import installSlackApp from 'src/commands/install-slack-app/index.js'
+import map from 'src/commands/map/index.js'
 import cacheProbe from 'src/commands/cache-probe/index.js'
 import cacheStats from 'src/commands/cacheStats/index.js'
 import cd from 'src/commands/cd/index.js'
@@ -204,6 +205,7 @@ const COMMANDS = memoize((): Command[] => [
   init,
   installGitHubApp,
   installSlackApp,
+  map,
   mcp,
   memory,
   model,

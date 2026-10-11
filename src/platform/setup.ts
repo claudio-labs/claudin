@@ -19,10 +19,6 @@ import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.j
 import { checkAndRestoreTerminalBackup } from 'src/platform/ide/appleTerminalBackup.js'
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/providers/auth/auth.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
-import {
-  describeRuleMapSync,
-  syncProjectRuleMap,
-} from 'src/memory/instructions/ruleMapAutoSync.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
@@ -269,24 +265,6 @@ export async function setup(
   // getCommands() kick — see comment there. Moved out of setup() because
   // the await points above (startUdsMessaging, ~20ms) meant getCommands()
   // raced ahead and memoized an empty bundledSkills list.
-  if (!isBareMode()) {
-    // Bring the project's navigation map in line with the tree before the
-    // system prompt is assembled: getMemoryFiles memoizes for the process
-    // lifetime, so a rewrite after this point would leave the session reading
-    // bytes that are no longer on disk. Gated and killswitched in the module;
-    // the common case is one `git ls-files` and no write.
-    const mapSync = await syncProjectRuleMap(getCwd())
-    const mapNotice = describeRuleMapSync(mapSync)
-    if (mapNotice !== null) {
-      clearMemoryFileCaches()
-      // stderr, not stdout: setup() is awaited long before
-      // installStreamJsonStdoutGuard() runs in runHeadless, so a stdout write
-      // here puts a non-JSON line ahead of the payload of the first
-      // `-p --output-format json|stream-json` run in a repo.
-      // biome-ignore lint/suspicious/noConsole:: intentional console output
-      console.error(chalk.dim(mapNotice))
-    }
-  }
   void lockCurrentVersion() // Lock current version to prevent deletion by other processes
   logForDiagnosticsNoPII('info', 'setup_background_jobs_launched')
 

@@ -1,4 +1,5 @@
 import type { Command } from 'src/commands/commands.js'
+import { RULE_MAP_ANNOTATE_INSTRUCTIONS } from 'src/memory/instructions/ruleMapAnnotatePrompt.js'
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js'
 
 const INIT_PROMPT = `Set up a minimal AGENTS.md (and optionally CLAUDE.local.md, subagents, skills, hooks, and guardrails) for this repo. The root project instruction file is loaded into every Claudin session, so it must be concise — only include what Claude would get wrong without it.
@@ -123,32 +124,13 @@ For projects with distinct subdirectories (monorepos, multi-module projects, etc
 
 ## Phase 4.5: Annotate the navigation map
 
-Look for \`.claudin/rules/search-strategy.md\`. It is normally written at session
-start from the tracked file list, but that is skipped outside a git repo, inside
-a linked worktree, and when \`CLAUDIN_DISABLE_RULE_MAP_SYNC\` is set — so if it is
-not there, skip this phase rather than writing one by hand.
+Look for \`.claudin/rules/search-strategy.md\`. It is written from the tracked file
+list just before this prompt and at the end of every turn, but that is skipped
+outside a git repo, inside a linked worktree, after \`/map off\`, and when
+\`CLAUDIN_DISABLE_RULE_MAP_SYNC\` is set — so if it is not there, skip this phase
+rather than writing one by hand.
 
-What the file cannot derive is what each directory is *for*. That is your job
-here, and it is the only part of it that is.
-
-- **A generated map** carries \`<!-- claudin:module-map -->\` and reads \`← TODO\`
-  on every entry nobody has explained. Replace each \`TODO\` with a short phrase
-  naming the directory's job — six or seven words, the kind of thing that saves
-  a search ("the HTTP handlers", "provider abstraction; start here for auth").
-  Its tree, its \`(N)\` counts and its \`paths:\` frontmatter are rewritten on the
-  next run, so an edit to those is discarded; the \`←\` text is keyed to the
-  directory's full path and survives.
-- **A hand-written map** has no marker and no \`TODO\`s. Only its numbers are
-  ever touched automatically — the tree is never restructured, because where a
-  directory belongs in a curated tree is judgment. So here you may propose
-  structural fixes too (a directory that no longer exists, one that is missing),
-  but **propose them as a diff and let the user apply it**.
-
-One rule outranks coverage in both cases.
-**Only annotate what you actually read.**
-A guess is worse than a \`TODO\` — the map decides where the next agent greps, so
-an entry describing the wrong thing sends every future session to the wrong
-directory, and no checker can catch that. Leave the rest alone.
+${RULE_MAP_ANNOTATE_INSTRUCTIONS}
 
 ## Phase 5: Write CLAUDE.local.md (if user chose personal or both)
 
@@ -369,8 +351,20 @@ const command = {
   contentLength: 0, // Dynamic content
   progressMessage: 'analyzing your codebase',
   source: 'builtin',
-  async getPromptForCommand() {
+  async getPromptForCommand(_args, context) {
     maybeMarkProjectOnboardingComplete()
+    // Phase 4.5 reads the navigation map, and /init is often the first prompt
+    // of a session in a fresh repo — before any turn has ended to write one.
+    // It respects `/map off`, and announces a write like the end of a turn
+    // does. Loaded here, not at the top: commands.ts imports this file at
+    // startup, and the scheduler reaches the task framework and the messages.
+    const { syncRuleMapIfEnabled } = await import(
+      'src/memory/instructions/ruleMapScheduler.js'
+    )
+    await syncRuleMapIfEnabled({
+      appendSystemMessage: context?.appendSystemMessage,
+      setAppState: context?.setAppState,
+    })
 
     return [
       {

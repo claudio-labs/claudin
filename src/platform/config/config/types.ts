@@ -168,6 +168,12 @@ export type ProjectConfig = {
     | 'max'
     | 'adaptive'
     | 'auto'
+  /**
+   * `/map off`: stop syncing this project's navigation map at the end of each
+   * turn. Local to this user, like the rest of this object; the switch for
+   * every project is `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`.
+   */
+  ruleMapSyncDisabled?: boolean
 }
 
 export type InstallMethod = 'local' | 'native' | 'global' | 'unknown'

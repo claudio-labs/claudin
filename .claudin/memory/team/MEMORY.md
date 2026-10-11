@@ -1,54 +1,53 @@
 # Team Memory
 
-> Coding gotchas live in `.claudin/rules/`, loaded by path (ink-tui, cache, testing, build-system,
-> typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
+> Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
+- [Navigation map syncs at the end of a turn, /map (10-10, branch)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
+- [Every MCP call collapses, with a batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) — Calling/Called; errored calls leave the group
 - [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut; paged past the line (10-10)](decisions/summarizer-lossless.md)
-- [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — memoryDirs.ts registry + TYPE_SCOPES; `CLAUDIN_GLOBAL_MEMORY=0`
+- [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
-- [Memory extraction on Haiku — REJECTED 10-10](decisions/extract-memories-haiku-rejected.md) — −92% but ~1¢/turn; high lost the user profile, xhigh 2× slower
+- [Memory extraction on Haiku — REJECTED 10-10](decisions/extract-memories-haiku-rejected.md) — −92% but ~1¢/turn; high lost the user profile
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed writes refused
 - [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
-- [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
+- Patch: [`Patch` on the wire (#244)](decisions/patch-tool-rename.md) · [any earlier read (#242)](decisions/apply-patch-any-read.md) · [applies what matches (09-29)](decisions/patch-applies-what-matches.md)
 - [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
 - Superseded by the lane: [bounded keep #252](decisions/cap-keeps-model-bounded-reads.md) · [cat credit, off](decisions/bash-read-passthrough-not-promoted.md)
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; 6 `CLAUDIN_*` killswitches
 - [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `then` arms the response guard
-- [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — classifier 20→11; `CLAUDIN_READONLY_GLOBS=0`
-- [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
-- [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets; agents ask each other (`await_reply`)
-- [apply_patch is `Patch` on the wire (#244)](decisions/patch-tool-rename.md) — alias + legacy-name map; a census must count both names
-- [Patch takes any earlier read (#242)](decisions/apply-patch-any-read.md) — only never-read is refused, the hunk match is the check; Edit keeps the gate
-- [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — file_paths + symbol lists; `CLAUDIN_READ_MULTI=0` kills it
-- [Opus 5.5 defaults to medium effort, like Claude Code (#242)](decisions/opus-5-5-default-effort-medium.md) — the only lever that closed the cost gap; pins win
+- [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — classifier 20→11
+- [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — killswitches in the file
+- [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets, `await_reply`
+- [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — `CLAUDIN_READ_MULTI=0`
+- [Opus 5.5 defaults to medium effort, like Claude Code (#242)](decisions/opus-5-5-default-effort-medium.md) — the lever that closed the cost gap
 - [Team memory: git IS the sync (2026-09-21)](decisions/team-memory-git-is-the-sync.md) — HTTP sync + LLM recall deleted; `paths:` loads on demand
-- [`safeguards` classifier — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint; it would ship rules and identity
+- [`safeguards` classifier — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint
 - [Tool-prompt tone rewrite — DROPPED 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls
-- [Seven catch-all dirs retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts; `src/shared/` upward imports ≤131
+- [Seven catch-all dirs retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts
 - [memory_delta deleted 2026-08-07](decisions/memory-delta-removed-double-send.md) — a second full copy, not a delta (~57 KB/session)
 - Repo map — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
-- [LSPTool back since 2026-06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only 9 ops, cache-safe; built-in servers removed
+- [LSPTool back since 2026-06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only, cache-safe
 - [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — calls −29%, wall +30%; `CLAUDIN_EXPLORE_AGENT=0`
-- [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks, a named agent stays fresh; auto-background opt-in
+- [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks; a named agent stays fresh
 - [Git tool (D2), shipped 2026-08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — projects[].activeEffortForProject; `/effort inherit` clears
 - [Adaptive thinking on by default (2026-07-13)](decisions/adaptive-thinking-default-on.md) — `CLAUDIN_ENABLE_ADAPTIVE_THINKING=0` opts out
 - [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests; opt-in `=0`
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — prStatusHosts lives in config.json, not settings.json
 - [Bash filter shape blindness — CLOSED 2026-08-29](decisions/bash-filter-shape-wontfix.md) — specs cap at 6.8% of chars over 18.3k calls
-- [code-review-graph — REJECTED 2026-08-08](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, loses to reading the diff; 4 ideas kept
+- [code-review-graph — REJECTED 2026-08-08](decisions/code-review-graph-evaluated-rejected.md) — loses to reading the diff
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources go in SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (2026-09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 2026-06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker; needs a Ghidra/IDA budget
-- [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
+- [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08
 
 ## Bugs
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error
-- [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set matches `'agent:builtin'` exactly; 2 long runs lost 10-05; not fixed
-- [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — phantom `noop`; `claudin install`, `mcp serve` broken
+- [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
+- [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source before committing
 - [Two latent bugs pinned, not fixed (2026-09-20)](bugs/latent-bugs-pinned-not-fixed.md) — autobackground misses `sleep N`; deleted rules resurrect
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — mid-session reconcile, cache GC, migrate rerun pending
@@ -57,7 +56,7 @@
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — echo the real input on allow
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run in isolation first
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
-- [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — legacy team/ copied back as untracked root files
+- [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked root files
 - FIXED: [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema freeze](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md)
 - FIXED: [WaitFor params](bugs/waitfor-drops-optional-params.md) · [resume re-wrote the cache](bugs/resume-rewrites-cache-prefix.md) — 40%→100% read-back; cache.md §7
 
@@ -114,7 +113,7 @@
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20; md5 split gate, back-edge trap
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%; on 1M the retain floor sits ABOVE its band
-- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps · [tokens](token-efficiency-roadmap.md)
+- [Product roadmap 2026-07](roadmap-2026-07.md) — R1..R5, R3 bg agent done · [tokens](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3 Read re-read dedup (~9.5%) and D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
@@ -134,13 +133,13 @@
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
 - [Session cache A/B vs Claude Code (09-23..10-09)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; Sonnet 5.5 +17%
-- [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal; relief 250k +7%, over-clips 3×
+- [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal
 - [Session cost round 3 (09-23)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't
-- [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); family gate stays
+- [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
 - [Request prefix, broken down](request-prefix-size-2026-09-23.md) — eager tools were ≈20k; deferred schemas unbilled
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — with `directory`: −7.7% cost, −25% output
 - [Dev tools deferred + Bash advice A/B (09-24)](dev-tools-deferred-advice-ab-2026-09-24.md) — no regression, prefix −3.3k; deferred RunTests unused
-- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties CC; catread +6% · [read-files 09-29](read-files-ab-2026-09-29.md) +13%, failed
+- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties CC · [read-files 09-29](read-files-ab-2026-09-29.md) failed
 - [Fewer requests per session — 4 rounds (09-25)](request-count-levers-2026-09-24.md) — `then` + path-keeping cap promoted; Grep bodies parked
 - [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — #252 targets the capped reads, unmeasured
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
@@ -161,15 +160,15 @@
 - [xAI / Grok OAuth provider — on main since 2026-09-10](xai-oauth-provider-shipped.md) — loopback PKCE, pinned port 56121
 
 ## Build, release & distribution
-- [Native-binary distribution (bun --compile)](compile-binary-distribution.md) — ~409 vs 727ms; rg+sharp vendored; strip breaks binaries
+- [Native-binary distribution (bun --compile)](compile-binary-distribution.md) — rg+sharp vendored; strip breaks binaries
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC; verify with `npm access list`
-- [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live; the /usr/lib layout keeps rg+sharp resolving
+- [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
 - [Node engine floor 22.12.0](node-engine-floor-22.md) — commander 15 is ESM-only; breaks Node 20
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
 - Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28, undici](dependabot-bumps-2026-09-28-audited.md)
 - [Dependabot audit 10-06 — shell-quote 1.11 Bash bypass](dependabot-bumps-2026-10-06-audited.md) — fixed + MCP issuer; Foundry default retires 11-30
-- [v8cache GC blocked process exit — fixed](startup-v8cache-gc-blocked-exit.md) — detached child + daily stamp; checkpoint deltas mislead
-- [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it reached children and broke the OAuth browser
+- [v8cache GC blocked process exit — fixed](startup-v8cache-gc-blocked-exit.md) — detached child + daily stamp
+- [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700, global gitignore
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — origin claudio-labs/claudin; the Gitea + tea flow is gone
 - [main's GitHub ruleset](main-branch-ruleset-protection.md) — admin bypass; an empty include made it inert
@@ -181,12 +180,12 @@
 - [collapseRuns + blank-strip is safe since 06-27](bashfilter-collapseruns-blankstrip-footgun.md) — don't reintroduce marker-on-blank
 - [bashfilter fixture edits must keep byte length](bashfilter-fixtures-byte-length-sensitive.md) — ROI tests assert reduction %
 - [Bash filter samples live in ONE dir](bash-filter-sample-corpus-unified.md) — __fixtures__/samples/; 87 of 142 unmapped
-- [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only (CLAUDIN_NO_FLICKER=1); SGR via send-keys
-- [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted in #242); parser repairs
-- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25; display is cache-neutral
+- [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only; SGR via send-keys
+- [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted #242)
+- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25
 
 ## References (sibling repos, wire formats, archives)
-- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; ~5.5% of lines theirs; 17/28 bug claims real
+- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; 17/28 bug claims real
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win; 4 ideas kept
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — 4 gaps · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow

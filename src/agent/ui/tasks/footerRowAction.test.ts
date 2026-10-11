@@ -44,6 +44,11 @@ describe('footerRowAction', () => {
     expect(footerRowAction(taskFixture('container'))).toBe('stop')
   })
 
+  test('a navigation-map sync offers nothing even while it runs', () => {
+    // It holds no process, and the row leaves on its own seconds later.
+    expect(footerRowAction(taskFixture('rule_map'))).toBeNull()
+  })
+
   test('a running shell is still just stopped', () => {
     expect(footerRowAction(taskFixture('local_bash'))).toBe('stop')
     expect(footerRowAction(taskFixture('local_agent'))).toBe('stop')
