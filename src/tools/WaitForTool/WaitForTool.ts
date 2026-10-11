@@ -158,7 +158,6 @@ export const WaitForTool = buildTool({
   clearableResult: true,
   maxResultSizeChars: 10_000,
 
-  // Bash's rule: only a wait that writes nothing may run beside other tools.
   isConcurrencySafe(input) {
     return writesNothing(input)
   },
