@@ -108,6 +108,16 @@ describe('WaitForTool', () => {
     expect(bad?.result).toBe(false)
   })
 
+  test('read-only exactly when its setup and poll only read, so plan mode lets it watch', () => {
+    // The census saw a wait on a task's output file refused in plan mode, where
+    // the same `tail` through Bash would have run.
+    const input = (fields: { command: string; setup?: string }) => ({ description: 'd', ...fields }) as never
+    expect(WaitForTool.isReadOnly(input({ command: 'tail -c 400 package.json; ls src' }))).toBe(true)
+    expect(WaitForTool.isReadOnly(input({ command: 'rm -f stale.out' }))).toBe(false)
+    // The setup runs too, so it counts.
+    expect(WaitForTool.isReadOnly(input({ setup: 'rm -f stale.out', command: 'cat package.json' }))).toBe(false)
+  })
+
   test('until: `.` stays on one line unless the pattern asks otherwise', async () => {
     // No implicit flags: a pattern written for one line must not start matching
     // across two, which would end a wait early on output it was not waiting for.

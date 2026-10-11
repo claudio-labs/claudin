@@ -17,7 +17,9 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import {
   bashToolHasPermission,
+  commandHasAnyCd,
 } from 'src/tools/BashTool/bashPermissions.js'
+import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 import { compileUntil } from 'src/tools/WaitForTool/untilRegex.js'
 
@@ -115,6 +117,15 @@ function formatStatus(output: Output): string {
   return `[${WAITFOR_TOOL_NAME}: ${output.reason} after ${secs}s, ${output.polls} poll${output.polls === 1 ? '' : 's'}]`
 }
 
+/**
+ * Everything the call will run, as one shell command: the setup and the poll
+ * are judged together by every gate that reads a command — permissions, the
+ * auto-mode classifier and the read-only check.
+ */
+function shellCommandOf(input: { command: string; setup?: string }): string {
+  return input.setup ? `${input.setup} && ${input.command}` : input.command
+}
+
 export const WaitForTool = buildTool({
   name: WAITFOR_TOOL_NAME,
   searchHint: 'wait until a command output matches or settles',
@@ -125,8 +136,15 @@ export const WaitForTool = buildTool({
     return true
   },
 
+  // Bash's own verdict, so a wait on a task's output file runs in plan mode
+  // exactly where the same `tail` through Bash would.
+  isReadOnly(input) {
+    const command = shellCommandOf(input)
+    return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'
+  },
+
   toAutoClassifierInput(input) {
-    return input.setup ? `${input.setup} && ${input.command}` : input.command
+    return shellCommandOf(input)
   },
 
   // Every `if` condition on a WaitFor hook matches, covering both the setup and
@@ -142,8 +160,7 @@ export const WaitForTool = buildTool({
   async checkPermissions(input, context) {
     // Delegate to the bash permission system — both the setup and the poll
     // are shell commands, so the same rules apply to their conjunction.
-    const command = input.setup ? `${input.setup} && ${input.command}` : input.command
-    const bashDecision = await bashToolHasPermission({ command }, context)
+    const bashDecision = await bashToolHasPermission({ command: shellCommandOf(input) }, context)
     // Bash's verdict, never its `updatedInput`: that is Bash-shaped
     // (`{ command }`) and the harness applies it verbatim, which dropped
     // until/settle_s/interval_s/timeout_s and folded `setup` into every poll.
