@@ -41,7 +41,7 @@
     {
       "name": "Typecheck never records a baseline",
       "source": "src/tools/TypecheckTool/run.ts",
-      "find": "    mode: opts.baselineMode,",
+      "find": "    mode: parsed.degraded ? 'ignore' : opts.baselineMode,",
       "replace": "    mode: 'ignore',"
     },
     {

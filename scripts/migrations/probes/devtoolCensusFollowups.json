@@ -1,0 +1,60 @@
+{
+  "test": [
+    "src/tools/TypecheckTool/run.test.ts",
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/agent/coordinator/coordinatorMode.test.ts",
+    "src/tools/AgentTool/toolPool.test.ts",
+    "src/tools/AgentTool/resumeAgent.test.ts"
+  ],
+  "source": "src/tools/TypecheckTool/run.ts",
+  "probes": [
+    {
+      "name": "Typecheck baselines a run nothing could parse",
+      "comment": "The four follow-ups the elegance review of the 2026-10-05..11 census fixes left open.",
+      "find": "    mode: parsed.degraded ? 'ignore' : opts.baselineMode,",
+      "replace": "    mode: opts.baselineMode,"
+    },
+    {
+      "name": "WaitFor runs beside other tools whatever it does",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "  isConcurrencySafe(input) {\n    return writesNothing(input)",
+      "replace": "  isConcurrencySafe(input) {\n    return true"
+    },
+    {
+      "name": "The coordinator lists the allowlist as written",
+      "source": "src/agent/coordinator/coordinatorMode.ts",
+      "find": "    .filter(name => available.has(name) && !INTERNAL_WORKER_TOOLS.has(name))",
+      "replace": "    .filter(name => !INTERNAL_WORKER_TOOLS.has(name))"
+    },
+    {
+      "name": "The coordinator context stops asking the tool registry",
+      "source": "src/agent/coordinator/coordinatorMode.ts",
+      "find": "    : listWorkerTools(new Set(getToolsForDefaultPreset()))",
+      "replace": "    : listWorkerTools(new Set(ASYNC_AGENT_ALLOWED_TOOLS))"
+    },
+    {
+      "name": "A resume is filtered by how it runs again",
+      "source": "src/tools/AgentTool/toolPool.ts",
+      "find": "  const resolved = resolveAgentTools(agentDefinition, availableTools, pool === 'async')",
+      "replace": "  const resolved = resolveAgentTools(agentDefinition, availableTools, runsAsync)"
+    },
+    {
+      "name": "A background resume keeps Agent",
+      "source": "src/tools/AgentTool/toolPool.ts",
+      "find": "  if (!runsAsync || pool === 'async') return resolved",
+      "replace": "  if (runsAsync || !runsAsync) return resolved"
+    },
+    {
+      "name": "A resume forgets the recorded pool",
+      "source": "src/tools/AgentTool/resumeAgent.ts",
+      "find": "    toolPool: meta?.toolPool ?? 'async',",
+      "replace": "    toolPool: 'async',"
+    },
+    {
+      "name": "runAgent stops recording the pool",
+      "source": "src/tools/AgentTool/runAgent.ts",
+      "find": "    toolPool,\n  }).catch(",
+      "replace": "  }).catch("
+    }
+  ]
+}

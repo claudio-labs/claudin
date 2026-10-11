@@ -179,14 +179,14 @@
     {
       "name": "WaitFor is never read-only",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "    return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'",
-      "replace": "    return false"
+      "find": "  return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'",
+      "replace": "  return false"
     },
     {
       "name": "WaitFor's read-only verdict ignores the setup",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "    const command = shellCommandOf(input)",
-      "replace": "    const command = input.command"
+      "find": "  const command = shellCommandOf(input)",
+      "replace": "  const command = input.command"
     },
     {
       "name": "Background and resumed agents lose Git and WaitFor",
