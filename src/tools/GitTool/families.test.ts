@@ -368,6 +368,20 @@ describe('fetch / pull / push against a local bare origin', () => {
     expect(ran.text).toContain('already up to date')
   })
 
+  test('a pull refused over a dirty tree comes back with the way forward', async () => {
+    const { path } = repoWithOrigin()
+    git(path, ['config', 'pull.rebase', 'true'])
+    writeRepoFile(path, 'src/app.ts', 'dirty\n')
+
+    const ran = await runIn(path, ['git pull', 'git log --oneline -1'])
+
+    expect(ran.codes[0]).not.toBe(0)
+    expect(ran.text).toStartWith('$ git pull\n`git pull` rebases here')
+    expect(ran.text).toContain('git pull --autostash')
+    // A pull writes, so the read after it still waits.
+    expect(ran.result.notRun).toEqual(['git log --oneline -1'])
+  })
+
   test('a rejected push explains that the remote moved on', async () => {
     const { path } = repoBehindOrigin()
 

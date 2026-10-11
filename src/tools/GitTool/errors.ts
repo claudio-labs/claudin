@@ -64,7 +64,9 @@ const CONTINUE_HINT_RE = /git (rebase|cherry-pick|revert|merge|am) --continue/
 
 const WOULD_OVERWRITE_RE =
   /^error: Your local changes to the following files would be overwritten by (\w+):/m
-const UNSTAGED_BLOCKS_RE = /^error: cannot (\w+): You have unstaged changes/m
+/** "cannot rebase: …", and the pull form "cannot pull with rebase: …", unstaged or staged. */
+const UNSTAGED_BLOCKS_RE =
+  /^error: cannot (pull with rebase|\w+): (?:You have unstaged changes|Your index contains uncommitted changes)/m
 
 // --- branch / remote ---------------------------------------------------------
 
@@ -261,6 +263,12 @@ export function diagnose(
   }
   const unstaged = UNSTAGED_BLOCKS_RE.exec(output)
   if (unstaged) {
+    // A pull rebases only when pull.rebase says so, and `--autostash` is the
+    // one-step way through it — the model otherwise spent 1-3 calls on a
+    // stash/fetch/merge of its own.
+    if (unstaged[1] === 'pull with rebase') {
+      return '`git pull` rebases here (pull.rebase), and a rebase needs a clean tree. `git pull --autostash` stashes your changes, pulls and puts them back in one step — nothing was changed.'
+    }
     return `\`git ${unstaged[1] ?? 'rebase'}\` needs a clean tree. Commit or \`git stash\` your changes first — nothing was changed.`
   }
 

@@ -155,6 +155,25 @@ describe('working tree in the way', () => {
     const line = diagnoseReal(repo.path, ['rebase', repo.feature])
     expect(line).toContain('needs a clean tree')
   })
+
+  test('a pull that rebases over unstaged changes names --autostash', () => {
+    // The 2026-10-05..11 census: 7 pulls refused this way, every one over files
+    // the harness itself had written, and git's text named no way forward.
+    const { path } = repoWithOrigin()
+    git(path, ['config', 'pull.rebase', 'true'])
+    writeRepoFile(path, 'src/app.ts', 'dirty\n')
+    expect(diagnoseReal(path, ['pull'])).toContain('git pull --autostash')
+    // `--ff-only` does not avoid it: pull.rebase still picks the rebase.
+    expect(diagnoseReal(path, ['pull', '--ff-only'])).toContain('git pull --autostash')
+  })
+
+  test('a pull that rebases over staged changes names --autostash too', () => {
+    const { path } = repoWithOrigin()
+    git(path, ['config', 'pull.rebase', 'true'])
+    writeRepoFile(path, 'src/app.ts', 'staged\n')
+    git(path, ['add', 'src/app.ts'])
+    expect(diagnoseReal(path, ['pull'])).toContain('git pull --autostash')
+  })
 })
 
 describe('remote failures', () => {
