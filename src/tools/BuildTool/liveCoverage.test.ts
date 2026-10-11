@@ -87,14 +87,14 @@ describeLive('live · cargo', () => {
   test.skipIf(!available)('a type error comes back positioned and coded', async () => {
     const root = project({
       'Cargo.toml': manifest,
-      'src/platform/main.rs': 'fn main() {\n    let x: i32 = "not a number";\n    println!("{x}");\n}\n',
+      'src/main.rs': 'fn main() {\n    let x: i32 = "not a number";\n    println!("{x}");\n}\n',
     })
     const result = await build(root)
     report('cargo failure', root, result)
 
     expect(result.exitCode).not.toBe(0)
     expect(result.errors).toBeGreaterThan(0)
-    expect(result.diagnostics[0]?.file).toEndWith('src/platform/main.rs')
+    expect(result.diagnostics[0]?.file).toEndWith('src/main.rs')
     expect(result.diagnostics[0]?.line).toBe(2)
     expect(result.diagnostics[0]?.code).toBe('E0308')
     expect(result.degraded).toBe(false)
@@ -103,7 +103,7 @@ describeLive('live · cargo', () => {
   test.skipIf(!available)('a clean build names its binary, and a rerun rebuilds nothing', async () => {
     const root = project({
       'Cargo.toml': manifest,
-      'src/platform/main.rs': 'fn main() {\n    println!("ok");\n}\n',
+      'src/main.rs': 'fn main() {\n    println!("ok");\n}\n',
     })
 
     const first = await build(root)
@@ -116,6 +116,29 @@ describeLive('live · cargo', () => {
     report('cargo rerun', root, second)
     expect(second.upToDate).toBe(true)
     expect(formatBuildResult(second)).toContain('up to date, nothing rebuilt')
+  }, 300_000)
+
+  test.skipIf(!available)('a `cargo check` that checked the crate is not "up to date"', async () => {
+    const root = project({ 'Cargo.toml': manifest, 'src/main.rs': 'fn main() {}\n' })
+    const check = () =>
+      runBuild({
+        command: 'cargo check',
+        system: 'cargo',
+        cwd: root,
+        abortSignal: new AbortController().signal,
+        timeoutMs: 300_000,
+        idleTimeoutMs: 120_000,
+        severity: 'errors',
+        alsoDetected: [],
+      })
+
+    const first = await check()
+    report('cargo check', root, first)
+    expect(first.exitCode).toBe(0)
+    expect(first.upToDate).toBe(false)
+
+    const second = await check()
+    expect(second.upToDate).toBe(true)
   }, 300_000)
 })
 
@@ -132,7 +155,7 @@ describeLive('live · a build with many errors', () => {
       { length: 40 },
       (_, i) => `    let v${i}: i32 = "still not a number";`,
     ).join('\n')
-    const root = project({ 'Cargo.toml': manifest, 'src/platform/main.rs': `fn main() {\n${body}\n}\n` })
+    const root = project({ 'Cargo.toml': manifest, 'src/main.rs': `fn main() {\n${body}\n}\n` })
     const result = await build(root)
     report('cargo · 40 repeats', root, result)
 
@@ -146,7 +169,7 @@ describeLive('live · a build with many errors', () => {
 
   test.skipIf(!Bun.which('cargo'))('distinct errors are capped and the rest counted', async () => {
     const body = Array.from({ length: 15 }, (_, i) => `    missing_fn_${i}();`).join('\n')
-    const root = project({ 'Cargo.toml': manifest, 'src/platform/main.rs': `fn main() {\n${body}\n}\n` })
+    const root = project({ 'Cargo.toml': manifest, 'src/main.rs': `fn main() {\n${body}\n}\n` })
     const result = await build(root)
     report('cargo · 15 distinct', root, result)
 

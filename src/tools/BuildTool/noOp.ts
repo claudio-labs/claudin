@@ -25,7 +25,8 @@ const RULES: Partial<Record<BuildSystem, NoOpRule>> = {
   // "3 actionable tasks: 3 up-to-date" — with any executed task it reads
   // "2 executed, 1 up-to-date", which is a real build.
   gradle: { idleRe: /\d+ up-to-date\b/, workRe: /\d+ executed\b/ },
-  cargo: { idleRe: /^\s*Finished\b/m, workRe: /^\s*Compiling\b/m },
+  // `cargo build` says Compiling; `cargo check` and `clippy` say Checking.
+  cargo: { idleRe: /^\s*Finished\b/m, workRe: /^\s*(?:Compiling|Checking)\b/m },
   make: { idleRe: /Nothing to be done for|is up to date\b/ },
   ninja: { idleRe: /^ninja: no work to do\.?$/m },
   cmake: { idleRe: /^ninja: no work to do\.?$/m, workRe: /^\[\d+\/\d+\]/m },
