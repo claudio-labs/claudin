@@ -392,12 +392,9 @@ export async function runBuild(opts: RunOptions): Promise<BuildResult> {
   if (!raw.ok) return emptyResult(opts, raw.message, raw.exitCode)
   const { text, exitCode, stall } = raw
 
-  const parsed = parseDiagnostics(parsersFor(system), { stdout: text, stderr: '', exitCode })
-
-  // A build tool that never started — not on PATH, or behind a version-manager
-  // shim with no version — prints a complaint the scrape would count as errors.
-  const notStarted =
-    parsed.diagnostics.length === 0 ? detectLauncherFailure({ stdout: text, stderr: '', exitCode }) : null
+  const input = { stdout: text, stderr: '', exitCode }
+  const parsed = parseDiagnostics(parsersFor(system), input)
+  const notStarted = parsed.degraded ? detectLauncherFailure(input) : null
   if (notStarted) return emptyResult(opts, notStarted, exitCode)
 
   const all: BuildDiagnostic[] = parsed.diagnostics.map(d => ({ ...d }))

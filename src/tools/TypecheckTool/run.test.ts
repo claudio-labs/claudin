@@ -86,7 +86,7 @@ describe('runTypecheck — the checker did not do its job', () => {
     // what the text scrape made of the shell's complaint.
     const result = await runTypecheck(options(sandbox(), 'definitely-not-a-real-checker-xyz'))
     expect(result.exitCode).toBe(127)
-    expect(result.runError).toBe('`definitely-not-a-real-checker-xyz` is not installed or not on PATH, so it never ran')
+    expect(result.runError).toBe('`definitely-not-a-real-checker-xyz` is not installed or not on PATH')
     expect(result.errors).toBe(0)
     expect(formatCheckResult(result)).toStartWith('Typecheck could not run: ')
   })
@@ -96,8 +96,18 @@ describe('runTypecheck — the checker did not do its job', () => {
     // came back as "~3 errors scraped from text".
     const mise = "printf 'mise ERROR No version is set for shim: pyright\\nmise ERROR Run with --verbose\\n' >&2; exit 1"
     const result = await runTypecheck(options(sandbox(), mise, { checker: 'pyright' }))
-    expect(result.runError).toBe('the `pyright` shim has no version selected (mise/asdf), so it never ran')
+    expect(result.runError).toBe('the `pyright` shim has no version selected (mise/asdf)')
     expect(formatCheckResult(result)).not.toContain('scraped')
+  })
+
+  test('a checker that ran is reported as itself, even beside a not-found line', async () => {
+    // A project script can print the shell's wording on its way to the real
+    // checker; once a diagnostic was parsed, the checker clearly ran.
+    const result = await runTypecheck(
+      options(sandbox(), 'echo "bash: line 1: lint-helper: command not found" >&2; echo "src/a.ts(1,1): error TS1: real."; exit 2'),
+    )
+    expect(result.runError).toBeUndefined()
+    expect(result.diagnostics).toHaveLength(1)
   })
 
   test('unreadable failing output keeps a raw tail instead of inventing positions', async () => {
@@ -298,7 +308,7 @@ describe('runTypecheck — the baseline a run records', () => {
     // error as newly introduced once the checker works.
     const cwd = cleanRepo()
     const result = await runTypecheck(options(cwd, 'definitely-not-a-real-checker-xyz'))
-    expect(result.runError).toContain('never ran')
+    expect(result.runError).toContain('not installed')
     expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(false)
   })
 })

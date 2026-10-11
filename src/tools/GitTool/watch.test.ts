@@ -212,18 +212,21 @@ describe('`gh pr checks` before the checks exist', () => {
     expect(formatGitBatchResult(result)).toContain('No checks are registered for this branch yet')
   }, 30_000)
 
-  test('an abort ends the wait', async () => {
+  test('an abort ends the wait, and reports as one', async () => {
     fakeGh.setRules([NO_CHECKS])
     const controller = new AbortController()
     setTimeout(() => controller.abort(), 300)
     const startedAt = Date.now()
-    await runGitBatch({
-      commands: ['gh pr checks 5 --watch'],
+    const result = await runGitBatch({
+      commands: ['gh pr checks 5 --watch', 'gh pr view 5'],
       abortSignal: controller.signal,
       noChecksGraceMs: 30_000,
       noChecksRetryMs: 10_000,
     })
     expect(Date.now() - startedAt).toBeLessThan(5_000)
+    // Not the last "no checks" answer: an Esc, which stops the read behind it.
+    expect(result.outcomes[0]?.interrupted).toBe(true)
+    expect(result.notRun).toEqual(['gh pr view 5'])
   }, 30_000)
 
   test('without --watch it answers at once, with the reason', async () => {

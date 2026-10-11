@@ -29,8 +29,8 @@
     {
       "name": "RunTests reports a cancelled run as something else",
       "source": "src/tools/RunTestsTool/run.ts",
-      "find": "      return notRun(framework, plan.command, exitCode, 'Test run was interrupted before completing.')",
-      "replace": "      return notRun(framework, plan.command, exitCode, 'Test run failed.')"
+      "find": "      return notRun(framework, plan.command, 'Test run was interrupted before completing.', exitCode)",
+      "replace": "      return notRun(framework, plan.command, 'Test run failed.', exitCode)"
     },
     {
       "name": "RunTests drops the tail of a passing suite under a failed exit",
@@ -65,9 +65,9 @@
     },
     {
       "name": "WaitFor makes . cross lines by default",
-      "source": "src/tools/WaitForTool/untilRegex.ts",
-      "find": "  if (!leading) return new RegExp(source)",
-      "replace": "  if (!leading) return new RegExp(source, 's')"
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": " : new RegExp(source)\n}",
+      "replace": " : new RegExp(source, 's')\n}"
     }
   ]
 }

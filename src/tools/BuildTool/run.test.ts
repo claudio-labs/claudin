@@ -149,13 +149,16 @@ describe('runBuild — a build that did not succeed', () => {
   test('a build tool that is not installed could not run, rather than failing with errors', async () => {
     const result = await runBuild(options('definitely-not-a-real-build-tool-xyz all'))
     expect(result.exitCode).toBe(127)
-    expect(result.runError).toBe('`definitely-not-a-real-build-tool-xyz` is not installed or not on PATH, so it never ran')
+    expect(result.runError).toBe('`definitely-not-a-real-build-tool-xyz` is not installed or not on PATH')
     expect(formatBuildResult(result)).toStartWith('Build could not run: ')
   }, 30_000)
 
-  test('a build tool behind a shim with no version selected never ran either', async () => {
-    const result = await runBuild(options("printf 'mise ERROR No version is set for shim: cargo\\n' >&2; exit 1"))
-    expect(result.runError).toBe('the `cargo` shim has no version selected (mise/asdf), so it never ran')
+  test('a build that ran is reported as itself, even beside a not-found line', async () => {
+    const result = await runBuild(
+      options("printf 'bash: line 1: ccache: command not found\\nsrc/a.c:3:5: error: unknown type name\\n'; exit 2"),
+    )
+    expect(result.runError).toBeUndefined()
+    expect(result.errors).toBe(1)
   }, 30_000)
 
   test('a build cancelled before it starts says so instead of reporting a failure', async () => {

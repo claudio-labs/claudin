@@ -346,6 +346,8 @@ describe('gh', () => {
     const line = diagnose('gh pr checks 4', 1, output)
     expect(line).toContain('A check failed')
     expect(line).toContain('gh run view <run-id> --log-failed')
+    // Only `pr checks` exits 1 for a failed check; another command's `fail` row is not that.
+    expect(diagnose('gh run list', 1, output)).toBeNull()
   })
 
   test('a git diagnosis never leaks into a gh command', () => {

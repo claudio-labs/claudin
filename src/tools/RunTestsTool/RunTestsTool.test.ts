@@ -1211,22 +1211,26 @@ describe('runTests — a run that did not pass', () => {
 
   test('a runner that is not installed could not start, rather than one failed test', async () => {
     const result = await run('definitely-not-a-real-runner-xyz -q')
-    expect(result.runError).toBe('`definitely-not-a-real-runner-xyz` is not installed or not on PATH, so it never ran')
+    expect(result.runError).toBe('`definitely-not-a-real-runner-xyz` is not installed or not on PATH')
     expect(formatTestResult(result)).toStartWith('Test run could not start: ')
   }, 30_000)
 
-  test('a runner behind a shim with no version selected never ran either', async () => {
-    const result = await run("printf 'mise ERROR No version is set for shim: pytest\\n' >&2; exit 1")
-    expect(result.runError).toBe('the `pytest` shim has no version selected (mise/asdf), so it never ran')
-    expect(result.failed).toBe(0)
-  }, 30_000)
-
-  test('a test that prints "command not found" while failing is still a failing test', async () => {
-    // The gate is the parse: once a test case was read, the shell's wording
-    // inside its output belongs to the test, not to the launcher.
-    const result = await run("printf 'not ok 1 - runs the cli\\n# deploy: command not found\\n1..1\\n'; exit 1")
+  test("a failing test whose output carries the shell's not-found line is still a failing test", async () => {
+    // A test of a CLI can print exactly what a missing runner prints. Once a
+    // test case was read (TAP here), that line belongs to the test.
+    const result = await run(
+      "printf 'not ok 1 - runs the cli\\n1..1\\n'; printf 'bash: line 1: deploy: command not found\\n' >&2; exit 1",
+    )
     expect(result.runError).toBeUndefined()
     expect(result.failed).toBe(1)
+  }, 30_000)
+
+  test('a scraped run that passed tests did start, whatever its output says', async () => {
+    // No structured reporter, so the scrape decides — and three passed tests
+    // prove the runner ran.
+    const result = await run("printf '3 passed\\n'; printf 'bash: line 1: deploy: command not found\\n' >&2; exit 1")
+    expect(result.degraded).toBe(true)
+    expect(result.runError).toBeUndefined()
   }, 30_000)
 
   test('a run cancelled before it starts says so', async () => {

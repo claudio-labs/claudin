@@ -38,7 +38,7 @@ export type FakeGhRule = {
   /**
    * Answer only the first N invocations this rule matches, then let the next
    * rule take over — how a test says "no checks yet, then checks". Counted
-   * from the invocation log, so call `clearInvocations()` before relying on it.
+   * from the last `setRules` (or `clearInvocations`), not from install.
    */
   times?: number
 }
@@ -138,9 +138,11 @@ const FAKE_GH_SOURCE: readonly string[] = [
   '  process.exit(70)',
   '}',
   'const rules = Array.isArray(manifest.rules) ? manifest.rules : []',
+  "const since = typeof manifest.since === 'number' ? manifest.since : 0",
   "const history = readFileSync(join(dir, 'invocations.jsonl'), 'utf8')",
   "  .split('\\n')",
   '  .filter(Boolean)',
+  '  .slice(since)',
   "  .map(line => JSON.parse(line).join(' '))",
   'const hits = (r, text) => (r.regex ? new RegExp(r.match).test(text) : text.includes(r.match))',
   '// The log already holds this invocation, so the first one counts as 1.',
@@ -188,8 +190,16 @@ export function installFakeGh(
   const invocationsPath = join(binDir, INVOCATIONS_FILE)
   const fallback = options.fallback ?? LOUD_FALLBACK
 
+  function invocationCount(): number {
+    if (!existsSync(invocationsPath)) return 0
+    return readFileSync(invocationsPath, 'utf8').split('\n').filter(line => line.length > 0).length
+  }
+  let current = rules
+  // `since` is where a rule's `times` starts counting: the calls made under
+  // earlier rules are not this rule's.
   function writeManifest(next: readonly FakeGhRule[]): void {
-    writeFileSync(manifestPath, JSON.stringify({ rules: next, fallback }))
+    current = next
+    writeFileSync(manifestPath, JSON.stringify({ rules: next, fallback, since: invocationCount() }))
   }
   writeManifest(rules)
   appendFileSync(invocationsPath, '')
@@ -211,6 +221,7 @@ export function installFakeGh(
     },
     clearInvocations() {
       writeFileSync(invocationsPath, '')
+      writeManifest(current)
     },
     cleanup() {
       rmSync(binDir, { recursive: true, force: true })

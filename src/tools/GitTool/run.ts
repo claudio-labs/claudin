@@ -267,46 +267,44 @@ function pendingChecksStall(command: string, code: number, ranMs: number): GitSt
 }
 
 /**
- * Run a command, and when it is a `gh pr checks` watch that found no checks
- * yet, keep asking until they appear, the grace runs out, or the caller aborts.
- * The retries spend the watch's own timeout, never more.
+ * Run a `gh pr checks` watch, asking again while it finds no checks yet, until
+ * they appear, the grace runs out, or the caller aborts. The retries spend the
+ * watch's own timeout, never more, and an abort during the wait reports as
+ * one, not as the last "no checks" answer.
  */
 async function runWaitingForChecks(
-  command: string,
   params: Parameters<typeof runOneCommand>[0],
   graceMs: number,
   retryMs: number,
 ): Promise<CommandRun> {
   const startedAt = Date.now()
   let run = await runOneCommand(params)
-  if (!params.watch || ghCommandPair(command) !== 'pr checks') return run
   while (
     run.code === 1 &&
     reportsNoChecksYet(run.text) &&
-    Date.now() - startedAt + retryMs < Math.min(graceMs, params.timeoutMs) &&
-    !params.abortSignal.aborted
+    Date.now() - startedAt + retryMs < Math.min(graceMs, params.timeoutMs)
   ) {
     await sleep(retryMs, params.abortSignal)
-    if (params.abortSignal.aborted) break
+    if (params.abortSignal.aborted) return { ...run, interrupted: true }
     run = await runOneCommand({ ...params, timeoutMs: params.timeoutMs - (Date.now() - startedAt) })
   }
   return run
 }
 
 /**
- * Whether a batch goes on past a failed command. `&&` semantics are what the
- * model meant by a burst — running `git commit` after `git add` failed is worse
- * than stopping — but a failed READ with only reads behind it threatens
- * nothing, and stopping there only withholds answers: `git rev-parse @{u}` on
- * a branch never pushed cost the rest of a pre-PR read four times in the
- * 2026-10-05..11 census. Unless the failure is environmental, when every
- * later command would fail the same way.
+ * Whether a failed command stops the rest of its batch. `&&` semantics are what
+ * the model meant by a burst — running `git commit` after `git add` failed is
+ * worse than stopping — but when the failed command and everything after it
+ * are reads, nothing can go wrong by going on, and stopping only withholds
+ * answers: `git rev-parse @{u}` on a branch never pushed cost the rest of a
+ * pre-PR read four times in the 2026-10-05..11 census. An abort still stops
+ * it, and so does an environmental failure, which the rest would repeat.
  */
-function failedReadContinues(command: string, code: number, output: string, rest: readonly string[]): boolean {
+function failureStopsBatch(commandsFromHere: readonly string[], run: CommandRun, output: string): boolean {
   return (
-    isReadOnlyGitCommand(command) &&
-    rest.every(isReadOnlyGitCommand) &&
-    !isEnvironmentalFailure(command, code, output)
+    run.interrupted ||
+    !commandsFromHere.every(isReadOnlyGitCommand) ||
+    isEnvironmentalFailure(commandsFromHere[0] ?? '', run.code, output)
   )
 }
 
@@ -338,7 +336,7 @@ export async function runGitBatch(
     let stopsBatch = false
     try {
       const onProgress = opts.onProgress
-      const run = await runWaitingForChecks(command, {
+      const params: Parameters<typeof runOneCommand>[0] = {
         effectiveCommand,
         watch,
         timeoutMs:
@@ -357,7 +355,15 @@ export async function runGitBatch(
                 silentMs,
               })
           : undefined,
-      }, opts.noChecksGraceMs ?? NO_CHECKS_GRACE_MS, opts.noChecksRetryMs ?? NO_CHECKS_RETRY_MS)
+      }
+      const run =
+        watch && ghCommandPair(command) === 'pr checks'
+          ? await runWaitingForChecks(
+              params,
+              opts.noChecksGraceMs ?? NO_CHECKS_GRACE_MS,
+              opts.noChecksRetryMs ?? NO_CHECKS_RETRY_MS,
+            )
+          : await runOneCommand(params)
       const rawStdout = run.text
       const stall = run.stall ?? pendingChecksStall(command, run.code, run.ranMs)
 
@@ -397,11 +403,8 @@ export async function runGitBatch(
         ...(stall ? { stall } : {}),
       }
       // A stall is not a failure, so it never stops the rest: `["gh pr checks
-      // --watch", "gh pr view"]` still delivers the second one. An abort always does.
-      stopsBatch =
-        isError &&
-        (run.interrupted ||
-          !failedReadContinues(command, run.code, filtered, opts.commands.slice(index + 1)))
+      // --watch", "gh pr view"]` still delivers the second one.
+      stopsBatch = isError && failureStopsBatch(opts.commands.slice(index), run, filtered)
     } catch (e) {
       logError(`Git: exec failed for \`${command}\` — ${String(e)}`)
       return {

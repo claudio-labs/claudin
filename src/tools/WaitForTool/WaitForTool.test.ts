@@ -101,6 +101,17 @@ describe('WaitForTool', () => {
     expect(caseless.data.matched).toBe(true)
   })
 
+  test('until: `.` stays on one line unless the pattern asks otherwise', async () => {
+    // No implicit flags: a pattern written for one line must not start matching
+    // across two, which would end a wait early on output it was not waiting for.
+    const { data } = await WaitForTool.call(
+      { command: "printf 'pass\\nsmoke'", until: 'pass.smoke', interval_s: 0.2, timeout_s: 1, description: 'd' },
+      makeCtx(),
+    )
+    expect(data.matched).toBe(false)
+    expect(data.reason).toBe('timeout')
+  })
+
   test('until: a flag JavaScript does not have is still an invalid regex', async () => {
     const bad = await WaitForTool.validateInput?.(
       { command: 'ls', description: 'd', until: '(?x) READY # spaced' } as never,
@@ -116,17 +127,6 @@ describe('WaitForTool', () => {
     expect(WaitForTool.isReadOnly(input({ command: 'rm -f stale.out' }))).toBe(false)
     // The setup runs too, so it counts.
     expect(WaitForTool.isReadOnly(input({ setup: 'rm -f stale.out', command: 'cat package.json' }))).toBe(false)
-  })
-
-  test('until: `.` stays on one line unless the pattern asks otherwise', async () => {
-    // No implicit flags: a pattern written for one line must not start matching
-    // across two, which would end a wait early on output it was not waiting for.
-    const { data } = await WaitForTool.call(
-      { command: "printf 'pass\\nsmoke'", until: 'pass.smoke', interval_s: 0.2, timeout_s: 1, description: 'd' },
-      makeCtx(),
-    )
-    expect(data.matched).toBe(false)
-    expect(data.reason).toBe('timeout')
   })
 
   test('until: returns as soon as a background writer produces the match', async () => {

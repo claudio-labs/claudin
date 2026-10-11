@@ -40,12 +40,15 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true })
 })
 
-/** Detect and run exactly as `BuildTool.call` would, minus the permission hop. */
-async function build(root: string): Promise<BuildResult> {
+/**
+ * Detect and run exactly as `BuildTool.call` would, minus the permission hop.
+ * `command` stands in for the tool's own `command` input.
+ */
+async function build(root: string, command?: string): Promise<BuildResult> {
   const detected = detectBuild(root)
   if (!detected) throw new Error(`nothing detected in ${root}`)
   return runBuild({
-    command: applyQuietFlags(detected.system, detected.command),
+    command: applyQuietFlags(detected.system, command ?? detected.command),
     system: detected.system,
     cwd: root,
     abortSignal: new AbortController().signal,
@@ -120,24 +123,12 @@ describeLive('live · cargo', () => {
 
   test.skipIf(!available)('a `cargo check` that checked the crate is not "up to date"', async () => {
     const root = project({ 'Cargo.toml': manifest, 'src/main.rs': 'fn main() {}\n' })
-    const check = () =>
-      runBuild({
-        command: 'cargo check',
-        system: 'cargo',
-        cwd: root,
-        abortSignal: new AbortController().signal,
-        timeoutMs: 300_000,
-        idleTimeoutMs: 120_000,
-        severity: 'errors',
-        alsoDetected: [],
-      })
-
-    const first = await check()
+    const first = await build(root, 'cargo check')
     report('cargo check', root, first)
     expect(first.exitCode).toBe(0)
     expect(first.upToDate).toBe(false)
 
-    const second = await check()
+    const second = await build(root, 'cargo check')
     expect(second.upToDate).toBe(true)
   }, 300_000)
 })

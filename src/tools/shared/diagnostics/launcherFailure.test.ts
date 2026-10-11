@@ -8,17 +8,25 @@ function shell(command: string, shellBin = 'bash'): { stdout: string; stderr: st
 }
 
 describe('detectLauncherFailure', () => {
-  test('a command the shell could not find', () => {
+  test('a command bash could not find', () => {
     const run = shell('pyright-definitely-not-installed --outputjson')
     expect(run.exitCode).toBe(127)
-    expect(detectLauncherFailure(run)).toBe(
-      '`pyright-definitely-not-installed` is not installed or not on PATH, so it never ran',
-    )
+    expect(detectLauncherFailure(run)).toBe('`pyright-definitely-not-installed` is not installed or not on PATH')
   })
 
   test('the same through sh, whose wording differs', () => {
     const run = shell('pyright-definitely-not-installed', 'sh')
-    expect(detectLauncherFailure(run)).toContain('`pyright-definitely-not-installed` is not installed')
+    expect(detectLauncherFailure(run)).toBe('`pyright-definitely-not-installed` is not installed or not on PATH')
+  })
+
+  test.skipIf(!Bun.which('zsh'))('the same through zsh, which puts the name last', () => {
+    const run = shell('pyright-definitely-not-installed', 'zsh')
+    expect(detectLauncherFailure(run)).toBe('`pyright-definitely-not-installed` is not installed or not on PATH')
+  })
+
+  test("dash's wording, as a Makefile recipe meets a missing tool", () => {
+    const stderr = '/bin/sh: 1: protoc: not found\nmake: *** [Makefile:3: all] Error 127\n'
+    expect(detectLauncherFailure({ stdout: '', stderr, exitCode: 2 })).toBe('`protoc` is not installed or not on PATH')
   })
 
   test('a mise shim with no version selected', () => {
@@ -32,7 +40,7 @@ describe('detectLauncherFailure', () => {
       'mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information',
     ].join('\n')
     expect(detectLauncherFailure({ stdout: '', stderr, exitCode: 1 })).toBe(
-      'the `pyright` shim has no version selected (mise/asdf), so it never ran',
+      'the `pyright` shim has no version selected (mise/asdf)',
     )
   })
 
@@ -42,17 +50,18 @@ describe('detectLauncherFailure', () => {
   })
 
   test('exit 127 with nothing recognisable still means not found', () => {
-    expect(detectLauncherFailure({ stdout: '', stderr: '', exitCode: 127 })).toContain('exit 127')
+    expect(detectLauncherFailure({ stdout: '', stderr: '', exitCode: 127 })).toBe('the command was not found (exit 127)')
   })
 
   test('a tool that ran and failed is not a launcher failure', () => {
     const stdout = "src/a.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n"
     expect(detectLauncherFailure({ stdout, stderr: '', exitCode: 2 })).toBeNull()
-    // A failure that names a missing LIBRARY is the tool reporting, not the shell.
+    // A tool reporting a missing FILE or LIBRARY is the tool talking, not the shell.
+    expect(detectLauncherFailure({ stdout: 'Error: config.yaml: not found\n', stderr: '', exitCode: 1 })).toBeNull()
     expect(detectLauncherFailure({ stdout: 'ld: library not found for -lssl\n', stderr: '', exitCode: 1 })).toBeNull()
   })
 
   test('a clean exit is never a launcher failure, whatever it printed', () => {
-    expect(detectLauncherFailure({ stdout: 'x: command not found\n', stderr: '', exitCode: 0 })).toBeNull()
+    expect(detectLauncherFailure({ stdout: 'bash: x: command not found\n', stderr: '', exitCode: 0 })).toBeNull()
   })
 })

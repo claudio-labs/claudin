@@ -27,22 +27,58 @@
       "replace": "  void notStarted"
     },
     {
+      "name": "Typecheck asks the launcher check about a run it could parse",
+      "source": "src/tools/TypecheckTool/run.ts",
+      "find": "  const notStarted = parsed.degraded ? detectLauncherFailure(input) : null",
+      "replace": "  const notStarted = detectLauncherFailure(input)"
+    },
+    {
       "name": "Build scrapes a build tool that never started",
       "source": "src/tools/BuildTool/run.ts",
       "find": "  if (notStarted) return emptyResult(opts, notStarted, exitCode)",
       "replace": "  void notStarted"
     },
     {
+      "name": "Build asks the launcher check about a run it could parse",
+      "source": "src/tools/BuildTool/run.ts",
+      "find": "  const notStarted = parsed.degraded ? detectLauncherFailure(input) : null",
+      "replace": "  const notStarted = detectLauncherFailure(input)"
+    },
+    {
       "name": "RunTests scrapes a runner that never started",
       "source": "src/tools/RunTestsTool/run.ts",
-      "find": "  if (notStarted) return notRun(framework, plan.command, exitCode, notStarted)",
+      "find": "  if (notStarted) return notRun(framework, plan.command, notStarted, exitCode)",
       "replace": "  void notStarted"
     },
     {
-      "name": "The shell's not-found wording goes unrecognised",
+      "name": "RunTests asks the launcher check about a structured run",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "  const notStarted = result.degraded && result.passed === 0 ? detectLauncherFailure(parseInput) : null",
+      "replace": "  const notStarted = result.passed === 0 ? detectLauncherFailure(parseInput) : null"
+    },
+    {
+      "name": "RunTests asks the launcher check about a run that passed tests",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "  const notStarted = result.degraded && result.passed === 0 ? detectLauncherFailure(parseInput) : null",
+      "replace": "  const notStarted = result.degraded ? detectLauncherFailure(parseInput) : null"
+    },
+    {
+      "name": "bash and sh's not-found wording goes unrecognised",
       "source": "src/tools/shared/diagnostics/launcherFailure.ts",
-      "find": "    re: /(?:^|: )([^\\s:]+): (?:command )?not found$/m,",
-      "replace": "    re: /(?!)/,"
+      "find": "  { re: /^\\S*sh(?:: line \\d+|: \\d+)?: ([^\\s:]+): (?:command )?not found$/m, reason: notOnPath },",
+      "replace": "  { re: /(?!)/, reason: notOnPath },"
+    },
+    {
+      "name": "The not-found wording matches without the shell's prefix",
+      "source": "src/tools/shared/diagnostics/launcherFailure.ts",
+      "find": "  { re: /^\\S*sh(?:: line \\d+|: \\d+)?: ([^\\s:]+): (?:command )?not found$/m, reason: notOnPath },",
+      "replace": "  { re: /(?:^|: )([^\\s:]+): (?:command )?not found$/m, reason: notOnPath },"
+    },
+    {
+      "name": "zsh's not-found wording goes unrecognised",
+      "source": "src/tools/shared/diagnostics/launcherFailure.ts",
+      "find": "  { re: /^\\S*zsh(?::\\d+)?: command not found: (\\S+)$/m, reason: notOnPath },",
+      "replace": "  { re: /(?!)/, reason: notOnPath },"
     },
     {
       "name": "A mise/asdf shim with no version goes unrecognised",
@@ -65,20 +101,26 @@
     {
       "name": "Git stops a batch at a failed read",
       "source": "src/tools/GitTool/run.ts",
-      "find": "    isReadOnlyGitCommand(command) &&",
-      "replace": "    false &&"
+      "find": "    !commandsFromHere.every(isReadOnlyGitCommand) ||",
+      "replace": "    true ||"
     },
     {
       "name": "Git runs a write after a failed read",
       "source": "src/tools/GitTool/run.ts",
-      "find": "    rest.every(isReadOnlyGitCommand) &&",
-      "replace": "    true &&"
+      "find": "    !commandsFromHere.every(isReadOnlyGitCommand) ||",
+      "replace": "    false ||"
     },
     {
       "name": "Git runs on after an environmental failure",
       "source": "src/tools/GitTool/run.ts",
-      "find": "    !isEnvironmentalFailure(command, code, output)",
-      "replace": "    true"
+      "find": "    isEnvironmentalFailure(commandsFromHere[0] ?? '', run.code, output)",
+      "replace": "    false"
+    },
+    {
+      "name": "Git runs on after an abort",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    run.interrupted ||",
+      "replace": "    false ||"
     },
     {
       "name": "A watch reports missing checks without waiting for them",
@@ -93,6 +135,12 @@
       "replace": "    await sleep(retryMs)"
     },
     {
+      "name": "An abort during the wait reports the last no-checks answer",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    if (params.abortSignal.aborted) return { ...run, interrupted: true }",
+      "replace": "    if (params.abortSignal.aborted) return run"
+    },
+    {
       "name": "Git loses the no-checks diagnosis",
       "source": "src/tools/GitTool/errors.ts",
       "find": "  if (GH_NO_CHECKS_RE.test(output)) {",
@@ -101,13 +149,19 @@
     {
       "name": "Git loses the failed-check diagnosis",
       "source": "src/tools/GitTool/errors.ts",
-      "find": "  if (GH_FAILED_CHECK_RE.test(output)) {",
+      "find": "  if (ghCommandPair(command) === 'pr checks' && GH_FAILED_CHECK_RE.test(output)) {",
       "replace": "  if (false) {"
     },
     {
+      "name": "The failed-check diagnosis fires for any gh command",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (ghCommandPair(command) === 'pr checks' && GH_FAILED_CHECK_RE.test(output)) {",
+      "replace": "  if (GH_FAILED_CHECK_RE.test(output)) {"
+    },
+    {
       "name": "WaitFor ignores a leading flag group",
-      "source": "src/tools/WaitForTool/untilRegex.ts",
-      "find": "const LEADING_FLAGS_RE = /^\\(\\?([imsu]+)\\)/",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "const LEADING_FLAGS_RE = /^\\(\\?([ims]+)\\)/",
       "replace": "const LEADING_FLAGS_RE = /(?!)/"
     },
     {

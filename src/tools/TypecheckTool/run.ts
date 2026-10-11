@@ -347,12 +347,12 @@ export async function runTypecheck(opts: RunOptions): Promise<CheckResult> {
   if (!raw.ok) return emptyResult(opts, raw.message, raw.exitCode)
   const { stdout, stderr, exitCode } = raw
 
-  const parsed = parseCheckerOutput(checker, { stdout, stderr, exitCode })
+  const input = { stdout, stderr, exitCode }
+  const parsed = parseCheckerOutput(checker, input)
 
-  // A checker that never started — not on PATH, or behind a version-manager
-  // shim with no version — prints a complaint the scrape would count as type
-  // errors. Nothing was checked, so it must not reach the baseline either.
-  const notStarted = parsed.diagnostics.length === 0 ? detectLauncherFailure({ stdout, stderr, exitCode }) : null
+  // A checker that never started checked nothing, so it must not reach the
+  // baseline either.
+  const notStarted = parsed.degraded ? detectLauncherFailure(input) : null
   if (notStarted) return emptyResult(opts, notStarted, exitCode)
 
   // MSBuild reports its OWN failures — a missing restore, a broken target — in

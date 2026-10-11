@@ -11,23 +11,28 @@ import type { ParseInput } from 'src/tools/shared/diagnostics/types.js'
  * check at all. The callers turn a match into their `runError` lane instead.
  *
  * Positive evidence only, and only from a run nothing could parse: each
- * signature is the launcher's own wording, so a real failure that merely
- * mentions one of these phrases is still parsed (and reported) as itself.
+ * signature is anchored on the launcher's own prefix, so a tool reporting a
+ * missing FILE ("Error: config.yaml: not found") is still reported as itself —
+ * the `runError` lane drops the raw tail, so a false match would hide it.
  */
 
 type Signature = { re: RegExp; reason: (match: RegExpExecArray) => string }
 
+const notOnPath = (m: RegExpExecArray): string => `\`${m[1]}\` is not installed or not on PATH`
+
 const SIGNATURES: readonly Signature[] = [
-  // bash: "bash: line 4: pyright: command not found"; dash: "sh: 1: pyright: not found";
-  // pyenv/rbenv shims: "pyenv: pyright: command not found".
-  {
-    re: /(?:^|: )([^\s:]+): (?:command )?not found$/m,
-    reason: m => `\`${m[1]}\` is not installed or not on PATH, so it never ran`,
-  },
+  // bash: "/bin/bash: line 4: pyright: command not found", or under `bash -c`
+  // "bash: pyright: command not found"; dash, as a Makefile recipe meets it:
+  // "/bin/sh: 1: protoc: not found".
+  { re: /^\S*sh(?:: line \d+|: \d+)?: ([^\s:]+): (?:command )?not found$/m, reason: notOnPath },
+  // zsh, which exec() prefers when it is the login shell: "zsh:1: command not found: pyright".
+  { re: /^\S*zsh(?::\d+)?: command not found: (\S+)$/m, reason: notOnPath },
+  // pyenv/rbenv/nodenv shims: "pyenv: pyright: command not found".
+  { re: /^(?:pyenv|rbenv|nodenv): ([^\s:]+): command not found$/m, reason: notOnPath },
   // mise: "mise ERROR No version is set for shim: pyright"; asdf: "No version is set for command pyright".
   {
     re: /No version is set for (?:shim:|command) (\S+)/,
-    reason: m => `the \`${m[1]}\` shim has no version selected (mise/asdf), so it never ran`,
+    reason: m => `the \`${m[1]}\` shim has no version selected (mise/asdf)`,
   },
 ]
 
@@ -43,6 +48,6 @@ export function detectLauncherFailure(input: ParseInput): string | null {
     if (match) return reason(match)
   }
   return input.exitCode === COMMAND_NOT_FOUND_EXIT
-    ? `the command was not found (exit ${COMMAND_NOT_FOUND_EXIT}), so it never ran`
+    ? `the command was not found (exit ${COMMAND_NOT_FOUND_EXIT})`
     : null
 }

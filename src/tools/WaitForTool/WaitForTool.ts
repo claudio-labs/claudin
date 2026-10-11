@@ -21,7 +21,6 @@ import {
 } from 'src/tools/BashTool/bashPermissions.js'
 import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
-import { compileUntil } from 'src/tools/WaitForTool/untilRegex.js'
 
 const DEFAULT_SETTLE_S = 3
 const DEFAULT_INTERVAL_S = 1
@@ -115,6 +114,23 @@ async function runOnce(
 function formatStatus(output: Output): string {
   const secs = (output.elapsedMs / 1000).toFixed(1)
   return `[${WAITFOR_TOOL_NAME}: ${output.reason} after ${secs}s, ${output.polls} poll${output.polls === 1 ? '' : 's'}]`
+}
+
+/**
+ * `(?s)…` is how PCRE and Python turn on dot-all, and the model writes it that
+ * way to match CI rows spread over several lines. JavaScript has no global
+ * inline group — only the scoped `(?s:…)` — so `new RegExp` threw, and the
+ * 2026-10-05..11 census saw three waits refused for it. A leading group of
+ * `i`, `m` and `s` becomes those flags; anything else is left for `new RegExp`
+ * to reject as before. `u` stays out: in JavaScript it is a stricter mode that
+ * rejects escapes like `\-`, not the no-op it is in Python.
+ */
+const LEADING_FLAGS_RE = /^\(\?([ims]+)\)/
+
+/** @throws SyntaxError when `until` is not a valid regex. */
+function compileUntil(source: string): RegExp {
+  const leading = LEADING_FLAGS_RE.exec(source)
+  return leading ? new RegExp(source.slice(leading[0].length), leading[1]) : new RegExp(source)
 }
 
 /**

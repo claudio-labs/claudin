@@ -88,10 +88,8 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // thousands of progress lines that a background agent would otherwise carry
   // in full for the sake of the few that name the failure.
   BUILD_TOOL_NAME,
-  // Git and WaitFor, on the same argument: Bash already runs git and a poll
-  // loop here, at full output cost. It also matters on RESUME, which always
-  // runs async — an agent that used Git on its first run lost it on the
-  // second, and called a tool that was no longer there (2026-10-05..11 census).
+  // Git and WaitFor, on the same argument: Bash already runs git and poll
+  // loops here, at full output cost.
   GIT_TOOL_NAME,
   WAITFOR_TOOL_NAME,
   // A background agent is the one agent that can usefully message: it can

@@ -77,7 +77,7 @@ function singleQuote(value: string): string {
 }
 
 /** A run that produced no test results at all, and why. */
-function notRun(framework: Framework, command: string, exitCode: number, runError: string): TestResult {
+function notRun(framework: Framework, command: string, runError: string, exitCode: number): TestResult {
   return {
     framework,
     command,
@@ -168,11 +168,11 @@ ${plan.command}
     stderr = result.stderr
     exitCode = result.code
     if (result.interrupted) {
-      return notRun(framework, plan.command, exitCode, 'Test run was interrupted before completing.')
+      return notRun(framework, plan.command, 'Test run was interrupted before completing.', exitCode)
     }
   } catch (e) {
     logError(`RunTests: exec failed — ${String(e)}`)
-    return notRun(framework, plan.command, 1, e instanceof Error ? e.message : String(e))
+    return notRun(framework, plan.command, e instanceof Error ? e.message : String(e), 1)
   } finally {
     if (taskId) TaskOutput.stopPolling(taskId)
   }
@@ -195,12 +195,10 @@ ${plan.command}
   const parseInput: ParseInput = { stdout, stderr, exitCode, reportContent }
   const result = parseTestOutput(framework, plan.command, parseInput)
 
-  // A runner that never started — not on PATH, or behind a version-manager
-  // shim with no version — leaves only that complaint, which the text scrape
-  // would report as a failed test. Once a test case was read, the same wording
-  // belongs to the test instead.
+  // Once a test case was read, launcher wording in the output belongs to the
+  // test, not to a runner that never started.
   const notStarted = result.degraded && result.passed === 0 ? detectLauncherFailure(parseInput) : null
-  if (notStarted) return notRun(framework, plan.command, exitCode, notStarted)
+  if (notStarted) return notRun(framework, plan.command, notStarted, exitCode)
 
   enrichFailuresWithStackLocation(result.failures)
   refineFailureLinesFromStdout(result.failures, stdout, framework)

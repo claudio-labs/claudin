@@ -376,7 +376,7 @@ describe('fetch / pull / push against a local bare origin', () => {
     const ran = await runIn(path, ['git pull', 'git log --oneline -1'])
 
     expect(ran.codes[0]).not.toBe(0)
-    expect(ran.text).toStartWith('$ git pull\n`git pull` rebases here')
+    expect(ran.text).toStartWith('$ git pull\n`git pull` is rebasing')
     expect(ran.text).toContain('git pull --autostash')
     // A pull writes, so the read after it still waits.
     expect(ran.result.notRun).toEqual(['git log --oneline -1'])

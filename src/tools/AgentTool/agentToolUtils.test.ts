@@ -172,11 +172,10 @@ describe('filterToolsForAgent — a background agent can message', () => {
   })
 })
 
-describe('filterToolsForAgent — a background or resumed agent keeps Git and WaitFor', () => {
-  it('keeps both for an ASYNC agent, the pool every resume runs in', () => {
-    // A resumed agent always runs async (resumeAgent.ts), so an agent that used
-    // Git on its first run lost it on the second: two did in the 10-05..11
-    // census, and each called a tool that was no longer there.
+describe('filterToolsForAgent — an async agent keeps Git and WaitFor', () => {
+  it('keeps both, so a resume (always async) finds the Git its first run used', () => {
+    // Two resumed agents in the 10-05..11 census called Git and got "No such
+    // tool available".
     const result = filterToolsForAgent({
       tools: [tool(GIT_TOOL_NAME), tool(WAITFOR_TOOL_NAME), tool(AGENT_TOOL_NAME)],
       isBuiltIn: false,
