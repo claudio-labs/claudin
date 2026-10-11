@@ -2,7 +2,12 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'
-import { cleanupAllFakeGh, type FakeGh, installFakeGh } from 'src/tools/GitTool/__fixtures__/fakeGh.js'
+import {
+  cleanupAllFakeGh,
+  type FakeGh,
+  GH_NOT_AUTHENTICATED,
+  installFakeGh,
+} from 'src/tools/GitTool/__fixtures__/fakeGh.js'
 import { GitTool } from 'src/tools/GitTool/GitTool.js'
 import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 import type { GitProgress } from 'src/tools/GitTool/types.js'
@@ -147,14 +152,33 @@ describe('`gh pr checks` exit 8', () => {
     expect(result.outcomes[1]?.exitCode).toBe(0)
   }, 30_000)
 
-  test('a real gh failure still stops it', async () => {
+  test('a real gh failure still stops a write behind it', async () => {
     // Exit 1 from the fake's loud fallback: only exit 8 is forgiven, and only
-    // for `pr checks`.
+    // for `pr checks`. A write after it must not run — reads would.
     fakeGh.setRules([])
-    const result = await run(['gh pr view 9', 'git --version'])
+    const result = await run(['gh pr view 9', 'gh pr comment 9 --body x'])
     expect(result.outcomes[0]?.stall).toBeUndefined()
-    expect(result.notRun).toEqual(['git --version'])
+    expect(result.notRun).toEqual(['gh pr comment 9 --body x'])
     expect(batchFailed(result)).toBe(true)
+  }, 30_000)
+
+  test('a failing check does not cost the read behind it', async () => {
+    // `gh pr checks` exits 1 when a check failed; the census saw that stop the
+    // `gh run list` asked for in the same call.
+    fakeGh.setRules([
+      { match: 'pr checks', stdout: 'smoke-and-tests\tfail\t32s\thttps://example.test/run/7\t\n', exitCode: 1 },
+      { match: 'run list', stdout: 'completed\tfailure\tci\tmain\n' },
+    ])
+    const result = await run(['gh pr checks 4', 'gh run list --limit 1'])
+    expect(result.outcomes).toHaveLength(2)
+    expect(result.notRun).toEqual([])
+    expect(result.outcomes[1]?.output).toContain('completed')
+  }, 30_000)
+
+  test('a signed-out gh stops the reads behind it, which would only fail the same way', async () => {
+    fakeGh.setRules([{ ...GH_NOT_AUTHENTICATED, match: 'pr' }])
+    const result = await run(['gh pr view 9', 'gh pr list'])
+    expect(result.notRun).toEqual(['gh pr list'])
   }, 30_000)
 })
 

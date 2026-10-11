@@ -16,8 +16,8 @@ import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
 import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
 import { applyGitDelta } from 'src/tools/GitTool/delta.js'
 import { oneLineCommand } from 'src/tools/GitTool/display.js'
-import { diagnoseGitFailure } from 'src/tools/GitTool/errors.js'
-import { ghCommandPair, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
+import { diagnoseGitFailure, isEnvironmentalFailure } from 'src/tools/GitTool/errors.js'
+import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
   GitCommandOutcome,
@@ -253,6 +253,23 @@ function pendingChecksStall(command: string, code: number, ranMs: number): GitSt
   return { reason: 'pending', ranMs, silentMs: 0 }
 }
 
+/**
+ * Whether a batch goes on past a failed command. `&&` semantics are what the
+ * model meant by a burst — running `git commit` after `git add` failed is worse
+ * than stopping — but a failed READ with only reads behind it threatens
+ * nothing, and stopping there only withholds answers: `git rev-parse @{u}` on
+ * a branch never pushed cost the rest of a pre-PR read four times in the
+ * 2026-10-05..11 census. Unless the failure is environmental, when every
+ * later command would fail the same way.
+ */
+function failedReadContinues(command: string, code: number, output: string, rest: readonly string[]): boolean {
+  return (
+    isReadOnlyGitCommand(command) &&
+    rest.every(isReadOnlyGitCommand) &&
+    !isEnvironmentalFailure(command, code, output)
+  )
+}
+
 export async function runGitBatch(
   opts: RunGitBatchOptions,
 ): Promise<GitBatchResult> {
@@ -278,6 +295,7 @@ export async function runGitBatch(
         : `cd ${quote([opts.cwd])} && ${plan.effectiveCommand}`
 
     let outcome: GitCommandOutcome
+    let stopsBatch = false
     try {
       const onProgress = opts.onProgress
       const run = await runOneCommand({
@@ -338,6 +356,12 @@ export async function runGitBatch(
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),
       }
+      // A stall is not a failure, so it never stops the rest: `["gh pr checks
+      // --watch", "gh pr view"]` still delivers the second one. An abort always does.
+      stopsBatch =
+        isError &&
+        (run.interrupted ||
+          !failedReadContinues(command, run.code, filtered, opts.commands.slice(index + 1)))
     } catch (e) {
       logError(`Git: exec failed for \`${command}\` — ${String(e)}`)
       return {
@@ -349,11 +373,7 @@ export async function runGitBatch(
 
     outcomes.push(outcome)
 
-    // `&&` semantics — a burst is what the model meant, and running `git
-    // commit` after `git add` failed is worse than stopping. A stall is not a
-    // failure, so it does not stop the rest: `["gh pr checks --watch",
-    // "gh pr view"]` still delivers the second one.
-    if (!outcome.stall && (outcome.exitCode !== 0 || outcome.interrupted)) {
+    if (stopsBatch) {
       return { outcomes, notRun: opts.commands.slice(index + 1).map(String) }
     }
   }

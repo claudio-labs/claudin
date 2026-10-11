@@ -218,6 +218,20 @@ export function diagnoseGitFailure(
   return output.trim() ? `${diagnosis}\n\n${output}` : diagnosis
 }
 
+/**
+ * A failure about where the batch runs rather than about the command — no
+ * repository, `gh` signed out, throttled or missing, the timeout — so every
+ * command after it would fail the same way (and a throttled `gh` would spend
+ * more of its quota doing so).
+ */
+export function isEnvironmentalFailure(command: string, exitCode: number, output: string): boolean {
+  if (exitCode === SIGTERM_EXIT || NOT_A_REPO_RE.test(output)) return true
+  return (
+    isGh(command) &&
+    (GH_NOT_AUTHENTICATED_RE.test(output) || GH_RATE_LIMIT_RE.test(output) || GH_NOT_FOUND_RE.test(output))
+  )
+}
+
 /** Exported for the tests, which assert the sentence rather than the fold. */
 export function diagnose(
   command: string,
