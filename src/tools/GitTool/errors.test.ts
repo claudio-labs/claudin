@@ -308,6 +308,15 @@ describe('gh', () => {
     expect(diagnose('gh pr view', 127, output)).toContain('not installed')
   })
 
+  test('no pull request for the branch', () => {
+    const output = runFakeGh(['pr', 'view'], {
+      match: '',
+      stderr: 'no pull requests found for branch "feat/x"\n',
+      exitCode: 1,
+    })
+    expect(diagnose('gh pr view', 1, output)).toContain('No pull request matches')
+  })
+
   test('a git diagnosis never leaks into a gh command', () => {
     // `nothing to commit` is a git signature; a gh failure carrying it must not
     // be diagnosed as a commit problem.
