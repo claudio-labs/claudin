@@ -32,6 +32,8 @@ import { WORKFLOW_RUN_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
+import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 import {
   CRON_CREATE_TOOL_NAME,
   CRON_DELETE_TOOL_NAME,
@@ -86,6 +88,12 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // thousands of progress lines that a background agent would otherwise carry
   // in full for the sake of the few that name the failure.
   BUILD_TOOL_NAME,
+  // Git and WaitFor, on the same argument: Bash already runs git and a poll
+  // loop here, at full output cost. It also matters on RESUME, which always
+  // runs async — an agent that used Git on its first run lost it on the
+  // second, and called a tool that was no longer there (2026-10-05..11 census).
+  GIT_TOOL_NAME,
+  WAITFOR_TOOL_NAME,
   // A background agent is the one agent that can usefully message: it can
   // write to "main" while it works, and reach the other agents by name.
   SEND_MESSAGE_TOOL_NAME,
