@@ -86,11 +86,9 @@ import {
 } from 'src/agent/systemPromptType.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import { hintGc } from 'src/shared/proc/gc.js'
-import {
-  resolveAgentTools,
-  scopeChildAgentDefinitions,
-} from 'src/tools/AgentTool/agentToolUtils.js'
+import { scopeChildAgentDefinitions } from 'src/tools/AgentTool/agentToolUtils.js'
 import { type AgentDefinition, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { resolveRunTools, type ToolPool } from 'src/tools/AgentTool/toolPool.js'
 
 /**
  * Initialize agent-specific MCP servers
@@ -276,6 +274,7 @@ export async function* runAgent({
   worktreePath,
   description,
   readOnly,
+  toolPool = isAsync ? 'async' : 'sync',
   transcriptSubdir,
   onQueryProgress,
   agentName,
@@ -333,6 +332,9 @@ export async function* runAgent({
   description?: string
   /** The spawn's `readOnly`, persisted so a resume re-applies it. */
   readOnly?: boolean
+  /** The filter that picks this run's tools; defaults to how it runs. A resume
+   * passes its first run's, persisted here — see toolPool.ts. */
+  toolPool?: ToolPool
   /** Optional subdirectory under subagents/ to group this agent's transcript
    * with related ones (e.g. workflows/<runId> for workflow subagents). */
   transcriptSubdir?: string
@@ -572,7 +574,7 @@ export async function* runAgent({
   const { resolvedTools, allowedAgentTypes: declaredAllowedAgentTypes } =
     useExactTools
       ? { resolvedTools: availableTools, allowedAgentTypes: undefined }
-      : resolveAgentTools(agentDefinition, availableTools, isAsync)
+      : resolveRunTools(agentDefinition, availableTools, isAsync, toolPool)
 
   const additionalWorkingDirectories = Array.from(
     appState.toolPermissionContext.additionalWorkingDirectories.keys(),
@@ -852,6 +854,7 @@ export async function* runAgent({
     ...(worktreePath && { worktreePath }),
     ...(description && { description }),
     ...(readOnly && { readOnly }),
+    toolPool,
   }).catch(_err => logForDebugging(`Failed to write agent metadata: ${_err}`))
 
   // Track the last recorded message UUID for parent chain continuity

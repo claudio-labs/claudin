@@ -189,9 +189,9 @@ export async function resumeAgentBackground({
     ],
     toolUseContext,
     canUseTool,
-    // Also picks the tool pool: a resume gets ASYNC_AGENT_ALLOWED_TOOLS, not
-    // what the first run had, so a tool missing there vanishes on resume.
     isAsync: true,
+    // Runs in the background, with the tools its first run had (toolPool.ts).
+    toolPool: meta?.toolPool ?? 'async',
     querySource: getQuerySourceForAgent(
       selectedAgent.agentType,
       isBuiltInAgent(selectedAgent),

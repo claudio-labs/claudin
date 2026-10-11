@@ -54,3 +54,15 @@ describe('readOnly reaches the metadata a resume reads', () => {
     expect(resume).toContain('readOnly: meta?.readOnly,')
   })
 })
+
+describe('the tool pool reaches the metadata a resume reads', () => {
+  test('runAgent picks tools by it and writes it, and a resume passes it on', () => {
+    const runAgent = readFileSync(new URL('./runAgent.ts', import.meta.url), 'utf8')
+    const resume = readFileSync(new URL('./resumeAgent.ts', import.meta.url), 'utf8')
+    expect(runAgent).toContain("toolPool = isAsync ? 'async' : 'sync',")
+    expect(runAgent).toContain('resolveRunTools(agentDefinition, availableTools, isAsync, toolPool)')
+    expect(runAgent).toContain('    toolPool,\n  }).catch(')
+    // Metadata written before the pool was recorded resumes as it always did.
+    expect(resume).toContain("toolPool: meta?.toolPool ?? 'async',")
+  })
+})
