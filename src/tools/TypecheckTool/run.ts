@@ -380,11 +380,14 @@ export async function runTypecheck(opts: RunOptions): Promise<CheckResult> {
   const baseline = await resolveBaseline({
     cwd,
     checker,
-    mode: opts.baselineMode,
+    // An unreadable run has nothing to record or compare: on a clean tree its
+    // empty parse would be captured as HEAD's backlog, and every real
+    // diagnostic reported as new once the output reads again. `ignore` also
+    // skips reconstruction, which is only meaningful as a comparison against
+    // this run.
+    mode: parsed.degraded ? 'ignore' : opts.baselineMode,
     fingerprints,
-    // Withheld when our own parse failed: reconstruction is only meaningful as
-    // a comparison against this run, and there is nothing to compare against.
-    reconstruct: parsed.degraded ? undefined : dir => collectFingerprintsAt(opts, dir, startedAt),
+    reconstruct: dir => collectFingerprintsAt(opts, dir, startedAt),
   })
 
   const classified: Diagnostic[] = normalized.map((d, i) => ({

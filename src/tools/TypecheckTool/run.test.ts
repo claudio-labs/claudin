@@ -303,6 +303,15 @@ describe('runTypecheck — the baseline a run records', () => {
     expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(true)
   })
 
+  test('a run nothing could parse records nothing, even on a clean tree', async () => {
+    // Its parse is empty, so recording it would file HEAD's backlog as zero
+    // diagnostics and report every real one as new on the next readable run.
+    const cwd = cleanRepo()
+    const result = await runTypecheck(options(cwd, 'echo "something went sideways"; exit 2'))
+    expect(result.degraded).toBe(true)
+    expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(false)
+  })
+
   test('a checker that never started records nothing, even on a clean tree', async () => {
     // Recording its empty output as HEAD's backlog would report every real
     // error as newly introduced once the checker works.
