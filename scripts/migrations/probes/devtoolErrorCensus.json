@@ -1,0 +1,144 @@
+{
+  "test": [
+    "src/tools/BuildTool/failureBlock.test.ts",
+    "src/tools/BuildTool/run.test.ts",
+    "src/tools/TypecheckTool/run.test.ts",
+    "src/tools/RunTestsTool/RunTestsTool.test.ts",
+    "src/tools/shared/diagnostics/launcherFailure.test.ts",
+    "src/tools/GitTool/errors.test.ts",
+    "src/tools/GitTool/batch.test.ts",
+    "src/tools/GitTool/families.test.ts",
+    "src/tools/GitTool/watch.test.ts",
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/tools/AgentTool/agentToolUtils.test.ts"
+  ],
+  "source": "src/tools/BuildTool/noOp.ts",
+  "probes": [
+    {
+      "name": "Build reads cargo's Checking as no work",
+      "comment": "The fixes for the 2026-10-05..11 dev-tool error census, one probe per line they rest on.",
+      "find": "workRe: /^\\s*(?:Compiling|Checking)\\b/m",
+      "replace": "workRe: /^\\s*Compiling\\b/m"
+    },
+    {
+      "name": "Typecheck scrapes a checker that never started",
+      "source": "src/tools/TypecheckTool/run.ts",
+      "find": "  if (notStarted) return emptyResult(opts, notStarted, exitCode)",
+      "replace": "  void notStarted"
+    },
+    {
+      "name": "Build scrapes a build tool that never started",
+      "source": "src/tools/BuildTool/run.ts",
+      "find": "  if (notStarted) return emptyResult(opts, notStarted, exitCode)",
+      "replace": "  void notStarted"
+    },
+    {
+      "name": "RunTests scrapes a runner that never started",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "  if (notStarted) return notRun(framework, plan.command, exitCode, notStarted)",
+      "replace": "  void notStarted"
+    },
+    {
+      "name": "The shell's not-found wording goes unrecognised",
+      "source": "src/tools/shared/diagnostics/launcherFailure.ts",
+      "find": "    re: /(?:^|: )([^\\s:]+): (?:command )?not found$/m,",
+      "replace": "    re: /(?!)/,"
+    },
+    {
+      "name": "A mise/asdf shim with no version goes unrecognised",
+      "source": "src/tools/shared/diagnostics/launcherFailure.ts",
+      "find": "    re: /No version is set for (?:shim:|command) (\\S+)/,",
+      "replace": "    re: /(?!)/,"
+    },
+    {
+      "name": "Git misses the rebasing-pull refusal",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  /^error: cannot (pull with rebase|\\w+): (?:You have unstaged changes|Your index contains uncommitted changes)/m",
+      "replace": "  /^error: cannot (\\w+): You have unstaged changes/m"
+    },
+    {
+      "name": "Git gives a refused pull the rebase advice",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "    if (unstaged[1] === 'pull with rebase') {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "Git stops a batch at a failed read",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    isReadOnlyGitCommand(command) &&",
+      "replace": "    false &&"
+    },
+    {
+      "name": "Git runs a write after a failed read",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    rest.every(isReadOnlyGitCommand) &&",
+      "replace": "    true &&"
+    },
+    {
+      "name": "Git runs on after an environmental failure",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    !isEnvironmentalFailure(command, code, output)",
+      "replace": "    true"
+    },
+    {
+      "name": "A watch reports missing checks without waiting for them",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    reportsNoChecksYet(run.text) &&",
+      "replace": "    false &&"
+    },
+    {
+      "name": "An abort no longer ends the wait for checks",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    await sleep(retryMs, params.abortSignal)",
+      "replace": "    await sleep(retryMs)"
+    },
+    {
+      "name": "Git loses the no-checks diagnosis",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (GH_NO_CHECKS_RE.test(output)) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "Git loses the failed-check diagnosis",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (GH_FAILED_CHECK_RE.test(output)) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "WaitFor ignores a leading flag group",
+      "source": "src/tools/WaitForTool/untilRegex.ts",
+      "find": "const LEADING_FLAGS_RE = /^\\(\\?([imsu]+)\\)/",
+      "replace": "const LEADING_FLAGS_RE = /(?!)/"
+    },
+    {
+      "name": "WaitFor validates until without the flags",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "        compileUntil(input.until)",
+      "replace": "        new RegExp(input.until)"
+    },
+    {
+      "name": "WaitFor polls with until compiled without the flags",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    const untilRe = until === undefined ? null : compileUntil(until)",
+      "replace": "    const untilRe = until === undefined ? null : new RegExp(until)"
+    },
+    {
+      "name": "WaitFor is never read-only",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    return checkReadOnlyConstraints({ command }, commandHasAnyCd(command)).behavior === 'allow'",
+      "replace": "    return false"
+    },
+    {
+      "name": "WaitFor's read-only verdict ignores the setup",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    const command = shellCommandOf(input)",
+      "replace": "    const command = input.command"
+    },
+    {
+      "name": "Background and resumed agents lose Git and WaitFor",
+      "source": "src/tools/constants/tools.ts",
+      "find": "  GIT_TOOL_NAME,\n  WAITFOR_TOOL_NAME,\n",
+      "replace": ""
+    }
+  ]
+}

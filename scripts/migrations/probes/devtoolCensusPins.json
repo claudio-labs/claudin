@@ -29,8 +29,8 @@
     {
       "name": "RunTests reports a cancelled run as something else",
       "source": "src/tools/RunTestsTool/run.ts",
-      "find": "        runError: 'Test run was interrupted before completing.',",
-      "replace": "        runError: 'Test run failed.',"
+      "find": "      return notRun(framework, plan.command, exitCode, 'Test run was interrupted before completing.')",
+      "replace": "      return notRun(framework, plan.command, exitCode, 'Test run failed.')"
     },
     {
       "name": "RunTests drops the tail of a passing suite under a failed exit",
@@ -52,9 +52,9 @@
     },
     {
       "name": "Git never stops a batch after a failure",
-      "comment": "The fixes keep stopping after a failed write and after an environmental failure (not a repo, gh unauthenticated); the existing batch/families tests are what guard that.",
+      "comment": "A failed write and an environmental failure (not a repo, gh unauthenticated) still stop the batch after the census fixes; the existing batch/families tests are what guard that.",
       "source": "src/tools/GitTool/run.ts",
-      "find": "    if (!outcome.stall && (outcome.exitCode !== 0 || outcome.interrupted)) {",
+      "find": "    if (stopsBatch) {",
       "replace": "    if (false) {"
     },
     {
@@ -65,9 +65,9 @@
     },
     {
       "name": "WaitFor makes . cross lines by default",
-      "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "    const untilRe = until === undefined ? null : new RegExp(until)",
-      "replace": "    const untilRe = until === undefined ? null : new RegExp(until, 's')"
+      "source": "src/tools/WaitForTool/untilRegex.ts",
+      "find": "  if (!leading) return new RegExp(source)",
+      "replace": "  if (!leading) return new RegExp(source, 's')"
     }
   ]
 }
