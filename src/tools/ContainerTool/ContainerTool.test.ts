@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { CACHE_WHITELIST } from 'src/agent/tools/toolResultCache.js'
-import { ContainerTool } from 'src/tools/ContainerTool/ContainerTool.js'
+import { ContainerTool, taskSpawnContext } from 'src/tools/ContainerTool/ContainerTool.js'
 import {
   containerOpFailed,
   formatContainerResult,
@@ -44,6 +44,24 @@ describe('registration', () => {
       expect(ContainerTool.inputSchema.safeParse({ op }).success).toBe(true)
     }
     expect(ContainerTool.inputSchema.safeParse({ op: 'nope' }).success).toBe(false)
+  })
+})
+
+describe('where a background op registers its task', () => {
+  const abortController = new AbortController()
+  const setAppState = () => {}
+  const setAppStateForTasks = () => {}
+
+  test('through the root store when the caller has one, as Bash and Monitor do', () => {
+    // A background agent's own setAppState is a no-op: a `build` or `logs`
+    // started there kept docker running with no task to stop or report on.
+    const spawn = taskSpawnContext({ abortController, setAppState, setAppStateForTasks, agentId: undefined })
+    expect(spawn.setAppState).toBe(setAppStateForTasks)
+    expect(spawn.abortController).toBe(abortController)
+  })
+
+  test('through setAppState otherwise', () => {
+    expect(taskSpawnContext({ abortController, setAppState, agentId: undefined }).setAppState).toBe(setAppState)
   })
 })
 

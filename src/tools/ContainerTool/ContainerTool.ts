@@ -1,6 +1,6 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef, type ToolUseContext } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { findComposeFile } from 'src/containers/project.js'
@@ -263,11 +263,7 @@ export const ContainerTool = buildTool({
               },
             })
         : undefined,
-      spawn: {
-        abortController: context.abortController,
-        setAppState: context.setAppState as never,
-        agentId: context.agentId,
-      },
+      spawn: taskSpawnContext(context),
     })
     return { data: result }
   },
@@ -280,6 +276,22 @@ export const ContainerTool = buildTool({
     }
   },
 } satisfies ToolDef<InputSchema, Output, ContainerProgress>)
+
+/**
+ * What a background op — a `build` or `logs` that keeps running — registers
+ * its task through. The root store when there is one: a background agent's own
+ * `setAppState` is a no-op, so the task would never exist to stop or report
+ * on. Bash, PowerShell and Monitor take the same route.
+ */
+export function taskSpawnContext(
+  context: Pick<ToolUseContext, 'abortController' | 'setAppState' | 'setAppStateForTasks' | 'agentId'>,
+): NonNullable<Parameters<typeof runContainerOp>[1]['spawn']> {
+  return {
+    abortController: context.abortController,
+    setAppState: (context.setAppStateForTasks ?? context.setAppState) as never,
+    agentId: context.agentId,
+  }
+}
 
 /**
  * The project root for this call.
