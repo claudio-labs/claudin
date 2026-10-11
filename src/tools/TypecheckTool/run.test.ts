@@ -79,15 +79,25 @@ afterAll(() => {
 })
 
 describe('runTypecheck — the checker did not do its job', () => {
-  test('a missing binary is degraded, never a clean bill of health', async () => {
+  test('a missing binary could not run, never a clean bill of health', async () => {
     // The dangerous failure: exit 127 with no parseable output must not render
     // as "no diagnostics", which is what a naive `diagnostics.length === 0`
-    // would say about a checker that never ran.
+    // would say about a checker that never ran — nor as type errors, which is
+    // what the text scrape made of the shell's complaint.
     const result = await runTypecheck(options(sandbox(), 'definitely-not-a-real-checker-xyz'))
-    expect(result.degraded).toBe(true)
     expect(result.exitCode).toBe(127)
-    expect(result.errors).toBeGreaterThan(0)
-    expect(formatCheckResult(result)).toStartWith('⚠')
+    expect(result.runError).toBe('`definitely-not-a-real-checker-xyz` is not installed or not on PATH, so it never ran')
+    expect(result.errors).toBe(0)
+    expect(formatCheckResult(result)).toStartWith('Typecheck could not run: ')
+  })
+
+  test('a version-manager shim with no version selected never ran either', async () => {
+    // The 2026-10-08 legendarr run: exit 1, and three `mise ERROR` lines that
+    // came back as "~3 errors scraped from text".
+    const mise = "printf 'mise ERROR No version is set for shim: pyright\\nmise ERROR Run with --verbose\\n' >&2; exit 1"
+    const result = await runTypecheck(options(sandbox(), mise, { checker: 'pyright' }))
+    expect(result.runError).toBe('the `pyright` shim has no version selected (mise/asdf), so it never ran')
+    expect(formatCheckResult(result)).not.toContain('scraped')
   })
 
   test('unreadable failing output keeps a raw tail instead of inventing positions', async () => {
@@ -281,5 +291,14 @@ describe('runTypecheck — the baseline a run records', () => {
     expect(result.baseline.kind).toBe('captured')
     expect(result.preExistingCount).toBe(1)
     expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(true)
+  })
+
+  test('a checker that never started records nothing, even on a clean tree', async () => {
+    // Recording its empty output as HEAD's backlog would report every real
+    // error as newly introduced once the checker works.
+    const cwd = cleanRepo()
+    const result = await runTypecheck(options(cwd, 'definitely-not-a-real-checker-xyz'))
+    expect(result.runError).toContain('never ran')
+    expect(existsSync(join(cwd, '.claudin', 'cache', 'typecheck-baseline.json'))).toBe(false)
   })
 })

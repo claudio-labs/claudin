@@ -4,6 +4,7 @@ import { logError } from 'src/shared/log.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import { readFullShellOutput } from 'src/platform/shell/fullOutput.js'
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
+import { detectLauncherFailure } from 'src/tools/shared/diagnostics/launcherFailure.js'
 import { readSourceExcerpt } from 'src/tools/shared/sourceExcerpt.js'
 import { tailLabel } from 'src/tools/shared/progressTail.js'
 import { resolveBaseline, type BaselineMode } from 'src/tools/TypecheckTool/baseline.js'
@@ -347,6 +348,12 @@ export async function runTypecheck(opts: RunOptions): Promise<CheckResult> {
   const { stdout, stderr, exitCode } = raw
 
   const parsed = parseCheckerOutput(checker, { stdout, stderr, exitCode })
+
+  // A checker that never started — not on PATH, or behind a version-manager
+  // shim with no version — prints a complaint the scrape would count as type
+  // errors. Nothing was checked, so it must not reach the baseline either.
+  const notStarted = parsed.diagnostics.length === 0 ? detectLauncherFailure({ stdout, stderr, exitCode }) : null
+  if (notStarted) return emptyResult(opts, notStarted, exitCode)
 
   // MSBuild reports its OWN failures — a missing restore, a broken target — in
   // exactly the shape of a compiler diagnostic, positioned inside the .NET SDK.

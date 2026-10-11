@@ -1,6 +1,7 @@
 import { existsSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
 import { parseDiagnostics } from 'src/tools/shared/diagnostics/index.js'
+import { detectLauncherFailure } from 'src/tools/shared/diagnostics/launcherFailure.js'
 import { readSourceExcerpt } from 'src/tools/shared/sourceExcerpt.js'
 import { logError } from 'src/shared/log.js'
 import { exec } from 'src/shared/proc/Shell.js'
@@ -392,6 +393,12 @@ export async function runBuild(opts: RunOptions): Promise<BuildResult> {
   const { text, exitCode, stall } = raw
 
   const parsed = parseDiagnostics(parsersFor(system), { stdout: text, stderr: '', exitCode })
+
+  // A build tool that never started — not on PATH, or behind a version-manager
+  // shim with no version — prints a complaint the scrape would count as errors.
+  const notStarted =
+    parsed.diagnostics.length === 0 ? detectLauncherFailure({ stdout: text, stderr: '', exitCode }) : null
+  if (notStarted) return emptyResult(opts, notStarted, exitCode)
 
   const all: BuildDiagnostic[] = parsed.diagnostics.map(d => ({ ...d }))
   const bySeverity = all.filter(d => opts.severity === 'all' || d.severity === 'error')

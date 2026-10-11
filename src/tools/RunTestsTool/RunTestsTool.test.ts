@@ -1209,6 +1209,26 @@ describe('runTests — a run that did not pass', () => {
     expect(formatTestResult(result)).toContain('but the runner exited 3')
   }, 30_000)
 
+  test('a runner that is not installed could not start, rather than one failed test', async () => {
+    const result = await run('definitely-not-a-real-runner-xyz -q')
+    expect(result.runError).toBe('`definitely-not-a-real-runner-xyz` is not installed or not on PATH, so it never ran')
+    expect(formatTestResult(result)).toStartWith('Test run could not start: ')
+  }, 30_000)
+
+  test('a runner behind a shim with no version selected never ran either', async () => {
+    const result = await run("printf 'mise ERROR No version is set for shim: pytest\\n' >&2; exit 1")
+    expect(result.runError).toBe('the `pytest` shim has no version selected (mise/asdf), so it never ran')
+    expect(result.failed).toBe(0)
+  }, 30_000)
+
+  test('a test that prints "command not found" while failing is still a failing test', async () => {
+    // The gate is the parse: once a test case was read, the shell's wording
+    // inside its output belongs to the test, not to the launcher.
+    const result = await run("printf 'not ok 1 - runs the cli\\n# deploy: command not found\\n1..1\\n'; exit 1")
+    expect(result.runError).toBeUndefined()
+    expect(result.failed).toBe(1)
+  }, 30_000)
+
   test('a run cancelled before it starts says so', async () => {
     const controller = new AbortController()
     controller.abort()

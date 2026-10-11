@@ -146,6 +146,18 @@ describe('runBuild — a build that did not succeed', () => {
     expect(formatBuildResult(result)).toContain('could not parse the build output')
   }, 30_000)
 
+  test('a build tool that is not installed could not run, rather than failing with errors', async () => {
+    const result = await runBuild(options('definitely-not-a-real-build-tool-xyz all'))
+    expect(result.exitCode).toBe(127)
+    expect(result.runError).toBe('`definitely-not-a-real-build-tool-xyz` is not installed or not on PATH, so it never ran')
+    expect(formatBuildResult(result)).toStartWith('Build could not run: ')
+  }, 30_000)
+
+  test('a build tool behind a shim with no version selected never ran either', async () => {
+    const result = await runBuild(options("printf 'mise ERROR No version is set for shim: cargo\\n' >&2; exit 1"))
+    expect(result.runError).toBe('the `cargo` shim has no version selected (mise/asdf), so it never ran')
+  }, 30_000)
+
   test('a build cancelled before it starts says so instead of reporting a failure', async () => {
     const controller = new AbortController()
     controller.abort()
