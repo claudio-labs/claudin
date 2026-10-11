@@ -190,8 +190,8 @@ export async function resumeAgentBackground({
     toolUseContext,
     canUseTool,
     isAsync: true,
-    // Runs in the background, with the tools its first run had (toolPool.ts).
-    toolPool: meta?.toolPool ?? 'async',
+    // Runs in the background, with the tools its first run had (toolFilter.ts).
+    toolFilter: meta?.toolFilter ?? 'async',
     querySource: getQuerySourceForAgent(
       selectedAgent.agentType,
       isBuiltInAgent(selectedAgent),

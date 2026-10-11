@@ -3,8 +3,9 @@
     "src/tools/TypecheckTool/run.test.ts",
     "src/tools/WaitForTool/WaitForTool.test.ts",
     "src/agent/coordinator/coordinatorMode.test.ts",
-    "src/tools/AgentTool/toolPool.test.ts",
-    "src/tools/AgentTool/resumeAgent.test.ts"
+    "src/tools/AgentTool/toolFilter.test.ts",
+    "src/tools/AgentTool/resumeAgent.test.ts",
+    "src/tools/ContainerTool/ContainerTool.test.ts"
   ],
   "source": "src/tools/TypecheckTool/run.ts",
   "probes": [
@@ -34,27 +35,45 @@
     },
     {
       "name": "A resume is filtered by how it runs again",
-      "source": "src/tools/AgentTool/toolPool.ts",
-      "find": "  const resolved = resolveAgentTools(agentDefinition, availableTools, pool === 'async')",
+      "source": "src/tools/AgentTool/toolFilter.ts",
+      "find": "  const resolved = resolveAgentTools(agentDefinition, availableTools, filter === 'async')",
       "replace": "  const resolved = resolveAgentTools(agentDefinition, availableTools, runsAsync)"
     },
     {
       "name": "A background resume keeps Agent",
-      "source": "src/tools/AgentTool/toolPool.ts",
-      "find": "  if (!runsAsync || pool === 'async') return resolved",
+      "source": "src/tools/AgentTool/toolFilter.ts",
+      "find": "  if (!runsAsync || filter === 'async') return resolved",
       "replace": "  if (runsAsync || !runsAsync) return resolved"
+    },
+    {
+      "name": "The Agent strip misses a legacy alias",
+      "source": "src/tools/AgentTool/toolFilter.ts",
+      "find": "resolved.resolvedTools.filter(tool => !toolMatchesName(tool, AGENT_TOOL_NAME))",
+      "replace": "resolved.resolvedTools.filter(tool => tool.name !== AGENT_TOOL_NAME)"
     },
     {
       "name": "A resume forgets the recorded pool",
       "source": "src/tools/AgentTool/resumeAgent.ts",
-      "find": "    toolPool: meta?.toolPool ?? 'async',",
-      "replace": "    toolPool: 'async',"
+      "find": "    toolFilter: meta?.toolFilter ?? 'async',",
+      "replace": "    toolFilter: 'async',"
     },
     {
       "name": "runAgent stops recording the pool",
       "source": "src/tools/AgentTool/runAgent.ts",
-      "find": "    toolPool,\n  }).catch(",
+      "find": "    toolFilter,\n  }).catch(",
       "replace": "  }).catch("
+    },
+    {
+      "name": "A run sent to the background mid-task switches filter",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "                      toolFilter: 'sync', // …with the tools it started with (toolFilter.ts)\n",
+      "replace": ""
+    },
+    {
+      "name": "Container registers a background task through a no-op",
+      "source": "src/tools/ContainerTool/ContainerTool.ts",
+      "find": "    setAppState: (context.setAppStateForTasks ?? context.setAppState) as never,",
+      "replace": "    setAppState: context.setAppState as never,"
     }
   ]
 }

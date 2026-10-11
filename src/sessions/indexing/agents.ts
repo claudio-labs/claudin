@@ -42,9 +42,9 @@ export type AgentMetadata = {
    * its write tools back. */
   readOnly?: boolean
   /** The filter that picked the first run's tools. A resume always runs in the
-   * background, and keeps this pool instead of the background allowlist.
+   * background, and keeps this filter instead of the background allowlist.
    * Absent in metadata written before 2026-10-11, which resumes as before. */
-  toolPool?: 'sync' | 'async'
+  toolFilter?: 'sync' | 'async'
 }
 
 /**
