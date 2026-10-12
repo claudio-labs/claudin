@@ -215,6 +215,18 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(cache.get(p)).toMatchObject({ content: 'on disk\n', offset: undefined })
   })
 
+  test('a refused Write restores nothing: the model never saw the file', () => {
+    // Its input is what the model WANTED on disk. Restored as read, the next
+    // Write over the same file passed the gate blind after a resume.
+    const p = join(dir, 'refused-write.ts')
+    const use = toolUse('Write', { file_path: p, content: 'never written' })
+    const cache = extractReadFilesFromMessages(
+      [use, toolResult(use, 'File has not been read yet.', { isError: true })],
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
   test('a refused Edit restores nothing', () => {
     const p = join(dir, 'refused-edit.ts')
     writeFileSync(p, 'on disk\n')

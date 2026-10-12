@@ -795,9 +795,10 @@ export function extractReadFilesFromMessages(
             }
           }
 
-          // Handle Write tool results - use content from the tool input
+          // Handle Write tool results - use content from the tool input. A
+          // refused Write wrote nothing, and its input is not the file.
           const writeToolData = fileWriteToolUseIds.get(content.tool_use_id)
-          if (writeToolData && message.timestamp) {
+          if (writeToolData && content.is_error !== true && message.timestamp) {
             const timestamp = new Date(message.timestamp).getTime()
             cache.set(writeToolData.filePath, {
               content: writeToolData.content,
