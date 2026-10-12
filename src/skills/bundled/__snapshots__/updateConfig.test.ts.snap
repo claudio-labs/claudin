@@ -39,7 +39,24 @@ Hooks run commands at specific points in Claudin's lifecycle.
 | PreCompact | "manual"/"auto" | Before compaction |
 | PostCompact | "manual"/"auto" | After compaction (receives summary) |
 | UserPromptSubmit | - | When user submits |
-| SessionStart | - | When session starts |
+| SessionStart | "startup"/"resume"/"clear"/"compact" | When session starts |
+| SessionEnd | "clear"/"logout"/"prompt_input_exit"/"other" | When a session is ending |
+| StopFailure | "rate_limit"/"authentication_failed"/"billing_error"/"invalid_request"/"server_error"/"max_output_tokens"/"unknown" | When the turn ends due to an API error |
+| SubagentStart | \`agent_type\` | When a subagent (Agent tool call) is started |
+| SubagentStop | \`agent_type\` | Right before a subagent (Agent tool call) concludes its response |
+| PermissionDenied | Tool name | After auto mode classifier denies a tool call |
+| Setup | "init"/"maintenance" | Repo setup hooks for init and maintenance |
+| TeammateIdle | - | When a teammate is about to go idle |
+| TaskCreated | - | When a task is being created |
+| TaskCompleted | - | When a task is being marked as completed |
+| Elicitation | \`mcp_server_name\` | When an MCP server requests user input (elicitation) |
+| ElicitationResult | \`mcp_server_name\` | After a user responds to an MCP elicitation |
+| ConfigChange | "user_settings"/"project_settings"/"local_settings"/"policy_settings"/"skills" | When configuration files change during a session |
+| WorktreeCreate | - | Create an isolated worktree for VCS-agnostic isolation |
+| WorktreeRemove | - | Remove a previously created worktree |
+| InstructionsLoaded | "session_start"/"nested_traversal"/"path_glob_match"/"include"/"compact" | When an instruction file (CLAUDE.md or rule) is loaded |
+| CwdChanged | - | After the working directory changes |
+| FileChanged | - | When a watched file changes |
 
 **Common tool matchers:** \`Bash\`, \`Write\`, \`Edit\`, \`Read\`, \`Glob\`, \`Grep\`
 
@@ -61,6 +78,12 @@ Only available for tool events: PreToolUse, PostToolUse, PermissionRequest.
 { "type": "agent", "prompt": "Verify tests pass: $ARGUMENTS" }
 \`\`\`
 Only available for tool events: PreToolUse, PostToolUse, PermissionRequest.
+
+**4. HTTP Hook** - POSTs the hook input JSON to a URL:
+\`\`\`json
+{ "type": "http", "url": "https://hooks.example.com/claudin", "headers": { "Authorization": "Bearer $MY_TOKEN" }, "allowedEnvVars": ["MY_TOKEN"] }
+\`\`\`
+A header value interpolates only the env vars named in \`allowedEnvVars\`. The response body is read as the hook's JSON output (below); a non-2xx status is a non-blocking error. The \`allowedHttpHookUrls\` setting, when present, limits which URLs these hooks may reach (\`*\` wildcards; an empty array blocks them all).
 
 ### Hook Input (stdin JSON)
 \`\`\`json

@@ -1,8 +1,48 @@
+import { HOOK_EVENTS } from 'src/platform/entrypoints/agentSdkTypes.js'
+import {
+  getHookEventMetadata,
+  type MatcherMetadata,
+} from 'src/platform/lifecycleHooks/hooksConfigManager.js'
+
 /**
  * The hook reference shared by `/update-config` (settings.json hooks, and the
  * `[hooks-only]` mode `/init` loads) and `/create hook`. One copy, so the two
  * skills cannot drift apart.
  */
+
+// The events the table explains by hand. Every other event the schema accepts
+// is appended from the /hooks menu's metadata, so a new event cannot go
+// missing from the table the way 17 of 27 once did.
+const HAND_WRITTEN_EVENT_ROWS = `| PermissionRequest | Tool name | Run before permission prompt |
+| PreToolUse | Tool name | Run before tool, can block |
+| PostToolUse | Tool name | Run after successful tool |
+| PostToolUseFailure | Tool name | Run after tool fails |
+| Notification | Notification type | Run on notifications |
+| Stop | - | Run when Claude stops (including clear, resume, compact) |
+| PreCompact | "manual"/"auto" | Before compaction |
+| PostCompact | "manual"/"auto" | After compaction (receives summary) |
+| UserPromptSubmit | - | When user submits |
+| SessionStart | "startup"/"resume"/"clear"/"compact" | When session starts |`
+
+function matcherCell(matcher: MatcherMetadata | undefined): string {
+  if (!matcher) return '-'
+  if (matcher.fieldToMatch === 'tool_name') return 'Tool name'
+  if (matcher.values.length > 0) {
+    return matcher.values.map(value => `"${value}"`).join('/')
+  }
+  return `\`${matcher.fieldToMatch}\``
+}
+
+function eventRows(): string {
+  const metadata = getHookEventMetadata([])
+  const generated = HOOK_EVENTS.filter(
+    event => !HAND_WRITTEN_EVENT_ROWS.includes(`| ${event} |`),
+  ).map(
+    event =>
+      `| ${event} | ${matcherCell(metadata[event].matcherMetadata)} | ${metadata[event].summary} |`,
+  )
+  return [HAND_WRITTEN_EVENT_ROWS, ...generated].join('\n')
+}
 
 export const HOOKS_DOCS = `## Hooks Configuration
 
@@ -33,16 +73,7 @@ Hooks run commands at specific points in Claudin's lifecycle.
 
 | Event | Matcher | Purpose |
 |-------|---------|---------|
-| PermissionRequest | Tool name | Run before permission prompt |
-| PreToolUse | Tool name | Run before tool, can block |
-| PostToolUse | Tool name | Run after successful tool |
-| PostToolUseFailure | Tool name | Run after tool fails |
-| Notification | Notification type | Run on notifications |
-| Stop | - | Run when Claude stops (including clear, resume, compact) |
-| PreCompact | "manual"/"auto" | Before compaction |
-| PostCompact | "manual"/"auto" | After compaction (receives summary) |
-| UserPromptSubmit | - | When user submits |
-| SessionStart | - | When session starts |
+${eventRows()}
 
 **Common tool matchers:** \`Bash\`, \`Write\`, \`Edit\`, \`Read\`, \`Glob\`, \`Grep\`
 
@@ -64,6 +95,12 @@ Only available for tool events: PreToolUse, PostToolUse, PermissionRequest.
 { "type": "agent", "prompt": "Verify tests pass: $ARGUMENTS" }
 \`\`\`
 Only available for tool events: PreToolUse, PostToolUse, PermissionRequest.
+
+**4. HTTP Hook** - POSTs the hook input JSON to a URL:
+\`\`\`json
+{ "type": "http", "url": "https://hooks.example.com/claudin", "headers": { "Authorization": "Bearer $MY_TOKEN" }, "allowedEnvVars": ["MY_TOKEN"] }
+\`\`\`
+A header value interpolates only the env vars named in \`allowedEnvVars\`. The response body is read as the hook's JSON output (below); a non-2xx status is a non-blocking error. The \`allowedHttpHookUrls\` setting, when present, limits which URLs these hooks may reach (\`*\` wildcards; an empty array blocks them all).
 
 ### Hook Input (stdin JSON)
 \`\`\`json

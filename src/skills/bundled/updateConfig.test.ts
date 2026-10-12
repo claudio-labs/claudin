@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 
+import { HOOK_EVENTS } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 import { registerUpdateConfigSkill } from 'src/skills/bundled/updateConfig.js'
 
@@ -49,10 +50,30 @@ test('[hooks-only] without a request has no Task section', async () => {
   expect(await getPromptText('[hooks-only]')).not.toContain('## Task')
 })
 
+test('the events table has a row for every event the schema accepts', async () => {
+  const text = await getPromptText('[hooks-only]')
+  for (const event of HOOK_EVENTS) {
+    expect(text).toContain(`| ${event} |`)
+  }
+  // Generated rows carry the matcher the /hooks menu knows about.
+  expect(text).toContain('| SessionEnd | "clear"/"logout"/')
+  expect(text).toContain('| SubagentStart | `agent_type` |')
+})
+
+test('every hook type the schema accepts is documented', async () => {
+  const text = await getPromptText('[hooks-only]')
+  for (const type of ['command', 'prompt', 'agent', 'http']) {
+    expect(text).toContain(`{ "type": "${type}"`)
+  }
+  expect(text).toContain('allowedHttpHookUrls')
+})
+
 test('full prompt embeds the hook reference and the user request', async () => {
   const text = await getPromptText('allow npm commands')
   expect(text.startsWith('# Update Config Skill')).toBe(true)
   expect(text).toContain('## Hooks Configuration')
   expect(text).toContain('## Constructing a Hook (with verification)')
+  expect(text).toContain('`claudin --debug`')
+  expect(text).not.toContain('`claude --debug`')
   expect(text.endsWith('## User Request\n\nallow npm commands')).toBe(true)
 })
