@@ -1,6 +1,6 @@
 ---
 name: add-provider-preset
-description: Add a new /provider preset to Claudin — the OpenAI-compatible API-key recipe (4-6 files) or the OAuth web-login variant (~16 files). Use when the user asks to add support for a new model provider / vendor.
+description: Use when the user asks to add a new model provider or vendor to /provider — OpenAI-compatible API-key preset or OAuth web-login variant.
 argument-hint: "<provider name> [oauth]"
 ---
 

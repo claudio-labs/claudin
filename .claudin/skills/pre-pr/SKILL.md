@@ -1,6 +1,6 @@
 ---
 name: pre-pr
-description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, rule health, PR-title format, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
+description: Run before opening or updating a PR — the pre-PR gate (build, smoke, typecheck, focused tests, test floor, dead code, rules, PR title).
 allowed-tools: Bash, Typecheck, RunTests
 argument-hint: "[path/to/changed.test.ts ...]"
 arguments: testPaths
