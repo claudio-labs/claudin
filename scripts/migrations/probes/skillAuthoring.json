@@ -19,6 +19,7 @@
     },
     {
       "name": "a line of the verification flow changes",
+      "source": "src/skills/bundled/hookDocs.ts",
       "find": "1. **Dedup check.** Read the target file.",
       "replace": "1. **Dedup check.** Open the target file."
     },
