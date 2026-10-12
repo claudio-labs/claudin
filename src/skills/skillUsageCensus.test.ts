@@ -44,6 +44,12 @@ const QUOTING_TOOL_RESULT = JSON.stringify({
   },
 })
 
+/** A non-assistant line carrying a Skill block (an echoed message) is not an invocation. */
+const ECHOED_SKILL_BLOCK = JSON.stringify({
+  type: 'attachment',
+  message: { content: [{ type: 'tool_use', id: 'te', name: 'Skill', input: { skill: 'review' } }] },
+})
+
 const NOW = Date.now()
 const RECENT = new Date(NOW - 60_000).toISOString()
 const EARLIER = new Date(NOW - 3_600_000).toISOString()
@@ -61,11 +67,13 @@ function makeTranscripts(): string {
       typedCommand('u2', 'ship', RECENT, true),
       typedCommand('u2', 'ship', RECENT, true),
       QUOTING_TOOL_RESULT,
+      ECHOED_SKILL_BLOCK,
       '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill"', // torn
     ].join('\n'),
   )
   mkdirSync(join(dir, 'aaaa', 'subagents'), { recursive: true })
-  writeFileSync(join(dir, 'aaaa', 'subagents', 'agent-1.jsonl'), skillCall('t2', 'deploy', RECENT))
+  // Read after the main file, but older: lastAt must keep the latest, not the last read.
+  writeFileSync(join(dir, 'aaaa', 'subagents', 'agent-1.jsonl'), skillCall('t2', 'deploy', EARLIER))
 
   const old = join(dir, 'bbbb.jsonl')
   writeFileSync(old, skillCall('t9', 'old', EARLIER))
