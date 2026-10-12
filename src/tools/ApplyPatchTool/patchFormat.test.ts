@@ -875,3 +875,49 @@ describe('applySections — every hunk decided on its own', () => {
     expect(kinds(r)).toEqual(['failed'])
   })
 })
+
+// Pinned byte for byte before the explanation moved out of this module to be
+// shared with Edit: the move must leave every one of them as it was.
+describe('a block that does not match: the message, exactly', () => {
+  const failure = (body: string, original: string): string => {
+    const { hunks } = parsePatch(envelope(body))
+    const { outcomes } = applySections('f', [(hunks[0] as { chunks: UpdateFileChunk[] }).chunks], original)
+    const [message] = outcomes[0]!.flatMap(o => (o.kind === 'failed' ? [o.message] : []))
+    return message!
+  }
+  const RE_READ = 'Re-read that region and copy every line in between — a dropped intervening line is the usual cause.'
+  const NOWHERE =
+    'none of the 1 line(s) below appear at or after line 1. Read the file again and copy the context verbatim — a block that matches nowhere usually means it was written from memory, or aimed at the wrong file.'
+
+  test('names the line where it diverges', () => {
+    expect(failure('*** Update File: f.py\n@@\n import a\n-import c\n+import C', 'import a\nimport b\nimport c\n')).toBe(
+      `Failed to find expected lines in f: line(s) 1-1 of your hunk match starting at line 1, then line 2 diverges.\n  your line 2: import c\n  file line 2: import b\n${RE_READ}`,
+    )
+  })
+
+  test('says when the file ends before the block does', () => {
+    expect(failure('*** Update File: f.txt\n@@\n a\n-b\n+B', 'a\n')).toBe(
+      `Failed to find expected lines in f: line(s) 1-1 of your hunk match starting at line 1, then line 2 diverges.\n  your line 2: b\n  the file ends there\n${RE_READ}`,
+    )
+  })
+
+  test('a block that matches nowhere, its lines cut at 200 chars', () => {
+    expect(failure('*** Update File: f.py\n@@\n-nope\n+x', 'a\nb\n')).toBe(
+      `Failed to find expected lines in f: ${NOWHERE}\nnope`,
+    )
+    expect(failure(`*** Update File: f.txt\n@@\n-${'x'.repeat(250)}\n+y`, 'a\n')).toBe(
+      `Failed to find expected lines in f: ${NOWHERE}\n${'x'.repeat(200)}\u2026`,
+    )
+  })
+
+  test('a block above the search start, in one place or several', () => {
+    expect(failure('*** Update File: f.py\n@@ def g():\n-  x = 1\n+  x = 3', 'def f():\n  x = 1\ndef g():\n  y = 2\n')).toBe(
+      "Failed to find expected lines in f: the block below is above the search start (line 3) — it matches line 2. Hunks apply top-to-bottom and the search only moves down: put this hunk before the one above it in the patch, or give it an '@@' anchor above the block.\n  x = 1",
+    )
+    expect(
+      failure('*** Update File: f.txt\n@@\n-bar\n+BAR\n@@\n-return 1\n+return 2', 'return 1\nfoo\nreturn 1\nbar\n'),
+    ).toBe(
+      "Failed to find expected lines in f: the block below is above the search start (line 5) — it matches 2 places, lines 1, 3. Hunks apply top-to-bottom and the search only moves down: put this hunk before the one above it in the patch, with a context line that makes the block unique, or give it an '@@' anchor above the block.\nreturn 1",
+    )
+  })
+})

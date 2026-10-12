@@ -215,6 +215,17 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(cache.get(p)).toMatchObject({ content: 'on disk\n', offset: undefined })
   })
 
+  test('a refused Edit restores nothing', () => {
+    const p = join(dir, 'refused-edit.ts')
+    writeFileSync(p, 'on disk\n')
+    const use = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
+    const cache = extractReadFilesFromMessages(
+      [use, toolResult(use, 'File has not been read yet.', { isError: true })],
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
   test('Patch is restored from disk for every file it wrote', () => {
     const a = join(dir, 'pa.ts')
     const b = join(dir, 'pb.ts')
