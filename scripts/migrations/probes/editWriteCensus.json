@@ -51,7 +51,7 @@
     },
     {
       "name": "Edit: not found does not say where it diverges",
-      "find": "  const divergence = describeDivergence(file.split('\\n'), block, 0, 'old_string')\n",
+      "find": "  const divergence = describeDivergence(file.split('\\n'), fileLinesOf(oldString), 0, 'old_string')\n",
       "replace": "  const divergence = null\n"
     },
     {
@@ -68,7 +68,7 @@
     {
       "name": "Write: only the last read counts",
       "source": "src/tools/FileWriteTool/FileWriteTool.ts",
-      "find": "      !seenWholeFile(readTimestamp, readFileSyncWithMetadata(fullFilePath).content)\n",
+      "find": "      !seenWholeFile(readTimestamp, fileText())\n",
       "replace": "      true\n"
     },
     {
@@ -112,6 +112,34 @@
       "source": "src/tools/shared/blockMismatch.ts",
       "find": "  'Read the file again and copy the context verbatim — a block that matches nowhere usually means it was written from memory, or aimed at the wrong file.'\n",
       "replace": "  'Read the file again.'\n"
+    },
+    {
+      "name": "review: Edit's call() does not recount old_string before replacing it",
+      "find": "    if (!replace_all && matches.length > 1) {\n      throw new Error(multipleMatchesMessage(matches))\n",
+      "replace": "    if (false) {\n      throw new Error(multipleMatchesMessage(matches))\n"
+    },
+    {
+      "name": "review: the unread refusal does not say how often old_string occurs",
+      "find": "  const occurs = count === 0 ? 'does not occur in it' : `occurs in it ${count} times`\n",
+      "replace": "  const occurs = 'does not occur in it exactly once'\n"
+    },
+    {
+      "name": "review: a restored edit vouches for a file changed after its result",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "      if (answeredAt !== undefined && getFileModificationTime(filePath) > answeredAt) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "review: a Write refusal shows a file of any size",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "      fileSize > MAX_SERVED_FILE_BYTES\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "review: the stale Write refusal invites the same Write again",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "          MERGE,\n",
+      "replace": "          RESUBMIT,\n"
     }
   ]
 }

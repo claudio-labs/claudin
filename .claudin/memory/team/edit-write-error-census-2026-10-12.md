@@ -37,10 +37,23 @@ Reaction requests ≈ $5/wk at 300–650k cache-read contexts ($0.15–0.35 each
 - Edit's not-found echoed old_string back → now Patch's divergence message
   (`shared/blockMismatch.ts`); multi-match names the lines.
 
-Not changed: 4 of 10 genuine never-read Edits were files printed by Bash (`cat`
-chains, `sed -n A,Bp`) — moot now that an exact match applies unread.
-`FileState.injectedView` is now written but read by no gate (only byte
-accounting) — a removal candidate.
+**Review round (3 agents, same day), fixed on the branch:** dropping Edit's
+stale lane also dropped the call()-time guard, so a change between validate
+and call that made old_string ambiguous edited the FIRST occurrence silently —
+call() now recounts. The resume rebuild took an Edit/Patch result's file from
+disk with no mtime check, so a resumed sub-agent got its parent's later edits
+as "read" — dropped when mtime > result time. The Write refusal capped lines
+only (one minified line = megabytes) — 32 KB on the stat; its stale variant
+said "resubmit", which would erase the change it shows — now asks for a merge.
+`FileState.injectedView` (read by no gate after this) removed.
+
+**Projected by the effect reviewer from the census data:** Edit week 3.95% →
+0.54%, month 3.9% → 1.0–1.35% (the rest is pre-served-region September
+traffic); Write week 2.3% → 1.3%. Open, not addressed: a never-read Edit of a
+short line copied from a SIBLING file can land unread in the wrong file (the
+result says unread); one blind Edit leaves a whole-file entry, so the next
+Write passes (Patch has the same parity); 9 of the month's 45 Write errors are
+"Classifier stage 2 unparseable" denials.
 
 **How to apply:** re-run the census a week after the merge. Expect Edit's
 "has not been read yet" only where old_string does not occur exactly once,

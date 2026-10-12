@@ -106,7 +106,7 @@
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Tool error census 09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs fixed
-- [Edit/Write error census 10-05..12 + fixes](edit-write-error-census-2026-10-12.md) — 3.9%/2.3%; 6 root causes fixed on fix/edit-write-census; re-run a week after merge
+- [Edit/Write error census 10-05..12 + fixes](edit-write-error-census-2026-10-12.md) — 3.9%/2.3%; root causes fixed in #292; re-run after merge
 - [Dev-tool error census 10-05..11 + fixes](devtool-error-census-2026-10-11.md) — 12 Git/WaitFor/Build/Typecheck/RunTests/agent bugs fixed in PR 288; resume keeps first run's toolFilter
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate census #157](read-gate-false-refusals-census-2026-09.md)
 
