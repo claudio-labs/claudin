@@ -416,12 +416,11 @@ export const FileReadTool = buildTool({
    * does not invalidate the entry, but any Bash does, and the re-read then
    * reaches call()).
    *
-   * The window is narrow but ordinary: readFileState held 100 paths (500 since
-   * 2026-10-12) while the Read result cache holds 500 for 60s, so a session
-   * touching more files than that (219 in the one measured) could lose the
-   * entry while the cached body lives on. bypassResultCache cannot cover it — the entry it would key
-   * on is exactly the one that is gone, making it indistinguishable from a
-   * first read.
+   * The window is narrow but ordinary: the session measured touched 219
+   * files, more than readFileState then held, and lost entries while the
+   * Read result cache still held their bodies for 60s. bypassResultCache
+   * cannot cover it — the entry it would key on is exactly the one that is
+   * gone, making it indistinguishable from a first read.
    *
    * Seeds ONLY when the context has no entry at all. A partial view, an
    * outline or a sticky stand-down marker is state call() owns; overwriting it
@@ -538,7 +537,7 @@ export const FileReadTool = buildTool({
     //
     // Placed BEFORE the dedup gate below, and deliberately not part of it: the
     // gate excludes isPartialView entries and the sticky entry is one (so
-    // Edit/Write still demand a real Read). It also carries no toolUseId, so
+    // Write still demands a real Read). It also carries no toolUseId, so
     // unlike the dedup stub it can never point the model at a tool_result that
     // is no longer there — the blind-pointer bug this whole mechanism exists
     // to avoid cannot be reached from here.
@@ -561,9 +560,10 @@ export const FileReadTool = buildTool({
     // hatch and cannot open by itself, because this marker sets isPartialView,
     // so Write is REFUSED while it stands ("read it first") — it can never be
     // what replaces the entry (a Patch or an Edit can, when one is sent).
-    // Exit 2 does not cover it either: the marker is created by microCompact, whose whole job
-    // is to keep the session BELOW the autocompact threshold, so a session
-    // that clips this way may never reach a main-thread compaction at all.
+    // Exit 2 does not cover it either: the marker is created by
+    // microCompact, whose whole job is to keep the session BELOW the
+    // autocompact threshold, so a session that clips this way may never
+    // reach a main-thread compaction at all.
     // Without the budget the model is left unable to read its way to a body
     // and unable to edit, which is the permanent-refusal bug wearing a hat.
     //

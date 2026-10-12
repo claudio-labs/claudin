@@ -369,7 +369,7 @@ describe('S5 — accumulated coverage does not survive a changed file', () => {
 })
 
 describe('S6 — Read(range), then the file changes outside the range', () => {
-  test('the watcher refreshes the entry and an edit inside the range passes', async () => {
+  test('the watcher refreshes the entry: the slice stays, at the new mtime', async () => {
     // 19 of the 30 "modified since read" refusals this week: the model read a
     // slice, deleted a line range elsewhere with `sed -i`, and its next patch
     // inside the slice was refused — the watcher skipped every Read entry, so
@@ -384,12 +384,16 @@ describe('S6 — Read(range), then the file changes outside the range', () => {
 
     // The slice the model holds is unchanged, so there is nothing to tell it.
     expect(attachments).toEqual([])
-    expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
+    // Edit takes any entry (S20), so it cannot show the refresh; the entry can.
+    const entry = ctx.readFileState.get(p)!
+    expect(entry.timestamp).toBe(getFileModificationTime(p))
+    expect(entry).toMatchObject({ offset: 1, limit: 10 })
+    expect(entry.content.split('\n').slice(0, 3)).toEqual(['l1', 'l2', 'l3'])
   })
 })
 
 describe('S7 — Read(range), then the file changes inside the range', () => {
-  test('the model is told what changed and can edit the new text', async () => {
+  test('the model is told what changed, and the entry holds the new text', async () => {
     const p = join(dir, 's7.txt')
     writeLines(p, 60)
     await read(p, { offset: 1, limit: 10 })
@@ -403,7 +407,9 @@ describe('S7 — Read(range), then the file changes inside the range', () => {
     // The snippet is numbered in FILE lines, not slice lines.
     expect((attachment as { snippet: string }).snippet).toContain('3→L3')
 
-    expect(await edit(p, 'L3\n', 'X3\n')).toMatchObject({ result: true })
+    const entry = ctx.readFileState.get(p)!
+    expect(entry.timestamp).toBe(getFileModificationTime(p))
+    expect(entry.content.split('\n')[2]).toBe('L3')
   })
 })
 
@@ -826,8 +832,8 @@ describe('S20 — Edit takes any read, like Patch', () => {
   // 2026-10-05..12 census 19 of Edit's 22 errors were its own read lanes, every
   // one an exact match, and 14 came back byte-identical.
   async function applied(p: string, oldString: string, newString: string) {
+    expect(await edit(p, oldString, newString)).toMatchObject({ result: true })
     const input = { file_path: p, old_string: oldString, new_string: newString }
-    expect(await FileEditTool.validateInput(input, ctx)).toMatchObject({ result: true })
     return (await FileEditTool.call(input, ctx, undefined as never, { uuid: randomUUID() } as never)).data
   }
 
@@ -871,8 +877,9 @@ describe('S20 — Edit takes any read, like Patch', () => {
     expect(refusal(await edit(p, 'l1', 'L1'))).toContain('old_string occurs in it 11 times') // l1, l10..l19
     const data = await applied(p, 'l25\n', 'L25\n')
     expect(data.unread).toBe(true)
-    // Written once, it counts as read: the next edit needs no exact match.
-    expect(await edit(p, 'l1', 'L1')).toMatchObject({ result: false }) // still ambiguous, now for the match
-    expect(refusal(await edit(p, 'l1', 'L1'))).toStartWith('Found ')
+    // Written once, it counts as read: what decides the next edit is the
+    // match — an indentation-drifted line now applies, where unread it would
+    // have had to occur exactly.
+    expect(await edit(p, '  l26\n', '  L26\n')).toMatchObject({ result: true })
   })
 })

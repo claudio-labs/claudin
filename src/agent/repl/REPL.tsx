@@ -262,8 +262,8 @@ const EMPTY_MCP_CLIENTS: MCPServerConnection[] = [];
 const RECENT_SCROLL_REPIN_WINDOW_MS = 3000;
 
 // Use LRU cache to prevent unbounded memory growth
-// 100 files should be sufficient for most coding sessions while preventing
-// memory issues when working across many files in large projects
+// (READ_FILE_STATE_CACHE_SIZE files, under a byte cap) when working across
+// many files in large projects
 
 // `median`, `TranscriptModeFooter`, `TranscriptSearchBar`,
 // `AnimatedTerminalTitle` and the `TITLE_*` constants were extracted
@@ -1529,7 +1529,7 @@ export function REPL({
   const bashTools = useRef(new Set<string>());
   const bashToolsProcessedIdx = useRef(0);
   // Session-level dedup for nested_memory CLAUDE.md attachments.
-  // readFileState is a 100-entry LRU; once it evicts a CLAUDE.md path,
+  // readFileState is an LRU (READ_FILE_STATE_CACHE_SIZE); once it evicts a CLAUDE.md path,
   // the next discovery cycle re-injects it. Cleared in clearConversation.
   const loadedNestedMemoryPathsRef = useRef(new Set<string>());
 

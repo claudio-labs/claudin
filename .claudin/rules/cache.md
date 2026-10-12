@@ -364,8 +364,11 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     at offset 1 it covered the whole file, and outline → Read(range) → write
     anywhere passed. `prev.isPartialView` now returns "carry nothing".
     Scenario S15 in `src/__tests__/readGateScenarios.test.ts` pins it, and
-    S6–S14 pin the rest of this bullet group end to end — through Write, since
-    `Patch` and `Edit` no longer look past presence.
+    S1–S16 pin the rest of this bullet group end to end. Where a scenario is
+    about coverage, a partial view or a stale entry, it observes through Write
+    (S1, S3, S4, S5, S9, S11, S12, S15, S16), since `Patch` and `Edit` no
+    longer look past presence; S6–S8 assert the watcher's refresh on the entry
+    itself.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 

@@ -55,7 +55,7 @@ export function fileLinesOf(text: string): string[] {
 }
 
 /**
- * Where `needed` (whole lines, compared trimmed — the coverage lane's own
+ * Where `needed` (whole lines, compared trimmed, so indentation drift still
  * tolerance) sits in the file. `null` when it is absent or matches more than
  * once. Blank-only needles localize nothing and are never served.
  */

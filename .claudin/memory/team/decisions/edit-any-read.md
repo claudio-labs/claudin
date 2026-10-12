@@ -17,9 +17,10 @@ occur in it exactly once (`locateExactText`, no quote or whitespace fuzz);
 range, symbol, clipped, injected, changed on disk — authorizes the edit, and
 `old_string` matched against the file as it is now decides it. A never-read
 edit that applies says so in the result (`unread` in the output, the shared
-`appliedUnreadNote`). The rule and its wording live once, in
-`readBeforeEditMessages.ts` ("In-place writes"); Write and NotebookEdit keep
-the whole-file gate. Not-found now gives Patch's divergence message
+`appliedUnreadNote`). The rule is stated, and its wording kept, once in
+`readBeforeEditMessages.ts` ("In-place writes"); the check itself is two lines
+in each tool, since Patch matches hunk lines and Edit a substring. Write and
+NotebookEdit keep the whole-file gate. Not-found now gives Patch's divergence message
 (`shared/blockMismatch.ts`).
 
 **Why:** user decision on 2026-10-12, after the census
@@ -31,8 +32,9 @@ A/B noise floor ([[bash-read-passthrough-not-promoted]]).
 
 **What changes for a teammate:**
 - An Edit after an outline or a range, or on a file only seen via Bash/Grep,
-  applying is intended. `readGateScenarios` S20 pins it; the refresh
-  mechanics S1–S16 are now observed through Write.
+  applying is intended. `readGateScenarios` S20 pins it; the scenarios about
+  coverage, partial views and staleness (S1, S3, S4, S5, S9, S11, S12, S15,
+  S16) now observe through Write.
 - Do not bring back a partial/stale/coverage refusal for Edit without a
   measurement that says it buys something (`.claudin/rules/cache.md`).
 - The Edit tool description changed (any Read counts) — one cache-prefix

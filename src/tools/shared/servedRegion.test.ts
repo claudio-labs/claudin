@@ -17,7 +17,7 @@ const LINES = Array.from({ length: 20 }, (_, i) => `l${i + 1}`)
 const TEXT = `${LINES.join('\n')}\n`
 
 describe('fileLinesOf', () => {
-  test('drops the trailing newline phantom line, like the coverage lane', () => {
+  test('drops the trailing newline phantom line, like coveredSegments', () => {
     expect(fileLinesOf('a\nb\n')).toEqual(['a', 'b'])
     expect(fileLinesOf('a\nb')).toEqual(['a', 'b'])
     expect(fileLinesOf('')).toEqual([])
@@ -30,7 +30,7 @@ describe('locateExactLines', () => {
     expect(locateExactLines(LINES, ['l7', 'l8', 'l9'])).toEqual({ start: 7, end: 9 })
   })
 
-  test('compares trimmed, the way the coverage lane does', () => {
+  test('compares trimmed, so indentation drift still locates', () => {
     expect(locateExactLines(['  const a = 1', 'const b = 2'], ['const a = 1'])).toEqual(
       { start: 1, end: 1 },
     )

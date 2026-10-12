@@ -72,8 +72,8 @@ export type FileState = {
   // outline, not the body, and letting it replace the file from that trades a
   // stalled loop for a blind write. But it is also why `replays` is not
   // optional: with no budget the refusal never lifts, because the replay
-  // returns without rewriting this entry, so Read can never clear what Edit is
-  // waiting on. The delete-to-re-arm version this replaced refused too, and
+  // returns without rewriting this entry, so Read can never clear what Write
+  // is waiting on. The delete-to-re-arm version this replaced refused too, and
   // then handed over a body on the next read; the budget restores that ending.
   standDownOutline?: {
     message: string
@@ -91,10 +91,10 @@ export type FileState = {
   // `coverage:unseen-region` refusals were for hunks whose old side sat
   // verbatim in lines the model had already been shown.
   //
-  // Consumed only by the coverage lane (`coveredSegments` in
-  // readBeforeEditMessages.ts), which merges these with the entry's own slice
-  // into CONTIGUOUS segments — a run of lines nobody read is never covered,
-  // however the slices are arranged around it.
+  // Consumed by `coveredSegments` (readBeforeEditMessages.ts, for Write's
+  // whole-file check and its refusal label), which merges these with the
+  // entry's own slice into CONTIGUOUS segments — a run of lines nobody read is
+  // never covered, however the slices are arranged around it.
   //
   // Correctness rests on one rule, enforced in `carrySeenRanges`: the list is
   // dropped the moment `timestamp` changes, so bytes from a previous version
@@ -158,12 +158,11 @@ const DEFAULT_MAX_CACHE_SIZE_BYTES = 25 * 1024 * 1024
  * Bounds on the accumulated slice list, per entry.
  *
  * 64 KB is 8x the slice-walk the session corpus actually shows (~8 reads of
- * 2-4 KB of one file before the write) and, more to the point, it is well
- * inside the cache's own budget: 25 MB over 100 entries leaves ~256 KB per
- * entry, so capping at the per-read ceiling (MAX_OUTPUT_SIZE, also 256 KB)
- * would start evicting by SIZE in sessions that walk many files. That trades a
- * coverage refusal for a "has not been read yet" one, which is the worse of
- * the two.
+ * 2-4 KB of one file before the write). It is a per-entry ceiling, not an
+ * average: 25 MB over 500 entries is ~51 KB each, so a session in which many
+ * entries carried the full 64 KB would start evicting by SIZE — which is why
+ * the cap is not the per-read ceiling (MAX_OUTPUT_SIZE, 256 KB). Eviction
+ * turns a whole-file read into "has not been read yet", the worse refusal.
  *
  * The newest slice is never dropped to fit: it was legally this entry's whole
  * `content` a moment earlier, so keeping it costs nothing the cache was not
