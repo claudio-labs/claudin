@@ -145,6 +145,37 @@ describe('Edit — refusals that are about the edit, not the read', () => {
     expect(r.message).toStartWith('Found 2 matches of the string to replace')
   })
 
+  test('a block not found says where it diverges, as Patch does, without echoing it back', async () => {
+    const p = readFile('diverges.ts', 'const a = 1\nconst b = 2\nconst c = 3\n')
+    const r = await refusal({ file_path: p, old_string: 'const a = 1\nconst c = 3', new_string: 'x' })
+    expect(r.message).toBe(
+      'String to replace not found in file.\n' +
+        'line(s) 1-1 of your old_string match starting at line 1, then line 2 diverges.\n' +
+        '  your line 2: const c = 3\n' +
+        '  file line 2: const b = 2\n' +
+        'Re-read that region and copy every line in between — a dropped intervening line is the usual cause.',
+    )
+  })
+
+  test('a block that matches nowhere is told so, without echoing it back', async () => {
+    const p = readFile('nowhere.ts', 'a\nb\n')
+    expect((await refusal({ file_path: p, old_string: 'nowhere', new_string: 'x' })).message).toBe(
+      'String to replace not found in file. Read the file again and copy the context verbatim — a block that matches nowhere usually means it was written from memory, or aimed at the wrong file.',
+    )
+  })
+
+  test('several matches are named by line, exact or whitespace-tolerant', async () => {
+    const exact = readFile('lines-exact.ts', 'x = 1\ny\nx = 1\n')
+    expect((await refusal({ file_path: exact, old_string: 'x = 1', new_string: 'x = 2' })).message).toBe(
+      'Found 2 matches of the string to replace, at lines 1, 3, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.',
+    )
+    // Not a substring (trailing spaces), so only the whitespace-tolerant pass finds it — twice.
+    const fuzzy = readFile('lines-fuzzy.ts', 'foo()\nbar\nfoo()\n')
+    expect((await refusal({ file_path: fuzzy, old_string: 'foo()  ', new_string: 'baz()' })).message).toStartWith(
+      'Found 2 matches of the string to replace, at lines 1, 3, but replace_all is false.',
+    )
+  })
+
   test('creating over a file that has content', async () => {
     const p = readFile('exists.ts', 'a\n')
     expect((await refusal({ file_path: p, old_string: '', new_string: 'b\n' })).errorCode).toBe(3)

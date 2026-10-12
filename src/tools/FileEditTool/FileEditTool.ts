@@ -68,6 +68,10 @@ import {
   unreadRefusal,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import { locateExactText } from 'src/tools/shared/servedRegion.js'
+import {
+  describeDivergence,
+  NOWHERE_REMEDY,
+} from 'src/tools/shared/blockMismatch.js'
 import { getEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
 import {
   type FileEditInput,
@@ -106,6 +110,37 @@ const UNREAD_REFUSAL = unreadRefusal(
   'old_string does not occur in it exactly once',
   'edited',
 )
+
+/**
+ * Why old_string is not in the file, as Patch says it of a hunk
+ * (blockMismatch.ts): where it stops agreeing with the file, or that it
+ * matches nowhere. It never echoes old_string, which the model just sent.
+ */
+function notFoundMessage(file: string, oldString: string): string {
+  const block = oldString.endsWith('\n') ? oldString.slice(0, -1).split('\n') : oldString.split('\n')
+  const divergence = describeDivergence(file.split('\n'), block, 0, 'old_string')
+  return divergence
+    ? `String to replace not found in file.\n${divergence}`
+    : `String to replace not found in file. ${NOWHERE_REMEDY}`
+}
+
+/** Several places old_string matches, by line, so the retry can pick one. */
+function multipleMatchesMessage(lines: number[]): string {
+  return `Found ${lines.length} matches of the string to replace, at lines ${lines.join(', ')}, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.`
+}
+
+/** The 1-based line of every occurrence of `needle` in `text`. */
+function linesOf(text: string, needle: string): number[] {
+  const lines: number[] = []
+  let line = 1
+  let from = 0
+  for (let at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + needle.length)) {
+    for (let i = from; i < at; i++) if (text.charCodeAt(i) === 10) line++
+    from = at
+    lines.push(line)
+  }
+  return lines
+}
 
 /**
  * The format guard's verdict (memoryFormatGuard.ts) on the whole file as the
@@ -343,7 +378,7 @@ export const FileEditTool = buildTool({
         return {
           result: false,
           behavior: 'ask',
-          message: `Found ${fuzzy.count} matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString: ${old_string}`,
+          message: multipleMatchesMessage(fuzzy.lines),
           meta: {
             isFilePathAbsolute: String(isAbsolute(file_path)),
           },
@@ -360,7 +395,7 @@ export const FileEditTool = buildTool({
       return {
         result: false,
         behavior: 'ask',
-        message: `String to replace not found in file.\nString: ${old_string}`,
+        message: notFoundMessage(file, old_string),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
         },
@@ -368,14 +403,14 @@ export const FileEditTool = buildTool({
       }
     }
 
-    const matches = file.split(actualOldString).length - 1
+    const matches = linesOf(file, actualOldString)
 
     // Check if we have multiple matches but replace_all is false
-    if (matches > 1 && !replace_all) {
+    if (matches.length > 1 && !replace_all) {
       return {
         result: false,
         behavior: 'ask',
-        message: `Found ${matches} matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString: ${old_string}`,
+        message: multipleMatchesMessage(matches),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
           actualOldString,
