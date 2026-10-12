@@ -10,13 +10,17 @@
 // The parse + fuzzy-match behavior is otherwise identical to the source.
 
 import {
-  bestPartialMatch,
   findAllByLadder,
   findAllMatches,
   findContaining,
   ignoreSurroundingWs,
   seekSequence,
 } from 'src/tools/shared/fuzzyLineMatch.js'
+import {
+  describeDivergence,
+  excerpt,
+  NOWHERE_REMEDY,
+} from 'src/tools/shared/blockMismatch.js'
 
 /**
  * A patchText that is not a patch but a reference: "apply the patch refused
@@ -507,21 +511,9 @@ function rebuildSegment(
   return segment
 }
 
-const MAX_ERROR_LINE_CHARS = 200
-
-function excerpt(line: string): string {
-  return line.length > MAX_ERROR_LINE_CHARS
-    ? `${line.slice(0, MAX_ERROR_LINE_CHARS)}\u2026`
-    : line
-}
-
 /**
  * Explains a failed old-lines search by naming the point where the model's block
- * stopped agreeing with the file. The previous message echoed the block back,
- * which tells the model only what it already sent — the recovery observed in
- * practice was a blind re-send. The divergence point, plus the file's actual
- * line there, is what makes it a one-shot fix: a dropped intervening line is by
- * far the most common cause.
+ * stopped agreeing with the file (shared/blockMismatch.ts, which Edit uses too).
  *
  * A block that is in the file, only above where the search started, comes
  * first: "matches nowhere, written from memory" sent the model re-reading a
@@ -546,26 +538,11 @@ function describeLineMismatch(
       `, or give it an '@@' anchor above the block.\n${pattern.map(excerpt).join('\n')}`
     )
   }
-  const best = bestPartialMatch(originalLines, pattern, searchStart)
-  if (!best) {
-    return (
-      `${head}: none of the ${pattern.length} line(s) below appear at or after line ` +
-      `${searchStart + 1}. Read the file again and copy the context verbatim — a block ` +
-      `that matches nowhere usually means it was written from memory, or aimed at the ` +
-      `wrong file.\n${pattern.map(excerpt).join('\n')}`
-    )
-  }
-  const divergedAt = best.index + best.matched
-  const fileLine = originalLines[divergedAt]
+  const divergence = describeDivergence(originalLines, pattern, searchStart, 'hunk')
+  if (divergence) return `${head}: ${divergence}`
   return (
-    `${head}: line(s) 1-${best.matched} of your hunk match starting at line ` +
-    `${best.index + 1}, then line ${best.matched + 1} diverges.\n` +
-    `  your line ${best.matched + 1}: ${excerpt(pattern[best.matched])}\n` +
-    (fileLine === undefined
-      ? '  the file ends there\n'
-      : `  file line ${divergedAt + 1}: ${excerpt(fileLine)}\n`) +
-    'Re-read that region and copy every line in between — a dropped intervening ' +
-    'line is the usual cause.'
+    `${head}: none of the ${pattern.length} line(s) below appear at or after line ` +
+    `${searchStart + 1}. ${NOWHERE_REMEDY}\n${pattern.map(excerpt).join('\n')}`
   )
 }
 
