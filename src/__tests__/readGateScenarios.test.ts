@@ -25,6 +25,7 @@ import {
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import { ApplyPatchTool } from 'src/tools/ApplyPatchTool/ApplyPatchTool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
+import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
 import { createPlanAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import {
   getChangedFileAttachments,
@@ -42,6 +43,8 @@ import {
 // the file was read at all (S19), so a scenario about coverage, a partial view
 // or a stale entry would pass through it unobserved. The ones left on
 // Patch — S10, S11, S16, S17, S18 — are about the entry being there.
+// Write, the whole-file write, reads the same entries and keeps the full gate,
+// so every scenario whose entry it can tell apart observes through it too.
 //
 // Reproduced here, from the 683-session corpus:
 //   S1  a file walked in two ranges, patched inside the first    (28/37 refusals)
@@ -182,6 +185,11 @@ function edit(path: string, oldString: string, newString: string) {
   )
 }
 
+/** Write's validator: a whole-file write, which needs the file read whole and unchanged. */
+function write(path: string, content = 'replaced\n') {
+  return FileWriteTool.validateInput({ file_path: path, content }, ctx)
+}
+
 function refusal(result: ValidationResult): string {
   if (result.result) throw new Error('expected a refusal, got a pass')
   return result.message
@@ -241,6 +249,15 @@ describe('S1 — a file walked in two ranges', () => {
     await read(p, { offset: 40, limit: 6 })
 
     expect(refusal(await edit(p, 'l10\nl40\n', 'X\n'))).toContain('only read in part')
+  })
+
+  test('Write is refused, naming both ranges', async () => {
+    const p = join(dir, 's1-write.txt')
+    writeLines(p, 60)
+    await read(p, { offset: 1, limit: 10 })
+    await read(p, { offset: 40, limit: 6 })
+
+    expect(refusal(await write(p))).toContain('was only read in part (lines 1-10, 40-45)')
   })
 })
 
@@ -310,6 +327,8 @@ describe('S3 — an out-of-band rewrite of a file the model had read in full', (
     expect(
       await edit(p, "  return 'AFTER0'\n", "  return 'PATCHED'\n"),
     ).toMatchObject({ result: true })
+    // The refreshed entry is the whole new file, at its new mtime.
+    expect(await write(p)).toEqual({ result: true })
   })
 })
 
@@ -340,6 +359,7 @@ describe('S4 — the rewritten file can no longer be re-read', () => {
     ).toBeNull()
 
     expect((await edit(p, '  return 1\n', '  return 2\n')).result).toBe(false)
+    expect((await write(p)).result).toBe(false)
   })
 })
 
@@ -363,6 +383,7 @@ describe('S5 — accumulated coverage does not survive a changed file', () => {
     expect((await edit(p, 'l3\n', 'X3\n')).result).toBe(false)
     // And the refusal describes only what is still true.
     expect(refusal(await edit(p, 'l3\n', 'X3\n'))).toContain('lines 40-45')
+    expect(refusal(await write(p))).toContain('was only read in part (lines 40-45)')
   })
 })
 
@@ -440,6 +461,8 @@ describe('S9 — two ranges, one of them rewritten', () => {
     expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
     // The rewritten slice is what the model now holds for 40-45.
     expect(await edit(p, 'L42\n', 'X42\n')).toMatchObject({ result: true })
+    // Before any Edit refusal below: a served refusal registers its lines.
+    expect(refusal(await write(p))).toContain('was only read in part (lines 1-10, 40-45)')
     // And the refusal for the gap still names both slices.
     expect(refusal(await edit(p, 'l20\n', 'L20\n'))).toContain('lines 1-10, 40-45')
   })
@@ -503,6 +526,7 @@ describe('S11 — compaction clears the cache, the plan comes back as an attachm
         ctx,
       ),
     ).toMatchObject({ result: true })
+    expect(await write(p, '# Plan\n')).toEqual({ result: true })
   })
 })
 
@@ -530,6 +554,7 @@ describe('S12 — a whole-file entry over the cap changes on disk', () => {
     // The pass terminates: a second one does not try to re-read.
     expect(await watcherPass()).toEqual([])
 
+    expect(refusal(await write(p))).toContain('too large to re-read whole')
     const message = refusal(await edit(p, '  return 1\n', '  return 2\n'))
     expect(message).toContain('too large to re-read whole')
     expect(message).not.toContain('has not been read yet')
@@ -626,6 +651,7 @@ describe('S15 — outline, then Read(range), then an edit outside the range', ()
     expect(
       await edit(p, 'export const v31 = 31\n', 'export const v31 = 0\n'),
     ).toMatchObject({ result: true })
+    expect(refusal(await write(p))).toContain('was only read in part (lines 30-34)')
     const message = refusal(
       await edit(p, 'export const v3 = 3\n', 'export const v3 = 0\n'),
     )
@@ -693,6 +719,7 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
     rewriteAhead(p, linesWith(20, { 7: 'L7' }))
     // Patch matches the hunk at apply time (S19); the credit is dated to
     // the cat all the same, which is what Edit's staleness check reads.
+    expect(refusal(await write(p))).toContain('modified since read')
     expect(refusal(await edit(p, 'l12\n', 'L12\n'))).toContain('modified since read')
   })
 })
