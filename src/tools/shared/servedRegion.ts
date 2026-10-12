@@ -42,6 +42,8 @@ import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 export const SERVED_REGION_CONTEXT_LINES = 2
 /** Above this many lines in one refusal, nothing is served. */
 export const MAX_SERVED_LINES = 200
+/** Above this many bytes a whole file is not served: one minified line can be megabytes. */
+export const MAX_SERVED_FILE_BYTES = 32 * 1024
 
 /** 1-based, inclusive file lines. */
 export type LineRegion = { start: number; end: number }
@@ -173,9 +175,11 @@ export function serveRegions(
 }
 
 /**
- * A Write's refusal over a file of at most MAX_SERVED_LINES lines: the file,
- * numbered the way Read numbers it, registered as a whole-file read of this
- * version, so the resubmit passes if it still applies. `null` past the cap.
+ * A Write's refusal over a file of at most MAX_SERVED_LINES lines and
+ * MAX_SERVED_FILE_BYTES bytes: the file, numbered the way Read numbers it,
+ * registered as a whole-file read of this version, so the resubmit passes if
+ * it still applies. `null` past either cap. No `dedupExempt`: Read's dedup
+ * gate never matches a whole-file entry (`offset: undefined`).
  */
 export function serveWholeFile(
   readFileState: FileStateCache,
@@ -184,13 +188,14 @@ export function serveWholeFile(
   mtime: number,
 ): string | null {
   const lines = fileLinesOf(fileText)
-  if (lines.length > MAX_SERVED_LINES) return null
+  if (lines.length > MAX_SERVED_LINES || Buffer.byteLength(fileText) > MAX_SERVED_FILE_BYTES) {
+    return null
+  }
   readFileState.set(absPath, {
     content: fileText,
     timestamp: mtime,
     offset: undefined,
     limit: undefined,
-    dedupExempt: true,
   })
   return addLineNumbers({ content: lines.join('\n'), startLine: 1 })
 }

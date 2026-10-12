@@ -263,7 +263,18 @@ describe('Write — a refusal over a small file shows it, and the resubmit passe
     const r = await refusal(validate(p))
     expect(r.message).toStartWith('File has been modified since read')
     expect(r.message).toContain('4→LINE4')
+    // Not "resubmit": the same Write again would erase the change it shows.
+    expect(r.message).toContain('merge your change into it before writing again')
+    expect(r.message).not.toContain('resubmit')
     expect(await validate(p)).toEqual({ result: true })
+  })
+
+  test('nothing is shown past 32 KB, however few the lines', async () => {
+    // One minified line can be megabytes; the refusal would be the file.
+    const p = join(dir, 'serve-wide.js')
+    writeFileSync(p, `${'x'.repeat(40_000)}\n`)
+    expect((await refusal(validate(p))).message).not.toContain('→')
+    expect((await validate(p)).result).toBe(false)
   })
 
   test('a range, or an outline, of a small file', async () => {

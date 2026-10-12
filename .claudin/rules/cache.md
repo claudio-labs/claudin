@@ -350,9 +350,12 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     resubmit passes. Edit served its four refusals this way until 2026-10-12;
     since then the exact, unique match it would have served is simply applied
     (S20). Write's never-read, partial-view, stale and whole-file refusals
-    serve the WHOLE file when it has at most 200 lines (`serveWholeFile`),
-    registered as a whole-file read with `dedupExempt`, so the resubmit passes
-    if it still applies (2026-10-12). Never served: an ambiguous or absent old
+    serve the WHOLE file when it has at most 200 lines and 32 KB
+    (`serveWholeFile`; the bytes are checked on the stat before any read),
+    registered as a whole-file read — no `dedupExempt` needed, Read's dedup
+    never matches `offset: undefined` — so the resubmit passes if it still
+    applies; the stale refusal asks for a merge instead, since the same Write
+    would erase the change it shows (2026-10-12). Never served: an ambiguous or absent old
     side, `Delete File`, a file too large to re-read, and a `standDownOutline`
     marker (its replay budget must not be reopened).
   - **A partial view is never carried as a seen slice** (2026-09-20).
