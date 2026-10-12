@@ -28,10 +28,10 @@ import { plural } from 'src/shared/text/stringUtils.js';
 // (bash commands, file reads, search patterns) are actually readable instead
 // of flickering past in a single frame.
 const MIN_HINT_DISPLAY_MS = 700;
-// A collapsed group that touched more files than this lists the first few and
-// counts the rest — past ~8 rows the badge stops being a summary.
-const MAX_WRITE_ROWS = 8;
-// The letter each ⎿ row carries. A symbol renamed in place ('S') is a plain
+// Marks the throttled ⎿ line as a written file rather than hint text. A NUL
+// cannot occur in a path, a pattern or a command, so the two never collide.
+const WRITE_LINE_KEY = '\0write:';
+// The letter the ⎿ write row carries. A symbol renamed in place ('S') is a plain
 // modification on disk, so it takes git's letter for that — the header above is
 // where it reads as a rename.
 const ROW_LETTER: Record<WriteKind, string> = {
@@ -276,7 +276,15 @@ export function CollapsedReadSearchContent({
       }
     }
   }
-  const displayedHint = useMinDisplayTime(incomingHint, MIN_HINT_DISPLAY_MS);
+  // While a write is the group's latest operation, the ⎿ line is that file's
+  // row instead of a hint — one line replaced in place, never a growing list.
+  // Both go through one throttle so a read→write→read can't flicker; the row's
+  // +/− is looked up live, so it fills in when the result lands.
+  const incomingLine = message.latestWriteFile !== undefined ? WRITE_LINE_KEY + message.latestWriteFile : incomingHint;
+  const displayedLine = useMinDisplayTime(incomingLine, MIN_HINT_DISPLAY_MS);
+  const isWriteLine = displayedLine?.startsWith(WRITE_LINE_KEY) === true;
+  const displayedHint = isWriteLine ? undefined : displayedLine;
+  const displayedWrite = isWriteLine ? writeStats.find(stat => stat.path === displayedLine!.slice(WRITE_LINE_KEY.length)) : undefined;
 
   // In verbose mode, render each tool use with its 1-line result summary
   if (verbose) {
@@ -519,9 +527,6 @@ export function CollapsedReadSearchContent({
         </>);
     }
   }
-  // The visible write rows and the column the +/− numbers line up in.
-  const shownWriteStats = writeStats.slice(0, MAX_WRITE_ROWS);
-  const writePathWidth = shownWriteStats.reduce((max, stat) => Math.max(max, getDisplayPath(stat.path).length), 0);
   const hasWriteTotals = writeAdditions > 0 || writeDeletions > 0;
   // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
   // so a group of nothing but recalls has no badge left to render. The
@@ -572,8 +577,8 @@ export function CollapsedReadSearchContent({
               </Text>)}
           </Box>
         </Box>}
-      {/* Per-file rows only while the group runs — a finished group is one line. */}
-      {isActiveGroup && shownWriteStats.map(stat => <Box key={`write-${stat.path}`} flexDirection="row">
+      {/* The latest written file, only while the group runs — a finished group is one line. */}
+      {isActiveGroup && displayedWrite !== undefined && <Box flexDirection="row">
           <Box width={5} flexShrink={0}>
             <Text dimColor>{'  ⎿  '}</Text>
           </Box>
@@ -582,20 +587,16 @@ export function CollapsedReadSearchContent({
                 independently, which splits a long row in half — the same trap
                 the badge above hit (rules/ink-tui.md §10). */}
             <Text dimColor>
-              {ROW_LETTER[stat.kind]} {getDisplayPath(stat.path).padEnd(writePathWidth)}
-              {(stat.additions > 0 || stat.deletions > 0) && <Text>
+              {ROW_LETTER[displayedWrite.kind]} {getDisplayPath(displayedWrite.path)}
+              {(displayedWrite.additions > 0 || displayedWrite.deletions > 0) && <Text>
                   {'  '}
-                  {stat.additions > 0 && <Text color="diffAddedWord">+{stat.additions}</Text>}
-                  {stat.additions > 0 && stat.deletions > 0 && ' '}
-                  {stat.deletions > 0 && <Text color="diffRemovedWord">−{stat.deletions}</Text>}
+                  {displayedWrite.additions > 0 && <Text color="diffAddedWord">+{displayedWrite.additions}</Text>}
+                  {displayedWrite.additions > 0 && displayedWrite.deletions > 0 && ' '}
+                  {displayedWrite.deletions > 0 && <Text color="diffRemovedWord">−{displayedWrite.deletions}</Text>}
                 </Text>}
             </Text>
           </Box>
-        </Box>)}
-      {isActiveGroup && writeStats.length > MAX_WRITE_ROWS && <Text dimColor>
-          {'  ⎿  '}… and {writeStats.length - MAX_WRITE_ROWS} more{' '}
-          {writeStats.length - MAX_WRITE_ROWS === 1 ? 'file' : 'files'}
-        </Text>}
+        </Box>}
       {message.hookTotalMs !== undefined && message.hookTotalMs > 0 && <Text dimColor>
           {'  ⎿  '}Ran {message.hookCount} PreToolUse{' '}
           {message.hookCount === 1 ? 'hook' : 'hooks'} (

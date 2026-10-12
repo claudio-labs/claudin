@@ -132,6 +132,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
         writeFileStats: [
           { path: '/repo/sym.ts', kind: 'S', additions: 3, deletions: 3 },
         ],
+        latestWriteFile: '/repo/sym.ts',
       },
       true,
     )
@@ -170,62 +171,87 @@ describe('CollapsedReadSearchContent — write lane', () => {
     }
   })
 
-  test('a running group lists the files it touched', async () => {
-    const out = await render({ writeFileStats: stats }, true)
+  test('a running group shows only the latest file it touched', async () => {
+    // One ⎿ line replaced in place, like the MCP hint — the files written
+    // before it are counted on the header, not stacked underneath.
+    const out = await render(
+      { writeFileStats: stats, latestWriteFile: '/repo/two.ts' },
+      true,
+    )
 
     expect(out).toContain('updating 1 file')
-    expect(out).toContain('M /repo/one.ts')
     expect(out).toContain('A /repo/two.ts')
-    expect(out).toContain('D /repo/three.ts')
-    expect(out).toContain('+28')
+    expect(out).toContain('+14')
+    expect(out).not.toContain('one.ts')
+    expect(out).not.toContain('three.ts')
   })
 
-  test('each ⎿ row keeps its path and its +/− together', async () => {
-    // The rows are their own Box; they hit the same column-split trap as the
-    // badge. Only a width narrow enough to wrap a row tells the two apart —
+  test('a hint takes the line when the latest operation is not a write', async () => {
+    const out = await render(
+      { readCount: 1, writeFileStats: stats, latestDisplayHint: 'src/read.ts' },
+      true,
+    )
+
+    expect(out).toContain('⎿  src/read.ts')
+    expect(out).not.toContain('one.ts')
+    expect(out).not.toContain('two.ts')
+  })
+
+  test('the ⎿ row keeps its path and its +/− together', async () => {
+    // The row is its own Box; it hits the same column-split trap as the
+    // badge. Only a width narrow enough to wrap it tells the two apart —
     // measured: at 80 and 34 both shapes render identically, at 26 the split
     // one starts eating the path ("M /repo/one.t  +28 −4").
     for (const columns of [80, 26, 20]) {
-      const flat = flatten(await render({ writeFileStats: stats }, true, columns))
-      expectInOrder(flat, [
-        'M /repo/one.ts',
-        '+28',
-        '−4',
-        'A /repo/two.ts',
-        '+14',
-        'D /repo/three.ts',
-        '−3',
-      ])
+      const flat = flatten(
+        await render(
+          { writeFileStats: stats, latestWriteFile: '/repo/one.ts' },
+          true,
+          columns,
+        ),
+      )
+      expectInOrder(flat, ['⎿', 'M /repo/one.ts', '+28', '−4'])
     }
   })
 
-  test('a zero side is dropped from the badge and from the rows', async () => {
+  test('a zero side is dropped from the badge and from the row', async () => {
     // "+146 −0" reads as noise; only the side that moved is shown.
     const addOnly = flatten(
-      await render({ writeFileStats: [stats[1]!] }, true),
+      await render(
+        { writeFileStats: [stats[1]!], latestWriteFile: stats[1]!.path },
+        true,
+      ),
     )
-    expect(addOnly).toContain('+14')
+    expect(addOnly).toContain('A /repo/two.ts +14')
     expect(addOnly).not.toContain('−0')
 
     const delOnly = flatten(
-      await render({ writeFileStats: [stats[2]!] }, true),
+      await render(
+        { writeFileStats: [stats[2]!], latestWriteFile: stats[2]!.path },
+        true,
+      ),
     )
-    expect(delOnly).toContain('−3')
+    expect(delOnly).toContain('D /repo/three.ts −3')
     expect(delOnly).not.toContain('+0')
   })
 
-  test('the file list is capped and the remainder is counted', async () => {
+  test('many files still take one row, never a list', async () => {
     const many: WriteFileStat[] = Array.from({ length: 11 }, (_, i) => ({
       path: `/repo/f${i}.ts`,
       kind: 'M',
       additions: 1,
       deletions: 0,
     }))
-    const out = await render({ writeFileStats: many }, true)
+    const out = await render(
+      { writeFileStats: many, latestWriteFile: '/repo/f10.ts' },
+      true,
+    )
 
-    expect(out).toContain('/repo/f7.ts')
-    expect(out).not.toContain('/repo/f8.ts')
-    expect(out).toContain('and 3 more files')
+    expect(out).toContain('Updating 11 files')
+    expect(out).toContain('M /repo/f10.ts')
+    expect(out).not.toContain('/repo/f0.ts')
+    expect(out).not.toContain('more file')
+    expect(out.match(/⎿/g)).toHaveLength(1)
   })
 
   test('a write-only group still renders (it is not treated as empty)', async () => {
