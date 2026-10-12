@@ -33,6 +33,7 @@ describe('/create registration', () => {
     expect(skill.userInvocable).toBe(true)
     expect(skill.disableModelInvocation).toBe(false)
     expect(skill.allowedTools).toEqual(['Read', 'Write', 'Edit', 'Glob', 'Grep'])
+    expect(skill.argumentHint).toBe('[skill|rule|agent|hook|plugin] [description]')
   })
 })
 
@@ -88,5 +89,72 @@ describe('/create prompt content', () => {
     expect(text).toContain('## Rules')
     expect(text).toContain('## Agents')
     expect(text).toContain('something to review my PRs')
+  })
+
+  test('the full guide points at hooks and plugins instead of embedding them', async () => {
+    const text = await getPromptText('')
+    expect(text).toContain('## Hooks and plugins')
+    expect(text).toContain('args\n`hook <the request>` or `plugin <the request>`')
+    expect(text).not.toContain('## Hooks Configuration')
+    expect(text).not.toContain('## Plugins')
+  })
+})
+
+describe('/create hook', () => {
+  test('narrows to the hook contract, shared with /update-config', async () => {
+    const text = await getPromptText('hooks run prettier after every edit')
+    expect(text).toContain('## Hooks\n')
+    expect(text).toContain('## Hooks Configuration')
+    expect(text).toContain('## Constructing a Hook (with verification)')
+    expect(text).not.toContain('## Skills')
+    expect(text).not.toContain('## Plugins')
+    expect(text).toContain('Artifact type: hook. run prettier after every edit')
+  })
+
+  test('names every place a hook can live', async () => {
+    const text = await getPromptText('hook')
+    for (const place of [
+      '`~/.claudin/settings.json`',
+      '`.claudin/settings.json`',
+      '`.claudin/settings.local.json`',
+      '`hooks:` in the skill',
+      '`hooks:` in `.claudin/agents/<name>.md`',
+      '`hooks/hooks.json`',
+    ]) {
+      expect(text).toContain(place)
+    }
+    // registerFrontmatterHooks renames an agent's Stop hook.
+    expect(text).toContain('`SubagentStop`')
+  })
+})
+
+describe('/create plugin', () => {
+  test('narrows to the plugin contract', async () => {
+    const text = await getPromptText('plugins bundle my review skills')
+    expect(text).toContain('## Plugins')
+    expect(text).not.toContain('## Hooks Configuration')
+    expect(text).not.toContain('## Skills')
+    expect(text).toContain('Artifact type: plugin. bundle my review skills')
+  })
+
+  test('plugin contract matches the loader', async () => {
+    const text = await getPromptText('plugin')
+    // pluginLoader.ts reads the manifest from .claude-plugin/, not .claudin-plugin/
+    expect(text).toContain('.claude-plugin/')
+    expect(text).toContain('plugin.json')
+    expect(text).not.toContain('.claudin-plugin')
+    expect(text).toContain('${CLAUDIN_PLUGIN_ROOT}')
+    expect(text).toContain('${CLAUDIN_PLUGIN_DATA}')
+    expect(text).toContain('`/my-plugin:review`')
+    // loadPluginAgents.ts: model is read, these three are ignored
+    expect(text).toContain('Plugin agents **do** accept `model`')
+    expect(text).toContain('`permissionMode`, `hooks` and `mcpServers`')
+    expect(text).toContain('.claude-plugin/marketplace.json')
+  })
+
+  test('verification uses the real CLI entry points', async () => {
+    const text = await getPromptText('plugin')
+    expect(text).toContain('claudin plugin validate <plugin-dir>')
+    expect(text).toContain('claudin --plugin-dir <plugin-dir>')
   })
 })

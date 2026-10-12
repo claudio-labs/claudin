@@ -30,8 +30,8 @@ export function initBundledSkills(): void {
   registerVerifySkill()
   registerRunSkill()
   registerFewerPermissionPromptsSkill()
-  // Claudin-native: teaches the model to create/refine skills, rules, and
-  // agents in the .claudin structure (project + global).
+  // Claudin-native: teaches the model to create/refine skills, rules, agents,
+  // hooks and plugins in the .claudin structure (project + global).
   registerCreateSkill()
   // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
   // that are invisible at runtime and proposes corrections from session history.

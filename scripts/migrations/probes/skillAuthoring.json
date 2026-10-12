@@ -1,5 +1,5 @@
 {
-  "test": ["src/skills/bundled/updateConfig.test.ts"],
+  "test": ["src/skills/bundled/updateConfig.test.ts", "src/skills/bundled/create.test.ts"],
   "source": "src/skills/bundled/updateConfig.ts",
   "probes": [
     {
@@ -45,6 +45,54 @@
       "name": "the full prompt drops the hook reference",
       "find": "${HOOKS_DOCS}\n",
       "replace": "\n"
+    },
+    {
+      "name": "/create stops recognising the hook type",
+      "source": "src/skills/bundled/create.ts",
+      "find": "  hooks: 'hook',\n",
+      "replace": ""
+    },
+    {
+      "name": "/create stops recognising the plugin type",
+      "source": "src/skills/bundled/create.ts",
+      "find": "  plugins: 'plugin',\n",
+      "replace": ""
+    },
+    {
+      "name": "/create hook drops the shared hook reference",
+      "source": "src/skills/bundled/create.ts",
+      "find": "${HOOKS_DOCS}\n\n${HOOK_VERIFICATION_FLOW}`",
+      "replace": "${HOOK_VERIFICATION_FLOW}`"
+    },
+    {
+      "name": "/create hook forgets agent frontmatter",
+      "source": "src/skills/bundled/create.ts",
+      "find": "| Agent frontmatter | \\`hooks:\\` in \\`.claudin/agents/<name>.md\\` |",
+      "replace": "| Agent frontmatter | agent files |"
+    },
+    {
+      "name": "the untyped guide embeds everything instead of pointing",
+      "source": "src/skills/bundled/create.ts",
+      "find": ": [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_AND_PLUGIN_POINTER]",
+      "replace": ": [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_SECTION, PLUGIN_SECTION]"
+    },
+    {
+      "name": "the plugin manifest directory is renamed",
+      "source": "src/skills/bundled/create.ts",
+      "find": "**Manifest** (\\`.claude-plugin/plugin.json\\`):",
+      "replace": "**Manifest** (\\`.claudin-plugin/plugin.json\\`):"
+    },
+    {
+      "name": "the plugin agent caveats are dropped",
+      "source": "src/skills/bundled/create.ts",
+      "find": "- Plugin agents **do** accept \\`model\\` (project agents do not), and **ignore**",
+      "replace": "- Plugin agents behave like project agents, and **ignore**"
+    },
+    {
+      "name": "plugin verification loses the session-only flag",
+      "source": "src/skills/bundled/create.ts",
+      "find": "with \\`claudin --plugin-dir <plugin-dir>\\`",
+      "replace": "with \\`claudin\\`"
     }
   ]
 }
