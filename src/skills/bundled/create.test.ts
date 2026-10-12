@@ -91,12 +91,14 @@ describe('/create prompt content', () => {
     expect(text).toContain('something to review my PRs')
   })
 
-  test('the full guide points at hooks and plugins instead of embedding them', async () => {
+  // A pointer to `/create hook …` was tried instead: the model-invoked Skill
+  // call needs permission, so it became a prompt (TUI) or a denial (headless).
+  test('the full guide embeds hooks and plugins rather than pointing at them', async () => {
     const text = await getPromptText('')
-    expect(text).toContain('## Hooks and plugins')
-    expect(text).toContain('args\n`hook <the request>` or `plugin <the request>`')
-    expect(text).not.toContain('## Hooks Configuration')
-    expect(text).not.toContain('## Plugins')
+    expect(text).toContain('## Hooks Configuration')
+    expect(text).toContain('## Constructing a Hook (with verification)')
+    expect(text).toContain('## Plugins')
+    expect(text).not.toContain('invoke the Skill tool with skill `create`')
   })
 })
 
@@ -129,11 +131,14 @@ describe('/create hook', () => {
 })
 
 describe('/create plugin', () => {
-  test('narrows to the plugin contract', async () => {
+  test('carries the contracts of everything a plugin bundles, not rules', async () => {
     const text = await getPromptText('plugins bundle my review skills')
     expect(text).toContain('## Plugins')
-    expect(text).not.toContain('## Hooks Configuration')
-    expect(text).not.toContain('## Skills')
+    expect(text).toContain('## Skills')
+    expect(text).toContain('## Agents')
+    expect(text).toContain('## Hooks Configuration')
+    expect(text).not.toContain('## Rules')
+    expect(text).not.toContain('invoke the Skill tool with skill `create`')
     expect(text).toContain('Artifact type: plugin. bundle my review skills')
   })
 

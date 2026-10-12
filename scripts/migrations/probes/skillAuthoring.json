@@ -71,10 +71,16 @@
       "replace": "| Agent frontmatter | agent files |"
     },
     {
-      "name": "the untyped guide embeds everything instead of pointing",
+      "name": "the untyped guide leaves the hook and plugin contracts out",
       "source": "src/skills/bundled/create.ts",
-      "find": ": [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_AND_PLUGIN_POINTER]",
-      "replace": ": [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_SECTION, PLUGIN_SECTION]"
+      "find": ": [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_SECTION, PLUGIN_SECTION]",
+      "replace": ": [SKILL_SECTION, RULE_SECTION, AGENT_SECTION]"
+    },
+    {
+      "name": "/create plugin stops carrying the contracts it bundles",
+      "source": "src/skills/bundled/create.ts",
+      "find": "plugin: [PLUGIN_SECTION, SKILL_SECTION, AGENT_SECTION, HOOK_SECTION],",
+      "replace": "plugin: [PLUGIN_SECTION],"
     },
     {
       "name": "the plugin manifest directory is renamed",

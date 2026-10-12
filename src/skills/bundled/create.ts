@@ -13,8 +13,10 @@ import { HOOK_VERIFICATION_FLOW, HOOKS_DOCS } from 'src/skills/bundled/hookDocs.
  *
  * Hooks reuse the reference `/update-config` teaches (hookDocs.ts) rather than
  * a second copy; plugins follow src/plugins/pluginLoader.ts and schemas.ts.
- * Both are long, so the untyped guide only points at them — the model loads
- * one by invoking `/create hook …` or `/create plugin …`.
+ * The untyped guide carries every section, long as the hook one is: pointing
+ * the model at `/create hook …` instead was tried, and a model-invoked
+ * `/create` needs permission (it has allowedTools), so it became a prompt in
+ * the TUI and a denied call the model improvised around in headless runs.
  */
 
 type ArtifactType = 'skill' | 'rule' | 'agent' | 'hook' | 'plugin'
@@ -286,9 +288,8 @@ default directories need no entry.
   \`\${CLAUDIN_PLUGIN_ROOT}\` — an installed plugin runs from a cache, not from
   where it was written. \`\${CLAUDIN_PLUGIN_DATA}\` is a per-plugin directory that
   survives updates, for state.
-- Otherwise skills, agents and hooks follow their own contracts, which this
-  section does not repeat: load one by invoking the Skill tool with skill
-  \`create\` and args \`skill …\`, \`agent …\` or \`hook …\`.
+- Otherwise skills, agents and hooks follow the contracts in their own
+  sections below.
 
 **Distributing** — a marketplace is a directory or repo with
 \`.claude-plugin/marketplace.json\`:
@@ -306,15 +307,6 @@ from \`/plugin\`.
    with \`claudin --plugin-dir <plugin-dir>\` (loads it for that session only,
    no install) and check \`/skills\` for the \`/<plugin>:<name>\` entries.`
 
-// The untyped guide stays at skill/rule/agent size: these two sections would
-// double it, and most requests without a type are skills.
-const HOOK_AND_PLUGIN_POINTER = `## Hooks and plugins
-
-Their contracts are long, so this guide leaves them out. If step 2 lands on a
-hook or a plugin, invoke the Skill tool with skill \`create\` and args
-\`hook <the request>\` or \`plugin <the request>\` — that loads a different
-section of this skill, so it is not re-running it — and continue from there.`
-
 const VERIFY_SECTION = `## Verifying
 
 - **Skills**: if the skills directory already existed when the session
@@ -327,12 +319,13 @@ const VERIFY_SECTION = `## Verifying
 - Always show the user the final file path and how to invoke or trigger what
   you created.`
 
-const SECTIONS: Record<ArtifactType, string> = {
-  skill: SKILL_SECTION,
-  rule: RULE_SECTION,
-  agent: AGENT_SECTION,
-  hook: HOOK_SECTION,
-  plugin: PLUGIN_SECTION,
+// A plugin bundles skills, agents and hooks, so it carries their contracts too.
+const SECTIONS: Record<ArtifactType, string[]> = {
+  skill: [SKILL_SECTION],
+  rule: [RULE_SECTION],
+  agent: [AGENT_SECTION],
+  hook: [HOOK_SECTION],
+  plugin: [PLUGIN_SECTION, SKILL_SECTION, AGENT_SECTION, HOOK_SECTION],
 }
 
 function buildPrompt(args: string): string {
@@ -343,8 +336,8 @@ function buildPrompt(args: string): string {
   // `/create rule <description>` → only that type's contract; otherwise the
   // full guide so the model can pick the right artifact in step 2.
   const sections = type
-    ? [SECTIONS[type]]
-    : [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_AND_PLUGIN_POINTER]
+    ? SECTIONS[type]
+    : [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_SECTION, PLUGIN_SECTION]
 
   const request = type ? rest.join(' ') : trimmed
   const requestSection = request
