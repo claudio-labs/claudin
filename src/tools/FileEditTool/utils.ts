@@ -158,7 +158,7 @@ function reindentNewString(
 
 export type FuzzyEditResult =
   | { kind: 'match'; matchedOldString: string; adjustedNewString: string }
-  | { kind: 'ambiguous'; count: number; lines: number[] }
+  | { kind: 'ambiguous'; lines: number[] }
   | { kind: 'none' }
 
 /**
@@ -198,7 +198,7 @@ export function resolveFuzzyEdit(
     const starts = findAllMatches(fileLines, patternLines, compare)
     if (starts.length === 0) continue
     if (starts.length > 1) {
-      return { kind: 'ambiguous', count: starts.length, lines: starts.map(i => i + 1) }
+      return { kind: 'ambiguous', lines: starts.map(i => i + 1) }
     }
 
     const start = starts[0]

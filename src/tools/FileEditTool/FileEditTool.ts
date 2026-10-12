@@ -108,12 +108,17 @@ import {
 // that prevents OOM without being unnecessarily restrictive.
 const MAX_EDIT_FILE_SIZE = 1024 * 1024 * 1024 // 1 GiB (stat bytes)
 
-/** Why a file never read was not edited (readBeforeEditMessages.ts, in-place writes). */
-const UNREAD_REFUSAL = unreadRefusal(
-  FILE_NOT_READ_ERROR,
-  'old_string does not occur in it exactly once',
-  'edited',
-)
+/**
+ * Why a file never read was not edited (readBeforeEditMessages.ts, in-place
+ * writes), naming how often old_string does occur so the retry knows whether
+ * to Read or to widen it. It opens with FILE_NOT_READ_ERROR ("…before writing
+ * to it", not "editing") because UI.tsx picks its one-liner on that constant.
+ */
+function unreadRefusalFor(file: string, oldString: string): string {
+  const count = occurrenceLines(file, oldString).length
+  const occurs = count === 0 ? 'does not occur in it' : `occurs in it ${count} times`
+  return unreadRefusal(FILE_NOT_READ_ERROR, `old_string ${occurs}`, 'edited')
+}
 
 /**
  * Why old_string is not in the file, as Patch says it of a hunk
@@ -345,7 +350,7 @@ export const FileEditTool = buildTool({
       return {
         result: false,
         behavior: 'ask',
-        message: UNREAD_REFUSAL,
+        message: unreadRefusalFor(fileContent, old_string),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
         },
@@ -548,7 +553,7 @@ export const FileEditTool = buildTool({
     // about to be replaced.
     const unread = fileExists && readFileState.get(absoluteFilePath) === undefined
     if (unread && !locateExactText(originalFileContents, old_string)) {
-      throw new Error(UNREAD_REFUSAL)
+      throw new Error(unreadRefusalFor(originalFileContents, old_string))
     }
 
     // 3. Use findActualString to handle quote normalization
@@ -681,20 +686,20 @@ export const FileEditTool = buildTool({
     const unreadNote = data.unread
       ? `\n${appliedUnreadNote(filePath, 'edited because old_string matched it exactly once')}`
       : ''
-    const thenText = unreadNote + formatThen(data.then, data.thenNote)
+    const tail = unreadNote + formatThen(data.then, data.thenNote)
 
     if (replaceAll) {
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.${thenText}`,
+        content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.${tail}`,
       }
     }
 
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: `The file ${filePath} has been updated successfully${modifiedNote}.${thenText}`,
+      content: `The file ${filePath} has been updated successfully${modifiedNote}.${tail}`,
     }
   },
 } satisfies ToolDef<ReturnType<typeof inputSchema>, FileEditOutput>)

@@ -33,7 +33,9 @@ let dir: string
 let ctx: ToolUseContext
 const savedCheckpointing = process.env.CLAUDIN_DISABLE_FILE_CHECKPOINTING
 
-const UNREAD_REFUSAL = `${FILE_NOT_READ_ERROR} old_string does not occur in it exactly once, so it was not edited unread.`
+/** The never-read refusal, naming how often old_string occurs instead (none, or several). */
+const unreadRefusal = (occurs: string) =>
+  `${FILE_NOT_READ_ERROR} old_string ${occurs}, so it was not edited unread.`
 
 beforeAll(() => {
   setOriginalFsImplementation()
@@ -209,16 +211,20 @@ describe('Edit — a file never read', () => {
     // model read; on one it never read, only the exact bytes vouch for it.
     const p = join(dir, 'curly.md')
     writeFileSync(p, 'He said \u201chello\u201d.\n')
-    expect(await refusal({ file_path: p, old_string: 'He said "hello".', new_string: 'x' })).toBe(UNREAD_REFUSAL)
+    expect(await refusal({ file_path: p, old_string: 'He said "hello".', new_string: 'x' })).toBe(
+      unreadRefusal('does not occur in it'),
+    )
   })
 
   test('is refused when old_string sits in it more than once, replace_all or not', async () => {
     const p = join(dir, 'twice.txt')
     writeFileSync(p, 'same\nother\nsame\n')
-    expect(await refusal({ file_path: p, old_string: 'same', new_string: 'SAME' })).toBe(UNREAD_REFUSAL)
+    expect(await refusal({ file_path: p, old_string: 'same', new_string: 'SAME' })).toBe(
+      unreadRefusal('occurs in it 2 times'),
+    )
     expect(
       await refusal({ file_path: p, old_string: 'same', new_string: 'SAME', replace_all: true }),
-    ).toBe(UNREAD_REFUSAL)
+    ).toBe(unreadRefusal('occurs in it 2 times'))
   })
 
   test('call() checks again: a file that changed after the check is not written', async () => {
@@ -227,7 +233,7 @@ describe('Edit — a file never read', () => {
     const input = { file_path: p, old_string: 'line5', new_string: 'LINE5' }
     expect(await validate(input)).toMatchObject({ result: true })
     writeFileSync(p, 'line5\nline5\n')
-    await expect(call(input)).rejects.toThrow(UNREAD_REFUSAL)
+    await expect(call(input)).rejects.toThrow(unreadRefusal('occurs in it 2 times'))
     expect(readFileSync(p, 'utf8')).toBe('line5\nline5\n')
   })
 })

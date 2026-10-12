@@ -868,7 +868,7 @@ describe('S20 — Edit takes any read, like Patch', () => {
   test('a file never read is edited when old_string sits in it once, and refused otherwise', async () => {
     const p = join(dir, 's20-never.txt')
     writeLines(p, 30)
-    expect(refusal(await edit(p, 'l1', 'L1'))).toContain('does not occur in it exactly once') // l1, l10..l19
+    expect(refusal(await edit(p, 'l1', 'L1'))).toContain('old_string occurs in it 11 times') // l1, l10..l19
     const data = await applied(p, 'l25\n', 'L25\n')
     expect(data.unread).toBe(true)
     // Written once, it counts as read: the next edit needs no exact match.
