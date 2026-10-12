@@ -1,6 +1,5 @@
+import { CLAUDEAI_SERVER_PREFIX, isClaudeAIMcpServerName } from 'src/mcp/normalization.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-
-const CLAUDE_AI_SERVER_PREFIX_RE = /^claude\.ai /
 
 type McpInfo = { serverName: string; toolName: string }
 
@@ -8,8 +7,11 @@ type McpInfo = { serverName: string; toolName: string }
  * `server.tool`, the name an MCP call goes by in the TUI. A claude.ai server
  * drops its prefix, as the collapsed group's header does.
  */
-export function mcpCallName(mcpInfo: McpInfo): string {
-  return `${mcpInfo.serverName.replace(CLAUDE_AI_SERVER_PREFIX_RE, '')}.${mcpInfo.toolName}`
+export function mcpCallName({ serverName, toolName }: McpInfo): string {
+  const server = isClaudeAIMcpServerName(serverName)
+    ? serverName.slice(CLAUDEAI_SERVER_PREFIX.length)
+    : serverName
+  return `${server}.${toolName}`
 }
 
 /** `server.tool({...})`, with the arguments as the model sent them. */

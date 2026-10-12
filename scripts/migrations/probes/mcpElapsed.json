@@ -79,8 +79,8 @@
     {
       "name": "the detail view drops the claude.ai server prefix",
       "source": "src/tools/MCPTool/callLabel.ts",
-      "find": "mcpInfo.serverName.replace(CLAUDE_AI_SERVER_PREFIX_RE, '')",
-      "replace": "mcpInfo.serverName"
+      "find": "? serverName.slice(CLAUDEAI_SERVER_PREFIX.length)",
+      "replace": "? serverName"
     },
     {
       "name": "the running hint shows the MCP call",
