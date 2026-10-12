@@ -42,7 +42,7 @@ import {
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { MAX_LISTING_DESC_CHARS } from 'src/tools/SkillTool/prompt.js'
 
-export type SkillLintFindingKind =
+type SkillLintFindingKind =
   /** Frontmatter does not parse even after the loader's quoting retry. */
   | 'yaml_error'
   /** Parses only because the loader quotes problematic values on retry. */
@@ -78,10 +78,10 @@ export type SkillLintFinding = {
   line?: number
 }
 
-export type SkillScope = 'user' | 'project'
+type SkillScope = 'user' | 'project'
 
 /** What the loader would make of one skill file. */
-export type SkillLintEntry = {
+type SkillLintEntry = {
   /** The name it is invoked by: `/name`, and `skill` in the Skill tool. */
   name: string
   file: string

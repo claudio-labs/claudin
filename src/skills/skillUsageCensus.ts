@@ -23,7 +23,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 
-export type SkillInvocationCounts = {
+type SkillInvocationCounts = {
   model: number
   user: number
   /** Epoch ms of the latest invocation of either kind. */
