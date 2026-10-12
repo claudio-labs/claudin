@@ -557,11 +557,11 @@ export const FileReadTool = buildTool({
     //
     // Exit 3 is the one that does not depend on anything external happening,
     // and it is load-bearing rather than belt-and-braces. Note what is NOT on
-    // the list: an Edit/Write replacing the entry. That reads like the obvious
-    // escape hatch and cannot open by itself, because this marker sets
-    // isPartialView, so those tools are REFUSED while it stands ("read it
-    // first") — they can never be what replaces the entry. Exit 2 does not
-    // cover it either: the marker is created by microCompact, whose whole job
+    // the list: a Write replacing the entry. That reads like the obvious escape
+    // hatch and cannot open by itself, because this marker sets isPartialView,
+    // so Write is REFUSED while it stands ("read it first") — it can never be
+    // what replaces the entry (a Patch or an Edit can, when one is sent).
+    // Exit 2 does not cover it either: the marker is created by microCompact, whose whole job
     // is to keep the session BELOW the autocompact threshold, so a session
     // that clips this way may never reach a main-thread compaction at all.
     // Without the budget the model is left unable to read its way to a body
@@ -861,10 +861,9 @@ export const FileReadTool = buildTool({
             // way through set().
             //
             // isPartialView: true because the model has NOT seen the body, so
-            // an Edit before the next Read must still say "read it first"
-            // (FileEditTool, FileWriteTool, applyPatch and NotebookEditTool
-            // all check this field). It also keeps this entry out of the dedup
-            // gate below.
+            // a Write before the next Read must still say "read it first"
+            // (FileWriteTool and NotebookEditTool check this field). It also
+            // keeps this entry out of the dedup gate below.
             //
             // This is NOT the same cost the delete already paid, and an
             // earlier version of this comment claimed it was. Under delete,

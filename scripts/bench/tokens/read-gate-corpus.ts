@@ -8,10 +8,12 @@
  *     what sized the change before it existed;
  *   - the PRODUCTION path: every Read in the transcript is fed to a real
  *     `FileStateCache` via `set`, so `carrySeenRanges` decides what is carried,
- *     and the refusal is re-asked of the real `seenRegionCoversText` — Edit's
- *     predicate, the one production still has. apply_patch hunks went through
- *     a line-anchored twin of it until 2026-09-24, so the numbers below were
- *     measured with that one.
+ *     and the refusal is re-asked of `seenRegionCoversText` — Edit's coverage
+ *     predicate until 2026-10-12, when Edit took Patch's any-read rule and the
+ *     lane was deleted from production. It is kept below, verbatim, so the
+ *     replay still answers what the lane would have said. apply_patch hunks
+ *     went through a line-anchored twin of it until 2026-09-24, so the numbers
+ *     below were measured with that one.
  * The second is the one to cite once the change has landed; the first is kept
  * because a divergence between them is a bug in one of the two.
  *
@@ -34,8 +36,25 @@ import {
 } from 'src/shared/fs/fileStateCache.js'
 import {
   coveredSegments,
-  seenRegionCoversText,
+  isWholeFileView,
 } from 'src/tools/shared/readBeforeEditMessages.js'
+import type { FileState } from 'src/shared/fs/fileStateCache.js'
+
+function trimLines(text: string): string {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .join('\n')
+}
+
+/** Edit's coverage lane as production ran it until 2026-10-12 (see the header). */
+function seenRegionCoversText(state: FileState, oldString: string): boolean {
+  const needle = trimLines(oldString)
+  if (needle.trim() === '') return true
+  if (state.injectedView !== undefined) return trimLines(state.injectedView).includes(needle)
+  if (isWholeFileView(state)) return true
+  return coveredSegments(state).some(segment => trimLines(segment.lines.join('\n')).includes(needle))
+}
 
 /** Commands that rewrite a file in place, i.e. that move its mtime. */
 const REWRITE_RE =

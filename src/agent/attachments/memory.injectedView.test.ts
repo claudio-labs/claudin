@@ -3,12 +3,12 @@
  * in a form that differs from disk (frontmatter stripped, HTML comments
  * stripped, MEMORY.md truncated).
  *
- * The entry `memoryFilesToAttachments` seeds must let Edit work from exactly
- * the text that reached the model, and nothing else: 8 of 65 read-gate
- * refusals in the 2026-08/09 corpus were Edits of such a file, each answered
- * by a view='full' re-read of a file the model had just been shown.
- * (Patch takes any read since 2026-09-24, so the entry's presence is
- * all it needs.)
+ * The entry `memoryFilesToAttachments` seeds is a read of the file: 8 of 65
+ * read-gate refusals in the 2026-08/09 corpus were Edits of such a file, each
+ * answered by a view='full' re-read of a file the model had just been shown.
+ * Patch (since 2026-09-24) and Edit (since 2026-10-12) take any read, so the
+ * entry's presence is all they need; Write, which replaces the file, does not
+ * take it.
  */
 import { describe, expect, test } from 'bun:test'
 import type { ToolUseContext } from 'src/tools/Tool.js'
@@ -16,11 +16,7 @@ import type { MemoryFileInfo } from 'src/memory/instructions/claudemd.js'
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/messages.js'
 import { memoryFilesToAttachments } from 'src/agent/attachments/memory.js'
-import {
-  satisfiesLineScopedReadGate,
-  satisfiesReadGate,
-  seenRegionCoversText,
-} from 'src/tools/shared/readBeforeEditMessages.js'
+import { satisfiesReadGate } from 'src/tools/shared/readBeforeEditMessages.js'
 
 const RULE_PATH = '/repo/.claudin/rules/fixture-rule.md'
 const RAW = '---\npaths: src/**\n---\n# Fixture rule\n\nThe greeting word is: BANANA.\n'
@@ -66,18 +62,13 @@ describe('an injected file: what the model saw is what it may edit', () => {
     expect(entry.injectedView).toBe(SHOWN)
   })
 
-  test('Edit passes on the shown text, Write does not', () => {
+  test('an in-place write takes the entry, Write does not', () => {
     const context = makeContext()
     memoryFilesToAttachments([strippedRule()], context, '/repo/src/a.ts')
     const entry = context.readFileState.get(RULE_PATH)!
 
-    expect(satisfiesLineScopedReadGate(entry)).toBe(true)
-    expect(seenRegionCoversText(entry, 'BANANA')).toBe(true)
-    expect(seenRegionCoversText(entry, 'The greeting word is: BANANA.')).toBe(
-      true,
-    )
-    // The frontmatter is on disk but was never shown.
-    expect(seenRegionCoversText(entry, 'paths: src/**')).toBe(false)
+    // Patch and Edit ask only that the entry exists.
+    expect(context.readFileState.has(RULE_PATH)).toBe(true)
     // Write replaces the file; written back from the stripped view it would
     // lose its frontmatter.
     expect(satisfiesReadGate(entry)).toBe(false)

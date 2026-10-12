@@ -14,8 +14,11 @@
 // exactly as a Read(offset, limit) would have — the identical resubmit then
 // passes the gate. The invariant is intact: the model still sees the lines
 // before the write lands, it just sees them one call sooner. Since 2026-09-24
-// Patch refuses only a file never read at all, so for an Update hunk this
-// serves that refusal alone; Edit still serves all four of its own.
+// Patch refuses only a file never read at all, and since 2026-09-29 it applies
+// even that when every hunk matches exactly, so only its all-or-nothing mode
+// (CLAUDIN_PATCH_ALL_OR_NOTHING) still serves. Edit took the same rule on
+// 2026-10-12 and serves nothing: what an exact, unique match would have
+// served, it now applies. `locateExactText` is its check for that.
 //
 // What is NOT served, on purpose:
 //   - a hunk that does not match exactly, or matches twice: the model's guess

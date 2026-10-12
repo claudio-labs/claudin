@@ -1,8 +1,12 @@
-// Read-before-edit refusals, shared by the three tools `.claudin/rules/cache.md`
-// binds to the invariant — FileEditTool, FileWriteTool and NotebookEditTool —
-// and by Patch, which since 2026-09-24 only asks whether a file was read
-// at all and takes its never-read wording from here. They must agree about the
-// same file state — before this module they did not, which is how the same
+// Read-before-edit, by the kind of write (`.claudin/rules/cache.md`):
+//   - a whole-file write (FileWriteTool) and a cell write (NotebookEditTool)
+//     need the file read whole and unchanged since — `satisfiesReadGate`, then
+//     the staleness check and `needsWholeFileRead`;
+//   - an in-place write (Patch, FileEditTool) needs any read of the file, or
+//     none when its old side sits in the file exactly once — see IN-PLACE
+//     WRITES below.
+// Every refusal's wording comes from here, so the tools agree about the same
+// file state — before this module they did not, which is how the same
 // `isPartialView` entry produced "has not been read yet" from Write while Edit
 // explained the real problem.
 //
@@ -37,34 +41,14 @@ export type ReadGateReason =
   | 'changed-too-large'
 
 /**
- * The gate itself — the condition `.claudin/rules/cache.md` binds all four
- * tools to. A type predicate so callers keep their narrowing: every call site
- * touches `state.timestamp` for the staleness check right after.
+ * The gate of a whole-file or cell write. A type predicate so callers keep
+ * their narrowing: every call site touches `state.timestamp` for the
+ * staleness check right after.
  */
 export function satisfiesReadGate(
   state: FileState | undefined,
 ): state is FileState {
   return state !== undefined && !state.isPartialView
-}
-
-/**
- * The gate for a LINE-SCOPED write (Edit's `old_string`). Same as above,
- * plus one entry the whole-file gate rightly refuses: a file the
- * harness injected in stripped or truncated form (`injectedView`,
- * fileStateCache.ts). The model has seen that text, so a write anchored
- * inside it is not blind — the coverage lane below checks exactly that. A
- * write that replaces the file stays on `satisfiesReadGate`: the unseen
- * remainder would be dropped. The clip-pin marker is excluded explicitly so
- * that a marker written over an injected entry can never reopen the gate.
- */
-export function satisfiesLineScopedReadGate(
-  state: FileState | undefined,
-): state is FileState {
-  if (state === undefined) return false
-  if (!state.isPartialView) return true
-  return (
-    state.injectedView !== undefined && state.standDownOutline === undefined
-  )
 }
 
 /** Why the gate failed. Only meaningful once `satisfiesReadGate` returned false. */
@@ -138,18 +122,24 @@ export function writeFamilyReadGateError(state: FileState | undefined): string {
 // ---------------------------------------------------------------------------
 // IN-PLACE WRITES
 //
-// A write that replaces text inside a file — Patch's hunks — is checked where
-// it lands: its old side has to be in the file as it is then. So any earlier
-// read of the file authorizes it (an outline, a range, a symbol, a clipped
-// Read, an injected file, a file changed since), and a file never read at all
-// is written only when its old side sits in it exactly and in one place: the
-// model wrote those bytes, so it has seen them. The result then says the file
-// had not been read. A whole-file write keeps `satisfiesReadGate` above.
+// A write that replaces text inside a file — Patch's hunks, Edit's
+// `old_string` — is checked where it lands: its old side has to be in the file
+// as it is then. So any earlier read of the file authorizes it (an outline, a
+// range, a symbol, a clipped Read, an injected file, a file changed since),
+// and a file never read at all is written only when its old side sits in it
+// exactly and in one place: the model wrote those bytes, so it has seen them.
+// The result then says the file had not been read.
+//
+// Patch took this rule on 2026-09-24/29 and Edit on 2026-10-12. Edit's own
+// lanes — partial view, staleness, coverage — had refused 19 edits in the week
+// before, every one an exact match, and 14 came back byte-identical; the
+// coverage lane also refused an `old_string` ending with the newline of the
+// last line read, twice in a row (edit-write-error-census-2026-10-12).
 
 /**
  * The never-read refusal of an in-place write whose old side does not sit in
  * the file exactly once: `mismatch` says what did not match, `verb` what the
- * write would have done ("patched").
+ * write would have done ("patched", "edited").
  */
 export function unreadRefusal(neverRead: string, mismatch: string, verb: string): string {
   return `${neverRead} ${mismatch}, so it was not ${verb} unread.`
@@ -161,37 +151,24 @@ export function appliedUnreadNote(names: string, how: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// COVERAGE LANE
+// WHOLE-FILE COVERAGE
 //
-// The gate above answers "has the model seen this file at all". It does not
-// answer "has it seen the lines it is about to change", and those came apart
-// in practice: a Read of a range writes an entry with NO `isPartialView`
-// (FileReadTool.ts:2268, and :1886 for `symbol=`), so eight lines of a
-// 2,200-line file authorized a patch anywhere in it. Measured on 2026-08-12
-// (session 9825fb93): a three-file "has not been read yet" refusal was
-// answered with three token-sized range Reads — `offset 1 limit 5`,
-// `offset 266 limit 8`, `offset 98 limit 8` — and the identical patch then
-// applied. Four round-trips, no read-before-edit guarantee bought.
-//
-// So: a line-scoped write (Edit's `old_string`) must land inside the bytes the
-// entry actually carries, and a whole-file write (Write over an existing file)
-// needs an entry that stands for the whole file. Patch was held to both
-// until 2026-09-24 and is held to neither now: its hunks are matched against
-// the file on disk when they are applied, and half of what this lane refused
-// it came back as the identical patch (header of applyPatch.ts).
+// `satisfiesReadGate` answers "has the model seen this file at all", and a
+// Read of a range writes an entry with NO `isPartialView` (FileReadTool.ts,
+// and the same for `symbol=`). A Write over an existing file replaces all of
+// it, so it also needs the entry to stand for the whole file — or the unread
+// remainder would be dropped. In-place writes are not held to this: their old
+// side is matched against the file when they land.
 //
 // This is deliberately NOT implemented by marking range reads
 // `isPartialView`. A `symbol=` read IS a range read, and makeUnfoldData
-// (FileReadTool.ts:1868-1873) keeps those entries editable on purpose — the
-// outline → symbol → edit flow is the whole point of the auto-outline pivot,
-// and sending it back through `view='full'` would re-read entire 2k-line
-// files to change one function. What the model saw is the right unit here,
-// not how it asked to see it.
+// (FileReadTool.ts) keeps those entries editable on purpose — the outline →
+// symbol → edit flow is the whole point of the auto-outline pivot.
 //
 // Killswitch: CLAUDIN_DISABLE_READ_COVERAGE_GATE=1.
 //
 // NotebookEdit is out of scope, unlike in the gate above: it addresses cells
-// by id, so there is no run of text to locate in what was read.
+// by id, so there is no whole file to replace.
 
 export function coverageGateEnabled(): boolean {
   return process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE !== '1'
@@ -214,18 +191,6 @@ export function needsWholeFileRead(state: FileState): boolean {
   return coverageGateEnabled() && !isWholeFileView(state)
 }
 
-// Per-line-trimmed form. Trimming is on purpose: Edit's own matcher is
-// whitespace-tolerant (it re-indents a fuzzy match), and this lane must never
-// be the stricter of the two — its question is "did you see this region", not
-// "does this text apply".
-function trimLines(text: string): string {
-  return text
-    .split('\n')
-    .map(line => line.trim())
-    .join('\n')
-}
-
-/** The lines a slice holds, with the trailing newline's phantom line dropped. */
 /**
  * The lines a slice holds, with the trailing newline's phantom line dropped —
  * the reading `seenRangeLabel` has always used.
@@ -251,10 +216,9 @@ export type SeenSegment = { offset: number; lines: string[] }
  * (`fileStateCache.ts`), merged by line number.
  *
  * Merging is what keeps the accumulation honest. Two slices join only when
- * they touch or overlap, so a hole between them stays a hole and a hunk
- * anchored inside it is still refused — the alternative, concatenating the
- * slices, would invent adjacency the model never saw and wave through a patch
- * whose context spans the gap.
+ * they touch or overlap, so a hole between them stays a hole — the
+ * alternative, concatenating the slices, would invent adjacency the model
+ * never saw.
  */
 export function coveredSegments(state: FileState): SeenSegment[] {
   const slices: SeenRange[] = [
@@ -282,45 +246,6 @@ export function coveredSegments(state: FileState): SeenSegment[] {
 }
 
 /**
- * Does what the model actually read contain Edit's `old_string`? It is a
- * substring rather than a run of lines: it may begin and end mid-line ("beta"
- * inside `const msg = "alpha beta"`). Matched as whole lines — the predicate
- * Patch's hunks went through until 2026-09-24 — such a needle never
- * matched a range entry, because the outer sentinels demanded a whole line, and
- * Edit was refused for text the model was holding: 6 refusals across 3
- * sessions in the 2026-08/09 corpus, one file refused twice after two
- * overlapping reads. That made this lane stricter than Edit's own matcher, the
- * one thing the trimming note above says it must never be.
- *
- * So the outer sentinels go. The needle's inner `\n` still anchors every
- * middle line to a line boundary; only its first line may match as the tail
- * of a seen line and its last as the head of one — exactly how Edit applies it.
- */
-export function seenRegionCoversText(
-  state: FileState,
-  oldString: string,
-): boolean {
-  if (!coverageGateEnabled()) return true
-  const needle = trimLines(oldString)
-  // Blank lines localize nothing; refusing on them would be noise.
-  if (needle.trim() === '') return true
-  // An injected entry's `content` is the raw file, which the model did not
-  // see; what it saw is `injectedView`, and that is the only text that counts.
-  if (state.injectedView !== undefined) {
-    return trimLines(state.injectedView).includes(needle)
-  }
-  // A whole-file entry carries the file, so containment would pass anyway —
-  // except for a read the byte cap truncated, or a needle the quote
-  // normalization rewrote. Short-circuit rather than turn either into a
-  // refusal the model cannot act on.
-  if (isWholeFileView(state)) return true
-  // Per SEGMENT, never across two of them — see coveredSegments.
-  return coveredSegments(state).some(segment =>
-    trimLines(segment.lines.join('\n')).includes(needle),
-  )
-}
-
-/**
  * "lines 266-273", or "lines 1-40, 266-273" once the entry carries earlier
  * reads. Listing every segment is not cosmetic: the refusal tells the model
  * what it has already been shown, and naming only the last read would send it
@@ -334,23 +259,6 @@ export function seenRangeLabel(state: FileState): string {
   )
   const singular = segments.length === 1 && segments[0]!.lines.length === 1
   return `${singular ? 'line' : 'lines'} ${spans.join(', ')}`
-}
-
-/**
- * `subject` is what the tool calls the file ("File", or a display path);
- * `action` completes "before …" ("editing it").
- */
-export function unseenRegionMessage(
-  subject: string,
-  action: string,
-  state: FileState,
-): string {
-  // `seenRangeLabel` would describe the raw file here ("lines 1-400"), which
-  // is not what the model saw.
-  if (state.injectedView !== undefined) {
-    return `${subject} was injected into context with its frontmatter or HTML comments stripped, or truncated, and the lines you are changing are not in what you saw. Read it with view='full' before ${action}.`
-  }
-  return `${subject} was only read in part (${seenRangeLabel(state)}), and the lines you are changing are not in what you read. Read the lines you are changing — or the whole file with view='full' — before ${action}.`
 }
 
 /** `operation` names the write in the third person ("Writing to it"). */

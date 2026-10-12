@@ -10,8 +10,14 @@ import { join } from 'path'
 import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import { addLineNumbers, getFileModificationTime } from 'src/shared/fs/file.js'
 import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
-import { seenRegionCoversText } from 'src/tools/shared/readBeforeEditMessages.js'
+import { coveredSegments } from 'src/tools/shared/readBeforeEditMessages.js'
+import type { FileState } from 'src/shared/fs/fileStateCache.js'
 import type { Message } from 'src/shared/types/message.js'
+
+/** Whether the lines the entry says the model was shown hold `text`. */
+function shows(entry: FileState, text: string): boolean {
+  return coveredSegments(entry).some(segment => segment.lines.join('\n').includes(text))
+}
 
 let dir: string
 let n = 0
@@ -101,8 +107,8 @@ describe('extractReadFilesFromMessages — Read', () => {
     )
     const entry = cache.get(p)
     expect(entry).toMatchObject({ content: 'l5\nl6\nl7', offset: 5, limit: 3 })
-    expect(seenRegionCoversText(entry!, 'l6')).toBe(true)
-    expect(seenRegionCoversText(entry!, 'l9')).toBe(false)
+    expect(shows(entry!, 'l6')).toBe(true)
+    expect(shows(entry!, 'l9')).toBe(false)
   })
 
   test('a leading blank line in a slice keeps its line number', () => {
@@ -172,9 +178,9 @@ describe('extractReadFilesFromMessages — several Reads of one file', () => {
     const entry = cache.get(p)!
     expect(entry).toMatchObject({ offset: 40, limit: 2 })
     expect(entry.seenRanges).toEqual([{ offset: 1, content: 'l1\nl2\nl3' }])
-    expect(seenRegionCoversText(entry, 'l2')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l41')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l20')).toBe(false)
+    expect(shows(entry, 'l2')).toBe(true)
+    expect(shows(entry, 'l41')).toBe(true)
+    expect(shows(entry, 'l20')).toBe(false)
   })
 
   test('a slice read after an Edit does not inherit the pre-edit file', () => {
@@ -548,7 +554,7 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
     expect(cache.size).toBe(2)
   })
 
-  test('a symbol list restores every body, and the edit gate sees each', () => {
+  test('a symbol list restores every body, each recorded as seen', () => {
     // A single ranged Read shows one run; this one shows two, and keeping
     // only the first would refuse an Edit inside the second.
     const p = join(dir, 'sym.ts')
@@ -565,8 +571,8 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
     const entry = cache.get(p)!
     expect(entry).toMatchObject({ content: bar, offset: 40, limit: 3 })
     expect(entry.seenRanges).toEqual([{ offset: 10, content: foo }])
-    expect(seenRegionCoversText(entry, 'return 1')).toBe(true)
-    expect(seenRegionCoversText(entry, 'return 2')).toBe(true)
+    expect(shows(entry, 'return 1')).toBe(true)
+    expect(shows(entry, 'return 2')).toBe(true)
   })
 
   test('a symbol looked up in every file is a slice of each', () => {

@@ -6,16 +6,15 @@ import {
   FILE_CLIPPED_VIEW_ERROR,
   FILE_NOT_READ_ERROR,
   FILE_PARTIAL_VIEW_ERROR,
+  appliedUnreadNote,
   coveredSegments,
   isWholeFileView,
   needsWholeFileRead,
   readGateMessage,
   readGateReasonFor,
-  satisfiesLineScopedReadGate,
   satisfiesReadGate,
   seenRangeLabel,
-  seenRegionCoversText,
-  unseenRegionMessage,
+  unreadRefusal,
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
@@ -57,8 +56,8 @@ describe('satisfiesReadGate', () => {
   })
 
   test('a partial view fails even though an entry exists', () => {
-    // This is the four-tool invariant in .claudin/rules/cache.md: presence has
-    // never meant "the model saw these bytes".
+    // The whole-file invariant in .claudin/rules/cache.md: for a write that
+    // replaces the file, presence does not mean "the model saw these bytes".
     expect(satisfiesReadGate(state({ isPartialView: true }))).toBe(false)
   })
 
@@ -66,43 +65,17 @@ describe('satisfiesReadGate', () => {
     expect(satisfiesReadGate(CLIPPED)).toBe(false)
   })
 
-  test('a too-large marker fails, on both gates', () => {
+  test('a too-large marker fails', () => {
     expect(satisfiesReadGate(CHANGED_TOO_LARGE)).toBe(false)
-    expect(satisfiesLineScopedReadGate(CHANGED_TOO_LARGE)).toBe(false)
-  })
-})
-
-/** A CLAUDE.md the harness injected with its frontmatter stripped. */
-const INJECTED = state({
-  content: '---\npaths: src/**\n---\n# Rule\n\nDo the thing.\n',
-  isPartialView: true,
-  injectedView: '# Rule\n\nDo the thing.',
-} as Partial<FileState>)
-
-describe('satisfiesLineScopedReadGate', () => {
-  test('agrees with the whole-file gate on ordinary entries', () => {
-    expect(satisfiesLineScopedReadGate(state())).toBe(true)
-    expect(satisfiesLineScopedReadGate(undefined)).toBe(false)
-    expect(satisfiesLineScopedReadGate(state({ isPartialView: true }))).toBe(
-      false,
-    )
-    expect(satisfiesLineScopedReadGate(CLIPPED)).toBe(false)
   })
 
-  test('opens for an injected entry, which the whole-file gate refuses', () => {
-    // 8 of 65 gate refusals in the corpus were Edits of an injected
-    // MEMORY.md/rule the model had just been shown. Write must still refuse:
-    // written back from a truncated view, the file would lose its tail.
-    expect(satisfiesLineScopedReadGate(INJECTED)).toBe(true)
-    expect(satisfiesReadGate(INJECTED)).toBe(false)
-  })
-
-  test('a clip-pin marker over an injected entry keeps it shut', () => {
-    const marked = state({
-      ...INJECTED,
-      standDownOutline: CLIPPED.standDownOutline,
+  test('an injected, stripped file fails: written back, it would lose what was stripped', () => {
+    const injected = state({
+      content: '---\npaths: src/**\n---\n# Rule\n\nDo the thing.\n',
+      isPartialView: true,
+      injectedView: '# Rule\n\nDo the thing.',
     } as Partial<FileState>)
-    expect(satisfiesLineScopedReadGate(marked)).toBe(false)
+    expect(satisfiesReadGate(injected)).toBe(false)
   })
 })
 
@@ -196,8 +169,22 @@ describe('writeFamilyReadGateError', () => {
   })
 })
 
+describe('in-place writes on a file never read', () => {
+  test('the refusal says why it was not written unread', () => {
+    expect(unreadRefusal(FILE_NOT_READ_ERROR, 'old_string does not occur in it exactly once', 'edited')).toBe(
+      'File has not been read yet. Read it first before writing to it. old_string does not occur in it exactly once, so it was not edited unread.',
+    )
+  })
+
+  test('a write that went through says the file had not been read', () => {
+    expect(appliedUnreadNote('src/a.ts', 'edited because old_string matched it exactly once')).toBe(
+      'Note: src/a.ts had not been read — edited because old_string matched it exactly once.',
+    )
+  })
+})
+
 // ---------------------------------------------------------------------------
-// Coverage lane: "saw the file" vs "saw the lines being changed".
+// Whole-file coverage: a write that replaces the file needs all of it read.
 // ---------------------------------------------------------------------------
 
 /** A range read of lines 5-7 of a longer file. */
@@ -214,88 +201,6 @@ describe('isWholeFileView', () => {
   test('a range or symbol read does not', () => {
     expect(isWholeFileView(RANGE)).toBe(false)
     expect(isWholeFileView(state({ offset: 1, limit: 5 }))).toBe(false)
-  })
-})
-
-describe('coverage against an injected view', () => {
-  test('what the model saw covers; what was stripped does not', () => {
-    // The entry's `content` is the raw file and would cover the frontmatter;
-    // the model never saw it, so it must not.
-    expect(seenRegionCoversText(INJECTED, 'the thing')).toBe(true)
-    expect(seenRegionCoversText(INJECTED, 'paths:')).toBe(false)
-  })
-
-  test('the whole-file short-circuit does not apply to it', () => {
-    // offset/limit are undefined on an injected entry (getChangedFiles skips
-    // range entries), which reads as whole-file everywhere else.
-    expect(isWholeFileView(INJECTED)).toBe(true)
-    expect(seenRegionCoversText(INJECTED, 'zzz')).toBe(false)
-  })
-
-  test('the refusal says what happened instead of quoting raw line numbers', () => {
-    const m = unseenRegionMessage('File', 'editing it', INJECTED)
-    expect(m).toContain('injected')
-    expect(m).toContain("view='full'")
-    expect(m).toContain('editing it')
-    expect(m).not.toContain('lines 1-')
-  })
-})
-
-describe('seenRegionCoversText (Edit old_string)', () => {
-  /** Lines 10-12 of a file, read as a range. */
-  const SUBLINE = state({
-    content: 'a\n  const msg = "alpha beta"\nc',
-    offset: 10,
-    limit: 3,
-  })
-
-  test('a substring inside one seen line is covered', () => {
-    // The refusal this pins: effort.tsx line 220 was read (214-225) and again
-    // (200-239), and an Edit of a fragment of that line was refused both
-    // times because the line-anchored predicate it went through then demanded
-    // a whole line.
-    expect(seenRegionCoversText(SUBLINE, 'beta')).toBe(true)
-    expect(seenRegionCoversText(SUBLINE, 'msg = "alpha')).toBe(true)
-  })
-
-  test('a needle starting and ending mid-line across seen lines is covered', () => {
-    expect(seenRegionCoversText(SUBLINE, 'beta"\nc')).toBe(true)
-    expect(seenRegionCoversText(SUBLINE, 'a\n  const')).toBe(true)
-  })
-
-  test('a needle on a line the model never saw is not', () => {
-    expect(seenRegionCoversText(SUBLINE, 'gamma')).toBe(false)
-    expect(seenRegionCoversText(RANGE, 'eight')).toBe(false)
-  })
-
-  test('middle lines stay line-anchored', () => {
-    // The inner newline is kept, so a needle that continues onto a line the
-    // model did not see is refused even though its first line was seen.
-    expect(seenRegionCoversText(SUBLINE, 'beta"\nzzz')).toBe(false)
-  })
-
-  test('a needle spanning the gap between two reads is refused', () => {
-    const entry = walked(slice(40, 6), slice(1, 10))
-    expect(seenRegionCoversText(entry, 'l10\nl40')).toBe(false)
-    expect(seenRegionCoversText(entry, '9\nl10')).toBe(true)
-  })
-
-  test('indentation drift and a blank-only needle are tolerated', () => {
-    expect(seenRegionCoversText(SUBLINE, '        const msg')).toBe(true)
-    expect(seenRegionCoversText(SUBLINE, '\n  \n')).toBe(true)
-  })
-
-  test('a whole-file entry covers anything', () => {
-    expect(seenRegionCoversText(state({ content: 'a\nb' }), 'zzz')).toBe(true)
-  })
-
-  test('the killswitch disables it', () => {
-    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
-    try {
-      expect(seenRegionCoversText(SUBLINE, 'gamma')).toBe(true)
-    } finally {
-      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
-    }
   })
 })
 
@@ -331,21 +236,14 @@ describe('seenRangeLabel', () => {
   })
 })
 
-describe('coverage messages', () => {
-  test('the unseen-region refusal names the range AND the remedy', () => {
-    const m = unseenRegionMessage('src/a.ts', 'patching it', RANGE)
-    expect(m).toContain('src/a.ts')
-    expect(m).toContain('lines 5-7')
-    expect(m).toContain("view='full'")
-    expect(m).toContain('patching it')
-    // It must not repeat the falsehood the gate messages were split up to fix.
-    expect(m).not.toContain('has not been read yet')
-  })
-
+describe('the whole-file refusal', () => {
   test('the whole-file refusal says why a range is not enough', () => {
-    const m = wholeFileRequiredMessage('File', 'Deleting it', RANGE)
+    const m = wholeFileRequiredMessage('File', 'Writing to it', RANGE)
+    expect(m).toContain('lines 5-7')
     expect(m).toContain('replaces the whole file')
     expect(m).toContain("view='full'")
+    // It must not repeat the falsehood the gate messages were split up to fix.
+    expect(m).not.toContain('has not been read yet')
   })
 })
 
@@ -355,8 +253,7 @@ describe('coverage messages', () => {
 // The entry carries the earlier slices (`carrySeenRanges`, fileStateCache.ts)
 // and this module decides what they add up to. What is pinned here is that they
 // add up to CONTIGUOUS runs and nothing more: joining two slices across a gap
-// would invent adjacency the model never saw and wave through a patch whose
-// context spans lines nobody read.
+// would invent adjacency the model never saw.
 // ---------------------------------------------------------------------------
 
 type Slice = { offset: number; content: string }
@@ -411,39 +308,6 @@ describe('coveredSegments', () => {
   })
 })
 
-describe('seenRegionCoversText — across accumulated reads', () => {
-  test('an EARLIER read still covers, after a narrower one replaced it', () => {
-    // 9 of the 37 unseen-region refusals in the session corpus were hunks
-    // sitting whole inside a slice the model had read, which a later, narrower
-    // Read had evicted from the entry.
-    const entry = walked(slice(40, 6), slice(1, 10))
-    expect(seenRegionCoversText(entry, 'l3\nl4')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l41')).toBe(true)
-  })
-
-  test('a needle spanning the seam of two adjacent reads is covered', () => {
-    // The other 19: no single read contains the hunk, the union does.
-    const entry = walked(slice(11, 5), slice(1, 10))
-    expect(seenRegionCoversText(entry, 'l9\nl10\nl11\nl12')).toBe(true)
-  })
-
-  test('a needle inside the gap is still refused', () => {
-    const entry = walked(slice(40, 6), slice(1, 10))
-    expect(seenRegionCoversText(entry, 'l20')).toBe(false)
-  })
-
-  test('the killswitch disables the accumulated lane too', () => {
-    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
-    try {
-      expect(
-        seenRegionCoversText(walked(slice(40, 6), slice(1, 10)), 'l20'),
-      ).toBe(true)
-    } finally {
-      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
-    }
-  })
-})
-
 describe('seenRangeLabel — accumulated', () => {
   test('names every segment, not just the newest read', () => {
     // The refusal tells the model what it has already been shown. Naming only
@@ -461,15 +325,11 @@ describe('seenRangeLabel — accumulated', () => {
   })
 })
 // ---------------------------------------------------------------------------
-// Wiring. The three call sites live in tool `validateInput` bodies that cannot
-// be driven under `bun test` — sibling files in the shard globally mock `fs`
-// and `fs/promises` (see FileEditTool.diagnostics.test.ts's header, and
-// .claudin/rules/testing.md on cross-file mock leaks). Without this block,
-// deleting a tool's call to the shared helper and restoring its old flat
-// "has not been read yet" string breaks nothing, which is exactly the hole an
-// audit found in the first version of this change. Patch left the
-// invariant on 2026-09-24 — it asks only whether the file was read — and its
-// validator is driven for real in applyPatch.test.ts.
+// Wiring. Write's and Edit's validators are driven for real in their own
+// readGate tests and Patch's in applyPatch.test.ts; NotebookEdit's is not, and
+// without this block deleting its call to the shared gate and restoring the
+// old flat "has not been read yet" string would break nothing — the hole an
+// audit found in the first version of this change.
 // ---------------------------------------------------------------------------
 
 const CALL_SITES: Array<[string, URL]> = [
@@ -481,20 +341,17 @@ const CALL_SITES: Array<[string, URL]> = [
   ],
 ]
 
-describe('read-before-edit gate wiring (the three-tool invariant)', () => {
+describe('read-before-edit gate wiring', () => {
   for (const [tool, url] of CALL_SITES) {
     test(`${tool} routes its refusal through the shared module`, () => {
       const src = readFileSync(url, 'utf8')
-      // Edit is line-scoped and may take the injected-view exception; Write
-      // and NotebookEdit replace content the model may not have seen and
-      // must not.
-      expect(src).toContain(
-        tool === 'Edit'
-          ? 'satisfiesLineScopedReadGate(readTimestamp)'
-          : 'satisfiesReadGate(readTimestamp)',
-      )
-      if (tool === 'Write' || tool === 'NotebookEdit') {
-        expect(src).not.toContain('satisfiesLineScopedReadGate')
+      // Edit writes in place, like Patch; Write and NotebookEdit replace
+      // content the model may not have seen and keep the whole-file gate.
+      if (tool === 'Edit') {
+        expect(src).toContain('unreadRefusal(')
+        expect(src).not.toContain('satisfiesReadGate')
+      } else {
+        expect(src).toContain('satisfiesReadGate(readTimestamp)')
       }
       expect(src).toContain('readBeforeEditMessages.js')
     })
@@ -510,17 +367,7 @@ describe('read-before-edit gate wiring (the three-tool invariant)', () => {
   }
 })
 
-// Same reasoning for the coverage lane: Edit's and Write's validateInput cannot
-// run here, so deleting their call would otherwise cost nothing.
-describe('read-coverage wiring', () => {
-  test('Edit checks the region its old_string lands in', () => {
-    const src = readFileSync(CALL_SITES[0][1], 'utf8')
-    // The substring predicate, not the line one: an `old_string` that starts
-    // mid-line must not be refused for a line the model was shown.
-    expect(src).toContain('seenRegionCoversText(readTimestamp, old_string)')
-    expect(src).not.toContain("old_string.split('\\n')")
-  })
-
+describe('whole-file coverage wiring', () => {
   test('Write demands a whole-file read before overwriting', () => {
     const src = readFileSync(CALL_SITES[1][1], 'utf8')
     expect(src).toContain('needsWholeFileRead(readTimestamp)')

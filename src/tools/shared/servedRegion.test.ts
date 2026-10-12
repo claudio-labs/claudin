@@ -1,10 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
-import {
-  coveredSegments,
-  seenRegionCoversText,
-} from 'src/tools/shared/readBeforeEditMessages.js'
+import { coveredSegments } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
   locateExactLines,
@@ -118,26 +115,27 @@ describe('serveRegions', () => {
       dedupExempt: true,
       content: 'l9\nl10\n',
     })
-    // The first region was carried onto the second: both authorize a write.
+    // The first region was carried onto the second: both count as seen.
     expect(coveredSegments(entry).map(s => [s.offset, s.lines.length])).toEqual([
       [2, 2],
       [9, 2],
     ])
-    expect(seenRegionCoversText(entry, 'l2\nl3')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l5')).toBe(false)
   })
 
   test('a previous slice of the same version survives the serve', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     cache.set('/f.txt', { content: 'l15\nl16\n', timestamp: 123, offset: 15, limit: 2 })
     serveRegions(cache, '/f.txt', LINES, 123, [{ start: 2, end: 3 }])
-    expect(seenRegionCoversText(cache.get('/f.txt')!, 'l15\nl16')).toBe(true)
+    expect(coveredSegments(cache.get('/f.txt')!).map(s => [s.offset, s.lines.length])).toEqual([
+      [2, 2],
+      [15, 2],
+    ])
   })
 
   test('a previous slice of an OLDER version does not', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     cache.set('/f.txt', { content: 'l15\nl16\n', timestamp: 100, offset: 15, limit: 2 })
     serveRegions(cache, '/f.txt', LINES, 123, [{ start: 2, end: 3 }])
-    expect(seenRegionCoversText(cache.get('/f.txt')!, 'l15\nl16')).toBe(false)
+    expect(coveredSegments(cache.get('/f.txt')!).map(s => [s.offset, s.lines.length])).toEqual([[2, 2]])
   })
 })

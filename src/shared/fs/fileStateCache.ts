@@ -15,9 +15,9 @@ export type FileState = {
   // True when this entry was populated by auto-injection (e.g. CLAUDE.md) and
   // the injected content did not match disk (stripped HTML comments, stripped
   // frontmatter, truncated MEMORY.md). The model has only seen a partial view;
-  // Write must require an explicit Read first, and so must Edit/Patch
-  // unless `injectedView` below says what the model saw. `content` here holds
-  // the RAW disk bytes (for getChangedFiles diffing), not what the model saw.
+  // Write must require an explicit Read first (Patch and Edit take any read).
+  // `content` here holds the RAW disk bytes (for getChangedFiles diffing),
+  // not what the model saw.
   isPartialView?: boolean
   // What the model DID see, for the auto-injected case above: the stripped or
   // truncated text that went into the system reminder. With it the line-scoped
@@ -72,14 +72,14 @@ export type FileState = {
   // anything external happening — spending `replays`. Same five as the branch
   // in FileReadTool.ts that reads this field; keep the two counts in step.
   //
-  // An Edit/Write replacing the entry is NOT on that list, though it looks
-  // like the obvious one. See below: while this marker stands those tools are
-  // refused, so they can never be what clears it.
+  // A Write replacing the entry is NOT on that list, though it looks like the
+  // obvious one. See below: while this marker stands it is refused, so it can
+  // never be what clears it. (A Patch or an Edit can, since they take any
+  // read — but only when the model sends one.)
   //
-  // Always written with isPartialView: true, so Edit/Write still demand a real
-  // Read first (FileEditTool.ts, FileWriteTool.ts, applyPatch.ts and
-  // NotebookEditTool.ts all check it). That refusal is CORRECT — the model has
-  // seen an outline, not the body, and letting it edit from that trades a
+  // Always written with isPartialView: true, so Write and NotebookEdit still
+  // demand a real Read first. That refusal is CORRECT — the model has seen an
+  // outline, not the body, and letting it replace the file from that trades a
   // stalled loop for a blind write. But it is also why `replays` is not
   // optional: with no budget the refusal never lifts, because the replay
   // returns without rewriting this entry, so Read can never clear what Edit is
@@ -194,10 +194,10 @@ export const SEEN_RANGES_MAX_COUNT = 32
  * 3. the predecessor is a partial view — an outline, a stripped injection, a
  *    clip-pin marker. Its `content` is the raw file (or a body the model lost),
  *    not text the model saw, and carrying it as a slice at offset 1 made the
- *    coverage lane treat the WHOLE file as read after outline → Read(range):
- *    a patch anywhere passed. Found while serving regions (2026-09-20);
- * 4. `next` stands for the whole file, where `seenRegionCoversText` short-circuits
- *    anyway — holding slices there would be pure memory.
+ *    coverage checks treat the WHOLE file as read after outline → Read(range):
+ *    a write anywhere passed. Found while serving regions (2026-09-20);
+ * 4. `next` stands for the whole file, which covers every slice anyway —
+ *    holding them there would be pure memory.
  */
 export function carrySeenRanges(
   prev: FileState | undefined,

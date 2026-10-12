@@ -28,8 +28,9 @@
 // never-read refusals since 2026-09-24, most of the rest through a Grep — and
 // 88% of the refusals that served the lines came back as the identical patch.
 // Otherwise it is NOT applied, with "Read it first"; so is a Delete of a file
-// never read. Edit, Write and NotebookEdit keep the full gate
-// (.claudin/rules/cache.md).
+// never read. Edit follows the same rule since 2026-10-12; Write and
+// NotebookEdit keep the full gate (readBeforeEditMessages.ts,
+// .claudin/rules/cache.md).
 
 import type { UUID } from 'crypto'
 import { basename, extname, relative } from 'path'
