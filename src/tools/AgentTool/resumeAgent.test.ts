@@ -55,6 +55,22 @@ describe('readOnly reaches the metadata a resume reads', () => {
   })
 })
 
+describe('a resume gives the agent back what it had read', () => {
+  // runAgent needs a live model to reach a tool call; pin the wiring. What
+  // the rebuild restores is tested in queryHelpers.extractReadFiles.test.ts.
+  test('the state is rebuilt from the transcript, and runAgent takes it over a fresh cache', () => {
+    // Before: a resumed agent started with an empty cache, so every file it
+    // had read before the stop was refused as "has not been read yet" — 2 of
+    // the 2026-10-05..12 census's refusals, after a 529 stopped the agent.
+    const runAgent = readFileSync(new URL('./runAgent.ts', import.meta.url), 'utf8')
+    const resume = readFileSync(new URL('./resumeAgent.ts', import.meta.url), 'utf8')
+    expect(resume).toMatch(
+      /readFileState: extractReadFilesFromMessages\(\s*resumedMessages,\s*resumedWorktreePath \?\? getCwd\(\),\s*READ_FILE_STATE_CACHE_SIZE,?\s*\)/,
+    )
+    expect(runAgent).toMatch(/const agentReadFileState =\s*readFileState \?\?/)
+  })
+})
+
 describe('the tool filter reaches the metadata a resume reads', () => {
   test('runAgent picks tools by it and writes it, and a resume passes it on', () => {
     const runAgent = readFileSync(new URL('./runAgent.ts', import.meta.url), 'utf8')

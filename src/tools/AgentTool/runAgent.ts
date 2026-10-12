@@ -47,6 +47,7 @@ import { AbortError } from 'src/shared/errors.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
+  type FileStateCache,
   READ_FILE_STATE_CACHE_SIZE,
 } from 'src/shared/fs/fileStateCache.js'
 import {
@@ -263,6 +264,7 @@ export async function* runAgent({
   forkContextMessages,
   querySource,
   override,
+  readFileState,
   model,
   maxTurns,
   preserveToolUseResults,
@@ -297,6 +299,9 @@ export async function* runAgent({
     abortController?: AbortController
     agentId?: AgentId
   }
+  /** What a resumed agent had read, rebuilt from its own transcript. Without
+   * it a fork clones its parent's state and a fresh agent starts empty. */
+  readFileState?: FileStateCache
   model?: AgentModelAlias
   maxTurns?: number
   /** Preserve toolUseResult on messages for subagents with viewable transcripts */
@@ -423,9 +428,10 @@ export async function* runAgent({
   }
 
   const agentReadFileState =
-    forkContextMessages !== undefined
+    readFileState ??
+    (forkContextMessages !== undefined
       ? cloneFileStateCache(toolUseContext.readFileState)
-      : createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE)
+      : createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE))
 
   const [baseUserContext, baseSystemContext] = await Promise.all([
     override?.userContext ?? getUserContext(),
