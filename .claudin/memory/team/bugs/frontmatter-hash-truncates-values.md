@@ -21,7 +21,9 @@ memories had a ` #` in their description, all PR numbers.
 **Repro:** a memory whose description is `x after #1 y` parses to `description: 'x after'`.
 Found by reading the parser against YAML's comment rule; not executed.
 
-**Status:** open, 2026-09-29. Workaround for writers: "PR 242", or quote the whole value.
+**Status:** open, 2026-09-29. Since 2026-10-12 `/skill-doctor` reports it for skills
+(`truncated_value` in `src/skills/skillsLint.ts`, which compares the raw line with the parse);
+the parser itself is unchanged. Workaround for writers: "PR 242", or quote the whole value.
 Likely fix: run the quoting pre-pass when a value contains ` #` (or always), not only after a
 failed parse.
 

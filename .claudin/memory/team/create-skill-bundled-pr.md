@@ -1,6 +1,6 @@
 ---
 name: /create bundled skill (commit 28eacc0c)
-description: bundled /create teaches skills/rules/agents authoring in .claudin; cite the COMMIT, not "#98" — that number is a different PR on GitHub
+description: bundled /create teaches skill/rule/agent/hook/plugin authoring in .claudin; cite the COMMIT, not "#98" — that number is a different PR on GitHub
 type: project
 ---
 
@@ -13,7 +13,8 @@ message from before the GitHub move has the same problem, so resolve one by
 commit SHA rather than by asking `gh` for the number.
 
 Facts learned while building it (verified against loaders):
-- Agent markdown frontmatter **does** support `model` — `loadAgentsDir.ts:108` declares `model?: string`, and the Agent tool also takes a per-call `model` that overrides it, so the session model is only the fallback when both are absent. This line asserted the opposite until 2026-09-10: it was true when `/create` was written (2026-07-03) and quietly stopped being true. Re-read the loader before trusting any frontmatter claim of this age.
+- `model` in agent frontmatter depends on where the agent lives (re-checked 2026-10-12). `.claudin/agents/*.md`: **ignored** — the type declares `model?: string`, but `parseAgentFromMarkdown` in `loadAgentsDir.ts` never reads `frontmatter.model`, so `/create`'s "Not supported" line is right. Plugin agents: **read** (`loadPluginAgents.ts`). The Agent tool's per-call `model` works either way. The 2026-09-10 edit of this line claimed support from the declaration alone; re-read the parser, not the type, before trusting a frontmatter claim.
+- Since 2026-10-12 `/create` also takes `hook` and `plugin`; the hook text is shared with `/update-config` through `src/skills/bundled/hookDocs.ts`, and `/skill-doctor` lints the skills `/create` writes.
 - Skill `arguments` frontmatter must be a space-separated string or list of plain strings (`parseArgumentNames`) — a list of `{name, description}` objects is silently filtered and `$name` never substitutes. First E2E run produced exactly this bug; the skill prompt now warns about it.
 - Rules support only `paths` frontmatter (`parseFrontmatterPaths`), not Cursor's `alwaysApply`/`globs`.
 - Writes to `.claudin/**` are permission ask-gated even under headless `--permission-mode acceptEdits` and even with `--allowedTools "Write(.claudin/**)"` — headless E2E must stage elsewhere or the user approves interactively.
