@@ -50,15 +50,18 @@ type OutputLineProps = {
   isError?: boolean;
   isWarning?: boolean;
   linkifyUrls?: boolean;
+  /** Show JSON as it arrived instead of pretty-printing it, one key per row. */
+  rawJson?: boolean;
 };
 export function OutputLine(t0: OutputLineProps) {
-  const $ = _c(11);
+  const $ = _c(12);
   const {
     content,
     verbose,
     isError,
     isWarning,
-    linkifyUrls
+    linkifyUrls,
+    rawJson
   } = t0;
   const {
     columns
@@ -67,9 +70,9 @@ export function OutputLine(t0: OutputLineProps) {
   const inVirtualList = React.useContext(InVirtualListContext);
   const shouldShowFull = verbose || expandShellOutput;
   let t1;
-  if ($[0] !== columns || $[1] !== content || $[2] !== inVirtualList || $[3] !== linkifyUrls || $[4] !== shouldShowFull) {
+  if ($[0] !== columns || $[1] !== content || $[2] !== inVirtualList || $[3] !== linkifyUrls || $[4] !== shouldShowFull || $[11] !== rawJson) {
     bb0: {
-      let formatted = tryJsonFormatContent(content);
+      let formatted = rawJson ? content : tryJsonFormatContent(content);
       if (linkifyUrls) {
         formatted = linkifyUrlsInText(formatted);
       }
@@ -85,6 +88,7 @@ export function OutputLine(t0: OutputLineProps) {
     $[3] = linkifyUrls;
     $[4] = shouldShowFull;
     $[5] = t1;
+    $[11] = rawJson;
   } else {
     t1 = $[5];
   }

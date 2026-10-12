@@ -18,6 +18,7 @@ import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import { PrBadge } from 'src/platform/status/PrBadge.js';
 import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
 import { McpGroupElapsedTime, mcpBatchSpan, type McpCallTiming } from 'src/tools/MCPTool/McpElapsedTime.js';
+import { renderMcpCallLine } from 'src/tools/MCPTool/UI.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
 import { MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js';
@@ -140,7 +141,8 @@ function VerboseToolUse(t0: VerboseToolUseProps) {
       } else {
         t8 = $[23];
       }
-      t1 = <Box key={content.id} flexDirection="column" marginTop={1} backgroundColor={bg}><Box flexDirection="row">{t8}<Text><Text bold={true}>{userFacingName}</Text>{toolUseMessage && <Text>({toolUseMessage})</Text>}</Text>{input && tool.renderToolUseTag?.(input)}</Box>{isResolved && !isError && toolResult !== undefined && <Box>{tool.renderToolResultMessage?.(toolResult, [], {
+      const header = tool.mcpInfo && input ? renderMcpCallLine(tool.mcpInfo, input, isResolved) : <Text><Text bold={true}>{userFacingName}</Text>{toolUseMessage && <Text>({toolUseMessage})</Text>}</Text>;
+      t1 = <Box key={content.id} flexDirection="column" marginTop={1} backgroundColor={bg}><Box flexDirection="row">{t8}{header}{input && tool.renderToolUseTag?.(input)}</Box>{isResolved && !isError && toolResult !== undefined && <Box>{tool.renderToolResultMessage?.(toolResult, [], {
             verbose: true,
             tools,
             theme

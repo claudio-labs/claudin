@@ -7,6 +7,7 @@ import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { extractBashCommentLabel } from 'src/tools/BashTool/commentLabel.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { mcpCallText } from 'src/tools/MCPTool/callLabel.js'
 import {
   readPathsOf,
   recordedReadTargets,
@@ -313,9 +314,13 @@ function commandAsHint(command: string): string {
       .map(l => l.replace(/\s+/g, ' ').trim())
       .filter(l => l !== '')
       .join('\n')
-  return cleaned.length > MAX_HINT_CHARS
-    ? cleaned.slice(0, MAX_HINT_CHARS - 1) + '…'
-    : cleaned
+  return capHint(cleaned)
+}
+
+function capHint(hint: string): string {
+  return hint.length > MAX_HINT_CHARS
+    ? hint.slice(0, MAX_HINT_CHARS - 1) + '…'
+    : hint
 }
 
 /**
@@ -1242,9 +1247,11 @@ export function collapseReadSearchGroups(
         const count = countToolUses(msg)
         currentGroup.mcpCallCount = (currentGroup.mcpCallCount ?? 0) + count
         currentGroup.mcpServerNames?.add(toolInfo.mcpServerName)
-        const input = toolInfo.input as { query?: string } | undefined
-        if (input?.query) {
-          currentGroup.latestDisplayHint = `"${input.query}"`
+        // The call itself, as the detail view shows it — the header already
+        // names the server, but a group can call more than one.
+        const mcpInfo = findToolByName(tools, toolInfo.name)?.mcpInfo
+        if (mcpInfo) {
+          currentGroup.latestDisplayHint = capHint(mcpCallText(mcpInfo, toolInfo.input))
         }
       } else if (isFullscreenEnvEnabled() && toolInfo.isBash) {
         // Non-search/read Bash command — counted separately so the summary
