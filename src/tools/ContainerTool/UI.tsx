@@ -3,7 +3,10 @@ import React from 'react'
 import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js'
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
 import { ShellElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js'
+import { OutputLine } from 'src/tools/BashTool/ui/OutputLine.js'
 import { Box, Text } from 'src/terminal/ink.js'
+import { getTheme, type ThemeName } from 'src/terminal/theme/theme.js'
+import { highlightLogText } from 'src/terminal/theme/logHighlight.js'
 import {
   formatContainerState,
   portSummary,
@@ -37,6 +40,11 @@ const MAX_EVIDENCE_LINES = 6
 /** Rows past this are counted rather than listed; a scaled stack should not
  * take the screen. */
 const MAX_ROWS = 10
+
+/** Ops whose body is what the user asked to see: a log, or the output of a
+ * command they ran in the container. Every other op's body stays model-only;
+ * its verdict line already says what happened. */
+const BODY_OPS: ReadonlySet<string> = new Set(['logs', 'exec', 'run'])
 
 export function userFacingName(): string {
   return 'Container'
@@ -139,8 +147,12 @@ export function renderToolUseProgressMessage(
 export function renderToolResultMessage(
   output: ContainerToolOutput,
   _progressMessages: unknown[],
+  { theme, verbose }: { theme: ThemeName; verbose: boolean },
 ): React.ReactNode {
   const ok = output.exitCode === 0
+  // A failure is not repeated here: its evidence below is the part that matters.
+  // Nor is a backgrounded op's body, which only restates the verdict's task id.
+  const body = ok && !output.backgroundTaskId && BODY_OPS.has(output.op) ? output.output.trim() : ''
   const rows = (output.rows ?? []).slice(0, MAX_ROWS)
   const elidedRows = (output.rows?.length ?? 0) - rows.length
   const diagnosis = output.diagnosis ?? null
@@ -159,6 +171,7 @@ export function renderToolResultMessage(
         <Text color={ok ? 'success' : 'error'}>
           {ok ? '✓' : '✗'} {summaryFor(output)}
         </Text>
+        {body ? <OutputLine content={body} verbose={verbose} highlightLogs /> : null}
         {rows.map(row => {
           // One `<Text>` per row on purpose: siblings in a row Box lay out as
           // independently wrapping columns, which interleaves the name and the
@@ -198,7 +211,7 @@ export function renderToolResultMessage(
           // eslint-disable-next-line react/no-array-index-key
           <Text key={`evidence-${i}`} dimColor wrap="truncate-end">
             {'    '}
-            {line}
+            {highlightLogText(line, getTheme(theme))}
           </Text>
         ))}
         {elidedEvidence > 0 ? (

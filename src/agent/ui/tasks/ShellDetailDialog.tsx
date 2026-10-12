@@ -6,6 +6,9 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box, Text } from 'src/terminal/ink.js';
+import { useTheme } from 'src/terminal/design-system/ThemeProvider.js';
+import { getTheme } from 'src/terminal/theme/theme.js';
+import { highlightLogText } from 'src/terminal/theme/logHighlight.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js';
 import { formatDuration, formatFileSize, truncateToWidth } from 'src/shared/text/format.js';
@@ -302,8 +305,8 @@ type ShellOutputContentProps = {
   outputPromise: Promise<TaskOutputResult>;
   columns: number;
 };
-function ShellOutputContent(t0: ShellOutputContentProps) {
-  const $ = _c(19);
+export function ShellOutputContent(t0: ShellOutputContentProps) {
+  const $ = _c(20);
   const {
     outputPromise,
     columns
@@ -312,6 +315,7 @@ function ShellOutputContent(t0: ShellOutputContentProps) {
     content,
     bytesTotal
   } = use(outputPromise);
+  const [themeName] = useTheme();
   if (!content) {
     let t1;
     if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -324,7 +328,7 @@ function ShellOutputContent(t0: ShellOutputContentProps) {
   }
   let isIncomplete;
   let rendered;
-  if ($[1] !== bytesTotal || $[2] !== content) {
+  if ($[1] !== bytesTotal || $[2] !== content || $[19] !== themeName) {
     const starts = [];
     let pos = content.length;
     for (let i = 0; i < 10 && pos > 0; i++) {
@@ -343,10 +347,16 @@ function ShellOutputContent(t0: ShellOutputContentProps) {
         rendered.push(line);
       }
     }
+    // As one text, not line by line, so each compose service keeps one
+    // distinct color across the block. The line count does not change.
+    if (rendered.length > 0) {
+      rendered = highlightLogText(rendered.join("\n"), getTheme(themeName)).split("\n");
+    }
     $[1] = bytesTotal;
     $[2] = content;
     $[3] = isIncomplete;
     $[4] = rendered;
+    $[19] = themeName;
   } else {
     isIncomplete = $[3];
     rendered = $[4];

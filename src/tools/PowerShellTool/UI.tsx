@@ -105,8 +105,8 @@ export function renderToolResultMessage(content: Out, progressMessagesForMessage
       </MessageResponse>;
   }
   return <Box flexDirection="column">
-      {stdout !== '' ? <OutputLine content={stdout} verbose={verbose} /> : null}
-      {stderr.trim() !== '' ? <OutputLine content={stderr} verbose={verbose} isError /> : null}
+      {stdout !== '' ? <OutputLine content={stdout} verbose={verbose} highlightLogs /> : null}
+      {stderr.trim() !== '' ? <OutputLine content={stderr} verbose={verbose} isError highlightLogs /> : null}
       {stdout === '' && stderr.trim() === '' ? <MessageResponse height={1}>
           <Text dimColor>
             {backgroundTaskId ? <>

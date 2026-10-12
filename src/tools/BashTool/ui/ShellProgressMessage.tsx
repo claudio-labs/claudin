@@ -2,6 +2,9 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import stripAnsi from 'strip-ansi';
 import { Box, Text } from 'src/terminal/ink.js';
+import { useTheme } from 'src/terminal/design-system/ThemeProvider.js';
+import { getTheme } from 'src/terminal/theme/theme.js';
+import { highlightLogText } from 'src/terminal/theme/logHighlight.js';
 import { formatFileSize } from 'src/shared/text/format.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
@@ -17,7 +20,7 @@ type Props = {
   verbose: boolean;
 };
 export function ShellProgressMessage(t0: Props) {
-  const $ = _c(30);
+  const $ = _c(31);
   const {
     output,
     fullOutput,
@@ -27,6 +30,7 @@ export function ShellProgressMessage(t0: Props) {
     timeoutMs,
     verbose
   } = t0;
+  const [themeName] = useTheme();
   let t1;
   if ($[0] !== fullOutput) {
     t1 = stripAnsi(fullOutput.trim());
@@ -38,15 +42,16 @@ export function ShellProgressMessage(t0: Props) {
   const strippedFullOutput = t1;
   let lines;
   let t2;
-  if ($[2] !== output || $[3] !== strippedFullOutput || $[4] !== verbose) {
+  if ($[2] !== output || $[3] !== strippedFullOutput || $[4] !== verbose || $[30] !== themeName) {
     const strippedOutput = stripAnsi(output.trim());
     lines = strippedOutput.split("\n").filter(_temp);
-    t2 = verbose ? strippedFullOutput : lines.slice(-5).join("\n");
+    t2 = highlightLogText(verbose ? strippedFullOutput : lines.slice(-5).join("\n"), getTheme(themeName));
     $[2] = output;
     $[3] = strippedFullOutput;
     $[4] = verbose;
     $[5] = lines;
     $[6] = t2;
+    $[30] = themeName;
   } else {
     lines = $[5];
     t2 = $[6];

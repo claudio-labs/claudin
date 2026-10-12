@@ -6,6 +6,9 @@ import { Ansi, Text } from 'src/terminal/ink.js';
 import { createHyperlink } from 'src/shared/text/hyperlink.js';
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js';
 import { renderTruncatedContent } from 'src/terminal/terminal.js';
+import { useTheme } from 'src/terminal/design-system/ThemeProvider.js';
+import { getTheme } from 'src/terminal/theme/theme.js';
+import { highlightLogText } from 'src/terminal/theme/logHighlight.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { InVirtualListContext } from 'src/agent/ui/messageActions.js';
 import { useExpandShellOutput } from 'src/tools/BashTool/ui/ExpandShellOutputContext.js';
@@ -52,35 +55,42 @@ type OutputLineProps = {
   linkifyUrls?: boolean;
   /** Show JSON as it arrived instead of pretty-printing it, one key per row. */
   rawJson?: boolean;
+  /** Color log levels, timestamps and compose prefixes with the theme. Shell
+   * output only: MCP results go through here too and are left plain. */
+  highlightLogs?: boolean;
 };
 export function OutputLine(t0: OutputLineProps) {
-  const $ = _c(12);
+  const $ = _c(14);
   const {
     content,
     verbose,
     isError,
     isWarning,
     linkifyUrls,
-    rawJson
+    rawJson,
+    highlightLogs
   } = t0;
   const {
     columns
   } = useTerminalSize();
+  const [themeName] = useTheme();
   const expandShellOutput = useExpandShellOutput();
   const inVirtualList = React.useContext(InVirtualListContext);
   const shouldShowFull = verbose || expandShellOutput;
   let t1;
-  if ($[0] !== columns || $[1] !== content || $[2] !== inVirtualList || $[3] !== linkifyUrls || $[4] !== shouldShowFull || $[11] !== rawJson) {
+  if ($[0] !== columns || $[1] !== content || $[2] !== inVirtualList || $[3] !== linkifyUrls || $[4] !== shouldShowFull || $[11] !== rawJson || $[12] !== highlightLogs || $[13] !== themeName) {
     bb0: {
       let formatted = rawJson ? content : tryJsonFormatContent(content);
       if (linkifyUrls) {
         formatted = linkifyUrlsInText(formatted);
       }
+      // After truncation, so only the rows on screen are scanned.
+      const highlight = (text: string) => highlightLogs ? highlightLogText(text, getTheme(themeName)) : text;
       if (shouldShowFull) {
-        t1 = stripUnderlineAnsi(formatted);
+        t1 = highlight(stripUnderlineAnsi(formatted));
         break bb0;
       }
-      t1 = stripUnderlineAnsi(renderTruncatedContent(formatted, columns, inVirtualList));
+      t1 = highlight(stripUnderlineAnsi(renderTruncatedContent(formatted, columns, inVirtualList)));
     }
     $[0] = columns;
     $[1] = content;
@@ -89,6 +99,8 @@ export function OutputLine(t0: OutputLineProps) {
     $[4] = shouldShowFull;
     $[5] = t1;
     $[11] = rawJson;
+    $[12] = highlightLogs;
+    $[13] = themeName;
   } else {
     t1 = $[5];
   }

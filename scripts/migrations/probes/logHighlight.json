@@ -1,0 +1,135 @@
+{
+  "test": [
+    "src/terminal/theme/logHighlight.test.ts",
+    "src/tools/BashTool/ui/OutputLine.test.tsx",
+    "src/tools/BashTool/BashToolResultMessage.test.tsx",
+    "src/tools/BashTool/ui/ShellProgressMessage.test.tsx",
+    "src/agent/ui/tasks/ShellDetailDialog.test.tsx",
+    "src/tools/ContainerTool/UI.test.tsx"
+  ],
+  "source": "src/terminal/theme/logHighlight.ts",
+  "probes": [
+    {
+      "name": "pre-colored lines are not skipped",
+      "find": "if (!line || line.includes(ESC)) return line",
+      "replace": "if (!line) return line"
+    },
+    {
+      "name": "level words match any case",
+      "find": "|NOTICE|INFO|DEBUG|TRACE)\\b/g",
+      "replace": "|NOTICE|INFO|DEBUG|TRACE)\\b/gi"
+    },
+    {
+      "name": "compose prefix without replica suffix",
+      "find": "[\\w.-]*[-_]\\d+)(\\s+",
+      "replace": "[\\w.-]*)(\\s+"
+    },
+    {
+      "name": "overlapping spans painted twice",
+      "find": "    if (span.start < cursor) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "killswitch ignored",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_LOG_HIGHLIGHT)) return text\n",
+      "replace": ""
+    },
+    {
+      "name": "info painted as success",
+      "find": "  info: 'suggestion',",
+      "replace": "  info: 'success',"
+    },
+    {
+      "name": "compiler line-start rule removed",
+      "find": "  if (compiler) pushLevel(spans, compiler[0], 0)\n",
+      "replace": ""
+    },
+    {
+      "name": "tsc rule removed",
+      "find": "  for (const m of text.matchAll(TSC_LEVEL_RE)) {\n    pushLevel(spans, m[0], m.index)\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "bracket clock removed",
+      "find": "  for (const m of text.matchAll(BRACKET_CLOCK_RE)) {",
+      "replace": "  for (const m of text.matchAll(/(?!)/g)) {"
+    },
+    {
+      "name": "OutputLine ignores highlightLogs",
+      "find": "highlightLogs ? highlightLogText(text, getTheme(themeName)) : text",
+      "replace": "text",
+      "source": "src/tools/BashTool/ui/OutputLine.tsx"
+    },
+    {
+      "name": "OutputLine uses a fixed theme",
+      "find": "highlightLogText(text, getTheme(themeName))",
+      "replace": "highlightLogText(text, getTheme('dark'))",
+      "source": "src/tools/BashTool/ui/OutputLine.tsx"
+    },
+    {
+      "name": "Bash stderr not highlighted",
+      "source": "src/tools/BashTool/BashToolResultMessage.tsx",
+      "find": "isError={true} highlightLogs={true}",
+      "replace": "isError={true}"
+    },
+    {
+      "name": "Bash stdout not highlighted",
+      "source": "src/tools/BashTool/BashToolResultMessage.tsx",
+      "find": "verbose={verbose} highlightLogs={true} /> : null;",
+      "replace": "verbose={verbose} /> : null;"
+    },
+    {
+      "name": "progress not highlighted",
+      "source": "src/tools/BashTool/ui/ShellProgressMessage.tsx",
+      "find": "t2 = highlightLogText(verbose ? strippedFullOutput : lines.slice(-5).join(\"\\n\"), getTheme(themeName));",
+      "replace": "t2 = verbose ? strippedFullOutput : lines.slice(-5).join(\"\\n\");"
+    },
+    {
+      "name": "background tail not highlighted",
+      "source": "src/agent/ui/tasks/ShellDetailDialog.tsx",
+      "find": "      rendered = highlightLogText(rendered.join(\"\\n\"), getTheme(themeName)).split(\"\\n\");",
+      "replace": ""
+    },
+    {
+      "name": "container exec body hidden",
+      "source": "src/tools/ContainerTool/UI.tsx",
+      "find": "new Set(['logs', 'exec', 'run'])",
+      "replace": "new Set(['logs', 'run'])"
+    },
+    {
+      "name": "container body shown on failure",
+      "source": "src/tools/ContainerTool/UI.tsx",
+      "find": "const body = ok && !output.backgroundTaskId && BODY_OPS",
+      "replace": "const body = !output.backgroundTaskId && BODY_OPS"
+    },
+    {
+      "name": "container body not highlighted",
+      "source": "src/tools/ContainerTool/UI.tsx",
+      "find": "<OutputLine content={body} verbose={verbose} highlightLogs />",
+      "replace": "<OutputLine content={body} verbose={verbose} />"
+    },
+    {
+      "name": "container evidence not highlighted",
+      "source": "src/tools/ContainerTool/UI.tsx",
+      "find": "{highlightLogText(line, getTheme(theme))}",
+      "replace": "{line}"
+    },
+    {
+      "name": "background body shown",
+      "find": "ok && !output.backgroundTaskId && BODY_OPS",
+      "replace": "ok && BODY_OPS",
+      "source": "src/tools/ContainerTool/UI.tsx"
+    },
+    {
+      "name": "no probing to a free color",
+      "find": "  for (let tries = 0; tries < SERVICE_COLORS.length && used.has(SERVICE_COLORS[index]!); tries++) {",
+      "replace": "  for (let tries = 0; false; tries++) {"
+    },
+    {
+      "name": "dialog highlights line by line",
+      "source": "src/agent/ui/tasks/ShellDetailDialog.tsx",
+      "find": "      rendered = highlightLogText(rendered.join(\"\\n\"), getTheme(themeName)).split(\"\\n\");",
+      "replace": "      rendered = rendered.map(l => highlightLogText(l, getTheme(themeName)));"
+    }
+  ]
+}
