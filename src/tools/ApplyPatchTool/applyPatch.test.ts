@@ -1066,7 +1066,9 @@ describe('applies what matches, reports the rest', () => {
     const { output } = await run(`*** Update File: ${p}\n@@\n-line5\n+LINE5`)
     expect(readFileSync(p, 'utf8')).toContain('LINE5')
     expect(ctx.readFileState.get(p)).toBeDefined()
-    expect(summarizeApplyPatch(output)).toContain('had not been read')
+    expect(summarizeApplyPatch(output)).toContain(
+      'had not been read — patched because every hunk matched it exactly.',
+    )
     cleanup()
   })
 
@@ -1079,7 +1081,11 @@ describe('applies what matches, reports the rest', () => {
     const { output } = await run(`*** Update File: ${unread}\n@@\n-line55\n+X\n*** Update File: ${read}\n@@\n-r\n+R`)
     expect(readFileSync(unread, 'utf8')).not.toContain('X')
     expect(readFileSync(read, 'utf8')).toBe('R\n')
-    expect(output.notApplied).toEqual([expect.stringContaining('has not been read')])
+    expect(output.notApplied).toEqual([
+      expect.stringContaining(
+        'has not been read yet. Read it first before patching it. Its hunks do not match it exactly, so it was not patched unread.',
+      ),
+    ])
     cleanup()
   })
 
