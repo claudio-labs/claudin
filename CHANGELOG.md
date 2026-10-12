@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.43 — 2026-10-12
+
+### ✨ Features
+
+- feat(tools): color log output with the active theme (#290) (18efdc56)
+- feat(mcp): show mcp calls as server.tool({json}) in detail and hint (#289) (24d814b0)
+
+### 🐛 Bug Fixes
+
+- fix(tools): close the harness bugs the dev-tool error census found (#288) (06245600)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.42 — 2026-10-11
 
 ### ✨ Features
