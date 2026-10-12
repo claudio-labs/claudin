@@ -108,10 +108,10 @@ function writeNumbered(absPath: string): void {
 }
 
 /**
- * A MEMORY.md the harness injected truncated to its first `seenLines` lines:
- * the entry carries the raw file, the model saw only the head.
+ * A MEMORY.md the harness injected truncated: the entry carries the raw file
+ * and is a partial view, though the model saw only the head.
  */
-function markInjected(absPath: string, seenLines: number): void {
+function markInjected(absPath: string): void {
   const raw = readFileSync(absPath, 'utf8')
   ctx.readFileState.set(absPath, {
     content: raw,
@@ -119,7 +119,6 @@ function markInjected(absPath: string, seenLines: number): void {
     offset: undefined,
     limit: undefined,
     isPartialView: true,
-    injectedView: raw.split('\n').slice(0, seenLines).join('\n'),
   })
 }
 
@@ -659,7 +658,7 @@ describe('validateApplyPatchInput — any read counts', () => {
   test('an injected file authorizes an Update inside what the model saw', () => {
     const p = join(dir, 'injected-in.md')
     writeNumbered(p)
-    markInjected(p, 3)
+    markInjected(p)
     const r = validateApplyPatchInput(
       { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
       ctx,
@@ -671,7 +670,7 @@ describe('validateApplyPatchInput — any read counts', () => {
   test('an injected file authorizes an Update past the truncation too', () => {
     const p = join(dir, 'injected-out.md')
     writeNumbered(p)
-    markInjected(p, 3)
+    markInjected(p)
     const r = validateApplyPatchInput(
       { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
       ctx,
@@ -683,7 +682,7 @@ describe('validateApplyPatchInput — any read counts', () => {
   test('an injected file authorizes a Delete', () => {
     const p = join(dir, 'injected-del.md')
     writeNumbered(p)
-    markInjected(p, 3)
+    markInjected(p)
     const r = validateApplyPatchInput(
       { patchText: envelope(`*** Delete File: ${p}`) },
       ctx,

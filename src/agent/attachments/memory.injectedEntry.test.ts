@@ -39,8 +39,8 @@ function makeContext(): ToolUseContext {
   } as unknown as ToolUseContext
 }
 
-describe('an injected file: what the model saw is what it may edit', () => {
-  test('the entry carries the raw file AND the shown text', () => {
+describe('an injected file: a read for an in-place write, not for Write', () => {
+  test('the entry carries the raw file, as a partial view', () => {
     const context = makeContext()
     const attachments = memoryFilesToAttachments(
       [strippedRule()],
@@ -55,11 +55,11 @@ describe('an injected file: what the model saw is what it may edit', () => {
     expect(wire).toContain('BANANA')
     expect(wire).not.toContain('paths: src/**')
 
-    // …and the entry says so, next to the raw bytes getChangedFiles diffs.
+    // …and the entry holds the raw bytes getChangedFiles diffs, marked as a
+    // view the model did not see whole.
     const entry = context.readFileState.get(RULE_PATH)!
     expect(entry.content).toBe(RAW)
     expect(entry.isPartialView).toBe(true)
-    expect(entry.injectedView).toBe(SHOWN)
   })
 
   test('an in-place write takes the entry, Write does not', () => {
@@ -83,7 +83,6 @@ describe('an injected file: what the model saw is what it may edit', () => {
     )
     const entry = context.readFileState.get(RULE_PATH)!
     expect(entry.isPartialView).toBeFalsy()
-    expect(entry.injectedView).toBeUndefined()
     expect(satisfiesReadGate(entry)).toBe(true)
   })
 })

@@ -145,7 +145,6 @@ describe('Write — validateInput keeps the full gate', () => {
       offset: undefined,
       limit: undefined,
       isPartialView: true,
-      injectedView: 'line1\nline2\n',
     })
     expect((await refusal(validate(p))).errorCode).toBe(2)
   })

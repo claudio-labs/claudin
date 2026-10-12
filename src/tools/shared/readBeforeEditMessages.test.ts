@@ -74,7 +74,6 @@ describe('satisfiesReadGate', () => {
     const injected = state({
       content: '---\npaths: src/**\n---\n# Rule\n\nDo the thing.\n',
       isPartialView: true,
-      injectedView: '# Rule\n\nDo the thing.',
     } as Partial<FileState>)
     expect(satisfiesReadGate(injected)).toBe(false)
   })

@@ -51,7 +51,6 @@ function trimLines(text: string): string {
 function seenRegionCoversText(state: FileState, oldString: string): boolean {
   const needle = trimLines(oldString)
   if (needle.trim() === '') return true
-  if (state.injectedView !== undefined) return trimLines(state.injectedView).includes(needle)
   if (isWholeFileView(state)) return true
   return coveredSegments(state).some(segment => trimLines(segment.lines.join('\n')).includes(needle))
 }

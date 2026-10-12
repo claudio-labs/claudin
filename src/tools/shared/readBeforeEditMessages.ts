@@ -81,9 +81,10 @@ export function readGateMessage(
   }
 }
 
-// The write-tool family (Edit / Write / NotebookEdit) shares one phrasing.
-// FileEditTool/UI.tsx matches on these exact constants to render its friendly
-// one-liner, so they stay exported as values rather than built per call site.
+// The whole-file write tools (Write, NotebookEdit) share one phrasing, and
+// Edit's never-read refusal opens with the first: FileEditTool/UI.tsx matches
+// FILE_NOT_READ_ERROR to render its friendly one-liner, so these stay
+// exported as values rather than built per call site.
 export const FILE_NOT_READ_ERROR = readGateMessage(
   'never-read',
   'File',
