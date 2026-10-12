@@ -463,6 +463,12 @@ export type CollapsedReadSearchGroup = {
    * in the order they were first touched. Only set when the group has writes.
    */
   writeFileStats?: WriteFileStat[]
+  /**
+   * The file the latest write touched, when a write is the group's latest
+   * operation: the running group's ⎿ line shows it in place of
+   * `latestDisplayHint`. A path in `writeFileStats`.
+   */
+  latestWriteFile?: string
 }
 
 /** What a collapsed read/search group may absorb. */

@@ -84,7 +84,7 @@
     },
     {
       "name": "the running hint shows the MCP call",
-      "find": "currentGroup.latestDisplayHint = capHint(mcpCallText(mcpInfo, toolInfo.input))",
+      "find": "setHint(currentGroup, capHint(mcpCallText(mcpInfo, toolInfo.input)))",
       "replace": "currentGroup.latestDisplayHint = undefined"
     },
     {

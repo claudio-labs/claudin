@@ -443,6 +443,99 @@ describe('write collapse', () => {
   })
 })
 
+describe('the ⎿ line follows the latest operation', () => {
+  // A running group shows ONE ⎿ line, replaced in place: the written file
+  // while a write is the latest thing that happened, the hint otherwise.
+  test('the latest Edit names the line, not the read before it', () => {
+    const group = onlyGroup([
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('r1', { file: {} }),
+      toolUse('e1', 'Edit', { file_path: '/repo/b.ts' }),
+      toolResult('e1', { filePath: '/repo/b.ts', structuredPatch: [hunk(1, 0)] }),
+      toolUse('e2', 'Edit', { file_path: '/repo/c.ts' }),
+    ])
+
+    expect(group.latestWriteFile).toBe('/repo/c.ts')
+  })
+
+  test('a read after the write takes the line back', () => {
+    const group = onlyGroup([
+      toolUse('e1', 'Edit', { file_path: '/repo/b.ts' }),
+      toolResult('e1', { filePath: '/repo/b.ts', structuredPatch: [hunk(1, 0)] }),
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+    ])
+
+    expect(group.latestWriteFile).toBeUndefined()
+    expect(group.latestDisplayHint).toContain('a.ts')
+  })
+
+  test('a Patch ends on the last file of its envelope', () => {
+    const patchText = [
+      '*** Begin Patch',
+      '*** Add File: /repo/added.ts',
+      '+hello',
+      '*** Delete File: /repo/gone.ts',
+      '*** End Patch',
+    ].join('\n')
+
+    const group = onlyGroup([toolUse('p1', 'Patch', { patchText })])
+
+    expect(group.latestWriteFile).toBe('/repo/gone.ts')
+  })
+
+  test('a grouped Edit ends on the last file of the batch', () => {
+    const first = toolUse('g1', 'Edit', { file_path: '/repo/one.ts' })
+    const second = toolUse('g2', 'Edit', { file_path: '/repo/two.ts' })
+    const grouped = {
+      type: 'grouped_tool_use',
+      toolName: 'Edit',
+      messages: [first, second],
+      results: [],
+      displayMessage: first,
+      uuid: uid(),
+      timestamp: '2026-08-12T00:00:00.000Z',
+      messageId: 'msg-1',
+    } as unknown as RenderableMessage
+
+    expect(onlyGroup([grouped]).latestWriteFile).toBe('/repo/two.ts')
+  })
+
+  test('a write the input cannot name gets the line from its result', () => {
+    // Rename lists its files only in the result.
+    const group = onlyGroup([
+      toolUse('n1', 'Rename', { symbol: 'a', replacement: 'b', mode: 'apply' }),
+      toolResult('n1', {
+        type: 'apply',
+        files: [
+          { absPath: '/repo/x.ts', additions: 1, deletions: 1 },
+          { absPath: '/repo/y.ts', additions: 1, deletions: 1 },
+        ],
+      }),
+    ])
+
+    expect(group.latestWriteFile).toBe('/repo/y.ts')
+  })
+
+  test('until that result, the line does not name the previous write', () => {
+    // The relative path is unknowable before the result; showing b.ts here
+    // would name a file the running write is not touching.
+    const patchText = [
+      '*** Begin Patch',
+      '*** Add File: rel/added.ts',
+      '+hello',
+      '*** End Patch',
+    ].join('\n')
+
+    const group = onlyGroup([
+      toolUse('e1', 'Edit', { file_path: '/repo/b.ts' }),
+      toolResult('e1', { filePath: '/repo/b.ts', structuredPatch: [hunk(1, 0)] }),
+      toolUse('p1', 'Patch', { patchText }),
+    ])
+
+    expect(group.latestWriteFile).toBeUndefined()
+  })
+})
+
 describe('MCP collapse', () => {
   // What fetchCapabilities builds for a tool outside the search/read
   // whitelist (context7's query-docs): classified as neither.

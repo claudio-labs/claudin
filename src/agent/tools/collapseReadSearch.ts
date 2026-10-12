@@ -846,6 +846,7 @@ function recordWriteFile(
   kind: WriteKind,
   stats?: { additions: number; deletions: number },
 ): void {
+  group.latestWritePath = path
   const existing = group.writeFiles.get(path)
   if (!existing) {
     group.writeFiles.set(path, {
@@ -1041,6 +1042,11 @@ type GroupAccumulator = {
   nonMemSearchArgs: string[]
   /** Most recently added non-memory operation, pre-formatted for display */
   latestDisplayHint: string | undefined
+  // The file the latest write touched, and whether a write is the group's
+  // latest operation — then the ⎿ line names that file instead of the hint.
+  // Set apart from the hint because the row needs the file's live +/−.
+  latestWritePath?: string
+  latestIsWrite: boolean
   // MCP tool calls (tracked separately so display says "Called slack" not "Read N files")
   mcpCallCount?: number
   mcpServerNames?: Set<string>
@@ -1077,6 +1083,7 @@ function createEmptyGroup(): GroupAccumulator {
     memoryOps: emptyMemoryOps(),
     nonMemSearchArgs: [],
     latestDisplayHint: undefined,
+    latestIsWrite: false,
     hookTotalMs: 0,
     hookCount: 0,
     hookInfos: [],
@@ -1095,6 +1102,12 @@ function createEmptyGroup(): GroupAccumulator {
     group.gitOpBashCount = 0
   }
   return group
+}
+
+/** The ⎿ line now names a non-write operation, until the next write takes it. */
+function setHint(group: GroupAccumulator, hint: string): void {
+  group.latestDisplayHint = hint
+  group.latestIsWrite = false
 }
 
 function createCollapsedGroup(
@@ -1172,6 +1185,9 @@ function createCollapsedGroup(
       path,
       ...stat,
     }))
+    if (group.latestIsWrite && group.latestWritePath !== undefined) {
+      result.latestWriteFile = group.latestWritePath
+    }
   }
   return result
 }
@@ -1227,7 +1243,11 @@ export function collapseReadSearchGroups(
         // (Ctrl+O) via the groupMessages iteration in CollapsedReadSearchContent.
       } else if (toolInfo.isWrite) {
         // Files come from the input so the row appears while the write runs;
-        // the line counts arrive with the result.
+        // the line counts arrive with the result. The ⎿ line follows the last
+        // file written; one the input cannot name (Rename, a relative path)
+        // is named by its result.
+        currentGroup.latestIsWrite = true
+        currentGroup.latestWritePath = undefined
         for (const target of getWriteTargetsFromMessage(msg, toolInfo.name)) {
           recordWriteFile(currentGroup, target.path, target.kind)
         }
@@ -1251,7 +1271,7 @@ export function collapseReadSearchGroups(
         // names the server, but a group can call more than one.
         const mcpInfo = findToolByName(tools, toolInfo.name)?.mcpInfo
         if (mcpInfo) {
-          currentGroup.latestDisplayHint = capHint(mcpCallText(mcpInfo, toolInfo.input))
+          setHint(currentGroup, capHint(mcpCallText(mcpInfo, toolInfo.input)))
         }
       } else if (isFullscreenEnvEnabled() && toolInfo.isBash) {
         // Non-search/read Bash command — counted separately so the summary
@@ -1262,9 +1282,11 @@ export function collapseReadSearchGroups(
         if (input?.command) {
           // Prefer the stripped `# comment` if present (it's what Claude wrote
           // for the human — same trigger as the comment-as-label tool-use render).
-          currentGroup.latestDisplayHint =
+          setHint(
+            currentGroup,
             extractBashCommentLabel(input.command) ??
-            commandAsHint(input.command)
+              commandAsHint(input.command),
+          )
           // Remember tool_use_id → command so the result (arriving next) can
           // be scanned for commit SHA / PR URL.
           for (const id of getToolUseIdsFromMessage(msg)) {
@@ -1277,7 +1299,7 @@ export function collapseReadSearchGroups(
         currentGroup.listCount += countToolUses(msg)
         const input = toolInfo.input as { command?: string } | undefined
         if (input?.command) {
-          currentGroup.latestDisplayHint = commandAsHint(input.command)
+          setHint(currentGroup, commandAsHint(input.command))
         }
       } else if (toolInfo.isSearch) {
         // Use the isSearch flag from the tool to properly categorize bash search commands
@@ -1292,7 +1314,7 @@ export function collapseReadSearchGroups(
           const input = toolInfo.input as { pattern?: string } | undefined
           if (input?.pattern) {
             currentGroup.nonMemSearchArgs.push(input.pattern)
-            currentGroup.latestDisplayHint = `"${input.pattern}"`
+            setHint(currentGroup, `"${input.pattern}"`)
           }
         }
       } else {
@@ -1304,7 +1326,7 @@ export function collapseReadSearchGroups(
             currentGroup.memoryOps[memoryFileScope(filePath)].readFilePaths.add(filePath)
           } else {
             // Non-memory file read — update display hint
-            currentGroup.latestDisplayHint = getDisplayPath(filePath)
+            setHint(currentGroup, getDisplayPath(filePath))
           }
         }
         // If no file paths found (e.g., Bash read commands like ls, cat), count the operations
@@ -1313,7 +1335,7 @@ export function collapseReadSearchGroups(
           // Use the Bash command as the display hint (truncated for readability)
           const input = toolInfo.input as { command?: string } | undefined
           if (input?.command) {
-            currentGroup.latestDisplayHint = commandAsHint(input.command)
+            setHint(currentGroup, commandAsHint(input.command))
           }
         }
       }

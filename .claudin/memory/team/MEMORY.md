@@ -5,6 +5,7 @@
 ## Decisions
 - [Navigation map syncs at the end of a turn, /map (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
 - [Every MCP call collapses, with a batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) — Calling/Called; errored calls leave the group
+- [Collapsed writes: one ⎿ line, no stack (10-12)](decisions/collapsed-writes-one-line.md) — latest op of any kind owns it; no clock on writes
 - [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut; paged past the line (10-10)](decisions/summarizer-lossless.md)
 - [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches

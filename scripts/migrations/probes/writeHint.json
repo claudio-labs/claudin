@@ -1,0 +1,52 @@
+{
+  "test": [
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx"
+  ],
+  "source": "src/agent/tools/collapseReadSearch.ts",
+  "probes": [
+    {
+      "name": "every recorded write moves the latest path",
+      "find": "  group.latestWritePath = path\n",
+      "replace": ""
+    },
+    {
+      "name": "a write takes the ⎿ line",
+      "find": "        currentGroup.latestIsWrite = true\n",
+      "replace": ""
+    },
+    {
+      "name": "a write names no file until its input or result does",
+      "find": "        currentGroup.latestWritePath = undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "a hint hands the line back from the write",
+      "find": "  group.latestIsWrite = false\n",
+      "replace": ""
+    },
+    {
+      "name": "the group names the write only while it is the latest operation",
+      "find": "if (group.latestIsWrite && group.latestWritePath !== undefined) {",
+      "replace": "if (group.latestWritePath !== undefined) {"
+    },
+    {
+      "name": "the renderer puts the latest write on the ⎿ line",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const incomingLine = message.latestWriteFile !== undefined ? WRITE_LINE_KEY + message.latestWriteFile : incomingHint;",
+      "replace": "const incomingLine = incomingHint;"
+    },
+    {
+      "name": "the row shows the file the line names, not the first one",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "writeStats.find(stat => stat.path === displayedLine!.slice(WRITE_LINE_KEY.length))",
+      "replace": "writeStats[0]"
+    },
+    {
+      "name": "a write line is never also rendered as a hint",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const displayedHint = isWriteLine ? undefined : displayedLine;",
+      "replace": "const displayedHint = displayedLine;"
+    }
+  ]
+}
