@@ -371,7 +371,7 @@ export const FileReadTool = buildTool({
       const prior = context.readFileState?.get(expandPath(file_path))
       // First read of this path in this context: nothing to stand down from,
       // so let it cache and be served from cache like any other tool. Note this
-      // also covers a path whose entry was LRU-evicted (readFileState holds 100,
+      // also covers a path whose entry was LRU-evicted (readFileState holds 500,
       // 10 in queryHelpers) — indistinguishable from a first read, and equally
       // harmless: the replay still hands the model the real body, it just skips
       // a dedup that had no state to dedup against anyway.
@@ -416,10 +416,10 @@ export const FileReadTool = buildTool({
    * does not invalidate the entry, but any Bash does, and the re-read then
    * reaches call()).
    *
-   * The window is narrow but ordinary: readFileState holds 100 paths while the
-   * Read result cache holds 500 for 60s, so any session touching more files
-   * than that (219 in the one measured) can lose the entry while the cached
-   * body lives on. bypassResultCache cannot cover it — the entry it would key
+   * The window is narrow but ordinary: readFileState held 100 paths (500 since
+   * 2026-10-12) while the Read result cache holds 500 for 60s, so a session
+   * touching more files than that (219 in the one measured) could lose the
+   * entry while the cached body lives on. bypassResultCache cannot cover it — the entry it would key
    * on is exactly the one that is gone, making it indistinguishable from a
    * first read.
    *

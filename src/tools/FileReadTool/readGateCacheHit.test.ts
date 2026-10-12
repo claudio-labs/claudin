@@ -106,8 +106,8 @@ describe('a Read served from the tool-result cache still opens the write gate', 
 
     const main = makeContext()
     await read(main, p)
-    // Stands in for the LRU dropping the entry: readFileState holds 100 paths
-    // and the session that produced this bug touched 219.
+    // Stands in for the LRU dropping the entry: readFileState held 100 paths
+    // then, and the session that produced this bug touched 219.
     main.readFileState.delete(p)
 
     await read(main, p)

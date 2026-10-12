@@ -176,8 +176,9 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   yet" — measured five times in one session, each cleared only by a second
   identical Read (a REFUSED write does not invalidate, `toolExecution.ts` runs
   `invalidateCacheForWrite` after a successful call; any Bash `invalidateAll`s).
-  The window is ordinary: `readFileState` holds 100 paths, the result cache 500
-  for 60 s, and the session touched 219. `bypassResultCache` cannot cover it —
+  The window was ordinary: `readFileState` held 100 paths (500 since
+  2026-10-12), the result cache 500 for 60 s, and the session touched 219.
+  `bypassResultCache` cannot cover it —
   the entry it would key on is exactly the one that went missing, which is
   indistinguishable from a first read. **How to apply:** a cacheable tool whose
   `call()` writes per-context state must implement `onCacheHit`

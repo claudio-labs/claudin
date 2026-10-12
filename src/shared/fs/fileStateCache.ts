@@ -154,8 +154,11 @@ export function setPinReleaseHandler(handler: PinReleaseHandler): void {
   releasePin = handler
 }
 
-// Default max entries for read file state caches
-export const READ_FILE_STATE_CACHE_SIZE = 100
+// Default max entries for read file state caches. 100 evicted a file a
+// sub-agent had written itself, 107 files later (2026-10-05..12 census); the
+// byte cap below is what bounds the memory. 500 is the tool-result cache's
+// entry count too.
+export const READ_FILE_STATE_CACHE_SIZE = 500
 
 // Default size limit for file state caches (25MB)
 // This prevents unbounded memory growth from large file contents

@@ -28,7 +28,10 @@ import { exportRunSummary } from 'src/tools/AgentWorkflow/runStore.js'
 import { getTools } from 'src/tools/tools.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
+import {
+  createFileStateCacheWithSizeLimit,
+  READ_FILE_STATE_CACHE_SIZE,
+} from 'src/shared/fs/fileStateCache.js'
 import { logError } from 'src/shared/log.js'
 import { ensureModelStringsInitialized } from 'src/providers/model/modelStrings.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
@@ -61,7 +64,6 @@ export type RunWorkflowHeadlessOptions = {
 }
 
 const SLUG_SANITIZE_RE = /[^a-zA-Z0-9._-]+/g
-const READ_FILE_STATE_CACHE_SIZE = 100
 const READ_FILE_STATE_CACHE_BYTES = 25 * 1024 * 1024
 
 /**
