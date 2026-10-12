@@ -45,6 +45,7 @@ import review from 'src/commands/review.js'
 import session from 'src/commands/session/index.js'
 import skills from 'src/commands/skills/index.js'
 import status from 'src/commands/status/index.js'
+import statusline from 'src/commands/statusline.js'
 import tasks from 'src/commands/tasks/index.js'
 const agentsPlatform = null
 import securityReview from 'src/commands/security-review.js'
@@ -221,6 +222,7 @@ const COMMANDS = memoize((): Command[] => [
   skills,
   stats,
   status,
+  statusline,
   stickers,
   theme,
   feedback,

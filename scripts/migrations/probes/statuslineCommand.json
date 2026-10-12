@@ -1,0 +1,148 @@
+{
+  "test": [
+    "src/commands/statusline.test.ts",
+    "src/commands/commands.test.ts",
+    "src/commands/__tests__/registry.characterization.test.ts",
+    "src/commands/__tests__/argumentHints.test.ts",
+    "src/tools/AgentTool/built-in/statuslineSetupAgent.test.ts",
+    "src/tools/AgentTool/builtInAgents.test.ts",
+    "src/tools/AgentTool/autoBackground.test.ts"
+  ],
+  "source": "src/tools/AgentTool/built-in/statuslineSetupAgent.ts",
+  "probes": [
+    {
+      "name": "a payload field dropped from the prompt goes red",
+      "find": "     \"exceeds_200k_tokens\": boolean,  // Whether the last request went past 200k tokens\n",
+      "replace": ""
+    },
+    {
+      "name": "Claude Code's agent.type, which Claudin never sends, goes red",
+      "find": "     \"agent\": {                       // Optional: only in a session started with --agent\n       \"name\": \"string\"\n",
+      "replace": "     \"agent\": {                       // Optional: only in a session started with --agent\n       \"name\": \"string\",\n       \"type\": \"string\"\n"
+    },
+    {
+      "name": "the agent runs on sonnet",
+      "find": "  model: 'sonnet',\n",
+      "replace": "  model: 'haiku',\n"
+    },
+    {
+      "name": "dontAsk would swallow the edit dialog",
+      "find": "  color: 'orange',\n",
+      "replace": "  color: 'orange',\n  permissionMode: 'dontAsk',\n"
+    },
+    {
+      "name": "without a PS1 the agent sets up the default line instead of asking",
+      "find": "do not stop to ask. Set up the Claudin default line instead",
+      "replace": "ask the user what to show instead"
+    },
+    {
+      "name": "the agent can write the new script",
+      "find": "  tools: [FILE_READ_TOOL_NAME, FILE_EDIT_TOOL_NAME, FILE_WRITE_TOOL_NAME],\n",
+      "replace": "  tools: [FILE_READ_TOOL_NAME, FILE_EDIT_TOOL_NAME],\n"
+    },
+    {
+      "name": "the agent skips CLAUDE.md",
+      "find": "  omitClaudeMd: true,\n",
+      "replace": ""
+    },
+    {
+      "name": "the agent is registered",
+      "source": "src/tools/AgentTool/builtInAgents.ts",
+      "find": "    agents.push(STATUSLINE_SETUP_AGENT)\n",
+      "replace": ""
+    },
+    {
+      "name": "the agent stays out of SDK sessions",
+      "source": "src/tools/AgentTool/builtInAgents.ts",
+      "find": "    agents.push(CLAUDE_CODE_GUIDE_AGENT)\n    agents.push(STATUSLINE_SETUP_AGENT)\n  }\n",
+      "replace": "    agents.push(CLAUDE_CODE_GUIDE_AGENT)\n  }\n  agents.push(STATUSLINE_SETUP_AGENT)\n"
+    },
+    {
+      "name": "the agent is one-shot, never auto-backgrounded",
+      "source": "src/tools/AgentTool/constants.ts",
+      "find": "  'statusline-setup',\n",
+      "replace": ""
+    },
+    {
+      "name": "the command forks",
+      "source": "src/commands/statusline.ts",
+      "find": "  context: 'fork',\n",
+      "replace": "  context: 'inline',\n"
+    },
+    {
+      "name": "the fork resolves statusline-setup, not the Code fallback",
+      "source": "src/commands/statusline.ts",
+      "find": "  agent: STATUSLINE_SETUP_AGENT_TYPE,\n",
+      "replace": "  agent: 'Code',\n"
+    },
+    {
+      "name": "the pre-approved reads stay narrow",
+      "source": "src/commands/statusline.ts",
+      "find": "'~/.profile']",
+      "replace": "'~/.profile', '~/**']"
+    },
+    {
+      "name": "the command is kept out of -p",
+      "source": "src/commands/statusline.ts",
+      "find": "  disableNonInteractive: true,\n",
+      "replace": "  disableNonInteractive: false,\n"
+    },
+    {
+      "name": "the jq line says the truth",
+      "source": "src/commands/statusline.ts",
+      "find": "${hasJq ? '' : 'not '}",
+      "replace": "${hasJq ? 'not ' : ''}"
+    },
+    {
+      "name": "the command is registered",
+      "source": "src/commands/commands.ts",
+      "find": "  statusline,\n",
+      "replace": ""
+    },
+    {
+      "name": "built-in prompt commands stay out of the SkillTool listing",
+      "source": "src/commands/commands.ts",
+      "find": "        !cmd.disableModelInvocation &&\n        cmd.source !== 'builtin' &&\n",
+      "replace": "        !cmd.disableModelInvocation ||\n        cmd.source !== 'builtin' &&\n",
+      "comment": "Dropping only `source !== 'builtin'` changes nothing today: no built-in carries whenToUse or loadedFrom, so the description clause still filters them. The probe breaks the conjunction instead."
+    },
+    {
+      "name": "built-in prompt commands stay out of the slash-command skill list",
+      "source": "src/commands/commands.ts",
+      "find": "          cmd.type === 'prompt' &&\n          cmd.source !== 'builtin' &&\n",
+      "replace": "          cmd.type === 'prompt' ||\n          cmd.source !== 'builtin' &&\n",
+      "comment": "Same redundancy as the SkillTool listing: the probe breaks the conjunction."
+    },
+    {
+      "name": "getCommand lists the available commands sorted",
+      "source": "src/commands/commands.ts",
+      "find": "        .sort((a, b) => a.localeCompare(b))\n",
+      "replace": ""
+    },
+    {
+      "name": "an empty availability list admits nobody",
+      "source": "src/commands/commands.ts",
+      "find": "  return false\n}\n\n/**\n * Loads all command sources",
+      "replace": "  return true\n}\n\n/**\n * Loads all command sources"
+    },
+    {
+      "name": "local-jsx commands never run from the bridge",
+      "source": "src/commands/commands.ts",
+      "find": "  if (cmd.type === 'local-jsx') return false\n",
+      "replace": "  if (cmd.type === 'local-jsx') return true\n",
+      "comment": "Deleting the line changes nothing for a local-jsx command outside BRIDGE_SAFE_COMMANDS; flipping it does."
+    },
+    {
+      "name": "findCommand matches aliases",
+      "source": "src/commands/commands.ts",
+      "find": "      _.aliases?.includes(commandName),\n",
+      "replace": "      false,\n"
+    },
+    {
+      "name": "workflow commands are badged",
+      "source": "src/commands/commands.ts",
+      "find": "(workflow)`",
+      "replace": "(wf)`"
+    }
+  ]
+}

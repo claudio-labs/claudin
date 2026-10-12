@@ -9,4 +9,5 @@ export const ONE_SHOT_BUILTIN_AGENT_TYPES: ReadonlySet<string> = new Set([
   'Plan',
   'WebResearcher',
   'WebResearcherManager',
+  'statusline-setup',
 ])

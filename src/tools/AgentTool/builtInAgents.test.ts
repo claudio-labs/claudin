@@ -9,6 +9,7 @@ import {
 import { CLAUDE_CODE_GUIDE_AGENT_TYPE } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import { EXPLORE_AGENT_TYPE } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
+import { STATUSLINE_SETUP_AGENT_TYPE } from 'src/tools/AgentTool/built-in/statuslineSetupAgent.js'
 import { WEB_RESEARCHER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
@@ -53,7 +54,7 @@ describe('getBuiltInAgents', () => {
 // split the difference: the runtime one pins the agents that are ALWAYS
 // registered, the source one pins the gate itself.
 describe('ungated registry (the shape bun test can observe)', () => {
-  test('registers Code, Explore, WebResearcher, WebResearcherManager and the guide', () => {
+  test('registers Code, Explore, WebResearcher, WebResearcherManager, the guide and statusline-setup', () => {
     const types = getBuiltInAgents().map(a => a.agentType)
     // Plan's feature() reads false under bun test, so Explore follows Code.
     expect(types).toEqual([
@@ -62,12 +63,26 @@ describe('ungated registry (the shape bun test can observe)', () => {
       WEB_RESEARCHER_AGENT_TYPE,
       WEB_RESEARCHER_MANAGER_AGENT_TYPE,
       CLAUDE_CODE_GUIDE_AGENT_TYPE,
+      STATUSLINE_SETUP_AGENT_TYPE,
     ])
   })
 
   test('registers no agent twice', () => {
     const types = getBuiltInAgents().map(a => a.agentType)
     expect(new Set(types).size).toBe(types.length)
+  })
+
+  test('an SDK entrypoint gets neither the guide nor statusline-setup', () => {
+    const saved = process.env.CLAUDE_CODE_ENTRYPOINT
+    process.env.CLAUDE_CODE_ENTRYPOINT = 'sdk-ts'
+    try {
+      const types = getBuiltInAgents().map(a => a.agentType)
+      expect(types).not.toContain(CLAUDE_CODE_GUIDE_AGENT_TYPE)
+      expect(types).not.toContain(STATUSLINE_SETUP_AGENT_TYPE)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDE_CODE_ENTRYPOINT
+      else process.env.CLAUDE_CODE_ENTRYPOINT = saved
+    }
   })
 })
 
@@ -88,6 +103,7 @@ describe('the Explore gate (on unless CLAUDIN_EXPLORE_AGENT is 0)', () => {
         WEB_RESEARCHER_AGENT_TYPE,
         WEB_RESEARCHER_MANAGER_AGENT_TYPE,
         CLAUDE_CODE_GUIDE_AGENT_TYPE,
+        STATUSLINE_SETUP_AGENT_TYPE,
       ])
     })
   }

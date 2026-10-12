@@ -8,6 +8,7 @@ import {
 } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
 import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
+import { STATUSLINE_SETUP_AGENT } from 'src/tools/AgentTool/built-in/statuslineSetupAgent.js'
 import { WEB_RESEARCHER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
@@ -90,7 +91,8 @@ export function getBuiltInAgents(): AgentDefinition[] {
   // spawns WebResearcher sub-agents (see resolveAgentTools orchestrator path).
   agents.push(WEB_RESEARCHER_MANAGER_AGENT)
 
-  // Include Code Guide agent for non-SDK entrypoints
+  // Include the Code Guide agent, and the one /statusline runs, for non-SDK
+  // entrypoints: an SDK session has no status line to set up.
   const isNonSdkEntrypoint =
     process.env.CLAUDE_CODE_ENTRYPOINT !== 'sdk-ts' &&
     process.env.CLAUDE_CODE_ENTRYPOINT !== 'sdk-py' &&
@@ -98,6 +100,7 @@ export function getBuiltInAgents(): AgentDefinition[] {
 
   if (isNonSdkEntrypoint) {
     agents.push(CLAUDE_CODE_GUIDE_AGENT)
+    agents.push(STATUSLINE_SETUP_AGENT)
   }
 
   return agents
