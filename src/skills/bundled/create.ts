@@ -1,17 +1,25 @@
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
+import { HOOK_VERIFICATION_FLOW, HOOKS_DOCS } from 'src/skills/bundled/hookDocs.js'
 
 /**
  * `/create` — guide the model through creating (or refining) Claudin
- * customizations: skills, rules, and custom agents.
+ * customizations: skills, rules, custom agents, hooks and plugins.
  *
  * Claudin-native replacement for the heavyweight upstream skill-creator
  * plugin: no install, no eval harness, and it teaches the frontmatter
  * contract this codebase actually parses (see loadSkillsDir.ts,
  * loadAgentsDir.ts, and claudemd.ts) — including the `.claudin/` project
  * and `~/.claudin/` global directory layout.
+ *
+ * Hooks reuse the reference `/update-config` teaches (hookDocs.ts) rather than
+ * a second copy; plugins follow src/plugins/pluginLoader.ts and schemas.ts.
+ * The untyped guide carries every section, long as the hook one is: pointing
+ * the model at `/create hook …` instead was tried, and a model-invoked
+ * `/create` needs permission (it has allowedTools), so it became a prompt in
+ * the TUI and a denied call the model improvised around in headless runs.
  */
 
-type ArtifactType = 'skill' | 'rule' | 'agent'
+type ArtifactType = 'skill' | 'rule' | 'agent' | 'hook' | 'plugin'
 
 const TYPE_ALIASES: Record<string, ArtifactType> = {
   skill: 'skill',
@@ -22,6 +30,10 @@ const TYPE_ALIASES: Record<string, ArtifactType> = {
   agent: 'agent',
   agents: 'agent',
   subagent: 'agent',
+  hook: 'hook',
+  hooks: 'hook',
+  plugin: 'plugin',
+  plugins: 'plugin',
 }
 
 const WORKFLOW = `# Create Claudin Customizations
@@ -40,11 +52,20 @@ workflow:
      context automatically. Costs context every session — keep rules short.
    - **Agent**: a subagent with its own system prompt, tool allowlist, and
      context window, dispatched via the Agent tool for delegated work.
+   - **Hook**: a command (or prompt, agent or HTTP call) the *harness* runs at
+     a lifecycle event — the only artifact that makes something happen every
+     time ("after each edit", "before any Bash", "when the session stops").
+   - **Plugin**: a directory bundling skills, agents, hooks and MCP/LSP servers
+     so they install together into other projects. Only when the user wants to
+     share or reuse across repos — inside one repo, loose \`.claudin/\` files
+     do the same job.
    If the choice is ambiguous, ask the user with a one-line trade-off summary.
 3. **Scope** — Ask (or infer from the request) whether it belongs to the
    project (\`.claudin/\` in the repo, shared via git) or to the user globally
    (\`~/.claudin/\`, available in every project). Default: project for
    repo-specific workflows/conventions, global for personal preferences.
+   A hook picks a settings layer or a frontmatter instead, and a plugin is its
+   own directory wherever the user keeps it — their sections say how.
 4. **Interview** — Ask only what you cannot infer: what should it do, when
    should it trigger, which tools does it need, any inputs/arguments. Keep it
    to one short round; if the current conversation already contains the
@@ -193,6 +214,99 @@ paths: src/api/**, src/services/api/**
   unconditional one.
 - If guidance is only needed on demand, make it a skill instead of a rule.`
 
+const HOOK_SECTION = `## Hooks
+
+A hook is run by the harness, not by the model, so it is the right artifact for
+anything that must happen *every time* — memory or a rule cannot promise that.
+
+**Where a hook lives** — the same \`hooks\` object (shape below) in any of:
+| Place | Where | Active |
+|---|---|---|
+| User settings | \`~/.claudin/settings.json\` → \`"hooks"\` | every project |
+| Project settings | \`.claudin/settings.json\` → \`"hooks"\` | this repo, shared via git |
+| Local settings | \`.claudin/settings.local.json\` → \`"hooks"\` | this repo, this user only (gitignore it) |
+| Skill frontmatter | \`hooks:\` in the skill's \`SKILL.md\` (YAML, same nesting) | from the skill's first invocation to the end of the session |
+| Agent frontmatter | \`hooks:\` in \`.claudin/agents/<name>.md\` | while that agent runs; a \`Stop\` hook fires as \`SubagentStop\` |
+| Plugin | \`hooks/hooks.json\` in the plugin, as \`{ "hooks": { … } }\` | wherever the plugin is enabled |
+
+Default: project settings for a repo convention, local settings for a personal
+one, frontmatter only when the hook makes no sense outside that skill or agent.
+A settings.json hook is exactly what \`/update-config\` builds, with the same
+flow below. A plugin's hook commands reach the plugin's own scripts through
+\`\${CLAUDIN_PLUGIN_ROOT}\`.
+
+${HOOKS_DOCS}
+
+${HOOK_VERIFICATION_FLOW}`
+
+const PLUGIN_SECTION = `## Plugins
+
+A plugin is a directory that bundles skills, agents, hooks, legacy commands and
+MCP/LSP servers so they install together. Create it wherever the user keeps it
+(ask) — not inside \`.claudin/\`.
+
+**Layout** — only the manifest is required; each component directory is optional
+and found by name:
+
+\`\`\`
+my-plugin/
+├── .claude-plugin/
+│   └── plugin.json          # manifest — the directory really is .claude-plugin
+├── skills/<name>/SKILL.md   # same contract as a project skill
+├── agents/<name>.md         # same contract as a project agent, differences below
+├── commands/<name>.md       # legacy single-file commands
+├── hooks/hooks.json         # { "hooks": { …same shape as settings.json… } }
+├── output-styles/
+├── .mcp.json                # { "mcpServers": { … } }
+└── .lsp.json
+\`\`\`
+
+**Manifest** (\`.claude-plugin/plugin.json\`):
+\`\`\`json
+{
+  "name": "my-plugin",
+  "version": "0.1.0",
+  "description": "What the plugin adds, shown in /plugin",
+  "author": { "name": "Your Name" }
+}
+\`\`\`
+Only \`name\` is required — kebab-case, no spaces; it namespaces everything
+inside. Optional: \`version\`, \`description\`, \`author\` (\`name\`, \`email\`,
+\`url\`), \`homepage\`, \`repository\`, \`license\`, \`keywords\`,
+\`dependencies\`. \`skills\`, \`agents\`, \`commands\`, \`hooks\`, \`mcpServers\` and
+\`lspServers\` can list *additional* paths, each starting with \`./\`; the
+default directories need no entry.
+
+**What changes inside a plugin**:
+- Everything is namespaced: \`skills/review/SKILL.md\` in \`my-plugin\` is
+  \`/my-plugin:review\`, and \`agents/checker.md\` is dispatched as
+  \`my-plugin:checker\` — so nothing in a plugin collides with a built-in.
+- Plugin agents **do** accept \`model\` (project agents do not), and **ignore**
+  \`permissionMode\`, \`hooks\` and \`mcpServers\` — ship hooks and MCP servers
+  at the plugin level instead.
+- Paths in hook commands, \`.mcp.json\`/\`.lsp.json\` and agent prompts go through
+  \`\${CLAUDIN_PLUGIN_ROOT}\` — an installed plugin runs from a cache, not from
+  where it was written. \`\${CLAUDIN_PLUGIN_DATA}\` is a per-plugin directory that
+  survives updates, for state.
+- Otherwise skills, agents and hooks follow the contracts in their own
+  sections below.
+
+**Distributing** — a marketplace is a directory or repo with
+\`.claude-plugin/marketplace.json\`:
+\`\`\`json
+{ "name": "my-marketplace", "owner": { "name": "Your Name" }, "plugins": [{ "name": "my-plugin", "source": "./my-plugin", "description": "…" }] }
+\`\`\`
+Users add it with \`claudin plugin marketplace add <path-or-repo>\` and install
+from \`/plugin\`.
+
+**Verifying a plugin**:
+1. Run \`claudin plugin validate <plugin-dir>\` — it checks the manifest,
+   \`hooks/hooks.json\` and the frontmatter under \`skills/\`, \`agents/\` and
+   \`commands/\`. Fix every error it reports.
+2. A running session cannot pick up a new plugin. Tell the user to start one
+   with \`claudin --plugin-dir <plugin-dir>\` (loads it for that session only,
+   no install) and check \`/skills\` for the \`/<plugin>:<name>\` entries.`
+
 const VERIFY_SECTION = `## Verifying
 
 - **Skills**: if the skills directory already existed when the session
@@ -205,10 +319,13 @@ const VERIFY_SECTION = `## Verifying
 - Always show the user the final file path and how to invoke or trigger what
   you created.`
 
-const SECTIONS: Record<ArtifactType, string> = {
-  skill: SKILL_SECTION,
-  rule: RULE_SECTION,
-  agent: AGENT_SECTION,
+// A plugin bundles skills, agents and hooks, so it carries their contracts too.
+const SECTIONS: Record<ArtifactType, string[]> = {
+  skill: [SKILL_SECTION],
+  rule: [RULE_SECTION],
+  agent: [AGENT_SECTION],
+  hook: [HOOK_SECTION],
+  plugin: [PLUGIN_SECTION, SKILL_SECTION, AGENT_SECTION, HOOK_SECTION],
 }
 
 function buildPrompt(args: string): string {
@@ -219,8 +336,8 @@ function buildPrompt(args: string): string {
   // `/create rule <description>` → only that type's contract; otherwise the
   // full guide so the model can pick the right artifact in step 2.
   const sections = type
-    ? [SECTIONS[type]]
-    : [SKILL_SECTION, RULE_SECTION, AGENT_SECTION]
+    ? SECTIONS[type]
+    : [SKILL_SECTION, RULE_SECTION, AGENT_SECTION, HOOK_SECTION, PLUGIN_SECTION]
 
   const request = type ? rest.join(' ') : trimmed
   const requestSection = request
@@ -236,10 +353,10 @@ export function registerCreateSkill(): void {
   registerBundledSkill({
     name: 'create',
     description:
-      'Create or refine Claudin customizations — skills, rules, and custom agents — in the project (.claudin/) or global (~/.claudin/) structure.',
+      'Create or refine Claudin customizations — skills, rules, custom agents, hooks and plugins — in the project (.claudin/) or global (~/.claudin/) structure.',
     whenToUse:
-      'When the user wants to create, scaffold, improve, or fix a skill, rule, slash command, or custom agent/subagent for Claudin.',
-    argumentHint: '[skill|rule|agent] [description]',
+      'When the user wants to create, scaffold, improve, or fix a skill, rule, slash command, custom agent/subagent, hook, or plugin for Claudin.',
+    argumentHint: '[skill|rule|agent|hook|plugin] [description]',
     userInvocable: true,
     disableModelInvocation: false,
     allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep'],

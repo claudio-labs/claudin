@@ -400,7 +400,7 @@ export function createSkillCommand({
  * Recursively finds nested SKILL.md files under a /skills/ directory.
  * Ignores markdown files placed directly in the root /skills/ directory.
  */
-async function findSkillMarkdownFiles(basePath: string): Promise<string[]> {
+export async function findSkillMarkdownFiles(basePath: string): Promise<string[]> {
   const fs = getFsImplementation()
   const visitedDirs = new Set<string>()
   const skillFiles: string[] = []
@@ -562,7 +562,7 @@ async function loadSkillsFromSkillsDir(
 
 // --- Legacy /commands/ loader ---
 
-function isSkillFile(filePath: string): boolean {
+export function isSkillFile(filePath: string): boolean {
   return /^skill\.md$/i.test(basename(filePath))
 }
 
@@ -614,7 +614,7 @@ function buildNamespace(targetDir: string, baseDir: string): string {
   return relativePath ? relativePath.split(pathSep).join(':') : ''
 }
 
-function getSkillCommandName(filePath: string, baseDir: string): string {
+export function getSkillCommandName(filePath: string, baseDir: string): string {
   const skillDirectory = dirname(filePath)
   const parentOfSkillDir = dirname(skillDirectory)
   const commandBaseName = basename(skillDirectory)
@@ -623,7 +623,7 @@ function getSkillCommandName(filePath: string, baseDir: string): string {
   return namespace ? `${namespace}:${commandBaseName}` : commandBaseName
 }
 
-function getRegularCommandName(filePath: string, baseDir: string): string {
+export function getRegularCommandName(filePath: string, baseDir: string): string {
   const fileName = basename(filePath)
   const fileDirectory = dirname(filePath)
   const commandBaseName = fileName.replace(/\.md$/, '')

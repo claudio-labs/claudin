@@ -1,0 +1,225 @@
+{
+  "test": [
+    "src/skills/skillsLint.test.ts",
+    "src/skills/skillUsageCensus.test.ts",
+    "src/skills/bundled/skillDoctor.test.ts"
+  ],
+  "source": "src/skills/skillsLint.ts",
+  "probes": [
+    {
+      "name": "frontmatter the loader recovers by quoting is called broken",
+      "find": "if (Object.keys(recovered).length === 0) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "a frontmatter list is not reported",
+      "find": "if (parsed !== null && parsed !== undefined) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a value cut at ' #' goes unreported",
+      "find": "if (QUOTED_OR_BLOCK_RE.test(value) || !YAML_COMMENT_RE.test(value)) continue",
+      "replace": "continue"
+    },
+    {
+      "name": "Agent Skills keys are flagged as unsupported",
+      "find": "if (SUPPORTED_KEYS.has(key) || FOREIGN_STANDARD_KEYS.has(key)) continue",
+      "replace": "if (SUPPORTED_KEYS.has(key)) continue"
+    },
+    {
+      "name": "the camelCase suggestion is lost",
+      "find": "  whenToUse: 'when_to_use',\n",
+      "replace": ""
+    },
+    {
+      "name": "a 'yes' boolean is accepted",
+      "find": "if (value === 'true' || value === 'false') continue",
+      "replace": "if (value === 'true' || value === 'false' || value === 'yes') continue"
+    },
+    {
+      "name": "a list description is not reported",
+      "find": "typeof frontmatter.description === 'object'",
+      "replace": "false"
+    },
+    {
+      "name": "a non-fork context is accepted",
+      "find": "if (frontmatter.context !== undefined && frontmatter.context !== 'fork') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "agent without fork is accepted",
+      "find": "if (frontmatter.agent !== undefined && frontmatter.context !== 'fork') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "an unknown effort is accepted",
+      "find": "if (frontmatter.effort !== undefined && parseEffortValue(frontmatter.effort) === undefined) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "object arguments are accepted",
+      "find": "if (frontmatter.arguments !== undefined && !isStringOrStringList(frontmatter.arguments)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "malformed paths and allowed-tools are accepted",
+      "find": "if (value === undefined || value === null || isStringOrStringList(value)) continue",
+      "replace": "continue"
+    },
+    {
+      "name": "an unknown shell is accepted",
+      "find": "!FRONTMATTER_SHELLS.includes(String(frontmatter.shell).trim().toLowerCase())",
+      "replace": "false"
+    },
+    {
+      "name": "hooks are not checked against the schema",
+      "find": "if (!result.success) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a missing description goes unreported",
+      "find": "if (ownDescription === null) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the listing cap is ignored",
+      "find": "listing.length > listingCap) {",
+      "replace": "listing.length > listingCap * 10) {"
+    },
+    {
+      "name": "a when_to_use past the cap is not called out",
+      "find": "const whenToUseLost = whenToUse !== undefined && description.length + 3 >= listingCap",
+      "replace": "const whenToUseLost = false"
+    },
+    {
+      "name": "an unreachable skill goes unreported",
+      "find": "if (!userInvocable && !modelInvocable) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a namespaced skill's leaf name counts as a mismatch",
+      "find": "if (declared !== name && declared !== leaf) {",
+      "replace": "if (declared !== name) {"
+    },
+    {
+      "name": "reference files next to a SKILL.md are called ignored",
+      "find": "if (skillDirsSet.has(current)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "legacy siblings of a SKILL.md are loaded",
+      "find": "if (!skill && dirsWithSkill.has(dirname(file))) continue",
+      "replace": ""
+    },
+    {
+      "name": "user skills are not discovered",
+      "find": "{ dir: join(configHome, 'skills'), scope: 'user' },",
+      "replace": ""
+    },
+    {
+      "name": "a name a bundled skill took is not reported",
+      "find": "if (bundledNames.has(skill.name)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "shadowing a built-in is not reported",
+      "find": "} else if (builtinNames.has(skill.name)) {",
+      "replace": "} else if (false) {"
+    },
+    {
+      "name": "duplicate names are not reported",
+      "find": "if (!first) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "the census counts a repeated tool_use twice",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": "if (seen.has(id)) continue",
+      "replace": ""
+    },
+    {
+      "name": "the census counts a repeated slash command twice",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": "if (seen.has(uuid)) return",
+      "replace": ""
+    },
+    {
+      "name": "a leading slash splits a skill's count",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": ".replace(LEADING_SLASH_RE, '')",
+      "replace": ""
+    },
+    {
+      "name": "transcripts outside the window are read",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": "if (mtimeMs < options.sinceMs) continue",
+      "replace": ""
+    },
+    {
+      "name": "sub-agent transcripts are skipped",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": "for (const file of [session, ...(await listJsonl(subagentDir))]) {",
+      "replace": "for (const file of [session]) {"
+    },
+    {
+      "name": "lastAt keeps the last read instead of the latest",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": "(counts.lastAt === undefined || at > counts.lastAt)",
+      "replace": "true"
+    },
+    {
+      "name": "a slash command recorded as a text block is missed",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": ": first?.type === 'text' && typeof first.text === 'string'",
+      "replace": ": false && typeof first?.text === 'string'"
+    },
+    {
+      "name": "a Skill block outside an assistant message is counted",
+      "source": "src/skills/skillUsageCensus.ts",
+      "find": "if (entry.type === 'assistant' && maybeTool && Array.isArray(content)) {",
+      "replace": "if (maybeTool && Array.isArray(content)) {"
+    },
+    {
+      "name": "the doctor judges with too few sessions",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "census.sessionsScanned < MIN_SESSIONS_TO_JUDGE",
+      "replace": "false"
+    },
+    {
+      "name": "a recently changed skill is not marked",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "if (inputs.now - skill.mtimeMs < NEW_SKILL_DAYS * DAY_MS) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the model invocation count is dropped from the table",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "${counts?.model ?? 0}",
+      "replace": "0"
+    },
+    {
+      "name": "the doctor no longer waits for confirmation",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "   Nothing is applied without that answer.",
+      "replace": "   Apply every fix."
+    },
+    {
+      "name": "an empty project gets an empty table",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "if (skills.length === 0 && findings.length === 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the built-in names are not listed",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "${[...inputs.builtinNames].sort().join(', ') || '—'}",
+      "replace": "—"
+    },
+    {
+      "name": "the doctor drops the line-and-severity findings",
+      "source": "src/skills/bundled/skillDoctor.ts",
+      "find": "`- [${f.severity}] ${relativeFindingPath(root, f.file)}",
+      "replace": "`- ${relativeFindingPath(root, f.file)}"
+    }
+  ]
+}

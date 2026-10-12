@@ -179,7 +179,8 @@ src/
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at the end of a turn, when
 │                                  ruleMapScheduler sees the git index move (/map is its command)
-├── skills/ (28)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
+├── skills/ (34)                 ← user-invocable skills (/<name>); bundled/ + /create authoring;
+│                                  skillsLint + skillUsageCensus feed /skill-doctor
 ├── shared/ (162)                ← cross-cutting primitives ONLY — a subsystem here is a bug.
 │   │                              moduleBoundaries.test.ts pins how many imports reach UP from
 │   │                              here into a slice (131) — a ceiling that only goes down

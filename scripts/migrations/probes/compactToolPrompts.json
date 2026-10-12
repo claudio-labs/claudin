@@ -105,6 +105,12 @@
       "replace": "  const cap = MAX_LISTING_DESC_CHARS"
     },
     {
+      "name": "the skills listing cuts one character past its cap",
+      "source": "src/tools/SkillTool/prompt.ts",
+      "find": "? desc.slice(0, cap - 1) + '\\u2026'",
+      "replace": "? desc.slice(0, cap) + '\\u2026'"
+    },
+    {
       "name": "Patch loses the one-section rule",
       "source": "src/tools/ApplyPatchTool/prompt.ts",
       "find": "give each file exactly ONE section, and anchor",

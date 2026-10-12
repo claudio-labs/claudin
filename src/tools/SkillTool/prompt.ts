@@ -28,8 +28,12 @@ export const MAX_LISTING_DESC_CHARS = 250
  * The per-entry cap in the v2 reminders (isLeanRemindersEnabled): one short
  * line per skill, since the listing only has to make the match — the Skill
  * tool loads the full text on invoke.
+ *
+ * 140 rather than the original 100: at 100 the "what" alone filled the line
+ * and the trigger clause ("Use when…") of most skills was cut off, which is
+ * the half the match depends on (2026-10-12).
  */
-export const LEAN_LISTING_DESC_CHARS = 100
+export const LEAN_LISTING_DESC_CHARS = 140
 
 export function getCharBudget(contextWindowTokens?: number): number {
   if (Number(process.env.SLASH_COMMAND_TOOL_CHAR_BUDGET)) {

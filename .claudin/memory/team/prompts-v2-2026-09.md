@@ -28,7 +28,7 @@ same branch ([[anti-narration-never-benched-on-claude-5]]).
 | `CLAUDIN_LEAN_SYSTEM_PROMPT` | CC's lean shape: batching in one sentence, turn discipline at ~⅓, only act-on-what-you-know of the work contract, scratchpad as one env line |
 | `CLAUDIN_LEAN_MEMORY_PROMPT` | the memory section with the same mechanisms in fewer words |
 | `CLAUDIN_COMPACT_TOOL_PROMPTS` | Read, Grep, Agent, Bash, Build, Typecheck, RunTests at CC density (Edit, Write, Skill, WebFetch, WebSearch, ReportFindings joined 2026-09-29, CC 2.1.284 text); Monitor behind ToolSearch. apply_patch keeps its full text (its compact one broke patches, a04426dc) |
-| `CLAUDIN_LEAN_REMINDERS` | skill listing lines capped at 100 chars. The git protocol attachment is NOT shortened: the compact git text dropped rules `BashTool/prompt.test.ts` pins ("if unclear, ask first", the review-comments endpoint, backslash escaping), so it was deleted at promotion and the round-2 lean git text stays |
+| `CLAUDIN_LEAN_REMINDERS` | skill listing lines capped at 100 chars — raised to 140 on 2026-10-12 (PR 294), since 100 cut most skills' trigger clause. The git protocol attachment is NOT shortened: the compact git text dropped rules `BashTool/prompt.test.ts` pins ("if unclear, ask first", the review-comments endpoint, backslash escaping), so it was deleted at promotion and the round-2 lean git text stays |
 
 - **First request, measured through the proxy at promotion** (same empty cwd, Opus 5.5, `-p`):
   claudin **19.9k** tokens (default) vs **27.2k** with all four `=0`; Claude Code **20.2k**.

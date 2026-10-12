@@ -7,6 +7,7 @@ import { registerLoopSkill } from 'src/skills/bundled/loop.js'
 import { registerRefreshRulesSkill } from 'src/skills/bundled/refreshRules.js'
 import { registerRunSkill } from 'src/skills/bundled/run.js'
 import { registerSimplifySkill } from 'src/skills/bundled/simplify.js'
+import { registerSkillDoctorSkill } from 'src/skills/bundled/skillDoctor.js'
 import { registerUpdateConfigSkill } from 'src/skills/bundled/updateConfig.js'
 import { registerVerifySkill } from 'src/skills/bundled/verify.js'
 
@@ -30,12 +31,15 @@ export function initBundledSkills(): void {
   registerVerifySkill()
   registerRunSkill()
   registerFewerPermissionPromptsSkill()
-  // Claudin-native: teaches the model to create/refine skills, rules, and
-  // agents in the .claudin structure (project + global).
+  // Claudin-native: teaches the model to create/refine skills, rules, agents,
+  // hooks and plugins in the .claudin structure (project + global).
   registerCreateSkill()
   // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
   // that are invisible at runtime and proposes corrections from session history.
   registerRefreshRulesSkill()
+  // Claudin-native: the same for skills — what the loader silently drops,
+  // name collisions, and descriptions the model never acts on.
+  registerSkillDoctorSkill()
   // /loop's isEnabled delegates to isKairosCronEnabled() — registered
   // unconditionally so the static import is bundled; visibility is gated
   // at runtime by the isEnabled callback.
