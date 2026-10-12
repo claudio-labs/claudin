@@ -136,6 +136,31 @@ export function writeFamilyReadGateError(state: FileState | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
+// IN-PLACE WRITES
+//
+// A write that replaces text inside a file — Patch's hunks — is checked where
+// it lands: its old side has to be in the file as it is then. So any earlier
+// read of the file authorizes it (an outline, a range, a symbol, a clipped
+// Read, an injected file, a file changed since), and a file never read at all
+// is written only when its old side sits in it exactly and in one place: the
+// model wrote those bytes, so it has seen them. The result then says the file
+// had not been read. A whole-file write keeps `satisfiesReadGate` above.
+
+/**
+ * The never-read refusal of an in-place write whose old side does not sit in
+ * the file exactly once: `mismatch` says what did not match, `verb` what the
+ * write would have done ("patched").
+ */
+export function unreadRefusal(neverRead: string, mismatch: string, verb: string): string {
+  return `${neverRead} ${mismatch}, so it was not ${verb} unread.`
+}
+
+/** The line a result carries when it wrote a file never read. */
+export function appliedUnreadNote(names: string, how: string): string {
+  return `Note: ${names} had not been read — ${how}.`
+}
+
+// ---------------------------------------------------------------------------
 // COVERAGE LANE
 //
 // The gate above answers "has the model seen this file at all". It does not
