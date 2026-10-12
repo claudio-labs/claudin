@@ -1,6 +1,6 @@
 ---
 name: edit-write-error-census-2026-10-12
-description: Edit/Write error census 2026-10-05..12 — Edit 22/557 (3.9%, was 6.6%), Write 9/389 (2.3%, was 4.5%); 19 of 22 Edit errors are the read gate, 14 resubmitted byte-identical; two harness bugs found and NOT fixed (trailing-newline coverage refusal, sub-agent resume with an empty readFileState)
+description: Edit/Write error census 2026-10-05..12 — Edit 22/557 (3.9%, was 6.6%), Write 9/389 (2.3%); 19 of 22 Edit errors were its own read lanes, 14 resubmitted byte-identical. ALL FIXED on branch fix/edit-write-census - Edit takes Patch's any-read rule, sub-agent resume rebuilds readFileState, refused Write not restored, Write counts accumulated reads and shows small files, LRU 500
 type: project
 ---
 
@@ -12,44 +12,37 @@ run's first decision write lacked `scope:`/`impact:`; real traffic 1/11) and 2
 sensitive-file denials in extract-memories-ab.
 
 **Real traffic.** Edit 22/557: never-read 11, partial-view 8 (all served
-regions, so every one was an exact unique match), not-found 2, multi-match 1
-(3 of those 3 are model errors, 2 from glm-5.3-flash). Write 9/389: never-read
-4, partial 2, memory guard 1, classifier 2. Reaction requests ≈ $5/wk —
-contexts were 300–650k cache-read, so each extra round-trip costs $0.15–0.35.
+regions, so every one was an exact unique match), not-found 2, multi-match 1.
+Write 9/389: never-read 4, partial 2, memory guard 1, classifier 2. Over the
+month to 10-12 Edit had 176 errors: 138 read gate, 24 not-found, 3 multi-match.
+Reaction requests ≈ $5/wk at 300–650k cache-read contexts ($0.15–0.35 each).
 
-**Bug 1 — trailing newline (unfixed).** `seenRegionCoversText`
-(`src/tools/shared/readBeforeEditMessages.ts`) compares `trimLines(old_string)`
-against segments joined WITHOUT their last `\n` (`sliceLines`). An old_string
-ending in `\n` whose last line is the last line read is "not seen", and the
-served region cannot fix it — the identical resubmit is refused again.
-Reproduced: state offset 460 `'l460\nl461\n  });\n});\n'`, needle
-`'  });\n});\n'` → false; without the `\n` → true. 3 this week (floor.test.ts
-×2, collapseReadSearch.test.ts), ~9 since 09-12. Fix: drop one trailing `\n`
-from the needle.
+**Root causes found, all fixed on `fix/edit-write-census` (2026-10-12):**
+- Edit's coverage lane refused an old_string ending with the newline of the
+  last line read, and re-refused the identical resubmit (floor.test.ts ×2,
+  collapseReadSearch.test.ts; ~9 since 09-12) → the whole lane is gone with
+  Edit's gate ([[edit-any-read]]).
+- A resumed sub-agent started with an EMPTY readFileState (`resumeAgent.ts`
+  passed no fork context, `runAgent.ts` built a fresh cache): 11 of 78 agents
+  resumed that week, mostly after a 529 ([[builtin-subagents-skip-529-retry]])
+  → rebuilt with `extractReadFilesFromMessages`, as /resume does.
+- A refused Write restored as read on resume (`bugs/resume-restores-refused-write`).
+- Write refused a whole Read + a range Read as "only read in part (lines
+  1-275)" of a 275-line file: `needsWholeFileRead` looked at the last slice
+  only → `seenWholeFile` checks the accumulated segments.
+- The 100-entry LRU evicted a script the agent had written itself (boot.sh,
+  107 paths later); the bare Write refusal sent it to `Read(limit:3)`, then a
+  partial refusal, and it abandoned the rewrite → 500 entries, and Write's
+  refusal shows files ≤200 lines (`serveWholeFile`).
+- Edit's not-found echoed old_string back → now Patch's divergence message
+  (`shared/blockMismatch.ts`); multi-match names the lines.
 
-**Bug 2 — sub-agent resume (unfixed).** `resumeAgent.ts` passes
-`forkContextMessages: undefined`, so `runAgent.ts` builds an EMPTY
-`readFileState`; `resumedMessages` are never replayed into it (REPL's /resume
-does: `extractReadFilesFromMessages(…, READ_FILE_STATE_CACHE_SIZE)`). Every
-file read before the stop is "never read" after it. 11 of 78 sub-agents were
-resumed this week, mostly after a 529
-([[builtin-subagents-skip-529-retry]]); 2 refusals (PreviewBox.tsx Write,
-sandbox.md Edit).
+Not changed: 4 of 10 genuine never-read Edits were files printed by Bash (`cat`
+chains, `sed -n A,Bp`) — moot now that an exact match applies unread.
+`FileState.injectedView` is now written but read by no gate (only byte
+accounting) — a removal candidate.
 
-**Smaller:** the 100-entry LRU evicted a file the agent had written itself
-(boot.sh, 107 paths later), then the bare Write refusal sent it to
-`Read(limit:3)`, refused again as partial, and it abandoned the rewrite; only 4
-transcripts passed 100 paths. Write's never-read refusal serves no content, so
-it costs Read + Write. 4 of 10 genuine never-read Edits were files printed by
-Bash (`cat` chains, `sed -n A,Bp`) — the credit is off and does not cover
-`sed -n` anyway.
-
-**Open policy question (user's call):** Patch applies a never-read file when
-every hunk matches exactly and dropped partial-view on 09-24
-([[apply-patch-any-read]]); Edit still refuses both. All 19 Edit gate refusals
-were exact unique matches and 14 came back identical — aligning Edit would take
-it to ~0.5%.
-
-**How to apply:** after fixing the two bugs, re-run the census a week later
-and expect partial-view refusals with a trailing-`\n` old_string at 0 and no
-"not been read yet" on a file read before a resume.
+**How to apply:** re-run the census a week after the merge. Expect Edit's
+"has not been read yet" only where old_string does not occur exactly once,
+no partial/coverage/stale Edit refusals, no "not read yet" on a file read
+before a sub-agent resume, and Edit near 0.5% (model errors only).
