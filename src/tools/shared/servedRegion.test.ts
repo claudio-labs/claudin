@@ -8,6 +8,7 @@ import {
   locateExactText,
   MAX_SERVED_LINES,
   mergeServedRegions,
+  occurrenceLines,
   SERVED_REGION_CONTEXT_LINES,
   serveRegions,
 } from 'src/tools/shared/servedRegion.js'
@@ -63,6 +64,19 @@ describe('locateExactText', () => {
     expect(locateExactText(TEXT, 'nowhere')).toBeNull()
     expect(locateExactText(TEXT, 'l1')).toBeNull() // l1, l10..l19
     expect(locateExactText(TEXT, '   ')).toBeNull()
+  })
+})
+
+describe('occurrenceLines', () => {
+  test('the line each occurrence starts on, without overlaps', () => {
+    expect(occurrenceLines('a x\nb\nx x\n', 'x')).toEqual([1, 3, 3])
+    expect(occurrenceLines('aaaa', 'aa')).toEqual([1, 1])
+    expect(occurrenceLines(TEXT, 'l2\nl3')).toEqual([2])
+  })
+
+  test('none for an absent or blank needle', () => {
+    expect(occurrenceLines(TEXT, 'nowhere')).toEqual([])
+    expect(occurrenceLines(TEXT, '')).toEqual([])
   })
 })
 

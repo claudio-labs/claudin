@@ -152,6 +152,19 @@ describe('Edit — any read of the file authorizes it', () => {
     expect(ctx.readFileState.get(p)!.standDownOutline).toBeUndefined()
   })
 
+  test('a change between the check and the write that makes old_string ambiguous is not written', async () => {
+    // The staleness throw that guarded this window went with the stale lane;
+    // without a re-count, replace() would silently edit the FIRST occurrence.
+    const p = join(dir, 'race-read.txt')
+    writeNumbered(p)
+    markRange(p, 1, 10)
+    const input = { file_path: p, old_string: 'line5', new_string: 'LINE5' }
+    expect(await validate(input)).toMatchObject({ result: true })
+    writeFileSync(p, 'line5 inserted by someone else\n' + readFileSync(p, 'utf8'))
+    await expect(call(input)).rejects.toThrow('Found 2 matches of the string to replace, at lines 1, 6')
+    expect(readFileSync(p, 'utf8')).toStartWith('line5 inserted by someone else\n')
+  })
+
   test('an old_string that ends with the newline of the last line read passes', async () => {
     // Refused twice in a row in the census week (floor.test.ts): the coverage
     // lane compared the needle with slices joined without their final \n.

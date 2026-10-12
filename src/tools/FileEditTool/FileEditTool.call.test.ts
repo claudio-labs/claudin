@@ -157,6 +157,12 @@ describe('Edit — refusals that are about the edit, not the read', () => {
     )
   })
 
+  test('a trailing newline on old_string is not a line of its own in that message', async () => {
+    const p = readFile('diverges-nl.ts', 'const a = 1\nconst b = 2\nconst c = 3\n')
+    const r = await refusal({ file_path: p, old_string: 'const a = 1\nconst c = 3\n', new_string: 'x\n' })
+    expect(r.message).toContain('then line 2 diverges.\n  your line 2: const c = 3\n')
+  })
+
   test('a block that matches nowhere is told so, without echoing it back', async () => {
     const p = readFile('nowhere.ts', 'a\nb\n')
     expect((await refusal({ file_path: p, old_string: 'nowhere', new_string: 'x' })).message).toBe(

@@ -67,7 +67,11 @@ import {
   FILE_NOT_READ_ERROR,
   unreadRefusal,
 } from 'src/tools/shared/readBeforeEditMessages.js'
-import { locateExactText } from 'src/tools/shared/servedRegion.js'
+import {
+  fileLinesOf,
+  locateExactText,
+  occurrenceLines,
+} from 'src/tools/shared/servedRegion.js'
 import {
   describeDivergence,
   NOWHERE_REMEDY,
@@ -117,8 +121,7 @@ const UNREAD_REFUSAL = unreadRefusal(
  * matches nowhere. It never echoes old_string, which the model just sent.
  */
 function notFoundMessage(file: string, oldString: string): string {
-  const block = oldString.endsWith('\n') ? oldString.slice(0, -1).split('\n') : oldString.split('\n')
-  const divergence = describeDivergence(file.split('\n'), block, 0, 'old_string')
+  const divergence = describeDivergence(file.split('\n'), fileLinesOf(oldString), 0, 'old_string')
   return divergence
     ? `String to replace not found in file.\n${divergence}`
     : `String to replace not found in file. ${NOWHERE_REMEDY}`
@@ -127,19 +130,6 @@ function notFoundMessage(file: string, oldString: string): string {
 /** Several places old_string matches, by line, so the retry can pick one. */
 function multipleMatchesMessage(lines: number[]): string {
   return `Found ${lines.length} matches of the string to replace, at lines ${lines.join(', ')}, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.`
-}
-
-/** The 1-based line of every occurrence of `needle` in `text`. */
-function linesOf(text: string, needle: string): number[] {
-  const lines: number[] = []
-  let line = 1
-  let from = 0
-  for (let at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + needle.length)) {
-    for (let i = from; i < at; i++) if (text.charCodeAt(i) === 10) line++
-    from = at
-    lines.push(line)
-  }
-  return lines
 }
 
 /**
@@ -403,7 +393,7 @@ export const FileEditTool = buildTool({
       }
     }
 
-    const matches = linesOf(file, actualOldString)
+    const matches = occurrenceLines(file, actualOldString)
 
     // Check if we have multiple matches but replace_all is false
     if (matches.length > 1 && !replace_all) {
@@ -589,6 +579,14 @@ export const FileEditTool = buildTool({
         actualOldString = fuzzy.matchedOldString
         actualNewString = fuzzy.adjustedNewString
       }
+    }
+
+    // validateInput counted the matches; a change since (another agent, the
+    // user during the permission prompt) may have added one, and replace()
+    // would then edit the first, which nobody chose.
+    const matches = occurrenceLines(originalFileContents, actualOldString)
+    if (!replace_all && matches.length > 1) {
+      throw new Error(multipleMatchesMessage(matches))
     }
 
     // 4. Generate patch

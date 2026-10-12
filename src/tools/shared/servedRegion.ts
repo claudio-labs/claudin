@@ -102,6 +102,20 @@ function countLines(text: string, from: number, to: number): number {
   return n
 }
 
+/** The 1-based line each occurrence of `needle` starts on; none for a blank needle. */
+export function occurrenceLines(text: string, needle: string): number[] {
+  if (needle === '') return []
+  const lines: number[] = []
+  let line = 1
+  let from = 0
+  for (let at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + needle.length)) {
+    line += countLines(text, from, at)
+    from = at
+    lines.push(line)
+  }
+  return lines
+}
+
 /**
  * Widen each region by the context lines, clamp to the file, and merge the
  * ones that touch or overlap — the model sees one numbered block per
