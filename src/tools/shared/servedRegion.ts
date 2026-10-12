@@ -26,8 +26,11 @@
 //     the fuzzy matcher's job at apply time, not the gate's;
 //   - more than MAX_SERVED_LINES in one refusal: a hunk that large is a
 //     rewrite, and the message would be the file;
-//   - whole-file writes (Write, Delete File) — there is no old side to match;
+//   - Delete File — there is no old side to match;
 //   - an entry under a clip-pin stand-down marker, which has its own budget.
+//
+// A Write has no old side either, but it replaces the whole file, so what its
+// refusal needs is the whole file: `serveWholeFile`, under the same cap.
 //
 // The entry written here carries `dedupExempt` (fileStateCache.ts): its bytes
 // live in a refusal, not in a Read tool_result, so FileReadTool's stub must
@@ -153,4 +156,27 @@ export function serveRegions(
     blocks.push(addLineNumbers({ content: slice.join('\n'), startLine: region.start }))
   }
   return blocks.join('\n…\n')
+}
+
+/**
+ * A Write's refusal over a file of at most MAX_SERVED_LINES lines: the file,
+ * numbered the way Read numbers it, registered as a whole-file read of this
+ * version, so the resubmit passes if it still applies. `null` past the cap.
+ */
+export function serveWholeFile(
+  readFileState: FileStateCache,
+  absPath: string,
+  fileText: string,
+  mtime: number,
+): string | null {
+  const lines = fileLinesOf(fileText)
+  if (lines.length > MAX_SERVED_LINES) return null
+  readFileState.set(absPath, {
+    content: fileText,
+    timestamp: mtime,
+    offset: undefined,
+    limit: undefined,
+    dedupExempt: true,
+  })
+  return addLineNumbers({ content: lines.join('\n'), startLine: 1 })
 }

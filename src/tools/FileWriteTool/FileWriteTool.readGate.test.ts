@@ -238,6 +238,88 @@ describe('Write — validateInput keeps the full gate', () => {
   })
 })
 
+describe('Write — a refusal over a small file shows it, and the resubmit passes', () => {
+  // A Write refusal used to send the model to a Read and then to the same
+  // Write: two calls, and once (boot.sh, 2026-10-05) a Read of three lines,
+  // a second refusal, and a rewrite abandoned.
+  const SHOWN = 'Its current content is shown below and now counts as read — resubmit the Write if it still applies:'
+
+  test('a file never read', async () => {
+    const p = join(dir, 'serve-never.txt')
+    writeNumbered(p)
+    const r = await refusal(validate(p))
+    expect(r.message).toStartWith(`File has not been read yet. Read it first before writing to it. ${SHOWN}\n`)
+    expect(r.message).toContain('1→line1')
+    expect(r.message).toContain('10→line10')
+    expect(await validate(p)).toEqual({ result: true })
+  })
+
+  test('a file changed since it was read: the change is what it shows', async () => {
+    const p = join(dir, 'serve-stale.txt')
+    writeNumbered(p)
+    markWhole(p)
+    writeFileSync(p, readFileSync(p, 'utf8').replace('line4', 'LINE4'))
+    touchLater(p)
+    const r = await refusal(validate(p))
+    expect(r.message).toStartWith('File has been modified since read')
+    expect(r.message).toContain('4→LINE4')
+    expect(await validate(p)).toEqual({ result: true })
+  })
+
+  test('a range, or an outline, of a small file', async () => {
+    const range = join(dir, 'serve-range.txt')
+    writeNumbered(range)
+    markRange(range, 3, 2)
+    expect((await refusal(validate(range))).message).toContain('10→line10')
+    expect(await validate(range)).toEqual({ result: true })
+
+    const outline = join(dir, 'serve-outline.txt')
+    writeNumbered(outline)
+    ctx.readFileState.set(outline, {
+      content: readFileSync(outline, 'utf8'),
+      timestamp: getFileModificationTime(outline),
+      offset: undefined,
+      limit: undefined,
+      isPartialView: true,
+    })
+    expect((await refusal(validate(outline))).message).toContain('1→line1')
+    expect(await validate(outline)).toEqual({ result: true })
+  })
+
+  test('nothing is shown past 200 lines, and the refusal stands', async () => {
+    const p = join(dir, 'serve-big.txt')
+    writeNumbered(p, 201)
+    expect((await refusal(validate(p))).message).not.toContain('→')
+    expect((await validate(p)).result).toBe(false)
+  })
+
+  test('nothing is shown over a clip-pin marker or a file too large to re-read', async () => {
+    const clipped = join(dir, 'serve-clipped.txt')
+    writeNumbered(clipped)
+    ctx.readFileState.set(clipped, {
+      content: readFileSync(clipped, 'utf8'),
+      timestamp: getFileModificationTime(clipped),
+      offset: undefined,
+      limit: undefined,
+      isPartialView: true,
+      standDownOutline: { message: '<outline>', servedOutline: true, epoch: 0, replays: 0 },
+    })
+    expect((await refusal(validate(clipped))).message).not.toContain('→')
+
+    const tooLarge = join(dir, 'serve-too-large.txt')
+    writeNumbered(tooLarge)
+    ctx.readFileState.set(tooLarge, {
+      content: '',
+      timestamp: getFileModificationTime(tooLarge),
+      offset: undefined,
+      limit: undefined,
+      isPartialView: true,
+      refreshFailed: 'too-large',
+    })
+    expect((await refusal(validate(tooLarge))).message).not.toContain('→')
+  })
+})
+
 describe('Write — call()', () => {
   test('an update writes the file and leaves a whole-file entry for it', async () => {
     const p = join(dir, 'update.txt')

@@ -348,9 +348,12 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     leaves, so `carrySeenRanges` keeps the earlier slices and the IDENTICAL
     resubmit passes. Edit served its four refusals this way until 2026-10-12;
     since then the exact, unique match it would have served is simply applied
-    (S20). Never
-    served: an ambiguous or absent old side, `Delete File`, and a
-    `standDownOutline` marker (its replay budget must not be reopened).
+    (S20). Write's never-read, partial-view, stale and whole-file refusals
+    serve the WHOLE file when it has at most 200 lines (`serveWholeFile`),
+    registered as a whole-file read with `dedupExempt`, so the resubmit passes
+    if it still applies (2026-10-12). Never served: an ambiguous or absent old
+    side, `Delete File`, a file too large to re-read, and a `standDownOutline`
+    marker (its replay budget must not be reopened).
   - **A partial view is never carried as a seen slice** (2026-09-20).
     `carrySeenRanges` took any predecessor with the same mtime, including an
     outline entry whose `content` is the raw source with no offset — carried
