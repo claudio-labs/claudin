@@ -30,6 +30,18 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
 })
 
+/**
+ * A file the write tools left on disk, dated before every result below (they
+ * are stamped from 2023-11): as it is in a real transcript, where the result
+ * comes back after the write. A file written after its result is one that
+ * changed since, which the restore refuses to vouch for.
+ */
+function writtenBeforeTheResults(path: string, content: string): void {
+  writeFileSync(path, content)
+  const before = new Date(1_600_000_000_000)
+  utimesSync(path, before, before)
+}
+
 /** A file of `count` lines named l1..lN, so a slice is recognisable. */
 function numbered(count: number): string {
   return Array.from({ length: count }, (_, i) => `l${i + 1}`).join('\n') + '\n'
@@ -215,10 +227,24 @@ describe('extractReadFilesFromMessages — write tools', () => {
 
   test('Edit is restored from disk', () => {
     const p = join(dir, 'e.ts')
-    writeFileSync(p, 'on disk\n')
+    writtenBeforeTheResults(p, 'on disk\n')
     const use = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
     const cache = extractReadFilesFromMessages([use, toolResult(use, 'ok')], dir)
     expect(cache.get(p)).toMatchObject({ content: 'on disk\n', offset: undefined })
+  })
+
+  test('an Edit whose file changed after the result restores nothing, and drops what came before', () => {
+    // The disk is not the post-edit file any more. A sub-agent resumed minutes
+    // later while the main thread kept editing used to get the main thread's
+    // bytes as "read", and its next Write passed the gate over them.
+    const p = join(dir, 'changed-after.ts')
+    writeFileSync(p, 'someone else wrote this later\n') // mtime now, after the 2023 result below
+    const edit = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
+    const cache = extractReadFilesFromMessages(
+      [...read(p, {}, 'a\nb'), edit, toolResult(edit, 'ok')],
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
   })
 
   test('a refused Write restores nothing: the model never saw the file', () => {
@@ -235,7 +261,7 @@ describe('extractReadFilesFromMessages — write tools', () => {
 
   test('a refused Edit restores nothing', () => {
     const p = join(dir, 'refused-edit.ts')
-    writeFileSync(p, 'on disk\n')
+    writtenBeforeTheResults(p, 'on disk\n')
     const use = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
     const cache = extractReadFilesFromMessages(
       [use, toolResult(use, 'File has not been read yet.', { isError: true })],
@@ -247,8 +273,8 @@ describe('extractReadFilesFromMessages — write tools', () => {
   test('Patch is restored from disk for every file it wrote', () => {
     const a = join(dir, 'pa.ts')
     const b = join(dir, 'pb.ts')
-    writeFileSync(a, 'A\n')
-    writeFileSync(b, 'B\n')
+    writtenBeforeTheResults(a, 'A\n')
+    writtenBeforeTheResults(b, 'B\n')
     const use = toolUse('Patch', {
       patchText:
         `*** Begin Patch\n*** Update File: ${a}\n@@\n-x\n+y\n` +
@@ -291,7 +317,7 @@ describe('extractReadFilesFromMessages — write tools', () => {
   test('"*** Resubmit" is restored as the patch refused one call earlier', () => {
     // The resubmitted patch wrote the file; nothing in the sentinel names it.
     const p = join(dir, 'resubmitted.ts')
-    writeFileSync(p, 'AFTER\n')
+    writtenBeforeTheResults(p, 'AFTER\n')
     const refused = toolUse('Patch', {
       patchText: `*** Begin Patch\n*** Update File: ${p}\n@@\n-x\n+y\n*** End Patch`,
     })
@@ -308,8 +334,8 @@ describe('extractReadFilesFromMessages — write tools', () => {
     // the call still succeeds: the input names files that were never written.
     const wrote = join(dir, 'wrote.ts')
     const skipped = join(dir, 'skipped.ts')
-    writeFileSync(wrote, 'NEW\n')
-    writeFileSync(skipped, 'OLD\n')
+    writtenBeforeTheResults(wrote, 'NEW\n')
+    writtenBeforeTheResults(skipped, 'OLD\n')
     const use = toolUse('Patch', {
       patchText:
         `*** Begin Patch\n*** Update File: ${wrote}\n@@\n-x\n+y\n` +
