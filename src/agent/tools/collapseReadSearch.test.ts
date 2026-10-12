@@ -472,7 +472,19 @@ describe('MCP collapse', () => {
     expect(group.readCount).toBe(1)
     expect(group.mcpCallCount).toBe(2)
     expect(group.mcpServerNames).toEqual(['context7'])
-    expect(group.latestDisplayHint).toBe('"webhooks"')
+    expect(group.latestDisplayHint).toBe('context7.query-docs({"query":"webhooks"})')
+  })
+
+  test('a long MCP call is capped on the hint like a long command', () => {
+    const collapsed = collapseReadSearchGroups(
+      [toolUse('m1', MCP_TOOL.name, { query: 'x'.repeat(400) }), toolResult('m1', 'docs')],
+      mcpTools,
+    )
+
+    const hint = (collapsed[0] as CollapsedReadSearchGroup).latestDisplayHint!
+    expect(hint.startsWith('context7.query-docs({"query":"xxx')).toBe(true)
+    expect(hint).toHaveLength(300)
+    expect(hint.endsWith('…')).toBe(true)
   })
 
   test('a failed MCP call breaks the group instead of hiding the error', () => {

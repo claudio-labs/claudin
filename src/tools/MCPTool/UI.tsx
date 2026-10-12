@@ -13,6 +13,7 @@ import { createHyperlink } from 'src/shared/text/hyperlink.js';
 import { getContentSizeEstimate, type MCPToolResult } from 'src/mcp/mcpValidation.js';
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js';
 import type { inputSchema } from 'src/tools/MCPTool/MCPTool.js';
+import { mcpCallName } from 'src/tools/MCPTool/callLabel.js';
 
 // Threshold for displaying warning about large MCP responses
 const MCP_OUTPUT_WARNING_THRESHOLD_TOKENS = 10_000;
@@ -27,6 +28,21 @@ export function renderToolUseMessage(input: z.infer<ReturnType<typeof inputSchem
     const rendered = jsonStringify(value);
     return `${key}: ${rendered}`;
   }).join(', ');
+}
+
+/**
+ * A call's line in the collapsed group's detail view: the verb the group's
+ * header uses, then `server.tool` and the arguments as the model sent them.
+ * renderToolUseMessage's `key: value` list stays for the permission prompt.
+ */
+export function renderMcpCallLine(mcpInfo: {
+  serverName: string;
+  toolName: string;
+}, input: z.infer<ReturnType<typeof inputSchema>>, isResolved: boolean): React.ReactNode {
+  return <Text>
+      <Text bold>{isResolved ? 'Called' : 'Calling'}</Text>{' '}
+      <Text color="suggestion">{mcpCallName(mcpInfo)}</Text>({jsonStringify(input)})
+    </Text>;
 }
 export function renderToolUseProgressMessage(progressMessagesForMessage: ProgressMessage<MCPProgress>[]): React.ReactNode {
   const lastProgress = progressMessagesForMessage.at(-1);
@@ -96,7 +112,7 @@ export function renderToolResultMessage(output: string | MCPToolResult, _progres
       }
       // For text blocks and any other block types, extract text if available
       const textContent = item.type === 'text' && 'text' in item && item.text !== null && item.text !== undefined ? String(item.text) : '';
-      return <OutputLine key={i} content={textContent} verbose={verbose} />;
+      return <OutputLine key={i} content={textContent} verbose={verbose} rawJson />;
     });
 
     // Wrap array content in a column layout
@@ -110,7 +126,7 @@ export function renderToolResultMessage(output: string | MCPToolResult, _progres
         </MessageResponse>
       </Box>;
   } else {
-    contentElement = <OutputLine content={mcpOutput} verbose={verbose} />;
+    contentElement = <OutputLine content={mcpOutput} verbose={verbose} rawJson />;
   }
   if (warningMessage) {
     return <Box flexDirection="column">

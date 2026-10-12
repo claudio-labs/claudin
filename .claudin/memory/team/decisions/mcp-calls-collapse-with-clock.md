@@ -7,6 +7,7 @@ impact: functional
 paths:
   - "src/agent/tools/collapseReadSearch.ts"
   - "src/tools/MCPTool/McpElapsedTime.tsx"
+  - "src/tools/MCPTool/callLabel.ts"
 ---
 
 **Decision:** every MCP call collapses into the group's MCP category. Before, only the
@@ -35,6 +36,16 @@ failures that used to show on their own rows.
   `started` message. Keep `startedAt` on any new tick kind, or the clock loses its
   anchor.
 - **Don't shrink back to a whitelist** without asking the user. It was their call.
+
+**Follow-up (2026-10-11), also the user's call, from a Codex screenshot:**
+- **Detail view (ctrl+o):** each call reads `Called server.tool({json})`.
+  - The arguments are the model's compact JSON.
+  - The result is shown as the server sent it, with no pretty-printing (`OutputLine rawJson`) and no cut.
+- **Running hint:** the ⎿ line shows the same `server.tool({json})` for the latest call, capped at 300 chars like a command.
+- Both come from `src/tools/MCPTool/callLabel.ts`.
+- **Left as they were, on purpose:**
+  - the permission prompt keeps the `key: value` list;
+  - an errored call, outside the group, keeps the old header.
 
 **Rejected:**
 - **Anchoring the clock on the `started` message alone**, which gets overwritten.

@@ -63,6 +63,52 @@
       "source": "src/tools/MCPTool/McpElapsedTime.tsx",
       "find": "if (seconds < MCP_ELAPSED_MIN_SECONDS) {",
       "replace": "if (seconds < 0) {"
+    },
+    {
+      "name": "the detail view renders an MCP call as Called server.tool",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const header = tool.mcpInfo && input ?",
+      "replace": "const header = false ?"
+    },
+    {
+      "name": "a running call in the detail view reads Calling",
+      "source": "src/tools/MCPTool/UI.tsx",
+      "find": "{isResolved ? 'Called' : 'Calling'}",
+      "replace": "{'Called'}"
+    },
+    {
+      "name": "the detail view drops the claude.ai server prefix",
+      "source": "src/tools/MCPTool/callLabel.ts",
+      "find": "? serverName.slice(CLAUDEAI_SERVER_PREFIX.length)",
+      "replace": "? serverName"
+    },
+    {
+      "name": "the running hint shows the MCP call",
+      "find": "currentGroup.latestDisplayHint = capHint(mcpCallText(mcpInfo, toolInfo.input))",
+      "replace": "currentGroup.latestDisplayHint = undefined"
+    },
+    {
+      "name": "the MCP hint is capped",
+      "find": "capHint(mcpCallText(mcpInfo, toolInfo.input))",
+      "replace": "mcpCallText(mcpInfo, toolInfo.input)"
+    },
+    {
+      "name": "the detail view shows the arguments as compact JSON",
+      "source": "src/tools/MCPTool/UI.tsx",
+      "find": "({jsonStringify(input)})",
+      "replace": "({renderToolUseMessage(input, { verbose: true })})"
+    },
+    {
+      "name": "an MCP text result is not pretty-printed",
+      "source": "src/tools/MCPTool/UI.tsx",
+      "find": "<OutputLine content={mcpOutput} verbose={verbose} rawJson />",
+      "replace": "<OutputLine content={mcpOutput} verbose={verbose} />"
+    },
+    {
+      "name": "rawJson skips the JSON pretty-printer",
+      "source": "src/tools/BashTool/ui/OutputLine.tsx",
+      "find": "let formatted = rawJson ? content : tryJsonFormatContent(content);",
+      "replace": "let formatted = tryJsonFormatContent(content);"
     }
   ]
 }

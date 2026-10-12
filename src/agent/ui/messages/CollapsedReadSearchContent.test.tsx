@@ -8,6 +8,7 @@ import type {
   WriteFileStat,
 } from 'src/shared/types/message.js'
 import type { MCPProgress } from 'src/shared/types/tools.js'
+import { MCPTool } from 'src/tools/MCPTool/MCPTool.js'
 import { renderToString } from 'src/terminal/render/staticRender.js'
 import { CollapsedReadSearchContent } from 'src/agent/ui/messages/CollapsedReadSearchContent.js'
 
@@ -511,5 +512,75 @@ describe('CollapsedReadSearchContent — MCP clock', () => {
     const flat = flatten(await renderMcp({ ticks: [] }))
     expectInOrder(flat, [`Called ${SERVER} 2 times (ctrl+o`])
     expect(flat).not.toContain('·')
+  })
+})
+
+describe('CollapsedReadSearchContent — MCP detail (ctrl+o)', () => {
+  const RESULT = '{"resolved_scope": {"workspace": "default"}, "messages": []}'
+
+  function mcpTool(serverName: string, toolName: string) {
+    return {
+      ...MCPTool,
+      name: `mcp__${serverName}__${toolName}`,
+      mcpInfo: { serverName, toolName },
+      userFacingName: () => `${serverName} - ${toolName} (MCP)`,
+    }
+  }
+
+  function renderDetail(opts: {
+    serverName?: string
+    resolved: boolean
+  }): Promise<string> {
+    const tool = mcpTool(opts.serverName ?? 'ai-memory', 'memory_message_list')
+    const use = {
+      type: 'assistant',
+      uuid: 'msg-m1',
+      timestamp: '2026-10-11T00:00:00.000Z',
+      message: {
+        role: 'assistant',
+        id: 'api-m1',
+        content: [{ type: 'tool_use', id: 'm1', name: tool.name, input: { box: 'inbox', limit: 5 } }],
+      },
+    }
+    return renderToString(
+      <AppStateProvider>
+        <CollapsedReadSearchContent
+          message={{ ...EMPTY_GROUP, mcpCallCount: 1, messages: [use] } as unknown as CollapsedReadSearchGroup}
+          inProgressToolUseIDs={new Set(opts.resolved ? [] : ['m1'])}
+          shouldAnimate={false}
+          verbose={true}
+          tools={[tool] as unknown as Tools}
+          lookups={{
+            ...lookups,
+            resolvedToolUseIDs: new Set(opts.resolved ? ['m1'] : []),
+            toolResultByToolUseID: new Map(opts.resolved ? [['m1', { type: 'user', toolUseResult: RESULT }]] : []),
+          } as unknown as typeof lookups}
+          isActiveGroup={!opts.resolved}
+        />
+      </AppStateProvider>,
+      120,
+    ).then(stripAnsi)
+  }
+
+  test('a finished call reads Called server.tool with the arguments as sent', async () => {
+    const out = await renderDetail({ resolved: true })
+    expect(out).toContain('Called ai-memory.memory_message_list({"box":"inbox","limit":5})')
+    expect(out).not.toContain('(MCP)')
+  })
+
+  test('the result stays the compact JSON the server sent', async () => {
+    const out = await renderDetail({ resolved: true })
+    // Pretty-printed, it would be split one key per row.
+    expect(out).toContain(RESULT)
+  })
+
+  test('a running call reads Calling', async () => {
+    const out = await renderDetail({ resolved: false })
+    expect(out).toContain('Calling ai-memory.memory_message_list({"box":"inbox","limit":5})')
+  })
+
+  test('a claude.ai server drops its prefix, as the group header does', async () => {
+    const out = await renderDetail({ serverName: 'claude.ai Slack', resolved: true })
+    expect(out).toContain('Called Slack.memory_message_list(')
   })
 })
