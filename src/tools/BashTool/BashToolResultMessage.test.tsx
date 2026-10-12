@@ -1,10 +1,11 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import chalk from 'chalk'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import { wrapStdoutWithMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import type { PipelineResult, PreExecPlan } from 'src/tools/shared/outputFilter/Bash/types.js'
-import { renderToString } from 'src/terminal/render/staticRender.js'
+import { renderToAnsiString, renderToString } from 'src/terminal/render/staticRender.js'
 import BashToolResultMessage from 'src/tools/BashTool/BashToolResultMessage.js'
 
 function render(stdout: string): Promise<string> {
@@ -53,5 +54,41 @@ describe('BashToolResultMessage marker stripping', () => {
   test('renders plain (unwrapped) stdout unchanged', async () => {
     const out = await render('hello world')
     expect(out).toContain('hello world')
+  })
+})
+
+describe('BashToolResultMessage log text', () => {
+  test('keeps every log line, in order, with its text intact', async () => {
+    const out = await render('2026-10-11T12:00:00Z INFO ok\nWARN slow')
+    const lines = out.split('\n').map(line => line.trim()).filter(Boolean)
+    expect(lines.some(line => line.endsWith('2026-10-11T12:00:00Z INFO ok'))).toBe(true)
+    expect(lines).toContain('WARN slow')
+    expect(out.indexOf('INFO ok')).toBeLessThan(out.indexOf('WARN slow'))
+  })
+
+  describe('with color on', () => {
+    const savedLevel = chalk.level
+    beforeAll(() => {
+      chalk.level = 3
+    })
+    afterAll(() => {
+      chalk.level = savedLevel
+    })
+
+    // WARN rather than ERROR: stderr is drawn in the error color already, so
+    // only a different color proves the level was painted.
+    test.each([
+      ['stdout', { stdout: 'WARN slow', stderr: '' }],
+      ['stderr', { stdout: '', stderr: 'WARN slow' }],
+    ])('the level on %s takes the theme warning color', async (_, content) => {
+      const out = await renderToAnsiString(
+        <AppStateProvider>
+          <BashToolResultMessage content={content} verbose={false} />
+        </AppStateProvider>,
+      )
+      const at = out.indexOf('WARN')
+      // dark's `warning` is rgb(255,193,7).
+      expect(out.slice(Math.max(0, at - 30), at)).toContain('38;2;255;193;7')
+    })
   })
 })

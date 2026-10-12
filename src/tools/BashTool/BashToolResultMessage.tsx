@@ -126,14 +126,14 @@ export default function BashToolResultMessage(t0: Props) {
       T0 = Box;
       t4 = "column";
       if ($[12] !== stdout || $[13] !== verbose) {
-        t5 = stdout !== "" ? <OutputLine content={stdout} verbose={verbose} /> : null;
+        t5 = stdout !== "" ? <OutputLine content={stdout} verbose={verbose} highlightLogs={true} /> : null;
         $[12] = stdout;
         $[13] = verbose;
         $[14] = t5;
       } else {
         t5 = $[14];
       }
-      t6 = stderr.trim() !== "" ? <OutputLine content={stderr} verbose={verbose} isError={true} /> : null;
+      t6 = stderr.trim() !== "" ? <OutputLine content={stderr} verbose={verbose} isError={true} highlightLogs={true} /> : null;
     }
     $[0] = isImage;
     $[1] = stdErrWithViolations;
