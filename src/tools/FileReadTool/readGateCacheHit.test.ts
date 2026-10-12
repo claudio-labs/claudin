@@ -4,7 +4,8 @@
 // wrapCallWithCache), so the `readFileState.set` that call() performs is
 // skipped. The model still receives the full body — which is why this looked
 // like nothing was wrong — while Edit/Patch/Write see no entry and refuse
-// with "has not been read yet". Reproduced from a live session where it fired
+// with "has not been read yet" (Edit and Patch since only when the old text is
+// not in the file exactly once). Reproduced from a live session where it fired
 // five times, each cleared by an identical second Read.
 //
 // The env killswitch is cleared here on purpose: readGateScenarios.test.ts sets
@@ -25,7 +26,7 @@ import {
 } from 'src/shared/fs/fileStateCache.js'
 import { setOriginalFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
-import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
+import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import { __resetForTests } from 'src/agent/tools/toolResultCache.js'
 
@@ -105,8 +106,8 @@ describe('a Read served from the tool-result cache still opens the write gate', 
 
     const main = makeContext()
     await read(main, p)
-    // Stands in for the LRU dropping the entry: readFileState holds 100 paths
-    // and the session that produced this bug touched 219.
+    // Stands in for the LRU dropping the entry: readFileState held 100 paths
+    // then, and the session that produced this bug touched 219.
     main.readFileState.delete(p)
 
     await read(main, p)
@@ -131,7 +132,7 @@ describe('a Read served from the tool-result cache still opens the write gate', 
     expect(seeded?.content).toBe(fork.readFileState.get(p)?.content)
   })
 
-  test('a partial-view entry is left alone — Edit still refuses', async () => {
+  test('a partial-view entry is left alone — Write still refuses', async () => {
     const p = join(dir, 'd.ts')
     writeFileSync(p, 'export function four(): number {\n  return 4\n}\n')
 
@@ -151,12 +152,9 @@ describe('a Read served from the tool-result cache still opens the write gate', 
     await read(main, p)
 
     expect(main.readFileState.get(p)?.isPartialView).toBe(true)
-    // Edit, not Patch: Patch takes any read since 2026-09-24, so
-    // only a gate that still refuses a partial view can show the promotion.
-    const res = await FileEditTool.validateInput(
-      { file_path: p, old_string: '  return 4\n', new_string: '  return 5\n' },
-      main,
-    )
+    // Write, not Patch or Edit: those take any read, so only the whole-file
+    // gate, which still refuses a partial view, can show the promotion.
+    const res = await FileWriteTool.validateInput({ file_path: p, content: 'replaced\n' }, main)
     expect(res.result).toBe(false)
   })
 })

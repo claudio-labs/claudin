@@ -61,23 +61,21 @@ import {
   thenClassifierInput,
 } from 'src/tools/shared/editThen/editThen.js'
 import { thenCommands } from 'src/tools/shared/editThen/editThenShape.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import {
-  FILE_EDIT_TOOL_NAME,
-  FILE_UNEXPECTEDLY_MODIFIED_ERROR,
-} from 'src/tools/FileEditTool/constants.js'
-import {
-  readGateReasonFor,
-  satisfiesLineScopedReadGate,
-  seenRegionCoversText,
-  unseenRegionMessage,
-  writeFamilyReadGateError,
+  appliedUnreadNote,
+  FILE_NOT_READ_ERROR,
+  unreadRefusal,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
   locateExactText,
-  mergeServedRegions,
-  serveRegions,
+  occurrenceLines,
 } from 'src/tools/shared/servedRegion.js'
+import {
+  describeDivergence,
+  NOWHERE_REMEDY,
+} from 'src/tools/shared/blockMismatch.js'
 import { getEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
 import {
   type FileEditInput,
@@ -111,33 +109,32 @@ import {
 const MAX_EDIT_FILE_SIZE = 1024 * 1024 * 1024 // 1 GiB (stat bytes)
 
 /**
- * The refusal's second half, when `old_string` sits in the file exactly once
- * (servedRegion.ts): the region is registered as read and rendered, so the
- * identical resubmit passes. `null` means the plain refusal stands.
+ * Why a file never read was not edited (readBeforeEditMessages.ts, in-place
+ * writes), naming how often old_string does occur so the retry knows whether
+ * to Read or to widen it. It opens with FILE_NOT_READ_ERROR ("…before writing
+ * to it", not "editing") because UI.tsx picks its one-liner on that constant.
  */
-function serveEditRegion(
-  fullFilePath: string,
-  fileContent: string,
-  oldString: string,
-  toolUseContext: ToolUseContext,
-): string | null {
-  const region = locateExactText(fileContent, oldString)
-  if (!region) return null
-  const fileLines = fileLinesOf(fileContent)
-  const merged = mergeServedRegions([region], fileLines.length)
-  if (!merged) return null
-  return serveRegions(
-    toolUseContext.readFileState,
-    fullFilePath,
-    fileLines,
-    getFileModificationTime(fullFilePath),
-    merged,
-  )
+function unreadRefusalFor(file: string, oldString: string): string {
+  const count = occurrenceLines(file, oldString).length
+  const occurs = count === 0 ? 'does not occur in it' : `occurs in it ${count} times`
+  return unreadRefusal(FILE_NOT_READ_ERROR, `old_string ${occurs}`, 'edited')
 }
 
-function withServedRegion(message: string, served: string | null): string {
-  if (served === null) return message
-  return `${message} The lines you are changing are shown below and now count as read — resubmit the same edit:\n${served}`
+/**
+ * Why old_string is not in the file, as Patch says it of a hunk
+ * (blockMismatch.ts): where it stops agreeing with the file, or that it
+ * matches nowhere. It never echoes old_string, which the model just sent.
+ */
+function notFoundMessage(file: string, oldString: string): string {
+  const divergence = describeDivergence(file.split('\n'), fileLinesOf(oldString), 0, 'old_string')
+  return divergence
+    ? `String to replace not found in file.\n${divergence}`
+    : `String to replace not found in file. ${NOWHERE_REMEDY}`
+}
+
+/** Several places old_string matches, by line, so the retry can pick one. */
+function multipleMatchesMessage(lines: number[]): string {
+  return `Found ${lines.length} matches of the string to replace, at lines ${lines.join(', ')}, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.`
 }
 
 /**
@@ -342,20 +339,18 @@ export const FileEditTool = buildTool({
       }
     }
 
-    const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    // Line-scoped: an injected CLAUDE.md/MEMORY.md passes here and is held to
-    // the text the model saw by the coverage check below.
-    if (!satisfiesLineScopedReadGate(readTimestamp)) {
-      // A clip-pin stand-down has its own replay budget; serving over it
-      // would reopen a gate that marker deliberately holds shut.
-      const served =
-        readGateReasonFor(readTimestamp) === 'clipped'
-          ? null
-          : serveEditRegion(fullFilePath, fileContent, old_string, toolUseContext)
+    // An in-place write, like Patch (readBeforeEditMessages.ts): any read of
+    // the file authorizes it, and whether old_string is in the file as it is
+    // now decides it below. A file never read is edited only when old_string
+    // sits in it exactly once — the model wrote those bytes, so it saw them.
+    if (
+      toolUseContext.readFileState.get(fullFilePath) === undefined &&
+      !locateExactText(fileContent, old_string)
+    ) {
       return {
         result: false,
         behavior: 'ask',
-        message: withServedRegion(writeFamilyReadGateError(readTimestamp), served),
+        message: unreadRefusalFor(fileContent, old_string),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
         },
@@ -363,60 +358,7 @@ export const FileEditTool = buildTool({
       }
     }
 
-    // Check if file exists and get its last modified time
-    if (readTimestamp) {
-      const lastWriteTime = getFileModificationTime(fullFilePath)
-      if (lastWriteTime > readTimestamp.timestamp) {
-        // Timestamp indicates modification, but on Windows timestamps can change
-        // without content changes (cloud sync, antivirus, etc.). For full reads,
-        // compare content as a fallback to avoid false positives.
-        const isFullRead =
-          readTimestamp.offset === undefined &&
-          readTimestamp.limit === undefined
-        if (isFullRead && fileContent === readTimestamp.content) {
-          // Content unchanged, safe to proceed
-        } else {
-          const served = serveEditRegion(
-            fullFilePath,
-            fileContent,
-            old_string,
-            toolUseContext,
-          )
-          return {
-            result: false,
-            behavior: 'ask',
-            message: withServedRegion(
-              'File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.',
-              served,
-            ),
-            errorCode: 7,
-          }
-        }
-      }
-    }
-
     const file = fileContent
-
-    // Read-coverage: the entry proves the model saw the file, not that it saw
-    // the text it is replacing (readBeforeEditMessages.ts, coverage lane).
-    // The substring predicate: `old_string` may start and end mid-line.
-    if (!seenRegionCoversText(readTimestamp, old_string)) {
-      const served = serveEditRegion(
-        fullFilePath,
-        fileContent,
-        old_string,
-        toolUseContext,
-      )
-      return {
-        result: false,
-        behavior: 'ask',
-        message: withServedRegion(
-          unseenRegionMessage('File', 'editing it', readTimestamp),
-          served,
-        ),
-        errorCode: 11,
-      }
-    }
 
     // Use findActualString to handle quote normalization, then fall back to a
     // whitespace-tolerant line match (indentation/trailing-whitespace drift).
@@ -431,7 +373,7 @@ export const FileEditTool = buildTool({
         return {
           result: false,
           behavior: 'ask',
-          message: `Found ${fuzzy.count} matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString: ${old_string}`,
+          message: multipleMatchesMessage(fuzzy.lines),
           meta: {
             isFilePathAbsolute: String(isAbsolute(file_path)),
           },
@@ -448,7 +390,7 @@ export const FileEditTool = buildTool({
       return {
         result: false,
         behavior: 'ask',
-        message: `String to replace not found in file.\nString: ${old_string}`,
+        message: notFoundMessage(file, old_string),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
         },
@@ -456,14 +398,14 @@ export const FileEditTool = buildTool({
       }
     }
 
-    const matches = file.split(actualOldString).length - 1
+    const matches = occurrenceLines(file, actualOldString)
 
     // Check if we have multiple matches but replace_all is false
-    if (matches > 1 && !replace_all) {
+    if (matches.length > 1 && !replace_all) {
       return {
         result: false,
         behavior: 'ask',
-        message: `Found ${matches} matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString: ${old_string}`,
+        message: multipleMatchesMessage(matches),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
           actualOldString,
@@ -597,7 +539,8 @@ export const FileEditTool = buildTool({
       )
     }
 
-    // 2. Load current state and confirm no changes since last read
+    // 2. Load current state. Whether old_string is still in it decides the
+    // edit, not whether the file changed since it was read.
     // Please avoid async operations between here and writing to disk to preserve atomicity
     const {
       content: originalFileContents,
@@ -606,23 +549,11 @@ export const FileEditTool = buildTool({
       lineEndings: endings,
     } = readFileForEdit(absoluteFilePath)
 
-    if (fileExists) {
-      const lastWriteTime = getFileModificationTime(absoluteFilePath)
-      const lastRead = readFileState.get(absoluteFilePath)
-      if (!lastRead || lastWriteTime > lastRead.timestamp) {
-        // Timestamp indicates modification, but on Windows timestamps can change
-        // without content changes (cloud sync, antivirus, etc.). For full reads,
-        // compare content as a fallback to avoid false positives.
-        const isFullRead =
-          lastRead &&
-          lastRead.offset === undefined &&
-          lastRead.limit === undefined
-        const contentUnchanged =
-          isFullRead && originalFileContents === lastRead.content
-        if (!contentUnchanged) {
-          throw new Error(FILE_UNEXPECTEDLY_MODIFIED_ERROR)
-        }
-      }
+    // A file never read: the check validateInput made, against the bytes
+    // about to be replaced.
+    const unread = fileExists && readFileState.get(absoluteFilePath) === undefined
+    if (unread && !locateExactText(originalFileContents, old_string)) {
+      throw new Error(unreadRefusalFor(originalFileContents, old_string))
     }
 
     // 3. Use findActualString to handle quote normalization
@@ -653,6 +584,14 @@ export const FileEditTool = buildTool({
         actualOldString = fuzzy.matchedOldString
         actualNewString = fuzzy.adjustedNewString
       }
+    }
+
+    // validateInput counted the matches; a change since (another agent, the
+    // user during the permission prompt) may have added one, and replace()
+    // would then edit the first, which nobody chose.
+    const matches = occurrenceLines(originalFileContents, actualOldString)
+    if (!replace_all && matches.length > 1) {
+      throw new Error(multipleMatchesMessage(matches))
     }
 
     // 4. Generate patch
@@ -712,6 +651,7 @@ export const FileEditTool = buildTool({
       structuredPatch: patch,
       userModified: userModified ?? false,
       replaceAll: replace_all,
+      ...(unread && { unread }),
     }
 
     // Per-edit LSP diagnostic injection: wait briefly for the LSP server to
@@ -743,20 +683,23 @@ export const FileEditTool = buildTool({
     const modifiedNote = userModified
       ? '.  The user modified your proposed changes before accepting them. '
       : ''
-    const thenText = formatThen(data.then, data.thenNote)
+    const unreadNote = data.unread
+      ? `\n${appliedUnreadNote(filePath, 'edited because old_string matched it exactly once')}`
+      : ''
+    const tail = unreadNote + formatThen(data.then, data.thenNote)
 
     if (replaceAll) {
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.${thenText}`,
+        content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.${tail}`,
       }
     }
 
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: `The file ${filePath} has been updated successfully${modifiedNote}.${thenText}`,
+      content: `The file ${filePath} has been updated successfully${modifiedNote}.${tail}`,
     }
   },
 } satisfies ToolDef<ReturnType<typeof inputSchema>, FileEditOutput>)

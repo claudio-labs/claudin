@@ -1,16 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
-import {
-  coveredSegments,
-  seenRegionCoversText,
-} from 'src/tools/shared/readBeforeEditMessages.js'
+import { coveredSegments } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
   locateExactLines,
   locateExactText,
   MAX_SERVED_LINES,
   mergeServedRegions,
+  occurrenceLines,
   SERVED_REGION_CONTEXT_LINES,
   serveRegions,
 } from 'src/tools/shared/servedRegion.js'
@@ -19,7 +17,7 @@ const LINES = Array.from({ length: 20 }, (_, i) => `l${i + 1}`)
 const TEXT = `${LINES.join('\n')}\n`
 
 describe('fileLinesOf', () => {
-  test('drops the trailing newline phantom line, like the coverage lane', () => {
+  test('drops the trailing newline phantom line, like coveredSegments', () => {
     expect(fileLinesOf('a\nb\n')).toEqual(['a', 'b'])
     expect(fileLinesOf('a\nb')).toEqual(['a', 'b'])
     expect(fileLinesOf('')).toEqual([])
@@ -32,7 +30,7 @@ describe('locateExactLines', () => {
     expect(locateExactLines(LINES, ['l7', 'l8', 'l9'])).toEqual({ start: 7, end: 9 })
   })
 
-  test('compares trimmed, the way the coverage lane does', () => {
+  test('compares trimmed, so indentation drift still locates', () => {
     expect(locateExactLines(['  const a = 1', 'const b = 2'], ['const a = 1'])).toEqual(
       { start: 1, end: 1 },
     )
@@ -66,6 +64,19 @@ describe('locateExactText', () => {
     expect(locateExactText(TEXT, 'nowhere')).toBeNull()
     expect(locateExactText(TEXT, 'l1')).toBeNull() // l1, l10..l19
     expect(locateExactText(TEXT, '   ')).toBeNull()
+  })
+})
+
+describe('occurrenceLines', () => {
+  test('the line each occurrence starts on, without overlaps', () => {
+    expect(occurrenceLines('a x\nb\nx x\n', 'x')).toEqual([1, 3, 3])
+    expect(occurrenceLines('aaaa', 'aa')).toEqual([1, 1])
+    expect(occurrenceLines(TEXT, 'l2\nl3')).toEqual([2])
+  })
+
+  test('none for an absent or blank needle', () => {
+    expect(occurrenceLines(TEXT, 'nowhere')).toEqual([])
+    expect(occurrenceLines(TEXT, '')).toEqual([])
   })
 })
 
@@ -118,26 +129,27 @@ describe('serveRegions', () => {
       dedupExempt: true,
       content: 'l9\nl10\n',
     })
-    // The first region was carried onto the second: both authorize a write.
+    // The first region was carried onto the second: both count as seen.
     expect(coveredSegments(entry).map(s => [s.offset, s.lines.length])).toEqual([
       [2, 2],
       [9, 2],
     ])
-    expect(seenRegionCoversText(entry, 'l2\nl3')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l5')).toBe(false)
   })
 
   test('a previous slice of the same version survives the serve', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     cache.set('/f.txt', { content: 'l15\nl16\n', timestamp: 123, offset: 15, limit: 2 })
     serveRegions(cache, '/f.txt', LINES, 123, [{ start: 2, end: 3 }])
-    expect(seenRegionCoversText(cache.get('/f.txt')!, 'l15\nl16')).toBe(true)
+    expect(coveredSegments(cache.get('/f.txt')!).map(s => [s.offset, s.lines.length])).toEqual([
+      [2, 2],
+      [15, 2],
+    ])
   })
 
   test('a previous slice of an OLDER version does not', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     cache.set('/f.txt', { content: 'l15\nl16\n', timestamp: 100, offset: 15, limit: 2 })
     serveRegions(cache, '/f.txt', LINES, 123, [{ start: 2, end: 3 }])
-    expect(seenRegionCoversText(cache.get('/f.txt')!, 'l15\nl16')).toBe(false)
+    expect(coveredSegments(cache.get('/f.txt')!).map(s => [s.offset, s.lines.length])).toEqual([[2, 2]])
   })
 })

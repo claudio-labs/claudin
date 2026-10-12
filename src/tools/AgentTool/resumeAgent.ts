@@ -2,13 +2,15 @@ import { promises as fsp } from 'fs'
 import { getSdkAgentProgressSummariesEnabled } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
 import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js'
+import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { registerAsyncAgent } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { assembleToolPool } from 'src/tools/tools.js'
 import { asAgentId } from 'src/shared/types/ids.js'
 import { runWithAgentContext } from 'src/agent/coordinator/agentContext.js'
-import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { getCwd, runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { READ_FILE_STATE_CACHE_SIZE } from 'src/shared/fs/fileStateCache.js'
 import { getAgentPlanSlug } from 'src/agent/planDossier.js'
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -208,6 +210,13 @@ export async function resumeAgentBackground({
     // Transcript already contains the parent context slice from the
     // original fork. Re-supplying it would cause duplicate tool_use IDs.
     forkContextMessages: undefined,
+    // What the agent had read before it stopped, rebuilt as /resume does for
+    // the main thread. Started empty, every file it held was "not read yet".
+    readFileState: extractReadFilesFromMessages(
+      resumedMessages,
+      resumedWorktreePath ?? getCwd(),
+      READ_FILE_STATE_CACHE_SIZE,
+    ),
     ...(isResumedFork && { useExactTools: true }),
     // Re-persist so metadata survives runAgent's writeAgentMetadata overwrite
     worktreePath: resumedWorktreePath,

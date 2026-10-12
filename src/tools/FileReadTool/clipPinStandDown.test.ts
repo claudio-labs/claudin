@@ -183,12 +183,12 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect(types.slice(firstFallback)).toContain('text')
   })
 
-  test('the sticky refusal lifts, so Edit stops being blocked forever', async () => {
+  test('the sticky refusal lifts, so Write stops being blocked forever', async () => {
     // The deadlock that the permanent marker created, pinned as the exact
-    // predicate the edit tools use. FileEditTool.ts, FileWriteTool.ts,
-    // applyPatch.ts and NotebookEditTool.ts all gate on `!entry ||
-    // entry.isPartialView`, and the sticky entry sets isPartialView — so while
-    // the marker stands, an Edit is refused with "File has not been read yet".
+    // predicate the whole-file write tools use. FileWriteTool.ts and
+    // NotebookEditTool.ts gate on `!entry || entry.isPartialView`, and the
+    // sticky entry sets isPartialView — so while the marker stands, a Write is
+    // refused. (Patch and Edit take any read since 2026-09-24 / 2026-10-12.)
     //
     // That refusal is CORRECT (the model has seen an outline, not the body);
     // what was broken is that Read replayed the marker without rewriting the
@@ -436,11 +436,11 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect((replay as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
-  test('the sticky fallback keeps Edit/Write demanding a real Read first', async () => {
+  test('the sticky fallback keeps Write demanding a real Read first', async () => {
     // Keeping an entry where the previous design deleted one must not quietly
-    // buy back the Edit permission: isPartialView is what preserves it, and
-    // FileEditTool, FileWriteTool, applyPatch and NotebookEditTool all check
-    // that same field. (A test asserting the marker is DROPPED by a direct
+    // buy back the Write permission: isPartialView is what preserves it, and
+    // FileWriteTool and NotebookEditTool check that same field. (A test
+    // asserting the marker is DROPPED by a direct
     // readFileState.set used to sit here, framed as the Edit/Write exit. It
     // was deleted: it passed with the entire sticky replay disabled, and the
     // exit it advertised cannot open in production anyway — the marker refuses

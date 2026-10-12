@@ -72,6 +72,10 @@ const outputSchema = lazySchema(() =>
       .boolean()
       .describe('Whether the user modified the proposed changes'),
     replaceAll: z.boolean().describe('Whether all occurrences were replaced'),
+    unread: z
+      .boolean()
+      .optional()
+      .describe('The file had not been read: edited because old_string matched it exactly once'),
     then: z.array(thenRunSchema()).optional().describe('The `then` commands and what they printed'),
     thenNote: z.string().optional().describe('Why the `then` commands did not run'),
   }),

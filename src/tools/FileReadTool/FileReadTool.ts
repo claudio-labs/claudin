@@ -371,7 +371,7 @@ export const FileReadTool = buildTool({
       const prior = context.readFileState?.get(expandPath(file_path))
       // First read of this path in this context: nothing to stand down from,
       // so let it cache and be served from cache like any other tool. Note this
-      // also covers a path whose entry was LRU-evicted (readFileState holds 100,
+      // also covers a path whose entry was LRU-evicted (readFileState holds 500,
       // 10 in queryHelpers) — indistinguishable from a first read, and equally
       // harmless: the replay still hands the model the real body, it just skips
       // a dedup that had no state to dedup against anyway.
@@ -416,12 +416,11 @@ export const FileReadTool = buildTool({
    * does not invalidate the entry, but any Bash does, and the re-read then
    * reaches call()).
    *
-   * The window is narrow but ordinary: readFileState holds 100 paths while the
-   * Read result cache holds 500 for 60s, so any session touching more files
-   * than that (219 in the one measured) can lose the entry while the cached
-   * body lives on. bypassResultCache cannot cover it — the entry it would key
-   * on is exactly the one that is gone, making it indistinguishable from a
-   * first read.
+   * The window is narrow but ordinary: the session measured touched 219
+   * files, more than readFileState then held, and lost entries while the
+   * Read result cache still held their bodies for 60s. bypassResultCache
+   * cannot cover it — the entry it would key on is exactly the one that is
+   * gone, making it indistinguishable from a first read.
    *
    * Seeds ONLY when the context has no entry at all. A partial view, an
    * outline or a sticky stand-down marker is state call() owns; overwriting it
@@ -538,7 +537,7 @@ export const FileReadTool = buildTool({
     //
     // Placed BEFORE the dedup gate below, and deliberately not part of it: the
     // gate excludes isPartialView entries and the sticky entry is one (so
-    // Edit/Write still demand a real Read). It also carries no toolUseId, so
+    // Write still demands a real Read). It also carries no toolUseId, so
     // unlike the dedup stub it can never point the model at a tool_result that
     // is no longer there — the blind-pointer bug this whole mechanism exists
     // to avoid cannot be reached from here.
@@ -557,13 +556,14 @@ export const FileReadTool = buildTool({
     //
     // Exit 3 is the one that does not depend on anything external happening,
     // and it is load-bearing rather than belt-and-braces. Note what is NOT on
-    // the list: an Edit/Write replacing the entry. That reads like the obvious
-    // escape hatch and cannot open by itself, because this marker sets
-    // isPartialView, so those tools are REFUSED while it stands ("read it
-    // first") — they can never be what replaces the entry. Exit 2 does not
-    // cover it either: the marker is created by microCompact, whose whole job
-    // is to keep the session BELOW the autocompact threshold, so a session
-    // that clips this way may never reach a main-thread compaction at all.
+    // the list: a Write replacing the entry. That reads like the obvious escape
+    // hatch and cannot open by itself, because this marker sets isPartialView,
+    // so Write is REFUSED while it stands ("read it first") — it can never be
+    // what replaces the entry (a Patch or an Edit can, when one is sent).
+    // Exit 2 does not cover it either: the marker is created by
+    // microCompact, whose whole job is to keep the session BELOW the
+    // autocompact threshold, so a session that clips this way may never
+    // reach a main-thread compaction at all.
     // Without the budget the model is left unable to read its way to a body
     // and unable to edit, which is the permanent-refusal bug wearing a hat.
     //
@@ -861,10 +861,9 @@ export const FileReadTool = buildTool({
             // way through set().
             //
             // isPartialView: true because the model has NOT seen the body, so
-            // an Edit before the next Read must still say "read it first"
-            // (FileEditTool, FileWriteTool, applyPatch and NotebookEditTool
-            // all check this field). It also keeps this entry out of the dedup
-            // gate below.
+            // a Write before the next Read must still say "read it first"
+            // (FileWriteTool and NotebookEditTool check this field). It also
+            // keeps this entry out of the dedup gate below.
             //
             // This is NOT the same cost the delete already paid, and an
             // earlier version of this comment claimed it was. Under delete,

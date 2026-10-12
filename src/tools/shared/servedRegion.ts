@@ -14,8 +14,11 @@
 // exactly as a Read(offset, limit) would have — the identical resubmit then
 // passes the gate. The invariant is intact: the model still sees the lines
 // before the write lands, it just sees them one call sooner. Since 2026-09-24
-// Patch refuses only a file never read at all, so for an Update hunk this
-// serves that refusal alone; Edit still serves all four of its own.
+// Patch refuses only a file never read at all, and since 2026-09-29 it applies
+// even that when every hunk matches exactly, so only its all-or-nothing mode
+// (CLAUDIN_PATCH_ALL_OR_NOTHING) still serves. Edit took the same rule on
+// 2026-10-12 and serves nothing: what an exact, unique match would have
+// served, it now applies. `locateExactText` is its check for that.
 //
 // What is NOT served, on purpose:
 //   - a hunk that does not match exactly, or matches twice: the model's guess
@@ -23,8 +26,11 @@
 //     the fuzzy matcher's job at apply time, not the gate's;
 //   - more than MAX_SERVED_LINES in one refusal: a hunk that large is a
 //     rewrite, and the message would be the file;
-//   - whole-file writes (Write, Delete File) — there is no old side to match;
+//   - Delete File — there is no old side to match;
 //   - an entry under a clip-pin stand-down marker, which has its own budget.
+//
+// A Write has no old side either, but it replaces the whole file, so what its
+// refusal needs is the whole file: `serveWholeFile`, under the same cap.
 //
 // The entry written here carries `dedupExempt` (fileStateCache.ts): its bytes
 // live in a refusal, not in a Read tool_result, so FileReadTool's stub must
@@ -36,6 +42,11 @@ import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 export const SERVED_REGION_CONTEXT_LINES = 2
 /** Above this many lines in one refusal, nothing is served. */
 export const MAX_SERVED_LINES = 200
+/**
+ * Above this many bytes a whole file is not served: one minified line can be
+ * megabytes. The caller checks it on the stat, before reading the file.
+ */
+export const MAX_SERVED_FILE_BYTES = 32 * 1024
 
 /** 1-based, inclusive file lines. */
 export type LineRegion = { start: number; end: number }
@@ -47,7 +58,7 @@ export function fileLinesOf(text: string): string[] {
 }
 
 /**
- * Where `needed` (whole lines, compared trimmed — the coverage lane's own
+ * Where `needed` (whole lines, compared trimmed, so indentation drift still
  * tolerance) sits in the file. `null` when it is absent or matches more than
  * once. Blank-only needles localize nothing and are never served.
  */
@@ -94,6 +105,20 @@ function countLines(text: string, from: number, to: number): number {
   let n = 0
   for (let i = from; i < to; i++) if (text.charCodeAt(i) === 10) n++
   return n
+}
+
+/** The 1-based line each occurrence of `needle` starts on; none for a blank needle. */
+export function occurrenceLines(text: string, needle: string): number[] {
+  if (needle === '') return []
+  const lines: number[] = []
+  let line = 1
+  let from = 0
+  for (let at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + needle.length)) {
+    line += countLines(text, from, at)
+    from = at
+    lines.push(line)
+  }
+  return lines
 }
 
 /**
@@ -150,4 +175,28 @@ export function serveRegions(
     blocks.push(addLineNumbers({ content: slice.join('\n'), startLine: region.start }))
   }
   return blocks.join('\n…\n')
+}
+
+/**
+ * A Write's refusal over a file of at most MAX_SERVED_LINES lines (and, as
+ * its caller checks first, MAX_SERVED_FILE_BYTES bytes): the file, numbered
+ * the way Read numbers it, registered as a whole-file read of this version,
+ * so the resubmit passes if it still applies. `null` past the line cap. No
+ * `dedupExempt`: Read's dedup gate never matches a whole-file entry.
+ */
+export function serveWholeFile(
+  readFileState: FileStateCache,
+  absPath: string,
+  fileText: string,
+  mtime: number,
+): string | null {
+  const lines = fileLinesOf(fileText)
+  if (lines.length > MAX_SERVED_LINES) return null
+  readFileState.set(absPath, {
+    content: fileText,
+    timestamp: mtime,
+    offset: undefined,
+    limit: undefined,
+  })
+  return addLineNumbers({ content: lines.join('\n'), startLine: 1 })
 }

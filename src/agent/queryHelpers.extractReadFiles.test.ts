@@ -10,8 +10,14 @@ import { join } from 'path'
 import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import { addLineNumbers, getFileModificationTime } from 'src/shared/fs/file.js'
 import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
-import { seenRegionCoversText } from 'src/tools/shared/readBeforeEditMessages.js'
+import { coveredSegments } from 'src/tools/shared/readBeforeEditMessages.js'
+import type { FileState } from 'src/shared/fs/fileStateCache.js'
 import type { Message } from 'src/shared/types/message.js'
+
+/** Whether the lines the entry says the model was shown hold `text`. */
+function shows(entry: FileState, text: string): boolean {
+  return coveredSegments(entry).some(segment => segment.lines.join('\n').includes(text))
+}
 
 let dir: string
 let n = 0
@@ -23,6 +29,18 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
 })
+
+/**
+ * A file the write tools left on disk, dated before every result below (they
+ * are stamped from 2023-11): as it is in a real transcript, where the result
+ * comes back after the write. A file written after its result is one that
+ * changed since, which the restore refuses to vouch for.
+ */
+function writtenBeforeTheResults(path: string, content: string): void {
+  writeFileSync(path, content)
+  const before = new Date(1_600_000_000_000)
+  utimesSync(path, before, before)
+}
 
 /** A file of `count` lines named l1..lN, so a slice is recognisable. */
 function numbered(count: number): string {
@@ -101,8 +119,8 @@ describe('extractReadFilesFromMessages — Read', () => {
     )
     const entry = cache.get(p)
     expect(entry).toMatchObject({ content: 'l5\nl6\nl7', offset: 5, limit: 3 })
-    expect(seenRegionCoversText(entry!, 'l6')).toBe(true)
-    expect(seenRegionCoversText(entry!, 'l9')).toBe(false)
+    expect(shows(entry!, 'l6')).toBe(true)
+    expect(shows(entry!, 'l9')).toBe(false)
   })
 
   test('a leading blank line in a slice keeps its line number', () => {
@@ -172,9 +190,9 @@ describe('extractReadFilesFromMessages — several Reads of one file', () => {
     const entry = cache.get(p)!
     expect(entry).toMatchObject({ offset: 40, limit: 2 })
     expect(entry.seenRanges).toEqual([{ offset: 1, content: 'l1\nl2\nl3' }])
-    expect(seenRegionCoversText(entry, 'l2')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l41')).toBe(true)
-    expect(seenRegionCoversText(entry, 'l20')).toBe(false)
+    expect(shows(entry, 'l2')).toBe(true)
+    expect(shows(entry, 'l41')).toBe(true)
+    expect(shows(entry, 'l20')).toBe(false)
   })
 
   test('a slice read after an Edit does not inherit the pre-edit file', () => {
@@ -209,17 +227,54 @@ describe('extractReadFilesFromMessages — write tools', () => {
 
   test('Edit is restored from disk', () => {
     const p = join(dir, 'e.ts')
-    writeFileSync(p, 'on disk\n')
+    writtenBeforeTheResults(p, 'on disk\n')
     const use = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
     const cache = extractReadFilesFromMessages([use, toolResult(use, 'ok')], dir)
     expect(cache.get(p)).toMatchObject({ content: 'on disk\n', offset: undefined })
   })
 
+  test('an Edit whose file changed after the result restores nothing, and drops what came before', () => {
+    // The disk is not the post-edit file any more. A sub-agent resumed minutes
+    // later while the main thread kept editing used to get the main thread's
+    // bytes as "read", and its next Write passed the gate over them.
+    const p = join(dir, 'changed-after.ts')
+    writeFileSync(p, 'someone else wrote this later\n') // mtime now, after the 2023 result below
+    const edit = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
+    const cache = extractReadFilesFromMessages(
+      [...read(p, {}, 'a\nb'), edit, toolResult(edit, 'ok')],
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
+  test('a refused Write restores nothing: the model never saw the file', () => {
+    // Its input is what the model WANTED on disk. Restored as read, the next
+    // Write over the same file passed the gate blind after a resume.
+    const p = join(dir, 'refused-write.ts')
+    const use = toolUse('Write', { file_path: p, content: 'never written' })
+    const cache = extractReadFilesFromMessages(
+      [use, toolResult(use, 'File has not been read yet.', { isError: true })],
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
+  test('a refused Edit restores nothing', () => {
+    const p = join(dir, 'refused-edit.ts')
+    writtenBeforeTheResults(p, 'on disk\n')
+    const use = toolUse('Edit', { file_path: p, old_string: 'a', new_string: 'b' })
+    const cache = extractReadFilesFromMessages(
+      [use, toolResult(use, 'File has not been read yet.', { isError: true })],
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
   test('Patch is restored from disk for every file it wrote', () => {
     const a = join(dir, 'pa.ts')
     const b = join(dir, 'pb.ts')
-    writeFileSync(a, 'A\n')
-    writeFileSync(b, 'B\n')
+    writtenBeforeTheResults(a, 'A\n')
+    writtenBeforeTheResults(b, 'B\n')
     const use = toolUse('Patch', {
       patchText:
         `*** Begin Patch\n*** Update File: ${a}\n@@\n-x\n+y\n` +
@@ -262,7 +317,7 @@ describe('extractReadFilesFromMessages — write tools', () => {
   test('"*** Resubmit" is restored as the patch refused one call earlier', () => {
     // The resubmitted patch wrote the file; nothing in the sentinel names it.
     const p = join(dir, 'resubmitted.ts')
-    writeFileSync(p, 'AFTER\n')
+    writtenBeforeTheResults(p, 'AFTER\n')
     const refused = toolUse('Patch', {
       patchText: `*** Begin Patch\n*** Update File: ${p}\n@@\n-x\n+y\n*** End Patch`,
     })
@@ -279,8 +334,8 @@ describe('extractReadFilesFromMessages — write tools', () => {
     // the call still succeeds: the input names files that were never written.
     const wrote = join(dir, 'wrote.ts')
     const skipped = join(dir, 'skipped.ts')
-    writeFileSync(wrote, 'NEW\n')
-    writeFileSync(skipped, 'OLD\n')
+    writtenBeforeTheResults(wrote, 'NEW\n')
+    writtenBeforeTheResults(skipped, 'OLD\n')
     const use = toolUse('Patch', {
       patchText:
         `*** Begin Patch\n*** Update File: ${wrote}\n@@\n-x\n+y\n` +
@@ -525,7 +580,7 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
     expect(cache.size).toBe(2)
   })
 
-  test('a symbol list restores every body, and the edit gate sees each', () => {
+  test('a symbol list restores every body, each recorded as seen', () => {
     // A single ranged Read shows one run; this one shows two, and keeping
     // only the first would refuse an Edit inside the second.
     const p = join(dir, 'sym.ts')
@@ -542,8 +597,8 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
     const entry = cache.get(p)!
     expect(entry).toMatchObject({ content: bar, offset: 40, limit: 3 })
     expect(entry.seenRanges).toEqual([{ offset: 10, content: foo }])
-    expect(seenRegionCoversText(entry, 'return 1')).toBe(true)
-    expect(seenRegionCoversText(entry, 'return 2')).toBe(true)
+    expect(shows(entry, 'return 1')).toBe(true)
+    expect(shows(entry, 'return 2')).toBe(true)
   })
 
   test('a symbol looked up in every file is a slice of each', () => {

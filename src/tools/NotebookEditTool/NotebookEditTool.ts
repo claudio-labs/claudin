@@ -220,13 +220,13 @@ export const NotebookEditTool = buildTool({
       }
     }
 
-    // Require Read-before-Edit (matches FileEditTool/FileWriteTool). Without
-    // this, the model could edit a notebook it never saw, or edit against a
-    // stale view after an external change — silent data loss.
+    // Require Read-before-Edit (matches FileWriteTool: a cell edit has no old
+    // text to match, unlike FileEditTool and Patch). Without this, the model
+    // could edit a notebook it never saw, or edit against a stale view after
+    // an external change — silent data loss.
     const readTimestamp = toolUseContext.readFileState.get(fullPath)
-    // isPartialView, not just presence: the comment above claims parity with
-    // FileEditTool/FileWriteTool, and until now it did not have it — those two
-    // (and applyPatch) reject a partial entry, this one accepted it. A partial
+    // isPartialView, not just presence: FileWriteTool rejects a partial
+    // entry, and this one used to accept it. A partial
     // entry means the model saw an outline, a head slice or a stripped
     // injection, never the cells. The clip-pin stand-down made that reachable
     // for notebooks specifically: renderClipPinHeadSlice returns '' for .ipynb

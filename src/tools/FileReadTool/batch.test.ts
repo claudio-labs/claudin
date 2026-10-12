@@ -22,7 +22,13 @@ import {
   type ToolPermissionContext,
   type ToolUseContext,
 } from 'src/tools/Tool.js'
-import { seenRegionCoversText } from 'src/tools/shared/readBeforeEditMessages.js'
+import type { FileState } from 'src/shared/fs/fileStateCache.js'
+import { coveredSegments } from 'src/tools/shared/readBeforeEditMessages.js'
+
+/** Whether the lines the entry says the model was shown hold `text`. */
+function shows(entry: FileState, text: string): boolean {
+  return coveredSegments(entry).some(segment => segment.lines.join('\n').includes(text))
+}
 import { userWithToolResult } from 'src/tools/FileReadTool/__test-helpers__/contextManagementFixtures.js'
 import {
   fixtureDir,
@@ -403,17 +409,17 @@ describe('batch Read — several symbols of one file', () => {
     )
   })
 
-  test('every body the list showed passes the read-before-edit gate', async () => {
+  test('every body the list showed is recorded as seen', async () => {
     const a = writeFixture('gate-a.ts', SAMPLE_TS)
     const ctx = context()
     await call(ReadOn, { file_path: a, symbol: ['alpha', 'beta'] }, ctx)
     const entry = ctx.readFileState.get(a)!
     expect(entry.isPartialView).toBeUndefined()
     // The FIRST symbol's body — the one a single offset/limit would lose.
-    expect(seenRegionCoversText(entry, 'return x + 1')).toBe(true)
-    expect(seenRegionCoversText(entry, 'return y * 2')).toBe(true)
+    expect(shows(entry, 'return x + 1')).toBe(true)
+    expect(shows(entry, 'return y * 2')).toBe(true)
     // Never shown: Widget sits between the two.
-    expect(seenRegionCoversText(entry, 'return "w"')).toBe(false)
+    expect(shows(entry, 'return "w"')).toBe(false)
   })
 
   test('a symbol that comes back as an outline does not erase the bodies around it', async () => {
@@ -423,16 +429,16 @@ describe('batch Read — several symbols of one file', () => {
     expect(textOf(result.data)).toContain("Symbol 'Big'")
     const entry = ctx.readFileState.get(big)!
     expect(entry.isPartialView).toBeUndefined()
-    expect(seenRegionCoversText(entry, 'return 11')).toBe(true)
-    expect(seenRegionCoversText(entry, 'return 22')).toBe(true)
+    expect(shows(entry, 'return 11')).toBe(true)
+    expect(shows(entry, 'return 22')).toBe(true)
     // Big's lines were shown as an outline, never as text.
-    expect(seenRegionCoversText(entry, 'const v42 = 42')).toBe(false)
+    expect(shows(entry, 'const v42 = 42')).toBe(false)
 
     const tail = context()
     await call(ReadOn, { file_path: big, symbol: ['small1', 'Big'] }, tail)
     const tailEntry = tail.readFileState.get(big)!
     expect(tailEntry.isPartialView).toBeUndefined()
-    expect(seenRegionCoversText(tailEntry, 'return 11')).toBe(true)
+    expect(shows(tailEntry, 'return 11')).toBe(true)
   })
 
   // With nothing to expand, each symbol falls back to the whole body, and the

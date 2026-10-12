@@ -1,0 +1,145 @@
+{
+  "test": [
+    "src/tools/FileEditTool/FileEditTool.readGate.test.ts",
+    "src/tools/FileEditTool/FileEditTool.call.test.ts",
+    "src/tools/FileWriteTool/FileWriteTool.readGate.test.ts",
+    "src/__tests__/readGateScenarios.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/tools/AgentTool/resumeAgent.test.ts",
+    "src/tools/shared/readBeforeEditMessages.test.ts",
+    "src/tools/shared/servedRegion.test.ts",
+    "src/tools/shared/blockMismatch.test.ts",
+    "src/tools/ApplyPatchTool/patchFormat.test.ts",
+    "src/tools/ApplyPatchTool/applyPatch.test.ts",
+    "src/shared/fs/fileStateCache.test.ts"
+  ],
+  "source": "src/tools/FileEditTool/FileEditTool.ts",
+  "probes": [
+    {
+      "name": "resume: a refused Write is restored as read",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "          if (writeToolData && content.is_error !== true && message.timestamp) {\n",
+      "replace": "          if (writeToolData && message.timestamp) {\n"
+    },
+    {
+      "name": "resume: a sub-agent's state is not rebuilt from its transcript",
+      "comment": "runAgent needs a live model, so the wiring is pinned on the source (resumeAgent.test.ts), as the toolFilter and readOnly wiring are.",
+      "source": "src/tools/AgentTool/resumeAgent.ts",
+      "find": "    readFileState: extractReadFilesFromMessages(\n",
+      "replace": "    readFileState: undefined && extractReadFilesFromMessages(\n"
+    },
+    {
+      "name": "resume: runAgent ignores the rebuilt state",
+      "source": "src/tools/AgentTool/runAgent.ts",
+      "find": "    readFileState ??\n",
+      "replace": "    undefined ??\n"
+    },
+    {
+      "name": "Edit: a file never read is edited whatever old_string is",
+      "find": "      !locateExactText(fileContent, old_string)\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "Edit: call() trusts the check validateInput made",
+      "find": "    if (unread && !locateExactText(originalFileContents, old_string)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "Edit: the result does not say the file was unread",
+      "find": "      ...(unread && { unread }),\n",
+      "replace": ""
+    },
+    {
+      "name": "Edit: not found does not say where it diverges",
+      "find": "  const divergence = describeDivergence(file.split('\\n'), fileLinesOf(oldString), 0, 'old_string')\n",
+      "replace": "  const divergence = null\n"
+    },
+    {
+      "name": "Edit: several matches are not named by line",
+      "find": "matches of the string to replace, at lines ${lines.join(', ')}, but replace_all",
+      "replace": "matches of the string to replace, but replace_all"
+    },
+    {
+      "name": "control: a comment in Edit's call()",
+      "expect": "green",
+      "find": "    // A file never read: the check validateInput made, against the bytes\n",
+      "replace": "    // A file never read: validateInput's check, again, against the bytes\n"
+    },
+    {
+      "name": "Write: only the last read counts",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "      !seenWholeFile(readTimestamp, fileText())\n",
+      "replace": "      true\n"
+    },
+    {
+      "name": "Write: reads from line 1 count however short they stop",
+      "source": "src/tools/shared/readBeforeEditMessages.ts",
+      "find": "  return total === 0 || (first?.offset === 1 && first.lines.length >= total)\n",
+      "replace": "  return total === 0 || first?.offset === 1\n"
+    },
+    {
+      "name": "Write: the refusal does not show the file",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "  if (served === null) return message\n",
+      "replace": "  return message\n"
+    },
+    {
+      "name": "Write: the file is shown over a clip-pin marker",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "          reason === 'clipped' || reason === 'changed-too-large'\n",
+      "replace": "          reason === 'changed-too-large'\n"
+    },
+    {
+      "name": "Write: a file past 200 lines is shown",
+      "source": "src/tools/shared/servedRegion.ts",
+      "find": "  if (lines.length > MAX_SERVED_LINES) return null\n  readFileState.set(absPath, {\n    content: fileText,\n",
+      "replace": "  readFileState.set(absPath, {\n    content: fileText,\n"
+    },
+    {
+      "name": "readFileState: back to 100 entries",
+      "source": "src/shared/fs/fileStateCache.ts",
+      "find": "export const READ_FILE_STATE_CACHE_SIZE = 500\n",
+      "replace": "export const READ_FILE_STATE_CACHE_SIZE = 100\n"
+    },
+    {
+      "name": "shared wording: the never-read refusal of an in-place write",
+      "source": "src/tools/shared/readBeforeEditMessages.ts",
+      "find": "  return `${neverRead} ${mismatch}, so it was not ${verb} unread.`\n",
+      "replace": "  return `${neverRead} ${mismatch}.`\n"
+    },
+    {
+      "name": "shared wording: the nowhere remedy Patch and Edit both give",
+      "source": "src/tools/shared/blockMismatch.ts",
+      "find": "  'Read the file again and copy the context verbatim — a block that matches nowhere usually means it was written from memory, or aimed at the wrong file.'\n",
+      "replace": "  'Read the file again.'\n"
+    },
+    {
+      "name": "review: Edit's call() does not recount old_string before replacing it",
+      "find": "    if (!replace_all && matches.length > 1) {\n      throw new Error(multipleMatchesMessage(matches))\n",
+      "replace": "    if (false) {\n      throw new Error(multipleMatchesMessage(matches))\n"
+    },
+    {
+      "name": "review: the unread refusal does not say how often old_string occurs",
+      "find": "  const occurs = count === 0 ? 'does not occur in it' : `occurs in it ${count} times`\n",
+      "replace": "  const occurs = 'does not occur in it exactly once'\n"
+    },
+    {
+      "name": "review: a restored edit vouches for a file changed after its result",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "      if (answeredAt !== undefined && getFileModificationTime(filePath) > answeredAt) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "review: a Write refusal shows a file of any size",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "      fileSize > MAX_SERVED_FILE_BYTES\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "review: the stale Write refusal invites the same Write again",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "          MERGE,\n",
+      "replace": "          RESUBMIT,\n"
+    }
+  ]
+}

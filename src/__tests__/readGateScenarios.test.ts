@@ -25,6 +25,7 @@ import {
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import { ApplyPatchTool } from 'src/tools/ApplyPatchTool/ApplyPatchTool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
+import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
 import { createPlanAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import {
   getChangedFileAttachments,
@@ -37,11 +38,12 @@ import {
 // unit-tested against a HAND-SEEDED entry, which is precisely how both of these
 // bugs survived — a fabricated entry cannot show that Read wrote the wrong one.
 //
-// Most of them observe through Edit, the line-scoped write that still holds the
-// full gate. Patch held it too until 2026-09-24 and now only asks whether
-// the file was read at all (S19), so a scenario about coverage, a partial view
-// or a stale entry would pass through it unobserved. The ones left on
-// Patch — S10, S11, S16, S17, S18 — are about the entry being there.
+// They observe through Write, the whole-file write, which keeps the full gate.
+// Patch (2026-09-24) and Edit (2026-10-12) write in place and only ask whether
+// the file was read at all (S19, S20), so a scenario about coverage, a partial
+// view or a stale entry passes through them unobserved; where they still
+// appear it is to show that they do take it. The ones left on Patch — S10,
+// S11, S16, S17, S18 — are about the entry being there.
 //
 // Reproduced here, from the 683-session corpus:
 //   S1  a file walked in two ranges, patched inside the first    (28/37 refusals)
@@ -78,6 +80,8 @@ import {
 //
 // And the policy that replaced Patch's gate on 2026-09-24:
 //   S19 an outline, a range, a file changed since: any read authorizes a patch
+// And Edit's, on 2026-10-12, after the census of 2026-10-05..12:
+//   S20 the same for Edit, and a file never read edited when old_string sits in it once
 // ---------------------------------------------------------------------------
 
 /**
@@ -94,6 +98,8 @@ import {
 const FLAGS = [
   'CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION',
   'CLAUDIN_DISABLE_TOOL_RESULT_CACHE',
+  // S20 runs Edit's call(), which would back files up under the config dir.
+  'CLAUDIN_DISABLE_FILE_CHECKPOINTING',
 ] as const
 const priorFlags = new Map<string, string | undefined>()
 
@@ -174,12 +180,17 @@ function patch(path: string, body: string) {
   )
 }
 
-/** Edit's validator, which still holds the full gate. */
+/** Edit's validator: an in-place write, which takes any read (S20). */
 function edit(path: string, oldString: string, newString: string) {
   return FileEditTool.validateInput(
     { file_path: path, old_string: oldString, new_string: newString },
     ctx,
   )
+}
+
+/** Write's validator: a whole-file write, which needs the file read whole and unchanged. */
+function write(path: string, content = 'replaced\n') {
+  return FileWriteTool.validateInput({ file_path: path, content }, ctx)
 }
 
 function refusal(result: ValidationResult): string {
@@ -218,29 +229,15 @@ describe('S1 — a file walked in two ranges', () => {
     expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
   })
 
-  test('an edit in the GAP between them is still refused', async () => {
-    const p = join(dir, 's1-gap.txt')
+  test('Write is refused, naming both ranges and not the gap', async () => {
+    // The refusal names everything the model has been shown. Concatenating
+    // the slices instead of merging them by line number would name one range.
+    const p = join(dir, 's1-write.txt')
     writeLines(p, 60)
     await read(p, { offset: 1, limit: 10 })
     await read(p, { offset: 40, limit: 6 })
 
-    const message = refusal(await edit(p, 'l20\n', 'L20\n'))
-    expect(message).toContain('only read in part')
-    // The refusal names everything the model has been shown, both ranges.
-    expect(message).toContain('lines 1-10, 40-45')
-  })
-
-  test('an edit whose text spans the gap is refused for coverage', async () => {
-    // l10 and l40 are both in the entry and adjacent in the accumulated text,
-    // 29 lines apart in the file. Concatenating the slices instead of merging
-    // them by line number would pass the coverage lane, and the refusal would
-    // then be Edit's "not found" instead.
-    const p = join(dir, 's1-span.txt')
-    writeLines(p, 60)
-    await read(p, { offset: 1, limit: 10 })
-    await read(p, { offset: 40, limit: 6 })
-
-    expect(refusal(await edit(p, 'l10\nl40\n', 'X\n'))).toContain('only read in part')
+    expect(refusal(await write(p))).toContain('was only read in part (lines 1-10, 40-45)')
   })
 })
 
@@ -255,6 +252,8 @@ describe('S2 — a narrow Read landing on a full one', () => {
     await read(p, { offset: 40, limit: 6 })
 
     expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
+    // And for Write, which needs every line: the full read still holds them.
+    expect(await write(p)).toEqual({ result: true })
   })
 })
 
@@ -310,11 +309,13 @@ describe('S3 — an out-of-band rewrite of a file the model had read in full', (
     expect(
       await edit(p, "  return 'AFTER0'\n", "  return 'PATCHED'\n"),
     ).toMatchObject({ result: true })
+    // The refreshed entry is the whole new file, at its new mtime.
+    expect(await write(p)).toEqual({ result: true })
   })
 })
 
 describe('S4 — the rewritten file can no longer be re-read', () => {
-  test('the stale entry stops vouching for the file, and the next edit is refused', async () => {
+  test('the stale entry stops vouching for the file, and the next Write is refused', async () => {
     // The blind-write guard for the case the fix could have opened: when the
     // re-read cannot produce the new bytes, the entry must stop vouching for
     // the file rather than keep describing a version that is gone. It used to
@@ -339,7 +340,9 @@ describe('S4 — the rewritten file can no longer be re-read', () => {
       await refreshChangedFile(p, p, ctx.readFileState.get(p)!, ctx),
     ).toBeNull()
 
-    expect((await edit(p, '  return 1\n', '  return 2\n')).result).toBe(false)
+    expect((await write(p)).result).toBe(false)
+    // An in-place edit is matched against the file as it is now.
+    expect(await edit(p, '  return 1\n', '  return 2\n')).toMatchObject({ result: true })
   })
 })
 
@@ -360,14 +363,13 @@ describe('S5 — accumulated coverage does not survive a changed file', () => {
     )
     await read(p, { offset: 40, limit: 6 })
 
-    expect((await edit(p, 'l3\n', 'X3\n')).result).toBe(false)
-    // And the refusal describes only what is still true.
-    expect(refusal(await edit(p, 'l3\n', 'X3\n'))).toContain('lines 40-45')
+    // The refusal describes only what is still true.
+    expect(refusal(await write(p))).toContain('was only read in part (lines 40-45)')
   })
 })
 
 describe('S6 — Read(range), then the file changes outside the range', () => {
-  test('the watcher refreshes the entry and an edit inside the range passes', async () => {
+  test('the watcher refreshes the entry: the slice stays, at the new mtime', async () => {
     // 19 of the 30 "modified since read" refusals this week: the model read a
     // slice, deleted a line range elsewhere with `sed -i`, and its next patch
     // inside the slice was refused — the watcher skipped every Read entry, so
@@ -382,12 +384,16 @@ describe('S6 — Read(range), then the file changes outside the range', () => {
 
     // The slice the model holds is unchanged, so there is nothing to tell it.
     expect(attachments).toEqual([])
-    expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
+    // Edit takes any entry (S20), so it cannot show the refresh; the entry can.
+    const entry = ctx.readFileState.get(p)!
+    expect(entry.timestamp).toBe(getFileModificationTime(p))
+    expect(entry).toMatchObject({ offset: 1, limit: 10 })
+    expect(entry.content.split('\n').slice(0, 3)).toEqual(['l1', 'l2', 'l3'])
   })
 })
 
 describe('S7 — Read(range), then the file changes inside the range', () => {
-  test('the model is told what changed and can edit the new text', async () => {
+  test('the model is told what changed, and the entry holds the new text', async () => {
     const p = join(dir, 's7.txt')
     writeLines(p, 60)
     await read(p, { offset: 1, limit: 10 })
@@ -401,9 +407,9 @@ describe('S7 — Read(range), then the file changes inside the range', () => {
     // The snippet is numbered in FILE lines, not slice lines.
     expect((attachment as { snippet: string }).snippet).toContain('3→L3')
 
-    expect(await edit(p, 'L3\n', 'X3\n')).toMatchObject({ result: true })
-    // The old text is gone from what the model has been shown.
-    expect(refusal(await edit(p, 'l3\n', 'X3\n'))).toContain('only read in part')
+    const entry = ctx.readFileState.get(p)!
+    expect(entry.timestamp).toBe(getFileModificationTime(p))
+    expect(entry.content.split('\n')[2]).toBe('L3')
   })
 })
 
@@ -440,8 +446,7 @@ describe('S9 — two ranges, one of them rewritten', () => {
     expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
     // The rewritten slice is what the model now holds for 40-45.
     expect(await edit(p, 'L42\n', 'X42\n')).toMatchObject({ result: true })
-    // And the refusal for the gap still names both slices.
-    expect(refusal(await edit(p, 'l20\n', 'L20\n'))).toContain('lines 1-10, 40-45')
+    expect(refusal(await write(p))).toContain('was only read in part (lines 1-10, 40-45)')
   })
 })
 
@@ -503,6 +508,7 @@ describe('S11 — compaction clears the cache, the plan comes back as an attachm
         ctx,
       ),
     ).toMatchObject({ result: true })
+    expect(await write(p, '# Plan\n')).toEqual({ result: true })
   })
 })
 
@@ -530,9 +536,8 @@ describe('S12 — a whole-file entry over the cap changes on disk', () => {
     // The pass terminates: a second one does not try to re-read.
     expect(await watcherPass()).toEqual([])
 
-    const message = refusal(await edit(p, '  return 1\n', '  return 2\n'))
-    expect(message).toContain('too large to re-read whole')
-    expect(message).not.toContain('has not been read yet')
+    expect(refusal(await write(p))).toContain('too large to re-read whole')
+    expect(refusal(await write(p))).not.toContain('has not been read yet')
   })
 })
 
@@ -558,9 +563,7 @@ describe('S13 — Read(range) then a patch on the import block', () => {
     expect(patch(p, body)).toEqual({ result: true })
   })
 
-  test('Edit still refuses, carrying the lines, and the identical edit then passes', async () => {
-    // The refusal serves the region when the needle matches the file exactly
-    // and uniquely, and counts it as read.
+  test('Edit takes it as sent too', async () => {
     const p = join(dir, 's13-edit.ts')
     writeFileSync(p, source)
     await read(p, { offset: 20, limit: 5 })
@@ -568,21 +571,16 @@ describe('S13 — Read(range) then a patch on the import block', () => {
     const oldString = "import { a } from './a.js'\nimport { b } from './b.js'\n"
     const newString =
       "import { a } from './a.js'\nimport { c } from './c.js'\nimport { b } from './b.js'\n"
-    const message = refusal(await edit(p, oldString, newString))
-    expect(message).toContain("1→import { a } from './a.js'")
-    expect(message).toContain("2→import { b } from './b.js'")
-
     expect(await edit(p, oldString, newString)).toMatchObject({ result: true })
   })
 
-  test('an Edit needle that is not in the file is refused without lines', async () => {
+  test('an Edit needle that is not in the file is refused for that, not for the read', async () => {
     const p = join(dir, 's13-miss.ts')
     writeLines(p, 30)
     await read(p, { offset: 20, limit: 5 })
 
     const message = refusal(await edit(p, 'nowhere', 'L1'))
-    expect(message).toContain('only read in part')
-    expect(message).not.toContain('→')
+    expect(message).toStartWith('String to replace not found in file.')
   })
 })
 
@@ -608,13 +606,13 @@ describe('S14 — after a refresh, a re-Read returns the body', () => {
   })
 })
 
-describe('S15 — outline, then Read(range), then an edit outside the range', () => {
+describe('S15 — outline, then Read(range), then a write outside the range', () => {
   test('the outline does not count as having seen the whole file', async () => {
     // Found while building the served-region refusal: `carrySeenRanges` took
     // the outline entry's `content` (the raw source, no offset) as a slice at
-    // line 1, so after outline → Read(range) the coverage lane treated every
-    // line as read and a write anywhere passed. Presence is not coverage —
-    // for Edit; Patch takes the outline alone (S19).
+    // line 1, so after outline → Read(range) every line counted as read and a
+    // Write passed. Presence is not coverage — for Write; Patch and Edit take
+    // the outline alone (S19, S20).
     const p = join(dir, 's15.ts')
     writeFileSync(
       p,
@@ -626,10 +624,7 @@ describe('S15 — outline, then Read(range), then an edit outside the range', ()
     expect(
       await edit(p, 'export const v31 = 31\n', 'export const v31 = 0\n'),
     ).toMatchObject({ result: true })
-    const message = refusal(
-      await edit(p, 'export const v3 = 3\n', 'export const v3 = 0\n'),
-    )
-    expect(message).toContain('only read in part (lines 30-34)')
+    expect(refusal(await write(p))).toContain('was only read in part (lines 30-34)')
   })
 })
 
@@ -651,7 +646,7 @@ async function loadReadCredit(): Promise<ReadCredit> {
 }
 
 describe('S16 — a `cat` credited as a read, then a patch', () => {
-  test('the patch applies, and Edit still refuses the bytes once they change on disk', async () => {
+  test('the patch applies, and Write refuses the bytes once they change on disk', async () => {
     const credit = await loadReadCredit()
     const p = join(dir, 's16.txt')
     writeLines(p, 20)
@@ -691,9 +686,10 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
     expect(patch(p, '@@\n-l12\n+L12')).toEqual({ result: true })
 
     rewriteAhead(p, linesWith(20, { 7: 'L7' }))
-    // Patch matches the hunk at apply time (S19); the credit is dated to
-    // the cat all the same, which is what Edit's staleness check reads.
-    expect(refusal(await edit(p, 'l12\n', 'L12\n'))).toContain('modified since read')
+    // Patch and Edit match at apply time (S19, S20); the credit is dated to
+    // the cat all the same, which is what Write's staleness check reads.
+    expect(refusal(await write(p))).toContain('modified since read')
+    expect(await edit(p, 'l12\n', 'L12\n')).toMatchObject({ result: true })
   })
 })
 
@@ -828,5 +824,62 @@ describe('S19 — Patch takes any read', () => {
     const p = join(dir, 's19-never.txt')
     writeLines(p, 30)
     expect(refusal(patch(p, '@@\n-l99\n+L99'))).toContain('has not been read yet')
+  })
+})
+
+describe('S20 — Edit takes any read, like Patch', () => {
+  // FileEditTool.ts and readBeforeEditMessages.ts, "In-place writes". In the
+  // 2026-10-05..12 census 19 of Edit's 22 errors were its own read lanes, every
+  // one an exact match, and 14 came back byte-identical.
+  async function applied(p: string, oldString: string, newString: string) {
+    expect(await edit(p, oldString, newString)).toMatchObject({ result: true })
+    const input = { file_path: p, old_string: oldString, new_string: newString }
+    return (await FileEditTool.call(input, ctx, undefined as never, { uuid: randomUUID() } as never)).data
+  }
+
+  test('an outline alone authorizes an edit anywhere in the file', async () => {
+    const p = join(dir, 's20-outline.ts')
+    writeFileSync(
+      p,
+      Array.from({ length: 40 }, (_, i) => `export const v${i} = ${i}`).join('\n') + '\n',
+    )
+    await read(p, { view: 'outline' })
+    expect(ctx.readFileState.get(p)!.isPartialView).toBe(true)
+
+    await applied(p, 'export const v3 = 3\n', 'export const v3 = 0\n')
+    expect(readFileSync(p, 'utf8')).toContain('\nexport const v3 = 0\n')
+  })
+
+  test('a range read to the end of the file: an old_string ending with its last newline applies', async () => {
+    // floor.test.ts, refused twice in a row: the old coverage lane compared
+    // the needle with the slice joined without its final newline.
+    const p = join(dir, 's20-eof.txt')
+    writeLines(p, 30)
+    await read(p, { offset: 21, limit: 10 })
+
+    await applied(p, 'l29\nl30\n', 'l29\nl30\nl31\n')
+    expect(readFileSync(p, 'utf8')).toEndWith('l30\nl31\n')
+  })
+
+  test('a file changed on disk since the read is edited as it is now', async () => {
+    const p = join(dir, 's20-changed.txt')
+    writeLines(p, 30)
+    await read(p)
+    rewriteAhead(p, linesWith(30, { 7: 'L7' }))
+
+    await applied(p, 'l12\n', 'L12\n')
+    expect(readFileSync(p, 'utf8')).toBe(linesWith(30, { 7: 'L7', 12: 'L12' }))
+  })
+
+  test('a file never read is edited when old_string sits in it once, and refused otherwise', async () => {
+    const p = join(dir, 's20-never.txt')
+    writeLines(p, 30)
+    expect(refusal(await edit(p, 'l1', 'L1'))).toContain('old_string occurs in it 11 times') // l1, l10..l19
+    const data = await applied(p, 'l25\n', 'L25\n')
+    expect(data.unread).toBe(true)
+    // Written once, it counts as read: what decides the next edit is the
+    // match — an indentation-drifted line now applies, where unread it would
+    // have had to occur exactly.
+    expect(await edit(p, '  l26\n', '  L26\n')).toMatchObject({ result: true })
   })
 })

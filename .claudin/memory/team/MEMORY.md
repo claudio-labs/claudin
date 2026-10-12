@@ -13,6 +13,7 @@
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed writes refused
 - [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
 - Patch: [`Patch` on the wire (#244)](decisions/patch-tool-rename.md) · [any earlier read (#242)](decisions/apply-patch-any-read.md) · [applies what matches (09-29)](decisions/patch-applies-what-matches.md)
+- [Edit takes Patch's any-read rule (10-12)](decisions/edit-any-read.md) — unread edits apply on an exact single match; Write keeps the full gate
 - [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
 - Superseded by the lane: [bounded keep #252](decisions/cap-keeps-model-bounded-reads.md) · [cat credit, off](decisions/bash-read-passthrough-not-promoted.md)
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; 6 `CLAUDIN_*` killswitches
@@ -46,7 +47,7 @@
 ## Bugs
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
-- [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error
+- FIXED 10-12: [Resume restored a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages now checks is_error
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source before committing
@@ -100,10 +101,12 @@
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
 - [Token census 09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) — thinking stays resident; 5m-TTL waits $65
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
+- [TTL-expiry check 10-12: long sessions don't expire unexpectedly](ttl-expiry-check-2026-10-12.md) — main is 1h; $45 was pre-280 clips; clip→next-turn floor unexplained
 - Weekly censuses: [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) — rewrites 39% of cost
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Tool error census 09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs fixed
+- [Edit/Write error census 10-05..12 + fixes](edit-write-error-census-2026-10-12.md) — 3.9%/2.3%; root causes fixed in #292; re-run after merge
 - [Dev-tool error census 10-05..11 + fixes](devtool-error-census-2026-10-11.md) — 12 Git/WaitFor/Build/Typecheck/RunTests/agent bugs fixed in PR 288; resume keeps first run's toolFilter
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate census #157](read-gate-false-refusals-census-2026-09.md)
 

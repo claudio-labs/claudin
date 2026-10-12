@@ -15,20 +15,10 @@ export type FileState = {
   // True when this entry was populated by auto-injection (e.g. CLAUDE.md) and
   // the injected content did not match disk (stripped HTML comments, stripped
   // frontmatter, truncated MEMORY.md). The model has only seen a partial view;
-  // Write must require an explicit Read first, and so must Edit/Patch
-  // unless `injectedView` below says what the model saw. `content` here holds
-  // the RAW disk bytes (for getChangedFiles diffing), not what the model saw.
+  // Write must require an explicit Read first (Patch and Edit take any read).
+  // `content` here holds the RAW disk bytes (for getChangedFiles diffing),
+  // not what the model saw.
   isPartialView?: boolean
-  // What the model DID see, for the auto-injected case above: the stripped or
-  // truncated text that went into the system reminder. With it the line-scoped
-  // write tools (Edit, Patch Update) can check their needle against the
-  // text the model is holding instead of refusing the file outright — 8 of 65
-  // gate refusals in the 2026-08/09 corpus were Edits of an injected
-  // MEMORY.md or rule, each answered by a view='full' re-read of a file the
-  // model had just been shown. Whole-file writes (Write, Delete File) still
-  // need a real Read: a truncated MEMORY.md written back from the view would
-  // lose its tail. Never set by a Read tool call or a clip-pin marker.
-  injectedView?: string
   // tool_use id of the Read that carried this content to the model. The
   // dedup stand-down uses it to check whether that tool_result is still
   // intact in the transcript (client-side clip paths rewrite old results to
@@ -72,18 +62,18 @@ export type FileState = {
   // anything external happening — spending `replays`. Same five as the branch
   // in FileReadTool.ts that reads this field; keep the two counts in step.
   //
-  // An Edit/Write replacing the entry is NOT on that list, though it looks
-  // like the obvious one. See below: while this marker stands those tools are
-  // refused, so they can never be what clears it.
+  // A Write replacing the entry is NOT on that list, though it looks like the
+  // obvious one. See below: while this marker stands it is refused, so it can
+  // never be what clears it. (A Patch or an Edit can, since they take any
+  // read — but only when the model sends one.)
   //
-  // Always written with isPartialView: true, so Edit/Write still demand a real
-  // Read first (FileEditTool.ts, FileWriteTool.ts, applyPatch.ts and
-  // NotebookEditTool.ts all check it). That refusal is CORRECT — the model has
-  // seen an outline, not the body, and letting it edit from that trades a
+  // Always written with isPartialView: true, so Write and NotebookEdit still
+  // demand a real Read first. That refusal is CORRECT — the model has seen an
+  // outline, not the body, and letting it replace the file from that trades a
   // stalled loop for a blind write. But it is also why `replays` is not
   // optional: with no budget the refusal never lifts, because the replay
-  // returns without rewriting this entry, so Read can never clear what Edit is
-  // waiting on. The delete-to-re-arm version this replaced refused too, and
+  // returns without rewriting this entry, so Read can never clear what Write
+  // is waiting on. The delete-to-re-arm version this replaced refused too, and
   // then handed over a body on the next read; the budget restores that ending.
   standDownOutline?: {
     message: string
@@ -101,10 +91,10 @@ export type FileState = {
   // `coverage:unseen-region` refusals were for hunks whose old side sat
   // verbatim in lines the model had already been shown.
   //
-  // Consumed only by the coverage lane (`coveredSegments` in
-  // readBeforeEditMessages.ts), which merges these with the entry's own slice
-  // into CONTIGUOUS segments — a run of lines nobody read is never covered,
-  // however the slices are arranged around it.
+  // Consumed by `coveredSegments` (readBeforeEditMessages.ts, for Write's
+  // whole-file check and its refusal label), which merges these with the
+  // entry's own slice into CONTIGUOUS segments — a run of lines nobody read is
+  // never covered, however the slices are arranged around it.
   //
   // Correctness rests on one rule, enforced in `carrySeenRanges`: the list is
   // dropped the moment `timestamp` changes, so bytes from a previous version
@@ -154,8 +144,11 @@ export function setPinReleaseHandler(handler: PinReleaseHandler): void {
   releasePin = handler
 }
 
-// Default max entries for read file state caches
-export const READ_FILE_STATE_CACHE_SIZE = 100
+// Default max entries for read file state caches. 100 evicted a file a
+// sub-agent had written itself, 107 files later (2026-10-05..12 census); the
+// byte cap below is what bounds the memory. 500 is the tool-result cache's
+// entry count too.
+export const READ_FILE_STATE_CACHE_SIZE = 500
 
 // Default size limit for file state caches (25MB)
 // This prevents unbounded memory growth from large file contents
@@ -165,12 +158,11 @@ const DEFAULT_MAX_CACHE_SIZE_BYTES = 25 * 1024 * 1024
  * Bounds on the accumulated slice list, per entry.
  *
  * 64 KB is 8x the slice-walk the session corpus actually shows (~8 reads of
- * 2-4 KB of one file before the write) and, more to the point, it is well
- * inside the cache's own budget: 25 MB over 100 entries leaves ~256 KB per
- * entry, so capping at the per-read ceiling (MAX_OUTPUT_SIZE, also 256 KB)
- * would start evicting by SIZE in sessions that walk many files. That trades a
- * coverage refusal for a "has not been read yet" one, which is the worse of
- * the two.
+ * 2-4 KB of one file before the write). It is a per-entry ceiling, not an
+ * average: 25 MB over 500 entries is ~51 KB each, so a session in which many
+ * entries carried the full 64 KB would start evicting by SIZE — which is why
+ * the cap is not the per-read ceiling (MAX_OUTPUT_SIZE, 256 KB). Eviction
+ * turns a whole-file read into "has not been read yet", the worse refusal.
  *
  * The newest slice is never dropped to fit: it was legally this entry's whole
  * `content` a moment earlier, so keeping it costs nothing the cache was not
@@ -194,10 +186,10 @@ export const SEEN_RANGES_MAX_COUNT = 32
  * 3. the predecessor is a partial view — an outline, a stripped injection, a
  *    clip-pin marker. Its `content` is the raw file (or a body the model lost),
  *    not text the model saw, and carrying it as a slice at offset 1 made the
- *    coverage lane treat the WHOLE file as read after outline → Read(range):
- *    a patch anywhere passed. Found while serving regions (2026-09-20);
- * 4. `next` stands for the whole file, where `seenRegionCoversText` short-circuits
- *    anyway — holding slices there would be pure memory.
+ *    coverage checks treat the WHOLE file as read after outline → Read(range):
+ *    a write anywhere passed. Found while serving regions (2026-09-20);
+ * 4. `next` stands for the whole file, which covers every slice anyway —
+ *    holding them there would be pure memory.
  */
 export function carrySeenRanges(
   prev: FileState | undefined,
@@ -232,12 +224,9 @@ export function carrySeenRanges(
   return carried
 }
 
-/** Bytes an entry retains, including what it carries for the coverage lane. */
+/** Bytes an entry retains, including the earlier slices it carries. */
 function entryBytes(value: FileState): number {
   let bytes = Buffer.byteLength(value.content)
-  if (value.injectedView !== undefined) {
-    bytes += Buffer.byteLength(value.injectedView)
-  }
   for (const range of value.seenRanges ?? []) {
     bytes += Buffer.byteLength(range.content)
   }

@@ -28,8 +28,9 @@
 // never-read refusals since 2026-09-24, most of the rest through a Grep — and
 // 88% of the refusals that served the lines came back as the identical patch.
 // Otherwise it is NOT applied, with "Read it first"; so is a Delete of a file
-// never read. Edit, Write and NotebookEdit keep the full gate
-// (.claudin/rules/cache.md).
+// never read. Edit follows the same rule since 2026-10-12; Write and
+// NotebookEdit keep the full gate (readBeforeEditMessages.ts,
+// .claudin/rules/cache.md).
 
 import type { UUID } from 'crypto'
 import { basename, extname, relative } from 'path'
@@ -50,7 +51,11 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { checkBatchWritePermission } from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
-import { readGateMessage } from 'src/tools/shared/readBeforeEditMessages.js'
+import {
+  appliedUnreadNote,
+  readGateMessage,
+  unreadRefusal,
+} from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
   type LineRegion,
@@ -286,7 +291,7 @@ function planFile(group: FileGroup, context: ToolUseContext, strict: boolean): P
     }
     if (first.type === 'delete') return problem(message, true)
     if (!matchesExactly(hunks, absPath)) {
-      return problem(`${message} Its hunks do not match it exactly, so it was not patched unread.`, true)
+      return problem(unreadRefusal(message, 'Its hunks do not match it exactly', 'patched'), true)
     }
     unread = true
   }
@@ -662,7 +667,7 @@ export function summarizeApplyPatch(output: ApplyPatchOutput): string {
     ? [`${notApplied.length ? 'Applied part of the patch' : 'Success. Applied the patch'} to the following files:`, ...lines]
     : ['Nothing to change: every change in the patch is already applied.']
   if (output.appliedUnread?.length) {
-    out.push(`Note: ${output.appliedUnread.join(', ')} had not been read — patched because every hunk matched it exactly.`)
+    out.push(appliedUnreadNote(output.appliedUnread.join(', '), 'patched because every hunk matched it exactly'))
   }
   if (output.alreadyApplied?.length) out.push('Already applied, nothing changed:', bullets(output.alreadyApplied))
   if (notApplied.length) out.push('NOT applied — send a patch with only these hunks:', bullets(notApplied))

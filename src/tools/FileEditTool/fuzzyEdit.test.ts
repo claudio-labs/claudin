@@ -57,7 +57,7 @@ describe('resolveFuzzyEdit', () => {
     const res = resolveFuzzyEdit(file, 'x = 1', 'x = 9')
     expect(res.kind).toBe('ambiguous')
     if (res.kind !== 'ambiguous') return
-    expect(res.count).toBe(2)
+    expect(res.lines).toEqual([1, 3])
   })
 
   test('returns real CRLF bytes for a CRLF file', () => {

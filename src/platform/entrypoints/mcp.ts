@@ -27,7 +27,10 @@ import {
 } from 'src/tools/Tool.js'
 import { getTools } from 'src/tools/tools.js'
 import { createAbortController } from 'src/shared/abortController.js'
-import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
+import {
+  createFileStateCacheWithSizeLimit,
+  READ_FILE_STATE_CACHE_SIZE,
+} from 'src/shared/fs/fileStateCache.js'
 import { logError } from 'src/shared/log.js'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
@@ -75,8 +78,6 @@ export async function startMCPServer(
   verbose: boolean,
 ): Promise<void> {
   // Use size-limited LRU cache for readFileState to prevent unbounded memory growth
-  // 100 files and 25MB limit should be sufficient for MCP server operations
-  const READ_FILE_STATE_CACHE_SIZE = 100
   const readFileStateCache = createFileStateCacheWithSizeLimit(
     READ_FILE_STATE_CACHE_SIZE,
   )

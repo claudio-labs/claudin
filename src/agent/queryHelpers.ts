@@ -610,9 +610,20 @@ export function extractReadFilesFromMessages(
   // file, and a later slice must not be joined to bytes from before it.
   const readAuthored = new Set<string>()
 
-  /** Post-write state of a file a write tool touched, read from disk now. */
-  function cacheFromDisk(filePath: string): void {
+  /**
+   * Post-write state of a file a write tool touched, read from disk now —
+   * unless the file changed after the result came back (`answeredAt`): then
+   * the disk is not the file the model wrote, and nothing it saw vouches for
+   * those bytes, so the entry goes. A sub-agent resumed minutes later used to
+   * get its parent's later edits as "read".
+   */
+  function cacheFromDisk(filePath: string, answeredAt: number | undefined): void {
     try {
+      if (answeredAt !== undefined && getFileModificationTime(filePath) > answeredAt) {
+        cache.delete(filePath)
+        readAuthored.delete(filePath)
+        return
+      }
       const { content: diskContent } = readFileSyncWithMetadata(filePath)
       cache.set(filePath, {
         content: diskContent,
@@ -795,9 +806,10 @@ export function extractReadFilesFromMessages(
             }
           }
 
-          // Handle Write tool results - use content from the tool input
+          // Handle Write tool results - use content from the tool input. A
+          // refused Write wrote nothing, and its input is not the file.
           const writeToolData = fileWriteToolUseIds.get(content.tool_use_id)
-          if (writeToolData && message.timestamp) {
+          if (writeToolData && content.is_error !== true && message.timestamp) {
             const timestamp = new Date(message.timestamp).getTime()
             cache.set(writeToolData.filePath, {
               content: writeToolData.content,
@@ -813,13 +825,14 @@ export function extractReadFilesFromMessages(
           // result (only a snippet). Read from disk now, using actual mtime
           // so getChangedFiles's mtime check passes on the next turn.
           //
-          // Callers seed the cache once at process start (print.ts --resume,
-          // Cowork cold-restart per turn), so disk content at extraction time
-          // IS the post-edit state. No dedup: processing every Edit preserves
-          // last-wins semantics when Read/Write interleave (Edit→Read→Edit).
+          // Disk content at extraction time is the post-edit state only while
+          // the file has not changed since the result (cacheFromDisk). No
+          // dedup: processing every Edit preserves last-wins semantics when
+          // Read/Write interleave (Edit→Read→Edit).
+          const answeredAt = message.timestamp ? new Date(message.timestamp).getTime() : undefined
           const editFilePath = fileEditToolUseIds.get(content.tool_use_id)
           if (editFilePath && content.is_error !== true) {
-            cacheFromDisk(editFilePath)
+            cacheFromDisk(editFilePath, answeredAt)
           }
 
           // Patch: same as Edit, for every file the patch wrote — the files
@@ -834,7 +847,7 @@ export function extractReadFilesFromMessages(
               readAuthored.delete(filePath)
             }
             for (const filePath of written) {
-              cacheFromDisk(filePath)
+              cacheFromDisk(filePath, answeredAt)
             }
           }
 
@@ -844,9 +857,8 @@ export function extractReadFilesFromMessages(
           if (
             bashToolUseIds.has(content.tool_use_id) &&
             content.is_error !== true &&
-            message.timestamp
+            answeredAt !== undefined
           ) {
-            const answeredAt = new Date(message.timestamp).getTime()
             for (const filePath of creditedFilesOf(message.toolUseResult)) {
               cacheCreditFromDisk(filePath, answeredAt)
             }

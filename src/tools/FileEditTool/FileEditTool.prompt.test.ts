@@ -73,10 +73,12 @@ describe('buildEditToolDescription', () => {
 
 describe('buildEditToolDescription under CLAUDIN_BASH_READ_CREDIT', () => {
   // The first sentence changes; the one after it stays, in both shapes.
+  const ANY_READ =
+    'Any Read of the file counts — the whole file, an outline, a symbol or a range — and nothing has to be re-read: `old_string` is matched against the file as it is on disk.'
   const READ_ONLY =
-    'You must use your `Read` tool at least once in the conversation before editing. This tool will error if you attempt an edit without reading the file.'
+    `You must use your \`Read\` tool at least once in the conversation before editing. ${ANY_READ}`
   const READ_OR_CAT =
-    'You must read the file first — with `Read`, or a Bash `cat` that printed it whole. This tool will error if you attempt an edit without reading the file.'
+    `You must read the file first — with \`Read\`, or a Bash \`cat\` that printed it whole. ${ANY_READ}`
 
   it('flag off: both shapes are byte-identical to the snapshots above', async () => {
     const off = await loadEditPrompt(false)
@@ -103,6 +105,7 @@ describe('buildCompactEditToolDescription (v2)', () => {
   it('states every rule of the full text', () => {
     for (const rule of [
       'Read the file in this conversation before editing',
+      'any Read counts, a range or an outline included',
       'match the file exactly, including indentation',
       'be unique',
       'line number + arrow',
@@ -120,7 +123,7 @@ describe('buildCompactEditToolDescription (v2)', () => {
   it('under CLAUDIN_BASH_READ_CREDIT a whole-file cat counts as the read', async () => {
     const on = await loadEditPrompt(true)
     expect(on.buildCompactEditToolDescription()).toContain(
-      'You must read the file first — with `Read`, or a Bash `cat` that printed it whole — or the call will fail.',
+      'You must read the file first — with `Read`, or a Bash `cat` that printed it whole; any Read counts, a range or an outline included.',
     )
     const off = await loadEditPrompt(false)
     expect(off.buildCompactEditToolDescription()).toBe(compact)

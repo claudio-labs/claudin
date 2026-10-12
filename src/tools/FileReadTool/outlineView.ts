@@ -342,7 +342,7 @@ export function textPreviewApplies(
  * from the tail lands where the model expects.
  *
  * Marked partial in readFileState for the same reason an outline is: the
- * model has not seen the middle, so Edit/Write must re-Read first.
+ * model has not seen the middle, so Write must re-Read first.
  */
 export function makeTextPreviewData(
   content: string,

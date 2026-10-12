@@ -44,10 +44,16 @@ import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'
 import {
   needsWholeFileRead,
+  readGateReasonFor,
   satisfiesReadGate,
+  seenWholeFile,
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
+import {
+  MAX_SERVED_FILE_BYTES,
+  serveWholeFile,
+} from 'src/tools/shared/servedRegion.js'
 import { hunkSchema } from 'src/tools/FileEditTool/types.js'
 import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from 'src/tools/FileWriteTool/prompt.js'
 import {
@@ -96,6 +102,20 @@ type OutputSchema = ReturnType<typeof outputSchema>
 
 export type Output = z.infer<OutputSchema>
 export type FileWriteToolInput = InputSchema
+
+const RESUBMIT = 'resubmit the Write if it still applies'
+// The same Write again would erase the change the refusal is showing.
+const MERGE = 'it changed since you read it, so merge your change into it before writing again'
+
+/**
+ * The refusal's second half when the file was small enough to show
+ * (`serveWholeFile`, which registered it as read): one call instead of a Read
+ * and the same Write again. `next` says what to do with it.
+ */
+function withServedFile(message: string, served: string | null, next: string): string {
+  if (served === null) return message
+  return `${message} Its current content is shown below and now counts as read — ${next}:\n${served}`
+}
 
 export const FileWriteTool = buildTool({
   name: FILE_WRITE_TOOL_NAME,
@@ -197,9 +217,11 @@ export const FileWriteTool = buildTool({
 
     const fs = getFsImplementation()
     let fileMtimeMs: number
+    let fileSize: number
     try {
       const fileStat = await fs.stat(fullFilePath)
       fileMtimeMs = fileStat.mtimeMs
+      fileSize = fileStat.size
     } catch (e) {
       if (isENOENT(e)) {
         return { result: true }
@@ -208,37 +230,62 @@ export const FileWriteTool = buildTool({
     }
 
     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    // Shared with Edit / Patch / NotebookEdit: an outline-only entry used
-    // to be refused here as "has not been read yet", which is false and sends
-    // the model back into a re-Read that returns another outline.
+    // Reuse mtime from the stat above — avoids a redundant statSync via
+    // getFileModificationTime.
+    const lastWriteTime = Math.floor(fileMtimeMs)
+    // The file as it is now — for the whole-file check, and for the refusals
+    // that show it — read at most once, and not at all past the serving cap.
+    let text: string | undefined
+    const fileText = () => (text ??= readFileSyncWithMetadata(fullFilePath).content)
+    const serve = () =>
+      fileSize > MAX_SERVED_FILE_BYTES
+        ? null
+        : serveWholeFile(toolUseContext.readFileState, fullFilePath, fileText(), lastWriteTime)
+    // Shared with NotebookEdit: an outline-only entry used to be refused here
+    // as "has not been read yet", which is false and sends the model back into
+    // a re-Read that returns another outline.
     if (!satisfiesReadGate(readTimestamp)) {
+      // A clip-pin marker has its own replay budget, which serving would
+      // reopen; a file too large to re-read is too large to show.
+      const reason = readGateReasonFor(readTimestamp)
+      const message = writeFamilyReadGateError(readTimestamp)
       return {
         result: false,
-        message: writeFamilyReadGateError(readTimestamp),
+        message:
+          reason === 'clipped' || reason === 'changed-too-large'
+            ? message
+            : withServedFile(message, serve(), RESUBMIT),
         errorCode: 2,
       }
     }
 
-    // Reuse mtime from the stat above — avoids a redundant statSync via
-    // getFileModificationTime. The readTimestamp guard above ensures this
-    // block is always reached when the file exists.
-    const lastWriteTime = Math.floor(fileMtimeMs)
     if (lastWriteTime > readTimestamp.timestamp) {
       return {
         result: false,
-        message:
+        message: withServedFile(
           'File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.',
+          serve(),
+          MERGE,
+        ),
         errorCode: 3,
       }
     }
 
     // A Write replaces the file wholesale, so a range Read is not enough to
-    // authorize it — the unread remainder would be silently dropped. See the
-    // coverage lane in readBeforeEditMessages.ts.
-    if (needsWholeFileRead(readTimestamp)) {
+    // authorize it — the unread remainder would be silently dropped — unless
+    // the reads of this version together hold every line. See whole-file
+    // coverage in readBeforeEditMessages.ts.
+    if (
+      needsWholeFileRead(readTimestamp) &&
+      !seenWholeFile(readTimestamp, fileText())
+    ) {
       return {
         result: false,
-        message: wholeFileRequiredMessage('File', 'Writing to it', readTimestamp),
+        message: withServedFile(
+          wholeFileRequiredMessage('File', 'Writing to it', readTimestamp),
+          serve(),
+          RESUBMIT,
+        ),
         errorCode: 4,
       }
     }

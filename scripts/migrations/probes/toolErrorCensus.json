@@ -109,18 +109,6 @@
       "replace": "      return served ? problem(message + servedSuffix(served), true) : problem(message, true)\n"
     },
     {
-      "name": "item 4: Edit serves the coverage refusal",
-      "source": "src/tools/FileEditTool/FileEditTool.ts",
-      "find": "        message: withServedRegion(\n          unseenRegionMessage('File', 'editing it', readTimestamp),\n          served,\n        ),\n",
-      "replace": "        message: withServedRegion(\n          unseenRegionMessage('File', 'editing it', readTimestamp),\n          null,\n        ),\n"
-    },
-    {
-      "name": "item 4: Edit never serves over a clip-pin marker",
-      "source": "src/tools/FileEditTool/FileEditTool.ts",
-      "find": "        readGateReasonFor(readTimestamp) === 'clipped'\n          ? null\n          : serveEditRegion(fullFilePath, fileContent, old_string, toolUseContext)\n",
-      "replace": "        serveEditRegion(fullFilePath, fileContent, old_string, toolUseContext)\n"
-    },
-    {
       "name": "carry: a partial view is never carried as a seen slice",
       "source": "src/shared/fs/fileStateCache.ts",
       "find": "  if (!prev || prev.isPartialView || prev.timestamp !== next.timestamp) {\n",

@@ -278,8 +278,8 @@ async function markTooLargeToRefresh(
 // would turn "you saw lines 40-60" into "you saw the file". The file is read
 // once, and each slice the entry stands for — its own plus the earlier ones
 // `carrySeenRanges` kept — is compared at its offset, line by trimmed line
-// (the coverage lane's own tolerance, readBeforeEditMessages.ts). Slices that
-// still match keep authorizing writes; the rest are dropped, since they now
+// (indentation drift is not a change worth a refresh). Slices that still
+// match keep counting as read; the rest are dropped, since they now
 // describe bytes that are gone. Same bytes under a new mtime (the build touch)
 // therefore cost nothing but a timestamp.
 // ---------------------------------------------------------------------------
@@ -300,7 +300,7 @@ export function isRangeEntry(state: FileState): boolean {
   )
 }
 
-/** Lines of a slice, with the trailing newline's phantom line dropped — the reading the coverage lane uses. */
+/** Lines of a slice, with the trailing newline's phantom line dropped — as `coveredSegments` reads them. */
 function sliceLines(content: string): string[] {
   const body = content.endsWith('\n') ? content.slice(0, -1) : content
   return body === '' ? [] : body.split('\n')

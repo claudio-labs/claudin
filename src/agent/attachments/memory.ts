@@ -92,11 +92,6 @@ export function memoryFilesToAttachments(
         offset: undefined,
         limit: undefined,
         isPartialView: memoryFile.contentDiffersFromDisk,
-        // The text the model was shown, so Edit/Patch can check their
-        // needle against it rather than demand a re-Read (fileStateCache.ts).
-        injectedView: memoryFile.contentDiffersFromDisk
-          ? memoryFile.content
-          : undefined,
       })
 
       if (shouldFireHook && isInstructionsMemoryType(memoryFile.type)) {

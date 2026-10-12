@@ -5,6 +5,7 @@ import {
   createFileStateCacheWithSizeLimit,
   mergeFileStateCaches,
   mergeReplacingLiveCache,
+  READ_FILE_STATE_CACHE_SIZE,
   SEEN_RANGES_MAX_BYTES,
   SEEN_RANGES_MAX_COUNT,
   type FileState,
@@ -381,8 +382,8 @@ describe('FileStateCache — carrySeenRanges', () => {
   })
 
   test('a whole-file read drops the list instead of hoarding it', () => {
-    // seenRegionCoversText short-circuits on a whole-file entry, so slices there
-    // are pure memory. This is also the shape Edit/Write write.
+    // A whole-file entry covers every slice, so slices there are pure memory.
+    // This is also the shape Edit/Write write.
     const cache = makeCache()
     cache.set('/a.ts', range(1, 3))
     cache.set('/a.ts', range(50, 3))
@@ -514,5 +515,20 @@ describe('FileStateCache — carrySeenRanges', () => {
     expect(merged.get('/a.ts')!.seenRanges).toEqual([
       { offset: 10, content: 'x10' },
     ])
+  })
+})
+
+describe('FileStateCache — how many files it holds', () => {
+  test('a file read 499 files ago is still held', () => {
+    // 100 evicted a script a sub-agent had written itself, 107 files later,
+    // and its next Write of it was refused (2026-10-05). The byte cap still
+    // bounds the memory.
+    const cache = createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE)
+    const entry = (content: string): FileState => ({ content, timestamp: 1, offset: undefined, limit: undefined })
+    cache.set('/written.sh', entry('echo hi'))
+    for (let i = 0; i < 499; i++) cache.set(`/f${i}.ts`, entry(`f${i}`))
+    expect(cache.has('/written.sh')).toBe(true)
+    cache.set('/one-more.ts', entry('x'))
+    expect(cache.has('/written.sh')).toBe(false)
   })
 })
