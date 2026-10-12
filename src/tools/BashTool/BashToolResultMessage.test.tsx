@@ -55,3 +55,13 @@ describe('BashToolResultMessage marker stripping', () => {
     expect(out).toContain('hello world')
   })
 })
+
+describe('BashToolResultMessage log text', () => {
+  test('keeps every log line, in order, with its text intact', async () => {
+    const out = await render('2026-10-11T12:00:00Z INFO ok\nWARN slow')
+    const lines = out.split('\n').map(line => line.trim()).filter(Boolean)
+    expect(lines.some(line => line.endsWith('2026-10-11T12:00:00Z INFO ok'))).toBe(true)
+    expect(lines).toContain('WARN slow')
+    expect(out.indexOf('INFO ok')).toBeLessThan(out.indexOf('WARN slow'))
+  })
+})
