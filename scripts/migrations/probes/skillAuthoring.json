@@ -1,0 +1,31 @@
+{
+  "test": ["src/skills/bundled/updateConfig.test.ts"],
+  "source": "src/skills/bundled/updateConfig.ts",
+  "probes": [
+    {
+      "name": "the hooks-only branch is skipped",
+      "find": "if (args.startsWith('[hooks-only]')) {",
+      "replace": "if (args.startsWith('[never]')) {"
+    },
+    {
+      "name": "the hooks-only branch drops the verification flow",
+      "find": "let prompt = HOOKS_DOCS + '\\n\\n' + HOOK_VERIFICATION_FLOW",
+      "replace": "let prompt = HOOKS_DOCS"
+    },
+    {
+      "name": "the hooks-only request is dropped",
+      "find": "prompt += `\\n\\n## Task\\n\\n${req}`",
+      "replace": "prompt += ''"
+    },
+    {
+      "name": "a line of the verification flow changes",
+      "find": "1. **Dedup check.** Read the target file.",
+      "replace": "1. **Dedup check.** Open the target file."
+    },
+    {
+      "name": "the full prompt drops the hook reference",
+      "find": "${HOOKS_DOCS}\n",
+      "replace": "\n"
+    }
+  ]
+}
