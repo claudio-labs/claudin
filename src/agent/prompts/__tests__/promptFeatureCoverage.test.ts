@@ -41,7 +41,11 @@ import { getAllBaseTools } from 'src/tools/tools.js'
 import { renderCompactAgentPrompt } from 'src/tools/AgentTool/prompt.js'
 import { getBashGitInstructionsBody } from 'src/tools/BashTool/prompt.js'
 import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
-import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
+import {
+  formatCommandsWithinBudget,
+  LEAN_LISTING_DESC_CHARS,
+  MAX_LISTING_DESC_CHARS,
+} from 'src/tools/SkillTool/prompt.js'
 import { isDeferredTool } from 'src/tools/ToolSearchTool/prompt.js'
 import { buildMemoryWriteRules } from 'src/memory/memdir/teamMemPrompts.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
@@ -376,6 +380,20 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
     const after = formatCommandsWithinBudget([long], 200_000)
     expect(after.length).toBeLessThan(before.length)
     expect(after).toContain('coverage-fake-skill')
+  })
+
+  // `/skill-doctor` measures descriptions against these same constants, so the
+  // listing has to cut exactly there for its findings to be true.
+  test('v2: a listing entry is cut at the lean cap, other families at the full one', () => {
+    const long = { ...FAKE_SKILL, description: 'x'.repeat(300) } as unknown as Command
+    _setToolPromptFamilyForTesting('default')
+    const full = formatCommandsWithinBudget([long], 200_000)
+    _setToolPromptFamilyForTesting(null)
+    const lean = formatCommandsWithinBudget([long], 200_000)
+    expect(full).toContain(`${'x'.repeat(MAX_LISTING_DESC_CHARS - 1)}\u2026`)
+    expect(full).not.toContain('x'.repeat(MAX_LISTING_DESC_CHARS))
+    expect(lean).toContain(`${'x'.repeat(LEAN_LISTING_DESC_CHARS - 1)}\u2026`)
+    expect(lean).not.toContain('x'.repeat(LEAN_LISTING_DESC_CHARS))
   })
 
   // The git protocol attachment is the same text in both states: the shorter
