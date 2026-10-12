@@ -16,6 +16,7 @@ describe('allowsImplicitAutoBackground', () => {
       'Plan',
       'WebResearcher',
       'WebResearcherManager',
+      'statusline-setup',
     ])
   })
 
@@ -25,6 +26,7 @@ describe('allowsImplicitAutoBackground', () => {
       'Plan',
       'WebResearcher',
       'WebResearcherManager',
+      'statusline-setup',
     ]) {
       expect(allowsImplicitAutoBackground(undefined, agentType)).toBe(false)
     }

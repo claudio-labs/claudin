@@ -66,6 +66,7 @@ exports[`slash-command registry — characterization the registered bindings mat
   "skills",
   "stats",
   "status",
+  "statusline",
   "stickers",
   "tasks",
   "terminalSetup",

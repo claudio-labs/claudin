@@ -6,6 +6,7 @@ import memory from 'src/commands/memory/index.js'
 import plugin from 'src/commands/plugin/index.js'
 import provider from 'src/commands/provider/index.js'
 import review from 'src/commands/review.js'
+import statusline from 'src/commands/statusline.js'
 import { registerUpdateConfigSkill } from 'src/skills/bundled/updateConfig.js'
 import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 
@@ -30,6 +31,8 @@ describe('argumentHint on commands that take arguments', () => {
     ['autofix-pr', autofixPr, '[--dry-run] [extra instructions]'],
     // commands/review.ts: optional PR number
     ['review', review, '[pr-number]'],
+    // commands/statusline.ts: free text for the statusline-setup agent
+    ['statusline', statusline, '[what to show]'],
   ] as const)('/%s advertises its arguments', (_name, command, hint) => {
     expect(command.argumentHint).toBe(hint)
   })
