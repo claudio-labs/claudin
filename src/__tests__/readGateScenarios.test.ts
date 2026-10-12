@@ -252,6 +252,8 @@ describe('S2 — a narrow Read landing on a full one', () => {
     await read(p, { offset: 40, limit: 6 })
 
     expect(await edit(p, 'l3\n', 'L3\n')).toMatchObject({ result: true })
+    // And for Write, which needs every line: the full read still holds them.
+    expect(await write(p)).toEqual({ result: true })
   })
 })
 

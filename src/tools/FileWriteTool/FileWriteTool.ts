@@ -45,6 +45,7 @@ import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constan
 import {
   needsWholeFileRead,
   satisfiesReadGate,
+  seenWholeFile,
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
@@ -233,9 +234,13 @@ export const FileWriteTool = buildTool({
     }
 
     // A Write replaces the file wholesale, so a range Read is not enough to
-    // authorize it — the unread remainder would be silently dropped. See the
-    // coverage lane in readBeforeEditMessages.ts.
-    if (needsWholeFileRead(readTimestamp)) {
+    // authorize it — the unread remainder would be silently dropped — unless
+    // the reads of this version together hold every line. See whole-file
+    // coverage in readBeforeEditMessages.ts.
+    if (
+      needsWholeFileRead(readTimestamp) &&
+      !seenWholeFile(readTimestamp, readFileSyncWithMetadata(fullFilePath).content)
+    ) {
       return {
         result: false,
         message: wholeFileRequiredMessage('File', 'Writing to it', readTimestamp),

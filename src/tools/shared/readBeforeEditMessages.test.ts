@@ -14,6 +14,7 @@ import {
   readGateReasonFor,
   satisfiesReadGate,
   seenRangeLabel,
+  seenWholeFile,
   unreadRefusal,
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
@@ -233,6 +234,23 @@ describe('seenRangeLabel', () => {
 
   test('singular for one line', () => {
     expect(seenRangeLabel(state({ content: 'a', offset: 42 }))).toBe('line 42')
+  })
+})
+
+describe('seenWholeFile', () => {
+  const TEN = Array.from({ length: 10 }, (_, i) => `l${i + 1}`).join('\n') + '\n'
+
+  test('reads that meet from line 1 to the last line hold the file', () => {
+    expect(seenWholeFile(walked(slice(6, 5), slice(1, 5)), TEN)).toBe(true)
+  })
+
+  test('a gap, or a run that stops short of the end, does not', () => {
+    expect(seenWholeFile(walked(slice(7, 4), slice(1, 5)), TEN)).toBe(false)
+    expect(seenWholeFile(walked(slice(1, 9)), TEN)).toBe(false)
+  })
+
+  test('nothing to lose in an empty file', () => {
+    expect(seenWholeFile(RANGE, '')).toBe(true)
   })
 })
 

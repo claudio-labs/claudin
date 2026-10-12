@@ -201,6 +201,35 @@ describe('Write — validateInput keeps the full gate', () => {
     expect(r.message).toContain('was only read in part (lines 3-4)')
   })
 
+  test('a whole Read, then a range Read of the same file: the whole one still counts', async () => {
+    // ruleMapScheduler.ts in the 2026-10-05..12 census: refused as "only read
+    // in part (lines 1-275)" — every line of the file.
+    const p = join(dir, 'whole-then-range.txt')
+    writeNumbered(p)
+    ctx.readFileState.set(p, {
+      content: readFileSync(p, 'utf8'),
+      timestamp: getFileModificationTime(p),
+      offset: 1,
+      limit: undefined,
+    })
+    markRange(p, 4, 2)
+    expect(await validate(p)).toEqual({ result: true })
+  })
+
+  test('ranges that together hold every line count; a gap between them does not', async () => {
+    const p = join(dir, 'two-halves.txt')
+    writeNumbered(p)
+    markRange(p, 1, 5)
+    markRange(p, 6, 5)
+    expect(await validate(p)).toEqual({ result: true })
+
+    const q = join(dir, 'gap.txt')
+    writeNumbered(q)
+    markRange(q, 1, 5)
+    markRange(q, 7, 4)
+    expect((await refusal(validate(q))).message).toContain('was only read in part (lines 1-5, 7-10)')
+  })
+
   test('a whole, current read passes', async () => {
     const p = join(dir, 'whole.txt')
     writeNumbered(p)

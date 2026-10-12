@@ -192,6 +192,19 @@ export function needsWholeFileRead(state: FileState): boolean {
 }
 
 /**
+ * Whether the reads of this file version, taken together, hold every line of
+ * `fileText`. A whole Read followed by a range Read leaves a range entry that
+ * carries the whole one (`carrySeenRanges`), and so do two ranges that meet:
+ * the model has seen it all, and `needsWholeFileRead` alone refused it as
+ * "only read in part (lines 1-275)" of a 275-line file.
+ */
+export function seenWholeFile(state: FileState, fileText: string): boolean {
+  const total = sliceLines(fileText).length
+  const first = coveredSegments(state)[0]
+  return total === 0 || (first?.offset === 1 && first.lines.length >= total)
+}
+
+/**
  * The lines a slice holds, with the trailing newline's phantom line dropped —
  * the reading `seenRangeLabel` has always used.
  *
