@@ -185,8 +185,14 @@ describe('`gh pr checks` exit 8', () => {
 /** What `gh pr checks` prints before GitHub has registered a push's workflow runs. */
 const NO_CHECKS = { match: 'pr checks', stderr: "no checks reported on the 'feat/x' branch\n", exitCode: 1 }
 
+/**
+ * The `gh pr checks` calls for PR 5. Counted by number: a `gh` spawned just
+ * before an abort can boot, and log itself, after its batch returned — on a
+ * slow runner, after the next test's clearInvocations(). The abort test uses
+ * PR 13 so its straggler never lands in this count.
+ */
 function checksCalls(): number {
-  return fakeGh.invocations().filter(argv => argv[0] === 'pr' && argv[1] === 'checks').length
+  return fakeGh.invocations().filter(argv => argv[0] === 'pr' && argv[1] === 'checks' && argv[2] === '5').length
 }
 
 describe('`gh pr checks` before the checks exist', () => {
@@ -218,7 +224,7 @@ describe('`gh pr checks` before the checks exist', () => {
     setTimeout(() => controller.abort(), 300)
     const startedAt = Date.now()
     const result = await runGitBatch({
-      commands: ['gh pr checks 5 --watch', 'gh pr view 5'],
+      commands: ['gh pr checks 13 --watch', 'gh pr view 13'],
       abortSignal: controller.signal,
       noChecksGraceMs: 30_000,
       noChecksRetryMs: 10_000,
@@ -226,7 +232,7 @@ describe('`gh pr checks` before the checks exist', () => {
     expect(Date.now() - startedAt).toBeLessThan(5_000)
     // Not the last "no checks" answer: an Esc, which stops the read behind it.
     expect(result.outcomes[0]?.interrupted).toBe(true)
-    expect(result.notRun).toEqual(['gh pr view 5'])
+    expect(result.notRun).toEqual(['gh pr view 13'])
   }, 30_000)
 
   test('without --watch it answers at once, with the reason', async () => {
