@@ -209,7 +209,9 @@ const reconciler = createReconciler<
   DOMElement,
   DOMElement,
   TextNode,
-  unknown,
+  // ActivityInstance: a dehydrated <Activity> boundary, which only hydration
+  // creates. `unknown` here widens removeChild's child to `unknown` (0.34 types).
+  never,
   DOMElement,
   unknown,
   unknown,

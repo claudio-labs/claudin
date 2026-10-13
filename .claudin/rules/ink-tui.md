@@ -263,8 +263,8 @@ fix the right one.
   (`suspendOnActiveViewTransition`, `maySuspendCommitOnUpdate`, `bindToConsole`,
   the devtools fields …) are declared **required**, so `tsc` catches those. The
   ViewTransition / Fragment-ref surface (`applyViewTransitionName`,
-  `startViewTransition`, `createFragmentInstance` …) is still undeclared:
-  a missing one passes `tsc` and `bun run build` and ships as a runtime
+  `startViewTransition`, `createFragmentInstance` …) is declared **optional**
+  since 0.34.0: a missing one passes `tsc` and `bun run build` and ships as a runtime
   `TypeError: X is not a function` thrown inside `completeRootWhenReady`. What
   caught it was `Stats.test.tsx` driving real keypresses — a test that only renders never reaches a transition-lane commit,
   so scope the post-bump check to the suites that press keys.
