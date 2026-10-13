@@ -154,7 +154,7 @@
     "@types/proper-lockfile": "^4.1.4",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.17",
-    "@types/react-reconciler": "^0.33.0",
+    "@types/react-reconciler": "^0.34.0",
     "@types/semver": "^7.8.0",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
