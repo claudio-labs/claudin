@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.1.44 — 2026-10-13
+
+### ✨ Features
+
+- feat(skills): add /skill-doctor and hook/plugin types to /create (#294) (6fbb9c61)
+- feat(commands): add /statusline and its statusline-setup agent (#293) (bbc6d942)
+- feat(tools): show collapsed writes on one updating line (#291) (6e30da1a)
+
+### 🐛 Bug Fixes
+
+- fix(tools): give Edit the read rule Patch has and stop false read refusals (#292) (ddab7d5c)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.43 — 2026-10-12
 
 ### ✨ Features
