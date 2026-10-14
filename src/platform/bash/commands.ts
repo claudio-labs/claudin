@@ -810,6 +810,22 @@ function isOperator(part: ParseEntry | undefined, op: string): boolean {
   )
 }
 
+/**
+ * Redirections shell-quote >= 1.12 returns as ONE operator, mapped to the write
+ * each performs. Older versions split them into tokens the `>`/`>>` branch
+ * handled (`&>` was `&` + `>`, `>|` was `>` + `|`), so after the bump their
+ * targets were neither captured nor flagged. `&>`/`&>>` send stdout and stderr
+ * to the target, `>|` overwrites under noclobber, and `<>` opens it read-write,
+ * creating it when missing.
+ */
+const SINGLE_TOKEN_OUTPUT_REDIRECTIONS: ReadonlyMap<string, '>' | '>>'> =
+  new Map([
+    ['&>', '>'],
+    ['&>>', '>>'],
+    ['>|', '>'],
+    ['<>', '>>'],
+  ])
+
 function isSimpleTarget(target: ParseEntry | undefined): target is string {
   // SECURITY: Reject empty strings. isSimpleTarget('') passes every character-
   // class check below vacuously; path.resolve(cwd,'') returns cwd (always in
@@ -1061,6 +1077,30 @@ function handleRedirection(
     if (hasDangerousExpansion(next)) {
       return { skip: 0, dangerous: true }
     }
+  }
+
+  const singleTokenOperator =
+    typeof part === 'object' && part !== null && 'op' in part
+      ? SINGLE_TOKEN_OUTPUT_REDIRECTIONS.get(part.op)
+      : undefined
+  if (singleTokenOperator) {
+    // `2>|` keeps its fd, exactly as `2>` does
+    if (isOperator(part, '>|') && isFileDescriptor(prev)) {
+      return handleFileDescriptorRedirection(
+        prev.trim(),
+        singleTokenOperator,
+        next,
+        redirections,
+        kept,
+      )
+    }
+    if (isSimpleTarget(next)) {
+      redirections.push({ target: next, operator: singleTokenOperator })
+      return { skip: 1, dangerous: false }
+    }
+    // SECURITY: fail closed on any other target (an expansion, a zsh `&>!`
+    // force modifier, none at all) instead of mirroring every variant above.
+    return { skip: 0, dangerous: true }
   }
 
   // Handle >& operator

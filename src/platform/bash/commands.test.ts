@@ -138,6 +138,48 @@ describe('extractOutputRedirections', () => {
     ])
   })
 
+  // shell-quote 1.12 returns these as ONE operator each, where 1.11 split them
+  // into tokens the `>`/`>>` branch handled, so after the bump their targets
+  // were neither captured nor flagged.
+  test('captures the target of the single-token redirections', () => {
+    expect(extractOutputRedirections('make &> all.log')).toEqual({
+      commandWithoutRedirections: 'make',
+      redirections: [{ target: 'all.log', operator: '>' }],
+      hasDangerousRedirection: false,
+    })
+    expect(extractOutputRedirections('make &>> all.log').redirections).toEqual(
+      [{ target: 'all.log', operator: '>>' }],
+    )
+    expect(extractOutputRedirections('echo hi >| out.txt').redirections).toEqual(
+      [{ target: 'out.txt', operator: '>' }],
+    )
+    expect(extractOutputRedirections('cat <> data.bin').redirections).toEqual([
+      { target: 'data.bin', operator: '>>' },
+    ])
+  })
+
+  test('`2>|` keeps its fd in the command, like `2>`', () => {
+    expect(extractOutputRedirections('make 2>| err.log')).toEqual({
+      commandWithoutRedirections: 'make 2> err.log',
+      redirections: [{ target: 'err.log', operator: '>' }],
+      hasDangerousRedirection: false,
+    })
+  })
+
+  test('a single-token redirection to anything but a plain target is flagged', () => {
+    for (const command of [
+      'make &> $LOG',
+      'make &>> ~/x',
+      'echo hi >| *.sh',
+      'make &>! out.txt',
+      'make &>',
+    ]) {
+      const result = extractOutputRedirections(command)
+      expect(result.hasDangerousRedirection).toBe(true)
+      expect(result.redirections).toEqual([])
+    }
+  })
+
   test('a command shell-quote cannot parse fails closed', () => {
     expect(extractOutputRedirections('echo ${} > out.txt')).toEqual({
       commandWithoutRedirections: 'echo ${} > out.txt',
