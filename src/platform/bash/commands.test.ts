@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { splitCommand_DEPRECATED } from 'src/platform/bash/commands.js'
+import {
+  extractOutputRedirections,
+  splitCommand_DEPRECATED,
+} from 'src/platform/bash/commands.js'
 
 // `splitCommand_DEPRECATED` is what the permission path actually splits a
 // compound command with — the AST parser beside it has never produced a tree in
@@ -63,5 +66,83 @@ describe('splitCommand_DEPRECATED', () => {
       "ls $'a;b'",
       'pwd',
     ])
+  })
+})
+
+// Every target this returns is path-validated by checkPathConstraints, and a
+// target it neither returns nor flags is never validated at all — the
+// invariant hasDangerousExpansion's doc comment states. It had no direct test.
+describe('extractOutputRedirections', () => {
+  test('captures the target of `>` and `>>` and strips it from the command', () => {
+    expect(extractOutputRedirections('echo hi > out.txt')).toEqual({
+      commandWithoutRedirections: 'echo hi',
+      redirections: [{ target: 'out.txt', operator: '>' }],
+      hasDangerousRedirection: false,
+    })
+    expect(extractOutputRedirections('echo hi >> out.txt')).toEqual({
+      commandWithoutRedirections: 'echo hi',
+      redirections: [{ target: 'out.txt', operator: '>>' }],
+      hasDangerousRedirection: false,
+    })
+  })
+
+  test('a non-stdout fd keeps its redirection in the command', () => {
+    expect(extractOutputRedirections('make 2> err.log')).toEqual({
+      commandWithoutRedirections: 'make 2> err.log',
+      redirections: [{ target: 'err.log', operator: '>' }],
+      hasDangerousRedirection: false,
+    })
+  })
+
+  test('fd duplication is not a file target', () => {
+    expect(extractOutputRedirections('make 2>&1')).toEqual({
+      commandWithoutRedirections: 'make 2>&1',
+      redirections: [],
+      hasDangerousRedirection: false,
+    })
+  })
+
+  test('`>&` with a file sends both streams to it', () => {
+    expect(extractOutputRedirections('make >& all.log').redirections).toEqual([
+      { target: 'all.log', operator: '>' },
+    ])
+  })
+
+  test('zsh `>!` force-clobber validates the target without the `!`', () => {
+    expect(extractOutputRedirections('echo hi >!out.txt').redirections).toEqual(
+      [{ target: 'out.txt', operator: '>' }],
+    )
+  })
+
+  test('a target that expands is flagged instead of captured', () => {
+    for (const command of [
+      'echo hi > $HOME/x',
+      'echo hi > ~/.bashrc',
+      'echo hi > *.sh',
+      'echo hi > `pwd`/x',
+    ]) {
+      const result = extractOutputRedirections(command)
+      expect(result.hasDangerousRedirection).toBe(true)
+      expect(result.redirections).toEqual([])
+    }
+  })
+
+  // SECURITY (commands.ts:668-675): the quoted-heredoc body ends at the first
+  // `ls`, so the `> /etc/passwd` after it is a real redirect bash executes.
+  test('a redirect after a quoted heredoc is still captured', () => {
+    const result = extractOutputRedirections(
+      "cat <<'ls'\nx\\\nls\n> /etc/passwd\nls",
+    )
+    expect(result.redirections).toEqual([
+      { target: '/etc/passwd', operator: '>' },
+    ])
+  })
+
+  test('a command shell-quote cannot parse fails closed', () => {
+    expect(extractOutputRedirections('echo ${} > out.txt')).toEqual({
+      commandWithoutRedirections: 'echo ${} > out.txt',
+      redirections: [],
+      hasDangerousRedirection: true,
+    })
   })
 })
