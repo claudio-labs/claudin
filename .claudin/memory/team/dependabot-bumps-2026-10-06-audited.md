@@ -1,6 +1,6 @@
 ---
 name: dependabot-bumps-2026-10-06-audited
-description: Dependabot #275/#276 (anthropic sdk 0.131, mcp 1.31, shell-quote 1.11, ws 8.22, firecrawl 4.42, @types/react-reconciler 0.33.1) audited — shell-quote opened a Bash permission bypass, fixed with 2 follow-ups
+description: Dependabot #275/#276 (anthropic sdk 0.131, mcp 1.31, shell-quote 1.11, ws 8.22, firecrawl 4.42, @types/react-reconciler 0.33.1) audited — shell-quote opened a Bash permission bypass, fixed with 2 follow-ups; #295 (10-13, @types/react-reconciler 0.34.0) broke typecheck:ci again, fixed with ActivityInstance → never
 type: project
 ---
 
@@ -33,4 +33,16 @@ Audit 2026-10-06 diffed old vs new tarballs. Fixes on branch
 - No action: bedrock/vertex/foundry sdk (upload filename only), ws, firecrawl,
   chalk, ignore (lone `!` pattern now ignored), sharp, supports-hyperlinks (Warp).
 
-Related: [[dependabot-bumps-2026-09-28-audited]].
+**Next dev batch, #295 (2026-10-13: @types/node 26.6.5, @types/react-reconciler
+0.34.0, knip 6.41):** failed `typecheck:ci` the same way. 0.34.0 added
+`ActivityInstance` to `removeChild`'s child union; ours was `unknown`, so
+`removeNode` became `unknown` (4 errors, `reconciler.ts:466-470`). Fixed by typing
+that 6th `createReconciler` arg `never` (Ink never hydrates), in commit `adbedb05`
+on the Dependabot branch; merged 2026-10-13 as `b590e43a`. Every
+`@types/react-reconciler` bump so far has needed a `reconciler.ts` commit on its
+own PR, so expect one. Diff the old and new `index.d.ts` from
+`~/.bun/install/cache/@types/react-reconciler@*/` instead of reading the
+changelog. The same commit updated ink-tui.md §11: the ViewTransition members
+are now declared, as optional.
+
+Related: [[dependabot-bumps-2026-09-28-audited]], [[dependabot-bumps-2026-10-13-audited]].
