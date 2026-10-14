@@ -1,0 +1,39 @@
+{
+  "test": [
+    "src/platform/bash/commands.test.ts",
+    "src/tools/BashTool/bashPermissions.test.ts"
+  ],
+  "source": "src/platform/bash/commands.ts",
+  "probes": [
+    {
+      "name": "&> is a single-token output redirection",
+      "find": "    ['&>', '>'],\n",
+      "replace": ""
+    },
+    {
+      "name": "&>> is a single-token output redirection",
+      "find": "    ['&>>', '>>'],\n",
+      "replace": ""
+    },
+    {
+      "name": ">| is a single-token output redirection",
+      "find": "    ['>|', '>'],\n",
+      "replace": ""
+    },
+    {
+      "name": "<> is a single-token output redirection",
+      "find": "    ['<>', '>>'],\n",
+      "replace": ""
+    },
+    {
+      "name": "2>| keeps its fd like 2>",
+      "find": "if (isOperator(part, '>|') && isFileDescriptor(prev)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a single-token redirection to a non-plain target fails closed",
+      "find": "instead of mirroring every variant above.\n    return { skip: 0, dangerous: true }",
+      "replace": "instead of mirroring every variant above.\n    return { skip: 0, dangerous: false }"
+    }
+  ]
+}
