@@ -85,7 +85,11 @@ function asyncAgent(
   })
 }
 
-function foregroundAgent(store: ReturnType<typeof makeStore>, autoBackgroundMs?: number) {
+function foregroundAgent(
+  store: ReturnType<typeof makeStore>,
+  autoBackgroundMs?: number,
+  parentAgentId?: string,
+) {
   return registerAgentForeground({
     agentId: newId(),
     description: 'inline',
@@ -93,6 +97,7 @@ function foregroundAgent(store: ReturnType<typeof makeStore>, autoBackgroundMs?:
     selectedAgent: AGENT,
     setAppState: store.setAppState,
     autoBackgroundMs,
+    parentAgentId,
   })
 }
 
@@ -467,6 +472,17 @@ describe('foreground agent lifecycle', () => {
   test('backgrounding a task that is not an agent does nothing', () => {
     const store = makeStore()
     expect(backgroundAgentTask('missing', store.getAppState, store.setAppState)).toBe(false)
+  })
+
+  test('an agent a sub-agent spawned stays inline under Ctrl+B', () => {
+    // Only main owns background agents: backgrounded, its report would reach
+    // main and the sub-agent that is waiting on it would never get it.
+    const store = makeStore()
+    const { taskId } = foregroundAgent(store, undefined, 'sub-agent-1')
+    expect(backgroundAgentTask(taskId, store.getAppState, store.setAppState)).toBe(false)
+    expect(store.task(taskId)?.isBackgrounded).toBe(false)
+    unregisterAgentForeground(taskId, store.setAppState)
+    expect(store.task(taskId)).toBeUndefined()
   })
 
   test('the auto-background timer backgrounds it, unless cancelled', async () => {

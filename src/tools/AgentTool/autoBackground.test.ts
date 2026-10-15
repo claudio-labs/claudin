@@ -1,9 +1,22 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js'
+import {
+  allowsImplicitAutoBackground,
+  ownsBackgroundAgents,
+} from 'src/tools/AgentTool/autoBackground.js'
 import { ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js'
 import { FORK_SUBAGENT_TYPE } from 'src/tools/AgentTool/forkSubagent.js'
+
+describe('ownsBackgroundAgents', () => {
+  test('the main thread owns background agents', () => {
+    expect(ownsBackgroundAgents(undefined)).toBe(true)
+  })
+
+  test('a sub-agent does not: nothing would drain its report', () => {
+    expect(ownsBackgroundAgents('a1b2c3')).toBe(false)
+  })
+})
 
 describe('allowsImplicitAutoBackground', () => {
   test('the one-shot set holds exactly the report-and-exit built-ins', () => {
@@ -98,5 +111,18 @@ describe('AgentTool wiring', () => {
     expect(src()).toContain(
       'autoBackgroundMs: implicitBackgroundAllowed ? getAutoBackgroundMs() || undefined : undefined',
     )
+  })
+
+  test('inside a sub-agent no term makes a spawn async', () => {
+    // The implicit toggle and the 120s timer both read implicitBackgroundAllowed;
+    // the explicit terms (run_in_background, background: true, coordinator)
+    // sit inside shouldRunAsync.
+    expect(src()).toContain(
+      'const ownsBackground = ownsBackgroundAgents(toolUseContext.agentId);',
+    )
+    expect(src()).toContain(
+      'const implicitBackgroundAllowed = ownsBackground && allowsImplicitAutoBackground(',
+    )
+    expect(src()).toContain('const shouldRunAsync = ownsBackground && (')
   })
 })

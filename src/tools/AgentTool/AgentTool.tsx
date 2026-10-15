@@ -49,7 +49,7 @@ import { setAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js';
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
-import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js';
+import { allowsImplicitAutoBackground, ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js';
 import { agentNameProblem } from 'src/tools/AgentTool/agentName.js';
 import type { SetAppState } from 'src/agent/Task.js';
 import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from 'src/tools/AgentTool/forkSubagent.js';
@@ -569,12 +569,16 @@ export const AgentTool = buildTool({
     // allowsImplicitAutoBackground keeps two spawns inline regardless of the
     // toggle: an explicit `run_in_background: false`, and the one-shot
     // built-ins whose whole contract is handing a report back mid-turn.
-    const implicitBackgroundAllowed = allowsImplicitAutoBackground(run_in_background, selectedAgent.agentType);
+    //
+    // Inside a sub-agent every spawn runs inline (ownsBackgroundAgents): no
+    // term below may make it async, the 120s timer included.
+    const ownsBackground = ownsBackgroundAgents(toolUseContext.agentId);
+    const implicitBackgroundAllowed = ownsBackground && allowsImplicitAutoBackground(run_in_background, selectedAgent.agentType);
     const autoBackgroundImplicit =
       implicitBackgroundAllowed &&
       isAutoBackgroundAgentsEnabled() &&
       !getIsNonInteractiveSession();
-    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || autoBackgroundImplicit) && !isBackgroundTasksDisabled;
+    const shouldRunAsync = ownsBackground && (run_in_background === true || selectedAgent.background === true || isCoordinator || autoBackgroundImplicit) && !isBackgroundTasksDisabled;
     // Keep telemetry's isAsync truthful to how the agent actually ran.
     metadata.isAsync = shouldRunAsync;
     // Assemble the worker's tool pool independently of the parent's.

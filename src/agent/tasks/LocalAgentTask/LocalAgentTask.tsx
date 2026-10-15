@@ -7,6 +7,7 @@ import { createTaskStateBase } from 'src/agent/Task.js';
 import type { Tools } from 'src/tools/Tool.js';
 import { findToolByName } from 'src/tools/Tool.js';
 import type { AgentToolResult } from 'src/tools/AgentTool/agentToolUtils.js';
+import { ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js';
 import { asAgentId } from 'src/shared/types/ids.js';
@@ -662,12 +663,14 @@ export function registerAgentForeground({
 
 /**
  * Background a specific foreground agent task.
+ * An agent spawned by a sub-agent stays inline (ownsBackgroundAgents): Ctrl+B
+ * backgrounds its parent, and it keeps running inside it.
  * @returns true if backgrounded successfully, false otherwise
  */
 export function backgroundAgentTask(taskId: string, getAppState: () => AppState, setAppState: SetAppState): boolean {
   const state = getAppState();
   const task = state.tasks[taskId];
-  if (!isLocalAgentTask(task) || task.isBackgrounded) {
+  if (!isLocalAgentTask(task) || task.isBackgrounded || !ownsBackgroundAgents(task.parentAgentId)) {
     return false;
   }
 
