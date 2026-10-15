@@ -65,13 +65,22 @@ started before it (`toolu_018EgrqsmhArZS5kNYqxv2h3`).
 - Portainer `outputSchema` without structured content — server bug.
 - WaitFor `(?s)` mid-pattern — 1 (#288 fixed the leading form). Resumed
   sub-agent without Git — 2, pre-#288, fixed there.
-- A background agent launched BY a sub-agent: its notification carries no
-  `agentId`, so the main thread drains it and the sub-agent never hears back.
 - Eviction before delivery stays possible when the next tool round is longer
-  than the 30 s panel grace.
-- The auto-mode branch of `permissions.ts` cannot run under bun test
-  (`feature('TRANSCRIPT_CLASSIFIER')` is off), so "a fallback is never an
-  allow" is pinned on the source only.
+  than the 30 s panel grace — a TaskOutput miss only: the queued notice still
+  carries `<result>`, and TaskOutput names the saved file. Left on purpose.
+- WaitFor `(?s)` mid-pattern and the fixed `origin` in the no-upstream answer
+  (`GitTool/errors.ts`): left on purpose, 1 case and repo-specific.
+
+**Follow-ups fixed (branch `fix/subagent-background-inline`):**
+- A background agent launched BY a sub-agent reported to main (its notice
+  named no `agentId`) and the sub-agent never heard back. Rather than route
+  it: only main owns background agents (`ownsBackgroundAgents`,
+  `AgentTool/autoBackground.ts`) — a sub-agent's spawn, auto-background, 120 s
+  timer and Ctrl+B stay inline, since a sub-agent never idles for a notice.
+- "A classifier block never becomes an allow" was pinned on permissions.ts's
+  text. The block now resolves in `decideClassifierBlock` (`denial.ts`), typed
+  ask | deny; `denial.types.test.ts` makes widening it a tsc error.
+- Probes: `subagentBackgroundInline.json`, `classifierBlockDecision.json`.
 
 **How to apply:** re-run the census a week after the merge. Expect 0
 "unparseable (stop_reason=refusal" denials (they become prompts), 0 "Failed to
