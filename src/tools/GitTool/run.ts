@@ -17,7 +17,12 @@ import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
 import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
 import { applyGitDelta } from 'src/tools/GitTool/delta.js'
 import { oneLineCommand } from 'src/tools/GitTool/display.js'
-import { diagnoseGitFailure, isEnvironmentalFailure, reportsNoChecksYet } from 'src/tools/GitTool/errors.js'
+import {
+  diagnoseGitFailure,
+  isEnvironmentalFailure,
+  noUpstreamAnswer,
+  reportsNoChecksYet,
+} from 'src/tools/GitTool/errors.js'
 import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
@@ -377,23 +382,30 @@ export async function runGitBatch(
       // A stripped trailing `| tail -N` is the other way: the pipeline the model
       // sent would have exited with the reducer's status, not the base's.
       const effectiveCode = exitCodeAfterRewrite(plan, run.code)
-      const isError = !stall && (effectiveCode !== 0 || run.interrupted)
+      const answer =
+        !stall && !run.interrupted && effectiveCode !== 0 && isReadOnlyGitCommand(command)
+          ? noUpstreamAnswer(rawStdout)
+          : null
+      const isError = !stall && answer === null && (effectiveCode !== 0 || run.interrupted)
       const filtered = full
         ? rawStdout
         : applyBashFilterToStdout(rawStdout, isError, plan, run.code)
       // This branch IS the guarantee that errors are never budgeted and never
-      // delta'd — both lanes are unreachable from a non-zero exit.
+      // delta'd — both lanes are unreachable from a non-zero exit, an answer's
+      // included.
       // `full` skips the summarizer but still goes THROUGH the delta lane,
       // which returns the body unchanged for a full run and is also where a
       // history-touching command drops the remembered baselines. Skipping it
       // would leave a stale diff baseline alive across a `full: true` commit.
       const rendered = isError
         ? diagnoseGitFailure(command, run.code, filtered)
-        : applyGitDelta(
-            command,
-            full ? filtered : budgetFilteredOutput(command, filtered),
-            { full, toolUseId: opts.toolUseId, cwd: opts.cwd },
-          )
+        : answer !== null
+          ? filtered
+          : applyGitDelta(
+              command,
+              full ? filtered : budgetFilteredOutput(command, filtered),
+              { full, toolUseId: opts.toolUseId, cwd: opts.cwd },
+            )
       outcome = {
         command,
         effectiveCommand,
@@ -401,6 +413,7 @@ export async function runGitBatch(
         output: rendered,
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),
+        ...(answer !== null ? { answer } : {}),
       }
       // A stall is not a failure, so it never stops the rest: `["gh pr checks
       // --watch", "gh pr view"]` still delivers the second one.
@@ -463,6 +476,8 @@ export function formatGitBatchResult(result: GitBatchResult): string {
       parts.push(stallNote(outcome.stall))
     } else if (outcome.interrupted) {
       parts.push('<error>Command was aborted before completion</error>')
+    } else if (outcome.answer !== undefined) {
+      parts.push(outcome.answer)
     } else if (outcome.exitCode !== 0) {
       parts.push(`Exit code ${outcome.exitCode}`)
     }
@@ -500,7 +515,9 @@ export function batchFailed(result: GitBatchResult): boolean {
     result.notRun.length > 0 ||
     // A stalled watch exits non-zero (143, or 8 for pending checks) and is not
     // a failure; marking the result `is_error` for it would teach the model
-    // that watching CI is something that goes wrong.
-    result.outcomes.some(o => !o.stall && (o.exitCode !== 0 || o.interrupted))
+    // that watching CI is something that goes wrong. Nor is an answer.
+    result.outcomes.some(
+      o => !o.stall && o.answer === undefined && (o.exitCode !== 0 || o.interrupted),
+    )
   )
 }

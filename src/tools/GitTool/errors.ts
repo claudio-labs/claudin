@@ -41,6 +41,12 @@ const NOT_A_REPO_RE = /^fatal: not a git repository/m
 const NO_COMMITS_RE = /does not have any commits yet/
 const UNKNOWN_SUBCOMMAND_RE = /^git: '(.+?)' is not a git command/m
 const UNKNOWN_REVISION_RE = /unknown revision or path not in the working tree/
+const AMBIGUOUS_ARG_RE = /ambiguous argument '([^']*)'/
+const VALUED_FLAG_RE = /^(--[\w-]+)=(.*)$/
+const OPTION_RE = /^--?[A-Za-z0-9]/
+const QUOTE_START_RE = /^['"]/
+/** Format flags whose value may also come as the next argument. */
+const BARE_FORMAT_FLAGS: ReadonlySet<string> = new Set(['--format', '--pretty'])
 const BAD_PATHSPEC_RE = /^error: pathspec '(.+?)' did not match any file/m
 const CANNOT_DELETE_BRANCH_RE = /^error: cannot delete branch/m
 const BRANCH_NOT_MERGED_RE = /is not fully merged/
@@ -95,6 +101,7 @@ const GH_NOT_FOUND_RE = /gh[^\n]*: command not found|executable file not found/
 const GH_NO_PR_RE = /no pull requests found|Could not resolve to a PullRequest/i
 /** `gh pr checks` before GitHub registered any run for the branch. */
 const GH_NO_CHECKS_RE = /^no checks reported on the '.+' branch/m
+const NO_UPSTREAM_RE = /^fatal: no upstream configured for branch '([^']+)'/m
 /** A `gh pr checks` row — name, state, elapsed, URL, tab-separated — in the failed state. */
 const GH_FAILED_CHECK_RE = /\tfail\t/
 /** `gh` failures every later `gh` command in a batch would repeat. */
@@ -135,6 +142,50 @@ function subcommandOf(command: string): string {
 
 function isGh(command: string): boolean {
   return command.trim().startsWith('gh ')
+}
+
+/**
+ * `git log -5 --format=%h %s`: unquoted, the space ends the format at `%h` and
+ * git reads `%s` as a revision — "ambiguous argument '%s'". The generic
+ * "revision does not exist" line got the same command resent six times by four
+ * sub-agents of one session in the 2026-10-08..15 census, so this names the
+ * split and writes the quoted form.
+ *
+ * The value runs from the nearest flag before the argument git named
+ * (`--format=%h`, `--date=format:%Y`, or a bare `--format`) through the named
+ * one and any placeholders after it — `%h - %s`, `%h by %an`. It must carry a
+ * placeholder past the flag, so a misspelled branch after a format, or a
+ * `--since=2.weeks foo`, keeps the generic line; so does a value that was
+ * already quoted.
+ */
+function splitFormatDiagnosis(command: string, output: string): string | null {
+  const named = AMBIGUOUS_ARG_RE.exec(output)?.[1]
+  if (named === undefined) return null
+  const tokens = command.trim().split(WHITESPACE_RE)
+  const at = tokens.indexOf(named)
+  if (at === -1) return null
+
+  let start = -1
+  for (let i = at - 1; i > 0 && start === -1; i--) {
+    const token = tokens[i] ?? ''
+    if (VALUED_FLAG_RE.test(token) || BARE_FORMAT_FLAGS.has(token)) start = i
+    else if (OPTION_RE.test(token)) return null
+  }
+  if (start === -1) return null
+  let end = at
+  while (end + 1 < tokens.length) {
+    const next = tokens[end + 1] ?? ''
+    if (OPTION_RE.test(next) || !next.includes('%')) break
+    end++
+  }
+  if (!tokens.slice(at, end + 1).some(token => token.includes('%'))) return null
+
+  const valued = VALUED_FLAG_RE.exec(tokens[start] ?? '')
+  const flag = valued?.[1] ?? tokens[start] ?? ''
+  const value = [...(valued ? [valued[2] ?? ''] : []), ...tokens.slice(start + 1, end + 1)].join(' ')
+  if (QUOTE_START_RE.test(value) || (value.includes("'") && value.includes('"'))) return null
+  const quoted = value.includes("'") ? `"${value}"` : `'${value}'`
+  return `The \`${flag}\` value has an unquoted space: the shell split it, and git read \`${named}\` as a revision. Quote the whole value: \`${flag}=${quoted}\`.`
 }
 
 /** The paths git named as conflicted, capped so a wide conflict stays one line. */
@@ -243,6 +294,19 @@ export function reportsNoChecksYet(output: string): boolean {
   return GH_NO_CHECKS_RE.test(output)
 }
 
+/**
+ * `git rev-parse --abbrev-ref @{u}` on a branch that was never pushed exits
+ * 128, and that IS what the model asked: the pre-PR read checks tracking
+ * before the first push, so every new branch "failed" it — about 8 of the 53
+ * Git errors in the 2026-10-08..15 census. `run.ts` reports it as an answer,
+ * for read-only commands only.
+ */
+export function noUpstreamAnswer(output: string): string | null {
+  const branch = NO_UPSTREAM_RE.exec(output)?.[1]
+  if (branch === undefined) return null
+  return `\`${branch}\` has no upstream: it was never pushed, or was pushed without \`-u\`. \`git push -u origin ${branch}\` sets one.`
+}
+
 /** Exported for the tests, which assert the sentence rather than the fold. */
 export function diagnose(
   command: string,
@@ -317,7 +381,10 @@ export function diagnose(
   }
 
   if (UNKNOWN_REVISION_RE.test(output)) {
-    return 'That revision does not exist here. Check the ref with `git log --oneline -5` or `git branch -a`.'
+    return (
+      splitFormatDiagnosis(command, output) ??
+      'That revision does not exist here. Check the ref with `git log --oneline -5` or `git branch -a`.'
+    )
   }
   const pathspec = BAD_PATHSPEC_RE.exec(output)
   if (pathspec) {

@@ -15,6 +15,12 @@ export type GitCommandOutcome = {
    * they would be diagnosed as a broken git command and would stop the batch.
    */
   stall?: GitStall
+  /**
+   * Set when a non-zero exit is the answer itself, so it is neither an error
+   * nor a reason to stop: a read of `@{u}` on a branch with no upstream
+   * (`noUpstreamAnswer`). The line that says so.
+   */
+  answer?: string
 }
 
 export type GitStallReason =

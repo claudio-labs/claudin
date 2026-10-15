@@ -125,6 +125,7 @@ const outputSchema = lazySchema(() =>
             silentMs: z.number(),
           })
           .optional(),
+        answer: z.string().optional(),
       }),
     ),
     notRun: z.array(z.string()),
