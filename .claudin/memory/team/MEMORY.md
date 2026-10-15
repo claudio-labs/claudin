@@ -47,6 +47,7 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08
 
 ## Bugs
+- FIXED 10-15 (branch): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; clip state survives resume; "mutated at 14" open
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - FIXED 10-12: [Resume restored a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages checks is_error
@@ -104,6 +105,7 @@
 - [Token census 09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) — thinking stays resident; 5m-TTL waits $65
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
 - [TTL-expiry check 10-12](ttl-expiry-check-2026-10-12.md) — main is 1h; clip→next-turn floor unexplained
+- [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail is the new leak; sub-agent expiries gone; post-280 clips ~$54
 - Weekly censuses: [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) — rewrites 39% of cost
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches

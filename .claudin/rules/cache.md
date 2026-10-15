@@ -37,6 +37,7 @@ invalidates the whole prefix and silently rebills `cache_creation`.
   | a tool, or a tool description | `src/tools/toolSchemaStability.invariant.test.ts` — same pool and text in every permission mode |
   | a system prompt section, or a call to `clearSystemPromptSections()` | `src/agent/prompts/systemPromptStability.invariant.test.ts` — callers limited to /compact and /resume; the bundle's prompt equal in every mode |
   | anything else that reaches the wire (betas, thinking, `context_management`, a whole new feature) | `src/agent/cache/wirePrefix.e2e.test.ts` — the built CLI against a mock API, 10 scenarios; add one for a new feature |
+  | where the message marker lands: the clip frontier, or anything that makes a block count as mutable | `src/agent/cache/imageFrontier.invariant.test.ts` — requests built as the shim builds them (`wireRequest`), marker index asserted |
 
   `CLAUDIN_CACHE_STRICT=1` makes the break detector print `[PROMPT CACHE
   STRICT]` for any unannounced change it sees (the e2e suite and the bundle e2es
@@ -516,6 +517,22 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   clip landed in the main thread's set unannounced and main's next request
   fell to the floor (three ~700k rewrites after `extract_memories`,
   2026-10). A new fork source is excluded by default — keep it that way.
+- **A block the frontier calls mutable must be one a rewriter WILL change.**
+  The marker stops before it, and everything after the marker goes out as
+  uncached input on every request, with no read drop for the detector to see.
+  Two image rules broke this for a week, $243 in total (2026-10-15). A clipped
+  screenshot waited for a stub `stubOneBlock` never writes. Media past the
+  100-item cap all counted as mutable, so 81744358 sent ~470k uncached on each
+  of 230 calls. `isStubbableResult` is now the one predicate the stubber, the
+  frontier, the relief candidates and the idle-gap clip share. The media strip
+  runs before the stubs and is announced (`media cap (N oldest dropped)`), and
+  the `[Cache:]` line names a held marker with a large uncached input
+  (`uncached tail Nk (marker held at messages.K/N: …)`). A new rule that makes
+  the frontier stop needs a rewriter that actually fires, and a case in the
+  marker suite above.
+- A mutation the detector names says what happened to the first changed
+  tool_result when the shape is known: `full→stub`, `stub→full` (a process
+  that lost its clipped set) or `media removed`.
 - `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` (the default) silently turns off
   the retain profile's server-side `clear_tool_uses`. Since 2026-09-22 the
   `context-management` header still goes out on the real first-party
@@ -587,6 +604,15 @@ transcript must be able to render again.
   (`src/agent/attachments/renderedSnapshot.ts`) — /context, the post-compact
   budget and the prompt-hook transcript budget all do. `todo_reminder_delta`
   renders from its own payload and needs nothing.
+- The clipped set is part of what a request rendered. It lived only in the
+  process that made it, so a resumed process sent every clipped result in
+  full again. Each main-thread clip event now writes a `clip-state` entry
+  (ids and input fields, last-wins, cleared by a compact boundary), and
+  --resume, -c and /resume restore it before the first request
+  (`restoreClippedState`). The stub bytes are rebuilt rather than stored,
+  because `stubOneBlock` is a function of the content and the saved copies on
+  disk. Guards: `src/sessions/resumePrefixDeterminism.test.ts` and
+  `src/sessions/sessionRestore.clipState.test.ts`.
 - Still not byte-stable: `currentDate`, memoized per process, changes across
   days (only a resume after midnight inside the TTL pays). Known, not fixed.
   (Streaming tool execution, which could write a result before a later

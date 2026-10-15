@@ -48,11 +48,10 @@ frozen prefix is the ~10-token stub, never the full content.
 
 A block is **mutable** (frontier stops before it) when:
 
-- `tool_result`, not yet a stub, non-empty, and:
-  - its id is in `clippedIds` (pending explicit clip — covers the
-    deferred-image case where `applyStableStubs` skips image content but
-    keeps the id), or
-  - it is non-error, non-image, ≥ `MIN_STUB_TOKENS` (the age prune will stub
+- `tool_result` that `stubOneBlock` can rewrite at all (`isStubbableResult`:
+  not a stub yet, non-empty, no image), and:
+  - its id is in `clippedIds` (pending explicit clip), or
+  - it is non-error, ≥ `MIN_STUB_TOKENS`, and the age prune runs (it will stub
     it once it crosses the cutoff).
 - assistant message still carrying a `thinking` block, when
   `thinkingHistoryRedactionEnabled` (it will be stripped when it ages out of
@@ -61,8 +60,31 @@ A block is **mutable** (frontier stops before it) when:
   when `narrationHistoryRedactionEnabled` (mirrors
   `stripOldNarrationBlocks`' selection exactly).
 
-Everything else — text, stubs, small results, errors, images outside
-`clippedIds` — is stable and may be frozen.
+Everything else — text, stubs, small results, errors, images, clipped or not —
+is stable and may be frozen.
+
+**Two image rules were removed on 2026-10-15**, both of which held the marker
+in front of bytes that would never change, so the whole tail after it went out
+as uncached input on every request until the session ended:
+
+- A clipped image-bearing result counted as a stub still to come (the
+  "deferred-image case": the stub would land once the image was replaced).
+  Nothing replaces it. The idle-gap clip put screenshots in the set, and two
+  ferrous-dns sessions ran 2h and 48 min at a frozen read ($22). Now one
+  predicate, `isStubbableResult`, decides for the stubber, the frontier, the
+  relief candidates and the idle-gap clip, which no longer clips images.
+- Past the API's 100-media cap, every media block counted as mutable, because
+  `stripExcessMediaItems` drops the oldest one as each new one arrives.
+  81744358 (playwright screenshots, Sonnet 5.5) ran 230 calls at ~470k
+  uncached each after its 101st image: $221 of its $271. The strip now runs
+  before the stable stubs (so a clipped result whose image it dropped is
+  stubbed in the same request) and is announced as `media cap (N oldest
+  dropped)` when it drops one more. Each new image past the cap is one rewrite
+  from the oldest image on, as in Claude Code. Batching the strip, so the bytes
+  move once per N images, was considered and not taken.
+
+The 1×-resend argument below ("the uncached tail is the optimum") holds for
+bytes that change on the NEXT request. Neither of these did.
 
 **Do not** use `clippedIds` membership as a *stability* criterion:
 `pruneOldToolResults` never registers ids in the set; age stubs are only
@@ -70,9 +92,15 @@ detectable via `CLIP_STUB_PATTERN` on the content.
 
 ## Implementation
 
-1. `getClipFrontierIndex(messages, {thinkingIsMutable, narrationIsMutable})`
-   in `stableStubState.ts` — pure, returns F, `-1` when even `messages[0]`
-   is mutable.
+1. `findClipFrontier(messages, {thinkingIsMutable, narrationIsMutable,
+   agePruneActive})` in `stableStubState/clipFrontier.ts` — pure, returns F
+   (`-1` when even `messages[0]` is mutable) and the rewriter it stopped for;
+   `getClipFrontierIndex` is its index. `requestClipFrontier`
+   (`shims/claude/renderMessages.ts`) supplies the options from the config and
+   the cache profile, for `streaming.ts` and the invariant suites alike. When
+   the frontier holds the marker back and a response bills ≥ 20k as uncached
+   input, the `[Cache:]` line says `uncached tail Nk (marker held at
+   messages.K/N: <rewriter>)`.
 2. `streaming.ts` computes the frontier on the **exact array** handed to
    `addCacheBreakpoints` (post `ensureToolResultPairing`, post
    `applyStableStubs`, post history redactions, post the retry-path
