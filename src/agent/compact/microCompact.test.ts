@@ -375,6 +375,19 @@ describe('relief policy — window lane via microcompactMessages', () => {
     expect(getClippedIds().size).toBe(0)
   })
 
+  test('the rss lane clips oldest first down to its low water, not everything', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    // Window lane off, so only the retain profile's memory bound can fire:
+    // 60 results × 20k chars are well over its 250k high water.
+    process.env.CLAUDIN_DISABLE_RELIEF_POLICY = '1'
+    await microcompactMessages(buildHeavyHistory(60, 20_000), undefined, MAIN)
+    const ids = clippedInOrder(getClippedIds(), 60)
+    expect(ids.length).toBeGreaterThan(0)
+    expect(ids.length).toBeLessThan(58)
+    expect(ids).toEqual(Array.from({ length: ids.length }, (_, i) => `toolu_${i}`))
+  })
+
   test('resetMicrocompactState clears the clipped set', async () => {
     const { resetMicrocompactState } = await import('src/agent/compact/microCompact.js')
     const { addClippedIds, getClippedIds } = await import('src/agent/compact/stableStubState.js')

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import {
   decideRelief,
+  isReliefStarvedCompactEnabled,
   isReliefWindowLaneEnabled,
   reliefMargin,
   reliefTrigger,
@@ -220,6 +221,25 @@ describe('isReliefWindowLaneEnabled', () => {
     expect(isReliefWindowLaneEnabled()).toBe(false)
     process.env.CLAUDIN_DISABLE_RELIEF_POLICY = '0'
     expect(isReliefWindowLaneEnabled()).toBe(true)
+  })
+})
+
+describe('isReliefStarvedCompactEnabled', () => {
+  const saved = process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+    else process.env.CLAUDIN_RELIEF_STARVED_COMPACT = saved
+  })
+
+  test('on by default, off under =0 / =false', () => {
+    delete process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+    expect(isReliefStarvedCompactEnabled()).toBe(true)
+    process.env.CLAUDIN_RELIEF_STARVED_COMPACT = '0'
+    expect(isReliefStarvedCompactEnabled()).toBe(false)
+    process.env.CLAUDIN_RELIEF_STARVED_COMPACT = 'false'
+    expect(isReliefStarvedCompactEnabled()).toBe(false)
+    process.env.CLAUDIN_RELIEF_STARVED_COMPACT = '1'
+    expect(isReliefStarvedCompactEnabled()).toBe(true)
   })
 })
 
