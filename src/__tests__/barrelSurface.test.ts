@@ -27,10 +27,21 @@ import * as yoloClassifier from 'src/permissions/yoloClassifier.js'
 import type { AutoModeRules, TranscriptEntry } from 'src/permissions/yoloClassifier.js'
 import type {
   AnyMessage,
+  ClipFrontier,
   ClipFrontierMutability,
+  ClipFrontierReason,
+  ClippedStateSnapshot,
 } from 'src/agent/compact/stableStubState.js'
 
-type PinnedTypes = [AutoModeRules, TranscriptEntry, AnyMessage, ClipFrontierMutability]
+type PinnedTypes = [
+  AutoModeRules,
+  TranscriptEntry,
+  AnyMessage,
+  ClipFrontier,
+  ClipFrontierMutability,
+  ClipFrontierReason,
+  ClippedStateSnapshot,
+]
 
 const SURFACES: ReadonlyArray<{
   name: string
@@ -120,6 +131,7 @@ const SURFACES: ReadonlyArray<{
       'bumpStandDownEpoch',
       'collectClearableCandidates',
       'exceedsPinnedResultCeiling',
+      'findClipFrontier',
       'getClipFrontierIndex',
       'getClippedIds',
       'getClippedInputFields',
@@ -128,13 +140,16 @@ const SURFACES: ReadonlyArray<{
       'isClipStubContent',
       'isPinRegistered',
       'isPinShielding',
+      'isStubbableResult',
       'pinShieldsBlock',
       'pinToolResult',
       'pruneOldToolResults',
       'pruneOrphanClippedIds',
       'pruneStaleClippedIds',
       'resetClippedIds',
+      'restoreClippedState',
       'retirePinAfterUse',
+      'snapshotClippedState',
       'stubToolResultForDisplay',
       'unpinToolResult',
     ],
