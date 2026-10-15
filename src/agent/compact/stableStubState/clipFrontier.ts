@@ -73,6 +73,19 @@ export type ClipFrontierMutability = {
   agePruneActive?: boolean
 }
 
+/** Which rewriter the clip frontier stopped for. */
+export type ClipFrontierReason =
+  | 'pending clip'
+  | 'age prune'
+  | 'thinking redaction'
+  | 'narration redaction'
+
+export type ClipFrontier = {
+  index: number
+  /** Null when the whole array is stable (index is its last message). */
+  reason: ClipFrontierReason | null
+}
+
 /**
  * Decide whether a tool_result block can still change bytes on a future turn.
  *
@@ -125,31 +138,31 @@ function isToolResultBlockMutable(
   block: AnyContentBlock,
   clippedIds: ReadonlySet<string>,
   agePruneActive: boolean,
-): boolean {
-  if (block?.type !== 'tool_result') return false
+): ClipFrontierReason | null {
+  if (block?.type !== 'tool_result') return null
   const existing = (block as unknown as ToolResultBlockParam).content
   // A stub already (final bytes forever), empty, or an image: no rewriter
   // will touch it.
-  if (!isStubbableResult(existing)) return false
+  if (!isStubbableResult(existing)) return null
   // Pending explicit clip (checked before the error skip: clippedIds
   // membership overrides it in applyStableStubs' stubOneBlock path).
   const toolUseId = typeof block.tool_use_id === 'string' ? block.tool_use_id : ''
-  if (toolUseId && clippedIds.has(toolUseId)) return true
+  if (toolUseId && clippedIds.has(toolUseId)) return 'pending clip'
   // Retain profile: no age prune → a full tool_result is byte-stable. The
   // RSS guard may still stub it someday, but that's a deliberate
   // break-once clip event, not a per-turn mutation to fence off.
-  if (!agePruneActive) return false
+  if (!agePruneActive) return null
   // The age prune skips error results entirely…
-  if ((block as unknown as ToolResultBlockParam).is_error) return false
+  if ((block as unknown as ToolResultBlockParam).is_error) return null
   // …and only stubs results at or above the floor.
-  return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS
+  return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS ? 'age prune' : null
 }
 
 function isAssistantContentMutable(
   content: AnyContentBlock[],
   opts: ClipFrontierMutability,
-): boolean {
-  if (!opts.thinkingIsMutable && !opts.narrationIsMutable) return false
+): ClipFrontierReason | null {
+  if (!opts.thinkingIsMutable && !opts.narrationIsMutable) return null
   let hasText = false
   let hasToolUse = false
   let hasThinking = false
@@ -160,7 +173,7 @@ function isAssistantContentMutable(
     else if (block?.type === 'thinking') hasThinking = true
     else if (block?.type === 'redacted_thinking') hasRedactedThinking = true
   }
-  if (opts.thinkingIsMutable && hasThinking) return true
+  if (opts.thinkingIsMutable && hasThinking) return 'thinking redaction'
   // Narration selection mirrors stripOldNarrationBlocks: text + tool_use and
   // no (redacted_)thinking — thinking-bearing turns are never text-stripped
   // (doing so breaks the signed-thinking position chain).
@@ -171,9 +184,9 @@ function isAssistantContentMutable(
     !hasThinking &&
     !hasRedactedThinking
   ) {
-    return true
+    return 'narration redaction'
   }
-  return false
+  return null
 }
 
 /**
@@ -196,6 +209,19 @@ export function getClipFrontierIndex(
   messages: readonly AnyMessage[],
   opts: ClipFrontierMutability = {},
 ): number {
+  return findClipFrontier(messages, opts).index
+}
+
+/**
+ * `getClipFrontierIndex` with the rewriter it stopped for. Everything after
+ * the frontier is billed as uncached input on every request while it stays
+ * there, so the reason is what the `[Cache:]` line names when that tail grows
+ * large (`uncached tail …`).
+ */
+export function findClipFrontier(
+  messages: readonly AnyMessage[],
+  opts: ClipFrontierMutability = {},
+): ClipFrontier {
   const clippedIds = getClippedIds()
   const agePruneActive = opts.agePruneActive ?? true
   for (let i = 0; i < messages.length; i++) {
@@ -205,19 +231,17 @@ export function getClipFrontierIndex(
     const content = inner.content
     if (!Array.isArray(content)) continue
     if (role === 'assistant') {
-      if (isAssistantContentMutable(content as AnyContentBlock[], opts)) {
-        return i - 1
-      }
+      const reason = isAssistantContentMutable(content as AnyContentBlock[], opts)
+      if (reason) return { index: i - 1, reason }
       continue
     }
     if (role !== 'user') continue
     for (const block of content as AnyContentBlock[]) {
-      if (isToolResultBlockMutable(block, clippedIds, agePruneActive)) {
-        return i - 1
-      }
+      const reason = isToolResultBlockMutable(block, clippedIds, agePruneActive)
+      if (reason) return { index: i - 1, reason }
     }
   }
-  return messages.length - 1
+  return { index: messages.length - 1, reason: null }
 }
 
 /**

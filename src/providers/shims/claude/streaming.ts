@@ -68,10 +68,7 @@ import {
   clearableToolNamesFromPool,
   getAPIContextManagement,
 } from "src/agent/cache/anthropic/apiMicrocompact.js";
-import {
-  getClipFrontierIndex,
-  isClipFrontierEnabled,
-} from "src/agent/compact/stableStubState.js";
+import { isClipFrontierEnabled } from "src/agent/compact/stableStubState.js";
 import { getCacheProfile } from "src/agent/cache/cacheProfile.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -226,7 +223,10 @@ import {
   getPreviousMessageIdFromMessages,
   getPreviousRequestIdFromMessages,
 } from "src/providers/shims/claude/messageConverters.js";
-import { renderMessagesForAPI } from "src/providers/shims/claude/renderMessages.js";
+import {
+  renderMessagesForAPI,
+  requestClipFrontier,
+} from "src/providers/shims/claude/renderMessages.js";
 import { executeNonStreamingRequest } from "src/providers/shims/claude/nonStreamingRequest.js";
 import type { Options, TaskBudgetParam } from "src/providers/shims/claude/types.js";
 
@@ -898,23 +898,10 @@ export async function* queryModel(
     const messagesForRequest = retryContext.stripThinkingFromHistory
       ? stripOldThinkingBlocks(messagesForAPI, 0)
       : messagesForAPI;
-    let clipFrontierIndex: number | undefined;
-    if (isClipFrontierEnabled() && !options.skipCacheWrite) {
-      const cfg = getGlobalConfig();
-      const cacheProfile = getCacheProfile();
-      // When the profile disables the history redactions, thinking/narration
-      // blocks never mutate — they are stable and may be frozen.
-      const redactionsActive = cacheProfile.historyRedactionEnabled;
-      clipFrontierIndex = getClipFrontierIndex(messagesForRequest, {
-        thinkingIsMutable:
-          redactionsActive && cfg.thinkingHistoryRedactionEnabled,
-        narrationIsMutable:
-          redactionsActive && cfg.narrationHistoryRedactionEnabled,
-        // Retain profile disables the age prune → full tool_results are
-        // byte-stable and may be frozen behind the marker.
-        agePruneActive: Number.isFinite(cacheProfile.keepTurns),
-      });
-    }
+    const clipFrontier =
+      isClipFrontierEnabled() && !options.skipCacheWrite
+        ? requestClipFrontier(messagesForRequest)
+        : undefined;
 
     // Single render shared by the wire request and the opt-in annotation
     // dump below — rendering twice would double the O(n) walk, and any
@@ -925,7 +912,7 @@ export async function* queryModel(
       enablePromptCaching,
       options.querySource,
       options.skipCacheWrite,
-      clipFrontierIndex,
+      clipFrontier?.index,
       options.agentId,
     );
 
@@ -936,7 +923,19 @@ export async function* queryModel(
         options.querySource,
         options.agentId,
         renderedMessages,
-        { mediaStripped: rendered.mediaStripped },
+        {
+          mediaStripped: rendered.mediaStripped,
+          // addCacheBreakpoints caps the marker at a frontier of 0 or more;
+          // -1 (nothing stable) leaves it on the last message.
+          markerCap:
+            clipFrontier?.reason && clipFrontier.index >= 0
+              ? {
+                  index: clipFrontier.index,
+                  total: renderedMessages.length,
+                  reason: clipFrontier.reason,
+                }
+              : null,
+        },
       );
     }
 
@@ -1544,6 +1543,7 @@ export async function* queryModel(
           appliedContextEdits,
           serverCacheMissReason,
           thinkingDropPaths,
+          usage.input_tokens,
         );
       }
 

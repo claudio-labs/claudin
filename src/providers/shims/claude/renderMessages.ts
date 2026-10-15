@@ -10,7 +10,11 @@ import {
 import {
   applyStableInputStubs,
   applyStableStubs,
+  type ClipFrontier,
+  findClipFrontier,
 } from 'src/agent/compact/stableStubState.js'
+import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { API_MAX_MEDIA_PER_REQUEST } from 'src/shared/constants/apiLimits.js'
 import type { AssistantMessage, Message, UserMessage } from 'src/shared/types/message.js'
 import type { Tools } from 'src/tools/Tool.js'
@@ -129,4 +133,27 @@ export function renderMessagesForAPI(
   }
 
   return { messages: messagesForAPI, mediaStripped }
+}
+
+/**
+ * The clip frontier of one request, with the mutability the config and the
+ * cache profile give it: the marker goes no further than this. Computed on the
+ * exact array handed to addCacheBreakpoints (after a retry's thinking strip),
+ * so the stability judgment matches the wire bytes.
+ */
+export function requestClipFrontier(
+  messages: readonly (UserMessage | AssistantMessage)[],
+): ClipFrontier {
+  const config = getGlobalConfig()
+  const profile = getCacheProfile()
+  // When the profile disables the history redactions, thinking/narration
+  // blocks never mutate — they are stable and may be frozen.
+  const redactions = profile.historyRedactionEnabled
+  return findClipFrontier(messages, {
+    thinkingIsMutable: redactions && !!config.thinkingHistoryRedactionEnabled,
+    narrationIsMutable: redactions && !!config.narrationHistoryRedactionEnabled,
+    // Retain profile disables the age prune → full tool_results are
+    // byte-stable and may be frozen behind the marker.
+    agePruneActive: Number.isFinite(profile.keepTurns),
+  })
 }

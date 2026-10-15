@@ -12,11 +12,13 @@
  */
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
-import { getClipFrontierIndex } from 'src/agent/compact/stableStubState.js'
 import { canonicalWireMessage } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { addCacheBreakpoints } from 'src/providers/shims/claude/paramBuilders.js'
-import { renderMessagesForAPI } from 'src/providers/shims/claude/renderMessages.js'
+import {
+  renderMessagesForAPI,
+  requestClipFrontier,
+} from 'src/providers/shims/claude/renderMessages.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { Tools } from 'src/tools/Tool.js'
 
@@ -64,12 +66,8 @@ export function wireRequest(messages: Message[], tools: Tools): WireRequest {
     stripOldThinking: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
     stripOldNarration: historyRedaction && !!config.narrationHistoryRedactionEnabled,
   })
-  const frontier = getClipFrontierIndex(rendered.messages, {
-    thinkingIsMutable: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
-    narrationIsMutable: historyRedaction && !!config.narrationHistoryRedactionEnabled,
-    agePruneActive: Number.isFinite(getCacheProfile().keepTurns),
-  })
-  const params = addCacheBreakpoints(rendered.messages, true, undefined, false, frontier)
+  const frontier = requestClipFrontier(rendered.messages)
+  const params = addCacheBreakpoints(rendered.messages, true, undefined, false, frontier.index)
   const markerIndex = params.findLastIndex(
     m => Array.isArray(m.content) && m.content.some(b => 'cache_control' in b && b.cache_control),
   )

@@ -57,10 +57,15 @@ export {
   isStubbableResult,
   stubToolResultForDisplay,
 } from 'src/agent/compact/stableStubState/clipStubText.js'
-export type { ClipFrontierMutability } from 'src/agent/compact/stableStubState/clipFrontier.js'
+export type {
+  ClipFrontier,
+  ClipFrontierMutability,
+  ClipFrontierReason,
+} from 'src/agent/compact/stableStubState/clipFrontier.js'
 export {
   _resetClipFrontierForTesting,
   collectClearableCandidates,
+  findClipFrontier,
   getClipFrontierIndex,
   isClipFrontierEnabled,
   pruneOldToolResults,
