@@ -12,6 +12,7 @@
 
 import type { FilterSpec } from 'src/tools/shared/outputFilter/Bash/types.js'
 import { renderDiff } from 'src/tools/GitTool/parsers/diff.js'
+import { FILTERED_COMMIT_MARK } from 'src/tools/shared/gitOperationTracking.js'
 
 // --- git log ---------------------------------------------------------------
 
@@ -147,7 +148,7 @@ export const gitCommit: FilterSpec = {
   replace: [
     {
       pattern: GIT_COMMIT_SUCCESS_RE,
-      replacement: '✓ committed $2',
+      replacement: `${FILTERED_COMMIT_MARK} $2`,
       unless: /\b(error|fail|failed|hook exited|hook declined|denied|rejected|gpg failed)\b|✗/i,
     },
   ],

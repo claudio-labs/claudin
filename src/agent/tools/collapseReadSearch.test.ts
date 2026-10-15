@@ -659,6 +659,15 @@ describe('shell lane — Bash under fullscreen', () => {
     expect(group.gitOpBashCount).toBe(1)
   })
 
+  test('a bare commit is read from what the output filter left of it', () => {
+    const group = shellGroup([
+      bash('b1', 'git commit -m x'),
+      toolResult('b1', out('✓ committed 1a2b3c4\n')),
+    ])
+
+    expect(group.commits).toEqual([{ sha: '1a2b3c', kind: 'committed' }])
+  })
+
   test('the push ref line is read from stderr', () => {
     const group = shellGroup([
       bash('b1', 'git push -u origin feat/x'),

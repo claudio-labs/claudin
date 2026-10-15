@@ -72,6 +72,22 @@
       "replace": ""
     },
     {
+      "name": "the filtered commit line is read",
+      "find": "stdout.match(GIT_COMMIT_HEADER_RE) ?? stdout.match(FILTERED_COMMIT_RE)",
+      "replace": "stdout.match(GIT_COMMIT_HEADER_RE)"
+    },
+    {
+      "name": "the filtered commit line is anchored",
+      "find": "`^${FILTERED_COMMIT_MARK} ([0-9a-f]{7,40})$`",
+      "replace": "`${FILTERED_COMMIT_MARK} ([0-9a-f]{7,40})`"
+    },
+    {
+      "name": "the filter speaks the parser's form",
+      "source": "src/tools/shared/outputFilter/Bash/filters/git.ts",
+      "find": "replacement: `${FILTERED_COMMIT_MARK} $2`,",
+      "replace": "replacement: '✓ commit $2',"
+    },
+    {
       "name": "Bash joins the group under fullscreen",
       "source": "src/agent/tools/collapseReadSearch.ts",
       "find": "(isFullscreenEnvEnabled() ? toolName === BASH_TOOL_NAME : false),",

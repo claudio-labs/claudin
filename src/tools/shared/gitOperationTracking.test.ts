@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  applyBashFilterToStdout,
+  planBashFilter,
+} from 'src/tools/shared/outputFilter/Bash/index.js'
+import {
   detectGitOperation,
   parseGitCommitId,
   trackGitOperations,
@@ -191,6 +195,38 @@ describe('parseGitCommitId', () => {
 
   test('no commit header → undefined', () => {
     expect(parseGitCommitId('On branch main\nnothing to commit')).toBeUndefined()
+  })
+
+  test('the Bash output filter\'s line', () => {
+    expect(parseGitCommitId('✓ committed 1a2b3c4\n')).toBe('1a2b3c4')
+  })
+
+  test('the filter\'s words mid-line are not a commit', () => {
+    expect(parseGitCommitId('earlier: ✓ committed 1a2b3c4 by hand')).toBeUndefined()
+  })
+})
+
+describe('a bare git commit, after the Bash output filter', () => {
+  // The filter and the parser share FILTERED_COMMIT_MARK; this is the round
+  // trip that breaks if either stops speaking the other's form.
+  const command = 'git commit -m "fix: thing"'
+  const raw = '[main 1a2b3c4] fix: thing\n 2 files changed, 5 insertions(+), 1 deletion(-)\n'
+  const filtered = applyBashFilterToStdout(
+    raw,
+    false,
+    planBashFilter(command, { allowRewrite: true }),
+    0,
+  )
+
+  test('the filter does rewrite the header (or the next test proves nothing)', () => {
+    expect(filtered).not.toContain('[main')
+  })
+
+  test('still yields its sha', () => {
+    expect(detectGitOperation(command, filtered).commit).toEqual({
+      sha: '1a2b3c',
+      kind: 'committed',
+    })
   })
 })
 
