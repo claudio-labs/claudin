@@ -153,6 +153,7 @@ describe('relief policy — window lane via microcompactMessages', () => {
   const MAIN = 'repl_main_thread' as never
   const savedKill = process.env.CLAUDIN_DISABLE_RELIEF_POLICY
   const savedProfile = process.env.CLAUDIN_CACHE_PROFILE
+  const savedClipAll = process.env.CLAUDIN_RELIEF_CLIP_ALL
 
   beforeEach(async () => {
     const { resetClippedIds } = await import('src/agent/compact/stableStubState.js')
@@ -161,6 +162,7 @@ describe('relief policy — window lane via microcompactMessages', () => {
     mockSizeState.effectiveWindow = 100_000
     mockSizeState.model = 'claude-sonnet-4'
     delete process.env.CLAUDIN_DISABLE_RELIEF_POLICY
+    delete process.env.CLAUDIN_RELIEF_CLIP_ALL
     // Pin the profile: `auto` resolves through the machine's active provider.
     process.env.CLAUDIN_CACHE_PROFILE = 'retain'
     _resetCacheProfileForTesting()
@@ -174,6 +176,8 @@ describe('relief policy — window lane via microcompactMessages', () => {
     else process.env.CLAUDIN_DISABLE_RELIEF_POLICY = savedKill
     if (savedProfile === undefined) delete process.env.CLAUDIN_CACHE_PROFILE
     else process.env.CLAUDIN_CACHE_PROFILE = savedProfile
+    if (savedClipAll === undefined) delete process.env.CLAUDIN_RELIEF_CLIP_ALL
+    else process.env.CLAUDIN_RELIEF_CLIP_ALL = savedClipAll
     _resetCacheProfileForTesting()
   })
 
@@ -212,6 +216,9 @@ describe('relief policy — window lane via microcompactMessages', () => {
     return messages
   }
 
+  // The next four pin the one-band selection, which `CLAUDIN_RELIEF_CLIP_ALL=0`
+  // keeps: by default an event takes every old result, so a band never bounds it.
+
   // Real usage vs estimated savings: the lane asks for REAL tokens, and tool
   // output tokenizes at ~2.4 chars/token on Opus 4.7+ against the 3.1 of
   // earlier Claude — while both are estimated at 3.5. Selecting in estimate
@@ -219,6 +226,7 @@ describe('relief policy — window lane via microcompactMessages', () => {
   test('with real usage, a denser tokenizer frees the request with fewer clips', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = '0'
     mockSizeState.effectiveWindow = 40_000
     const clipsFor = async (model: string, usage: boolean): Promise<number> => {
       resetClippedIds()
@@ -240,6 +248,7 @@ describe('relief policy — window lane via microcompactMessages', () => {
   test('a first clip on a preserved-thinking model counts the thinking it drops', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = '0'
     mockSizeState.effectiveWindow = 40_000
     mockSizeState.model = 'claude-opus-5-5'
     const clipsWith = async (
@@ -304,6 +313,7 @@ describe('relief policy — window lane via microcompactMessages', () => {
   test('above the trigger: clips OLDEST first, only as much as the band asks, keeps the last 2 turns', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = '0'
     // 20 exchanges × 5k chars ≈ 25-30k estimated tokens against a 40k
     // window: trigger 30k (0.75 × 40k, below the autocompact cap), band
     // min(60k, 30% × 30k) = 9k → target 21k → free a handful of results,
@@ -321,9 +331,25 @@ describe('relief policy — window lane via microcompactMessages', () => {
     expect(clipped.has('toolu_23')).toBe(false)
   })
 
+  test('by default the same event clips every old result, still not the last 2 turns', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    mockSizeState.effectiveWindow = 40_000
+    const messages = buildHeavyHistory(24, 5_000)
+    await microcompactMessages(messages, undefined, MAIN)
+    const clipped = getClippedIds()
+    expect(clippedInOrder(clipped, 24)).toEqual(Array.from({ length: 22 }, (_, i) => `toolu_${i}`))
+    expect(clipped.has('toolu_22')).toBe(false)
+    expect(clipped.has('toolu_23')).toBe(false)
+    // Nothing old is left full, and the stubbed view sits under the trigger.
+    await microcompactMessages(messages, undefined, MAIN)
+    expect(clipped.size).toBe(22)
+  })
+
   test('a second request in the same state does not clip again (usage is measured over the stubbed view)', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = '0'
     // Same partial-clip setup as above: the first pass leaves clearable
     // results behind, so a second clip would be observable.
     mockSizeState.effectiveWindow = 40_000
@@ -379,7 +405,8 @@ describe('relief policy — window lane via microcompactMessages', () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
     // Window lane off, so only the retain profile's memory bound can fire:
-    // 60 results × 20k chars are well over its 250k high water.
+    // 60 results × 20k chars are well over its 250k high water. Clip-all (on
+    // by default) is a window-lane switch: it must not widen this lane.
     process.env.CLAUDIN_DISABLE_RELIEF_POLICY = '1'
     await microcompactMessages(buildHeavyHistory(60, 20_000), undefined, MAIN)
     const ids = clippedInOrder(getClippedIds(), 60)

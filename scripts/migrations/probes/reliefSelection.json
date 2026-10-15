@@ -23,8 +23,8 @@
     {
       "name": "the window lane asks for one band, not everything",
       "source": "src/agent/compact/microCompact.ts",
-      "find": "    Math.max(1, decision.tokensToFree - thinkingDropped),\n",
-      "replace": "    Infinity,\n"
+      "find": "  const ask = decision.selectAll ? Infinity : decision.tokensToFree\n",
+      "replace": "  const ask = Infinity\n"
     },
     {
       "name": "the last two turns are protected",

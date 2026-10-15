@@ -25,7 +25,9 @@ One decision, one source of truth, no message ever dropped from the API view:
     (250k retain) → target `retainedLowWaterTokens` (125k). This is the old
     byte-guard, expressed as the same action.
   - Both fired → one event sized by whichever asks for more.
-  - `selectReliefIds`: oldest first until the request is covered.
+  - `selectReliefIds`: oldest first until the request is covered — the rss
+    lane always, the window lane only under `CLAUDIN_RELIEF_CLIP_ALL=0`. By
+    default a window event selects every candidate (clip-all, below).
   - **Units (fixed 2026-09-29).** Once a response carried usage, the window
     lane's request is REAL tokens, while candidate savings are estimates at
     the family ratio (3.5 chars/token). The shell converts them with the
@@ -101,12 +103,35 @@ One decision, one source of truth, no message ever dropped from the API view:
   only good for comparing arms: one compaction near 735k, net reads saved
   $24 → $66 (an upper bound: re-reads after the compaction are not
   simulated).
+- **A window event clips every old result (clip-all, 2026-10-15).** Clips
+  go oldest first, so the cache is rewritten from the first clipped block —
+  in practice from right after the system prompt — whatever the event frees.
+  A one-band event therefore paid for the whole history to free one band:
+  50.7k rewritten for 24k freed on the 140k-window bench, 560–690k for
+  133–159k on the 1M main threads of the 10-08..15 census. Clip-all keeps the
+  trigger, the band (it is still the starvation floor) and the protected
+  last two turns, and selects every candidate outside them: the extra stubs
+  shrink what is rewritten instead of adding to it.
+  - A/B (`context-relief-ab.ts`, Sonnet 5.5, `--window=140000`, N=5,
+    parallel arms, one price table; with Claude Code and a placebo): cost
+    $1.258 → $0.987, −22% SEPARATED (placebo +1%); rewrite 51.0k → 20.7k;
+    end context 64.7k → 34.4k; cache read −26%; clipped ids 7 → 12 in every
+    run; edit-turn lookups 8 → 11 (overlap), re-reads equal, 10/10 edits.
+    The window lane off (`CLAUDIN_DISABLE_RELIEF_POLICY=1`, autocompact only)
+    came to $1.194 and Claude Code to $1.150, both separated from clip-all.
+  - 1M replay: `relief-ceiling-sim.ts --since=2026-09-17 --main
+    --triggers=735000 --min-event=band --starved-compact --clip-all` — net
+    $65.47 → $96.24 over 8 threads in four weeks (upper bound, as above).
+  - The rss lane keeps its low-water target: it bounds memory, not cache.
+  - Killswitch `CLAUDIN_RELIEF_CLIP_ALL=0` (back to one band).
 
 Tests: `reliefPolicy.test.ts` (the decision table), `microCompact.test.ts`
-(the shell: oldest-first band, no re-clip on the next request, analysis
+(the shell: clip-all by default, the oldest-first band under `=0`, the rss
+lane untouched by clip-all, no re-clip on the next request, analysis
 callers, killswitch), `stableStubState.test.ts` (the candidate walk and the
 rss lane end to end, pins), `requestDeterminism.invariant.test.ts`
-(byte-stability of the new post-turn pipeline).
+(byte-stability of the new post-turn pipeline). Break-probe specs:
+`scripts/migrations/probes/reliefSelection.json`, `reliefClipAll.json`.
 
 Adoption bench: `scripts/bench/ab/context-relief-ab.ts` — see the section at
 the end.
@@ -229,6 +254,13 @@ optimum). **Tuning the band buys almost nothing.** What the current design
 loses is not dollars but *information*: mechanisms 3 and 4 drop full tool
 results with no summary, so the model re-reads (more calls) — a cost the
 token accounting does not attribute to the eviction.
+
+That holds with `R` fixed, and `R` is not: with oldest-first clips the
+rewrite starts at the first clipped block, so `R` is the whole history after
+the system prompt minus what the event freed (~50k on a 140k window, ~600k on
+1M — where `B* ≈ 190k` by the same formula). Freeing more in the same event
+lowers `R` instead of trading against it, which is why clip-all (above) won
+−22% where a band change could not.
 
 ## What the instrumentation records
 

@@ -46,6 +46,7 @@ import { saveClipState } from 'src/sessions/sessionStorage.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import {
   decideRelief,
+  isReliefClipAllEnabled,
   isReliefWindowLaneEnabled,
   reliefEventFloor,
   selectReliefIds,
@@ -345,6 +346,7 @@ function maybeReliefClip(
     profile,
     windowLaneEnabled: isReliefWindowLaneEnabled(),
     triggerCap: toolUseContext?.agentId ? subagentReliefTriggerCap() : undefined,
+    windowClipAll: isReliefClipAllEnabled(),
   })
   if (decision.kind === 'none') return false
 
@@ -374,12 +376,15 @@ function maybeReliefClip(
     !holdsClippedResult(view)
       ? thinkingTokensAfter(view, firstCandidate.toolUseId)
       : 0
+  // Clip-all: the rewrite starts at the oldest clipped block whatever is
+  // selected, so every other old result is free to stub in the same event.
+  const ask = decision.selectAll ? Infinity : decision.tokensToFree
   const { ids, savings, selected } = selectReliefIds(
     scale === 1
       ? candidates
       : candidates.map(c => ({ ...c, savings: c.savings * scale })),
     // At least the first candidate: its clip is what drops the thinking.
-    Math.max(1, decision.tokensToFree - thinkingDropped),
+    Math.max(1, ask - thinkingDropped),
   )
   const freed = savings + thinkingDropped
 
