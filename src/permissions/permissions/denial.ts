@@ -1,5 +1,6 @@
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
+import type { YoloClassifierResult } from 'src/shared/types/permissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { AbortError } from 'src/shared/errors.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
@@ -8,6 +9,45 @@ import {
   type DenialTrackingState,
   shouldFallbackToPrompting,
 } from 'src/permissions/denialTracking.js'
+
+/** Why a block falls back to asking the user, and whether headless gives up. */
+type ClassifierFallback = { cause: string; abortsHeadless: boolean }
+
+/**
+ * A blocking classifier result that is not a verdict on the action, so auto
+ * mode asks the user instead of denying; null for a real block.
+ *
+ * - Too long a transcript, or a deterministic 4xx (malformed request, bad
+ *   header, auth failure): permanent, so headless — with no one to ask —
+ *   aborts rather than deny-retry-deny without ever reaching the denial limit.
+ * - A refusal: the API declined the classifier request, it did not block the
+ *   action. Denying it read as "blocked for safety" and sent the model
+ *   hunting for a workaround, 32 times in the 2026-10-08..15 census, in runs,
+ *   since the next action carries the same transcript. Headless keeps the
+ *   ordinary denial, which counts toward the denial limit.
+ * - A timeout: the wait already happened, and denying with retry guidance
+ *   would spend it again. Transient, so headless denies with that guidance.
+ */
+export function classifierFallback(
+  result: Pick<
+    YoloClassifierResult,
+    'transcriptTooLong' | 'deterministic' | 'refused' | 'timedOut'
+  >,
+): ClassifierFallback | null {
+  if (result.transcriptTooLong) {
+    return { cause: 'transcript exceeded context window', abortsHeadless: true }
+  }
+  if (result.deterministic) {
+    return { cause: 'request failed with a deterministic error', abortsHeadless: true }
+  }
+  if (result.refused) {
+    return { cause: 'declined to assess this transcript', abortsHeadless: false }
+  }
+  if (result.timedOut) {
+    return { cause: 'exceeded its time budget', abortsHeadless: false }
+  }
+  return null
+}
 
 /**
  * Persist denial tracking state. For async subagents with localDenialTracking,

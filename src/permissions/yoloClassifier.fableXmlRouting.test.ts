@@ -11,6 +11,8 @@ import { enableConfigs } from 'src/platform/config/config.js'
 
 let mainLoopModel = 'claude-fable-5'
 let capturedOpts: Array<Record<string, unknown>> = []
+// Answers handed out in order; once empty, every call gets the stage-1 allow.
+let responses: Array<Record<string, unknown>> = []
 
 const actualModel = await import('src/providers/model/model.js')
 mock.module('src/providers/model/model.js', () => ({
@@ -32,11 +34,13 @@ mock.module('src/agent/sideQuery.js', () => ({
     // XML stage-1 allow verdict; the tool_use path treats this text-only
     // response as "no tool use block" and blocks, which the control test
     // doesn't assert on — it only inspects the captured request.
-    return Promise.resolve({
-      id: 'msg_test',
-      content: [{ type: 'text', text: '<block>no</block>' }],
-      usage: { input_tokens: 1, output_tokens: 1 },
-    })
+    return Promise.resolve(
+      responses.shift() ?? {
+        id: 'msg_test',
+        content: [{ type: 'text', text: '<block>no</block>' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      },
+    )
   },
 }))
 
@@ -102,6 +106,7 @@ afterAll(() => {
 
 beforeEach(() => {
   capturedOpts = []
+  responses = []
 })
 
 describe('fable-class XML classifier routing', () => {
@@ -149,5 +154,99 @@ describe('fable-class XML classifier routing', () => {
     expect(opts.tool_choice).toBeUndefined()
     expect(opts.tools).toBeUndefined()
     expect(result.shouldBlock).toBe(false)
+  })
+})
+
+// The API's own safety stop on the classifier request: no text, 0 tokens.
+const REFUSAL = {
+  id: 'msg_refused',
+  content: [],
+  stop_reason: 'refusal',
+  usage: { input_tokens: 1, output_tokens: 0 },
+}
+
+describe('a classifier request the API declines', () => {
+  test('declined at stage 1: no stage 2, flagged refused', async () => {
+    mainLoopModel = 'claude-fable-5'
+    responses = [REFUSAL]
+    const result = await classify()
+
+    expect(capturedOpts.length).toBe(1)
+    expect(result.shouldBlock).toBe(true)
+    expect(result.refused).toBe(true)
+    expect(result.reason).toContain('declined')
+  })
+
+  test('declined at stage 2: not retried, flagged refused', async () => {
+    mainLoopModel = 'claude-fable-5'
+    responses = [
+      {
+        id: 'msg_s1',
+        content: [{ type: 'text', text: '<block>yes' }],
+        stop_reason: 'stop_sequence',
+        usage: { input_tokens: 1, output_tokens: 3 },
+      },
+      REFUSAL,
+    ]
+    const result = await classify()
+
+    expect(capturedOpts.length).toBe(2)
+    expect(result.refused).toBe(true)
+    expect(result.stage).toBe('thinking')
+    // Headless shows the model this reason: it must not read as a block.
+    expect(result.reason).toBe(
+      'Classifier declined to assess this transcript (stop_reason=refusal, 0 output tokens)',
+    )
+  })
+
+  test('a stage-1 verdict that ends in a refusal still escalates', async () => {
+    // Only a stage 1 with no verdict at all is skipped past.
+    mainLoopModel = 'claude-fable-5'
+    responses = [
+      {
+        id: 'msg_s1',
+        content: [{ type: 'text', text: '<block>yes' }],
+        stop_reason: 'refusal',
+        usage: { input_tokens: 1, output_tokens: 3 },
+      },
+    ]
+    const result = await classify()
+
+    expect(capturedOpts.length).toBe(2)
+    expect(result.shouldBlock).toBe(false)
+    expect(result.refused).toBeUndefined()
+  })
+
+  test('the tool_use classifier flags it too', async () => {
+    mainLoopModel = 'claude-sonnet-4-6'
+    responses = [REFUSAL]
+    const result = await classify()
+
+    expect(result.shouldBlock).toBe(true)
+    expect(result.refused).toBe(true)
+  })
+
+  test('a stage-1 block is still escalated, and its verdict stands', async () => {
+    // Control: only a refusal skips stage 2.
+    mainLoopModel = 'claude-fable-5'
+    responses = [
+      {
+        id: 'msg_s1',
+        content: [{ type: 'text', text: '<block>yes' }],
+        stop_reason: 'stop_sequence',
+        usage: { input_tokens: 1, output_tokens: 3 },
+      },
+      {
+        id: 'msg_s2',
+        content: [{ type: 'text', text: '<thinking>ok</thinking><block>no</block>' }],
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 1, output_tokens: 9 },
+      },
+    ]
+    const result = await classify()
+
+    expect(capturedOpts.length).toBe(2)
+    expect(result.shouldBlock).toBe(false)
+    expect(result.refused).toBeUndefined()
   })
 })

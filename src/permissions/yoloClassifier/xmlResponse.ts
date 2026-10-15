@@ -77,7 +77,21 @@ export function parseXmlReason(text: string): string | null {
  */
 export type Stage2Verdict =
   | { kind: 'verdict'; block: boolean }
+  | { kind: 'refused'; detail: string }
   | { kind: 'unparseable'; retry: boolean; detail: string }
+
+/**
+ * The API's own safety stop (`stop_reason: "refusal"`): it declined the
+ * request before writing anything, so there is no verdict to parse. It is a
+ * property of the transcript the classifier was shown, not of the action —
+ * all 32 "unparseable" denials of the 2026-10-08..15 corpus were this, with 0
+ * output tokens, and they came in runs within a session (12 in one) because
+ * every later action carried the same transcript. A bigger budget changes
+ * nothing, so it is never retried.
+ */
+export function isRefusal(stopReason: string | null | undefined): boolean {
+  return stopReason === 'refusal'
+}
 
 export function stage2Verdict(
   text: string,
@@ -86,6 +100,9 @@ export function stage2Verdict(
 ): Stage2Verdict {
   const block = parseXmlBlock(text)
   if (block !== null) return { kind: 'verdict', block }
+  if (isRefusal(stopReason)) {
+    return { kind: 'refused', detail: `stop_reason=refusal, ${outputTokens} output tokens` }
+  }
   const truncated = stopReason === 'max_tokens'
   const empty = text.trim() === ''
   const why = empty ? 'empty response' : 'no <block> tag'

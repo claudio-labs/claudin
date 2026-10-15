@@ -45,6 +45,7 @@ import {
   combineUsage,
   extractRequestId,
   extractUsage,
+  isRefusal,
   parseXmlBlock,
   parseXmlReason,
   parseXmlThinking,
@@ -198,10 +199,29 @@ async function classifyYoloActionXml(
         stage1RequestId,
       }
     }
+    // Declined outright: stage 2 shows the same transcript, so it would only
+    // be declined again — at the price of two more calls (stage 2 and its
+    // retry), which is what every refusal used to cost.
+    if (stage1Block === null && isRefusal(stage1Raw.stop_reason)) {
+      return {
+        shouldBlock: true,
+        refused: true,
+        reason: `Classifier declined to assess this transcript (stop_reason=refusal, ${stage1Usage.outputTokens} output tokens)`,
+        model,
+        usage: stage1Usage,
+        durationMs: stage1DurationMs,
+        promptLengths,
+        stage: 'fast',
+        stage1Usage,
+        stage1DurationMs,
+        stage1RequestId,
+      }
+    }
 
     // Stage 2: thinking (suffix asks for chain-of-thought). Run at most twice:
     // a response that ran out of budget before `<block>` gets one more call
-    // with the budget doubled (stage2Verdict); anything else is final.
+    // with the budget doubled (stage2Verdict); anything else — a refusal
+    // included — is final.
     const stage2Content = [
       ...wrappedContent,
       { type: 'text' as const, text: XML_S2_SUFFIX },
@@ -249,17 +269,21 @@ async function classifyYoloActionXml(
         `Auto mode classifier (XML) stage 2 attempt ${attempt} unparseable (${verdict.detail}): ${stage2Text.slice(0, 500)}`,
         { level: 'warn' },
       )
-      if (!verdict.retry) break
+      if (verdict.kind === 'refused' || !verdict.retry) break
     }
     const totalDurationMs = (stage1DurationMs ?? 0) + stage2DurationMs
     const totalUsage = stage1Usage
       ? combineUsage(stage1Usage, stage2Usage!)
       : stage2Usage!
 
-    if (verdict.kind === 'unparseable') {
+    if (verdict.kind !== 'verdict') {
       return {
         shouldBlock: true,
-        reason: `Classifier stage 2 unparseable (${verdict.detail}) - blocking for safety`,
+        ...(verdict.kind === 'refused' && { refused: true }),
+        reason:
+          verdict.kind === 'refused'
+            ? `Classifier declined to assess this transcript (${verdict.detail})`
+            : `Classifier stage 2 unparseable (${verdict.detail}) - blocking for safety`,
         model,
         usage: totalUsage,
         durationMs: totalDurationMs,
@@ -633,6 +657,18 @@ async function classifyYoloActionUnbounded(
       logForDebugging('Auto mode classifier: No tool use block found', {
         level: 'warn',
       })
+      if (isRefusal(result.stop_reason)) {
+        return {
+          shouldBlock: true,
+          refused: true,
+          reason: `Classifier declined to assess this transcript (stop_reason=refusal, ${usage.outputTokens} output tokens)`,
+          model,
+          usage,
+          durationMs,
+          promptLengths,
+          stage1RequestId,
+        }
+      }
       return {
         shouldBlock: true,
         reason: 'Classifier returned no tool use block - blocking for safety',
