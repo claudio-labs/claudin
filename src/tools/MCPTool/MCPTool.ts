@@ -1,4 +1,3 @@
-import { Ajv } from 'ajv'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef, type ValidationResult } from 'src/tools/Tool.js'
@@ -6,6 +5,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { PermissionResult } from 'src/shared/types/permissions.js'
 import { isOutputLineTruncated } from 'src/terminal/terminal.js'
 import { logError } from 'src/shared/log.js'
+import { type AjvClass, ajvClassForSchema } from 'src/tools/shared/jsonSchemaDraft.js'
 import { DESCRIPTION, PROMPT } from 'src/tools/MCPTool/prompt.js'
 import { buildMcpValidationError } from 'src/tools/MCPTool/validationMessage.js'
 import {
@@ -43,7 +43,28 @@ export type { MCPProgress } from 'src/shared/types/tools.js'
 
 // allErrors: report every violation at once (not just the first) so the model
 // can fix all bad/missing args in a single retry instead of one per round-trip.
-const ajv = new Ajv({ strict: false, allErrors: true })
+const AJV_OPTIONS = { strict: false, allErrors: true }
+const validators = new Map<AjvClass, InstanceType<AjvClass>>()
+
+/** One validator per draft (jsonSchemaDraft.ts), made on first use. */
+function validatorFor(schema: unknown): InstanceType<AjvClass> {
+  const Validator = ajvClassForSchema(schema)
+  let validator = validators.get(Validator)
+  if (!validator) {
+    validator = new Validator(AJV_OPTIONS)
+    validators.set(Validator, validator)
+  }
+  return validator
+}
+
+/**
+ * Schemas that did not compile. Ajv caches a schema before it checks it
+ * against its meta-schema, so only the FIRST compile throws and a second one
+ * would quietly validate against a schema Ajv could not read — passing the
+ * first call and refusing the next. Remembering the failure keeps every call
+ * on the same footing.
+ */
+const uncompilable = new WeakSet<object>()
 
 export const MCPTool = buildTool({
   isMcp: true,
@@ -81,35 +102,38 @@ export const MCPTool = buildTool({
     }
   },
   async validateInput(input, context): Promise<ValidationResult> {
-    if (this.inputJSONSchema) {
+    if (this.inputJSONSchema && !uncompilable.has(this.inputJSONSchema)) {
+      const validator = validatorFor(this.inputJSONSchema)
+      let validate: ReturnType<typeof validator.compile>
       try {
-        const validate = ajv.compile(this.inputJSONSchema)
-        if (!validate(input)) {
-          const errorsText = ajv.errorsText(validate.errors)
-          let message = errorsText
-          try {
-            // Append a one-line summary of the accepted arguments so the model
-            // stops re-guessing field names/shape across retries.
-            message = buildMcpValidationError(this.inputJSONSchema, errorsText)
-          } catch (e) {
-            // Fallback pattern: never block the call on a formatting failure,
-            // but leave a signal if the hint builder ever starts throwing.
-            logError(
-              new Error('MCP validation-hint formatting failed', { cause: e }),
-            )
-            message = errorsText
-          }
-          return {
-            result: false,
-            message,
-            errorCode: 400,
-          }
-        }
+        validate = validator.compile(this.inputJSONSchema)
       } catch (error) {
+        // A schema we cannot read is no reason to refuse the call: the server
+        // validates its own input, and refusing here made the whole server
+        // unusable. Leave a signal and let the call through.
+        uncompilable.add(this.inputJSONSchema)
+        logError(new Error(`MCP input schema did not compile: ${error}`))
+        return { result: true }
+      }
+      if (!validate(input)) {
+        const errorsText = validator.errorsText(validate.errors)
+        let message = errorsText
+        try {
+          // Append a one-line summary of the accepted arguments so the model
+          // stops re-guessing field names/shape across retries.
+          message = buildMcpValidationError(this.inputJSONSchema, errorsText)
+        } catch (e) {
+          // Fallback pattern: never block the call on a formatting failure,
+          // but leave a signal if the hint builder ever starts throwing.
+          logError(
+            new Error('MCP validation-hint formatting failed', { cause: e }),
+          )
+          message = errorsText
+        }
         return {
           result: false,
-          message: `Failed to compile JSON schema for validation: ${error}`,
-          errorCode: 500,
+          message,
+          errorCode: 400,
         }
       }
     }

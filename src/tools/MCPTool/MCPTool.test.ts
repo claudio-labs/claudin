@@ -130,6 +130,56 @@ describe('MCPTool (base scaffold)', () => {
     expect(withPlaceholder?.result).toBe(false)
   })
 
+  // What @playwright/mcp announces: every tool's inputSchema names 2020-12.
+  for (const draft of ['2020-12', '2019-09']) {
+    test(`a schema declaring draft ${draft} validates instead of refusing the call`, async () => {
+      const toolWithSchema = {
+        ...MCPTool,
+        inputJSONSchema: {
+          $schema: `https://json-schema.org/draft/${draft}/schema`,
+          type: 'object',
+          required: ['url'],
+          properties: { url: { type: 'string' } },
+          additionalProperties: false,
+        },
+      }
+      // The bad call goes first, on purpose: Ajv caches a schema before it
+      // checks the meta-schema, so with the wrong validator only the FIRST
+      // compile of a schema object throws, and a second call would pass.
+      const bad = await toolWithSchema.validateInput?.(
+        { query: 'x' } as never,
+        makeCtx(),
+      )
+      if (bad?.result !== false) throw new Error('expected validation failure')
+      expect(bad.message).toContain("must have required property 'url'")
+
+      const ok = await toolWithSchema.validateInput?.(
+        { url: 'http://10.0.1.1:8080/' } as never,
+        makeCtx(),
+      )
+      expect(ok?.result).toBe(true)
+    })
+  }
+
+  test('a schema no validator can compile lets every call through to the server', async () => {
+    // draft-04 has no meta-schema in Ajv 8; the server still validates.
+    const toolWithSchema = {
+      ...MCPTool,
+      inputJSONSchema: {
+        $schema: 'http://json-schema.org/draft-04/schema#',
+        type: 'object',
+        required: ['url'],
+        properties: { url: { type: 'string' } },
+      },
+    }
+    // Twice: Ajv caches the schema before its meta-schema check, so a second
+    // compile would succeed and refuse what the first let through.
+    for (const _ of [1, 2]) {
+      const result = await toolWithSchema.validateInput?.({} as never, makeCtx())
+      expect(result?.result).toBe(true)
+    }
+  })
+
   test('isResultTruncated returns false for short string and false for short blocks', () => {
     expect(MCPTool.isResultTruncated?.('short')).toBe(false)
     expect(
