@@ -46,7 +46,7 @@ src/
 ├── providers/ (296)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (62)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   ├── shims/ (69)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
 │   │                              Completions renderer is openaiShim/ (~4.9k lines), which also
 │   │                              holds the ten end-to-end suites that drive the barrel with a
 │   │                              stubbed fetch over __testutils__/shimHarness.ts. Also
