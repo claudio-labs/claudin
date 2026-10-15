@@ -38,6 +38,23 @@ const GIT_CHERRY_PICK_RE = gitCmdRe('cherry-pick')
 const GIT_MERGE_RE = gitCmdRe('merge', '(?!-)')
 const GIT_REBASE_RE = gitCmdRe('rebase')
 
+/**
+ * What the Bash output filter's `git-commit` spec leaves of a successful
+ * commit: `[main 1a2b3c4] subject` becomes `✓ committed 1a2b3c4`. Bash and the
+ * Git tool both keep the filtered text in their results, so for a bare
+ * `git commit` this is the only form the collapsed badge gets to read. The
+ * filter builds its replacement from this constant so the two cannot drift.
+ */
+export const FILTERED_COMMIT_MARK = '✓ committed'
+
+// git commit output: [branch abc1234] message
+// or for root commit: [branch (root-commit) abc1234] message
+const GIT_COMMIT_HEADER_RE = /\[[\w./-]+(?: \(root-commit\))? ([0-9a-f]+)\]/
+const FILTERED_COMMIT_RE = new RegExp(
+  `^${FILTERED_COMMIT_MARK} ([0-9a-f]{7,40})$`,
+  'm',
+)
+
 export type CommitKind = 'committed' | 'amended' | 'cherry-picked'
 export type BranchAction = 'merged' | 'rebased'
 export type PrAction =
@@ -83,9 +100,8 @@ function findPrInStdout(stdout: string): ReturnType<typeof parsePrUrl> {
 
 // Exported for testing purposes
 export function parseGitCommitId(stdout: string): string | undefined {
-  // git commit output: [branch abc1234] message
-  // or for root commit: [branch (root-commit) abc1234] message
-  const match = stdout.match(/\[[\w./-]+(?: \(root-commit\))? ([0-9a-f]+)\]/)
+  const match =
+    stdout.match(GIT_COMMIT_HEADER_RE) ?? stdout.match(FILTERED_COMMIT_RE)
   return match?.[1]
 }
 

@@ -1,0 +1,248 @@
+{
+  "test": [
+    "src/tools/shared/gitOperationTracking.test.ts",
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/tools/GitTool/families.test.ts"
+  ],
+  "source": "src/tools/shared/gitOperationTracking.ts",
+  "probes": [
+    {
+      "name": "global options between git and the subcommand",
+      "find": "`\\\\bgit(?:\\\\s+-[cC]\\\\s+\\\\S+|\\\\s+--\\\\S+=\\\\S+)*\\\\s+${subcmd}\\\\b${suffix}`",
+      "replace": "`\\\\bgit\\\\s+${subcmd}\\\\b${suffix}`"
+    },
+    {
+      "name": "merge-base is not a merge",
+      "find": "const GIT_MERGE_RE = gitCmdRe('merge', '(?!-)')",
+      "replace": "const GIT_MERGE_RE = gitCmdRe('merge')"
+    },
+    {
+      "name": "--amend reads as amended",
+      "find": "            ? 'amended'",
+      "replace": "            ? 'committed'"
+    },
+    {
+      "name": "cherry-pick reads as cherry-picked",
+      "find": "          ? 'cherry-picked'",
+      "replace": "          ? 'committed'"
+    },
+    {
+      "name": "root-commit header",
+      "find": "(?: \\(root-commit\\))?",
+      "replace": ""
+    },
+    {
+      "name": "push ref line tolerates the status flag",
+      "find": "/^\\s*[+\\-*!= ]?\\s*(?:\\[new branch\\]|\\S+\\.\\.+\\S+)\\s+\\S+\\s*->\\s*(\\S+)/m",
+      "replace": "/^\\s*(?:\\S+\\.\\.\\S+)\\s+\\S+\\s*->\\s*(\\S+)/m"
+    },
+    {
+      "name": "merge needs a success line",
+      "find": "/(Fast-forward|Merge made by)/.test(output)",
+      "replace": "true"
+    },
+    {
+      "name": "rebase needs a success line",
+      "find": "/Successfully rebased/.test(output)",
+      "replace": "true"
+    },
+    {
+      "name": "the ref scan skips flags",
+      "find": "    if (t.startsWith('-')) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "the ref scan stops at a shell operator",
+      "find": "    if (/^[&|;><]/.test(t)) break\n",
+      "replace": ""
+    },
+    {
+      "name": "a PR number from text when there is no URL",
+      "find": "      if (num) result.pr = { number: num, action: prAction }",
+      "replace": ""
+    },
+    {
+      "name": "gh pr edit action",
+      "find": "{ re: /\\bgh\\s+pr\\s+edit\\b/, action: 'edited', op: 'pr_edit' },",
+      "replace": ""
+    },
+    {
+      "name": "gh pr ready action",
+      "find": "{ re: /\\bgh\\s+pr\\s+ready\\b/, action: 'ready', op: 'pr_ready' },",
+      "replace": ""
+    },
+    {
+      "name": "the filtered commit line is read",
+      "find": "stdout.match(GIT_COMMIT_HEADER_RE) ?? stdout.match(FILTERED_COMMIT_RE)",
+      "replace": "stdout.match(GIT_COMMIT_HEADER_RE)"
+    },
+    {
+      "name": "the filtered commit line is anchored",
+      "find": "`^${FILTERED_COMMIT_MARK} ([0-9a-f]{7,40})$`",
+      "replace": "`${FILTERED_COMMIT_MARK} ([0-9a-f]{7,40})`"
+    },
+    {
+      "name": "the filter speaks the parser's form",
+      "source": "src/tools/shared/outputFilter/Bash/filters/git.ts",
+      "find": "replacement: `${FILTERED_COMMIT_MARK} $2`,",
+      "replace": "replacement: '✓ commit $2',"
+    },
+    {
+      "name": "Bash joins the group under fullscreen",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "(isFullscreenEnvEnabled() ? toolName === BASH_TOOL_NAME : false),",
+      "replace": "false,"
+    },
+    {
+      "name": "the git-op scan reads stderr too",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "const combined = (out.stdout ?? '') + '\\n' + (out.stderr ?? '')",
+      "replace": "const combined = out.stdout ?? ''"
+    },
+    {
+      "name": "a commit lands in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (commit) group.commits?.push(commit)\n",
+      "replace": ""
+    },
+    {
+      "name": "a merge lands in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (branch) group.branches?.push(branch)\n",
+      "replace": ""
+    },
+    {
+      "name": "a PR lands in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (pr) group.prs?.push(pr)\n",
+      "replace": ""
+    },
+    {
+      "name": "a call with a git op is absorbed, every command of it",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "group.gitOpBashCount = (group.gitOpBashCount ?? 0) + call.commands.length",
+      "replace": "group.gitOpBashCount = 0"
+    },
+    {
+      "name": "a # comment is the shell hint",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "hint: ([command]) => extractBashCommentLabel(command!) ?? commandAsHint(command!),",
+      "replace": "hint: ([command]) => commandAsHint(command!),"
+    },
+    {
+      "name": "Git joins the group under fullscreen",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "if (isFullscreenEnvEnabled() && toolName === GIT_TOOL_NAME) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the Git lane is registered",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "  [GIT_TOOL_NAME, GIT_LANE],\n",
+      "replace": ""
+    },
+    {
+      "name": "a Git batch counts once per command",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "const count = countToolUses(msg) * Math.max(commands.length, 1)",
+      "replace": "const count = countToolUses(msg)"
+    },
+    {
+      "name": "a Git outcome is read against its own output",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "outcomes.map(o => ({ command: o.command, output: o.output }))",
+      "replace": "outcomes.map(o => ({ command: o.command, output: outcomes.map(x => x.output).join('\\n') }))"
+    },
+    {
+      "name": "the Git hint is the batch on one line",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "commands.map(c => oneLineCommand(c)).join(' · ')",
+      "replace": "commands.join(' · ')"
+    },
+    {
+      "name": "a failed Git batch breaks out",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "breaksOutOnError: true,",
+      "replace": "breaksOutOnError: false,"
+    },
+    {
+      "name": "a failed Bash command stays in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "  breaksOutOnError: false,\n}",
+      "replace": "  breaksOutOnError: true,\n}"
+    },
+    {
+      "name": "the breakout asks the lane",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "(info?.isShell && SHELL_LANES.get(info.name)?.breaksOutOnError)",
+      "replace": "info?.isShell"
+    },
+    {
+      "name": "git-op commands leave the shell count",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "Math.max(0, maxBashCountRef.current - gitOpBashCount)",
+      "replace": "maxBashCountRef.current"
+    },
+    {
+      "name": "a group of only git ops still renders",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "bashCount > 0 || gitOpBashCount > 0 ||",
+      "replace": "bashCount > 0 ||"
+    },
+    {
+      "name": "commit parts are fullscreen-only",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "if (isFullscreenEnvEnabled() && message.commits?.length) {",
+      "replace": "if (message.commits?.length) {"
+    },
+    {
+      "name": "amend verb",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "amended: 'amended commit',",
+      "replace": "amended: 'amended',"
+    },
+    {
+      "name": "two pushes to one branch name it once",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const branches = uniq(message.pushes.map(p => p.branch));",
+      "replace": "const branches = message.pushes.map(p => p.branch);"
+    },
+    {
+      "name": "rebase verb",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "rebased: 'rebased onto'",
+      "replace": "rebased: 'rebased'"
+    },
+    {
+      "name": "ready verb",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "ready: 'marked ready'",
+      "replace": "ready: 'ready'"
+    },
+    {
+      "name": "the header clock takes the slowest command",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "if (slowestShellSeconds === undefined || shell.seconds > slowestShellSeconds) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "a Git tick drives the clock",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "} : data?.type === 'git_progress' ? {",
+      "replace": "} : false ? {"
+    },
+    {
+      "name": "a Git tick is milliseconds",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "seconds: Math.floor(data.elapsedMs / 1000),",
+      "replace": "seconds: data.elapsedMs,"
+    },
+    {
+      "name": "only a running command has a clock",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "      if (!inProgressToolUseIDs.has(id_1)) continue;\n",
+      "replace": ""
+    }
+  ]
+}

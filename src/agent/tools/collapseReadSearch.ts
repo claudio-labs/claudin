@@ -13,6 +13,8 @@ import {
   recordedReadTargets,
 } from 'src/tools/FileReadTool/readMulti.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js'
 import {
@@ -72,8 +74,8 @@ export type SearchOrReadResult = {
   isAbsorbedSilently: boolean
   /** MCP server name when this is an MCP tool */
   mcpServerName?: string
-  /** Bash command that is NOT a search/read (under fullscreen mode) */
-  isBash?: boolean
+  /** A shell-lane call (see SHELL_LANES) that is NOT a search/read (under fullscreen mode) */
+  isShell?: boolean
   /** True for Write/Edit/Patch/Rename outside the memory dir */
   isWrite: boolean
 }
@@ -324,6 +326,73 @@ function capHint(hint: string): string {
 }
 
 /**
+ * A tool whose calls join the group as shell commands (fullscreen only): the
+ * commands a call runs, what its ⎿ hint says, and which command produced which
+ * output, so the result can be scanned for commits, pushes and PRs. Looked up
+ * by tool name, the way writeToolNames picks how to read a write result.
+ */
+type ShellLane = {
+  commands(input: unknown): string[]
+  /** Only called with at least one command. */
+  hint(commands: string[]): string
+  outputs(commands: string[], result: unknown): { command: string; output: string }[]
+  /**
+   * Whether a call whose result errored leaves the group, as a failed write or
+   * MCP call does, instead of folding its failure into the shell count.
+   */
+  breaksOutOnError: boolean
+}
+
+const BASH_LANE: ShellLane = {
+  commands(input) {
+    const command = (input as { command?: unknown } | undefined)?.command
+    return typeof command === 'string' && command !== '' ? [command] : []
+  },
+  // Prefer the stripped `# comment` if present (it's what Claude wrote for the
+  // human — same trigger as the comment-as-label tool-use render).
+  hint: ([command]) => extractBashCommentLabel(command!) ?? commandAsHint(command!),
+  outputs([command], result) {
+    const out = result as { stdout?: string; stderr?: string } | undefined
+    if (!out?.stdout && !out?.stderr) return []
+    // git push writes the ref update to stderr — scan both streams.
+    const combined = (out.stdout ?? '') + '\n' + (out.stderr ?? '')
+    return [{ command: command!, output: combined }]
+  },
+  breaksOutOnError: false,
+}
+
+/**
+ * The Git tool runs a list of commands and keeps each one's output apart, so a
+ * batch counts once per command and every outcome is scanned against its own.
+ * A failed batch leaves the group: its row is the only place that shows which
+ * command failed and which never ran.
+ */
+const GIT_LANE: ShellLane = {
+  commands(input) {
+    const commands = (input as { commands?: unknown } | undefined)?.commands
+    return Array.isArray(commands)
+      ? commands.filter((c): c is string => typeof c === 'string' && c !== '')
+      : []
+  },
+  // The list the tool's verbose header shows, behind the shell's `$`.
+  hint: commands => commandAsHint(commands.map(c => oneLineCommand(c)).join(' · ')),
+  outputs(_commands, result) {
+    const outcomes = (
+      result as { outcomes?: { command: string; output: string }[] } | undefined
+    )?.outcomes
+    return Array.isArray(outcomes)
+      ? outcomes.map(o => ({ command: o.command, output: o.output }))
+      : []
+  },
+  breaksOutOnError: true,
+}
+
+const SHELL_LANES = new Map<string, ShellLane>([
+  [BASH_TOOL_NAME, BASH_LANE],
+  [GIT_TOOL_NAME, GIT_LANE],
+])
+
+/**
  * Checks if a tool is a search/read operation using the tool's isSearchOrReadCommand method.
  * Also treats Write/Edit of memory files as collapsible.
  * Returns detailed information about whether it's a search or read operation.
@@ -376,6 +445,21 @@ export function getToolSearchOrReadInfo(
     }
   }
 
+  // Git has no isSearchOrReadCommand of its own: under fullscreen every call
+  // joins the shell lane, as a Bash command that is not search/read does.
+  if (isFullscreenEnvEnabled() && toolName === GIT_TOOL_NAME) {
+    return {
+      isCollapsible: true,
+      isSearch: false,
+      isRead: false,
+      isList: false,
+      isMemoryWrite: false,
+      isAbsorbedSilently: false,
+      isWrite: false,
+      isShell: true,
+    }
+  }
+
   // Fallback to the primitive list: hasEmbeddedSearchTools() strips Glob/Grep
   // from the execution tools list, but their messages still render. Without
   // the fallback they'd return isCollapsible: false and vanish from the
@@ -417,7 +501,7 @@ export function getToolSearchOrReadInfo(
     isAbsorbedSilently: false,
     isWrite: false,
     ...(tool.isMcp && { mcpServerName: tool.mcpInfo?.serverName }),
-    isBash: isFullscreenEnvEnabled()
+    isShell: isFullscreenEnvEnabled()
       ? !isCollapsible && toolName === BASH_TOOL_NAME
       : undefined,
   }
@@ -437,7 +521,7 @@ export function getSearchOrReadFromContent(
   isMemoryWrite: boolean
   isAbsorbedSilently: boolean
   mcpServerName?: string
-  isBash?: boolean
+  isShell?: boolean
   isWrite: boolean
 } | null {
   if (content?.type === 'tool_use' && content.name) {
@@ -450,7 +534,7 @@ export function getSearchOrReadFromContent(
         isMemoryWrite: info.isMemoryWrite,
         isAbsorbedSilently: info.isAbsorbedSilently,
         mcpServerName: info.mcpServerName,
-        isBash: info.isBash,
+        isShell: info.isShell,
         isWrite: info.isWrite,
       }
     }
@@ -485,7 +569,7 @@ function getCollapsibleToolInfo(
   isMemoryWrite: boolean
   isAbsorbedSilently: boolean
   mcpServerName?: string
-  isBash?: boolean
+  isShell?: boolean
   isWrite: boolean
 } | null {
   if (msg.type === 'assistant') {
@@ -687,9 +771,9 @@ function collectErroredToolUseIds(messages: RenderableMessage[]): Set<string> {
 }
 
 /**
- * A write or MCP call whose result errored — breaks the group instead of
- * joining it. A finished badge has no error marker, so inside the group the
- * failure would be invisible.
+ * A write, an MCP call or a Git batch (its lane's breaksOutOnError) whose
+ * result errored — breaks the group instead of joining it. A finished badge has
+ * no error marker, so inside the group the failure would be invisible.
  */
 function isErroredBreakoutToolUse(
   msg: RenderableMessage,
@@ -700,7 +784,11 @@ function isErroredBreakoutToolUse(
     return false
   }
   const info = getCollapsibleToolInfo(msg, tools)
-  if (!info?.isWrite && !info?.mcpServerName) {
+  const breaksOut =
+    info?.isWrite ||
+    info?.mcpServerName ||
+    (info?.isShell && SHELL_LANES.get(info.name)?.breaksOutOnError)
+  if (!breaksOut) {
     return false
   }
   return getToolUseIdsFromMessage(msg).some(id => erroredToolUseIds.has(id))
@@ -978,7 +1066,7 @@ function applyWriteResult(
 
 /**
  * Apply every write result carried by a tool_result message to the group.
- * Mirrors scanBashResultForGitOps: the id → tool name map is what tells us how
+ * Mirrors scanShellResultForGitOps: the id → tool name map is what tells us how
  * to read `toolUseResult`.
  */
 function applyWriteResultsFromMessage(
@@ -996,32 +1084,32 @@ function applyWriteResultsFromMessage(
 }
 
 /**
- * Scan a bash tool result for commit SHAs and PR URLs and push them into the
+ * Scan a shell-lane result for commit SHAs and PR URLs and push them into the
  * group accumulator. Called only for results whose tool_use_id was recorded
- * in bashCommands (non-search/read bash).
+ * in shellCalls (non-search/read shell calls). A call that produced any of
+ * them is counted as a git op for every command it ran, so the badge's shell
+ * count does not say it twice.
  */
-function scanBashResultForGitOps(
+function scanShellResultForGitOps(
   msg: CollapsibleMessage,
   group: GroupAccumulator,
 ): void {
   if (msg.type !== 'user') return
-  const out = msg.toolUseResult as
-    | { stdout?: string; stderr?: string }
-    | undefined
-  if (!out?.stdout && !out?.stderr) return
-  // git push writes the ref update to stderr — scan both streams.
-  const combined = (out.stdout ?? '') + '\n' + (out.stderr ?? '')
   for (const c of msg.message.content) {
     if (c.type !== 'tool_result') continue
-    const command = group.bashCommands?.get(c.tool_use_id)
-    if (!command) continue
-    const { commit, push, branch, pr } = detectGitOperation(command, combined)
-    if (commit) group.commits?.push(commit)
-    if (push) group.pushes?.push(push)
-    if (branch) group.branches?.push(branch)
-    if (pr) group.prs?.push(pr)
-    if (commit || push || branch || pr) {
-      group.gitOpBashCount = (group.gitOpBashCount ?? 0) + 1
+    const call = group.shellCalls?.get(c.tool_use_id)
+    if (!call) continue
+    let hasGitOp = false
+    for (const { command, output } of call.lane.outputs(call.commands, msg.toolUseResult)) {
+      const { commit, push, branch, pr } = detectGitOperation(command, output)
+      if (commit) group.commits?.push(commit)
+      if (push) group.pushes?.push(push)
+      if (branch) group.branches?.push(branch)
+      if (pr) group.prs?.push(pr)
+      if (commit || push || branch || pr) hasGitOp = true
+    }
+    if (hasGitOp) {
+      group.gitOpBashCount = (group.gitOpBashCount ?? 0) + call.commands.length
     }
   }
 }
@@ -1050,17 +1138,17 @@ type GroupAccumulator = {
   // MCP tool calls (tracked separately so display says "Called slack" not "Read N files")
   mcpCallCount?: number
   mcpServerNames?: Set<string>
-  // Bash commands that aren't search/read (tracked separately for "Ran N bash commands")
+  // Shell commands that aren't search/read (tracked separately for "Ran N shell commands")
   bashCount?: number
   // Files written by Write/Edit/Patch/Rename, in first-touch order (Map
   // preserves insertion order, which is what the ⎿ list renders).
   writeFiles: Map<string, { kind: WriteKind; additions: number; deletions: number }>
   // Write tool_use_id → tool name, so the tool_result can be read with the
-  // right shape (mirrors bashCommands).
+  // right shape (mirrors shellCalls).
   writeToolNames: Map<string, string>
-  // Bash tool_use_id → command string, so tool results can be scanned for
-  // commit SHAs / PR URLs (surfaced as "committed abc123, created PR #42")
-  bashCommands?: Map<string, string>
+  // Shell tool_use_id → its lane and commands, so tool results can be scanned
+  // for commit SHAs / PR URLs (surfaced as "committed abc123, created PR #42")
+  shellCalls?: Map<string, { lane: ShellLane; commands: string[] }>
   commits?: { sha: string; kind: CommitKind }[]
   pushes?: { branch: string }[]
   branches?: { ref: string; action: BranchAction }[]
@@ -1094,7 +1182,7 @@ function createEmptyGroup(): GroupAccumulator {
   group.mcpServerNames = new Set()
   if (isFullscreenEnvEnabled()) {
     group.bashCount = 0
-    group.bashCommands = new Map()
+    group.shellCalls = new Map()
     group.commits = []
     group.pushes = []
     group.branches = []
@@ -1273,24 +1361,19 @@ export function collapseReadSearchGroups(
         if (mcpInfo) {
           setHint(currentGroup, capHint(mcpCallText(mcpInfo, toolInfo.input)))
         }
-      } else if (isFullscreenEnvEnabled() && toolInfo.isBash) {
-        // Non-search/read Bash command — counted separately so the summary
-        // says "Ran N bash commands" instead of breaking the group.
-        const count = countToolUses(msg)
+      } else if (isFullscreenEnvEnabled() && toolInfo.isShell) {
+        // Non-search/read shell call — counted separately so the summary
+        // says "Ran N shell commands" instead of breaking the group.
+        const lane = SHELL_LANES.get(toolInfo.name)!
+        const commands = lane.commands(toolInfo.input)
+        const count = countToolUses(msg) * Math.max(commands.length, 1)
         currentGroup.bashCount = (currentGroup.bashCount ?? 0) + count
-        const input = toolInfo.input as { command?: string } | undefined
-        if (input?.command) {
-          // Prefer the stripped `# comment` if present (it's what Claude wrote
-          // for the human — same trigger as the comment-as-label tool-use render).
-          setHint(
-            currentGroup,
-            extractBashCommentLabel(input.command) ??
-              commandAsHint(input.command),
-          )
-          // Remember tool_use_id → command so the result (arriving next) can
+        if (commands.length > 0) {
+          setHint(currentGroup, lane.hint(commands))
+          // Remember tool_use_id → commands so the result (arriving next) can
           // be scanned for commit SHA / PR URL.
           for (const id of getToolUseIdsFromMessage(msg)) {
-            currentGroup.bashCommands?.set(id, input.command)
+            currentGroup.shellCalls?.set(id, { lane, commands })
           }
         }
       } else if (toolInfo.isList) {
@@ -1348,9 +1431,9 @@ export function collapseReadSearchGroups(
       currentGroup.messages.push(msg)
     } else if (isCollapsibleToolResult(msg, currentGroup.toolUseIds)) {
       currentGroup.messages.push(msg)
-      // Scan bash results for commit SHAs / PR URLs to surface in the summary
-      if (isFullscreenEnvEnabled() && currentGroup.bashCommands?.size) {
-        scanBashResultForGitOps(msg, currentGroup)
+      // Scan shell results for commit SHAs / PR URLs to surface in the summary
+      if (isFullscreenEnvEnabled() && currentGroup.shellCalls?.size) {
+        scanShellResultForGitOps(msg, currentGroup)
       }
       if (currentGroup.writeToolNames.size > 0) {
         applyWriteResultsFromMessage(msg, currentGroup)

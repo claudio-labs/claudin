@@ -28,6 +28,7 @@ import {
 } from 'src/tools/GitTool/__fixtures__/repo.js'
 import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 import type { GitBatchResult } from 'src/tools/GitTool/types.js'
+import { detectGitOperation } from 'src/tools/shared/gitOperationTracking.js'
 
 /**
  * End-to-end, one family at a time: real temporary repositories, the real
@@ -609,5 +610,42 @@ describe('working directory', () => {
     expect(git(wt, ['log', '-1', '--pretty=%s']).trim()).toBe('in the worktree')
     expect(git(root, ['rev-parse', 'HEAD']).trim()).toBe(mainHeadBefore)
     expect(git(root, ['status', '--short']).trim()).toBe('')
+  })
+})
+
+/**
+ * The collapsed badge (`collapseReadSearch.ts`, Git's shell lane) reads each
+ * outcome's `output` — filtered, budgeted and delta'd, not the raw text the
+ * session↔PR tracker sees. These pin that what survives the pipe still names
+ * the commit and the pushed branch.
+ */
+describe('what the collapsed badge reads from an outcome', () => {
+  test('a commit still names its sha', async () => {
+    const root = repoWithCommits()
+    pinCommitIdentity(root)
+    writeRepoFile(root, 'src/app.ts', 'export const version = 600\n')
+
+    const ran = await runIn(root, ['git add src/app.ts', 'git commit -m "for the badge"'])
+    const commit = ran.result.outcomes[1]!
+    const head = git(root, ['rev-parse', 'HEAD']).trim()
+
+    expect(detectGitOperation(commit.command, commit.output).commit).toEqual({
+      sha: head.slice(0, 6),
+      kind: 'committed',
+    })
+  })
+
+  test('a push still names its branch', async () => {
+    const { path } = repoWithOrigin()
+    pinCommitIdentity(path)
+    writeRepoFile(path, 'src/app.ts', 'export const version = 700\n')
+    git(path, ['add', '-A'])
+    git(path, ['commit', '-q', '-m', 'push for the badge'])
+    const branch = git(path, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
+
+    const ran = await runIn(path, ['git push'])
+    const push = ran.result.outcomes[0]!
+
+    expect(detectGitOperation(push.command, push.output).push).toEqual({ branch })
   })
 })

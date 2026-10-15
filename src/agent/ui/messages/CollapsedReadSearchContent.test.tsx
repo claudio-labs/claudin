@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
@@ -608,5 +608,202 @@ describe('CollapsedReadSearchContent — MCP detail (ctrl+o)', () => {
   test('a claude.ai server drops its prefix, as the group header does', async () => {
     const out = await renderDetail({ serverName: 'claude.ai Slack', resolved: true })
     expect(out).toContain('Called Slack.memory_message_list(')
+  })
+})
+
+describe('CollapsedReadSearchContent — shell lane (fullscreen)', () => {
+  let savedNoFlicker: string | undefined
+
+  beforeAll(() => {
+    savedNoFlicker = process.env.CLAUDIN_NO_FLICKER
+    process.env.CLAUDIN_NO_FLICKER = '1'
+  })
+  afterAll(() => {
+    if (savedNoFlicker === undefined) delete process.env.CLAUDIN_NO_FLICKER
+    else process.env.CLAUDIN_NO_FLICKER = savedNoFlicker
+  })
+
+  test('git ops lead the line, and the commands behind them leave the shell count', async () => {
+    for (const columns of [80, 200]) {
+      const flat = flatten(
+        await render(
+          {
+            readCount: 1,
+            bashCount: 3,
+            gitOpBashCount: 1,
+            commits: [
+              { sha: '1a2b3c', kind: 'committed' },
+              { sha: '9f8e7d', kind: 'amended' },
+              { sha: '445566', kind: 'cherry-picked' },
+            ],
+            pushes: [{ branch: 'main' }, { branch: 'main' }],
+            branches: [
+              { ref: 'feat/x', action: 'merged' },
+              { ref: 'origin/main', action: 'rebased' },
+            ],
+            prs: [{ number: 42, action: 'created' }],
+          },
+          false,
+          columns,
+        ),
+      )
+      expectInOrder(flat, [
+        'Committed 1a2b3c',
+        ', amended commit 9f8e7d',
+        ', cherry-picked 445566',
+        // Two pushes to one branch name it once.
+        ', pushed to main, merged feat/x',
+        ', rebased onto origin/main',
+        ', created PR #42',
+        ', read 1 file',
+        ', ran 2 shell commands',
+      ])
+    }
+  })
+
+  test('a group that is nothing but a commit still renders', async () => {
+    const flat = flatten(
+      await render({ bashCount: 1, gitOpBashCount: 1, commits: [{ sha: '1a2b3c', kind: 'committed' }] }),
+    )
+    expectInOrder(flat, ['Committed 1a2b3c', '(ctrl+o'])
+    expect(flat).not.toContain('shell command')
+  })
+
+  test('every PR action has its verb', async () => {
+    const flat = flatten(
+      await render(
+        {
+          // A PR only reaches the group through a command counted as a git op.
+          bashCount: 5,
+          gitOpBashCount: 5,
+          prs: [
+            { number: 1, action: 'edited' },
+            { number: 2, action: 'merged' },
+            { number: 3, action: 'commented' },
+            { number: 4, action: 'closed' },
+            { number: 5, action: 'ready' },
+          ],
+        },
+        false,
+        200,
+      ),
+    )
+    expectInOrder(flat, [
+      'Edited PR #1',
+      ', merged PR #2',
+      ', commented on PR #3',
+      ', closed PR #4',
+      ', marked ready PR #5',
+    ])
+  })
+
+  test('a running group says Running', async () => {
+    const flat = flatten(await render({ bashCount: 2 }, true))
+    expectInOrder(flat, ['Running 2 shell commands', '…'])
+  })
+
+  test('without fullscreen the shell parts are not shown', async () => {
+    process.env.CLAUDIN_NO_FLICKER = '0'
+    try {
+      const flat = flatten(
+        await render({ readCount: 1, bashCount: 2, commits: [{ sha: '1a2b3c', kind: 'committed' }] }),
+      )
+      expect(flat).toContain('Read 1 file')
+      expect(flat).not.toContain('Committed')
+      expect(flat).not.toContain('shell command')
+    } finally {
+      process.env.CLAUDIN_NO_FLICKER = '1'
+    }
+  })
+
+  describe('clock', () => {
+    function shellToolUse(id: string) {
+      return {
+        type: 'assistant',
+        uuid: `msg-${id}`,
+        timestamp: '2026-08-12T00:00:00.000Z',
+        message: {
+          role: 'assistant',
+          id: `api-${id}`,
+          content: [{ type: 'tool_use', id, name: 'Bash', input: { command: 'npm test' } }],
+        },
+      }
+    }
+
+    function renderShell(opts: {
+      ticks: Record<string, unknown>
+      running: string[]
+    }): Promise<string> {
+      const progress = new Map<string, unknown[]>()
+      for (const [id, data] of Object.entries(opts.ticks)) {
+        progress.set(id, [{ type: 'progress', toolUseID: `p-${id}`, parentToolUseID: id, data }])
+      }
+      return renderToString(
+        <AppStateProvider>
+          <CollapsedReadSearchContent
+            message={{
+              ...EMPTY_GROUP,
+              bashCount: 2,
+              latestDisplayHint: '$ npm test',
+              messages: [shellToolUse('b1'), shellToolUse('b2')],
+            } as unknown as CollapsedReadSearchGroup}
+            inProgressToolUseIDs={new Set(opts.running)}
+            shouldAnimate={false}
+            verbose={false}
+            tools={[] as unknown as Tools}
+            lookups={{ ...lookups, progressMessagesByToolUseID: progress } as typeof lookups}
+            isActiveGroup={opts.running.length > 0}
+          />
+        </AppStateProvider>,
+      ).then(stripAnsi)
+    }
+
+    const bashTick = (elapsedTimeSeconds: number, totalLines: number) => ({
+      type: 'bash_progress',
+      output: '',
+      fullOutput: '',
+      elapsedTimeSeconds,
+      totalLines,
+      totalBytes: 0,
+    })
+
+    test('the slowest running shell command owns the header clock; its lines go on the hint', async () => {
+      // The slowest comes first, so "the last one seen" would show the wrong one.
+      const flat = flatten(
+        await renderShell({
+          ticks: { b1: bashTick(12, 3), b2: bashTick(4, 1) },
+          running: ['b1', 'b2'],
+        }),
+      )
+      expectInOrder(flat, ['Running 2 shell commands · 12s', '…', '$ npm test (3 lines)'])
+    })
+
+    const gitTick = (elapsedMs: number) => ({
+      type: 'git_progress',
+      command: 'gh pr checks 7 --watch',
+      index: 1,
+      total: 1,
+      elapsedMs,
+      silentMs: 0,
+    })
+
+    test('a running Git watch drives the clock, in seconds, with no line count', async () => {
+      const flat = flatten(
+        await renderShell({
+          ticks: { b1: bashTick(4, 1), b2: gitTick(185_400) },
+          running: ['b1', 'b2'],
+        }),
+      )
+      expectInOrder(flat, ['Running 2 shell commands · 3m 5s', '…', '$ npm test'])
+      expect(flat).not.toContain('line')
+    })
+
+    test('a command that is no longer running has no clock', async () => {
+      const flat = flatten(
+        await renderShell({ ticks: { b1: bashTick(12, 3) }, running: ['b2'] }),
+      )
+      expect(flat).not.toContain('·')
+      expect(flat).not.toContain('lines)')
+    })
   })
 })
