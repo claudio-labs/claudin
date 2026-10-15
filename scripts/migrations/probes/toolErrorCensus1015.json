@@ -58,10 +58,10 @@
       "replace": "  if (false) {"
     },
     {
-      "name": "the auto-mode branch stops asking classifierFallback",
-      "source": "src/permissions/permissions.ts",
-      "find": "        const fallback = classifierFallback(classifierResult)",
-      "replace": "        const fallback = classifierResult.timedOut ? classifierFallback(classifierResult) : null"
+      "name": "a classifier block stops asking classifierFallback",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  const fallback = classifierFallback(classifierResult)",
+      "replace": "  const fallback = classifierResult.timedOut ? classifierFallback(classifierResult) : null"
     },
     {
       "name": "a schema that does not compile refuses the call",

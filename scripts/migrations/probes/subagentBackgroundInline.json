@@ -1,0 +1,39 @@
+{
+  "test": [
+    "src/tools/AgentTool/autoBackground.test.ts",
+    "src/agent/tasks/LocalAgentTask/LocalAgentTask.test.ts"
+  ],
+  "source": "src/tools/AgentTool/autoBackground.ts",
+  "probes": [
+    {
+      "name": "a sub-agent owns background agents",
+      "comment": "Only main owns background agents: a sub-agent's spawn, its auto-background and Ctrl+B stay inline.",
+      "find": "  return callerAgentId === undefined",
+      "replace": "  return true"
+    },
+    {
+      "name": "the spawn asks about the main thread instead of the caller",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "const ownsBackground = ownsBackgroundAgents(toolUseContext.agentId);",
+      "replace": "const ownsBackground = ownsBackgroundAgents(undefined);"
+    },
+    {
+      "name": "an explicit run_in_background goes async inside a sub-agent",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "const shouldRunAsync = ownsBackground && (",
+      "replace": "const shouldRunAsync = ("
+    },
+    {
+      "name": "the implicit toggle and the 120s timer go async inside a sub-agent",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "const implicitBackgroundAllowed = ownsBackground && allowsImplicitAutoBackground(",
+      "replace": "const implicitBackgroundAllowed = allowsImplicitAutoBackground("
+    },
+    {
+      "name": "Ctrl+B backgrounds an agent a sub-agent spawned",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": " || !ownsBackgroundAgents(task.parentAgentId)",
+      "replace": ""
+    }
+  ]
+}

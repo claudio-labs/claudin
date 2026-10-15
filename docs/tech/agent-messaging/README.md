@@ -129,6 +129,13 @@ loaded, before the session was marked interactive, so every session got the
 trimmed per request (`hiddenSchemaFields` in `api.ts`); `-p` and
 `CLAUDIN_DISABLE_BACKGROUND_TASKS=1` still hide both.
 
+Only main owns background agents (`ownsBackgroundAgents` in
+`AgentTool/autoBackground.ts`). A sub-agent sees `run_in_background` too —
+the schema is shared — but its spawn runs inline and returns the report in the
+call: its turn ends when its task does, so a backgrounded child's completion
+notice reached main and the sub-agent never heard back. Ctrl+B leaves such a
+child inline as well, running inside its backgrounded parent.
+
 ## Resuming a stopped agent
 
 - It resumes as the agent it was launched as: a `readOnly: true` spawn stays

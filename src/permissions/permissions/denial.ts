@@ -1,14 +1,24 @@
-import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
-import type { AssistantMessage } from 'src/shared/types/message.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { YoloClassifierResult } from 'src/shared/types/permissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { AbortError } from 'src/shared/errors.js'
-import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import type {
+  PermissionAskDecision,
+  PermissionDenyDecision,
+} from 'src/permissions/PermissionResult.js'
+import {
+  buildClassifierUnavailableMessage,
+  buildYoloRejectionMessage,
+} from 'src/agent/messages/rejection.js'
 import {
   DENIAL_LIMITS,
   type DenialTrackingState,
+  recordDenial,
   shouldFallbackToPrompting,
 } from 'src/permissions/denialTracking.js'
+
+/** All a denial-state write needs of the tool-use context. */
+type DenialStateContext = Pick<ToolUseContext, 'localDenialTracking' | 'setAppState'>
 
 /** Why a block falls back to asking the user, and whether headless gives up. */
 type ClassifierFallback = { cause: string; abortsHeadless: boolean }
@@ -55,7 +65,7 @@ export function classifierFallback(
  * write to appState as usual.
  */
 export function persistDenialState(
-  context: ToolUseContext,
+  context: DenialStateContext,
   newState: DenialTrackingState,
 ): void {
   if (context.localDenialTracking) {
@@ -81,11 +91,9 @@ export function handleDenialLimitExceeded(
     toolPermissionContext: { shouldAvoidPermissionPrompts?: boolean }
   },
   classifierReason: string,
-  assistantMessage: AssistantMessage,
-  tool: Tool,
-  result: PermissionDecision,
-  context: ToolUseContext,
-): PermissionDecision | null {
+  result: PermissionAskDecision,
+  context: DenialStateContext,
+): PermissionAskDecision | null {
   if (!shouldFallbackToPrompting(denialState)) {
     return null
   }
@@ -135,5 +143,122 @@ export function handleDenialLimitExceeded(
       classifier: originalClassifier,
       reason: `${warning}\n\nLatest blocked action: ${classifierReason}`,
     },
+  }
+}
+
+/**
+ * What a blocking classifier result becomes in auto mode. `ask` is the
+ * decision the classifier stood in for, and the return type is the guarantee
+ * a block rests on: this hands back that ask or a deny, never an allow —
+ * denial.types.test.ts turns widening it into a type error. Throws AbortError
+ * where headless has no one to ask and nothing to retry.
+ */
+export function decideClassifierBlock({
+  classifierResult,
+  ask,
+  appState,
+  denialState,
+  context,
+  toolName,
+}: {
+  classifierResult: Pick<
+    YoloClassifierResult,
+    | 'transcriptTooLong'
+    | 'deterministic'
+    | 'refused'
+    | 'timedOut'
+    | 'unavailable'
+    | 'reason'
+    | 'model'
+  >
+  ask: PermissionAskDecision
+  appState: {
+    toolPermissionContext: { shouldAvoidPermissionPrompts?: boolean }
+  }
+  denialState: DenialTrackingState
+  context: DenialStateContext
+  toolName: string
+}): PermissionAskDecision | PermissionDenyDecision {
+  // A block that is not a verdict on the action (classifierFallback)
+  // skips iron_gate and falls back to normal prompting so the user can
+  // approve/deny manually, rather than looping in fail-closed retries.
+  const fallback = classifierFallback(classifierResult)
+  if (fallback) {
+    const { cause } = fallback
+    if (!appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
+      logForDebugging(
+        `Auto mode classifier ${cause}, falling back to normal permission handling`,
+        { level: 'warn' },
+      )
+      return {
+        ...ask,
+        decisionReason: {
+          type: 'other',
+          reason: `Auto mode classifier ${cause} — falling back to manual approval`,
+        },
+      }
+    }
+    // Headless has no one to ask. A timeout falls through to the
+    // unavailable branch below and keeps its retry guidance; a refusal
+    // falls through to the ordinary denial, which counts toward the
+    // denial limit like any block.
+    if (fallback.abortsHeadless) {
+      throw new AbortError(
+        `Agent aborted: auto mode classifier ${cause} in headless mode`,
+      )
+    }
+  }
+  // When classifier is unavailable (API error), fail closed: deny with
+  // retry guidance.
+  if (classifierResult.unavailable) {
+    logForDebugging(
+      'Auto mode classifier unavailable, denying with retry guidance (fail closed)',
+      { level: 'warn' },
+    )
+    return {
+      behavior: 'deny',
+      decisionReason: {
+        type: 'classifier',
+        classifier: 'auto-mode',
+        reason: 'Classifier unavailable',
+      },
+      message: buildClassifierUnavailableMessage(
+        toolName,
+        classifierResult.model,
+      ),
+    }
+  }
+
+  // Update denial tracking and check limits
+  const newDenialState = recordDenial(denialState)
+  persistDenialState(context, newDenialState)
+
+  logForDebugging(
+    `Auto mode classifier blocked action: ${classifierResult.reason}`,
+    { level: 'warn' },
+  )
+
+  // If denial limit hit, fall back to prompting so the user
+  // can review. We check after the classifier so we can include
+  // its reason in the prompt.
+  const denialLimitResult = handleDenialLimitExceeded(
+    newDenialState,
+    appState,
+    classifierResult.reason,
+    ask,
+    context,
+  )
+  if (denialLimitResult) {
+    return denialLimitResult
+  }
+
+  return {
+    behavior: 'deny',
+    decisionReason: {
+      type: 'classifier',
+      classifier: 'auto-mode',
+      reason: classifierResult.reason,
+    },
+    message: buildYoloRejectionMessage(classifierResult.reason),
   }
 }

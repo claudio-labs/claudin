@@ -1,19 +1,16 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
-
-// Capture the real LocalAgentTask module *before* the mocks below land. The
-// mock factory replaces `isPanelAgentTask` with a stub that returns false,
-// which leaks across test files via Bun's shape-locked mock.module — sibling
-// tests like footerTaskGeometry.test.ts call getVisibleAgentTasks and see
-// zero agents. Restore in afterAll keeps the suite clean.
-const realLocalAgentTask = { ...(await import('src/agent/tasks/LocalAgentTask/LocalAgentTask.js')) };
+import { LocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 
 // killBackgroundTask dispatches to each task class's static .kill — mock
 // every callee at the module boundary so we can assert "right kill fired,
 // for the right id" without booting the whole task framework.
 const localShellKill = mock(() => Promise.resolve());
-const localAgentKill = mock(() => Promise.resolve());
+// LocalAgentTask is spied, not module-mocked: a mock.module of it leaks to
+// every file of the run with only the exports the factory names, and
+// LocalAgentTask.test.ts asserts on the real ones.
+const localAgentKill = spyOn(LocalAgentTask, 'kill').mockImplementation(() => Promise.resolve());
 const teammateKill = mock(() => Promise.resolve());
 const monitorMcpKill = mock(() => Promise.resolve());
 const dreamKill = mock(() => Promise.resolve());
@@ -22,12 +19,6 @@ const debugMock = mock((_msg: string) => {});
 
 mock.module('src/agent/tasks/LocalShellTask/LocalShellTask.js', () => ({
   LocalShellTask: { kill: localShellKill },
-}));
-mock.module('src/agent/tasks/LocalAgentTask/LocalAgentTask.js', () => ({
-  LocalAgentTask: { kill: localAgentKill },
-  // isPanelAgentTask isn't called from taskActions, but other test files
-  // share this module — keep the shape complete.
-  isPanelAgentTask: () => false,
 }));
 mock.module('src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js', () => ({
   InProcessTeammateTask: { kill: teammateKill },
@@ -48,9 +39,7 @@ mock.module('src/shared/debug.js', () => ({
 const { killBackgroundTask } = await import('src/agent/ui/tasks/taskActions.js');
 
 afterAll(() => {
-  // Re-pin the real LocalAgentTask so the next file's getVisibleAgentTasks
-  // (and any other consumer of isPanelAgentTask) sees the genuine guard.
-  mock.module('src/agent/tasks/LocalAgentTask/LocalAgentTask.js', () => realLocalAgentTask);
+  localAgentKill.mockRestore();
 });
 
 const setAppState = mock((_: (prev: AppState) => AppState) => {});

@@ -1,0 +1,73 @@
+{
+  "test": [
+    "src/permissions/permissions/denial.test.ts",
+    "src/permissions/permissions/denial.types.test.ts",
+    "src/permissions/denialTracking.test.ts"
+  ],
+  "source": "src/permissions/permissions/denial.ts",
+  "probes": [
+    {
+      "name": "a fallback is denied like a real block",
+      "comment": "decideClassifierBlock and the denial state it rests on. Its return type is the other guard: tsc, not this runner, catches a widening to allow.",
+      "find": "  if (fallback) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "an interactive fallback is treated as headless",
+      "find": "    if (!appState.toolPermissionContext.shouldAvoidPermissionPrompts) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "headless keeps going after a permanent classifier failure",
+      "find": "    if (fallback.abortsHeadless) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "an unavailable classifier is a counted denial without retry guidance",
+      "find": "  if (classifierResult.unavailable) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "a block is not counted",
+      "find": "  const newDenialState = recordDenial(denialState)",
+      "replace": "  const newDenialState = denialState"
+    },
+    {
+      "name": "the block that reaches a limit is a plain denial",
+      "find": "  if (denialLimitResult) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "headless keeps going past the denial limit",
+      "find": "  if (isHeadless) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "the session total is not started over",
+      "find": "  if (hitTotalLimit) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "an async sub-agent's count is not kept",
+      "find": "    Object.assign(context.localDenialTracking, newState)",
+      "replace": ""
+    },
+    {
+      "name": "an unchanged count rewrites the store",
+      "find": "      if (prev.denialTracking === newState) return prev",
+      "replace": ""
+    },
+    {
+      "name": "a success with no streak copies the state",
+      "source": "src/permissions/denialTracking.ts",
+      "find": "  if (state.consecutiveDenials === 0) return state // No change needed",
+      "replace": ""
+    },
+    {
+      "name": "permissions.ts stops handing the ask it stood in for",
+      "source": "src/permissions/permissions.ts",
+      "find": "          ask: result,",
+      "replace": "          ask: { behavior: 'ask', message: '' },"
+    }
+  ]
+}
