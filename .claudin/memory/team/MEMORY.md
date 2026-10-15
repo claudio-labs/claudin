@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
+- [Git tool calls collapse like Bash (10-15)](decisions/git-tool-collapse.md) — SHELL_LANES row; a failed batch leaves the group; bare commits read via FILTERED_COMMIT_MARK
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline; routing its report rejected
 - [Navigation map syncs at the end of a turn, /map (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
 - [Every MCP call collapses, with a batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) — Calling/Called; errored calls leave the group
