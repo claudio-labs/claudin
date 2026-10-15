@@ -68,7 +68,6 @@ export function wireRequest(messages: Message[], tools: Tools): WireRequest {
     thinkingIsMutable: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
     narrationIsMutable: historyRedaction && !!config.narrationHistoryRedactionEnabled,
     agePruneActive: Number.isFinite(getCacheProfile().keepTurns),
-    imagesAreMutable: rendered.mediaCapActive,
   })
   const params = addCacheBreakpoints(rendered.messages, true, undefined, false, frontier)
   const markerIndex = params.findLastIndex(
@@ -77,7 +76,7 @@ export function wireRequest(messages: Message[], tools: Tools): WireRequest {
   return {
     wire: params.map(m => JSON.stringify(canonicalWireMessage(m as BetaMessageParam))),
     markerIndex,
-    mediaStripped: (rendered as { mediaStripped?: number }).mediaStripped ?? -1,
+    mediaStripped: rendered.mediaStripped,
   }
 }
 

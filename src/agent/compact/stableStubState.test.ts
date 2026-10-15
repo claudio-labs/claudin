@@ -1582,19 +1582,6 @@ describe('review fixes', () => {
     expect(pruneOldToolResults(msgs, Infinity)).toBe(msgs)
   })
 
-  test('frontier treats image results as mutable when imagesAreMutable (media cap active)', () => {
-    const msgs: Msg[] = [
-      userText('prompt'),
-      assistantToolUse('a', 'Read'),
-      userToolResult('a', [
-        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x'.repeat(8000) } },
-      ]),
-      userText('next'),
-    ]
-    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
-    expect(getClipFrontierIndex(msgs, { imagesAreMutable: true })).toBe(1)
-  })
-
   test('CLAUDIN_STUB_HEAD_CHARS env override is clamped below the plausibility bound', () => {
     const { getCacheProfile, _resetCacheProfileForTesting } = require('src/agent/cache/cacheProfile.js')
     process.env.CLAUDIN_STUB_HEAD_CHARS = '40000'

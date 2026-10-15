@@ -18,7 +18,10 @@ import { getClaudeTempDir } from 'src/platform/tmpdir.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { formatCompactNumber } from 'src/providers/cache/cacheMetrics.js'
-import { recordCacheBreak } from 'src/providers/cache/cacheStatsTracker.js'
+import {
+  recordCacheBreak,
+  recordPrefixRewrite,
+} from 'src/providers/cache/cacheStatsTracker.js'
 import { getCacheTrackingKey } from 'src/providers/cache/trackingKey.js'
 
 function getCacheBreakDiffPath(): string {
@@ -99,6 +102,9 @@ type PreviousState = {
   prevRequestStartedAt: number | null
   requestTtlMs: number
   prevRequestTtlMs: number | null
+  /** How many media items the API's cap dropped from this key's last
+   *  request; null until a render reports it. */
+  mediaStripped: number | null
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -128,6 +134,13 @@ export type MessageMutation = {
 export type MarkerAdvance = {
   positions: number
   lagPlaced: boolean
+}
+
+/** What one request's render knows that its bytes do not say. */
+export type RenderFacts = {
+  /** Media items the API's 100-item cap dropped from this request
+   *  (renderMessagesForAPI). */
+  mediaStripped?: number
 }
 
 /** Mirrors CACHE_LOOKBACK_POSITIONS in lagCacheMarker.ts — the detector must
@@ -426,6 +439,7 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         prevRequestStartedAt: null,
         requestTtlMs: ttlMs,
         prevRequestTtlMs: null,
+        mediaStripped: null,
       })
       return
     }
@@ -548,12 +562,19 @@ export function recordRenderedMessages(
   querySource: QuerySource,
   agentId: AgentId | undefined,
   renderedMessages: readonly BetaMessageParam[],
+  facts: RenderFacts = {},
 ): void {
   try {
     const key = getTrackingKey(querySource, agentId)
     if (!key) return
     const state = previousStateBySource.get(key)
     if (!state) return
+
+    // Before the mutation check: the strip it announces is one of the
+    // changes that check would otherwise report.
+    if (facts.mediaStripped !== undefined) {
+      announceMediaStrip(state, querySource, agentId, facts.mediaStripped)
+    }
 
     const msgJson = renderedMessages.map(m =>
       jsonStringify(canonicalWireMessage(m)),
@@ -597,6 +618,32 @@ export function recordRenderedMessages(
     if (isCacheStrict()) reportStrictViolation(key, state, mutation)
   } catch (e: unknown) {
     logError(e)
+  }
+}
+
+/**
+ * Past the API's media cap each new image pushes the oldest one out, which
+ * rewrites the message that held it — a client rewrite like a relief clip,
+ * announced the same way, so the read drop it causes is expected and the
+ * `[Cache:]` line names it. The first count a key reports is its baseline:
+ * that request was compared with nothing.
+ */
+function announceMediaStrip(
+  state: PreviousState,
+  querySource: QuerySource,
+  agentId: AgentId | undefined,
+  stripped: number,
+): void {
+  const previous = state.mediaStripped
+  state.mediaStripped = stripped
+  if (previous === null || stripped <= previous) return
+  const label = `media cap (${stripped - previous} oldest dropped)`
+  state.cacheDeletionsPending = true
+  state.cacheDeletionReason = state.cacheDeletionReason
+    ? `${state.cacheDeletionReason} + ${label}`
+    : label
+  if (agentId === undefined && querySource.startsWith('repl_main_thread')) {
+    recordPrefixRewrite(label)
   }
 }
 

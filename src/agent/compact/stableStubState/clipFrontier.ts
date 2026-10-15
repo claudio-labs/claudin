@@ -22,11 +22,9 @@ import {
 import {
   MIN_STUB_TOKENS,
   arrayContainsImage,
-  arrayContainsMedia,
   headStubApplies,
   isClipStubContent,
   isInputClipStubContent,
-  isMediaBlockType,
   shouldAgeStub,
   stubOneBlock,
 } from 'src/agent/compact/stableStubState/clipStubText.js'
@@ -74,11 +72,6 @@ export type ClipFrontierMutability = {
    * deliberate break-once clip event) and may be frozen behind the marker.
    * Default true (aggressive profile). */
   agePruneActive?: boolean
-  /** The request exceeds the API media cap, so stripExcessMediaItems is
-   * dropping the OLDEST media items — which churns image-bearing
-   * tool_results deep in the prefix as new media arrives. When set, such
-   * blocks are mutable and the frontier must stop before the first one. */
-  imagesAreMutable?: boolean
 }
 
 /**
@@ -93,6 +86,14 @@ export type ClipFrontierMutability = {
  *
  * Must stay in sync with shouldAgeStub/stubOneBlock above; the regression
  * tests in stableStubState.test.ts pin the correspondence.
+ *
+ * The API's 100-media cap is deliberately NOT a reason to call a block
+ * mutable. Past it, stripExcessMediaItems drops the oldest image as each new
+ * one arrives: one message changes per new image, an announced rewrite
+ * (`media cap` on the `[Cache:]` line). Calling every media block mutable
+ * instead held the marker before the oldest image for the rest of the
+ * session, and the tail went out uncached on every request (81744358,
+ * 2026-10-13: 230 calls at ~470k uncached each).
  *
  * ONE deliberate exception: the pin registry. A pinned block will not be
  * rewritten *right now*, but the pin can be dropped later (age, FIFO, orphan
@@ -117,7 +118,6 @@ function isToolResultBlockMutable(
   block: AnyContentBlock,
   clippedIds: ReadonlySet<string>,
   agePruneActive: boolean,
-  imagesAreMutable: boolean,
 ): boolean {
   if (block?.type !== 'tool_result') return false
   const existing = (block as unknown as ToolResultBlockParam).content
@@ -130,9 +130,6 @@ function isToolResultBlockMutable(
   // membership overrides both in applyStableStubs' stubOneBlock path).
   const toolUseId = typeof block.tool_use_id === 'string' ? block.tool_use_id : ''
   if (toolUseId && clippedIds.has(toolUseId)) return true
-  // Past the media cap, stripExcessMediaItems rewrites the oldest
-  // media-bearing blocks (image OR document) turn by turn — not stable then.
-  if (imagesAreMutable && arrayContainsMedia(existing)) return true
   // Retain profile: no age prune → a full tool_result is byte-stable. The
   // RSS guard may still stub it someday, but that's a deliberate
   // break-once clip event, not a per-turn mutation to fence off.
@@ -197,7 +194,6 @@ export function getClipFrontierIndex(
 ): number {
   const clippedIds = getClippedIds()
   const agePruneActive = opts.agePruneActive ?? true
-  const imagesAreMutable = opts.imagesAreMutable ?? false
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]!
     const inner = getInner(msg)
@@ -212,17 +208,7 @@ export function getClipFrontierIndex(
     }
     if (role !== 'user') continue
     for (const block of content as AnyContentBlock[]) {
-      // Top-level media blocks (pasted screenshots, PDF attachments) are
-      // also stripped by stripExcessMediaItems past the cap.
-      if (imagesAreMutable && isMediaBlockType(block?.type)) return i - 1
-      if (
-        isToolResultBlockMutable(
-          block,
-          clippedIds,
-          agePruneActive,
-          imagesAreMutable,
-        )
-      ) {
+      if (isToolResultBlockMutable(block, clippedIds, agePruneActive)) {
         return i - 1
       }
     }

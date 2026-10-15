@@ -481,7 +481,6 @@ export async function* queryModel(
       historyRedactionActive && !!getGlobalConfig().narrationHistoryRedactionEnabled,
   });
   let messagesForAPI = rendered.messages;
-  const mediaCapActive = rendered.mediaCapActive;
   queryCheckpoint("query_message_normalization_end");
 
 
@@ -914,7 +913,6 @@ export async function* queryModel(
         // Retain profile disables the age prune → full tool_results are
         // byte-stable and may be frozen behind the marker.
         agePruneActive: Number.isFinite(cacheProfile.keepTurns),
-        imagesAreMutable: mediaCapActive,
       });
     }
 
@@ -938,6 +936,7 @@ export async function* queryModel(
         options.querySource,
         options.agentId,
         renderedMessages,
+        { mediaStripped: rendered.mediaStripped },
       );
     }
 

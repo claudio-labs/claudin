@@ -269,21 +269,6 @@ export function arrayContainsImage(content: unknown): boolean {
   return false
 }
 
-// Mirrors stripExcessMediaItems' isMedia: it strips image AND document
-// blocks, nested in tool_results or top-level in user messages — the
-// frontier's media-churn rule must cover the same set.
-export function isMediaBlockType(type: string | undefined): boolean {
-  return type === 'image' || type === 'document'
-}
-
-export function arrayContainsMedia(content: unknown): boolean {
-  if (!Array.isArray(content)) return false
-  for (const item of content as Array<{ type?: string }>) {
-    if (item && typeof item === 'object' && isMediaBlockType(item.type)) return true
-  }
-  return false
-}
-
 /**
  * Decide whether an age-based prune pass should clip this block.
  * Distinct from the explicit clip path (applyStableStubs), which honors

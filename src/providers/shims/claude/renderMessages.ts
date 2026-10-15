@@ -14,7 +14,10 @@ import {
 import { API_MAX_MEDIA_PER_REQUEST } from 'src/shared/constants/apiLimits.js'
 import type { AssistantMessage, Message, UserMessage } from 'src/shared/types/message.js'
 import type { Tools } from 'src/tools/Tool.js'
-import { stripExcessMediaItems } from 'src/providers/shims/claude/messageConverters.js'
+import {
+  countMediaItems,
+  stripExcessMediaItems,
+} from 'src/providers/shims/claude/messageConverters.js'
 
 export type RenderMessagesOptions = {
   /** The model-aware tool-search decision (isToolSearchEnabled). */
@@ -33,14 +36,15 @@ export type RenderMessagesOptions = {
  * prompt-cache invariant suites (src/agent/cache/) render with it too, so what
  * they compare is what goes out, not a copy of the pipeline that can drift.
  *
- * `mediaCapActive` reports that the media cap rewrote the oldest media-bearing
- * blocks — they stop being byte-stable, and the clip frontier must know.
+ * `mediaStripped` is how many media items the API's cap dropped. Each new
+ * image past the cap drops one more, which rewrites the message that held the
+ * oldest one: the caller announces that rewrite when the count grows.
  */
 export function renderMessagesForAPI(
   messages: Message[],
   tools: Tools,
   options: RenderMessagesOptions,
-): { messages: (UserMessage | AssistantMessage)[]; mediaCapActive: boolean } {
+): { messages: (UserMessage | AssistantMessage)[]; mediaStripped: number } {
   let messagesForAPI = normalizeMessagesForAPI(messages, tools)
 
   // Model-specific post-processing: strip tool-search-specific fields if the
@@ -77,6 +81,20 @@ export function renderMessagesForAPI(
   // tool_uses and strips orphaned tool_results referencing non-existent tool_uses.
   messagesForAPI = ensureToolResultPairing(messagesForAPI)
 
+  // Strip excess media items before making the API call.
+  // The API rejects requests with >100 media items but returns a confusing error.
+  // Rather than erroring (which is hard to recover from in Cowork/CCD), we
+  // silently drop the oldest media items to stay within the limit.
+  //
+  // Before the stable stubs, so the stubs and the clip frontier judge the same
+  // content: a clipped result whose image the cap dropped is text-only now,
+  // and it is stubbed in this request — not left looking like a clip still to
+  // come, which held the cache marker in front of it for good. A stub never
+  // removes media (stubOneBlock skips image-bearing results), so the count is
+  // the same on either side.
+  const mediaStripped = Math.max(0, countMediaItems(messagesForAPI) - API_MAX_MEDIA_PER_REQUEST)
+  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)
+
   // Apply stable stubs to tool_result blocks whose ids are in the per-session
   // clipped set. No-op when the set is empty. Bytes are deterministic across
   // turns so the prompt cache prefix stays stable after the first clip.
@@ -110,14 +128,5 @@ export function renderMessagesForAPI(
     messagesForAPI = stripOldNarrationBlocks(messagesForAPI, 2)
   }
 
-  // Strip excess media items before making the API call.
-  // The API rejects requests with >100 media items but returns a confusing error.
-  // Rather than erroring (which is hard to recover from in Cowork/CCD), we
-  // silently drop the oldest media items to stay within the limit.
-  const beforeMediaStrip = messagesForAPI
-  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)
-  // Past the media cap, the strip rewrites the OLDEST media-bearing blocks
-  // turn by turn as new media arrives — image-bearing tool_results stop
-  // being byte-stable, and the clip frontier must treat them as mutable.
-  return { messages: messagesForAPI, mediaCapActive: messagesForAPI !== beforeMediaStrip }
+  return { messages: messagesForAPI, mediaStripped }
 }
