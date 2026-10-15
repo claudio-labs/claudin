@@ -41,7 +41,6 @@ import {
   isStubbableResult,
   pinShieldsBlock,
   resetClippedIds,
-  snapshotClippedState,
 } from 'src/agent/compact/stableStubState.js'
 import { saveClipState } from 'src/sessions/sessionStorage.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
@@ -116,6 +115,9 @@ export function resetMicrocompactState(): void {
   // swarm cleanup, postCompactCleanup, etc. is correct because the message
   // history those callers wipe is the same one that referenced the ids.
   resetClippedIds()
+  // A rewind keeps the session: without this, a resume restored the set the
+  // live process had just dropped and stubbed results it sent in full.
+  saveClipState()
 }
 
 // Helper to calculate tool result tokens
@@ -426,12 +428,13 @@ function maybeReliefClip(
     notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)
   }
   // The `[Cache: …]` line names the knob that fired; sub-agents keep their
-  // clips out of the main thread's line. The main thread's set goes to the
-  // transcript too, so a resumed process re-sends these stubs.
+  // clips out of the main thread's line.
   if (isMainThreadSource(querySource)) {
     recordPrefixRewrite(reason)
-    saveClipState(snapshotClippedState())
   }
+  // The session's set goes to the transcript, so a resumed process — `-p`
+  // and the SDK ('sdk') included — re-sends these stubs.
+  saveClipState()
   return false
 }
 
@@ -628,9 +631,8 @@ function maybeTimeBasedMicrocompact(
 
   if (resultsToClip.length > 0) addClippedIds(resultsToClip)
   const inputsClipped = addClippedInputsFor(inputsToClip)
-  // Main thread only (evaluateTimeBasedTrigger): its set goes to the
-  // transcript, so a resumed process re-sends these stubs.
-  saveClipState(snapshotClippedState())
+  // Its set goes to the transcript, so a resumed process re-sends these stubs.
+  saveClipState()
 
   logForDebugging(
     `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${resultsToClip.length} tool results (~${tokensSaved} tokens) and ${inputsClipped} inputs, kept last ${keepSet.size}`,

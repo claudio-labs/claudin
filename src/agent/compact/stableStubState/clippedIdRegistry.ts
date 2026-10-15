@@ -1,5 +1,6 @@
 import { getSessionId, onSessionSwitch } from 'src/platform/bootstrap/state.js'
 import { getAgentId } from 'src/agent/coordinator/teammate.js'
+import type { ClipStateEntry } from 'src/shared/types/logs.js'
 import type {
   AnyContentBlock,
   AnyMessage,
@@ -117,32 +118,40 @@ export function recordStubText(toolUseId: string, stub: string): void {
 }
 
 /**
- * The current thread's clipped set, as it is written to the transcript
- * (`clip-state`). Stub bytes are not part of it: stubOneBlock rebuilds them
- * from the content and the files on disk, which a resumed process reads the
- * same way.
+ * A session's clipped set, as it is written to the transcript (`clip-state`).
+ * Stub bytes are not part of it: stubOneBlock rebuilds them from the content
+ * and the files on disk, which a resumed process reads the same way.
  */
-export type ClippedStateSnapshot = {
-  resultIds: string[]
-  inputFields: Record<string, string[]>
-}
+export type ClippedStateSnapshot = Pick<ClipStateEntry, 'resultIds' | 'inputFields'>
 
-export function snapshotClippedState(): ClippedStateSnapshot {
+/**
+ * The main thread's set of `sessionId` (the current session by default) —
+ * the key ordinary sub-agents share with it, and never a swarm teammate's.
+ */
+export function snapshotClippedState(sessionId: string = getSessionId()): ClippedStateSnapshot {
   const inputFields: Record<string, string[]> = {}
-  for (const [id, fields] of getClippedInputFields()) inputFields[id] = [...fields]
-  return { resultIds: [...getClippedIds()], inputFields }
+  for (const [id, fields] of perKeyClippedInputFields.get(sessionId) ?? []) inputFields[id] = [...fields]
+  return { resultIds: [...(perKeyClippedIds.get(sessionId) ?? [])], inputFields }
 }
 
 /**
  * Put a resumed session's clipped set back before its first request: a
  * process that re-sent a clipped result in full would miss the cache from it
  * on, and the next relief clip would rewrite everything after it again.
- * Call after the session id is the resumed one — the set is keyed by it.
+ * It lands on `sessionId`'s main thread (the current session by default), so
+ * a caller restoring across a session switch names the session it means.
  */
-export function restoreClippedState(snapshot: ClippedStateSnapshot | undefined): void {
+export function restoreClippedState(
+  snapshot: ClippedStateSnapshot | undefined,
+  sessionId: string = getSessionId(),
+): void {
   if (!snapshot) return
-  addClippedIds(snapshot.resultIds)
-  for (const [id, fields] of Object.entries(snapshot.inputFields)) addClippedInputs(id, fields)
+  const ids = ensureKey(perKeyClippedIds, sessionId, () => new Set())
+  for (const id of snapshot.resultIds) ids.add(id)
+  const inputs = ensureKey(perKeyClippedInputFields, sessionId, () => new Map())
+  for (const [id, fields] of Object.entries(snapshot.inputFields)) {
+    if (fields.length > 0 && !inputs.has(id)) inputs.set(id, fields)
+  }
 }
 
 /** id → number of clip passes this pin has already shielded its block. */

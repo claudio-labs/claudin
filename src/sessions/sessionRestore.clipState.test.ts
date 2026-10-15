@@ -24,7 +24,6 @@ import {
   getClippedIds,
   getClippedInputFields,
   restoreClippedState,
-  snapshotClippedState,
 } from 'src/agent/compact/stableStubState.js'
 import { resetStateForTests, switchSession } from 'src/platform/bootstrap/state.js'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
@@ -143,7 +142,7 @@ describe('clip-state — written, read back, restored', () => {
     const { sid } = openSession()
     addClippedIds(['toolu_a', 'toolu_b'])
     addClippedInputs('toolu_w', ['content'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
 
     expect(restoredFrom(await getLastSessionLog(sid))).toEqual({
       resultIds: ['toolu_a', 'toolu_b'],
@@ -154,9 +153,9 @@ describe('clip-state — written, read back, restored', () => {
   test('the last clip event wins', async () => {
     const { sid } = openSession()
     addClippedIds(['toolu_a'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
     addClippedIds(['toolu_b'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
 
     expect(restoredFrom(await getLastSessionLog(sid)).resultIds).toEqual(['toolu_a', 'toolu_b'])
   })
@@ -164,7 +163,7 @@ describe('clip-state — written, read back, restored', () => {
   test('-c and --resume <file>.jsonl carry it too', async () => {
     const { sid, path } = openSession()
     addClippedIds(['toolu_a'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
 
     expect(restoredFrom(await loadFullLog(liteLog(sid, path))).resultIds).toEqual(['toolu_a'])
     process.env.CLAUDIN_SIMPLE = '1' // bare mode: no SessionStart hooks
@@ -174,7 +173,7 @@ describe('clip-state — written, read back, restored', () => {
   test('a compact boundary after it drops it: compaction reset the set', async () => {
     const { sid, path } = openSession()
     addClippedIds(['toolu_a'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
     appendEntryToFile(path, {
       sessionId: sid,
       isSidechain: false,
@@ -196,7 +195,7 @@ describe('clip-state — written, read back, restored', () => {
   test('a malformed entry is skipped', async () => {
     const { sid, path } = openSession()
     addClippedIds(['toolu_a'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
     appendEntryToFile(path, { type: 'clip-state', sessionId: sid, resultIds: 'toolu_b', inputFields: {} })
 
     expect(restoredFrom(await getLastSessionLog(sid)).resultIds).toEqual(['toolu_a'])
@@ -228,7 +227,7 @@ describe('clip-state — every change reaches the transcript', () => {
   test('a reset is written, so a resume does not bring back what a rewind dropped', async () => {
     const { sid } = openSession()
     addClippedIds(['toolu_a'])
-    saveClipState(snapshotClippedState())
+    saveClipState()
     resetMicrocompactState()
 
     expect(restoredFrom(await getLastSessionLog(sid)).resultIds).toEqual([])
@@ -256,7 +255,7 @@ describe('clip-state — every change reaches the transcript', () => {
     setSessionFileForTesting('/dev/null/no-such-dir/session.jsonl')
     addClippedIds(['toolu_a'])
 
-    expect(() => saveClipState(snapshotClippedState())).not.toThrow()
+    expect(() => saveClipState()).not.toThrow()
   })
 })
 

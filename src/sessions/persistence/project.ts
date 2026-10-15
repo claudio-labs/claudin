@@ -94,6 +94,10 @@ import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getCostStateEntryFor } from 'src/agent/cost-tracker.js'
 import {
+  type ClippedStateSnapshot,
+  snapshotClippedState,
+} from 'src/agent/compact/stableStubState/clippedIdRegistry.js'
+import {
   appendEntryToFile,
   readFileTailSync,
 } from 'src/sessions/persistence/_helpers.js'
@@ -242,6 +246,9 @@ export class Project {
   // Entries buffered while sessionFile is null. Flushed by materializeSessionFile
   // on the first user/assistant message — prevents metadata-only session files.
   private pendingEntries: Entry[] = []
+  // The JSON of the last `clip-state` this process wrote to sessionFile; null
+  // until it writes one, so a first reset is written too.
+  private clipStateWritten: string | null = null
   private remoteIngressUrl: string | null = null
   private internalEventWriter: InternalEventWriter | null = null
   private internalEventReader: InternalEventReader | null = null
@@ -380,6 +387,7 @@ export class Project {
   resetSessionFile(): void {
     this.sessionFile = null
     this.pendingEntries = []
+    this.clipStateWritten = null
   }
 
   /**
@@ -528,6 +536,12 @@ export class Project {
         timestamp: new Date().toISOString(),
       })
     }
+    // A branch or a fork restores a clipped set no clip event has written to
+    // this file; at exit the entry also moves back next to EOF.
+    const clips = snapshotClippedState()
+    if (clips.resultIds.length > 0 || Object.keys(clips.inputFields).length > 0) {
+      this.appendClipState(clips)
+    }
   }
 
   /**
@@ -545,15 +559,26 @@ export class Project {
     if (entry) appendEntryToFile(this.sessionFile, entry)
   }
 
-  /** The main thread's clipped set, after a clip event (saveClipState). */
-  appendClipState(state: { resultIds: string[]; inputFields: Record<string, string[]> }): void {
+  /**
+   * The session's clipped set, when it differs from the last one written
+   * (saveClipState, and the metadata re-append). Best-effort: a failed write
+   * is logged and the clip that asked for it goes on.
+   */
+  appendClipState(state: ClippedStateSnapshot = snapshotClippedState()): void {
     if (!this.sessionFile || this.shouldSkipPersistence()) return
-    appendEntryToFile(this.sessionFile, {
-      type: 'clip-state',
-      sessionId: getSessionId(),
-      resultIds: state.resultIds,
-      inputFields: state.inputFields,
-    })
+    const written = jsonStringify(state)
+    if (written === this.clipStateWritten) return
+    try {
+      appendEntryToFile(this.sessionFile, {
+        type: 'clip-state',
+        sessionId: getSessionId(),
+        resultIds: state.resultIds,
+        inputFields: state.inputFields,
+      })
+      this.clipStateWritten = written
+    } catch (e) {
+      logError(e)
+    }
   }
 
   async flush(): Promise<void> {
