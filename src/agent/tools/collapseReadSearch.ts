@@ -1144,7 +1144,7 @@ type GroupAccumulator = {
   // preserves insertion order, which is what the ⎿ list renders).
   writeFiles: Map<string, { kind: WriteKind; additions: number; deletions: number }>
   // Write tool_use_id → tool name, so the tool_result can be read with the
-  // right shape (mirrors bashCommands).
+  // right shape (mirrors shellCalls).
   writeToolNames: Map<string, string>
   // Shell tool_use_id → its lane and commands, so tool results can be scanned
   // for commit SHAs / PR URLs (surfaced as "committed abc123, created PR #42")
