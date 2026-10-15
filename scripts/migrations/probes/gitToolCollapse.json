@@ -1,0 +1,73 @@
+{
+  "test": [
+    "src/tools/shared/gitOperationTracking.test.ts"
+  ],
+  "source": "src/tools/shared/gitOperationTracking.ts",
+  "probes": [
+    {
+      "name": "global options between git and the subcommand",
+      "find": "`\\\\bgit(?:\\\\s+-[cC]\\\\s+\\\\S+|\\\\s+--\\\\S+=\\\\S+)*\\\\s+${subcmd}\\\\b${suffix}`",
+      "replace": "`\\\\bgit\\\\s+${subcmd}\\\\b${suffix}`"
+    },
+    {
+      "name": "merge-base is not a merge",
+      "find": "const GIT_MERGE_RE = gitCmdRe('merge', '(?!-)')",
+      "replace": "const GIT_MERGE_RE = gitCmdRe('merge')"
+    },
+    {
+      "name": "--amend reads as amended",
+      "find": "            ? 'amended'",
+      "replace": "            ? 'committed'"
+    },
+    {
+      "name": "cherry-pick reads as cherry-picked",
+      "find": "          ? 'cherry-picked'",
+      "replace": "          ? 'committed'"
+    },
+    {
+      "name": "root-commit header",
+      "find": "(?: \\(root-commit\\))?",
+      "replace": ""
+    },
+    {
+      "name": "push ref line tolerates the status flag",
+      "find": "/^\\s*[+\\-*!= ]?\\s*(?:\\[new branch\\]|\\S+\\.\\.+\\S+)\\s+\\S+\\s*->\\s*(\\S+)/m",
+      "replace": "/^\\s*(?:\\S+\\.\\.\\S+)\\s+\\S+\\s*->\\s*(\\S+)/m"
+    },
+    {
+      "name": "merge needs a success line",
+      "find": "/(Fast-forward|Merge made by)/.test(output)",
+      "replace": "true"
+    },
+    {
+      "name": "rebase needs a success line",
+      "find": "/Successfully rebased/.test(output)",
+      "replace": "true"
+    },
+    {
+      "name": "the ref scan skips flags",
+      "find": "    if (t.startsWith('-')) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "the ref scan stops at a shell operator",
+      "find": "    if (/^[&|;><]/.test(t)) break\n",
+      "replace": ""
+    },
+    {
+      "name": "a PR number from text when there is no URL",
+      "find": "      if (num) result.pr = { number: num, action: prAction }",
+      "replace": ""
+    },
+    {
+      "name": "gh pr edit action",
+      "find": "{ re: /\\bgh\\s+pr\\s+edit\\b/, action: 'edited', op: 'pr_edit' },",
+      "replace": ""
+    },
+    {
+      "name": "gh pr ready action",
+      "find": "{ re: /\\bgh\\s+pr\\s+ready\\b/, action: 'ready', op: 'pr_ready' },",
+      "replace": ""
+    }
+  ]
+}
