@@ -35,6 +35,10 @@ and the design-doc history is in `docs/tech/cache/clip-frontier-breakpoint.md`.
 - A `clip-state` transcript entry restores the clipped set on resume.
 - Guards: `imageFrontier.invariant.test.ts`, a required test:floor suite, and
   `scripts/migrations/probes/imageFrontier20261015.json`.
+- Live check (Sonnet 5.5, 110 PNGs read 10 per request, then NOTES.md): the
+  release sent 12.8k and 35.2k uncached on the two requests after the cap; the
+  branch sent 2 on every request. One announced strip rewrite of 15.4k, and no
+  strict-mode violations.
 
 **Still open:** the `messages mutated at 14` breaks in 81744358 (0.46M tokens).
 A forensic pass found that index 14 is a 640-char text Read (`.env.example`),
