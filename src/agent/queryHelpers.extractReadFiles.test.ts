@@ -691,16 +691,31 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
 
   // CLAUDIN_READ_GLOBS: the call names a glob and the transcript keeps it; the
   // result heads each file the glob matched (readGlobs.ts, batchResult.ts).
+  // A one-entry `file_paths` is only a batch under that flag — without it the
+  // tool reads it as `file_path` (readMulti.ts, singleEntryAsFilePath).
+  function withReadGlobs<T>(run: () => T): T {
+    const prior = process.env.CLAUDIN_READ_GLOBS
+    process.env.CLAUDIN_READ_GLOBS = '1'
+    try {
+      return run()
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_READ_GLOBS
+      else process.env.CLAUDIN_READ_GLOBS = prior
+    }
+  }
+
   test('a file a glob matched is restored, and a header the glob could not match is not', () => {
     const a = join(dir, 'src', 'a.ts')
     const b = join(dir, 'src', 'b.ts')
-    const cache = extractReadFilesFromMessages(
-      batchRead({ file_paths: ['src/*.ts'] }, [
-        ['src/a.ts', shown('a1')],
-        ['src/b.ts', shown('b1\nb2')],
-        ['lib/c.ts', shown('c1')],
-      ]),
-      dir,
+    const cache = withReadGlobs(() =>
+      extractReadFilesFromMessages(
+        batchRead({ file_paths: ['src/*.ts'] }, [
+          ['src/a.ts', shown('a1')],
+          ['src/b.ts', shown('b1\nb2')],
+          ['lib/c.ts', shown('c1')],
+        ]),
+        dir,
+      ),
     )
     expect(cache.get(a)).toMatchObject({ content: 'a1' })
     expect(cache.get(b)).toMatchObject({ content: 'b1\nb2' })
@@ -709,12 +724,28 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
 
   test('a single glob that matched one file is a batch too', () => {
     const notes = join(dir, 'notes.md')
-    const cache = extractReadFilesFromMessages(
-      batchRead({ file_paths: [join(dir, '*.md')] }, [['notes.md', shown('n1')]]),
-      dir,
+    const cache = withReadGlobs(() =>
+      extractReadFilesFromMessages(
+        batchRead({ file_paths: [join(dir, '*.md')] }, [['notes.md', shown('n1')]]),
+        dir,
+      ),
     )
     expect(cache.get(notes)).toMatchObject({ content: 'n1' })
     expect(cache.size).toBe(1)
+  })
+
+  test('without the glob flag, a one-entry file_paths restores as the single Read it was', () => {
+    // The census case: `file_paths: [x]`, read as `file_path: x`, so the
+    // result has no header. Read as a batch it restored nothing.
+    const p = join(dir, 'one.ts')
+    const plain = extractReadFilesFromMessages(read(p, {}, 'one\ntwo'), dir).get(p)!
+    // `file_path: undefined` drops the path read() puts in: the model sent only the list.
+    expect(
+      extractReadFilesFromMessages(
+        read(p, { file_path: undefined, file_paths: [p] }, 'one\ntwo'),
+        dir,
+      ).get(p),
+    ).toMatchObject({ content: plain.content, offset: plain.offset, limit: plain.limit })
   })
 
   test('a single Read is not a batch, whatever placeholders it carries', () => {

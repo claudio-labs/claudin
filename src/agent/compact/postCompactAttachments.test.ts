@@ -315,7 +315,15 @@ describe('createPostCompactFileAttachments', () => {
         { file_paths: [join(dir, 'batch-glob-[ab].txt')] },
         [`==> ${a} <==\n     1→glob-a`, `==> ${b} <==\n     1→glob-b`].join('\n\n'),
       )
-      expect(await restoredNames([a!, b!, other!], tail)).toEqual([other!])
+      // A one-entry list is a batch only under the flag (readMulti.ts).
+      const prior = process.env.CLAUDIN_READ_GLOBS
+      process.env.CLAUDIN_READ_GLOBS = '1'
+      try {
+        expect(await restoredNames([a!, b!, other!], tail)).toEqual([other!])
+      } finally {
+        if (prior === undefined) delete process.env.CLAUDIN_READ_GLOBS
+        else process.env.CLAUDIN_READ_GLOBS = prior
+      }
     })
   })
 })

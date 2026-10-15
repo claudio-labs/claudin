@@ -48,6 +48,29 @@ describe('recordedReadTargets', () => {
       expect(recordedReadTargets(input)).toEqual({})
     }
   })
+
+  test('a one-entry file_paths is the single Read the tool made of it', () => {
+    // The schema reads it as file_path, so the result carries no `==> path <==`
+    // header: a walker treating it as a batch would credit nothing on resume.
+    for (const file_path of [undefined, null, '']) {
+      const targets = recordedReadTargets({ file_path, file_paths: ['/r/a.ts'], view: 'full' })
+      expect(targets).toEqual({ file_path: '/r/a.ts' })
+      expect(isBatchReadInput(targets)).toBe(false)
+    }
+  })
+
+  test('under CLAUDIN_READ_GLOBS one entry is a glob, and stays a batch', () => {
+    const prior = process.env.CLAUDIN_READ_GLOBS
+    process.env.CLAUDIN_READ_GLOBS = '1'
+    try {
+      const targets = recordedReadTargets({ file_paths: ['/r/src/*.ts'] })
+      expect(targets).toEqual({ file_paths: ['/r/src/*.ts'] })
+      expect(isBatchReadInput(targets)).toBe(true)
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_READ_GLOBS
+      else process.env.CLAUDIN_READ_GLOBS = prior
+    }
+  })
 })
 
 describe('readMultiEnabledAtLoad', () => {

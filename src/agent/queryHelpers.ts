@@ -542,15 +542,15 @@ export function extractReadFilesFromMessages(
                 ranged: symbolsOf(targets).length > 0,
               })
             }
-          } else if (input?.file_path && input.view !== 'outline') {
+          } else if (targets.file_path && input?.view !== 'outline') {
             // Normalize to absolute path for consistent cache lookups
-            const absolutePath = expandPath(input.file_path, cwd)
+            const absolutePath = expandPath(targets.file_path, cwd)
             fileReadToolUseIds.set(content.id, {
               filePath: absolutePath,
               ranged:
-                input.offset !== undefined ||
-                input.limit !== undefined ||
-                input.symbol !== undefined,
+                input?.offset !== undefined ||
+                input?.limit !== undefined ||
+                input?.symbol !== undefined,
             })
           }
         } else if (

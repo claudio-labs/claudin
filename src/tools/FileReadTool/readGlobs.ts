@@ -32,7 +32,6 @@
  * project's file list already in context.
  */
 import { AbortError, errorMessage, isAbortError } from 'src/shared/errors.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { RipgrepIncompleteReason } from 'src/shared/fs/ripgrep.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { logError } from 'src/shared/log.js'
@@ -40,15 +39,8 @@ import type { ResolvedInput } from 'src/tools/Tool.js'
 import { batchShapeRefusal } from 'src/tools/FileReadTool/readMulti.js'
 import type { Input } from 'src/tools/FileReadTool/schemas.js'
 
-/**
- * Read once, at load, by every module whose surface the flag changes
- * (schemas.ts, prompt.ts, FileReadTool.ts) — the schema, the description and
- * the expansion must agree for the whole session, as with the batch Read
- * (readMultiEnabledAtLoad).
- */
-export function readGlobsEnabledAtLoad(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_READ_GLOBS)
-}
+// The flag lives beside recordedReadTargets, which needs it (readMulti.ts).
+export { readGlobsEnabledAtLoad } from 'src/tools/FileReadTool/readMulti.js'
 
 /**
  * The files one call reads once its globs are expanded. Past it the call is

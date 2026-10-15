@@ -39,4 +39,9 @@ describe('logToSessionMeta — languages', () => {
     )
     expect(meta.languages).toEqual({ TypeScript: 1, Python: 1 })
   })
+
+  test('a one-entry file_paths counts its file once', () => {
+    const meta = logToSessionMeta(logOf([{ file_paths: ['/r/a.ts'] }]))
+    expect(meta.languages).toEqual({ TypeScript: 1 })
+  })
 })
