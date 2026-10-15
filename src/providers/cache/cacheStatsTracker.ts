@@ -90,6 +90,9 @@ type TrackerState = {
    *  announced rewrite explains). Recorded post-response, so the line
    *  reports what already happened rather than a forecast. */
   currentTurnCacheBreaks: string[]
+  /** Bumped by each reset of the turn, so a reporter can name a condition
+   *  once per turn per source without matching the strings on the line. */
+  turnSerial: number
   // Ring buffer: fixed-size array, `historyWriteIdx` points at the next
   // slot to overwrite. Once `historySize === historyMax`, each new push
   // drops the oldest entry by simply overwriting it — no shifting.
@@ -107,6 +110,7 @@ function createInitialState(max: number): TrackerState {
     sessionServerClears: EMPTY_SERVER_CLEARS,
     currentTurnPrefixRewrites: [],
     currentTurnCacheBreaks: [],
+    turnSerial: 0,
     history: new Array(max),
     historyWriteIdx: 0,
     historySize: 0,
@@ -189,6 +193,7 @@ export function resetCurrentTurn(): void {
   state.currentTurnServerClears = EMPTY_SERVER_CLEARS
   state.currentTurnPrefixRewrites = []
   state.currentTurnCacheBreaks = []
+  state.turnSerial++
 }
 
 /** Clear all session state — used by `/clear`, `/compact`, tests. */
@@ -199,6 +204,7 @@ export function resetSessionCacheStats(): void {
   state.sessionServerClears = EMPTY_SERVER_CLEARS
   state.currentTurnPrefixRewrites = []
   state.currentTurnCacheBreaks = []
+  state.turnSerial++
   // Rebuild the ring so any hold-over references can be GC'd. Slightly
   // more work than zeroing indices, but `/clear` is rare and this avoids
   // silently pinning old CacheStatsEntry objects in memory.
@@ -225,6 +231,11 @@ export function getCurrentTurnPrefixRewrites(): readonly string[] {
 /** Cache breaks attributed this turn (labels, in order). */
 export function getCurrentTurnCacheBreaks(): readonly string[] {
   return state.currentTurnCacheBreaks
+}
+
+/** Which turn the line is collecting for; changes at every reset. */
+export function getCurrentTurnSerial(): number {
+  return state.turnSerial
 }
 
 /** Snapshot of the session-wide server-side clears. */

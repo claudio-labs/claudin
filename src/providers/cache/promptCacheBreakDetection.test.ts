@@ -1001,7 +1001,7 @@ describe('an uncached tail', () => {
     resetSessionCacheStats()
   })
 
-  const held = { index: 70, total: 1283, reason: 'pending clip' }
+  const held = { index: 70, total: 1283, reason: 'pending clip' as const }
 
   async function request(uncached: number, markerCap: typeof held | null): Promise<void> {
     prime()

@@ -494,17 +494,22 @@ export function extractCacheMetrics(
 // parses the same shape.
 const RELIEF_CLIP_LABEL_RE =
   /^relief clip \((\d+) tool results(?: \+ (\d+) inputs)?, ~(\d+)k tokens, (\w+) lane\)$/
+// promptCacheBreakDetection.ts announceMediaStrip writes it.
+const MEDIA_CAP_LABEL_RE = /^media cap \((\d+) oldest dropped\)$/
 
 /**
- * Fold a turn's repeated relief-clip labels into one entry per lane.
+ * Fold a turn's repeated relief-clip labels into one entry per lane, and its
+ * media-cap labels into one.
  *
  * One 1M-window session put 26 `relief clip (1 tool results, ~0k tokens,
  * window lane)` on a single `[Cache:]` line — a starved clipper firing once
  * per request (that mode is now reported as `relief starved` instead, but a
  * legitimate run of small events reads the same way). Identical-shape labels
  * in the same lane become `relief clip ×K (N tool results, ~Mk tokens, window
- * lane)` with the counts summed; every other label is kept verbatim, in
- * order, at the position of its first occurrence.
+ * lane)` with the counts summed. Past the media cap every request that brings
+ * an image drops one more, so a turn walking thirty pages becomes `media cap
+ * ×30 (30 oldest dropped)`. Every other label is kept verbatim, in order; a
+ * folded one sits at the position of its first occurrence.
  */
 export function collapsePrefixRewrites(labels: readonly string[]): string[] {
   const out: string[] = []
@@ -512,7 +517,19 @@ export function collapsePrefixRewrites(labels: readonly string[]): string[] {
     string,
     { index: number; events: number; results: number; inputs: number; tokensK: number }
   >()
+  let media: { index: number; events: number; dropped: number } | null = null
   for (const label of labels) {
+    const dropped = MEDIA_CAP_LABEL_RE.exec(label)
+    if (dropped) {
+      if (media) {
+        media.events++
+        media.dropped += Number(dropped[1])
+      } else {
+        media = { index: out.length, events: 1, dropped: Number(dropped[1]) }
+        out.push(label)
+      }
+      continue
+    }
     const m = RELIEF_CLIP_LABEL_RE.exec(label)
     if (!m) {
       out.push(label)
@@ -541,6 +558,9 @@ export function collapsePrefixRewrites(labels: readonly string[]): string[] {
     const inputs = acc.inputs > 0 ? ` + ${acc.inputs} inputs` : ''
     out[acc.index] =
       `relief clip ×${acc.events} (${acc.results} tool results${inputs}, ~${acc.tokensK}k tokens, ${lane} lane)`
+  }
+  if (media && media.events > 1) {
+    out[media.index] = `media cap ×${media.events} (${media.dropped} oldest dropped)`
   }
   return out
 }

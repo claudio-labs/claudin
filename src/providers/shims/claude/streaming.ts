@@ -37,7 +37,6 @@ import {
   getBedrockExtraBodyParamsBetas,
   getMergedBetas,
 } from "src/providers/transport/betas.js";
-import { getGlobalConfig } from "src/platform/config/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/agent/context/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/providers/effort/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
@@ -69,7 +68,6 @@ import {
   getAPIContextManagement,
 } from "src/agent/cache/anthropic/apiMicrocompact.js";
 import { isClipFrontierEnabled } from "src/agent/compact/stableStubState.js";
-import { getCacheProfile } from "src/agent/cache/cacheProfile.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
@@ -224,6 +222,8 @@ import {
   getPreviousRequestIdFromMessages,
 } from "src/providers/shims/claude/messageConverters.js";
 import {
+  heldMarker,
+  historyRedactions,
   renderMessagesForAPI,
   requestClipFrontier,
 } from "src/providers/shims/claude/renderMessages.js";
@@ -471,14 +471,13 @@ export async function* queryModel(
   queryCheckpoint("query_message_normalization_start");
   // Every stage from the history to the cache markers lives in one pure
   // function, so the prompt-cache invariant suites render exactly this.
-  const historyRedactionActive = getCacheProfile().historyRedactionEnabled;
+  // The redactions are read once: the clip frontier below must wait for
+  // exactly what this render strips.
+  const redactions = historyRedactions();
   const rendered = renderMessagesForAPI(messages, filteredTools, {
     useToolSearch,
     advisor: betas.includes(ADVISOR_BETA_HEADER),
-    stripOldThinking:
-      historyRedactionActive && !!getGlobalConfig().thinkingHistoryRedactionEnabled,
-    stripOldNarration:
-      historyRedactionActive && !!getGlobalConfig().narrationHistoryRedactionEnabled,
+    ...redactions,
   });
   let messagesForAPI = rendered.messages;
   queryCheckpoint("query_message_normalization_end");
@@ -900,7 +899,7 @@ export async function* queryModel(
       : messagesForAPI;
     const clipFrontier =
       isClipFrontierEnabled() && !options.skipCacheWrite
-        ? requestClipFrontier(messagesForRequest)
+        ? requestClipFrontier(messagesForRequest, redactions)
         : undefined;
 
     // Single render shared by the wire request and the opt-in annotation
@@ -925,16 +924,7 @@ export async function* queryModel(
         renderedMessages,
         {
           mediaStripped: rendered.mediaStripped,
-          // addCacheBreakpoints caps the marker at a frontier of 0 or more;
-          // -1 (nothing stable) leaves it on the last message.
-          markerCap:
-            clipFrontier?.reason && clipFrontier.index >= 0
-              ? {
-                  index: clipFrontier.index,
-                  total: renderedMessages.length,
-                  reason: clipFrontier.reason,
-                }
-              : null,
+          markerCap: heldMarker(renderedMessages, clipFrontier),
         },
       );
     }

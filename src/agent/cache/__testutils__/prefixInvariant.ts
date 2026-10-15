@@ -11,11 +11,11 @@
  * the marker legitimately moves every request.
  */
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import { canonicalWireMessage } from 'src/providers/cache/promptCacheBreakDetection.js'
-import { getGlobalConfig } from 'src/platform/config/config.js'
 import { addCacheBreakpoints } from 'src/providers/shims/claude/paramBuilders.js'
 import {
+  historyRedactions,
+  messageMarkerIndex,
   renderMessagesForAPI,
   requestClipFrontier,
 } from 'src/providers/shims/claude/renderMessages.js'
@@ -28,17 +28,7 @@ import type { Tools } from 'src/tools/Tool.js'
  * stripped, a string content as its one text block).
  */
 export function wireMessages(messages: Message[], tools: Tools): string[] {
-  const historyRedaction = getCacheProfile().historyRedactionEnabled
-  const config = getGlobalConfig()
-  const { messages: rendered } = renderMessagesForAPI(messages, tools, {
-    useToolSearch: false,
-    advisor: false,
-    stripOldThinking: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
-    stripOldNarration: historyRedaction && !!config.narrationHistoryRedactionEnabled,
-  })
-  return addCacheBreakpoints(rendered, true).map(m =>
-    JSON.stringify(canonicalWireMessage(m as BetaMessageParam)),
-  )
+  return wireRequest(messages, tools).wire
 }
 
 /** One request as the Anthropic shim builds it (see `wireRequest`). */
@@ -58,22 +48,17 @@ export type WireRequest = {
  * on every request, so `markerIndex` is what the cost of a long session hangs on.
  */
 export function wireRequest(messages: Message[], tools: Tools): WireRequest {
-  const historyRedaction = getCacheProfile().historyRedactionEnabled
-  const config = getGlobalConfig()
+  const redactions = historyRedactions()
   const rendered = renderMessagesForAPI(messages, tools, {
     useToolSearch: false,
     advisor: false,
-    stripOldThinking: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
-    stripOldNarration: historyRedaction && !!config.narrationHistoryRedactionEnabled,
+    ...redactions,
   })
-  const frontier = requestClipFrontier(rendered.messages)
+  const frontier = requestClipFrontier(rendered.messages, redactions)
   const params = addCacheBreakpoints(rendered.messages, true, undefined, false, frontier.index)
-  const markerIndex = params.findLastIndex(
-    m => Array.isArray(m.content) && m.content.some(b => 'cache_control' in b && b.cache_control),
-  )
   return {
     wire: params.map(m => JSON.stringify(canonicalWireMessage(m as BetaMessageParam))),
-    markerIndex,
+    markerIndex: messageMarkerIndex(params),
     mediaStripped: rendered.mediaStripped,
   }
 }

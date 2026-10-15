@@ -15,6 +15,7 @@ import {
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
+import type { MarkerCap } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { API_MAX_MEDIA_PER_REQUEST } from 'src/shared/constants/apiLimits.js'
 import type { AssistantMessage, Message, UserMessage } from 'src/shared/types/message.js'
 import type { Tools } from 'src/tools/Tool.js'
@@ -31,6 +32,19 @@ export type RenderMessagesOptions = {
   /** The cache profile's history redactions, each AND its config switch. */
   stripOldThinking: boolean
   stripOldNarration: boolean
+}
+
+/** The redactions half of RenderMessagesOptions: the cache profile's history
+ *  redactions, each AND its config switch. */
+export type HistoryRedactions = Pick<RenderMessagesOptions, 'stripOldThinking' | 'stripOldNarration'>
+
+export function historyRedactions(): HistoryRedactions {
+  const config = getGlobalConfig()
+  const enabled = getCacheProfile().historyRedactionEnabled
+  return {
+    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled,
+    stripOldNarration: enabled && !!config.narrationHistoryRedactionEnabled,
+  }
 }
 
 /**
@@ -94,8 +108,8 @@ export function renderMessagesForAPI(
   // content: a clipped result whose image the cap dropped is text-only now,
   // and it is stubbed in this request — not left looking like a clip still to
   // come, which held the cache marker in front of it for good. A stub never
-  // removes media (stubOneBlock skips image-bearing results), so the count is
-  // the same on either side.
+  // removes media (isStubbableResult refuses images and documents alike), so
+  // the count is the same on either side.
   const mediaStripped = Math.max(0, countMediaItems(messagesForAPI) - API_MAX_MEDIA_PER_REQUEST)
   messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)
 
@@ -136,24 +150,51 @@ export function renderMessagesForAPI(
 }
 
 /**
- * The clip frontier of one request, with the mutability the config and the
- * cache profile give it: the marker goes no further than this. Computed on the
- * exact array handed to addCacheBreakpoints (after a retry's thinking strip),
- * so the stability judgment matches the wire bytes.
+ * The clip frontier of one request: the marker goes no further than this.
+ * Computed on the exact array handed to addCacheBreakpoints (after a retry's
+ * thinking strip), with the redactions the render applied, so the stability
+ * judgment matches the wire bytes.
  */
 export function requestClipFrontier(
   messages: readonly (UserMessage | AssistantMessage)[],
+  redactions: HistoryRedactions,
 ): ClipFrontier {
-  const config = getGlobalConfig()
-  const profile = getCacheProfile()
-  // When the profile disables the history redactions, thinking/narration
-  // blocks never mutate — they are stable and may be frozen.
-  const redactions = profile.historyRedactionEnabled
   return findClipFrontier(messages, {
-    thinkingIsMutable: redactions && !!config.thinkingHistoryRedactionEnabled,
-    narrationIsMutable: redactions && !!config.narrationHistoryRedactionEnabled,
+    // A history the render does not redact never mutates there — thinking and
+    // narration are stable and may be frozen.
+    thinkingIsMutable: redactions.stripOldThinking,
+    narrationIsMutable: redactions.stripOldNarration,
     // Retain profile disables the age prune → full tool_results are
     // byte-stable and may be frozen behind the marker.
-    agePruneActive: Number.isFinite(profile.keepTurns),
+    agePruneActive: Number.isFinite(getCacheProfile().keepTurns),
   })
+}
+
+/** The message carrying the last message-level cache_control marker, or -1. */
+export function messageMarkerIndex(
+  rendered: ReadonlyArray<{ content: unknown }>,
+): number {
+  return rendered.findLastIndex(
+    m =>
+      Array.isArray(m.content) &&
+      m.content.some(
+        (b: unknown) => typeof b === 'object' && b !== null && 'cache_control' in b && !!b.cache_control,
+      ),
+  )
+}
+
+/**
+ * Where the clip frontier held the marker short of the request's last
+ * message, read from the request as rendered: a marker the opt-in deferral
+ * placed, or none at all with prompt caching off, is not the frontier's.
+ * Null when nothing was held.
+ */
+export function heldMarker(
+  rendered: ReadonlyArray<{ content: unknown }>,
+  frontier: ClipFrontier | undefined,
+): MarkerCap | null {
+  if (!frontier?.reason) return null
+  const marker = messageMarkerIndex(rendered)
+  if (marker !== frontier.index || marker >= rendered.length - 1) return null
+  return { index: marker, total: rendered.length, reason: frontier.reason }
 }

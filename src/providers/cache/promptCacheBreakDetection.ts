@@ -19,12 +19,13 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { formatCompactNumber } from 'src/providers/cache/cacheMetrics.js'
 import {
-  getCurrentTurnCacheBreaks,
+  getCurrentTurnSerial,
   recordCacheBreak,
   recordPrefixRewrite,
 } from 'src/providers/cache/cacheStatsTracker.js'
 import { getCacheTrackingKey } from 'src/providers/cache/trackingKey.js'
 import { isClipStubContent } from 'src/agent/compact/stableStubState/clipStubText.js'
+import type { ClipFrontierReason } from 'src/agent/compact/stableStubState/clipFrontier.js'
 
 function getCacheBreakDiffPath(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -110,6 +111,8 @@ type PreviousState = {
   /** Where the clip frontier held the last request's message marker back;
    *  null when it sat on the last message. */
   markerCap: MarkerCap | null
+  /** The tracker turn this key last reported an uncached tail in. */
+  uncachedTailTurn: number | null
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -123,8 +126,9 @@ export type MessageMutation = {
   /** Block types of the mutated message, e.g. `tool_result` or `text,tool_use`. */
   blockTypes: string
   /** What happened to the first changed block when it has a known shape
-   *  (`full→stub`, `stub→full`, `media removed`); null otherwise, or when
-   *  the previous JSON was not kept (sub-agents). */
+   *  (`full→stub`, `stub→full`, `media removed`, `<type> block added` or
+   *  `removed`); null otherwise, or when the previous JSON was not kept
+   *  (sub-agents). Absent in a mutation built by hand. */
   kind?: string | null
   prevJson: string
   newJson: string
@@ -147,12 +151,12 @@ export type MarkerAdvance = {
 
 /** The clip frontier held the message marker before the request's last
  *  message: everything after `index` goes out as uncached input. */
-type MarkerCap = {
+export type MarkerCap = {
   index: number
   /** Messages in the request. */
   total: number
-  /** The rewriter the frontier stopped for (ClipFrontierReason). */
-  reason: string
+  /** The rewriter the frontier stopped for. */
+  reason: ClipFrontierReason
 }
 
 /** What one request's render knows that its bytes do not say. */
@@ -462,6 +466,7 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         prevRequestTtlMs: null,
         mediaStripped: null,
         markerCap: null,
+        uncachedTailTurn: null,
       })
       return
     }
@@ -593,8 +598,10 @@ export function recordRenderedMessages(
     if (!state) return
 
     // Before the mutation check: the strip it announces is one of the
-    // changes that check would otherwise report.
-    if (facts.mediaStripped !== undefined) {
+    // changes that check would otherwise report. A compaction reads the main
+    // thread's cache under its key, but its count is not the thread's: its
+    // fallback render strips every image.
+    if (facts.mediaStripped !== undefined && querySource !== 'compact') {
       announceMediaStrip(state, querySource, agentId, facts.mediaStripped)
     }
     if (facts.markerCap !== undefined) state.markerCap = facts.markerCap
@@ -662,13 +669,22 @@ function announceMediaStrip(
   const previous = state.mediaStripped
   state.mediaStripped = stripped
   if (previous === null || stripped <= previous) return
+  // Label format is parsed by collapsePrefixRewrites (cacheMetrics.ts) —
+  // keep the shape when changing the words.
   const label = `media cap (${stripped - previous} oldest dropped)`
-  state.cacheDeletionsPending = true
-  state.cacheDeletionReason = state.cacheDeletionReason
-    ? `${state.cacheDeletionReason} + ${label}`
-    : label
+  markDeletionPending(state, label)
   if (agentId === undefined && querySource.startsWith('repl_main_thread')) {
     recordPrefixRewrite(label)
+  }
+}
+
+/** The next read drop on this key is a rewrite a client mechanism made. */
+function markDeletionPending(state: PreviousState, reason?: string): void {
+  state.cacheDeletionsPending = true
+  if (reason) {
+    state.cacheDeletionReason = state.cacheDeletionReason
+      ? `${state.cacheDeletionReason} + ${reason}`
+      : reason
   }
 }
 
@@ -697,11 +713,14 @@ const mediaIn = (block: CanonicalBlock): number =>
   Array.isArray(block.content) ? block.content.filter(isMediaBlock).length : 0
 
 /**
- * Name the change to a message's first differing tool_result when it has a
- * known shape: a clip stub landing (`full→stub`), a stub reverting to the full
- * result (`stub→full`, a process that lost its clipped set), or media the cap
- * dropped. The transcript keeps only the `[Cache:]` line, so this is what lets
- * a census attribute the rewrite without the diff file. Null otherwise.
+ * Name the change to a message when it has a known shape: in its first
+ * differing tool_result, a clip stub landing (`full→stub`), a stub reverting
+ * to the full result (`stub→full`, a process that lost its clipped set), or
+ * media the cap dropped; or one block that appeared or disappeared, the rest
+ * unchanged (`text block removed` — a rule folded into the message one
+ * request and not the next). The transcript keeps only the `[Cache:]` line,
+ * so this is what lets a census attribute the rewrite without the diff file.
+ * Null otherwise.
  */
 function classifyMutation(prevJson: string, newJson: string): string | null {
   let before: unknown
@@ -713,19 +732,25 @@ function classifyMutation(prevJson: string, newJson: string): string | null {
     return null
   }
   if (!Array.isArray(before) || !Array.isArray(after)) return null
-  const length = Math.max(before.length, after.length)
-  for (let i = 0; i < length; i++) {
-    const a = before[i] as CanonicalBlock | undefined
-    const b = after[i] as CanonicalBlock | undefined
-    if (jsonStringify(a) === jsonStringify(b)) continue
-    if (a?.type !== 'tool_result' || b?.type !== 'tool_result') return null
-    if (mediaIn(a) > mediaIn(b)) return 'media removed'
-    const wasStub = isStubResult(a)
-    const isStub = isStubResult(b)
-    if (!wasStub && isStub) return 'full→stub'
-    if (wasStub && !isStub) return 'stub→full'
-    return null
+  const beforeJson = before.map(block => jsonStringify(block))
+  const afterJson = after.map(block => jsonStringify(block))
+  let i = 0
+  while (i < beforeJson.length && beforeJson[i] === afterJson[i]) i++
+  if (Math.abs(before.length - after.length) === 1) {
+    const added = after.length > before.length
+    const [longer, shorter] = added ? [afterJson, beforeJson] : [beforeJson, afterJson]
+    const restMatches = longer.slice(i + 1).every((block, k) => block === shorter[i + k])
+    const block = (added ? after : before)[i] as CanonicalBlock
+    return restMatches ? `${block.type ?? 'unknown'} block ${added ? 'added' : 'removed'}` : null
   }
+  const a = before[i] as CanonicalBlock | undefined
+  const b = after[i] as CanonicalBlock | undefined
+  if (a?.type !== 'tool_result' || b?.type !== 'tool_result') return null
+  if (mediaIn(a) > mediaIn(b)) return 'media removed'
+  const wasStub = isStubResult(a)
+  const isStub = isStubResult(b)
+  if (!wasStub && isStub) return 'full→stub'
+  if (wasStub && !isStub) return 'stub→full'
   return null
 }
 
@@ -734,19 +759,22 @@ const describeMutation = (m: MessageMutation): string =>
 
 /** Below this an uncached tail is noise; the lookback census's rewrite floor. */
 const UNCACHED_TAIL_MIN_TOKENS = 20_000
-const UNCACHED_TAIL_LABEL = 'uncached tail'
 
 /**
  * The clip frontier held the message marker back, and the response billed
  * what came after it as uncached input. No read dropped, so no break fires:
- * this is the only place it shows. Named once per turn, since it repeats on
- * every request for as long as the frontier stays where it is.
+ * this is the only place it shows. Named once per turn per tracked thread,
+ * since it repeats on every request for as long as the frontier stays where
+ * it is — and one thread's tail must not hide another's.
  */
-function reportUncachedTail(cap: MarkerCap | null, uncachedInputTokens: number): void {
+function reportUncachedTail(state: PreviousState, uncachedInputTokens: number): void {
+  const cap = state.markerCap
   if (!cap || uncachedInputTokens < UNCACHED_TAIL_MIN_TOKENS) return
-  if (getCurrentTurnCacheBreaks().some(l => l.startsWith(UNCACHED_TAIL_LABEL))) return
+  const turn = getCurrentTurnSerial()
+  if (state.uncachedTailTurn === turn) return
+  state.uncachedTailTurn = turn
   recordCacheBreak(
-    `${UNCACHED_TAIL_LABEL} ${formatCompactNumber(uncachedInputTokens)} (marker held at messages.${cap.index}/${cap.total}: ${cap.reason})`,
+    `uncached tail ${formatCompactNumber(uncachedInputTokens)} (marker held at messages.${cap.index}/${cap.total}: ${cap.reason})`,
   )
 }
 
@@ -1132,7 +1160,7 @@ export async function checkResponseForCacheBreak(
     // Skip excluded models (e.g., haiku has different caching behavior)
     if (isExcludedModel(state.model)) return
 
-    reportUncachedTail(state.markerCap, uncachedInputTokens)
+    reportUncachedTail(state, uncachedInputTokens)
 
     const prevCacheRead = state.prevCacheReadTokens
     state.prevCacheReadTokens = cacheReadTokens
@@ -1259,14 +1287,7 @@ export function notifyCacheDeletion(
 ): void {
   const key = getTrackingKey(querySource, agentId)
   const state = key ? previousStateBySource.get(key) : undefined
-  if (state) {
-    state.cacheDeletionsPending = true
-    if (reason) {
-      state.cacheDeletionReason = state.cacheDeletionReason
-        ? `${state.cacheDeletionReason} + ${reason}`
-        : reason
-    }
-  }
+  if (state) markDeletionPending(state, reason)
 }
 
 /**
