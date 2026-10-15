@@ -12,6 +12,7 @@
  */
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import { getClipFrontierIndex } from 'src/agent/compact/stableStubState.js'
 import { canonicalWireMessage } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { addCacheBreakpoints } from 'src/providers/shims/claude/paramBuilders.js'
@@ -36,6 +37,48 @@ export function wireMessages(messages: Message[], tools: Tools): string[] {
   return addCacheBreakpoints(rendered, true).map(m =>
     JSON.stringify(canonicalWireMessage(m as BetaMessageParam)),
   )
+}
+
+/** One request as the Anthropic shim builds it (see `wireRequest`). */
+export type WireRequest = {
+  /** The messages in the break detector's canonical form. */
+  wire: string[]
+  /** The message carrying the message-level cache_control marker. */
+  markerIndex: number
+  /** How many media items the API's 100-item cap dropped from this request. */
+  mediaStripped: number
+}
+
+/**
+ * `wireMessages` plus what streaming.ts adds before the request goes out: the
+ * clip frontier, which caps the message marker. Everything behind the marker
+ * is read back from the cache; everything after it is billed as uncached input
+ * on every request, so `markerIndex` is what the cost of a long session hangs on.
+ */
+export function wireRequest(messages: Message[], tools: Tools): WireRequest {
+  const historyRedaction = getCacheProfile().historyRedactionEnabled
+  const config = getGlobalConfig()
+  const rendered = renderMessagesForAPI(messages, tools, {
+    useToolSearch: false,
+    advisor: false,
+    stripOldThinking: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
+    stripOldNarration: historyRedaction && !!config.narrationHistoryRedactionEnabled,
+  })
+  const frontier = getClipFrontierIndex(rendered.messages, {
+    thinkingIsMutable: historyRedaction && !!config.thinkingHistoryRedactionEnabled,
+    narrationIsMutable: historyRedaction && !!config.narrationHistoryRedactionEnabled,
+    agePruneActive: Number.isFinite(getCacheProfile().keepTurns),
+    imagesAreMutable: rendered.mediaCapActive,
+  })
+  const params = addCacheBreakpoints(rendered.messages, true, undefined, false, frontier)
+  const markerIndex = params.findLastIndex(
+    m => Array.isArray(m.content) && m.content.some(b => 'cache_control' in b && b.cache_control),
+  )
+  return {
+    wire: params.map(m => JSON.stringify(canonicalWireMessage(m as BetaMessageParam))),
+    markerIndex,
+    mediaStripped: (rendered as { mediaStripped?: number }).mediaStripped ?? -1,
+  }
 }
 
 export type PrefixBreak = {

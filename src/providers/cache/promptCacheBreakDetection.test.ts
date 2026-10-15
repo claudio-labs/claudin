@@ -23,8 +23,10 @@ import {
 } from 'src/providers/cache/promptCacheBreakDetection.js'
 import {
   getCurrentTurnCacheBreaks,
+  getCurrentTurnPrefixRewrites,
   resetSessionCacheStats,
 } from 'src/providers/cache/cacheStatsTracker.js'
+import { buildClipStub } from 'src/agent/compact/stableStubState.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 
 // Minimal PendingChanges — everything false/empty except what a test flips.
@@ -840,5 +842,156 @@ describe('strict mode', () => {
     prime()
     recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'other'), user('next')])
     expect(strictLines()).toEqual([])
+  })
+
+  test('an image the media cap pushed out is announced, not a violation', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'shot')], { mediaStripped: 0 })
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'shot, image dropped'), user('next')], {
+      mediaStripped: 1,
+    })
+    expect(strictLines()).toEqual([])
+  })
+})
+
+// Past the API's 100-media cap the oldest image is dropped as each new one
+// arrives, which rewrites the message that held it. That is a client rewrite
+// like a relief clip, so it is announced like one.
+describe('media past the cap', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  async function twoRequests(before: number, after: number): Promise<void> {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), toolResult('t1', 'shot')], { mediaStripped: before })
+    await checkResponseForCacheBreak(SOURCE, 205_000, 0, [])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), toolResult('t1', 'shot, image dropped'), user('b')], {
+      mediaStripped: after,
+    })
+    await checkResponseForCacheBreak(SOURCE, 25_853, 182_825, [])
+  }
+
+  test('one more dropped image is a named rewrite, not a break', async () => {
+    await twoRequests(0, 1)
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
+    expect(getCurrentTurnPrefixRewrites()).toEqual(['media cap (1 oldest dropped)'])
+  })
+
+  test('the same count again announces nothing', async () => {
+    await twoRequests(2, 2)
+    expect(getCurrentTurnPrefixRewrites()).toEqual([])
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(1)
+  })
+
+  test("a sub-agent's drop keeps off the main thread's line", async () => {
+    const agentId = 'a-media' as AgentId
+    primeAgent(agentId)
+    recordRenderedMessages(AGENT_SOURCE, agentId, [user('a'), toolResult('t1', 'shot')], { mediaStripped: 0 })
+    primeAgent(agentId)
+    recordRenderedMessages(AGENT_SOURCE, agentId, [user('a'), toolResult('t1', 'dropped'), user('b')], {
+      mediaStripped: 1,
+    })
+    expect(getCurrentTurnPrefixRewrites()).toEqual([])
+  })
+})
+
+// A changed tool_result says more than "tool_result" when the change has a
+// known shape: a clip stub landing, a stub reverting to the full result (a
+// process that lost its clipped set), or media dropped.
+describe('the mutated block is named by what happened to it', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  async function mutation(before: BetaMessageParam, after: BetaMessageParam): Promise<string> {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), before])
+    await checkResponseForCacheBreak(SOURCE, 205_000, 0, [])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), after, user('b')])
+    await checkResponseForCacheBreak(SOURCE, 25_853, 182_825, [])
+    return getCurrentTurnCacheBreaks().join('\n')
+  }
+
+  const STUB = buildClipStub('Read', 2_871)
+  const shot = (withImage: boolean): BetaMessageParam => ({
+    role: 'user',
+    content: [
+      {
+        type: 'tool_result',
+        tool_use_id: 't1',
+        content: [
+          { type: 'text', text: 'screenshot' },
+          ...(withImage
+            ? [{ type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/png' as const, data: 'AAAA' } }]
+            : []),
+        ],
+      },
+    ],
+  })
+
+  test('full → stub', async () => {
+    expect(await mutation(toolResult('t1', 'x'.repeat(4000)), toolResult('t1', STUB))).toContain(
+      'messages mutated at 1/2 (user: tool_result, full→stub)',
+    )
+  })
+
+  test('stub → full', async () => {
+    expect(await mutation(toolResult('t1', STUB), toolResult('t1', 'x'.repeat(4000)))).toContain(
+      'messages mutated at 1/2 (user: tool_result, stub→full)',
+    )
+  })
+
+  test('media removed', async () => {
+    expect(await mutation(shot(true), shot(false))).toContain(
+      'messages mutated at 1/2 (user: tool_result, media removed)',
+    )
+  })
+
+  test('anything else keeps the plain label', async () => {
+    expect(await mutation(toolResult('t1', 'x'), toolResult('t1', 'y'))).toContain(
+      'messages mutated at 1/2 (user: tool_result) — client-side prefix rewrite',
+    )
+  })
+})
+
+// A marker the clip frontier holds back leaves everything after it billed as
+// uncached input on every request — no read drops, so no break fires. The
+// line names it once per turn, with where the marker stopped and why.
+describe('an uncached tail', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  const held = { index: 70, total: 1283, reason: 'pending clip' }
+
+  async function request(uncached: number, markerCap: typeof held | null): Promise<void> {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')], { markerCap })
+    await checkResponseForCacheBreak(SOURCE, 74_021, 0, [], undefined, null, null, null, [], uncached)
+  }
+
+  test('a held marker with a large uncached input is named once per turn', async () => {
+    await request(470_277, held)
+    await request(475_739, held)
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      'uncached tail 470.3k (marker held at messages.70/1283: pending clip)',
+    ])
+  })
+
+  test('a small uncached input is not', async () => {
+    await request(19_000, held)
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+
+  test('a marker on the last message is not, whatever the input', async () => {
+    await request(470_277, null)
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
   })
 })

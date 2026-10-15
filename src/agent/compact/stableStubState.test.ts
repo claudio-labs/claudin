@@ -1011,7 +1011,11 @@ describe('getClipFrontierIndex', () => {
     expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
   })
 
-  test('image-bearing result with id in clippedIds is mutable (deferred clip)', () => {
+  // stubOneBlock never rewrites an image-bearing block, so a clipped one keeps
+  // its bytes for good. Waiting for its stub held the marker back for the rest
+  // of the session and billed the whole tail uncached on every request (72c401aa,
+  // 2026-10-14: 38 calls at a frozen read).
+  test('image-bearing result with id in clippedIds is stable (no stub can come)', () => {
     addClippedIds(['a'])
     const msgs: Msg[] = [
       assistantToolUse('a', 'Read'),
@@ -1020,7 +1024,8 @@ describe('getClipFrontierIndex', () => {
       ]),
       assistantText('ok'),
     ]
-    expect(getClipFrontierIndex(msgs)).toBe(0)
+    expect(applyStableStubs(msgs)).toBe(msgs)
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
   })
 
   test('id in clippedIds with non-stub text is mutable even when small or error', () => {

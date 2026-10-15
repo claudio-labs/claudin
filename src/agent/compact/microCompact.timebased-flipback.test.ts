@@ -218,6 +218,30 @@ describe('S2 regression: time-based microcompact persists via stable stubs', () 
     expect(getClippedIds().size).toBe(sizeBefore)
   })
 
+  // stubOneBlock never rewrites an image-bearing result, so clipping one frees
+  // nothing — and its id in the set used to hold the cache marker back.
+  test('screenshots are left out of the idle-gap clip', async () => {
+    const messages = buildIdleConversation(90)
+    const shot = createUserMessage({
+      content: [
+        {
+          type: 'tool_result' as const,
+          tool_use_id: 'toolu_1',
+          content: [
+            { type: 'text' as const, text: 'screenshot' },
+            { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/png' as const, data: 'x'.repeat(4000) } },
+          ],
+        },
+      ],
+    })
+    messages[3] = { ...shot, timestamp: messages[3]!.timestamp } as Message
+
+    await microcompactMessages(messages, undefined, MAIN_THREAD)
+
+    const clipped = getClippedIds()
+    expect([...clipped].sort()).toEqual(['toolu_0', 'toolu_2'])
+  })
+
   test('control: no trigger when gap < threshold (nothing clipped)', async () => {
     const messages = buildIdleConversation(30) // 30min < 60min
     const result = await microcompactMessages(messages, undefined, MAIN_THREAD)
