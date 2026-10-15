@@ -28,13 +28,11 @@ import type {
 import { logError } from 'src/shared/log.js'
 import { PROMPT_TOO_LONG_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
 import { logAntError, logForDebugging } from 'src/shared/debug.js'
-import { claimsAgentLaunch } from 'src/shared/proc/phantomLaunchGuard.js'
 import {
   isStructurallyIncomplete,
   signalsCompletion,
   signalsContinuation,
 } from 'src/agent/continuationNudge.js'
-import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import {
   createUserMessage,
   createUserInterruptionMessage,
@@ -939,46 +937,6 @@ async function* queryLoop(
           continue
         }
       }
-      // Phantom-launch guard (surface-only, main thread). The turn is genuinely
-      // terminal here: !needsFollowUp means zero tool calls ran this turn, and
-      // no recovery / continuation nudge / late-diagnostics re-entry fired
-      // above. If the last assistant text *announces* launching agents but no
-      // real backgrounded agent is actually in flight, the announcement spawned
-      // nothing — tell the user so they aren't left waiting on results that
-      // never arrive. Gated to the main thread (agentId === undefined): inside a
-      // subagent this warning would be parent-loop noise, not user-visible.
-      // Suppressed while a genuine backgrounded agent is running, so we never
-      // cry wolf when the model is legitimately referring to a pending agent.
-      // The AgentTool / coordinator prompt edits reduce how often this happens;
-      // this is the deterministic floor that catches the rest.
-      if (toolUseContext.agentId === undefined) {
-        const phantomCandidate = assistantMessages.at(-1)
-        if (phantomCandidate?.type === 'assistant') {
-          const phantomText = phantomCandidate.message.content
-            .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
-            .map(b => b.text)
-            .join(' ')
-          if (claimsAgentLaunch(phantomText)) {
-            const tasks = toolUseContext.getAppState().tasks
-            const hasPendingBackgroundAgent = Object.values(tasks).some(
-              t =>
-                t.type === 'local_agent' &&
-                t.isBackgrounded === true &&
-                t.status === 'running',
-            )
-            if (!hasPendingBackgroundAgent) {
-              logForDebugging(
-                `Phantom-launch guard: model announced an agent launch with no ${AGENT_TOOL_NAME} tool call and no backgrounded agent in flight: "${phantomText.slice(-160)}"`,
-              )
-              yield createSystemMessage(
-                `No agent was actually launched — the message above described dispatching agents, but no ${AGENT_TOOL_NAME} tool call was made and nothing is running. Re-run the request if you meant to launch one.`,
-                'warning',
-              )
-            }
-          }
-        }
-      }
-
       clearArmedFiles()
 
       return { reason: 'completed' }

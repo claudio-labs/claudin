@@ -18,10 +18,10 @@
  *     fence (odd number of fence runs). This is language-independent and the
  *     fallback for any language we don't carry phrase vocab for.
  *
- * Precision lessons borrowed from src/shared/proc/phantomLaunchGuard.ts: accented
- * characters are non-word to ASCII `\b`, so PT/ES tokens that touch an accent
- * use plain substrings rather than a trailing boundary; and homographs must be
- * guarded ("pronto para" / "listo para" = "ready to", NOT a completion).
+ * Precision lessons: accented characters are non-word to ASCII `\b`, so PT/ES
+ * tokens that touch an accent use plain substrings rather than a trailing
+ * boundary; and homographs must be guarded ("pronto para" / "listo para" =
+ * "ready to", NOT a completion).
  *
  * A completion marker only suppresses the *phrase* signal — an unclosed fence
  * is unambiguous truncation and nudges regardless.
