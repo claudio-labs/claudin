@@ -65,3 +65,14 @@ tails). Edit-turn lookups 5 vs 9, re-reads 2 vs 1. Priced from the transcripts
 SEPARATED — cache write +25%, cache read +9%. The bench's `est` uses
 cliUsage's old $3/$15 table, and Claude Code's CLI cost ($0.88) under-prices its
 own 1h writes; neither is the number to compare.
+
+**Re-run 2026-10-15 (main @ 140cf15e = v1.1.44 vs Claude Code 2.1.301, same
+env and flags, 10/10 edits in all 6):** claudindev barely moved (write 144.2k →
+144.8k, read 3.09M → 3.20M, one clip of 50.7k, peak 86.9k → end 65.3k); Claude
+Code read more (2.83M → 3.43M, break 21.7k). Edit-turn lookups 8 vs 17,
+re-reads 4 vs 7. Priced from each rep's totals with session-cache-ab's Sonnet
+5.x table, all writes taken as 1h (not checked per transcript): $1.28
+[1.26–1.29] vs $1.23 [1.12–1.26], +4% (overlap) — the gap narrowed on Claude
+Code's side, not claudindev's. The same evening's 5-arm run (N=5, parallel,
+bench priced per call) promoted clip-all ([[relief-clip-all]]): claudindev
+$1.258 → $0.987, against Claude Code's $1.150 (−14%, SEPARATED).
