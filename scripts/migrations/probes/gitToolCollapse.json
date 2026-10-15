@@ -118,16 +118,16 @@
       "replace": ""
     },
     {
-      "name": "a command with a git op is counted as one",
+      "name": "a call with a git op is absorbed, every command of it",
       "source": "src/agent/tools/collapseReadSearch.ts",
-      "find": "      group.gitOpBashCount = (group.gitOpBashCount ?? 0) + 1",
-      "replace": "      group.gitOpBashCount = 0"
+      "find": "group.gitOpBashCount = (group.gitOpBashCount ?? 0) + call.commands.length",
+      "replace": "group.gitOpBashCount = 0"
     },
     {
       "name": "a # comment is the shell hint",
       "source": "src/agent/tools/collapseReadSearch.ts",
-      "find": "            extractBashCommentLabel(input.command) ??\n",
-      "replace": ""
+      "find": "hint: ([command]) => extractBashCommentLabel(command!) ?? commandAsHint(command!),",
+      "replace": "hint: ([command]) => commandAsHint(command!),"
     },
     {
       "name": "git-op commands leave the shell count",
