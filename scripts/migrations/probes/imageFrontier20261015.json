@@ -1,0 +1,79 @@
+{
+  "test": [
+    "src/agent/compact/stableStubState.test.ts",
+    "src/agent/compact/microCompact.timebased-flipback.test.ts",
+    "src/agent/cache/imageFrontier.invariant.test.ts",
+    "src/providers/cache/promptCacheBreakDetection.test.ts",
+    "src/sessions/resumePrefixDeterminism.test.ts",
+    "src/sessions/sessionRestore.clipState.test.ts"
+  ],
+  "source": "src/agent/compact/stableStubState/clipFrontier.ts",
+  "probes": [
+    {
+      "name": "clipped image: the frontier waits for a stub that cannot come",
+      "find": "  if (!isStubbableResult(existing)) return null\n",
+      "replace": "  if (!isStubbableResult(existing) && !(Array.isArray(existing) && existing.length > 0)) return null\n"
+    },
+    {
+      "name": "idle-gap clip: screenshots stay out of the clipped set",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "        isStubbableResult(block.content)\n",
+      "replace": "        true\n"
+    },
+    {
+      "name": "media cap: the strip runs before the stubs",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)\n",
+      "replace": ""
+    },
+    {
+      "name": "media cap: one more dropped image is announced",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "  if (previous === null || stripped <= previous) return\n",
+      "replace": "  return\n"
+    },
+    {
+      "name": "uncached tail: a held marker with a large input is named",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "  if (!cap || uncachedInputTokens < UNCACHED_TAIL_MIN_TOKENS) return\n",
+      "replace": "  return\n"
+    },
+    {
+      "name": "uncached tail: once per turn",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "  if (getCurrentTurnCacheBreaks().some(l => l.startsWith(UNCACHED_TAIL_LABEL))) return\n",
+      "replace": ""
+    },
+    {
+      "name": "mutation kind: a stub landing is named",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    if (!wasStub && isStub) return 'full→stub'\n",
+      "replace": ""
+    },
+    {
+      "name": "mutation kind: dropped media is named",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    if (mediaIn(a) > mediaIn(b)) return 'media removed'\n",
+      "replace": ""
+    },
+    {
+      "name": "resume: the clipped set is restored",
+      "source": "src/agent/compact/stableStubState/clippedIdRegistry.ts",
+      "find": "  if (!snapshot) return\n",
+      "replace": "  return\n"
+    },
+    {
+      "name": "resume: a compact boundary drops the clip state",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "          clipStates.clear()\n",
+      "replace": ""
+    },
+    {
+      "name": "control: the uncached-tail floor may move a little",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "const UNCACHED_TAIL_MIN_TOKENS = 20_000\n",
+      "replace": "const UNCACHED_TAIL_MIN_TOKENS = 19_500\n",
+      "expect": "green"
+    }
+  ]
+}
