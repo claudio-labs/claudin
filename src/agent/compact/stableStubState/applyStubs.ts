@@ -24,11 +24,11 @@ import { stubOneBlock } from 'src/agent/compact/stableStubState/clipStubText.js'
  * The QueryEngine.submitMessage substitution (roadmap 5.7) and other hot-path
  * callers rely on this so they can guard reassignment with a `=== input` check.
  *
- * Image-bearing trade-off: tool_results whose content is an array containing
- * an `image` block are SKIPPED — we leave them untouched on this turn so
- * vision context isn't silently dropped. (The id stays in the set; if a
- * subsequent turn replaces the content with text-only, it'll be stubbed
- * normally.)
+ * Media-bearing tool_results (an `image` or `document` block in the content)
+ * are never stubbed (isStubbableResult), so vision context is not silently
+ * dropped. Nothing later turns them text-only before the stubs run — the
+ * media cap strips first — so the clip paths keep their ids out of the set
+ * and the clip frontier does not wait for them.
  */
 export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
   const clippedIds = perKeyClippedIds.get(currentKey())

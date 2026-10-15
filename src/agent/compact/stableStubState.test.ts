@@ -1011,7 +1011,11 @@ describe('getClipFrontierIndex', () => {
     expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
   })
 
-  test('image-bearing result with id in clippedIds is mutable (deferred clip)', () => {
+  // stubOneBlock never rewrites an image-bearing block, so a clipped one keeps
+  // its bytes for good. Waiting for its stub held the marker back for the rest
+  // of the session and billed the whole tail uncached on every request (72c401aa,
+  // 2026-10-14: 38 calls at a frozen read).
+  test('image-bearing result with id in clippedIds is stable (no stub can come)', () => {
     addClippedIds(['a'])
     const msgs: Msg[] = [
       assistantToolUse('a', 'Read'),
@@ -1020,7 +1024,24 @@ describe('getClipFrontierIndex', () => {
       ]),
       assistantText('ok'),
     ]
-    expect(getClipFrontierIndex(msgs)).toBe(0)
+    expect(applyStableStubs(msgs)).toBe(msgs)
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
+  // A stub that removed a document would shrink the request's media count
+  // after the API cap already counted it, and drop a real image for nothing.
+  test('document-bearing result with id in clippedIds is stable too: a stub never removes media', () => {
+    addClippedIds(['a'])
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'mcp__web__fetch'),
+      userToolResult('a', [
+        { type: 'text', text: bigText(500) },
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0xLjQK' } },
+      ]),
+      assistantText('ok'),
+    ]
+    expect(applyStableStubs(msgs)).toBe(msgs)
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
   })
 
   test('id in clippedIds with non-stub text is mutable even when small or error', () => {
@@ -1575,19 +1596,6 @@ describe('review fixes', () => {
       userText('next'),
     ]
     expect(pruneOldToolResults(msgs, Infinity)).toBe(msgs)
-  })
-
-  test('frontier treats image results as mutable when imagesAreMutable (media cap active)', () => {
-    const msgs: Msg[] = [
-      userText('prompt'),
-      assistantToolUse('a', 'Read'),
-      userToolResult('a', [
-        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x'.repeat(8000) } },
-      ]),
-      userText('next'),
-    ]
-    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
-    expect(getClipFrontierIndex(msgs, { imagesAreMutable: true })).toBe(1)
   })
 
   test('CLAUDIN_STUB_HEAD_CHARS env override is clamped below the plausibility bound', () => {

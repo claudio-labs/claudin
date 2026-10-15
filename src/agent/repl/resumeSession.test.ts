@@ -27,7 +27,7 @@ import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import type { UUID } from 'crypto'
 
 import type { ResumeSessionDeps } from 'src/agent/repl/resumeSession.js'
-import type { CostStateEntry, LogOption } from 'src/shared/types/logs.js'
+import type { ClipStateEntry, CostStateEntry, LogOption } from 'src/shared/types/logs.js'
 
 // --- module mocks (must be installed before importing the SUT) -----------
 
@@ -44,6 +44,13 @@ type CostRestoreCall = {
   deps: { restoreFromProjectConfig: (sessionId: string) => boolean } | undefined
 }
 const costRestores: CostRestoreCall[] = []
+
+// The clipped-set mocks' records: each snapshot taken (with the session it
+// was taken from) and each restore (with the session it landed on).
+const LEAVING_SESSION_ID = '00000000-0000-0000-0000-0000000000ff'
+const LEAVING_SET = { resultIds: ['toolu_leaving'], inputFields: {} }
+const clipSnapshots: string[] = []
+const clipRestores: Array<{ snapshot: unknown; sessionId: string }> = []
 
 // Capture real modules BEFORE mocking so afterAll can restore them. mock.restore()
 // only resets mock()/spyOn spies — it does NOT revert mock.module(), so without
@@ -71,6 +78,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/terminal/image/asciicast.js',
     'src/agent/messages/messages.js',
     'src/shared/types/ids.js',
+    'src/agent/compact/stableStubState.js',
   ].map(
     async spec =>
       [spec, { ...(await import(spec)) }] as [string, Record<string, unknown>],
@@ -167,6 +175,7 @@ mock.module('src/vcs/git/worktree.js', () => ({
 
 mock.module('src/platform/bootstrap/state.js', () => ({
   getOriginalCwd: () => '/tmp/test',
+  getSessionId: () => LEAVING_SESSION_ID,
   setCostStateForRestore: mock((data: unknown) => {
     calls.push('setCostStateForRestore')
     restoredFromSlot.push(data)
@@ -213,6 +222,18 @@ mock.module('src/agent/messages/messages.js', () => ({
 mock.module('src/shared/types/ids.js', () => ({
   asSessionId: (id: unknown) => id,
   asAgentId: (id: unknown) => id,
+}))
+
+mock.module('src/agent/compact/stableStubState.js', () => ({
+  snapshotClippedState: mock((sessionId: string) => {
+    calls.push('snapshotClippedState')
+    clipSnapshots.push(sessionId)
+    return LEAVING_SET
+  }),
+  restoreClippedState: mock((snapshot: unknown, sessionId: string) => {
+    calls.push('restoreClippedState')
+    clipRestores.push({ snapshot, sessionId })
+  }),
 }))
 
 // --- SUT import (after mocks) -------------------------------------------
@@ -470,5 +491,42 @@ describe('resumeSession — the cost swap', () => {
 
     expect(costRestores).toEqual([])
     expect(calls.lastIndexOf('resetCostState')).toBeGreaterThan(calls.indexOf('switchSession'))
+  })
+})
+
+describe('resumeSession — the clipped set', () => {
+  const CLIP_STATE: ClipStateEntry = {
+    type: 'clip-state',
+    sessionId: SESSION_ID,
+    resultIds: ['toolu_a'],
+    inputFields: {},
+  }
+
+  function resetClipRecords(): void {
+    calls.length = 0
+    clipSnapshots.length = 0
+    clipRestores.length = 0
+  }
+
+  test("resume restores the target's clip-state entry into the target, after the switch", async () => {
+    resetClipRecords()
+
+    await resumeSession(SESSION_ID, makeLog({ clipState: CLIP_STATE }), 'slash_command_picker', makeDeps())
+
+    expect(clipRestores).toEqual([{ snapshot: CLIP_STATE, sessionId: SESSION_ID }])
+    expect(calls.indexOf('switchSession')).toBeLessThan(calls.indexOf('restoreClippedState'))
+  })
+
+  // A branch sends the same history as the session it leaves, so it keeps
+  // that session's stubs; its own file has no clip-state entry yet.
+  test('a branch carries the clipped set of the session it leaves', async () => {
+    resetClipRecords()
+
+    await resumeSession(SESSION_ID, makeLog(), 'fork', makeDeps())
+
+    expect(clipSnapshots).toEqual([LEAVING_SESSION_ID])
+    expect(calls.indexOf('snapshotClippedState')).toBeLessThan(calls.indexOf('switchSession'))
+    expect(clipRestores).toEqual([{ snapshot: LEAVING_SET, sessionId: SESSION_ID }])
+    expect(calls.indexOf('switchSession')).toBeLessThan(calls.indexOf('restoreClippedState'))
   })
 })

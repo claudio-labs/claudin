@@ -15,6 +15,7 @@
     "src/agent/query/toolResultMessages.test.ts",
     "src/agent/cache/loopPrefix.invariant.test.ts",
     "src/agent/cache/wirePrefix.e2e.test.ts",
+    "src/agent/cache/imageFrontier.invariant.test.ts",
     "src/agent/attachments/renderStability.invariant.test.ts",
     "src/tools/toolSchemaStability.invariant.test.ts",
     "src/agent/prompts/systemPromptStability.invariant.test.ts"

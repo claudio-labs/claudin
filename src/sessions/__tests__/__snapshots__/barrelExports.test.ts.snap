@@ -89,6 +89,7 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "saveAgentName",
   "saveAgentSetting",
   "saveAiGeneratedTitle",
+  "saveClipState",
   "saveCustomTitle",
   "saveMode",
   "saveTag",

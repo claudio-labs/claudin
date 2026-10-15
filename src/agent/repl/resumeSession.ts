@@ -46,8 +46,10 @@ import {
 } from 'src/sessions/sessionStorage.js'
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
+import { restoreClippedState, snapshotClippedState } from 'src/agent/compact/stableStubState.js'
 import {
   getOriginalCwd,
+  getSessionId,
   setCostStateForRestore,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
@@ -255,6 +257,10 @@ export async function resumeSession(
     // Reset cost state for clean slate before restoring target session
     resetCostState()
 
+    // A branch sends the history it was cut from, so it keeps that session's
+    // stubs; taken before the switch, which drops the session being left.
+    const branchClips = entrypoint === 'fork' ? snapshotClippedState(getSessionId()) : undefined
+
     // Switch session (id + project dir atomically). fullPath may point to
     // a different project (cross-worktree, /branch); null derives from
     // current originalCwd.
@@ -341,6 +347,10 @@ export async function resumeSession(
         },
       )
     }
+
+    // The clipped set the session's last process sent — or, for a branch,
+    // the one it was cut with — so the next request re-sends the same stubs.
+    restoreClippedState(branchClips ?? log.clipState, sessionId)
 
     // Reset messages to the provided initial messages
     // Use a callback to ensure we're not dependent on stale state

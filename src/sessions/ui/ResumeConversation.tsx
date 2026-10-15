@@ -8,6 +8,7 @@ import type { Command } from 'src/commands/commands.js';
 import { SessionsScreen } from 'src/sessions/ui/SessionsScreen.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import { restoreCostStateForResume } from 'src/agent/cost-tracker.js';
+import { restoreClippedState } from 'src/agent/compact/stableStubState.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
@@ -222,6 +223,9 @@ export function ResumeConversation({
         await resetSessionFilePointer();
         restoreCostStateForResume(result_3.sessionId, result_3);
       }
+      // The stubs the last process sent, so the first request reads its
+      // prefix back (into the current session: the resumed one, or a fork).
+      restoreClippedState(result_3.clipState);
       const {
         agentDefinition: resolvedAgentDef
       } = restoreAgentFromSession(result_3.agentSetting, mainThreadAgentDefinition, agentDefinitions);

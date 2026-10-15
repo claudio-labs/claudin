@@ -21,12 +21,9 @@ import {
 } from 'src/agent/compact/stableStubState/pinRegistry.js'
 import {
   MIN_STUB_TOKENS,
-  arrayContainsImage,
-  arrayContainsMedia,
   headStubApplies,
-  isClipStubContent,
   isInputClipStubContent,
-  isMediaBlockType,
+  isStubbableResult,
   shouldAgeStub,
   stubOneBlock,
 } from 'src/agent/compact/stableStubState/clipStubText.js'
@@ -74,11 +71,19 @@ export type ClipFrontierMutability = {
    * deliberate break-once clip event) and may be frozen behind the marker.
    * Default true (aggressive profile). */
   agePruneActive?: boolean
-  /** The request exceeds the API media cap, so stripExcessMediaItems is
-   * dropping the OLDEST media items — which churns image-bearing
-   * tool_results deep in the prefix as new media arrives. When set, such
-   * blocks are mutable and the frontier must stop before the first one. */
-  imagesAreMutable?: boolean
+}
+
+/** Which rewriter the clip frontier stopped for. */
+export type ClipFrontierReason =
+  | 'pending clip'
+  | 'age prune'
+  | 'thinking redaction'
+  | 'narration redaction'
+
+export type ClipFrontier = {
+  index: number
+  /** Null when the whole array is stable (index is its last message). */
+  reason: ClipFrontierReason | null
 }
 
 /**
@@ -87,12 +92,28 @@ export type ClipFrontierMutability = {
  * Mirrors the two rewriters that touch tool_results at the API boundary:
  *   - pruneOldToolResults (age prune): stubs non-error, non-image results
  *     at or above MIN_STUB_TOKENS once they cross the keepTurns cutoff.
- *   - applyStableStubs (explicit clip): rewrites any id in clippedIds as soon
- *     as content allows — including the deferred-image case where the stub is
- *     delayed until the image content is replaced.
+ *   - applyStableStubs (explicit clip): rewrites any id in clippedIds whose
+ *     content stubOneBlock can rewrite at all (isStubbableResult).
  *
- * Must stay in sync with shouldAgeStub/stubOneBlock above; the regression
- * tests in stableStubState.test.ts pin the correspondence.
+ * Both go through stubOneBlock, so both share its refusal: a stub, empty
+ * content or an image is never rewritten, by anything. An image-bearing
+ * result in the clipped set used to count as a stub still to come — the
+ * "deferred image" this comment promised would be stubbed once its image was
+ * replaced. Nothing replaces it (the media cap strips before the stubs run,
+ * and its result is stubbed in that same request), so the marker waited in
+ * front of it for the rest of the session (72c401aa, 2026-10-14: 2h, 38 calls,
+ * read frozen at 314,693, everything after it uncached).
+ *
+ * Must stay in sync with shouldAgeStub/stubOneBlock; the regression tests in
+ * stableStubState.test.ts pin the correspondence.
+ *
+ * The API's 100-media cap is deliberately NOT a reason to call a block
+ * mutable. Past it, stripExcessMediaItems drops the oldest image as each new
+ * one arrives: one message changes per new image, an announced rewrite
+ * (`media cap` on the `[Cache:]` line). Calling every media block mutable
+ * instead held the marker before the oldest image for the rest of the
+ * session, and the tail went out uncached on every request (81744358,
+ * 2026-10-13: 230 calls at ~470k uncached each).
  *
  * ONE deliberate exception: the pin registry. A pinned block will not be
  * rewritten *right now*, but the pin can be dropped later (age, FIFO, orphan
@@ -117,38 +138,31 @@ function isToolResultBlockMutable(
   block: AnyContentBlock,
   clippedIds: ReadonlySet<string>,
   agePruneActive: boolean,
-  imagesAreMutable: boolean,
-): boolean {
-  if (block?.type !== 'tool_result') return false
+): ClipFrontierReason | null {
+  if (block?.type !== 'tool_result') return null
   const existing = (block as unknown as ToolResultBlockParam).content
-  // Already a byte-stable stub (pure or head form) — final bytes forever.
-  if (typeof existing === 'string' && isClipStubContent(existing)) return false
-  // Empty content is never rewritten.
-  if (existing == null || existing === '') return false
-  if (Array.isArray(existing) && existing.length === 0) return false
-  // Pending explicit clip (checked before the image/error skips: clippedIds
-  // membership overrides both in applyStableStubs' stubOneBlock path).
+  // A stub already (final bytes forever), empty, or an image: no rewriter
+  // will touch it.
+  if (!isStubbableResult(existing)) return null
+  // Pending explicit clip (checked before the error skip: clippedIds
+  // membership overrides it in applyStableStubs' stubOneBlock path).
   const toolUseId = typeof block.tool_use_id === 'string' ? block.tool_use_id : ''
-  if (toolUseId && clippedIds.has(toolUseId)) return true
-  // Past the media cap, stripExcessMediaItems rewrites the oldest
-  // media-bearing blocks (image OR document) turn by turn — not stable then.
-  if (imagesAreMutable && arrayContainsMedia(existing)) return true
+  if (toolUseId && clippedIds.has(toolUseId)) return 'pending clip'
   // Retain profile: no age prune → a full tool_result is byte-stable. The
   // RSS guard may still stub it someday, but that's a deliberate
   // break-once clip event, not a per-turn mutation to fence off.
-  if (!agePruneActive) return false
-  // The age prune skips image-bearing and error results entirely…
-  if (arrayContainsImage(existing)) return false
-  if ((block as unknown as ToolResultBlockParam).is_error) return false
+  if (!agePruneActive) return null
+  // The age prune skips error results entirely…
+  if ((block as unknown as ToolResultBlockParam).is_error) return null
   // …and only stubs results at or above the floor.
-  return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS
+  return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS ? 'age prune' : null
 }
 
 function isAssistantContentMutable(
   content: AnyContentBlock[],
   opts: ClipFrontierMutability,
-): boolean {
-  if (!opts.thinkingIsMutable && !opts.narrationIsMutable) return false
+): ClipFrontierReason | null {
+  if (!opts.thinkingIsMutable && !opts.narrationIsMutable) return null
   let hasText = false
   let hasToolUse = false
   let hasThinking = false
@@ -159,7 +173,7 @@ function isAssistantContentMutable(
     else if (block?.type === 'thinking') hasThinking = true
     else if (block?.type === 'redacted_thinking') hasRedactedThinking = true
   }
-  if (opts.thinkingIsMutable && hasThinking) return true
+  if (opts.thinkingIsMutable && hasThinking) return 'thinking redaction'
   // Narration selection mirrors stripOldNarrationBlocks: text + tool_use and
   // no (redacted_)thinking — thinking-bearing turns are never text-stripped
   // (doing so breaks the signed-thinking position chain).
@@ -170,9 +184,9 @@ function isAssistantContentMutable(
     !hasThinking &&
     !hasRedactedThinking
   ) {
-    return true
+    return 'narration redaction'
   }
-  return false
+  return null
 }
 
 /**
@@ -195,9 +209,21 @@ export function getClipFrontierIndex(
   messages: readonly AnyMessage[],
   opts: ClipFrontierMutability = {},
 ): number {
+  return findClipFrontier(messages, opts).index
+}
+
+/**
+ * `getClipFrontierIndex` with the rewriter it stopped for. Everything after
+ * the frontier is billed as uncached input on every request while it stays
+ * there, so the reason is what the `[Cache:]` line names when that tail grows
+ * large (`uncached tail …`).
+ */
+export function findClipFrontier(
+  messages: readonly AnyMessage[],
+  opts: ClipFrontierMutability = {},
+): ClipFrontier {
   const clippedIds = getClippedIds()
   const agePruneActive = opts.agePruneActive ?? true
-  const imagesAreMutable = opts.imagesAreMutable ?? false
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]!
     const inner = getInner(msg)
@@ -205,29 +231,17 @@ export function getClipFrontierIndex(
     const content = inner.content
     if (!Array.isArray(content)) continue
     if (role === 'assistant') {
-      if (isAssistantContentMutable(content as AnyContentBlock[], opts)) {
-        return i - 1
-      }
+      const reason = isAssistantContentMutable(content as AnyContentBlock[], opts)
+      if (reason) return { index: i - 1, reason }
       continue
     }
     if (role !== 'user') continue
     for (const block of content as AnyContentBlock[]) {
-      // Top-level media blocks (pasted screenshots, PDF attachments) are
-      // also stripped by stripExcessMediaItems past the cap.
-      if (imagesAreMutable && isMediaBlockType(block?.type)) return i - 1
-      if (
-        isToolResultBlockMutable(
-          block,
-          clippedIds,
-          agePruneActive,
-          imagesAreMutable,
-        )
-      ) {
-        return i - 1
-      }
+      const reason = isToolResultBlockMutable(block, clippedIds, agePruneActive)
+      if (reason) return { index: i - 1, reason }
     }
   }
-  return messages.length - 1
+  return { index: messages.length - 1, reason: null }
 }
 
 /**
@@ -429,10 +443,7 @@ export function collectClearableCandidates(
     for (const block of content as AnyContentBlock[]) {
       if (block?.type !== 'tool_result') continue
       const existing = (block as unknown as ToolResultBlockParam).content
-      if (typeof existing === 'string' && isClipStubContent(existing)) continue
-      if (existing == null || existing === '') continue
-      if (Array.isArray(existing) && existing.length === 0) continue
-      if (arrayContainsImage(existing)) continue
+      if (!isStubbableResult(existing)) continue
       if ((block as unknown as ToolResultBlockParam).is_error) continue
       const toolUseId = (block as { tool_use_id?: string }).tool_use_id
       if (!toolUseId || clipped.has(toolUseId)) continue

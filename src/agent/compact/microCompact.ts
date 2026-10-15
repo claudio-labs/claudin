@@ -38,8 +38,11 @@ import {
   collectClearableCandidates,
   getClippedInputFields,
   getClippedIds,
+  isStubbableResult,
+  pinShieldsBlock,
   resetClippedIds,
 } from 'src/agent/compact/stableStubState.js'
+import { saveClipState } from 'src/sessions/sessionStorage.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import {
   decideRelief,
@@ -112,6 +115,9 @@ export function resetMicrocompactState(): void {
   // swarm cleanup, postCompactCleanup, etc. is correct because the message
   // history those callers wipe is the same one that referenced the ids.
   resetClippedIds()
+  // A rewind keeps the session: without this, a resume restored the set the
+  // live process had just dropped and stubbed results it sent in full.
+  saveClipState()
 }
 
 // Helper to calculate tool result tokens
@@ -426,6 +432,9 @@ function maybeReliefClip(
   if (isMainThreadSource(querySource)) {
     recordPrefixRewrite(reason)
   }
+  // The session's set goes to the transcript, so a resumed process — `-p`
+  // and the SDK ('sdk') included — re-sends these stubs.
+  saveClipState()
   return false
 }
 
@@ -570,21 +579,32 @@ function maybeTimeBasedMicrocompact(
   const clipped = getClippedIds()
   const newOnes = [...clearSet].filter(id => !clipped.has(id))
 
-  // Measure what the clear saves on the content as it stands in this view.
-  // Zero means every candidate is already empty/cleared — nothing to do.
+  // Measure what the clear saves on the content as it stands in this view,
+  // counting only results a stub would rewrite now: a media-bearing or a
+  // pinned one stays as it is (stubOneBlock), so clipping it frees nothing,
+  // and its id in the set held the cache marker in front of it — for good,
+  // or until the pin expired. Zero means every candidate is already
+  // empty/cleared — nothing to do.
   const newSet = new Set(newOnes)
+  const resultsToClip: string[] = []
   let tokensSaved = 0
   for (const message of messages) {
     if (message.type !== 'user' || !Array.isArray(message.message.content)) {
       continue
     }
     for (const block of message.message.content) {
-      if (block.type === 'tool_result' && newSet.has(block.tool_use_id)) {
+      if (
+        block.type === 'tool_result' &&
+        newSet.has(block.tool_use_id) &&
+        isStubbableResult(block.content) &&
+        !pinShieldsBlock(block.tool_use_id, block.content)
+      ) {
+        resultsToClip.push(block.tool_use_id)
         tokensSaved += calculateToolResultTokens(block)
       }
     }
   }
-  const resultsToClip = tokensSaved > 0 ? newOnes : []
+  if (tokensSaved === 0) resultsToClip.length = 0
 
   // The prefix is being rewritten regardless, so clipping the INPUTS of the
   // calls older than the kept tail costs nothing here — same registry, same
@@ -611,6 +631,8 @@ function maybeTimeBasedMicrocompact(
 
   if (resultsToClip.length > 0) addClippedIds(resultsToClip)
   const inputsClipped = addClippedInputsFor(inputsToClip)
+  // Its set goes to the transcript, so a resumed process re-sends these stubs.
+  saveClipState()
 
   logForDebugging(
     `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${resultsToClip.length} tool results (~${tokensSaved} tokens) and ${inputsClipped} inputs, kept last ${keepSet.size}`,

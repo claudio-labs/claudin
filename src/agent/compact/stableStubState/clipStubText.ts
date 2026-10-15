@@ -261,27 +261,31 @@ function clipStubFor(
     : buildClipStub(toolName, tokens, saved)
 }
 
-export function arrayContainsImage(content: unknown): boolean {
+function arrayContainsMedia(content: unknown): boolean {
   if (!Array.isArray(content)) return false
   for (const item of content as Array<{ type?: string }>) {
-    if (item && typeof item === 'object' && item.type === 'image') return true
+    if (item && typeof item === 'object' && (item.type === 'image' || item.type === 'document')) return true
   }
   return false
 }
 
-// Mirrors stripExcessMediaItems' isMedia: it strips image AND document
-// blocks, nested in tool_results or top-level in user messages — the
-// frontier's media-churn rule must cover the same set.
-export function isMediaBlockType(type: string | undefined): boolean {
-  return type === 'image' || type === 'document'
-}
-
-export function arrayContainsMedia(content: unknown): boolean {
-  if (!Array.isArray(content)) return false
-  for (const item of content as Array<{ type?: string }>) {
-    if (item && typeof item === 'object' && isMediaBlockType(item.type)) return true
-  }
-  return false
+/**
+ * Whether stubOneBlock can rewrite this tool_result content at all: not a stub
+ * already, not empty, no media. Content that fails keeps its bytes for good
+ * (pins aside, which only delay a stub), so no clip path may count it as
+ * freed, and the clip frontier must not wait for a stub that cannot come.
+ *
+ * Media covers documents as well as images: the API's 100-item cap counts
+ * both before the stubs run (renderMessagesForAPI), so a stub that removed a
+ * document would leave the request one item short of what the cap dropped
+ * an image for, and a resumed process would rebuild that stub from content
+ * the cap had already thinned.
+ */
+export function isStubbableResult(content: unknown): boolean {
+  if (content == null || content === '') return false
+  if (typeof content === 'string') return !isClipStubContent(content)
+  if (Array.isArray(content)) return content.length > 0 && !arrayContainsMedia(content)
+  return true
 }
 
 /**
@@ -308,7 +312,7 @@ export function shouldAgeStub(block: AnyContentBlock): boolean {
 /**
  * Attempt to rewrite a single tool_result block as a clip stub.
  * Returns the original block unchanged when: already a stub, empty, or
- * image-bearing. Callers are responsible for any additional pre-filters
+ * media-bearing. Callers are responsible for any additional pre-filters
  * (e.g. clippedIds membership check in applyStableStubs).
  */
 export function stubOneBlock(
@@ -318,10 +322,7 @@ export function stubOneBlock(
 ): AnyContentBlock {
   if (block?.type !== 'tool_result') return block
   const existing = (block as ToolResultBlockParam).content
-  if (typeof existing === 'string' && isClipStubContent(existing)) return block
-  if (existing == null || existing === '') return block
-  if (Array.isArray(existing) && existing.length === 0) return block
-  if (arrayContainsImage(existing)) return block
+  if (!isStubbableResult(existing)) return block
   const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
   // Pinned: the model already lost this content once and asked for it back.
   // Clipping it again is exactly what the pin exists to prevent — every clip

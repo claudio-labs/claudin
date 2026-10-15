@@ -54,6 +54,7 @@ const {
   addClippedIds,
   applyStableStubs,
   getClippedIds,
+  pinToolResult,
 } = await import('src/agent/compact/stableStubState.js')
 
 // querySource must start with 'repl_main_thread' (isMainThreadSource) and be
@@ -216,6 +217,42 @@ describe('S2 regression: time-based microcompact persists via stable stubs', () 
     // the trigger finds no new ids and falls through without side effects.
     await microcompactMessages(messages, undefined, MAIN_THREAD)
     expect(getClippedIds().size).toBe(sizeBefore)
+  })
+
+  // stubOneBlock never rewrites an image-bearing result, so clipping one frees
+  // nothing — and its id in the set used to hold the cache marker back.
+  test('screenshots are left out of the idle-gap clip', async () => {
+    const messages = buildIdleConversation(90)
+    const shot = createUserMessage({
+      content: [
+        {
+          type: 'tool_result' as const,
+          tool_use_id: 'toolu_1',
+          content: [
+            { type: 'text' as const, text: 'screenshot' },
+            { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/png' as const, data: 'x'.repeat(4000) } },
+          ],
+        },
+      ],
+    })
+    messages[3] = { ...shot, timestamp: messages[3]!.timestamp } as Message
+
+    await microcompactMessages(messages, undefined, MAIN_THREAD)
+
+    const clipped = getClippedIds()
+    expect([...clipped].sort()).toEqual(['toolu_0', 'toolu_2'])
+  })
+
+  // A pinned result is one the model lost once and read back; stubOneBlock
+  // leaves it alone while the pin lasts. Clipped anyway, it counted as a stub
+  // still to come and held the cache marker until the pin expired.
+  test('a pinned result is left out of the idle-gap clip', async () => {
+    const messages = buildIdleConversation(90)
+    pinToolResult('toolu_1')
+
+    await microcompactMessages(messages, undefined, MAIN_THREAD)
+
+    expect([...getClippedIds()].sort()).toEqual(['toolu_0', 'toolu_2'])
   })
 
   test('control: no trigger when gap < threshold (nothing clipped)', async () => {

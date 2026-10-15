@@ -37,7 +37,6 @@ import {
   getBedrockExtraBodyParamsBetas,
   getMergedBetas,
 } from "src/providers/transport/betas.js";
-import { getGlobalConfig } from "src/platform/config/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/agent/context/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/providers/effort/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
@@ -68,11 +67,7 @@ import {
   clearableToolNamesFromPool,
   getAPIContextManagement,
 } from "src/agent/cache/anthropic/apiMicrocompact.js";
-import {
-  getClipFrontierIndex,
-  isClipFrontierEnabled,
-} from "src/agent/compact/stableStubState.js";
-import { getCacheProfile } from "src/agent/cache/cacheProfile.js";
+import { isClipFrontierEnabled } from "src/agent/compact/stableStubState.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
@@ -226,7 +221,12 @@ import {
   getPreviousMessageIdFromMessages,
   getPreviousRequestIdFromMessages,
 } from "src/providers/shims/claude/messageConverters.js";
-import { renderMessagesForAPI } from "src/providers/shims/claude/renderMessages.js";
+import {
+  heldMarker,
+  historyRedactions,
+  renderMessagesForAPI,
+  requestClipFrontier,
+} from "src/providers/shims/claude/renderMessages.js";
 import { executeNonStreamingRequest } from "src/providers/shims/claude/nonStreamingRequest.js";
 import type { Options, TaskBudgetParam } from "src/providers/shims/claude/types.js";
 
@@ -471,17 +471,15 @@ export async function* queryModel(
   queryCheckpoint("query_message_normalization_start");
   // Every stage from the history to the cache markers lives in one pure
   // function, so the prompt-cache invariant suites render exactly this.
-  const historyRedactionActive = getCacheProfile().historyRedactionEnabled;
+  // The redactions are read once: the clip frontier below must wait for
+  // exactly what this render strips.
+  const redactions = historyRedactions();
   const rendered = renderMessagesForAPI(messages, filteredTools, {
     useToolSearch,
     advisor: betas.includes(ADVISOR_BETA_HEADER),
-    stripOldThinking:
-      historyRedactionActive && !!getGlobalConfig().thinkingHistoryRedactionEnabled,
-    stripOldNarration:
-      historyRedactionActive && !!getGlobalConfig().narrationHistoryRedactionEnabled,
+    ...redactions,
   });
   let messagesForAPI = rendered.messages;
-  const mediaCapActive = rendered.mediaCapActive;
   queryCheckpoint("query_message_normalization_end");
 
 
@@ -899,24 +897,10 @@ export async function* queryModel(
     const messagesForRequest = retryContext.stripThinkingFromHistory
       ? stripOldThinkingBlocks(messagesForAPI, 0)
       : messagesForAPI;
-    let clipFrontierIndex: number | undefined;
-    if (isClipFrontierEnabled() && !options.skipCacheWrite) {
-      const cfg = getGlobalConfig();
-      const cacheProfile = getCacheProfile();
-      // When the profile disables the history redactions, thinking/narration
-      // blocks never mutate — they are stable and may be frozen.
-      const redactionsActive = cacheProfile.historyRedactionEnabled;
-      clipFrontierIndex = getClipFrontierIndex(messagesForRequest, {
-        thinkingIsMutable:
-          redactionsActive && cfg.thinkingHistoryRedactionEnabled,
-        narrationIsMutable:
-          redactionsActive && cfg.narrationHistoryRedactionEnabled,
-        // Retain profile disables the age prune → full tool_results are
-        // byte-stable and may be frozen behind the marker.
-        agePruneActive: Number.isFinite(cacheProfile.keepTurns),
-        imagesAreMutable: mediaCapActive,
-      });
-    }
+    const clipFrontier =
+      isClipFrontierEnabled() && !options.skipCacheWrite
+        ? requestClipFrontier(messagesForRequest, redactions)
+        : undefined;
 
     // Single render shared by the wire request and the opt-in annotation
     // dump below — rendering twice would double the O(n) walk, and any
@@ -927,7 +911,7 @@ export async function* queryModel(
       enablePromptCaching,
       options.querySource,
       options.skipCacheWrite,
-      clipFrontierIndex,
+      clipFrontier?.index,
       options.agentId,
     );
 
@@ -938,6 +922,10 @@ export async function* queryModel(
         options.querySource,
         options.agentId,
         renderedMessages,
+        {
+          mediaStripped: rendered.mediaStripped,
+          markerCap: heldMarker(renderedMessages, clipFrontier),
+        },
       );
     }
 
@@ -1545,6 +1533,7 @@ export async function* queryModel(
           appliedContextEdits,
           serverCacheMissReason,
           thinkingDropPaths,
+          usage.input_tokens,
         );
       }
 

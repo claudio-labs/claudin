@@ -108,6 +108,7 @@ export {
   saveAiGeneratedTitle,
   saveCustomTitle,
   saveMode,
+  saveClipState,
   saveTag,
   saveTaskSummary,
   saveWorktreeState,

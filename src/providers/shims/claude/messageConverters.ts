@@ -163,6 +163,25 @@ function isToolResult(
   )
 }
 
+/** Media items (images + documents) in the messages, top-level or inside a tool_result. */
+export function countMediaItems(
+  messages: readonly (UserMessage | AssistantMessage)[],
+): number {
+  let count = 0
+  for (const msg of messages) {
+    if (!Array.isArray(msg.message.content)) continue
+    for (const block of msg.message.content) {
+      if (isMedia(block)) count++
+      if (isToolResult(block) && Array.isArray(block.content)) {
+        for (const nested of block.content) {
+          if (isMedia(nested)) count++
+        }
+      }
+    }
+  }
+  return count
+}
+
 /**
  * Ensures messages contain at most `limit` media items (images + documents).
  * Strips oldest media first to preserve the most recent.
@@ -171,19 +190,7 @@ export function stripExcessMediaItems(
   messages: (UserMessage | AssistantMessage)[],
   limit: number,
 ): (UserMessage | AssistantMessage)[] {
-  let toRemove = 0
-  for (const msg of messages) {
-    if (!Array.isArray(msg.message.content)) continue
-    for (const block of msg.message.content) {
-      if (isMedia(block)) toRemove++
-      if (isToolResult(block) && Array.isArray(block.content)) {
-        for (const nested of block.content) {
-          if (isMedia(nested)) toRemove++
-        }
-      }
-    }
-  }
-  toRemove -= limit
+  let toRemove = countMediaItems(messages) - limit
   if (toRemove <= 0) return messages
 
   return messages.map(msg => {

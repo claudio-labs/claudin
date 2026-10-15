@@ -10,11 +10,19 @@ import {
 import {
   applyStableInputStubs,
   applyStableStubs,
+  type ClipFrontier,
+  findClipFrontier,
 } from 'src/agent/compact/stableStubState.js'
+import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
+import type { MarkerCap } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { API_MAX_MEDIA_PER_REQUEST } from 'src/shared/constants/apiLimits.js'
 import type { AssistantMessage, Message, UserMessage } from 'src/shared/types/message.js'
 import type { Tools } from 'src/tools/Tool.js'
-import { stripExcessMediaItems } from 'src/providers/shims/claude/messageConverters.js'
+import {
+  countMediaItems,
+  stripExcessMediaItems,
+} from 'src/providers/shims/claude/messageConverters.js'
 
 export type RenderMessagesOptions = {
   /** The model-aware tool-search decision (isToolSearchEnabled). */
@@ -26,6 +34,19 @@ export type RenderMessagesOptions = {
   stripOldNarration: boolean
 }
 
+/** The redactions half of RenderMessagesOptions: the cache profile's history
+ *  redactions, each AND its config switch. */
+export type HistoryRedactions = Pick<RenderMessagesOptions, 'stripOldThinking' | 'stripOldNarration'>
+
+export function historyRedactions(): HistoryRedactions {
+  const config = getGlobalConfig()
+  const enabled = getCacheProfile().historyRedactionEnabled
+  return {
+    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled,
+    stripOldNarration: enabled && !!config.narrationHistoryRedactionEnabled,
+  }
+}
+
 /**
  * The messages one request sends, from the conversation the caller holds:
  * every stage between the history and `addCacheBreakpoints`, in the order the
@@ -33,14 +54,15 @@ export type RenderMessagesOptions = {
  * prompt-cache invariant suites (src/agent/cache/) render with it too, so what
  * they compare is what goes out, not a copy of the pipeline that can drift.
  *
- * `mediaCapActive` reports that the media cap rewrote the oldest media-bearing
- * blocks — they stop being byte-stable, and the clip frontier must know.
+ * `mediaStripped` is how many media items the API's cap dropped. Each new
+ * image past the cap drops one more, which rewrites the message that held the
+ * oldest one: the caller announces that rewrite when the count grows.
  */
 export function renderMessagesForAPI(
   messages: Message[],
   tools: Tools,
   options: RenderMessagesOptions,
-): { messages: (UserMessage | AssistantMessage)[]; mediaCapActive: boolean } {
+): { messages: (UserMessage | AssistantMessage)[]; mediaStripped: number } {
   let messagesForAPI = normalizeMessagesForAPI(messages, tools)
 
   // Model-specific post-processing: strip tool-search-specific fields if the
@@ -77,6 +99,20 @@ export function renderMessagesForAPI(
   // tool_uses and strips orphaned tool_results referencing non-existent tool_uses.
   messagesForAPI = ensureToolResultPairing(messagesForAPI)
 
+  // Strip excess media items before making the API call.
+  // The API rejects requests with >100 media items but returns a confusing error.
+  // Rather than erroring (which is hard to recover from in Cowork/CCD), we
+  // silently drop the oldest media items to stay within the limit.
+  //
+  // Before the stable stubs, so the stubs and the clip frontier judge the same
+  // content: a clipped result whose image the cap dropped is text-only now,
+  // and it is stubbed in this request — not left looking like a clip still to
+  // come, which held the cache marker in front of it for good. A stub never
+  // removes media (isStubbableResult refuses images and documents alike), so
+  // the count is the same on either side.
+  const mediaStripped = Math.max(0, countMediaItems(messagesForAPI) - API_MAX_MEDIA_PER_REQUEST)
+  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)
+
   // Apply stable stubs to tool_result blocks whose ids are in the per-session
   // clipped set. No-op when the set is empty. Bytes are deterministic across
   // turns so the prompt cache prefix stays stable after the first clip.
@@ -110,14 +146,55 @@ export function renderMessagesForAPI(
     messagesForAPI = stripOldNarrationBlocks(messagesForAPI, 2)
   }
 
-  // Strip excess media items before making the API call.
-  // The API rejects requests with >100 media items but returns a confusing error.
-  // Rather than erroring (which is hard to recover from in Cowork/CCD), we
-  // silently drop the oldest media items to stay within the limit.
-  const beforeMediaStrip = messagesForAPI
-  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)
-  // Past the media cap, the strip rewrites the OLDEST media-bearing blocks
-  // turn by turn as new media arrives — image-bearing tool_results stop
-  // being byte-stable, and the clip frontier must treat them as mutable.
-  return { messages: messagesForAPI, mediaCapActive: messagesForAPI !== beforeMediaStrip }
+  return { messages: messagesForAPI, mediaStripped }
+}
+
+/**
+ * The clip frontier of one request: the marker goes no further than this.
+ * Computed on the exact array handed to addCacheBreakpoints (after a retry's
+ * thinking strip), with the redactions the render applied, so the stability
+ * judgment matches the wire bytes.
+ */
+export function requestClipFrontier(
+  messages: readonly (UserMessage | AssistantMessage)[],
+  redactions: HistoryRedactions,
+): ClipFrontier {
+  return findClipFrontier(messages, {
+    // A history the render does not redact never mutates there — thinking and
+    // narration are stable and may be frozen.
+    thinkingIsMutable: redactions.stripOldThinking,
+    narrationIsMutable: redactions.stripOldNarration,
+    // Retain profile disables the age prune → full tool_results are
+    // byte-stable and may be frozen behind the marker.
+    agePruneActive: Number.isFinite(getCacheProfile().keepTurns),
+  })
+}
+
+/** The message carrying the last message-level cache_control marker, or -1. */
+export function messageMarkerIndex(
+  rendered: ReadonlyArray<{ content: unknown }>,
+): number {
+  return rendered.findLastIndex(
+    m =>
+      Array.isArray(m.content) &&
+      m.content.some(
+        (b: unknown) => typeof b === 'object' && b !== null && 'cache_control' in b && !!b.cache_control,
+      ),
+  )
+}
+
+/**
+ * Where the clip frontier held the marker short of the request's last
+ * message, read from the request as rendered: a marker the opt-in deferral
+ * placed, or none at all with prompt caching off, is not the frontier's.
+ * Null when nothing was held.
+ */
+export function heldMarker(
+  rendered: ReadonlyArray<{ content: unknown }>,
+  frontier: ClipFrontier | undefined,
+): MarkerCap | null {
+  if (!frontier?.reason) return null
+  const marker = messageMarkerIndex(rendered)
+  if (marker !== frontier.index || marker >= rendered.length - 1) return null
+  return { index: marker, total: rendered.length, reason: frontier.reason }
 }

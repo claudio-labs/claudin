@@ -270,6 +270,16 @@ export function saveMode(mode: 'coordinator' | 'normal'): void {
 }
 
 /**
+ * Record the session's clipped set after it changed — a clip event, or a
+ * reset — so every resume path re-sends the same stubs. Last-wins on load. A
+ * clip only happens mid-session, so the file exists; before it does there is
+ * nothing to save.
+ */
+export function saveClipState(): void {
+  getProject().appendClipState()
+}
+
+/**
  * Record the session's worktree state for --resume. Written to disk by
  * materializeSessionFile on the first user message and re-stamped by
  * reAppendSessionMetadata on exit. Pass null when exiting a worktree

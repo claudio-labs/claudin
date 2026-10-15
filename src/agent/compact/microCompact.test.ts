@@ -560,6 +560,56 @@ describe('relief policy — window lane via microcompactMessages', () => {
     const source = readFileSync(`${import.meta.dir}/microCompact.ts`, 'utf8')
     expect(source).toContain('notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)')
   })
+
+  // `-p` and the SDK run the main loop as 'sdk': its clipped set is the
+  // session's, and a `-p --resume` re-sent it in full without the entry.
+  test('a relief clip writes the clipped set to the transcript, in an SDK session too', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const { existsSync, mkdtempSync, readFileSync, rmSync } = await import('fs')
+    const { tmpdir } = await import('os')
+    const { join } = await import('path')
+    const { randomUUID } = await import('crypto')
+    const { getSessionId, switchSession } = await import('src/platform/bootstrap/state.js')
+    const { resetProjectForTesting, setSessionFileForTesting } = await import('src/sessions/persistence/project.js')
+    const { asSessionId } = await import('src/shared/types/ids.js')
+    const saved = { node: process.env.NODE_ENV, persist: process.env.TEST_ENABLE_SESSION_PERSISTENCE }
+    const originalSession = getSessionId()
+    const dir = mkdtempSync(join(tmpdir(), 'relief-clip-state-'))
+    try {
+      process.env.NODE_ENV = 'test'
+      process.env.TEST_ENABLE_SESSION_PERSISTENCE = '1'
+      mockSizeState.effectiveWindow = 40_000
+      for (const source of [MAIN, 'sdk']) {
+        resetProjectForTesting()
+        const sid = randomUUID()
+        switchSession(asSessionId(sid), dir)
+        const path = join(dir, `${sid}.jsonl`)
+        setSessionFileForTesting(path)
+        resetClippedIds()
+
+        await microcompactMessages(buildHeavyHistory(24, 5_000), undefined, source as never)
+
+        const written = (existsSync(path) ? readFileSync(path, 'utf8') : '')
+          .split('\n')
+          .filter(Boolean)
+          .map(line => JSON.parse(line) as { type: string; resultIds?: string[] })
+          .filter(entry => entry.type === 'clip-state')
+        expect({ source, written: written.at(-1)?.resultIds?.length }).toEqual({
+          source,
+          written: getClippedIds().size,
+        })
+      }
+    } finally {
+      switchSession(originalSession)
+      if (saved.node === undefined) delete process.env.NODE_ENV
+      else process.env.NODE_ENV = saved.node
+      if (saved.persist === undefined) delete process.env.TEST_ENABLE_SESSION_PERSISTENCE
+      else process.env.TEST_ENABLE_SESSION_PERSISTENCE = saved.persist
+      resetProjectForTesting()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 afterAll(() => {

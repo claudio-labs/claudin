@@ -23,6 +23,7 @@ import {
 } from 'src/sessions/sessionStorage.js'
 import { restoreSessionStateFromLog } from 'src/sessions/sessionRestore.js'
 import { restoreCostStateForResume } from 'src/agent/cost-tracker.js'
+import { restoreClippedState } from 'src/agent/compact/stableStubState.js'
 import {
   getSessionId,
   setMainLoopModelOverride,
@@ -145,6 +146,9 @@ export async function loadInitialMessages(
             restoreCostStateForResume(result.sessionId, result)
           }
         }
+        // The stubs the last process sent, so the first request reads its
+        // prefix back (into the current session: the resumed one, or a fork).
+        restoreClippedState(result.clipState)
         restoreSessionStateFromLog(result, setAppState)
 
         // Restore session metadata so it's re-appended on exit via reAppendSessionMetadata
@@ -345,6 +349,9 @@ export async function loadInitialMessages(
         // total_cost_usd reports the session, not just this process
         restoreCostStateForResume(result.sessionId, result)
       }
+      // The stubs the last process sent, so the first request reads its
+      // prefix back (into the current session: the resumed one, or a fork).
+      restoreClippedState(result.clipState)
       restoreSessionStateFromLog(result, setAppState)
 
       // Restore session metadata so it's re-appended on exit via reAppendSessionMetadata

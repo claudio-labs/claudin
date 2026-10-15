@@ -108,7 +108,8 @@ const MAX_SPENT_PIN_IDS = 64
  * pin has to do: it only has to outlive the single turn that re-delivered the
  * body, so even the 4-turn end is comfortable, and the 24-turn end costs
  * nothing measurable (the frontier stall is structurally zero under retain,
- * where isToolResultBlockMutable short-circuits on !agePruneActive, and was
+ * where the age prune does not run and neither clip path — the relief
+ * candidates, the idle-gap clip — puts a pinned id in the clipped set, and was
  * unmeasurable under aggressive, where nothing past the static head is cached
  * anyway). Buying a stable unit means threading a turn counter through all nine
  * call sites; the spread does not currently justify it.

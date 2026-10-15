@@ -18,8 +18,14 @@ import { getClaudeTempDir } from 'src/platform/tmpdir.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { formatCompactNumber } from 'src/providers/cache/cacheMetrics.js'
-import { recordCacheBreak } from 'src/providers/cache/cacheStatsTracker.js'
+import {
+  getCurrentTurnSerial,
+  recordCacheBreak,
+  recordPrefixRewrite,
+} from 'src/providers/cache/cacheStatsTracker.js'
 import { getCacheTrackingKey } from 'src/providers/cache/trackingKey.js'
+import { isClipStubContent } from 'src/agent/compact/stableStubState/clipStubText.js'
+import type { ClipFrontierReason } from 'src/agent/compact/stableStubState/clipFrontier.js'
 
 function getCacheBreakDiffPath(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -99,6 +105,14 @@ type PreviousState = {
   prevRequestStartedAt: number | null
   requestTtlMs: number
   prevRequestTtlMs: number | null
+  /** How many media items the API's cap dropped from this key's last
+   *  request; null until a render reports it. */
+  mediaStripped: number | null
+  /** Where the clip frontier held the last request's message marker back;
+   *  null when it sat on the last message. */
+  markerCap: MarkerCap | null
+  /** The tracker turn this key last reported an uncached tail in. */
+  uncachedTailTurn: number | null
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -111,6 +125,11 @@ export type MessageMutation = {
   role: string
   /** Block types of the mutated message, e.g. `tool_result` or `text,tool_use`. */
   blockTypes: string
+  /** What happened to the first changed block when it has a known shape
+   *  (`full→stub`, `stub→full`, `media removed`, `<type> block added` or
+   *  `removed`); null otherwise, or when the previous JSON was not kept
+   *  (sub-agents). Absent in a mutation built by hand. */
+  kind?: string | null
   prevJson: string
   newJson: string
 }
@@ -128,6 +147,25 @@ export type MessageMutation = {
 export type MarkerAdvance = {
   positions: number
   lagPlaced: boolean
+}
+
+/** The clip frontier held the message marker before the request's last
+ *  message: everything after `index` goes out as uncached input. */
+export type MarkerCap = {
+  index: number
+  /** Messages in the request. */
+  total: number
+  /** The rewriter the frontier stopped for. */
+  reason: ClipFrontierReason
+}
+
+/** What one request's render knows that its bytes do not say. */
+export type RenderFacts = {
+  /** Media items the API's 100-item cap dropped from this request
+   *  (renderMessagesForAPI). */
+  mediaStripped?: number
+  /** Where the clip frontier capped the message marker, if it did. */
+  markerCap?: MarkerCap | null
 }
 
 /** Mirrors CACHE_LOOKBACK_POSITIONS in lagCacheMarker.ts — the detector must
@@ -426,6 +464,9 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         prevRequestStartedAt: null,
         requestTtlMs: ttlMs,
         prevRequestTtlMs: null,
+        mediaStripped: null,
+        markerCap: null,
+        uncachedTailTurn: null,
       })
       return
     }
@@ -548,12 +589,22 @@ export function recordRenderedMessages(
   querySource: QuerySource,
   agentId: AgentId | undefined,
   renderedMessages: readonly BetaMessageParam[],
+  facts: RenderFacts = {},
 ): void {
   try {
     const key = getTrackingKey(querySource, agentId)
     if (!key) return
     const state = previousStateBySource.get(key)
     if (!state) return
+
+    // Before the mutation check: the strip it announces is one of the
+    // changes that check would otherwise report. A compaction reads the main
+    // thread's cache under its key, but its count is not the thread's: its
+    // fallback render strips every image.
+    if (facts.mediaStripped !== undefined && querySource !== 'compact') {
+      announceMediaStrip(state, querySource, agentId, facts.mediaStripped)
+    }
+    if (facts.markerCap !== undefined) state.markerCap = facts.markerCap
 
     const msgJson = renderedMessages.map(m =>
       jsonStringify(canonicalWireMessage(m)),
@@ -580,12 +631,14 @@ export function recordRenderedMessages(
     for (let i = 0; i < comparable; i++) {
       if (msgHashes[i] === state.msgHashes[i]) continue
       const message = renderedMessages[i]!
+      const prevJson = state.msgJson[i] ?? ''
       mutation = {
         index: i,
         total: state.msgHashes.length,
         role: message.role,
         blockTypes: describeBlockTypes(message),
-        prevJson: state.msgJson[i] ?? '',
+        kind: prevJson ? classifyMutation(prevJson, msgJson[i] ?? '') : null,
+        prevJson,
         newJson: msgJson[i] ?? '',
       }
       break
@@ -598,6 +651,131 @@ export function recordRenderedMessages(
   } catch (e: unknown) {
     logError(e)
   }
+}
+
+/**
+ * Past the API's media cap each new image pushes the oldest one out, which
+ * rewrites the message that held it — a client rewrite like a relief clip,
+ * announced the same way, so the read drop it causes is expected and the
+ * `[Cache:]` line names it. The first count a key reports is its baseline:
+ * that request was compared with nothing.
+ */
+function announceMediaStrip(
+  state: PreviousState,
+  querySource: QuerySource,
+  agentId: AgentId | undefined,
+  stripped: number,
+): void {
+  const previous = state.mediaStripped
+  state.mediaStripped = stripped
+  if (previous === null || stripped <= previous) return
+  // Label format is parsed by collapsePrefixRewrites (cacheMetrics.ts) —
+  // keep the shape when changing the words.
+  const label = `media cap (${stripped - previous} oldest dropped)`
+  markDeletionPending(state, label)
+  if (agentId === undefined && querySource.startsWith('repl_main_thread')) {
+    recordPrefixRewrite(label)
+  }
+}
+
+/** The next read drop on this key is a rewrite a client mechanism made. */
+function markDeletionPending(state: PreviousState, reason?: string): void {
+  state.cacheDeletionsPending = true
+  if (reason) {
+    state.cacheDeletionReason = state.cacheDeletionReason
+      ? `${state.cacheDeletionReason} + ${reason}`
+      : reason
+  }
+}
+
+type CanonicalBlock = { type?: string; content?: unknown }
+
+const isMediaBlock = (b: unknown): boolean => {
+  const type = (b as { type?: unknown } | null)?.type
+  return type === 'image' || type === 'document'
+}
+
+/** The text of a tool_result that is one text block, as canonicalWireMessage
+ *  writes every string result; null for anything else. */
+function soleText(block: CanonicalBlock): string | null {
+  const content = block.content
+  if (!Array.isArray(content) || content.length !== 1) return null
+  const only = content[0] as { type?: unknown; text?: unknown }
+  return only?.type === 'text' && typeof only.text === 'string' ? only.text : null
+}
+
+const isStubResult = (block: CanonicalBlock): boolean => {
+  const text = soleText(block)
+  return text !== null && isClipStubContent(text)
+}
+
+const mediaIn = (block: CanonicalBlock): number =>
+  Array.isArray(block.content) ? block.content.filter(isMediaBlock).length : 0
+
+/**
+ * Name the change to a message when it has a known shape: in its first
+ * differing tool_result, a clip stub landing (`full→stub`), a stub reverting
+ * to the full result (`stub→full`, a process that lost its clipped set), or
+ * media the cap dropped; or one block that appeared or disappeared, the rest
+ * unchanged (`text block removed` — a rule folded into the message one
+ * request and not the next). The transcript keeps only the `[Cache:]` line,
+ * so this is what lets a census attribute the rewrite without the diff file.
+ * Null otherwise.
+ */
+function classifyMutation(prevJson: string, newJson: string): string | null {
+  let before: unknown
+  let after: unknown
+  try {
+    before = (JSON.parse(prevJson) as { content?: unknown }).content
+    after = (JSON.parse(newJson) as { content?: unknown }).content
+  } catch {
+    return null
+  }
+  if (!Array.isArray(before) || !Array.isArray(after)) return null
+  const beforeJson = before.map(block => jsonStringify(block))
+  const afterJson = after.map(block => jsonStringify(block))
+  let i = 0
+  while (i < beforeJson.length && beforeJson[i] === afterJson[i]) i++
+  if (Math.abs(before.length - after.length) === 1) {
+    const added = after.length > before.length
+    const [longer, shorter] = added ? [afterJson, beforeJson] : [beforeJson, afterJson]
+    const restMatches = longer.slice(i + 1).every((block, k) => block === shorter[i + k])
+    const block = (added ? after : before)[i] as CanonicalBlock
+    return restMatches ? `${block.type ?? 'unknown'} block ${added ? 'added' : 'removed'}` : null
+  }
+  const a = before[i] as CanonicalBlock | undefined
+  const b = after[i] as CanonicalBlock | undefined
+  if (a?.type !== 'tool_result' || b?.type !== 'tool_result') return null
+  if (mediaIn(a) > mediaIn(b)) return 'media removed'
+  const wasStub = isStubResult(a)
+  const isStub = isStubResult(b)
+  if (!wasStub && isStub) return 'full→stub'
+  if (wasStub && !isStub) return 'stub→full'
+  return null
+}
+
+const describeMutation = (m: MessageMutation): string =>
+  `messages mutated at ${m.index}/${m.total} (${m.role}: ${m.blockTypes}${m.kind ? `, ${m.kind}` : ''})`
+
+/** Below this an uncached tail is noise; the lookback census's rewrite floor. */
+const UNCACHED_TAIL_MIN_TOKENS = 20_000
+
+/**
+ * The clip frontier held the message marker back, and the response billed
+ * what came after it as uncached input. No read dropped, so no break fires:
+ * this is the only place it shows. Named once per turn per tracked thread,
+ * since it repeats on every request for as long as the frontier stays where
+ * it is — and one thread's tail must not hide another's.
+ */
+function reportUncachedTail(state: PreviousState, uncachedInputTokens: number): void {
+  const cap = state.markerCap
+  if (!cap || uncachedInputTokens < UNCACHED_TAIL_MIN_TOKENS) return
+  const turn = getCurrentTurnSerial()
+  if (state.uncachedTailTurn === turn) return
+  state.uncachedTailTurn = turn
+  recordCacheBreak(
+    `uncached tail ${formatCompactNumber(uncachedInputTokens)} (marker held at messages.${cap.index}/${cap.total}: ${cap.reason})`,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -636,7 +814,7 @@ function describeStrictViolation(
     while (at < mutation.prevJson.length && mutation.prevJson[at] === mutation.newJson[at]) at++
     const around = (s: string) => JSON.stringify(s.slice(Math.max(0, at - 60), at + 100))
     parts.push(
-      `messages mutated at ${mutation.index}/${mutation.total} (${mutation.role}: ${mutation.blockTypes})` +
+      describeMutation(mutation) +
         (mutation.prevJson ? `: sent ${around(mutation.prevJson)}, resent ${around(mutation.newJson)}` : ''),
     )
   }
@@ -911,9 +1089,7 @@ export function buildCacheBreakReason(
   // regardless of what the system/tools hashes say — name the message so
   // the mechanism can be found, instead of falling through to "server-side".
   if (messageMutation) {
-    parts.push(
-      `messages mutated at ${messageMutation.index}/${messageMutation.total} (${messageMutation.role}: ${messageMutation.blockTypes}) — client-side prefix rewrite`,
-    )
+    parts.push(`${describeMutation(messageMutation)} — client-side prefix rewrite`)
   }
   // Every hash unchanged and the marker moved past the lookback window: the
   // server could not find the previous write from the new breakpoint. With
@@ -954,6 +1130,8 @@ export async function checkResponseForCacheBreak(
   contextManagement?: BetaContextManagementResponse | null,
   serverMissReason?: ServerCacheMissReason | null,
   thinkingDropPaths: readonly string[] = [],
+  /** The response's `input_tokens`: what went out after the last breakpoint. */
+  uncachedInputTokens = 0,
 ): Promise<void> {
   try {
     const key = getTrackingKey(querySource, agentId)
@@ -981,6 +1159,8 @@ export async function checkResponseForCacheBreak(
 
     // Skip excluded models (e.g., haiku has different caching behavior)
     if (isExcludedModel(state.model)) return
+
+    reportUncachedTail(state, uncachedInputTokens)
 
     const prevCacheRead = state.prevCacheReadTokens
     state.prevCacheReadTokens = cacheReadTokens
@@ -1107,14 +1287,7 @@ export function notifyCacheDeletion(
 ): void {
   const key = getTrackingKey(querySource, agentId)
   const state = key ? previousStateBySource.get(key) : undefined
-  if (state) {
-    state.cacheDeletionsPending = true
-    if (reason) {
-      state.cacheDeletionReason = state.cacheDeletionReason
-        ? `${state.cacheDeletionReason} + ${reason}`
-        : reason
-    }
-  }
+  if (state) markDeletionPending(state, reason)
 }
 
 /**

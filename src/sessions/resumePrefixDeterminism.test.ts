@@ -18,6 +18,13 @@ import {
   createAttachmentMessage,
 } from 'src/agent/attachments/attachments.js'
 import { getPlanModeAttachments } from 'src/agent/attachments/lifecycle.js'
+import { wireMessages } from 'src/agent/cache/__testutils__/prefixInvariant.js'
+import {
+  _resetAllClippedIdsForTesting,
+  addClippedIds,
+  restoreClippedState,
+  snapshotClippedState,
+} from 'src/agent/compact/stableStubState.js'
 import {
   createAssistantMessage,
   createUserMessage,
@@ -284,6 +291,39 @@ describe('reminders render what they were created with, not live state', () => {
     } finally {
       _setMitigationModelResolverForTesting(undefined)
       _resetReadReminderStateForTesting()
+    }
+  })
+})
+
+describe('a clip survives the process that made it', () => {
+  // The clipped set and the stub bytes live in this process's memory
+  // (clippedIdRegistry.ts). A resumed process that sends a clipped result in
+  // full again misses the cache from that result on, and the next relief clip
+  // rewrites everything after it a second time.
+  test('the next process re-sends the stub the previous one sent', () => {
+    const call = readCall('toolu_big', '/repo/src/big.ts')
+    const live = [
+      createUserMessage({ content: 'Read big.ts.' }),
+      call,
+      readResult(call, 'toolu_big', `${'1→export const line = 1\n'.repeat(800)}`),
+      createAssistantMessage({ content: 'It exports one constant, many times.' }),
+    ]
+    try {
+      addClippedIds(['toolu_big'])
+      const sent = wireMessages(live, [])
+      expect(sent.join('\n')).toContain('[clipped:')
+
+      // A new process: none of this one's memory, only its transcript — the
+      // messages and the `clip-state` entry the clip wrote
+      // (sessionRestore.clipState.test.ts covers the file round trip).
+      const written = JSON.parse(JSON.stringify(snapshotClippedState()))
+      const resumed = resumedFromTranscript(live)
+      _resetAllClippedIdsForTesting()
+      restoreClippedState(written)
+
+      expect(wireMessages(resumed, [])).toEqual(sent)
+    } finally {
+      _resetAllClippedIdsForTesting()
     }
   })
 })

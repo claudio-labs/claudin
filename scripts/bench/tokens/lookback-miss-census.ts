@@ -24,6 +24,14 @@
 //                `relief clip` when the turn's line names one — a clip is
 //                announced, so it never appears as a break
 //
+// A second leak never drops a read, so the events above cannot see it: the
+// UNCACHED TAIL, calls whose input_tokens (what went out after the last
+// breakpoint) reached --min-rewrite. The clip frontier held the marker back
+// and the tail was billed at the full input price on every call. The census
+// of 2026-10-15 found 115M such tokens in one week ($243), none of it
+// visible here before this section existed; a binary from that day on also
+// names it on the `[Cache:]` line (`uncached tail Nk (marker held at …)`).
+//
 // Times are UTC (MM-DDTHH:MM:SSZ).
 //
 // Baseline the fix was measured against (2026-09-13):
@@ -80,6 +88,8 @@ type SessionReport = {
   calls: number
   cacheWrite: number
   events: Event[]
+  /** Calls that billed ≥ --min-rewrite tokens as uncached input. */
+  uncachedTail: { calls: number; tokens: number; first: string; last: string }
 }
 
 const REWROTE_RE = /rewrote ([\d.]+)([km]?)/i
@@ -193,7 +203,14 @@ export function censusSession(file: string): SessionReport | null {
     events.push({ ...c, prev, tags, reason })
   }
   const id = file.split('/').pop()!.replace('.jsonl', '')
-  return { id, file, calls: calls.length, cacheWrite, events }
+  const tail = calls.filter(c => c.in >= ARGS.minRewrite)
+  const uncachedTail = {
+    calls: tail.length,
+    tokens: tail.reduce((s, c) => s + c.in, 0),
+    first: tail[0]?.t ?? '',
+    last: tail.at(-1)?.t ?? '',
+  }
+  return { id, file, calls: calls.length, cacheWrite, events, uncachedTail }
 }
 
 function listTranscripts(root: string, since?: number): string[] {
@@ -292,6 +309,15 @@ function main() {
   console.log('by tags:')
   for (const [tags, v] of [...byTags].sort((a, b) => b[1].tokens - a[1].tokens)) {
     console.log(`  ${String(v.n).padStart(4)}  ${fmt(v.tokens).padStart(8)}  ${tags}`)
+  }
+
+  const tails = reports.filter(r => r.uncachedTail.calls > 0)
+  tails.sort((a, b) => b.uncachedTail.tokens - a.uncachedTail.tokens)
+  const tailTokens = tails.reduce((s, r) => s + r.uncachedTail.tokens, 0)
+  console.log(`\nuncached tail (calls with input_tokens ≥ ${fmt(ARGS.minRewrite)}): ${tails.length} sessions, ${fmt(tailTokens)} tokens`)
+  for (const r of tails) {
+    const t = r.uncachedTail
+    console.log(`  ${r.id.slice(0, 8)}  ${String(t.calls).padStart(5)} calls  ${fmt(t.tokens).padStart(8)}  ${t.first}..${t.last}`)
   }
 }
 

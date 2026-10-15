@@ -713,6 +713,20 @@ describe('formatCacheMetricsCompact — snapshot-stable output', () => {
       '[Cache: read=68.4m created=12k hit=100% rewrite=idle-gap clip (4 tool results after 90min)+relief clip (2 tool results, ~5k tokens, rss lane)]',
     )
   })
+
+  // Past the media cap every request that brings a screenshot drops one more:
+  // a turn walking thirty pages would print the label thirty times.
+  test('repeated media-cap rewrites collapse into one entry with the count summed', () => {
+    expect(
+      collapsePrefixRewrites([
+        'media cap (1 oldest dropped)',
+        'relief clip (1 tool results, ~1k tokens, window lane)',
+        'media cap (1 oldest dropped)',
+        'media cap (3 oldest dropped)',
+      ]),
+    ).toEqual(['media cap ×3 (5 oldest dropped)', 'relief clip (1 tool results, ~1k tokens, window lane)'])
+    expect(collapsePrefixRewrites(['media cap (2 oldest dropped)'])).toEqual(['media cap (2 oldest dropped)'])
+  })
 })
 
 describe('formatCacheMetricsFull — snapshot-stable output', () => {
