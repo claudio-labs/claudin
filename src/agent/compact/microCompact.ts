@@ -39,6 +39,7 @@ import {
   getClippedInputFields,
   getClippedIds,
   isStubbableResult,
+  pinShieldsBlock,
   resetClippedIds,
   snapshotClippedState,
 } from 'src/agent/compact/stableStubState.js'
@@ -576,12 +577,13 @@ function maybeTimeBasedMicrocompact(
   const newOnes = [...clearSet].filter(id => !clipped.has(id))
 
   // Measure what the clear saves on the content as it stands in this view,
-  // counting only results a stub can rewrite: an image-bearing one stays as
-  // it is (stubOneBlock), so clipping it frees nothing, and its id in the set
-  // used to hold the cache marker in front of it. Zero means every candidate
-  // is already empty/cleared — nothing to do.
+  // counting only results a stub would rewrite now: a media-bearing or a
+  // pinned one stays as it is (stubOneBlock), so clipping it frees nothing,
+  // and its id in the set held the cache marker in front of it — for good,
+  // or until the pin expired. Zero means every candidate is already
+  // empty/cleared — nothing to do.
   const newSet = new Set(newOnes)
-  const stubbable = new Set<string>()
+  const resultsToClip: string[] = []
   let tokensSaved = 0
   for (const message of messages) {
     if (message.type !== 'user' || !Array.isArray(message.message.content)) {
@@ -591,14 +593,15 @@ function maybeTimeBasedMicrocompact(
       if (
         block.type === 'tool_result' &&
         newSet.has(block.tool_use_id) &&
-        isStubbableResult(block.content)
+        isStubbableResult(block.content) &&
+        !pinShieldsBlock(block.tool_use_id, block.content)
       ) {
-        stubbable.add(block.tool_use_id)
+        resultsToClip.push(block.tool_use_id)
         tokensSaved += calculateToolResultTokens(block)
       }
     }
   }
-  const resultsToClip = tokensSaved > 0 ? newOnes.filter(id => stubbable.has(id)) : []
+  if (tokensSaved === 0) resultsToClip.length = 0
 
   // The prefix is being rewritten regardless, so clipping the INPUTS of the
   // calls older than the kept tail costs nothing here — same registry, same
