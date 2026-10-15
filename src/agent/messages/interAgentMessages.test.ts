@@ -177,6 +177,8 @@ describe('messages an agent never read', () => {
       expect(String(notice?.value)).toContain(
         '<unread-messages>1 message reached it after its last tool round and went unread, from: tester.',
       )
+      // Drained at the main loop's next tool round, not held for the turn's end.
+      expect(notice?.priority).toBe('next')
     } finally {
       resetCommandQueue()
     }

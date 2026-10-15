@@ -1,5 +1,8 @@
+import { mkdirSync, rmSync, writeFileSync } from 'fs'
+import { dirname } from 'path'
 import { describe, expect, test } from 'bun:test'
 
+import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { TaskOutputTool } from 'src/tools/TaskOutputTool/TaskOutputTool.js'
 
@@ -62,6 +65,25 @@ describe('TaskOutputTool', () => {
     expect(unknown && unknown.result === false && unknown.message).toContain(
       'No task found',
     )
+    expect(unknown && unknown.result === false && unknown.message).not.toContain('saved at')
+  })
+
+  test('a finished task that left state is pointed at its saved output', async () => {
+    const id = `gone-${process.pid}-${Date.now()}`
+    const path = getTaskOutputPath(id)
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, 'done\n')
+    try {
+      const gone = await TaskOutputTool.validateInput?.(
+        { task_id: id } as never,
+        makeCtx({ tasks: {} }),
+      )
+      if (gone?.result !== false) throw new Error('expected a refusal')
+      expect(gone.message).toContain('it has finished and is no longer tracked')
+      expect(gone.message).toContain(`saved at ${path}`)
+    } finally {
+      rmSync(path, { force: true })
+    }
   })
 
   test('validateInput accepts known task', async () => {

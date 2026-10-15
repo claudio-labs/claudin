@@ -289,9 +289,16 @@ export function enqueueAgentNotification({
 <${STATUS_TAG}>${status}</${STATUS_TAG}>
 <${SUMMARY_TAG}>${summary}</${SUMMARY_TAG}>${resultSection}${usageSection}${worktreeSection}${unreadSection}
 </${TASK_NOTIFICATION_TAG}>`;
+  // 'next', like a shell task's: the main loop drains it at its next tool
+  // round. At the default 'later' only a Sleep flushed it mid-turn, and this
+  // build has no Sleep tool — so a background agent's report waited for the
+  // turn to end: 39 minutes in one 2026-10-09 session, while the model, told
+  // it would be notified, polled TaskOutput and got "No task found" (the task
+  // is evicted once its notification is queued).
   enqueuePendingNotification({
     value: message,
-    mode: 'task-notification'
+    mode: 'task-notification',
+    priority: 'next'
   });
 }
 
