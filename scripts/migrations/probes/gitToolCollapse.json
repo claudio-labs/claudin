@@ -1,6 +1,8 @@
 {
   "test": [
-    "src/tools/shared/gitOperationTracking.test.ts"
+    "src/tools/shared/gitOperationTracking.test.ts",
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx"
   ],
   "source": "src/tools/shared/gitOperationTracking.ts",
   "probes": [
@@ -67,6 +69,102 @@
     {
       "name": "gh pr ready action",
       "find": "{ re: /\\bgh\\s+pr\\s+ready\\b/, action: 'ready', op: 'pr_ready' },",
+      "replace": ""
+    },
+    {
+      "name": "Bash joins the group under fullscreen",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "(isFullscreenEnvEnabled() ? toolName === BASH_TOOL_NAME : false),",
+      "replace": "false,"
+    },
+    {
+      "name": "the git-op scan reads stderr too",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "const combined = (out.stdout ?? '') + '\\n' + (out.stderr ?? '')",
+      "replace": "const combined = out.stdout ?? ''"
+    },
+    {
+      "name": "a commit lands in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (commit) group.commits?.push(commit)\n",
+      "replace": ""
+    },
+    {
+      "name": "a merge lands in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (branch) group.branches?.push(branch)\n",
+      "replace": ""
+    },
+    {
+      "name": "a PR lands in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (pr) group.prs?.push(pr)\n",
+      "replace": ""
+    },
+    {
+      "name": "a command with a git op is counted as one",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "      group.gitOpBashCount = (group.gitOpBashCount ?? 0) + 1",
+      "replace": "      group.gitOpBashCount = 0"
+    },
+    {
+      "name": "a # comment is the shell hint",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "            extractBashCommentLabel(input.command) ??\n",
+      "replace": ""
+    },
+    {
+      "name": "git-op commands leave the shell count",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "Math.max(0, maxBashCountRef.current - gitOpBashCount)",
+      "replace": "maxBashCountRef.current"
+    },
+    {
+      "name": "a group of only git ops still renders",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "bashCount > 0 || gitOpBashCount > 0 ||",
+      "replace": "bashCount > 0 ||"
+    },
+    {
+      "name": "commit parts are fullscreen-only",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "if (isFullscreenEnvEnabled() && message.commits?.length) {",
+      "replace": "if (message.commits?.length) {"
+    },
+    {
+      "name": "amend verb",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "amended: 'amended commit',",
+      "replace": "amended: 'amended',"
+    },
+    {
+      "name": "two pushes to one branch name it once",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const branches = uniq(message.pushes.map(p => p.branch));",
+      "replace": "const branches = message.pushes.map(p => p.branch);"
+    },
+    {
+      "name": "rebase verb",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "rebased: 'rebased onto'",
+      "replace": "rebased: 'rebased'"
+    },
+    {
+      "name": "ready verb",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "ready: 'marked ready'",
+      "replace": "ready: 'ready'"
+    },
+    {
+      "name": "the header clock takes the slowest command",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "if (slowestShellSeconds === undefined || data.elapsedTimeSeconds > slowestShellSeconds) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "only a running command has a clock",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "      if (!inProgressToolUseIDs.has(id_1)) continue;\n",
       "replace": ""
     }
   ]

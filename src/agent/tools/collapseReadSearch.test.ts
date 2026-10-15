@@ -600,6 +600,112 @@ describe('MCP collapse', () => {
   })
 })
 
+describe('shell lane — Bash under fullscreen', () => {
+  // What the Bash tool answers for a command that is neither search nor read.
+  const BASH_TOOL = {
+    name: 'Bash',
+    isSearchOrReadCommand: () => ({ isSearch: false, isRead: false }),
+  }
+  const shellTools = [READ_TOOL, BASH_TOOL] as unknown as Tools
+  let savedNoFlicker: string | undefined
+
+  beforeAll(() => {
+    savedNoFlicker = process.env.CLAUDIN_NO_FLICKER
+    process.env.CLAUDIN_NO_FLICKER = '1'
+  })
+  afterAll(() => {
+    if (savedNoFlicker === undefined) delete process.env.CLAUDIN_NO_FLICKER
+    else process.env.CLAUDIN_NO_FLICKER = savedNoFlicker
+  })
+
+  const bash = (id: string, command: string) => toolUse(id, 'Bash', { command })
+  const out = (stdout: string, stderr = '') => ({ stdout, stderr })
+
+  function shellGroup(messages: RenderableMessage[]): CollapsedReadSearchGroup {
+    const collapsed = collapseReadSearchGroups(messages, shellTools)
+    expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search'])
+    return collapsed[0] as CollapsedReadSearchGroup
+  }
+
+  test('a command that is neither search nor read joins the group as a shell command', () => {
+    const group = shellGroup([
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('r1', { file: {} }),
+      bash('b1', 'npm   test'),
+      toolResult('b1', out('ok')),
+    ])
+
+    expect(group.readCount).toBe(1)
+    expect(group.bashCount).toBe(1)
+    expect(group.gitOpBashCount).toBe(0)
+    expect(group.latestDisplayHint).toBe('$ npm test')
+    expect(group.commits).toBeUndefined()
+  })
+
+  test('a leading # comment is the hint, as the tool-use label is', () => {
+    const group = shellGroup([bash('b1', '# run the suite\nnpm test'), toolResult('b1', out('ok'))])
+
+    expect(group.latestDisplayHint).toBe('run the suite')
+  })
+
+  test('a commit surfaces its sha and counts as a git op', () => {
+    const group = shellGroup([
+      bash('b1', 'git add a.ts && git commit -m x'),
+      toolResult('b1', out('[main 1a2b3c4] x\n 1 file changed, 2 insertions(+)\n')),
+    ])
+
+    expect(group.commits).toEqual([{ sha: '1a2b3c', kind: 'committed' }])
+    expect(group.bashCount).toBe(1)
+    expect(group.gitOpBashCount).toBe(1)
+  })
+
+  test('the push ref line is read from stderr', () => {
+    const group = shellGroup([
+      bash('b1', 'git push -u origin feat/x'),
+      toolResult('b1', out('', ' * [new branch]      feat/x -> feat/x\n')),
+    ])
+
+    expect(group.pushes).toEqual([{ branch: 'feat/x' }])
+  })
+
+  test('merges and PRs land in their own lists, one git op per command', () => {
+    const group = shellGroup([
+      bash('b1', 'git merge feat/x'),
+      toolResult('b1', out('Updating a..b\nFast-forward\n')),
+      bash('b2', 'gh pr create --title t --body b'),
+      toolResult('b2', out('https://github.com/o/r/pull/42\n')),
+      bash('b3', 'ls -la'),
+      toolResult('b3', out('total 0\n')),
+    ])
+
+    expect(group.branches).toEqual([{ ref: 'feat/x', action: 'merged' }])
+    expect(group.prs).toEqual([
+      { number: 42, url: 'https://github.com/o/r/pull/42', action: 'created' },
+    ])
+    expect(group.bashCount).toBe(3)
+    expect(group.gitOpBashCount).toBe(2)
+  })
+
+  test('without fullscreen a shell command keeps its own row', () => {
+    process.env.CLAUDIN_NO_FLICKER = '0'
+    try {
+      const collapsed = collapseReadSearchGroups(
+        [
+          toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+          toolResult('r1', { file: {} }),
+          bash('b1', 'git commit -m x'),
+          toolResult('b1', out('[main 1a2b3c4] x\n')),
+        ],
+        shellTools,
+      )
+      expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search', 'assistant', 'user'])
+      expect((collapsed[0] as CollapsedReadSearchGroup).bashCount).toBeUndefined()
+    } finally {
+      process.env.CLAUDIN_NO_FLICKER = '1'
+    }
+  })
+})
+
 /**
  * The sub-agent progress line. It is built from tool_uses alone (no results),
  * but it has to describe the same work as the badge above, so it counts FILES.
