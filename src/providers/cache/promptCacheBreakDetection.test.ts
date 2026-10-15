@@ -888,6 +888,17 @@ describe('media past the cap', () => {
     expect(getCurrentTurnCacheBreaks()).toHaveLength(1)
   })
 
+  // Compaction reads the main thread's cache under its key, and its fallback
+  // render strips every image: its count is not the thread's.
+  test("a compaction request's count is not the thread's baseline", () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), toolResult('t1', 'shot')], { mediaStripped: 2 })
+    recordRenderedMessages('compact', undefined, [user('summarize')], { mediaStripped: 0 })
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), toolResult('t1', 'shot'), user('b')], { mediaStripped: 2 })
+    expect(getCurrentTurnPrefixRewrites()).toEqual([])
+  })
+
   test("a sub-agent's drop keeps off the main thread's line", async () => {
     const agentId = 'a-media' as AgentId
     primeAgent(agentId)
