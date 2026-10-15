@@ -35,8 +35,6 @@ import {
 } from 'src/permissions/classifierApprovals.js'
 import {
   AUTO_REJECT_MESSAGE,
-  buildClassifierUnavailableMessage,
-  buildYoloRejectionMessage,
   DONT_ASK_REJECT_MESSAGE,
 } from 'src/agent/messages/messages.js'
 import { calculateCostFromTokens } from 'src/providers/usage/modelCost.js'
@@ -44,7 +42,6 @@ import { calculateCostFromTokens } from 'src/providers/usage/modelCost.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createDenialTrackingState,
-  recordDenial,
   recordSuccess,
 } from 'src/permissions/denialTracking.js'
 import {
@@ -57,8 +54,7 @@ import {
   toolAlwaysAllowedRule,
 } from 'src/permissions/permissions/ruleLookup.js'
 import {
-  classifierFallback,
-  handleDenialLimitExceeded,
+  decideClassifierBlock,
   persistDenialState,
 } from 'src/permissions/permissions/denial.js'
 import {
@@ -91,7 +87,7 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
   tool,
   input,
   context,
-  assistantMessage,
+  _assistantMessage,
   toolUseID,
 ): Promise<PermissionDecision> => {
   const result = await hasPermissionsToUseToolInner(tool, input, context)
@@ -329,90 +325,16 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       }
 
       if (classifierResult.shouldBlock) {
-        // A block that is not a verdict on the action (classifierFallback)
-        // skips iron_gate and falls back to normal prompting so the user can
-        // approve/deny manually, rather than looping in fail-closed retries.
-        const fallback = classifierFallback(classifierResult)
-        if (fallback) {
-          const { cause } = fallback
-          if (!appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
-            logForDebugging(
-              `Auto mode classifier ${cause}, falling back to normal permission handling`,
-              { level: 'warn' },
-            )
-            return {
-              ...result,
-              decisionReason: {
-                type: 'other',
-                reason: `Auto mode classifier ${cause} — falling back to manual approval`,
-              },
-            }
-          }
-          // Headless has no one to ask. A timeout falls through to the
-          // unavailable branch below and keeps its retry guidance; a refusal
-          // falls through to the ordinary denial, which counts toward the
-          // denial limit like any block.
-          if (fallback.abortsHeadless) {
-            throw new AbortError(
-              `Agent aborted: auto mode classifier ${cause} in headless mode`,
-            )
-          }
-        }
-        // When classifier is unavailable (API error), fail closed: deny with
-        // retry guidance.
-        if (classifierResult.unavailable) {
-          logForDebugging(
-            'Auto mode classifier unavailable, denying with retry guidance (fail closed)',
-            { level: 'warn' },
-          )
-          return {
-            behavior: 'deny',
-            decisionReason: {
-              type: 'classifier',
-              classifier: 'auto-mode',
-              reason: 'Classifier unavailable',
-            },
-            message: buildClassifierUnavailableMessage(
-              tool.name,
-              classifierResult.model,
-            ),
-          }
-        }
-
-        // Update denial tracking and check limits
-        const newDenialState = recordDenial(denialState)
-        persistDenialState(context, newDenialState)
-
-        logForDebugging(
-          `Auto mode classifier blocked action: ${classifierResult.reason}`,
-          { level: 'warn' },
-        )
-
-        // If denial limit hit, fall back to prompting so the user
-        // can review. We check after the classifier so we can include
-        // its reason in the prompt.
-        const denialLimitResult = handleDenialLimitExceeded(
-          newDenialState,
+        // An ask or a deny, never an allow: decideClassifierBlock's return
+        // type carries that guarantee, and its suite drives every branch.
+        return decideClassifierBlock({
+          classifierResult,
+          ask: result,
           appState,
-          classifierResult.reason,
-          assistantMessage,
-          tool,
-          result,
+          denialState,
           context,
-        )
-        if (denialLimitResult) {
-          return denialLimitResult
-        }
-
-        return {
-          behavior: 'deny',
-          decisionReason: {
-            type: 'classifier',
-            classifier: 'auto-mode',
-            reason: classifierResult.reason,
-          },
-          message: buildYoloRejectionMessage(classifierResult.reason),
-        }
+          toolName: tool.name,
+        })
       }
 
       // Reset consecutive denials on success
