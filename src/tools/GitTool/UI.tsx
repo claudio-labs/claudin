@@ -87,8 +87,9 @@ export function renderToolResultMessage(
       <Box flexDirection="column">
         {output.outcomes.map(outcome => {
           // A stalled watch exits non-zero without having failed, so it must
-          // not wear the ✗ — the row would report a broken command.
-          const ok = outcome.exitCode === 0
+          // not wear the ✗ — the row would report a broken command. Nor must
+          // an exit that is the answer (no upstream).
+          const ok = outcome.exitCode === 0 || outcome.answer !== undefined
           return (
             <Text key={outcome.command} dimColor wrap="truncate-end">
               <Text color={outcome.stall ? 'warning' : ok ? 'success' : 'error'}>

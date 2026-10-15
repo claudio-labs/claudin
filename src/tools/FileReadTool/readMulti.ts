@@ -8,7 +8,7 @@
  * This module is the flag and the pure reading of a batch input. The loop that
  * runs a batch is batchRead.ts.
  */
-import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import type { Input, SingleInput } from 'src/tools/FileReadTool/schemas.js'
 
 /**
@@ -23,9 +23,51 @@ export function readMultiEnabledAtLoad(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_READ_MULTI)
 }
 
+/**
+ * Read once, at load, by every module whose surface the flag changes
+ * (schemas.ts, prompt.ts, FileReadTool.ts) — the schema, the description and
+ * the expansion must agree for the whole session, as with the batch Read
+ * (readMultiEnabledAtLoad). Defined here rather than in readGlobs.ts, which
+ * re-exports it, because recordedReadTargets needs it and readGlobs imports
+ * this module.
+ */
+export function readGlobsEnabledAtLoad(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_READ_GLOBS)
+}
+
 export const MIN_BATCH_FILES = 2
 export const MAX_BATCH_FILES = 20
 export const MAX_BATCH_SYMBOLS = 10
+
+/**
+ * A `file_paths` naming one file is that file's Read. The batch takes two or
+ * more, and a list of one was refused as "Too small: expected array to have
+ * >=2 items" — four times in the 2026-10-08..15 census, each answered by the
+ * same Read with `file_path`. Under CLAUDIN_READ_GLOBS (`globs`) one entry is
+ * a legitimate glob and stays a batch. A `file_path` beside it, unless a
+ * placeholder, leaves the input as it is: that is the shape error
+ * batchShapeRefusal names.
+ */
+export function singleEntryAsFilePath(value: unknown, globs: boolean): unknown {
+  if (globs || !value || typeof value !== 'object' || Array.isArray(value)) {
+    return value
+  }
+  const { file_paths, ...rest } = value as Record<string, unknown>
+  if (
+    !Array.isArray(file_paths) ||
+    file_paths.length !== 1 ||
+    typeof file_paths[0] !== 'string' ||
+    !isPlaceholder(rest.file_path)
+  ) {
+    return value
+  }
+  return { ...rest, file_path: file_paths[0] }
+}
+
+/** What Codex strict mode sends for an argument it means to leave out. */
+function isPlaceholder(value: unknown): boolean {
+  return value === undefined || value === null || value === ''
+}
 
 /** The fields that make a Read a batch, as the flag-on schema parses them. */
 type ReadTargets = {
@@ -43,11 +85,15 @@ type ReadTargets = {
  * schema with `file_paths: null` — or `""`, or `[]` — beside its
  * `file_path`, and a call the schema refused is stored all the same. Read
  * here as the flag-on schema reads them: a placeholder, or a value of a type
- * the schema refuses, is absent.
+ * the schema refuses, is absent, and a one-entry `file_paths` is the single
+ * Read the tool made of it (singleEntryAsFilePath).
  */
 export function recordedReadTargets(input: unknown): ReadTargets {
   if (typeof input !== 'object' || input === null) return {}
-  const { file_path, file_paths, symbol } = input as Record<string, unknown>
+  const { file_path, file_paths, symbol } = singleEntryAsFilePath(
+    input,
+    readGlobsEnabledAtLoad(),
+  ) as Record<string, unknown>
   const paths = stringList(file_paths)
   const symbols = stringList(symbol)
   return {

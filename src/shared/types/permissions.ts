@@ -367,6 +367,13 @@ export type YoloClassifierResult = {
    * fall back to asking the user rather than aborting the agent.
    */
   timedOut?: boolean
+  /**
+   * The API declined the classifier request itself (`stop_reason: "refusal"`)
+   * — a safety stop on the transcript, not a verdict on the action, and the
+   * same transcript is declined again. Callers ask the user, as for
+   * transcriptTooLong; headless keeps the denial.
+   */
+  refused?: boolean
   /** The model used for this classifier call */
   model: string
   /** Token usage from the classifier API call (for overhead telemetry) */

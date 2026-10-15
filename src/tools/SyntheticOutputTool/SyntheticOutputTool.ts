@@ -1,4 +1,3 @@
-import { Ajv } from 'ajv'
 import { z } from 'zod/v4'
 import type { Tool, ToolInputJSONSchema } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
@@ -6,6 +5,7 @@ import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
+import { ajvClassForSchema } from 'src/tools/shared/jsonSchemaDraft.js'
 
 // Allow any input object since the schema is provided dynamically
 const inputSchema = lazySchema(() => z.object({}).passthrough())
@@ -128,7 +128,10 @@ function buildSyntheticOutputTool(
   jsonSchema: Record<string, unknown>,
 ): CreateResult {
   try {
-    const ajv = new Ajv({ allErrors: true })
+    // The class for the schema's own draft: a zod v4 `--json-schema` declares
+    // 2020-12, which plain Ajv refused here as an invalid schema.
+    const Validator = ajvClassForSchema(jsonSchema)
+    const ajv = new Validator({ allErrors: true })
     const isValidSchema = ajv.validateSchema(jsonSchema)
     if (!isValidSchema) {
       return { error: ajv.errorsText(ajv.errors) }

@@ -357,7 +357,16 @@ describe('buildDossierFromMessages', () => {
         [`==> ${a} <==\n     1→const a = 1`, `==> ${b} <==\n     1→const b = 2`].join('\n\n'),
       ),
     ]
-    const dossier = await buildDossierFromMessages(messages, '#', [], 's')
+    // A one-entry list is a batch only under the flag (readMulti.ts).
+    const prior = process.env.CLAUDIN_READ_GLOBS
+    process.env.CLAUDIN_READ_GLOBS = '1'
+    let dossier: Awaited<ReturnType<typeof buildDossierFromMessages>>
+    try {
+      dossier = await buildDossierFromMessages(messages, '#', [], 's')
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_READ_GLOBS
+      else process.env.CLAUDIN_READ_GLOBS = prior
+    }
     const reads = dossier.entries.filter((e): e is ReadEntry => e.source === 'Read')
     expect(reads.map(e => [e.path, e.content])).toEqual([
       [a, '     1→const a = 1'],

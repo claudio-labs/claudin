@@ -64,11 +64,16 @@ export function buildInputClipStub(
 // Matches only the input form — the result-side CLIP_STUB_PATTERN must not
 // accept it, or a stubbed input field pasted back as a result would read as
 // already final. Anchored on ` of `, which the result form never carries.
-const INPUT_CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens of \S+ from .+\]$/
+const INPUT_CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens of (\S+) from .+\]$/
 
 /** An input field value that already is the byte-stable input stub. */
 export function isInputClipStubContent(value: string): boolean {
   return INPUT_CLIP_STUB_PATTERN.test(value)
+}
+
+/** The field an input stub stands in for, or null when `value` is not one. */
+export function inputClipStubField(value: string): string | null {
+  return INPUT_CLIP_STUB_PATTERN.exec(value)?.[1] ?? null
 }
 
 /**

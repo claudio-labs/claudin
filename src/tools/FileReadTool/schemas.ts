@@ -7,6 +7,7 @@ import {
   MAX_BATCH_SYMBOLS,
   MIN_BATCH_FILES,
   readMultiEnabledAtLoad,
+  singleEntryAsFilePath,
 } from 'src/tools/FileReadTool/readMulti.js'
 import {
   MAX_GLOB_FILES,
@@ -92,11 +93,14 @@ function singleFileInputSchema() {
  * CLAUDIN_READ_MULTI=0 restores the single-file one). "Exactly one of
  * file_path and file_paths" needs a combinator at the root, which strict
  * transports reject, so this schema leaves both optional and validateInput
- * says it.
+ * says it. A one-entry `file_paths` becomes `file_path` at the root
+ * (singleEntryAsFilePath), before the fields parse, so the schema the model
+ * sees keeps its bounds byte for byte: a root preprocess renders as the
+ * object inside it.
  */
 function batchCapableInputSchema() {
   const { offset, limit, pages, view, encoding } = sharedFields()
-  return z.strictObject({
+  return z.preprocess(value => singleEntryAsFilePath(value, READ_GLOBS), z.strictObject({
     file_path: z
       .preprocess(absentIfPlaceholder, z.string().optional())
       .describe(
@@ -134,7 +138,7 @@ function batchCapableInputSchema() {
         `A symbol's body by name — a function, class or type — with its real line numbers; or a list of up to ${MAX_BATCH_SYMBOLS}, each looked up in every file. Takes precedence over offset/limit and view.`,
       ),
     encoding,
-  })
+  }))
 }
 
 /**

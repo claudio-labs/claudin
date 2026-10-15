@@ -31,6 +31,7 @@ function probeTool(seen: Seen) {
     isEnabled: () => true,
     isReadOnly: () => true,
     isConcurrencySafe: () => true,
+    clearableInputFields: ['ref'],
     resolveInput(input: { ref: string }) {
       if (input.ref === 'KEPT') return { ok: true as const, input: { ref: 'the real thing' } }
       if (input.ref === 'NONE') return { ok: false as const, message: 'nothing was kept' }
@@ -137,6 +138,14 @@ describe('Tool.resolveInput in the tool loop', () => {
   test('an async refusal is an error result, and nothing after it runs', async () => {
     const { seen, texts } = await run('NEVER')
     expect(texts).toContain('nothing matched')
+    expect(texts).toContain('"is_error":true')
+    expect(seen).toEqual({})
+  })
+
+  test('a field echoing its own clip stub is refused before anything runs', async () => {
+    // clipStubEcho.ts: the wire placeholder of an earlier call, sent as content.
+    const { seen, texts } = await run('[clipped: ~931 tokens of ref from RefProbe]')
+    expect(texts).toContain('the placeholder this conversation shows')
     expect(texts).toContain('"is_error":true')
     expect(seen).toEqual({})
   })

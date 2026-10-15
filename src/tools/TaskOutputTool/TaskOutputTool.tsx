@@ -20,7 +20,8 @@ import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
 import { sleep } from 'src/shared/sleep.js';
 import { jsonParse } from 'src/platform/slowOperations.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';
-import { getTaskOutput } from 'src/agent/tasks/diskOutput.js';
+import { existsSync } from 'fs';
+import { getTaskOutput, getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
 import { updateTaskState } from 'src/agent/tasks/framework.js';
 import { formatTaskOutput } from 'src/agent/tasks/outputFormatting.js';
 import { filterBashTaskOutput } from 'src/tools/TaskOutputTool/filterBashTaskOutput.js';
@@ -148,6 +149,18 @@ async function waitForTaskCompletion(taskId: string, getAppState: () => {
   const finalState = getAppState();
   return finalState.tasks?.[taskId] as TaskState ?? null;
 }
+
+/**
+ * A task leaves app state once its completion notice is queued
+ * (framework.ts), so asking for one that just finished got a bare "No task
+ * found" — 3 times in the 2026-10-08..15 census, each followed by Bash calls
+ * hunting for its output. When the output file is still there, say so.
+ */
+function taskGoneMessage(taskId: string): string {
+  const path = getTaskOutputPath(taskId);
+  if (!existsSync(path)) return `No task found with ID: ${taskId}`;
+  return `No task found with ID: ${taskId} — it has finished and is no longer tracked. Its result arrives as a <task-notification>; its raw output (for an agent, the transcript) is saved at ${path}.`;
+}
 export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool({
   name: TASK_OUTPUT_TOOL_NAME,
   searchHint: 'read output/logs from a background task',
@@ -204,7 +217,7 @@ export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool
     if (!task) {
       return {
         result: false,
-        message: `No task found with ID: ${task_id}`,
+        message: taskGoneMessage(task_id),
         errorCode: 2
       };
     }

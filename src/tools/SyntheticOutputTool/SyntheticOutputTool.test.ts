@@ -108,4 +108,18 @@ describe('createSyntheticOutputTool', () => {
     const b = createSyntheticOutputTool(schema)
     expect(a).toBe(b)
   })
+
+  test('a schema declaring draft 2020-12 builds the tool and validates with it', async () => {
+    // What zod v4's toJSONSchema emits for a `--json-schema`.
+    const result = createSyntheticOutputTool({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: { count: { type: 'number' } },
+      required: ['count'],
+    })
+    if (!('tool' in result)) throw new Error(`refused: ${result.error}`)
+    await expect(
+      result.tool.call({ count: 'bad' } as never, {} as never, {} as never, {} as never),
+    ).rejects.toThrow('Output does not match required schema')
+  })
 })

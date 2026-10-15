@@ -95,4 +95,6 @@ test('toolSummary names a batch Read by its first file and how many more', () =>
   expect(toolSummary('Read', { file_path: '/r/a.ts', file_paths: null })).toBe(
     'Reading /r/a.ts',
   )
+  // A one-entry list is that file's single Read (readMulti.ts).
+  expect(toolSummary('Read', { file_paths: ['/r/a.ts'] })).toBe('Reading /r/a.ts')
 })

@@ -1,0 +1,277 @@
+{
+  "test": [
+    "src/permissions/yoloClassifier/xmlResponse.test.ts",
+    "src/permissions/yoloClassifier.fableXmlRouting.test.ts",
+    "src/permissions/permissions/denial.test.ts",
+    "src/tools/MCPTool/MCPTool.test.ts",
+    "src/agent/tools/clipStubEcho.test.ts",
+    "src/agent/tools/toolExecution.resolveInput.test.ts",
+    "src/tools/GitTool/errors.test.ts",
+    "src/tools/GitTool/families.test.ts",
+    "src/tools/FileReadTool/schemas.test.ts",
+    "src/tools/FileReadTool/readGlobs.test.ts",
+    "src/agent/messages/interAgentMessages.test.ts",
+    "src/tools/GitTool/answer.test.tsx",
+    "src/tools/SyntheticOutputTool/SyntheticOutputTool.test.ts",
+    "src/tools/FileReadTool/readMulti.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/platform/bridge/sessionRunner.test.ts",
+    "src/commands/insights/extract.test.ts",
+    "src/tools/TaskOutputTool/TaskOutputTool.test.ts"
+  ],
+  "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+  "probes": [
+    {
+      "name": "stage 2 reads a refusal as an empty, retryable response",
+      "comment": "The fixes for the 2026-10-08..15 tool error census, one probe per line they rest on.",
+      "find": "  if (isRefusal(stopReason)) {\n    return { kind: 'refused'",
+      "replace": "  if (false) {\n    return { kind: 'refused'"
+    },
+    {
+      "name": "a refusal at stage 1 still escalates to stage 2",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "    if (stage1Block === null && isRefusal(stage1Raw.stop_reason)) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "a refusal at stage 2 is not flagged",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "        ...(verdict.kind === 'refused' && { refused: true }),",
+      "replace": ""
+    },
+    {
+      "name": "a refusal at stage 2 is retried",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "      if (verdict.kind === 'refused' || !verdict.retry) break",
+      "replace": "      if (verdict.kind !== 'refused' && !verdict.retry) break"
+    },
+    {
+      "name": "the tool_use classifier does not flag a refusal",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "      if (isRefusal(result.stop_reason)) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "a refusal is a real block",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  if (result.refused) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "the auto-mode branch stops asking classifierFallback",
+      "source": "src/permissions/permissions.ts",
+      "find": "        const fallback = classifierFallback(classifierResult)",
+      "replace": "        const fallback = classifierResult.timedOut ? classifierFallback(classifierResult) : null"
+    },
+    {
+      "name": "a schema that does not compile refuses the call",
+      "source": "src/tools/MCPTool/MCPTool.ts",
+      "find": "        logError(new Error(`MCP input schema did not compile: ${error}`))\n        return { result: true }",
+      "replace": "        logError(new Error(`MCP input schema did not compile: ${error}`))\n        return { result: false, message: 'did not compile', errorCode: 500 }"
+    },
+    {
+      "name": "a split --format gets the generic revision line",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "      splitFormatDiagnosis(command, output) ??\n",
+      "replace": ""
+    },
+    {
+      "name": "no upstream is an error again",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "          ? noUpstreamAnswer(rawStdout)",
+      "replace": "          ? null"
+    },
+    {
+      "name": "a write's no-upstream is answered too",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "        !stall && !run.interrupted && effectiveCode !== 0 && isReadOnlyGitCommand(command)",
+      "replace": "        !stall && !run.interrupted && effectiveCode !== 0"
+    },
+    {
+      "name": "an answer still marks the batch failed",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "      o => !o.stall && o.answer === undefined && (o.exitCode !== 0 || o.interrupted),",
+      "replace": "      o => !o.stall && (o.exitCode !== 0 || o.interrupted),"
+    },
+    {
+      "name": "an answer prints its exit code instead of itself",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    } else if (outcome.answer !== undefined) {\n      parts.push(outcome.answer)\n",
+      "replace": ""
+    },
+    {
+      "name": "an agent's completion waits for the end of the turn again",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "    mode: 'task-notification',\n    priority: 'next'\n  });",
+      "replace": "    mode: 'task-notification'\n  });"
+    },
+    {
+      "name": "a stage-1 verdict ending in a refusal is skipped past",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "    if (stage1Block === null && isRefusal(stage1Raw.stop_reason)) {",
+      "replace": "    if (isRefusal(stage1Raw.stop_reason)) {"
+    },
+    {
+      "name": "a stage-2 refusal reads as a block",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "            ? `Classifier declined to assess this transcript (${verdict.detail})`",
+      "replace": "            ? `Classifier stage 2 unparseable (${verdict.detail}) - blocking for safety`"
+    },
+    {
+      "name": "a 2020-12 schema gets the draft-07 class",
+      "source": "src/tools/shared/jsonSchemaDraft.ts",
+      "find": "  if (DRAFT_2020_RE.test(declared)) return Ajv2020",
+      "replace": "  if (DRAFT_2020_RE.test(declared)) return Ajv"
+    },
+    {
+      "name": "a 2019-09 schema gets the draft-07 class",
+      "source": "src/tools/shared/jsonSchemaDraft.ts",
+      "find": "  if (DRAFT_2019_RE.test(declared)) return Ajv2019",
+      "replace": "  if (DRAFT_2019_RE.test(declared)) return Ajv"
+    },
+    {
+      "name": "an uncompilable schema is compiled again on the next call",
+      "source": "src/tools/MCPTool/MCPTool.ts",
+      "find": "        uncompilable.add(this.inputJSONSchema)\n",
+      "replace": ""
+    },
+    {
+      "name": "StructuredOutput validates with the draft-07 class",
+      "source": "src/tools/SyntheticOutputTool/SyntheticOutputTool.ts",
+      "find": "    const Validator = ajvClassForSchema(jsonSchema)",
+      "replace": "    const Validator = ajvClassForSchema({})"
+    },
+    {
+      "name": "every input field is checked for a stub",
+      "source": "src/agent/tools/clipStubEcho.ts",
+      "find": "  for (const field of clearableFields) {",
+      "replace": "  for (const field of Object.keys(input)) {"
+    },
+    {
+      "name": "a stub of another field counts as an echo",
+      "source": "src/agent/tools/clipStubEcho.ts",
+      "find": "    if (typeof value !== 'string' || inputClipStubField(value) !== field) continue",
+      "replace": "    if (typeof value !== 'string' || inputClipStubField(value) === null) continue"
+    },
+    {
+      "name": "a non-string field can be a stub",
+      "source": "src/agent/tools/clipStubEcho.ts",
+      "find": "    if (typeof value !== 'string' || inputClipStubField(value) !== field) continue",
+      "replace": "    if (inputClipStubField(value as string) !== field) continue"
+    },
+    {
+      "name": "the tool loop does not pass the clearable fields",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  const echoedStub = clipStubEchoRefusal(parsedInput.data, tool.clearableInputFields)",
+      "replace": "  const echoedStub = clipStubEchoRefusal(parsedInput.data, undefined)"
+    },
+    {
+      "name": "another flag between the split and git's word is ignored",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "    else if (OPTION_RE.test(token)) return null",
+      "replace": "    else if (OPTION_RE.test(token)) continue"
+    },
+    {
+      "name": "placeholders after git's word are dropped",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "    if (OPTION_RE.test(next) || !next.includes('%')) break",
+      "replace": "    break"
+    },
+    {
+      "name": "a ref after the format is swallowed into it",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "    if (OPTION_RE.test(next) || !next.includes('%')) break",
+      "replace": "    if (OPTION_RE.test(next)) break"
+    },
+    {
+      "name": "a word with no placeholder after it still gets the format line",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (!tokens.slice(at, end + 1).some(token => token.includes('%'))) return null",
+      "replace": ""
+    },
+    {
+      "name": "a value already quoted gets quoted again",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (QUOTE_START_RE.test(value) || (value.includes(\"'\") && value.includes('\"'))) return null",
+      "replace": ""
+    },
+    {
+      "name": "an apostrophe is single-quoted",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  const quoted = value.includes(\"'\") ? `\"${value}\"` : `'${value}'`",
+      "replace": "  const quoted = `'${value}'`"
+    },
+    {
+      "name": "a bare --format is not a flag",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "    if (VALUED_FLAG_RE.test(token) || BARE_FORMAT_FLAGS.has(token)) start = i",
+      "replace": "    if (VALUED_FLAG_RE.test(token)) start = i"
+    },
+    {
+      "name": "an answer is diagnosed as an error",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "      const isError = !stall && answer === null && (effectiveCode !== 0 || run.interrupted)",
+      "replace": "      const isError = !stall && (effectiveCode !== 0 || run.interrupted)"
+    },
+    {
+      "name": "the output schema drops the answer",
+      "source": "src/tools/GitTool/GitTool.ts",
+      "find": "        answer: z.string().optional(),\n",
+      "replace": ""
+    },
+    {
+      "name": "an answer row wears the cross",
+      "source": "src/tools/GitTool/UI.tsx",
+      "find": "const ok = outcome.exitCode === 0 || outcome.answer !== undefined",
+      "replace": "const ok = outcome.exitCode === 0"
+    },
+    {
+      "name": "the schema keeps a one-entry list a batch",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return { ...rest, file_path: file_paths[0] }",
+      "replace": "  return value"
+    },
+    {
+      "name": "a placeholder file_path keeps the single entry a batch",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return value === undefined || value === null || value === ''",
+      "replace": "  return value === undefined"
+    },
+    {
+      "name": "under the glob flag one entry is read as file_path",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  if (globs || !value || typeof value !== 'object' || Array.isArray(value)) {",
+      "replace": "  if (!value || typeof value !== 'object' || Array.isArray(value)) {"
+    },
+    {
+      "name": "the transcript walker reads a one-entry list as a batch",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  const { file_path, file_paths, symbol } = singleEntryAsFilePath(\n    input,\n    readGlobsEnabledAtLoad(),\n  ) as Record<string, unknown>",
+      "replace": "  const { file_path, file_paths, symbol } = input as Record<string, unknown>"
+    },
+    {
+      "name": "resume takes the single Read's path from the raw input",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "          } else if (targets.file_path && input?.view !== 'outline') {",
+      "replace": "          } else if (input?.file_path && input?.view !== 'outline') {"
+    },
+    {
+      "name": "the activity line names no file for a one-entry list",
+      "source": "src/platform/bridge/sessionRunner.ts",
+      "find": "  if (targets.file_paths === undefined) return targets.file_path",
+      "replace": "  if (targets.file_paths === undefined) return undefined"
+    },
+    {
+      "name": "insights skips a one-entry list",
+      "source": "src/commands/insights/extract.ts",
+      "find": "                if (targets.file_paths !== undefined || (targets.file_path && !input.file_path)) {",
+      "replace": "                if (targets.file_paths !== undefined) {"
+    },
+    {
+      "name": "a finished task gets the bare not-found line",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "  if (!existsSync(path)) return `No task found with ID: ${taskId}`;",
+      "replace": "  return `No task found with ID: ${taskId}`;"
+    }
+  ]
+}

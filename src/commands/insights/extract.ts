@@ -185,10 +185,11 @@ function extractToolStats(log: LogOption): {
               }
 
               // A batch Read (readMulti.ts) names its files in file_paths:
-              // each counts toward its language, as a Read of it would.
+              // each counts toward its language, as a Read of it would. So
+              // does a one-entry list, read as the file_path it lacks.
               if (toolName === FILE_READ_TOOL_NAME) {
                 const targets = recordedReadTargets(input)
-                if (targets.file_paths !== undefined) {
+                if (targets.file_paths !== undefined || (targets.file_path && !input.file_path)) {
                   for (const path of readPathsOf(targets)) {
                     const lang = getLanguageFromPath(path)
                     if (lang) {

@@ -57,6 +57,7 @@ import {
   toolAlwaysAllowedRule,
 } from 'src/permissions/permissions/ruleLookup.js'
 import {
+  classifierFallback,
   handleDenialLimitExceeded,
   persistDenialState,
 } from 'src/permissions/permissions/denial.js'
@@ -328,23 +329,12 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       }
 
       if (classifierResult.shouldBlock) {
-        // Deterministic classifier failures won't recover on retry: the
-        // transcript exceeded the context window, or the API returned a
-        // deterministic 4xx (malformed request, bad header, auth failure).
-        // Skip iron_gate and fall back to normal prompting so the user can
+        // A block that is not a verdict on the action (classifierFallback)
+        // skips iron_gate and falls back to normal prompting so the user can
         // approve/deny manually, rather than looping in fail-closed retries.
-        // A timeout joins them: the wait already happened, and denying with
-        // retry guidance would just spend it again.
-        if (
-          classifierResult.transcriptTooLong ||
-          classifierResult.deterministic ||
-          classifierResult.timedOut
-        ) {
-          const cause = classifierResult.transcriptTooLong
-            ? 'transcript exceeded context window'
-            : classifierResult.deterministic
-              ? 'request failed with a deterministic error'
-              : 'exceeded its time budget'
+        const fallback = classifierFallback(classifierResult)
+        if (fallback) {
+          const { cause } = fallback
           if (!appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
             logForDebugging(
               `Auto mode classifier ${cause}, falling back to normal permission handling`,
@@ -358,11 +348,11 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
               },
             }
           }
-          // Headless has no one to ask. The first two causes are permanent, and
-          // deny-retry-deny wastes tokens without ever hitting the denial-limit
-          // abort. A timeout is transient, so it falls through to the
-          // unavailable branch below and keeps its retry guidance.
-          if (!classifierResult.timedOut) {
+          // Headless has no one to ask. A timeout falls through to the
+          // unavailable branch below and keeps its retry guidance; a refusal
+          // falls through to the ordinary denial, which counts toward the
+          // denial limit like any block.
+          if (fallback.abortsHeadless) {
             throw new AbortError(
               `Agent aborted: auto mode classifier ${cause} in headless mode`,
             )

@@ -155,10 +155,13 @@ const TOOL_VERBS: Record<string, string> = {
   LSP: 'LSP',
 }
 
-/** A batch Read's files (readMulti.ts): the first, and how many more. */
+/**
+ * A batch Read's files (readMulti.ts): the first, and how many more. A
+ * one-entry list is the file it reads, which the input names nowhere else.
+ */
 function batchReadTarget(input: Record<string, unknown>): string | undefined {
   const targets = recordedReadTargets(input)
-  if (targets.file_paths === undefined) return undefined
+  if (targets.file_paths === undefined) return targets.file_path
   const [first, ...rest] = readPathsOf(targets)
   return rest.length > 0 ? `${first} (+${rest.length} more)` : first
 }

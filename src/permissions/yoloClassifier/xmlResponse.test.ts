@@ -63,4 +63,21 @@ describe('stage2Verdict', () => {
       detail: 'stop_reason=unknown, 1 output tokens, no <block> tag',
     })
   })
+
+  test('a refusal is its own kind, never retried', () => {
+    // The API declined the request: empty text, 0 tokens — which the empty
+    // branch would have retried with a doubled budget, for a third call the
+    // same transcript declines again.
+    expect(stage2Verdict('', 'refusal', 0)).toEqual({
+      kind: 'refused',
+      detail: 'stop_reason=refusal, 0 output tokens',
+    })
+  })
+
+  test('a verdict written before a refusal still counts', () => {
+    expect(stage2Verdict('<block>no</block>', 'refusal', 3)).toEqual({
+      kind: 'verdict',
+      block: false,
+    })
+  })
 })

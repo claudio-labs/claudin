@@ -280,6 +280,86 @@ describe('bad arguments', () => {
     )
   })
 
+  test('a --format split at its space names the quoted form', () => {
+    // What bash hands git for `git log -5 --format=%h %s`.
+    const line = diagnoseReal(repoWithCommits(2), ['log', '-5', '--format=%h', '%s'])
+    expect(line).toContain("git read `%s` as a revision")
+    expect(line).toContain("`--format='%h %s'`")
+    expect(
+      diagnoseReal(repoWithCommits(2), ['log', '--pretty=format:%h', '%an', '%s', '-3']),
+    ).toContain("`--pretty='format:%h %an %s'`")
+  })
+
+  test('the quoted form keeps every word of the split value', () => {
+    const root = repoWithCommits(2)
+    // git names `%s`; the bare `-` between is part of the format.
+    expect(diagnoseReal(root, ['log', '--format=%h', '-', '%s'])).toContain(
+      "`--format='%h - %s'`",
+    )
+    // git names `by`, a word with no placeholder: the `%an` after it counts.
+    expect(diagnoseReal(root, ['log', '--format=%h', 'by', '%an'])).toContain(
+      "`--format='%h by %an'`",
+    )
+    // A ref after the placeholders is not swallowed into the format.
+    expect(diagnoseReal(root, ['log', '--format=%h', '%an', '%s', 'main'])).toContain(
+      "`--format='%h %an %s'`",
+    )
+  })
+
+  test('the split is named on the flag it happened in', () => {
+    const root = repoWithCommits(2)
+    expect(
+      diagnoseReal(root, ['log', '--format=%h', '--date=format:%Y', '%H']),
+    ).toContain("`--date='format:%Y %H'`")
+    // A bare `--format` takes its value from the next argument.
+    expect(diagnoseReal(root, ['log', '--format', '%h', '%s'])).toContain(
+      "`--format='%h %s'`",
+    )
+  })
+
+  test('a value holding an apostrophe is double-quoted', () => {
+    expect(
+      diagnose(
+        "git log --format=%h's %s",
+        128,
+        "fatal: ambiguous argument '%s': unknown revision or path not in the working tree.",
+      ),
+    ).toContain('`--format="%h\'s %s"`')
+    expect(
+      diagnose(
+        'git log --format=%h %s',
+        128,
+        "fatal: ambiguous argument '%s': unknown revision or path not in the working tree.",
+      ),
+    ).toContain("`--format='%h %s'`")
+  })
+
+  test('no placeholder past the flag, or a value already quoted, stays an unknown revision', () => {
+    const root = repoWithCommits(2)
+    expect(diagnoseReal(root, ['log', '%s'])).toContain('revision does not exist')
+    // A misspelled branch after a format, and a non-format flag before a bad ref.
+    expect(diagnoseReal(root, ['log', '--format=%h', 'maain'])).toContain(
+      'revision does not exist',
+    )
+    expect(diagnoseReal(root, ['log', '--since=2.weeks', 'maain'])).toContain(
+      'revision does not exist',
+    )
+    // Another option between the flag and the word git named: not the split.
+    expect(diagnoseReal(root, ['log', '--format=%h', '--oneline', '%s'])).toContain(
+      'revision does not exist',
+    )
+    expect(diagnoseReal(root, ['log', '--since=2.weeks', '-3', '%s'])).toContain(
+      'revision does not exist',
+    )
+    expect(
+      diagnose(
+        "git log --format='%h %s' %an",
+        128,
+        "fatal: ambiguous argument '%an': unknown revision or path not in the working tree.",
+      ),
+    ).toContain('revision does not exist')
+  })
+
   test('pathspec matching nothing', () => {
     expect(diagnoseReal(repoWithCommits(2), ['checkout', 'does-not-exist'])).toContain(
       'does-not-exist',

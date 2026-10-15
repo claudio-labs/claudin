@@ -87,7 +87,6 @@ describe('Read input schema — CLAUDIN_READ_MULTI on', () => {
   test('parses the batch shapes and bounds them', async () => {
     const schema = (await load()).inputSchema()
     expect(schema.safeParse({ file_paths: ['/a.ts', '/b.ts'] }).success).toBe(true)
-    expect(schema.safeParse({ file_paths: ['/a.ts'] }).success).toBe(false)
     const tooMany = Array.from({ length: 21 }, (_, i) => `/f${i}.ts`)
     expect(schema.safeParse({ file_paths: tooMany }).success).toBe(false)
     expect(schema.safeParse({ file_path: '/a.ts', symbol: ['x', 'y'] }).success).toBe(true)
@@ -98,6 +97,22 @@ describe('Read input schema — CLAUDIN_READ_MULTI on', () => {
       file_path: '/a.ts',
       symbol: 'x',
     })
+  })
+
+  test('a file_paths of one is that file, read on its own', async () => {
+    // Refused as "Too small: expected array to have >=2 items" four times in
+    // the 2026-10-08..15 census; each was resent with file_path.
+    const schema = (await load()).inputSchema()
+    expect(schema.parse({ file_paths: ['/a.ts'], view: 'full' })).toEqual({
+      file_path: '/a.ts',
+      view: 'full',
+    })
+    // A Codex placeholder beside it is not a second path.
+    expect(schema.parse({ file_path: null, file_paths: ['/a.ts'] })).toEqual({
+      file_path: '/a.ts',
+    })
+    // Beside a real file_path it is still a malformed batch.
+    expect(schema.safeParse({ file_path: '/b.ts', file_paths: ['/a.ts'] }).success).toBe(false)
   })
 
   test('Codex placeholders — null, "" and an empty list — read as absent', async () => {

@@ -463,7 +463,7 @@ describe('FileReadTool.resolveInput — CLAUDIN_READ_GLOBS over a real project',
   // The permission check parses the resolved input again with the tool's
   // schema (permissions.ts), so what the expansion hands on must parse under
   // the flag-on one — a single file and a full call alike.
-  test('one file and the full cap both parse under the flag-on schema, which the default one refuses', async () => {
+  test('one file and the full cap both parse under the flag-on schema; the default one reads one as file_path', async () => {
     const one = await resolve({ file_paths: ['src/a.*'] })
     expect(pathsOf(one)).toEqual([join(project, 'src/a.ts')])
     const full = await resolve({ file_paths: ['many/f0*.txt', 'many/f[1-4]*.txt'] })
@@ -472,7 +472,11 @@ describe('FileReadTool.resolveInput — CLAUDIN_READ_GLOBS over a real project',
       if (!result.ok) throw new Error(result.message)
       expect(schemasOn.inputSchema().safeParse(result.input).success).toBe(true)
     }
-    if (one.ok) expect(schemasOff.inputSchema().safeParse(one.input).success).toBe(false)
+    if (one.ok) {
+      expect(schemasOff.inputSchema().parse(one.input)).toEqual({
+        file_path: join(project, 'src/a.ts'),
+      })
+    }
   })
 
   test('validation and the permission check see the files, and allow them', async () => {

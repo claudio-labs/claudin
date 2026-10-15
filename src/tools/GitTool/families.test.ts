@@ -502,12 +502,12 @@ describe('batches', () => {
   })
 
   test('a failed read does not cost the reads after it', async () => {
-    // The pre-PR read the census saw four times: `@{u}` fails on a branch that
-    // was never pushed, and stopping there withheld the log and diff behind it.
+    // The pre-PR read the census saw four times: a read failing early in the
+    // batch withheld the log and diff behind it.
     const root = repoWithCommits()
 
     const ran = await runIn(root, [
-      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+      'git log --oneline -1 nosuchref',
       'git log --oneline -1',
     ])
 
@@ -524,11 +524,54 @@ describe('batches', () => {
     pinCommitIdentity(root)
 
     const ran = await runIn(root, [
-      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+      'git log --oneline -1 nosuchref',
       'git commit --allow-empty -m "after the read"',
     ])
 
     expect(ran.result.notRun).toEqual(['git commit --allow-empty -m "after the read"'])
+  })
+
+  test('no upstream on a never-pushed branch is an answer, not a failure', async () => {
+    // About 8 of the 53 Git errors of the 2026-10-08..15 census: the pre-PR
+    // tracking check, run before the first push.
+    const root = repoWithCommits()
+
+    const ran = await runIn(root, [
+      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+      'git log --oneline -1',
+    ])
+
+    expect(ran.codes[0]).toBe(128)
+    expect(ran.result.outcomes[0]?.answer).toContain('has no upstream')
+    expect(ran.text).toContain('git push -u origin')
+    expect(ran.text).not.toContain('Exit code 128')
+    expect(batchFailed(ran.result)).toBe(false)
+  })
+
+  test('an answer does not stop a write behind it', async () => {
+    // Not a failure, so `&&` semantics do not apply: the write runs, and
+    // answers for itself.
+    const root = repoWithCommits()
+    pinCommitIdentity(root)
+
+    const ran = await runIn(root, [
+      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+      'git commit --allow-empty -m "after the answer"',
+    ])
+
+    expect(ran.result.notRun).toEqual([])
+    expect(ran.codes).toEqual([128, 0])
+  })
+
+  test('the same message from a write is still a failure', async () => {
+    // Only a read is answered: a merge with no upstream did not do its job.
+    const root = repoWithCommits()
+
+    const ran = await runIn(root, ['git merge @{u}'])
+
+    expect(ran.text).toContain('no upstream configured')
+    expect(ran.result.outcomes[0]?.answer).toBeUndefined()
+    expect(batchFailed(ran.result)).toBe(true)
   })
 })
 
