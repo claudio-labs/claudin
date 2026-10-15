@@ -1028,6 +1028,22 @@ describe('getClipFrontierIndex', () => {
     expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
   })
 
+  // A stub that removed a document would shrink the request's media count
+  // after the API cap already counted it, and drop a real image for nothing.
+  test('document-bearing result with id in clippedIds is stable too: a stub never removes media', () => {
+    addClippedIds(['a'])
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'mcp__web__fetch'),
+      userToolResult('a', [
+        { type: 'text', text: bigText(500) },
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0xLjQK' } },
+      ]),
+      assistantText('ok'),
+    ]
+    expect(applyStableStubs(msgs)).toBe(msgs)
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
   test('id in clippedIds with non-stub text is mutable even when small or error', () => {
     addClippedIds(['a'])
     const msgs: Msg[] = [

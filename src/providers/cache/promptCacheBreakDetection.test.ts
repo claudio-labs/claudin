@@ -24,6 +24,7 @@ import {
 import {
   getCurrentTurnCacheBreaks,
   getCurrentTurnPrefixRewrites,
+  resetCurrentTurn,
   resetSessionCacheStats,
 } from 'src/providers/cache/cacheStatsTracker.js'
 import { buildClipStub } from 'src/agent/compact/stableStubState.js'
@@ -958,6 +959,26 @@ describe('the mutated block is named by what happened to it', () => {
       'messages mutated at 1/2 (user: tool_result) — client-side prefix rewrite',
     )
   })
+
+  // 81744358's message 14 lost a rule folded in after its tool results; the
+  // tool results themselves never changed, so no tool_result label applied.
+  test('a block that disappears, or appears, is named', async () => {
+    const withRule = (rule: boolean): BetaMessageParam => ({
+      role: 'user',
+      content: [
+        { type: 'tool_result', tool_use_id: 't1', content: 'x' },
+        ...(rule ? [{ type: 'text' as const, text: 'Contents of .claudin/rules/search-strategy.md' }] : []),
+      ],
+    })
+    expect(await mutation(withRule(true), withRule(false))).toContain(
+      'messages mutated at 1/2 (user: tool_result, text block removed)',
+    )
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+    expect(await mutation(withRule(false), withRule(true))).toContain(
+      'messages mutated at 1/2 (user: tool_result,text, text block added)',
+    )
+  })
 })
 
 // A marker the clip frontier holds back leaves everything after it billed as
@@ -993,5 +1014,26 @@ describe('an uncached tail', () => {
   test('a marker on the last message is not, whatever the input', async () => {
     await request(470_277, null)
     expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+
+  test("a sub-agent's tail does not hide the main thread's in the same turn", async () => {
+    const agentId = 'a-tail' as AgentId
+    primeAgent(agentId)
+    recordRenderedMessages(AGENT_SOURCE, agentId, [user('a')], { markerCap: { index: 0, total: 2, reason: 'pending clip' } })
+    await checkResponseForCacheBreak(AGENT_SOURCE, 0, 0, [], agentId, null, null, null, [], 25_000)
+    await request(470_277, held)
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      'uncached tail 25k (marker held at messages.0/2: pending clip)',
+      'uncached tail 470.3k (marker held at messages.70/1283: pending clip)',
+    ])
+  })
+
+  test('a new turn names it again', async () => {
+    await request(470_277, held)
+    resetCurrentTurn()
+    await request(475_739, held)
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      'uncached tail 475.7k (marker held at messages.70/1283: pending clip)',
+    ])
   })
 })

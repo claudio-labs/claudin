@@ -98,6 +98,27 @@ describe('a clipped screenshot', () => {
     expect(shot0).toContain('[clipped:')
     expect(req.markerIndex).toBe(req.wire.length - 1)
   })
+
+  test('a clipped result holding a document keeps it: the cap counts what goes out', () => {
+    const history: Message[] = [createUserMessage({ content: 'walk the pages' })]
+    history.push(...exchange('shot0', 'mcp__playwright__browser_take_screenshot', screenshot('0')))
+    history.push(
+      ...exchange('doc', 'mcp__web__fetch', [
+        { type: 'text', text: 'fetched report\n'.repeat(300) },
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0xLjQK' } },
+      ]),
+    )
+    for (let i = 1; i < 100; i++) {
+      history.push(...exchange(`shot${i}`, 'mcp__playwright__browser_take_screenshot', screenshot(String(i))))
+    }
+    addClippedIds(['doc'])
+
+    const req = wireRequest(history, [])
+    const sent = req.wire.join('\n')
+    const media = sent.split('"type":"image"').length - 1 + (sent.split('"type":"document"').length - 1)
+
+    expect({ media, stripped: req.mediaStripped }).toEqual({ media: 100, stripped: 1 })
+  })
 })
 
 describe('past the 100-media cap', () => {
@@ -125,7 +146,9 @@ describe('past the 100-media cap', () => {
     expect(wireRequest(walk(103), []).mediaStripped).toBe(3)
   })
 
-  test('the only bytes a new screenshot changes are the oldest image it pushes out', () => {
+  // Describes the cap rather than guarding the fix (main passes it too): it is
+  // what makes announcing one rewrite per dropped image the whole story.
+  test('the cap itself: a new screenshot changes only the message whose image it pushes out', () => {
     const history = walk(101)
     const before = wireRequest(history, []).wire
     history.push(...exchange('shot101', 'mcp__playwright__browser_take_screenshot', screenshot('101')))
@@ -137,6 +160,7 @@ describe('past the 100-media cap', () => {
     expect(after[changed!.index]).not.toContain('"type":"image"')
     // …and nothing after it: the rest of the history is re-sent as it was.
     const rest = (w: string[]) => w.slice(changed!.index + 1, before.length)
-    expect(findPrefixBreak([rest(before), rest(after)]), describePrefixBreak(changed!)).toBeNull()
+    const later = findPrefixBreak([rest(before), rest(after)])
+    expect(later ? describePrefixBreak(later) : null).toBeNull()
   })
 })

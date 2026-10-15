@@ -11,10 +11,12 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { randomUUID, type UUID } from 'crypto'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { readdirSync, readFileSync } from 'node:fs'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { resetMicrocompactState } from 'src/agent/compact/microCompact.js'
 import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
@@ -29,7 +31,7 @@ import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import { loadConversationForResume } from 'src/sessions/conversationRecovery.js'
 import { getLastSessionLog, loadFullLog } from 'src/sessions/indexing/liteMetadata.js'
 import { appendEntryToFile } from 'src/sessions/persistence/_helpers.js'
-import { resetProjectForTesting, setSessionFileForTesting } from 'src/sessions/persistence/project.js'
+import { getProject, resetProjectForTesting, setSessionFileForTesting } from 'src/sessions/persistence/project.js'
 import { clearSessionMessagesCache } from 'src/sessions/resume/cache.js'
 import { saveClipState } from 'src/sessions/sessionStorage.js'
 import { asSessionId } from 'src/shared/types/ids.js'
@@ -198,5 +200,91 @@ describe('clip-state — written, read back, restored', () => {
     appendEntryToFile(path, { type: 'clip-state', sessionId: sid, resultIds: 'toolu_b', inputFields: {} })
 
     expect(restoredFrom(await getLastSessionLog(sid)).resultIds).toEqual(['toolu_a'])
+  })
+})
+
+async function clipStates(path: string): Promise<Array<{ resultIds: string[] }>> {
+  return (await readFile(path, 'utf8'))
+    .split('\n')
+    .filter(Boolean)
+    .map(line => JSON.parse(line) as { type: string; resultIds: string[] })
+    .filter(entry => entry.type === 'clip-state')
+}
+
+describe('clip-state — every change reaches the transcript', () => {
+  test('a restore lands on the session it names, not on whichever is current', () => {
+    const { sid } = openSession()
+    const other = randomUUID()
+    restoreClippedState({ resultIds: ['toolu_a'], inputFields: {} }, other)
+
+    expect([...getClippedIds()]).toEqual([])
+    switchSession(asSessionId(other), tmpDir)
+    expect([...getClippedIds()]).toEqual(['toolu_a'])
+    switchSession(asSessionId(sid), tmpDir)
+  })
+
+  // A rewind empties the set; without a record of that, the next resume
+  // stubbed results the live process had been sending in full.
+  test('a reset is written, so a resume does not bring back what a rewind dropped', async () => {
+    const { sid } = openSession()
+    addClippedIds(['toolu_a'])
+    saveClipState(snapshotClippedState())
+    resetMicrocompactState()
+
+    expect(restoredFrom(await getLastSessionLog(sid)).resultIds).toEqual([])
+  })
+
+  // A branch, or a fork, restores the set into a session whose file has never
+  // seen a clip event; the exit stamp is what puts it there.
+  test('the exit stamp writes a set no clip event wrote', async () => {
+    const { sid, path } = openSession()
+    restoreClippedState({ resultIds: ['toolu_a'], inputFields: {} }, sid)
+    getProject().reAppendSessionMetadata()
+
+    expect((await clipStates(path)).map(e => e.resultIds)).toEqual([['toolu_a']])
+  })
+
+  test('a session that never clipped stamps nothing', async () => {
+    const { path } = openSession()
+    getProject().reAppendSessionMetadata()
+
+    expect(await clipStates(path)).toEqual([])
+  })
+
+  test('a write that fails is logged, never thrown into the clip that asked for it', () => {
+    openSession()
+    setSessionFileForTesting('/dev/null/no-such-dir/session.jsonl')
+    addClippedIds(['toolu_a'])
+
+    expect(() => saveClipState(snapshotClippedState())).not.toThrow()
+  })
+})
+
+// Each resume path switches to the resumed session on its own and restores
+// what its transcript carries; four of them existed and two forgot the
+// clipped set. Pinned on the source: those paths run inside the boot, the
+// picker and headless print, which no unit test drives end to end.
+describe('clip-state — wiring', () => {
+  function sourcesUnder(dir: string): string[] {
+    const out: string[] = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) out.push(...sourcesUnder(path))
+      else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) out.push(path)
+    }
+    return out
+  }
+
+  test('every resume path that restores the cost also restores the clipped set', () => {
+    const root = join(import.meta.dir, '..')
+    const resumePaths = sourcesUnder(root).filter(path => {
+      const source = readFileSync(path, 'utf8')
+      return source.includes('restoreCostStateForResume(') && !source.includes('export function restoreCostStateForResume')
+    })
+    expect(resumePaths.length).toBeGreaterThanOrEqual(4)
+    const forgetful = resumePaths
+      .filter(path => !readFileSync(path, 'utf8').includes('restoreClippedState('))
+      .map(path => path.slice(root.length + 1))
+    expect(forgetful).toEqual([])
   })
 })

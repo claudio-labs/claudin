@@ -54,6 +54,7 @@ const {
   addClippedIds,
   applyStableStubs,
   getClippedIds,
+  pinToolResult,
 } = await import('src/agent/compact/stableStubState.js')
 
 // querySource must start with 'repl_main_thread' (isMainThreadSource) and be
@@ -240,6 +241,18 @@ describe('S2 regression: time-based microcompact persists via stable stubs', () 
 
     const clipped = getClippedIds()
     expect([...clipped].sort()).toEqual(['toolu_0', 'toolu_2'])
+  })
+
+  // A pinned result is one the model lost once and read back; stubOneBlock
+  // leaves it alone while the pin lasts. Clipped anyway, it counted as a stub
+  // still to come and held the cache marker until the pin expired.
+  test('a pinned result is left out of the idle-gap clip', async () => {
+    const messages = buildIdleConversation(90)
+    pinToolResult('toolu_1')
+
+    await microcompactMessages(messages, undefined, MAIN_THREAD)
+
+    expect([...getClippedIds()].sort()).toEqual(['toolu_0', 'toolu_2'])
   })
 
   test('control: no trigger when gap < threshold (nothing clipped)', async () => {
