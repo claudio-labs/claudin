@@ -2,8 +2,12 @@
   "test": [
     "src/agent/compact/stableStubState.test.ts",
     "src/agent/compact/microCompact.timebased-flipback.test.ts",
+    "src/agent/compact/microCompact.test.ts",
     "src/agent/cache/imageFrontier.invariant.test.ts",
     "src/providers/cache/promptCacheBreakDetection.test.ts",
+    "src/providers/cache/cacheMetrics.test.ts",
+    "src/providers/shims/claude/__tests__/heldMarker.test.ts",
+    "src/agent/repl/resumeSession.test.ts",
     "src/sessions/resumePrefixDeterminism.test.ts",
     "src/sessions/sessionRestore.clipState.test.ts"
   ],
@@ -15,16 +19,28 @@
       "replace": "  if (!isStubbableResult(existing) && !(Array.isArray(existing) && existing.length > 0)) return null\n"
     },
     {
+      "name": "stubbable: a document is media too",
+      "source": "src/agent/compact/stableStubState/clipStubText.ts",
+      "find": "    if (item && typeof item === 'object' && (item.type === 'image' || item.type === 'document')) return true\n",
+      "replace": "    if (item && typeof item === 'object' && item.type === 'image') return true\n"
+    },
+    {
       "name": "idle-gap clip: screenshots stay out of the clipped set",
       "source": "src/agent/compact/microCompact.ts",
-      "find": "        isStubbableResult(block.content)\n",
+      "find": "        isStubbableResult(block.content) &&\n",
+      "replace": "        true &&\n"
+    },
+    {
+      "name": "idle-gap clip: pinned results stay out of the clipped set",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "        !pinShieldsBlock(block.tool_use_id, block.content)\n",
       "replace": "        true\n"
     },
     {
-      "name": "media cap: the strip runs before the stubs",
+      "name": "media cap: the strip runs before the stubs, not after",
       "source": "src/providers/shims/claude/renderMessages.ts",
-      "find": "  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)\n",
-      "replace": ""
+      "find": "  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)\n\n  // Apply stable stubs to tool_result blocks whose ids are in the per-session\n  // clipped set. No-op when the set is empty. Bytes are deterministic across\n  // turns so the prompt cache prefix stays stable after the first clip.\n  //\n  // Invariant: applyStableStubs MUST run after ensureToolResultPairing\n  // (so tool_use_ids are valid) and BEFORE addCacheBreakpoints places\n  // the cache_control marker. The stable bytes need to live inside the\n  // cached prefix.\n  messagesForAPI = applyStableStubs(messagesForAPI)\n",
+      "replace": "  messagesForAPI = applyStableStubs(messagesForAPI)\n  messagesForAPI = stripExcessMediaItems(messagesForAPI, API_MAX_MEDIA_PER_REQUEST)\n"
     },
     {
       "name": "media cap: one more dropped image is announced",
@@ -33,40 +49,100 @@
       "replace": "  return\n"
     },
     {
+      "name": "media cap: a compaction's count is not the thread's",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    if (facts.mediaStripped !== undefined && querySource !== 'compact') {\n",
+      "replace": "    if (facts.mediaStripped !== undefined) {\n"
+    },
+    {
+      "name": "media cap: repeated labels fold into one",
+      "source": "src/providers/cache/cacheMetrics.ts",
+      "find": "    out[media.index] = `media cap ×${media.events} (${media.dropped} oldest dropped)`\n",
+      "replace": ""
+    },
+    {
       "name": "uncached tail: a held marker with a large input is named",
       "source": "src/providers/cache/promptCacheBreakDetection.ts",
       "find": "  if (!cap || uncachedInputTokens < UNCACHED_TAIL_MIN_TOKENS) return\n",
       "replace": "  return\n"
     },
     {
-      "name": "uncached tail: once per turn",
+      "name": "uncached tail: once per turn per thread",
       "source": "src/providers/cache/promptCacheBreakDetection.ts",
-      "find": "  if (getCurrentTurnCacheBreaks().some(l => l.startsWith(UNCACHED_TAIL_LABEL))) return\n",
+      "find": "  if (state.uncachedTailTurn === turn) return\n",
       "replace": ""
+    },
+    {
+      "name": "uncached tail: only a marker the frontier actually held",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "  if (marker !== frontier.index || marker >= rendered.length - 1) return null\n",
+      "replace": "  if (frontier.index < 0 || frontier.index >= rendered.length - 1) return null\n"
     },
     {
       "name": "mutation kind: a stub landing is named",
       "source": "src/providers/cache/promptCacheBreakDetection.ts",
-      "find": "    if (!wasStub && isStub) return 'full→stub'\n",
+      "find": "  if (!wasStub && isStub) return 'full→stub'\n",
       "replace": ""
     },
     {
       "name": "mutation kind: dropped media is named",
       "source": "src/providers/cache/promptCacheBreakDetection.ts",
-      "find": "    if (mediaIn(a) > mediaIn(b)) return 'media removed'\n",
+      "find": "  if (mediaIn(a) > mediaIn(b)) return 'media removed'\n",
       "replace": ""
     },
     {
-      "name": "resume: the clipped set is restored",
+      "name": "mutation kind: a block that appears or disappears is named",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    return restMatches ? `${block.type ?? 'unknown'} block ${added ? 'added' : 'removed'}` : null\n",
+      "replace": "    return null\n"
+    },
+    {
+      "name": "clip-state: a resumed set is restored",
       "source": "src/agent/compact/stableStubState/clippedIdRegistry.ts",
       "find": "  if (!snapshot) return\n",
       "replace": "  return\n"
     },
     {
-      "name": "resume: a compact boundary drops the clip state",
+      "name": "clip-state: a compact boundary drops it",
       "source": "src/sessions/resume/transcriptLoad.ts",
       "find": "          clipStates.clear()\n",
       "replace": ""
+    },
+    {
+      "name": "clip-state: a reset (rewind) is written",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  resetClippedIds()\n  // A rewind keeps the session: without this, a resume restored the set the\n  // live process had just dropped and stubbed results it sent in full.\n  saveClipState()\n",
+      "replace": "  resetClippedIds()\n"
+    },
+    {
+      "name": "clip-state: a relief clip writes it, in an SDK session too",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  // The session's set goes to the transcript, so a resumed process — `-p`\n  // and the SDK ('sdk') included — re-sends these stubs.\n  saveClipState()\n",
+      "replace": ""
+    },
+    {
+      "name": "clip-state: the metadata re-append stamps a set no clip wrote",
+      "source": "src/sessions/persistence/project.ts",
+      "find": "    if (clips.resultIds.length > 0 || Object.keys(clips.inputFields).length > 0) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "clip-state: a failed write never fails the clip",
+      "source": "src/sessions/persistence/project.ts",
+      "find": "      this.clipStateWritten = written\n    } catch (e) {\n      logError(e)\n    }\n",
+      "replace": "      this.clipStateWritten = written\n    } finally {\n    }\n"
+    },
+    {
+      "name": "clip-state: the startup picker restores it",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "      restoreClippedState(result_3.clipState);\n",
+      "replace": ""
+    },
+    {
+      "name": "clip-state: a branch keeps the set it was cut with",
+      "source": "src/agent/repl/resumeSession.ts",
+      "find": "    restoreClippedState(branchClips ?? log.clipState, sessionId)\n",
+      "replace": "    restoreClippedState(log.clipState, sessionId)\n"
     },
     {
       "name": "control: the uncached-tail floor may move a little",

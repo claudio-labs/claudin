@@ -49,7 +49,7 @@ frozen prefix is the ~10-token stub, never the full content.
 A block is **mutable** (frontier stops before it) when:
 
 - `tool_result` that `stubOneBlock` can rewrite at all (`isStubbableResult`:
-  not a stub yet, non-empty, no image), and:
+  not a stub yet, non-empty, no image or document), and:
   - its id is in `clippedIds` (pending explicit clip), or
   - it is non-error, ≥ `MIN_STUB_TOKENS`, and the age prune runs (it will stub
     it once it crosses the cutoff).
@@ -72,7 +72,9 @@ as uncached input on every request until the session ended:
   Nothing replaces it. The idle-gap clip put screenshots in the set, and two
   ferrous-dns sessions ran 2h and 48 min at a frozen read ($22). Now one
   predicate, `isStubbableResult`, decides for the stubber, the frontier, the
-  relief candidates and the idle-gap clip, which no longer clips images.
+  relief candidates and the idle-gap clip, which no longer clips media or
+  pinned results (a pin only delays a stub, so its id held the marker until
+  the pin expired).
 - Past the API's 100-media cap, every media block counted as mutable, because
   `stripExcessMediaItems` drops the oldest one as each new one arrives.
   81744358 (playwright screenshots, Sonnet 5.5) ran 230 calls at ~470k

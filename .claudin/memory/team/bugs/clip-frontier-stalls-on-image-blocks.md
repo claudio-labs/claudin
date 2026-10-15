@@ -1,6 +1,6 @@
 ---
 name: clip-frontier-stalls-on-image-blocks
-description: FIXED 2026-10-15 on branch fix/cache-image-frontier — image blocks held the cache marker back (clipped screenshot never stubbed; media past the 100 cap all "mutable"), billing the tail uncached on every request ($243/wk, 81744358 $221 of $271); also clip state now survives resume; the "mutated at 14" breaks stay unexplained
+description: FIXED 2026-10-15 on branch fix/cache-image-frontier — media blocks held the cache marker back (clipped screenshot never stubbed; media past the 100 cap all "mutable"), billing the tail uncached on every request ($243/wk, 81744358 $221 of $271); clip state now survives every resume path; the "mutated at 14" breaks are NOT a lost clip set and stay open
 type: project
 paths:
   - "src/agent/compact/stableStubState/clipFrontier.ts"
@@ -23,26 +23,47 @@ and the design-doc history is in `docs/tech/cache/clip-frontier-breakpoint.md`.
   81744358 (playwright, Sonnet 5.5) sent ~470k uncached on each of 230 calls
   after its 101st image.
 
-**Fix (fix/cache-image-frontier, 2026-10-15):**
-- One predicate, `isStubbableResult`, now decides for the stubber, the frontier,
-  the relief candidates and the idle-gap clip.
-- The media strip runs before the stubs and is announced as `media cap (N
-  oldest dropped)`. It is not batched, by the user's choice: each new image past
-  the cap rewrites from the oldest image on, as Claude Code does.
-- The `[Cache:]` line names `uncached tail Nk (marker held at …)` and the kind
-  of a mutation (`full→stub`, `stub→full`, `media removed`).
-- `lookback-miss-census.ts` has an uncached-tail section.
-- A `clip-state` transcript entry restores the clipped set on resume.
-- Guards: `imageFrontier.invariant.test.ts`, a required test:floor suite, and
-  `scripts/migrations/probes/imageFrontier20261015.json`.
-- Live check (Sonnet 5.5, 110 PNGs read 10 per request, then NOTES.md): the
+**Fix (fix/cache-image-frontier, 2026-10-15), with a second round after three reviews:**
+- **One predicate.** `isStubbableResult` now decides for the stubber, the
+  frontier, the relief candidates and the idle-gap clip. It refuses images and
+  documents alike. The idle-gap clip also skips pinned results.
+- **Media strip.**
+  - It runs before the stubs and is announced as `media cap (N oldest dropped)`,
+    folded once per turn.
+  - It is not batched, by the user's choice: each new image past the cap
+    rewrites from the oldest image on, as Claude Code does. On 81744358 that
+    costs ~$100, against ~$26 for batches of 10.
+  - A compaction's render does not reset the count.
+- **The `[Cache:]` line.**
+  - It names `uncached tail Nk (marker held at …)` once per turn per thread,
+    read from the marker actually placed (`heldMarker`).
+  - It gives the kind of a mutation: `full→stub`, `stub→full`, `media removed`,
+    or `<type> block added/removed`.
+- **Census.** `lookback-miss-census.ts` has an uncached-tail section.
+- **`clip-state`.** The transcript entry is written on every clip and every
+  reset (rewind) in the REPL, `-p` and the SDK. The metadata re-append stamps it
+  for branches and forks. All four resume paths restore it.
+- **Guards.**
+  - `imageFrontier.invariant.test.ts`, a required test:floor suite.
+  - `scripts/migrations/probes/imageFrontier20261015.json`.
+  - A source scan that pairs every `restoreCostStateForResume` with
+    `restoreClippedState`.
+- **Live check** (Sonnet 5.5, 110 PNGs read 10 per request, then NOTES.md): the
   release sent 12.8k and 35.2k uncached on the two requests after the cap; the
   branch sent 2 on every request. One announced strip rewrite of 15.4k, and no
   strict-mode violations.
 
-**Still open:** the `messages mutated at 14` breaks in 81744358 (0.46M tokens).
-A forensic pass found that index 14 is a 640-char text Read (`.env.example`),
-not an image. It flips full↔stub at turn starts without an announcement. The
-path is unproven: a lost clip set on a process restart is the likeliest cause,
-and the clip-state fix covers that. The next occurrence will say `full→stub` or
-`stub→full` on the line. [[cache-break-census-2026-10-15]]
+**Still open: the `messages mutated at 14` breaks in 81744358 (0.46M).**
+- **It is NOT a lost clip set**, which the first draft of this file claimed. A
+  replay through v1.1.44 showed that every restart came after an idle gap over
+  60 min, so the idle-gap clip re-clipped everything at turn 1. Message 14's
+  tool results were already stubs then.
+- **What really disappears** is a `nested_memory` rule
+  (`.claudin/rules/search-strategy.md`, 187 tokens) folded into message 14. It
+  happens on the first request of the SECOND turn after a resume, and once
+  without any restart (10-12 22:49).
+- **Suspected mechanism:** the text-into-tool_result merge in
+  `normalize.ts:1106-1122`. It has not been reproduced.
+- The line now names it (`text block removed`). To reproduce it, run
+  `CLAUDIN_CACHE_BREAK_DUMP=1` on a resume followed by two turns.
+  [[cache-break-census-2026-10-15]]

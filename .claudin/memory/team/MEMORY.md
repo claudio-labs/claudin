@@ -47,7 +47,7 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08
 
 ## Bugs
-- FIXED 10-15 (branch): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; clip state survives resume; "mutated at 14" open
+- FIXED 10-15 (branch): [Media blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; clip state on every resume path; "mutated at 14" open, NOT a lost clip set
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - FIXED 10-12: [Resume restored a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages checks is_error
