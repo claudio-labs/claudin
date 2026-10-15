@@ -70,6 +70,9 @@ const REQUIRED_SUITES = [
   'src/agent/query/toolResultMessages.test.ts',
   'src/agent/cache/loopPrefix.invariant.test.ts',
   'src/agent/cache/wirePrefix.e2e.test.ts',
+  // Where the cache marker lands, which none of the prefix suites render:
+  // an image once held it back and billed the tail uncached every request.
+  'src/agent/cache/imageFrontier.invariant.test.ts',
   'src/agent/attachments/renderStability.invariant.test.ts',
   'src/tools/toolSchemaStability.invariant.test.ts',
   'src/agent/prompts/systemPromptStability.invariant.test.ts',
