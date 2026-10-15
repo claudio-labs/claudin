@@ -261,7 +261,7 @@ function clipStubFor(
     : buildClipStub(toolName, tokens, saved)
 }
 
-export function arrayContainsImage(content: unknown): boolean {
+function arrayContainsImage(content: unknown): boolean {
   if (!Array.isArray(content)) return false
   for (const item of content as Array<{ type?: string }>) {
     if (item && typeof item === 'object' && item.type === 'image') return true

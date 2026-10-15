@@ -147,7 +147,7 @@ export type MarkerAdvance = {
 
 /** The clip frontier held the message marker before the request's last
  *  message: everything after `index` goes out as uncached input. */
-export type MarkerCap = {
+type MarkerCap = {
   index: number
   /** Messages in the request. */
   total: number
