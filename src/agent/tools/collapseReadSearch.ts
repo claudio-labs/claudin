@@ -13,6 +13,8 @@ import {
   recordedReadTargets,
 } from 'src/tools/FileReadTool/readMulti.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js'
 import {
@@ -334,6 +336,11 @@ type ShellLane = {
   /** Only called with at least one command. */
   hint(commands: string[]): string
   outputs(commands: string[], result: unknown): { command: string; output: string }[]
+  /**
+   * Whether a call whose result errored leaves the group, as a failed write or
+   * MCP call does, instead of folding its failure into the shell count.
+   */
+  breaksOutOnError: boolean
 }
 
 const BASH_LANE: ShellLane = {
@@ -351,9 +358,39 @@ const BASH_LANE: ShellLane = {
     const combined = (out.stdout ?? '') + '\n' + (out.stderr ?? '')
     return [{ command: command!, output: combined }]
   },
+  breaksOutOnError: false,
 }
 
-const SHELL_LANES = new Map<string, ShellLane>([[BASH_TOOL_NAME, BASH_LANE]])
+/**
+ * The Git tool runs a list of commands and keeps each one's output apart, so a
+ * batch counts once per command and every outcome is scanned against its own.
+ * A failed batch leaves the group: its row is the only place that shows which
+ * command failed and which never ran.
+ */
+const GIT_LANE: ShellLane = {
+  commands(input) {
+    const commands = (input as { commands?: unknown } | undefined)?.commands
+    return Array.isArray(commands)
+      ? commands.filter((c): c is string => typeof c === 'string' && c !== '')
+      : []
+  },
+  // The list the tool's verbose header shows, behind the shell's `$`.
+  hint: commands => commandAsHint(commands.map(c => oneLineCommand(c)).join(' · ')),
+  outputs(_commands, result) {
+    const outcomes = (
+      result as { outcomes?: { command: string; output: string }[] } | undefined
+    )?.outcomes
+    return Array.isArray(outcomes)
+      ? outcomes.map(o => ({ command: o.command, output: o.output }))
+      : []
+  },
+  breaksOutOnError: true,
+}
+
+const SHELL_LANES = new Map<string, ShellLane>([
+  [BASH_TOOL_NAME, BASH_LANE],
+  [GIT_TOOL_NAME, GIT_LANE],
+])
 
 /**
  * Checks if a tool is a search/read operation using the tool's isSearchOrReadCommand method.
@@ -405,6 +442,21 @@ export function getToolSearchOrReadInfo(
       isMemoryWrite: false,
       isAbsorbedSilently: false,
       isWrite: true,
+    }
+  }
+
+  // Git has no isSearchOrReadCommand of its own: under fullscreen every call
+  // joins the shell lane, as a Bash command that is not search/read does.
+  if (isFullscreenEnvEnabled() && toolName === GIT_TOOL_NAME) {
+    return {
+      isCollapsible: true,
+      isSearch: false,
+      isRead: false,
+      isList: false,
+      isMemoryWrite: false,
+      isAbsorbedSilently: false,
+      isWrite: false,
+      isShell: true,
     }
   }
 
@@ -719,9 +771,9 @@ function collectErroredToolUseIds(messages: RenderableMessage[]): Set<string> {
 }
 
 /**
- * A write or MCP call whose result errored — breaks the group instead of
- * joining it. A finished badge has no error marker, so inside the group the
- * failure would be invisible.
+ * A write, an MCP call or a Git batch (its lane's breaksOutOnError) whose
+ * result errored — breaks the group instead of joining it. A finished badge has
+ * no error marker, so inside the group the failure would be invisible.
  */
 function isErroredBreakoutToolUse(
   msg: RenderableMessage,
@@ -732,7 +784,11 @@ function isErroredBreakoutToolUse(
     return false
   }
   const info = getCollapsibleToolInfo(msg, tools)
-  if (!info?.isWrite && !info?.mcpServerName) {
+  const breaksOut =
+    info?.isWrite ||
+    info?.mcpServerName ||
+    (info?.isShell && SHELL_LANES.get(info.name)?.breaksOutOnError)
+  if (!breaksOut) {
     return false
   }
   return getToolUseIdsFromMessage(msg).some(id => erroredToolUseIds.has(id))

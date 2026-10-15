@@ -695,6 +695,18 @@ describe('shell lane — Bash under fullscreen', () => {
     expect(group.gitOpBashCount).toBe(2)
   })
 
+  test('a failed Bash command stays in the group', () => {
+    // The Git lane breaks out on error; Bash, by choice, does not.
+    const group = shellGroup([
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('r1', { file: {} }),
+      bash('b1', 'npm test'),
+      toolResult('b1', out('', '1 failing'), true),
+    ])
+
+    expect(group.bashCount).toBe(1)
+  })
+
   test('without fullscreen a shell command keeps its own row', () => {
     process.env.CLAUDIN_NO_FLICKER = '0'
     try {
@@ -709,6 +721,146 @@ describe('shell lane — Bash under fullscreen', () => {
       )
       expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search', 'assistant', 'user'])
       expect((collapsed[0] as CollapsedReadSearchGroup).bashCount).toBeUndefined()
+    } finally {
+      process.env.CLAUDIN_NO_FLICKER = '1'
+    }
+  })
+})
+
+describe('shell lane — the Git tool under fullscreen', () => {
+  const BASH_TOOL = {
+    name: 'Bash',
+    isSearchOrReadCommand: () => ({ isSearch: false, isRead: false }),
+  }
+  // No isSearchOrReadCommand, like the real tool.
+  const GIT_TOOL = { name: 'Git' }
+  const shellTools = [READ_TOOL, BASH_TOOL, GIT_TOOL] as unknown as Tools
+  let savedNoFlicker: string | undefined
+
+  beforeAll(() => {
+    savedNoFlicker = process.env.CLAUDIN_NO_FLICKER
+    process.env.CLAUDIN_NO_FLICKER = '1'
+  })
+  afterAll(() => {
+    if (savedNoFlicker === undefined) delete process.env.CLAUDIN_NO_FLICKER
+    else process.env.CLAUDIN_NO_FLICKER = savedNoFlicker
+  })
+
+  const git = (id: string, commands: string[]) => toolUse(id, 'Git', { commands })
+  /** A batch result, each command paired with its (filtered) output. */
+  const batch = (...pairs: [string, string][]) => ({
+    outcomes: pairs.map(([command, output]) => ({
+      command,
+      effectiveCommand: command,
+      exitCode: 0,
+      output,
+      interrupted: false,
+    })),
+    notRun: [],
+  })
+
+  function shellGroup(messages: RenderableMessage[]): CollapsedReadSearchGroup {
+    const collapsed = collapseReadSearchGroups(messages, shellTools)
+    expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search'])
+    return collapsed[0] as CollapsedReadSearchGroup
+  }
+
+  test('a read-only batch joins the group, one shell command per command', () => {
+    const group = shellGroup([
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('r1', { file: {} }),
+      git('g1', ['git status', 'git diff', 'git log -3']),
+      toolResult('g1', batch(['git status', ''], ['git diff', ''], ['git log -3', ''])),
+    ])
+
+    expect(group.readCount).toBe(1)
+    expect(group.bashCount).toBe(3)
+    expect(group.gitOpBashCount).toBe(0)
+    expect(group.latestDisplayHint).toBe('$ git status · git diff · git log -3')
+  })
+
+  test('a commit batch surfaces its sha and is absorbed by it, every command', () => {
+    const group = shellGroup([
+      git('g1', ['git add a.ts', 'git commit -m "fix: x"']),
+      // What the Bash output filter leaves of a bare commit.
+      toolResult('g1', batch(['git add a.ts', ''], ['git commit -m "fix: x"', '✓ committed 1a2b3c4'])),
+    ])
+
+    expect(group.commits).toEqual([{ sha: '1a2b3c', kind: 'committed' }])
+    expect(group.bashCount).toBe(2)
+    expect(group.gitOpBashCount).toBe(2)
+  })
+
+  test('each outcome is read against its own command', () => {
+    // The push's output carries another PR's URL first; read as one text, the
+    // create would claim #9.
+    const group = shellGroup([
+      git('g1', ['git push -u origin feat/x', 'gh pr create --title t --body b']),
+      toolResult(
+        'g1',
+        batch(
+          ['git push -u origin feat/x', 'remote:   https://github.com/o/r/pull/9\n * [new branch]      feat/x -> feat/x'],
+          ['gh pr create --title t --body b', 'https://github.com/o/r/pull/42'],
+        ),
+      ),
+    ])
+
+    expect(group.pushes).toEqual([{ branch: 'feat/x' }])
+    expect(group.prs).toEqual([
+      { number: 42, url: 'https://github.com/o/r/pull/42', action: 'created' },
+    ])
+    expect(group.gitOpBashCount).toBe(2)
+  })
+
+  test('a multi-line commit message stays on one hint line', () => {
+    const group = shellGroup([
+      git('g1', ['git commit -m "subject\n\nbody line"']),
+      toolResult('g1', batch(['git commit -m "subject\n\nbody line"', '✓ committed 1a2b3c4'])),
+    ])
+
+    expect(group.latestDisplayHint).toBe('$ git commit -m "subject body line"')
+  })
+
+  test('Bash and Git share the shell count', () => {
+    const group = shellGroup([
+      toolUse('b1', 'Bash', { command: 'npm test' }),
+      toolResult('b1', { stdout: 'ok', stderr: '' }),
+      git('g1', ['git status']),
+      toolResult('g1', batch(['git status', ''])),
+    ])
+
+    expect(group.bashCount).toBe(2)
+    expect(group.latestDisplayHint).toBe('$ git status')
+  })
+
+  test('a failed batch breaks the group, so its row shows what failed', () => {
+    const collapsed = collapseReadSearchGroups(
+      [
+        toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+        toolResult('r1', { file: {} }),
+        git('g1', ['git commit -m x']),
+        toolResult('g1', { outcomes: [], notRun: [] }, true),
+      ],
+      shellTools,
+    )
+
+    expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search', 'assistant', 'user'])
+    expect((collapsed[0] as CollapsedReadSearchGroup).bashCount).toBeUndefined()
+  })
+
+  test('without fullscreen a Git call keeps its own row', () => {
+    process.env.CLAUDIN_NO_FLICKER = '0'
+    try {
+      const collapsed = collapseReadSearchGroups(
+        [
+          toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+          toolResult('r1', { file: {} }),
+          git('g1', ['git status']),
+          toolResult('g1', batch(['git status', ''])),
+        ],
+        shellTools,
+      )
+      expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search', 'assistant', 'user'])
     } finally {
       process.env.CLAUDIN_NO_FLICKER = '1'
     }

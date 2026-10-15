@@ -336,12 +336,19 @@ export function CollapsedReadSearchContent({
     for (const id_1 of toolUseIds) {
       if (!inProgressToolUseIDs.has(id_1)) continue;
       const data = lookups.progressMessagesByToolUseID.get(id_1)?.at(-1)?.data;
-      if (data?.type !== 'bash_progress' && data?.type !== 'powershell_progress') {
-        continue;
-      }
-      if (slowestShellSeconds === undefined || data.elapsedTimeSeconds > slowestShellSeconds) {
-        slowestShellSeconds = data.elapsedTimeSeconds;
-        slowestShellLines = data.totalLines;
+      // A Git batch ticks in milliseconds and counts no lines — a watch can
+      // run for minutes, and without its clock the group looks frozen.
+      const shell = data?.type === 'bash_progress' || data?.type === 'powershell_progress' ? {
+        seconds: data.elapsedTimeSeconds,
+        lines: data.totalLines
+      } : data?.type === 'git_progress' ? {
+        seconds: Math.floor(data.elapsedMs / 1000),
+        lines: 0
+      } : undefined;
+      if (!shell) continue;
+      if (slowestShellSeconds === undefined || shell.seconds > slowestShellSeconds) {
+        slowestShellSeconds = shell.seconds;
+        slowestShellLines = shell.lines;
       }
     }
   }

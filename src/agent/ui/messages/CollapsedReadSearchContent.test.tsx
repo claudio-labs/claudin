@@ -778,6 +778,26 @@ describe('CollapsedReadSearchContent — shell lane (fullscreen)', () => {
       expectInOrder(flat, ['Running 2 shell commands · 12s', '…', '$ npm test (3 lines)'])
     })
 
+    const gitTick = (elapsedMs: number) => ({
+      type: 'git_progress',
+      command: 'gh pr checks 7 --watch',
+      index: 1,
+      total: 1,
+      elapsedMs,
+      silentMs: 0,
+    })
+
+    test('a running Git watch drives the clock, in seconds, with no line count', async () => {
+      const flat = flatten(
+        await renderShell({
+          ticks: { b1: bashTick(4, 1), b2: gitTick(185_400) },
+          running: ['b1', 'b2'],
+        }),
+      )
+      expectInOrder(flat, ['Running 2 shell commands · 3m 5s', '…', '$ npm test'])
+      expect(flat).not.toContain('line')
+    })
+
     test('a command that is no longer running has no clock', async () => {
       const flat = flatten(
         await renderShell({ ticks: { b1: bashTick(12, 3) }, running: ['b2'] }),

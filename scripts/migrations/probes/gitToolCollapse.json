@@ -2,7 +2,8 @@
   "test": [
     "src/tools/shared/gitOperationTracking.test.ts",
     "src/agent/tools/collapseReadSearch.test.ts",
-    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx"
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/tools/GitTool/families.test.ts"
   ],
   "source": "src/tools/shared/gitOperationTracking.ts",
   "probes": [
@@ -130,6 +131,54 @@
       "replace": "hint: ([command]) => commandAsHint(command!),"
     },
     {
+      "name": "Git joins the group under fullscreen",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "if (isFullscreenEnvEnabled() && toolName === GIT_TOOL_NAME) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the Git lane is registered",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "  [GIT_TOOL_NAME, GIT_LANE],\n",
+      "replace": ""
+    },
+    {
+      "name": "a Git batch counts once per command",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "const count = countToolUses(msg) * Math.max(commands.length, 1)",
+      "replace": "const count = countToolUses(msg)"
+    },
+    {
+      "name": "a Git outcome is read against its own output",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "outcomes.map(o => ({ command: o.command, output: o.output }))",
+      "replace": "outcomes.map(o => ({ command: o.command, output: outcomes.map(x => x.output).join('\\n') }))"
+    },
+    {
+      "name": "the Git hint is the batch on one line",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "commands.map(c => oneLineCommand(c)).join(' · ')",
+      "replace": "commands.join(' · ')"
+    },
+    {
+      "name": "a failed Git batch breaks out",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "breaksOutOnError: true,",
+      "replace": "breaksOutOnError: false,"
+    },
+    {
+      "name": "a failed Bash command stays in the group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "  breaksOutOnError: false,\n}",
+      "replace": "  breaksOutOnError: true,\n}"
+    },
+    {
+      "name": "the breakout asks the lane",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "(info?.isShell && SHELL_LANES.get(info.name)?.breaksOutOnError)",
+      "replace": "info?.isShell"
+    },
+    {
       "name": "git-op commands leave the shell count",
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
       "find": "Math.max(0, maxBashCountRef.current - gitOpBashCount)",
@@ -174,8 +223,20 @@
     {
       "name": "the header clock takes the slowest command",
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
-      "find": "if (slowestShellSeconds === undefined || data.elapsedTimeSeconds > slowestShellSeconds) {",
+      "find": "if (slowestShellSeconds === undefined || shell.seconds > slowestShellSeconds) {",
       "replace": "if (true) {"
+    },
+    {
+      "name": "a Git tick drives the clock",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "} : data?.type === 'git_progress' ? {",
+      "replace": "} : false ? {"
+    },
+    {
+      "name": "a Git tick is milliseconds",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "seconds: Math.floor(data.elapsedMs / 1000),",
+      "replace": "seconds: data.elapsedMs,"
     },
     {
       "name": "only a running command has a clock",
