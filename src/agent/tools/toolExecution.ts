@@ -79,6 +79,7 @@ import {
 } from 'src/sessions/sessionActivity.js'
 import { Stream } from 'src/shared/stream.js'
 import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
+import { clipStubEchoRefusal } from 'src/agent/tools/clipStubEcho.js'
 import { transportSendsStrictToolSchemas } from 'src/providers/presets/providerConfig.js'
 import {
   formatError,
@@ -705,6 +706,29 @@ async function checkPermissionsAndCallTool(
             input,
             parsedInput.error.message,
           ),
+          sourceToolAssistantUUID: assistantMessage.uuid,
+        }),
+      },
+    ]
+  }
+
+  // A field holding the wire placeholder of an earlier call's input
+  // (clipStubEcho.ts) would write the placeholder, not the content.
+  const echoedStub = clipStubEchoRefusal(parsedInput.data, tool.clearableInputFields)
+  if (echoedStub !== null) {
+    logForDebugging(`${tool.name} input echoes a clip stub`)
+    return [
+      {
+        message: createUserMessage({
+          content: [
+            {
+              type: 'tool_result',
+              content: `<tool_use_error>${echoedStub}</tool_use_error>`,
+              is_error: true,
+              tool_use_id: toolUseID,
+            },
+          ],
+          toolUseResult: `Error: ${echoedStub}`,
           sourceToolAssistantUUID: assistantMessage.uuid,
         }),
       },
