@@ -54,6 +54,7 @@ export {
   buildClipStub,
   buildClipStubWithHead,
   isClipStubContent,
+  isStubbableResult,
   stubToolResultForDisplay,
 } from 'src/agent/compact/stableStubState/clipStubText.js'
 export type { ClipFrontierMutability } from 'src/agent/compact/stableStubState/clipFrontier.js'

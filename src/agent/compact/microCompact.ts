@@ -38,6 +38,7 @@ import {
   collectClearableCandidates,
   getClippedInputFields,
   getClippedIds,
+  isStubbableResult,
   resetClippedIds,
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
@@ -570,21 +571,30 @@ function maybeTimeBasedMicrocompact(
   const clipped = getClippedIds()
   const newOnes = [...clearSet].filter(id => !clipped.has(id))
 
-  // Measure what the clear saves on the content as it stands in this view.
-  // Zero means every candidate is already empty/cleared — nothing to do.
+  // Measure what the clear saves on the content as it stands in this view,
+  // counting only results a stub can rewrite: an image-bearing one stays as
+  // it is (stubOneBlock), so clipping it frees nothing, and its id in the set
+  // used to hold the cache marker in front of it. Zero means every candidate
+  // is already empty/cleared — nothing to do.
   const newSet = new Set(newOnes)
+  const stubbable = new Set<string>()
   let tokensSaved = 0
   for (const message of messages) {
     if (message.type !== 'user' || !Array.isArray(message.message.content)) {
       continue
     }
     for (const block of message.message.content) {
-      if (block.type === 'tool_result' && newSet.has(block.tool_use_id)) {
+      if (
+        block.type === 'tool_result' &&
+        newSet.has(block.tool_use_id) &&
+        isStubbableResult(block.content)
+      ) {
+        stubbable.add(block.tool_use_id)
         tokensSaved += calculateToolResultTokens(block)
       }
     }
   }
-  const resultsToClip = tokensSaved > 0 ? newOnes : []
+  const resultsToClip = tokensSaved > 0 ? newOnes.filter(id => stubbable.has(id)) : []
 
   // The prefix is being rewritten regardless, so clipping the INPUTS of the
   // calls older than the kept tail costs nothing here — same registry, same

@@ -270,6 +270,19 @@ export function arrayContainsImage(content: unknown): boolean {
 }
 
 /**
+ * Whether stubOneBlock can rewrite this tool_result content at all: not a stub
+ * already, not empty, no image. Content that fails keeps its bytes for good
+ * (pins aside, which only delay a stub), so no clip path may count it as
+ * freed, and the clip frontier must not wait for a stub that cannot come.
+ */
+export function isStubbableResult(content: unknown): boolean {
+  if (content == null || content === '') return false
+  if (typeof content === 'string') return !isClipStubContent(content)
+  if (Array.isArray(content)) return content.length > 0 && !arrayContainsImage(content)
+  return true
+}
+
+/**
  * Decide whether an age-based prune pass should clip this block.
  * Distinct from the explicit clip path (applyStableStubs), which honors
  * QueryEngine's decision to clip regardless of size or error flag.
@@ -303,10 +316,7 @@ export function stubOneBlock(
 ): AnyContentBlock {
   if (block?.type !== 'tool_result') return block
   const existing = (block as ToolResultBlockParam).content
-  if (typeof existing === 'string' && isClipStubContent(existing)) return block
-  if (existing == null || existing === '') return block
-  if (Array.isArray(existing) && existing.length === 0) return block
-  if (arrayContainsImage(existing)) return block
+  if (!isStubbableResult(existing)) return block
   const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
   // Pinned: the model already lost this content once and asked for it back.
   // Clipping it again is exactly what the pin exists to prevent — every clip

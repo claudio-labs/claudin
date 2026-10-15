@@ -21,10 +21,9 @@ import {
 } from 'src/agent/compact/stableStubState/pinRegistry.js'
 import {
   MIN_STUB_TOKENS,
-  arrayContainsImage,
   headStubApplies,
-  isClipStubContent,
   isInputClipStubContent,
+  isStubbableResult,
   shouldAgeStub,
   stubOneBlock,
 } from 'src/agent/compact/stableStubState/clipStubText.js'
@@ -80,12 +79,20 @@ export type ClipFrontierMutability = {
  * Mirrors the two rewriters that touch tool_results at the API boundary:
  *   - pruneOldToolResults (age prune): stubs non-error, non-image results
  *     at or above MIN_STUB_TOKENS once they cross the keepTurns cutoff.
- *   - applyStableStubs (explicit clip): rewrites any id in clippedIds as soon
- *     as content allows — including the deferred-image case where the stub is
- *     delayed until the image content is replaced.
+ *   - applyStableStubs (explicit clip): rewrites any id in clippedIds whose
+ *     content stubOneBlock can rewrite at all (isStubbableResult).
  *
- * Must stay in sync with shouldAgeStub/stubOneBlock above; the regression
- * tests in stableStubState.test.ts pin the correspondence.
+ * Both go through stubOneBlock, so both share its refusal: a stub, empty
+ * content or an image is never rewritten, by anything. An image-bearing
+ * result in the clipped set used to count as a stub still to come — the
+ * "deferred image" this comment promised would be stubbed once its image was
+ * replaced. Nothing replaces it (the media cap strips before the stubs run,
+ * and its result is stubbed in that same request), so the marker waited in
+ * front of it for the rest of the session (72c401aa, 2026-10-14: 2h, 38 calls,
+ * read frozen at 314,693, everything after it uncached).
+ *
+ * Must stay in sync with shouldAgeStub/stubOneBlock; the regression tests in
+ * stableStubState.test.ts pin the correspondence.
  *
  * The API's 100-media cap is deliberately NOT a reason to call a block
  * mutable. Past it, stripExcessMediaItems drops the oldest image as each new
@@ -121,21 +128,18 @@ function isToolResultBlockMutable(
 ): boolean {
   if (block?.type !== 'tool_result') return false
   const existing = (block as unknown as ToolResultBlockParam).content
-  // Already a byte-stable stub (pure or head form) — final bytes forever.
-  if (typeof existing === 'string' && isClipStubContent(existing)) return false
-  // Empty content is never rewritten.
-  if (existing == null || existing === '') return false
-  if (Array.isArray(existing) && existing.length === 0) return false
-  // Pending explicit clip (checked before the image/error skips: clippedIds
-  // membership overrides both in applyStableStubs' stubOneBlock path).
+  // A stub already (final bytes forever), empty, or an image: no rewriter
+  // will touch it.
+  if (!isStubbableResult(existing)) return false
+  // Pending explicit clip (checked before the error skip: clippedIds
+  // membership overrides it in applyStableStubs' stubOneBlock path).
   const toolUseId = typeof block.tool_use_id === 'string' ? block.tool_use_id : ''
   if (toolUseId && clippedIds.has(toolUseId)) return true
   // Retain profile: no age prune → a full tool_result is byte-stable. The
   // RSS guard may still stub it someday, but that's a deliberate
   // break-once clip event, not a per-turn mutation to fence off.
   if (!agePruneActive) return false
-  // The age prune skips image-bearing and error results entirely…
-  if (arrayContainsImage(existing)) return false
+  // The age prune skips error results entirely…
   if ((block as unknown as ToolResultBlockParam).is_error) return false
   // …and only stubs results at or above the floor.
   return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS
@@ -415,10 +419,7 @@ export function collectClearableCandidates(
     for (const block of content as AnyContentBlock[]) {
       if (block?.type !== 'tool_result') continue
       const existing = (block as unknown as ToolResultBlockParam).content
-      if (typeof existing === 'string' && isClipStubContent(existing)) continue
-      if (existing == null || existing === '') continue
-      if (Array.isArray(existing) && existing.length === 0) continue
-      if (arrayContainsImage(existing)) continue
+      if (!isStubbableResult(existing)) continue
       if ((block as unknown as ToolResultBlockParam).is_error) continue
       const toolUseId = (block as { tool_use_id?: string }).tool_use_id
       if (!toolUseId || clipped.has(toolUseId)) continue
