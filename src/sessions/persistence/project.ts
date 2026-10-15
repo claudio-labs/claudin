@@ -545,6 +545,17 @@ export class Project {
     if (entry) appendEntryToFile(this.sessionFile, entry)
   }
 
+  /** The main thread's clipped set, after a clip event (saveClipState). */
+  appendClipState(state: { resultIds: string[]; inputFields: Record<string, string[]> }): void {
+    if (!this.sessionFile || this.shouldSkipPersistence()) return
+    appendEntryToFile(this.sessionFile, {
+      type: 'clip-state',
+      sessionId: getSessionId(),
+      resultIds: state.resultIds,
+      inputFields: state.inputFields,
+    })
+  }
+
   async flush(): Promise<void> {
     await this.drainQueuedWrites()
 
@@ -912,7 +923,7 @@ export class Project {
       void this.enqueueWrite(sessionFile, entry)
     } else if (entry.type === 'worktree-state') {
       void this.enqueueWrite(sessionFile, entry)
-    } else if (entry.type === 'cost-state') {
+    } else if (entry.type === 'cost-state' || entry.type === 'clip-state') {
       // Last-wins on restore; never joins the message chain.
       void this.enqueueWrite(sessionFile, entry)
     } else if (entry.type === 'marble-origami-commit') {

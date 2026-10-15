@@ -23,6 +23,7 @@
  * Codex shim.
  */
 export type { AnyMessage } from 'src/agent/compact/stableStubState/types.js'
+export type { ClippedStateSnapshot } from 'src/agent/compact/stableStubState/clippedIdRegistry.js'
 export {
   _getClippedIdsMapSizeForTesting,
   _getClippedIdsTotalCountForTesting,
@@ -36,6 +37,8 @@ export {
   pruneOrphanClippedIds,
   pruneStaleClippedIds,
   resetClippedIds,
+  restoreClippedState,
+  snapshotClippedState,
 } from 'src/agent/compact/stableStubState/clippedIdRegistry.js'
 export {
   MAX_PINNED_RESULT_TOKENS,

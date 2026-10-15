@@ -11,6 +11,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import { restoreCostStateForResume } from 'src/agent/cost-tracker.js'
+import { restoreClippedState } from 'src/agent/compact/stableStubState.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
@@ -23,6 +24,7 @@ import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
 import { asSessionId } from 'src/shared/types/ids.js'
 import type {
   AttributionSnapshotMessage,
+  ClipStateEntry,
   ContextCollapseCommitEntry,
   ContextCollapseSnapshotEntry,
   CostStateEntry,
@@ -278,6 +280,7 @@ type ResumeLoadResult = {
   prUrl?: string
   prRepository?: string
   costState?: CostStateEntry
+  clipState?: ClipStateEntry
 }
 
 /**
@@ -425,6 +428,11 @@ export async function processResumedConversation(
       restoreCostStateForResume(sid, result)
     }
   }
+
+  // The clipped set the last process sent, so the first request re-sends the
+  // same stubs and reads its prefix back. Keyed by the session id, so after
+  // the switch above; a fork keeps it too — it sends the same history.
+  restoreClippedState(result.clipState)
 
   // Restore session metadata so /status shows the saved name and metadata
   // is re-appended on session exit. Fork doesn't take ownership of the

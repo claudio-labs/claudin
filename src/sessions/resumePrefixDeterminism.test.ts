@@ -22,6 +22,8 @@ import { wireMessages } from 'src/agent/cache/__testutils__/prefixInvariant.js'
 import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
+  restoreClippedState,
+  snapshotClippedState,
 } from 'src/agent/compact/stableStubState.js'
 import {
   createAssistantMessage,
@@ -305,16 +307,19 @@ describe('a clip survives the process that made it', () => {
       call,
       readResult(call, 'toolu_big', `${'1→export const line = 1\n'.repeat(800)}`),
       createAssistantMessage({ content: 'It exports one constant, many times.' }),
-      createUserMessage({ content: 'Thanks.' }),
     ]
     try {
       addClippedIds(['toolu_big'])
       const sent = wireMessages(live, [])
       expect(sent.join('\n')).toContain('[clipped:')
 
-      // A new process: none of this one's memory, only its transcript.
+      // A new process: none of this one's memory, only its transcript — the
+      // messages and the `clip-state` entry the clip wrote
+      // (sessionRestore.clipState.test.ts covers the file round trip).
+      const written = JSON.parse(JSON.stringify(snapshotClippedState()))
       const resumed = resumedFromTranscript(live)
       _resetAllClippedIdsForTesting()
+      restoreClippedState(written)
 
       expect(wireMessages(resumed, [])).toEqual(sent)
     } finally {

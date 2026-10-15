@@ -48,6 +48,7 @@ export type LogOption = {
   mode?: 'coordinator' | 'normal' // Session mode for coordinator/normal detection
   worktreeSession?: PersistedWorktreeSession | null // Worktree state at session end (null = exited, undefined = never entered)
   costState?: CostStateEntry // Last-wins — the session's running cost, restored on resume
+  clipState?: ClipStateEntry // Last-wins — the main thread's clipped set, restored on resume
   contextTokens?: number // Tokens in context at the last model response (lite logs: from the tail)
   costUSD?: number // Total cost at the last cost-state stamp (lite logs: from the tail)
 }
@@ -316,6 +317,21 @@ export type ContextCollapseSnapshotEntry = {
   lastSpawnTokens: number
 }
 
+/**
+ * The main thread's clipped set (stableStubState): the tool results and the
+ * tool_use input fields the wire sends as stubs. Written at every clip event,
+ * last-wins on load, cleared by a compact boundary (compaction resets the
+ * set), restored by --resume, -c and /resume. Without it a resumed process
+ * sent every clipped result in full again and missed the cache from the first
+ * one on (cache.md §7). Never a chain participant.
+ */
+export type ClipStateEntry = {
+  type: 'clip-state'
+  sessionId: UUID
+  resultIds: string[]
+  inputFields: Record<string, string[]>
+}
+
 export type Entry =
   | TranscriptMessage
   | SummaryMessage
@@ -335,6 +351,7 @@ export type Entry =
   | ModeEntry
   | WorktreeStateEntry
   | CostStateEntry
+  | ClipStateEntry
   | ContextCollapseCommitEntry
   | ContextCollapseSnapshotEntry
 

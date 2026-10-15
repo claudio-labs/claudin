@@ -40,7 +40,9 @@ import {
   getClippedIds,
   isStubbableResult,
   resetClippedIds,
+  snapshotClippedState,
 } from 'src/agent/compact/stableStubState.js'
+import { saveClipState } from 'src/sessions/sessionStorage.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import {
   decideRelief,
@@ -423,9 +425,11 @@ function maybeReliefClip(
     notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)
   }
   // The `[Cache: …]` line names the knob that fired; sub-agents keep their
-  // clips out of the main thread's line.
+  // clips out of the main thread's line. The main thread's set goes to the
+  // transcript too, so a resumed process re-sends these stubs.
   if (isMainThreadSource(querySource)) {
     recordPrefixRewrite(reason)
+    saveClipState(snapshotClippedState())
   }
   return false
 }
@@ -621,6 +625,9 @@ function maybeTimeBasedMicrocompact(
 
   if (resultsToClip.length > 0) addClippedIds(resultsToClip)
   const inputsClipped = addClippedInputsFor(inputsToClip)
+  // Main thread only (evaluateTimeBasedTrigger): its set goes to the
+  // transcript, so a resumed process re-sends these stubs.
+  saveClipState(snapshotClippedState())
 
   logForDebugging(
     `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${resultsToClip.length} tool results (~${tokensSaved} tokens) and ${inputsClipped} inputs, kept last ${keepSet.size}`,

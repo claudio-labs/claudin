@@ -29,6 +29,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
+  type ClipStateEntry,
   type ContextCollapseCommitEntry,
   type ContextCollapseSnapshotEntry,
   type CostStateEntry,
@@ -109,6 +110,20 @@ function parseCostStateEntry(entry: unknown): CostStateEntry | undefined {
   return parsed.success ? (parsed.data as CostStateEntry) : undefined
 }
 
+const clipStateEntrySchema = lazySchema(() =>
+  z.object({
+    type: z.literal('clip-state'),
+    sessionId: z.string(),
+    resultIds: z.array(z.string()),
+    inputFields: z.record(z.string(), z.array(z.string())),
+  }),
+)
+
+function parseClipStateEntry(entry: unknown): ClipStateEntry | undefined {
+  const parsed = clipStateEntrySchema().safeParse(entry)
+  return parsed.success ? (parsed.data as ClipStateEntry) : undefined
+}
+
 /**
  * Loads all messages, summaries, file history snapshots, and attribution snapshots from a specific session file.
  */
@@ -129,6 +144,7 @@ export async function loadTranscriptFile(
   modes: Map<UUID, string>
   worktreeStates: Map<UUID, PersistedWorktreeSession | null>
   costStates: Map<UUID, CostStateEntry>
+  clipStates: Map<UUID, ClipStateEntry>
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>
   contextCollapseCommits: ContextCollapseCommitEntry[]
@@ -149,6 +165,10 @@ export async function loadTranscriptFile(
   const worktreeStates = new Map<UUID, PersistedWorktreeSession | null>()
   // Last-wins per session.
   const costStates = new Map<UUID, CostStateEntry>()
+  // Last-wins per session, and cleared by a compact boundary: compaction
+  // resets the clipped set, so an older entry names results that are gone.
+  // Pre-boundary metadata never carries one for the same reason.
+  const clipStates = new Map<UUID, ClipStateEntry>()
   const fileHistorySnapshots = new Map<UUID, FileHistorySnapshotMessage>()
   const attributionSnapshots = new Map<UUID, AttributionSnapshotMessage>()
   // Array, not Map — commit order matters (nested collapses).
@@ -299,6 +319,7 @@ export async function loadTranscriptFile(
         if (isCompactBoundaryMessage(entry)) {
           contextCollapseCommits.length = 0
           contextCollapseSnapshot = undefined
+          clipStates.clear()
         }
       } else if (entry.type === 'summary' && entry.leafUuid) {
         summaries.set(entry.leafUuid, entry.summary)
@@ -319,6 +340,9 @@ export async function loadTranscriptFile(
       } else if (entry.type === 'cost-state' && entry.sessionId) {
         const costState = parseCostStateEntry(entry)
         if (costState) costStates.set(entry.sessionId, costState)
+      } else if (entry.type === 'clip-state' && entry.sessionId) {
+        const clipState = parseClipStateEntry(entry)
+        if (clipState) clipStates.set(entry.sessionId, clipState)
       } else if (entry.type === 'pr-link' && entry.sessionId) {
         prNumbers.set(entry.sessionId, entry.prNumber)
         prUrls.set(entry.sessionId, entry.prUrl)
@@ -405,6 +429,7 @@ export async function loadTranscriptFile(
     modes,
     worktreeStates,
     costStates,
+    clipStates,
     fileHistorySnapshots,
     attributionSnapshots,
     contextCollapseCommits,
@@ -424,6 +449,7 @@ export async function loadSessionFile(sessionId: UUID): Promise<{
   agentSettings: Map<UUID, string>
   worktreeStates: Map<UUID, PersistedWorktreeSession | null>
   costStates: Map<UUID, CostStateEntry>
+  clipStates: Map<UUID, ClipStateEntry>
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>
   contextCollapseCommits: ContextCollapseCommitEntry[]

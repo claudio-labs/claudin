@@ -46,6 +46,7 @@ import {
 } from 'src/sessions/sessionStorage.js'
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
+import { restoreClippedState } from 'src/agent/compact/stableStubState.js'
 import {
   getOriginalCwd,
   setCostStateForRestore,
@@ -341,6 +342,10 @@ export async function resumeSession(
         },
       )
     }
+
+    // The clipped set the session's last process sent, so the next request
+    // re-sends the same stubs (keyed by the session id: after the switch).
+    restoreClippedState(log.clipState)
 
     // Reset messages to the provided initial messages
     // Use a callback to ensure we're not dependent on stale state

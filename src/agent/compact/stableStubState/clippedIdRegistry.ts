@@ -116,6 +116,35 @@ export function recordStubText(toolUseId: string, stub: string): void {
   }
 }
 
+/**
+ * The current thread's clipped set, as it is written to the transcript
+ * (`clip-state`). Stub bytes are not part of it: stubOneBlock rebuilds them
+ * from the content and the files on disk, which a resumed process reads the
+ * same way.
+ */
+export type ClippedStateSnapshot = {
+  resultIds: string[]
+  inputFields: Record<string, string[]>
+}
+
+export function snapshotClippedState(): ClippedStateSnapshot {
+  const inputFields: Record<string, string[]> = {}
+  for (const [id, fields] of getClippedInputFields()) inputFields[id] = [...fields]
+  return { resultIds: [...getClippedIds()], inputFields }
+}
+
+/**
+ * Put a resumed session's clipped set back before its first request: a
+ * process that re-sent a clipped result in full would miss the cache from it
+ * on, and the next relief clip would rewrite everything after it again.
+ * Call after the session id is the resumed one — the set is keyed by it.
+ */
+export function restoreClippedState(snapshot: ClippedStateSnapshot | undefined): void {
+  if (!snapshot) return
+  addClippedIds(snapshot.resultIds)
+  for (const [id, fields] of Object.entries(snapshot.inputFields)) addClippedInputs(id, fields)
+}
+
 /** id → number of clip passes this pin has already shielded its block. */
 export const perKeyPinnedIds = new Map<string, Map<string, number>>()
 export const perKeySpentPinIds = new Map<string, Set<string>>()

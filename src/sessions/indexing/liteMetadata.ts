@@ -391,6 +391,7 @@ export async function loadFullLog(log: LogOption): Promise<LogOption> {
       modes,
       worktreeStates,
       costStates,
+      clipStates,
       fileHistorySnapshots,
       attributionSnapshots,
       contextCollapseCommits,
@@ -437,6 +438,7 @@ export async function loadFullLog(log: LogOption): Promise<LogOption> {
           ? worktreeStates.get(sessionId)
           : log.worktreeSession,
       costState: sessionId ? costStates.get(sessionId) : log.costState,
+      clipState: sessionId ? clipStates.get(sessionId) : log.clipState,
       prNumber: sessionId ? prNumbers.get(sessionId) : log.prNumber,
       prUrl: sessionId ? prUrls.get(sessionId) : log.prUrl,
       prRepository: sessionId
@@ -483,6 +485,7 @@ export async function getLastSessionLog(
     agentSettings,
     worktreeStates,
     costStates,
+    clipStates,
     fileHistorySnapshots,
     attributionSnapshots,
     contextCollapseCommits,
@@ -526,6 +529,7 @@ export async function getLastSessionLog(
     ),
     worktreeSession: worktreeStates.get(sessionId),
     costState: costStates.get(sessionId),
+    clipState: clipStates.get(sessionId),
     contextCollapseCommits: contextCollapseCommits.filter(
       e => e.sessionId === sessionId,
     ),

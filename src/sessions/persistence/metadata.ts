@@ -9,7 +9,10 @@
 import type { UUID } from 'crypto'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { SessionId } from 'src/shared/types/ids.js'
-import type { PersistedWorktreeSession } from 'src/shared/types/logs.js'
+import type {
+  ClipStateEntry,
+  PersistedWorktreeSession,
+} from 'src/shared/types/logs.js'
 import { updateSessionName } from 'src/sessions/concurrentSessions.js'
 import { appendEntryToFile } from 'src/sessions/persistence/_helpers.js'
 import { getProject } from 'src/sessions/persistence/project.js'
@@ -267,6 +270,17 @@ export function cacheSessionTitle(customTitle: string): void {
  */
 export function saveMode(mode: 'coordinator' | 'normal'): void {
   getProject().currentSessionMode = mode
+}
+
+/**
+ * Record the main thread's clipped set after a clip event, so --resume, -c
+ * and /resume re-send the same stubs. Last-wins on load. A clip only happens
+ * mid-session, so the file exists; before it does there is nothing to save.
+ */
+export function saveClipState(
+  state: Pick<ClipStateEntry, 'resultIds' | 'inputFields'>,
+): void {
+  getProject().appendClipState(state)
 }
 
 /**
