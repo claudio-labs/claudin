@@ -1,5 +1,27 @@
 import { describe, expect, test } from 'bun:test'
-import { formatMemoryAudit } from 'src/memory/memdir/memoryAuditCommand.js'
+import { auditDirsFor, formatMemoryAudit } from 'src/memory/memdir/memoryAuditCommand.js'
+import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
+
+describe('auditDirsFor', () => {
+  const session = testMemoryDirs({ private: '/repo/.claudin/memory', team: '/repo/.claudin/memory/team' })
+
+  test('the committed team dir is covered with memory off, and when a setting moved the session dirs', () => {
+    expect(auditDirsFor([], '/repo/.claudin/memory/team/')).toEqual([
+      { scope: 'team', root: '/repo/.claudin/memory/team/', index: '/repo/.claudin/memory/team/MEMORY.md' },
+    ])
+    const moved = testMemoryDirs({ private: '/elsewhere/memory', team: '/elsewhere/memory/team' })
+    expect(auditDirsFor(moved, '/repo/.claudin/memory/team/').map(d => d.root)).toEqual([
+      '/elsewhere/memory/',
+      '/elsewhere/memory/team/',
+      '/repo/.claudin/memory/team/',
+    ])
+  })
+
+  test('it is not listed twice when the session already has it, and nothing is added outside a repo', () => {
+    expect(auditDirsFor(session, '/repo/.claudin/memory/team/')).toEqual(session)
+    expect(auditDirsFor(session, null)).toEqual(session)
+  })
+})
 
 const CWD = '/repo'
 const secret = { kind: 'secret' as const, path: '/repo/.claudin/memory/team/bugs/x.md', labels: ['GitHub PAT'] }

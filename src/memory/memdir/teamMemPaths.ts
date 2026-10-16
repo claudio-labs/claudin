@@ -13,6 +13,15 @@ export function getTeamMemPath(): string {
   return (join(getPrivateMemPath(), 'team') + sep).normalize('NFC')
 }
 
+/**
+ * Where a repository commits its team memory, `<gitRoot>/.claudin/memory/team/`
+ * — the project-local default of getPrivateMemPath(), whatever this machine's
+ * memory settings resolve the session's dirs to. What a CI audit scans.
+ */
+export function committedTeamMemPath(gitRoot: string): string {
+  return (join(gitRoot, '.claudin', 'memory', 'team') + sep).normalize('NFC')
+}
+
 const BLANKET_CLAUDIN_IGNORE_RE = /^\/?\.claudin\/?$/
 const TEAM_MEM_NEGATION_RE = /^!\/?\.claudin\/memory\/team\/?/
 
