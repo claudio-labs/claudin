@@ -47,10 +47,8 @@ const NEWLINE = { type: 'stdout', content: '\n' } as const
  * shrink-while-overflowing branch goes back to blanking the screen with
  * clearTerminal, and a repaint of a frame that fits the viewport goes back to
  * starting at viewport row 0 (which is what used to repaint the startup banner
- * mid-session and pull the input box off the bottom of the terminal). It also
- * puts the in-place branch back behind `prevHadScrollback`, so a shrinking
- * frame that FITS the viewport falls through to the incremental path again.
- * Read lazily and cached — render() is the hot path.
+ * mid-session and pull the input box off the bottom of the terminal). Read
+ * lazily and cached — render() is the hot path.
  */
 let legacyFullReset: boolean | undefined
 function legacyFullResetEnabled(): boolean {
@@ -233,29 +231,14 @@ export class LogUpdate {
     const prevHadScrollback =
       cursorAtBottom && prev.screen.height >= prev.viewport.height
     const isShrinking = next.screen.height < prev.screen.height
-    // The entry condition is cursorAtBottom, NOT prevHadScrollback. What
-    // repaintTailInPlace actually needs is a cursor sitting just past the
-    // previous block's last row — which is where the overflow case's "last
-    // viewport row" comes from, not a second requirement. Demanding the
-    // overflow too left the other half of this bug in place: a frame that FITS
-    // the viewport fell through to the incremental path below, which clears
-    // only the VACATED rows and leaves the cursor linesToClear rows higher. The
-    // block's top does not move, so the rows it gave up stay blank BELOW it,
-    // and nothing pulls it back down — every later repaint is relative and
-    // net-zero, so only a resize or ctrl+L re-anchors. Measured on this
-    // harness: prev 45 rows in a 46-row viewport shrinking to 15 moved the
-    // cursor 30 rows up, against 0 for the same shrink from a 46-row prev.
-    // That is "the transcript collapses and sticks to the top of the terminal"
-    // in a long session — the frame drops under the viewport at a compaction
-    // and the next tool block that collapses strands it.
-    //
-    // eraseLines stays in reach either way: it erases the last rowsToPaint rows
-    // of the PREVIOUS block, and rowsToPaint is capped at both
-    // next.screen.height (< prev.screen.height here) and viewport.height - 1.
-    const anchorableShrink = legacyFullResetEnabled()
-      ? prevHadScrollback
-      : cursorAtBottom
-    if (!altScreen && anchorableShrink && isShrinking) {
+    // Only a frame that OVERFLOWED takes it. A frame that fits has every row
+    // on screen, so the incremental path below is exact for it: it erases the
+    // vacated rows and the block keeps its top row. Routing a fitting frame
+    // here too (#182) moved the block down by the shrink and left the rows it
+    // vacated at the top on screen — the old frame's own banner and prompt,
+    // stacked once per shrink. Closing the 12-row `@` list did it on every
+    // keystroke (2026-10-16).
+    if (!altScreen && prevHadScrollback && isShrinking) {
       const inPlace = legacyFullResetEnabled()
         ? null
         : repaintTailInPlace(prev, next, stylePool)
@@ -692,9 +675,7 @@ function anchorRows(frame: Frame): {
  * to do.
  *
  * Net zero is also what keeps the block where the user last saw it: the new
- * tail ends on the row the old tail ended on. The incremental path below gives
- * that up on a shrink, which is why this one is not restricted to overflowing
- * frames.
+ * tail ends on the row the old tail ended on.
  *
  * The rows ABOVE the repainted block keep whatever was there. They are history
  * in the same sense as the rows already in scrollback: the user saw them, and
