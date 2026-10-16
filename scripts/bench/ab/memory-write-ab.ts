@@ -148,12 +148,21 @@ const PROJECT_FILES: Record<string, string> = {
   'src/index.ts': "export const VERSION = '0.1.0'\n",
 }
 
-/** A git repo with one pinned commit and an empty project-local team memory dir. */
-function makeWorkspace(dir: string): void {
-  for (const [rel, content] of Object.entries(PROJECT_FILES)) {
-    mkdirSync(dirname(join(dir, rel)), { recursive: true })
-    writeFileSync(join(dir, rel), content)
+/** Writes each `rel → content` under `root`, creating the directories. */
+export function writeTree(root: string, files: Readonly<Record<string, string>>): void {
+  for (const [rel, content] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, rel)), { recursive: true })
+    writeFileSync(join(root, rel), content)
   }
+}
+
+/**
+ * A git repo of `files` in one pinned commit (fixed author, no signing, no
+ * hooks) and an empty project-local team memory dir. Shared with
+ * memory-recall-eval.ts, which seeds memories into it.
+ */
+export function gitWorkspace(dir: string, files: Readonly<Record<string, string>>, subject: string): void {
+  writeTree(dir, files)
   const steps: string[][] = [
     ['init', '-q', '-b', 'main'],
     ['config', 'user.name', 'Bench User'],
@@ -161,7 +170,7 @@ function makeWorkspace(dir: string): void {
     ['config', 'commit.gpgsign', 'false'],
     ['config', 'core.hooksPath', '.git/no-hooks'],
     ['add', '-A'],
-    ['commit', '-q', '-m', 'chore: import greet-kit 0.1.0'],
+    ['commit', '-q', '-m', subject],
   ]
   for (const step of steps) {
     const r = git(dir, ...step)
@@ -169,6 +178,8 @@ function makeWorkspace(dir: string): void {
   }
   mkdirSync(join(dir, MEMORY_REL, 'team'), { recursive: true })
 }
+
+const makeWorkspace = (dir: string): void => gitWorkspace(dir, PROJECT_FILES, 'chore: import greet-kit 0.1.0')
 
 // ---------------------------------------------------------------------------
 // Grading — the guard's checks, written again from the memory docs
@@ -478,7 +489,7 @@ function report(sessions: Session[], arms: Arm[]): string {
 
 type Fixture = Record<string, string>
 
-export const fm = (lines: string[], body: string) => `---\n${lines.join('\n')}\n---\n\n${body}\n`
+export const fm = (lines: readonly string[], body: string): string => `---\n${lines.join('\n')}\n---\n\n${body}\n`
 
 /** One memory tree per request that must pass. */
 const GOOD: Record<RequestId, Fixture> = {

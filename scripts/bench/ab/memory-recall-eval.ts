@@ -61,54 +61,32 @@
  * stripped (session-cache-ab.ts `spawnCollect`).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, isAbsolute, join, relative } from 'node:path'
+import { isAbsolute, join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
-import { CASES, type CaseId, DEPS_LINE, type Fixture, FREEZE_LINE, GLOBAL, PROJECT_FILES, type RecallCase } from './memory-recall/cases'
+import { CASES, type CaseId, DEPS_LINE, type Fixture, FREEZE_LINE, PROJECT_FILES, type RecallCase } from './memory-recall/cases'
+import { GLOBAL, gitWorkspace, MEMORY_REL, writeTree } from './memory-write-ab'
 import { git, spawnCollect, stamp, table, version } from './session-cache-ab'
 
 const BENCH_ROOT = '/tmp/memory-recall-eval'
-export const MEMORY_REL = join('.claudin', 'memory')
 
 // ---------------------------------------------------------------------------
 // Workspace
 // ---------------------------------------------------------------------------
 
-function writeTree(root: string, files: Fixture): void {
-  for (const [rel, content] of Object.entries(files)) {
-    const abs = join(root, rel)
-    mkdirSync(dirname(abs), { recursive: true })
-    writeFileSync(abs, content)
-  }
-}
-
 /**
- * A git repo with one pinned commit of the project, the case's memories in
- * its project-local memory dir (uncommitted, as a real one usually is), and
- * the case's global memories in `globalDir`.
+ * memory-write-ab's git workspace of the project, the case's memories in its
+ * project-local memory dir (uncommitted, as a real one usually is), and the
+ * case's global memories in `globalDir`.
  */
 export function makeWorkspace(dir: string, globalDir: string, c: RecallCase): void {
-  writeTree(dir, { ...PROJECT_FILES, ...(c.project ?? {}) })
-  const steps: string[][] = [
-    ['init', '-q', '-b', 'main'],
-    ['config', 'user.name', 'Bench User'],
-    ['config', 'user.email', 'bench@example.invalid'],
-    ['config', 'commit.gpgsign', 'false'],
-    ['config', 'core.hooksPath', '.git/no-hooks'],
-    ['add', '-A'],
-    ['commit', '-q', '-m', 'chore: import shapes-kit 0.1.0'],
-  ]
-  for (const step of steps) {
-    const r = git(dir, ...step)
-    if (!r.ok) throw new Error(`git ${step.join(' ')} failed in ${dir}: ${r.out}`)
-  }
+  gitWorkspace(dir, { ...PROJECT_FILES, ...(c.project ?? {}) }, 'chore: import shapes-kit 0.1.0')
   const local: Fixture = {}
   const global: Fixture = {}
   for (const [rel, content] of Object.entries(c.memories)) {
     if (rel.startsWith(GLOBAL)) global[rel.slice(GLOBAL.length)] = content
     else local[rel] = content
   }
-  mkdirSync(join(dir, MEMORY_REL, 'team'), { recursive: true })
   mkdirSync(globalDir, { recursive: true })
   writeTree(join(dir, MEMORY_REL), local)
   writeTree(globalDir, global)

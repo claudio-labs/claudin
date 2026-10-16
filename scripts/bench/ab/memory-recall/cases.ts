@@ -10,7 +10,7 @@
  * checks do not depend on the language the answer comes back in.
  */
 
-export const GLOBAL = '@global/'
+import { fm, GLOBAL } from '../memory-write-ab'
 
 export type Fixture = Record<string, string>
 
@@ -40,8 +40,6 @@ export type RecallCase = {
   /** Files whose Read is recorded beside the grade, never graded. */
   watchReads?: readonly string[]
 }
-
-export const fm = (lines: readonly string[], body: string): string => `---\n${lines.join('\n')}\n---\n\n${body}\n`
 
 /** The project every workspace starts from. */
 export const PROJECT_FILES: Fixture = {
