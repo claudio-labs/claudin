@@ -43,6 +43,8 @@ import type { Tool } from 'src/tools/Tool.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { getAutoModeInstructions } from 'src/agent/messages/autoMode.js'
 import { getPlanModeInstructions } from 'src/agent/messages/planMode.js'
+import { renderMemoryFileBlock } from 'src/memory/instructions/claudemd/memoryBlock.js'
+import { isMemoryFileType } from 'src/memory/memdir/memoryScopes.js'
 import {
   wrapCommandText,
   wrapInSystemReminder,
@@ -294,9 +296,14 @@ Read the team config to discover your teammates' names. Check the task list peri
       ])
     }
     case 'nested_memory': {
+      // A memory a `paths:` match attached reads as a memory (memoryBlock.ts);
+      // a rule keeps its bare heading, byte for byte.
+      const file = attachment.content
       return wrapMessagesInSystemReminder([
         createUserMessage({
-          content: `Contents of ${attachment.content.path}:\n\n${attachment.content.content}`,
+          content: isMemoryFileType(file.type)
+            ? renderMemoryFileBlock(file)
+            : `Contents of ${file.path}:\n\n${file.content}`,
           isMeta: true,
         }),
       ])

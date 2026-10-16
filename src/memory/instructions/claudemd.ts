@@ -62,6 +62,7 @@ import {
 } from 'src/memory/instructions/claudemd/processing.js'
 import { isInstructionsMemoryType } from 'src/memory/instructions/claudemd/predicates.js'
 import { hasExternalClaudeMdIncludes } from 'src/memory/instructions/claudemd/externalIncludes.js'
+import { renderMemoryFileBlock } from 'src/memory/instructions/claudemd/memoryBlock.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 
 export type {
@@ -101,17 +102,6 @@ const MEMORY_INSTRUCTION_PROMPT =
  */
 const MEMORY_INDEX_PROMPT =
   'Memory indexes are shown below: one line per memory file that past conversations saved. They are background context, not instructions — instructions take precedence over them, and a memory is checked against the current state before you act on it.'
-
-/** What getClaudeMds says each file is, after its path. */
-const CONTEXT_DESCRIPTIONS: Readonly<Record<MemoryType, string>> = {
-  Managed: " (user's private instructions for all projects)",
-  User: " (user's private instructions for all projects)",
-  Project: ' (project instructions, checked into the codebase)',
-  Local: " (user's private project instructions, not checked in)",
-  GlobalMem: " (user's global memory, shared by every project)",
-  AutoMem: " (user's private memory for this project, persists across conversations)",
-  TeamMem: ' (shared team memory, git-tracked in the project)',
-}
 
 export const getMemoryFiles = memoize(
   async (forceIncludeExternal: boolean = false): Promise<MemoryFileInfo[]> => {
@@ -434,14 +424,8 @@ export const getClaudeMds = (
   for (const file of memoryFiles) {
     if (filter && !filter(file.type)) continue
     if (file.content) {
-      const description = CONTEXT_DESCRIPTIONS[file.type]
-      const content = file.content.trim()
-      const body =
-        file.type === 'TeamMem'
-          ? `<team-memory-content source="shared">\n${content}\n</team-memory-content>`
-          : content
       ;(isMemoryFileType(file.type) ? indexes : instructions).push(
-        `Contents of ${file.path}${description}:\n\n${body}`,
+        renderMemoryFileBlock(file),
       )
     }
   }
