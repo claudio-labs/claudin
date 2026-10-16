@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { memoryAgeDays, memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
+import { memoryAgeDays, memoryFreshnessNote, memoryReadNote } from 'src/memory/memdir/memoryAge.js'
 
 const DAY = 86_400_000
 const ago = (days: number, extraMs = 0) => Date.now() - days * DAY - extraMs
@@ -28,5 +28,31 @@ describe('memoryFreshnessNote', () => {
     expect(note.startsWith('<system-reminder>This memory is 17 days old. ')).toBe(true)
     expect(note).toContain('Verify against current code before asserting as fact.')
     expect(note.endsWith('</system-reminder>\n')).toBe(true)
+  })
+})
+
+describe('memoryReadNote', () => {
+  const TODAY = '2026-10-16'
+
+  test('a fresh memory with no expiry, or one not past it, says nothing', () => {
+    expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: null }, TODAY)).toBe('')
+    expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: '2026-10-16' }, TODAY)).toBe('')
+    expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: '2026-12-31' }, TODAY)).toBe('')
+  })
+
+  test('an old memory alone is the age caveat, exactly as before', () => {
+    expect(memoryReadNote({ mtimeMs: ago(17, 1000), expires: null }, TODAY)).toBe(memoryFreshnessNote(ago(17, 1000)))
+  })
+
+  test('a fresh memory past its expires: date asks for a re-verify', () => {
+    expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: '2026-09-30' }, TODAY)).toBe(
+      '<system-reminder>Its `expires:` date, 2026-09-30, has passed: re-verify it before relying on it, then move the date or remove the memory.</system-reminder>\n',
+    )
+  })
+
+  test('old and expired: both in one reminder, the age first', () => {
+    const note = memoryReadNote({ mtimeMs: ago(40, 1000), expires: '2026-09-30' }, TODAY)
+    expect(note.match(/<system-reminder>/g)?.length).toBe(1)
+    expect(note.indexOf('days old')).toBeLessThan(note.indexOf('has passed'))
   })
 })

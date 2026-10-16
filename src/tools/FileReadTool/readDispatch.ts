@@ -55,7 +55,8 @@ import {
   symbolsInside,
   textPreviewApplies,
 } from 'src/tools/FileReadTool/outlineView.js'
-import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
+import { markMemoryFileRead } from 'src/tools/FileReadTool/resultContent.js'
+import { expiresOf } from 'src/memory/memdir/memoryFrontmatterFields.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
@@ -494,9 +495,10 @@ export async function callInner(
       totalLines,
     },
   }
-  // A memory file of any directory gets the freshness note (memoryAge.ts).
+  // A memory file of any directory gets the read note (memoryAge.ts): its
+  // age, and its `expires:` date when this read starts at the frontmatter.
   if (memoryScopeOf(fullFilePath) !== null) {
-    markMemoryFileMtime(data, mtimeMs)
+    markMemoryFileRead(data, { mtimeMs, expires: offset === 1 ? expiresOf(content) : null })
   }
 
   return { data }

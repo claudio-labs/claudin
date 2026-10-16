@@ -13,7 +13,7 @@
  * every-read arm it was measured against has since been removed.
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
+import { type MemoryReadFacts, memoryReadNote } from 'src/memory/memdir/memoryAge.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { addLineNumbers } from 'src/shared/fs/file.js'
@@ -133,27 +133,28 @@ export function _resetReadReminderStateForTesting(): void {
 }
 
 /**
- * Side-channel from call() to mapToolResultToToolResultBlockParam: mtime
- * of auto-memory files, keyed by the `data` object identity. Avoids
+ * Side-channel from call() to mapToolResultToToolResultBlockParam: what a
+ * Read knows of a memory file (its mtime and `expires:` date), keyed by the
+ * `data` object identity. Avoids
  * adding a presentation-only field to the output schema (which flows
  * into SDK types) and avoids sync fs in the mapper. WeakMap auto-GCs
  * when the data object becomes unreachable after rendering.
  */
-const memoryFileMtimes = new WeakMap<object, number>()
+const memoryFileFacts = new WeakMap<object, MemoryReadFacts>()
 
-function memoryFileFreshnessPrefix(data: object): string {
-  const mtimeMs = memoryFileMtimes.get(data)
-  if (mtimeMs === undefined) return ''
-  return memoryFreshnessNote(mtimeMs)
+function memoryFileNotePrefix(data: object): string {
+  const facts = memoryFileFacts.get(data)
+  if (facts === undefined) return ''
+  return memoryReadNote(facts)
 }
 
 /**
- * Writes the auto-memory mtime side-channel entry read back by
+ * Writes the memory-file side-channel entry read back by
  * mapReadResultToToolResultBlock. Exported so readDispatch.ts records it on the
  * one WeakMap this module owns, rather than keeping a second copy.
  */
-export function markMemoryFileMtime(data: object, mtimeMs: number): void {
-  memoryFileMtimes.set(data, mtimeMs)
+export function markMemoryFileRead(data: object, facts: MemoryReadFacts): void {
+  memoryFileFacts.set(data, facts)
 }
 
 export function mapReadResultToToolResultBlock(
@@ -232,7 +233,7 @@ export function mapReadResultToToolResultBlock(
       // '\n' has one (empty) line — content is '' but it is NOT empty.
       if (data.file.numLines > 0) {
         content =
-          memoryFileFreshnessPrefix(data) +
+          memoryFileNotePrefix(data) +
           formatFileLines(data.file) +
           (carriesMitigationReminder(data) ? CYBER_RISK_MITIGATION_REMINDER : '')
       } else {

@@ -31,6 +31,7 @@ function header(overrides: Partial<MemoryHeader> = {}): MemoryHeader {
     mtimeMs: NOW - DAY,
     description: 'a description',
     type: 'project',
+    expires: null,
     ...overrides,
   }
 }

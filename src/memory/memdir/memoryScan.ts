@@ -8,6 +8,7 @@ import { readdir } from 'fs/promises'
 import { basename, join } from 'path'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
+import { parseExpires } from 'src/memory/memdir/memoryFrontmatterFields.js'
 import { type MemoryType, parseMemoryType } from 'src/memory/memdir/memoryTypes.js'
 
 export type MemoryHeader = {
@@ -16,6 +17,8 @@ export type MemoryHeader = {
   mtimeMs: number
   description: string | null
   type: MemoryType | undefined
+  /** A valid `expires:` date (memoryFrontmatterFields.ts), or null. */
+  expires: string | null
 }
 
 const MAX_MEMORY_FILES = 200
@@ -65,12 +68,14 @@ export async function scanMemoryFiles(
           signal,
         )
         const { frontmatter } = parseFrontmatter(content, filePath)
+        const expires = parseExpires(frontmatter.expires)
         return {
           filename: relativePath,
           filePath,
           mtimeMs,
           description: frontmatter.description || null,
           type: parseMemoryType(frontmatter.type),
+          expires: expires.kind === 'date' ? expires.date : null,
         }
       }),
     )

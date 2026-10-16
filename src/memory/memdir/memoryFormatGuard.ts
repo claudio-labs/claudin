@@ -20,6 +20,7 @@ import {
 } from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { parseExpires } from 'src/memory/memdir/memoryFrontmatterFields.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
 import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPaths.js'
 
@@ -179,6 +180,10 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs, bef
     (placed || !before?.hasPaths)
   ) {
     problems.push(`a ${file.scope} memory takes no \`paths:\` — it is not tied to the files of one project`)
+  }
+  const expires = parseExpires(frontmatter.expires)
+  if (expires.kind === 'invalid') {
+    problems.push(`\`expires: ${expires.raw}\` is not a date — write the last day it holds as YYYY-MM-DD, or leave the key out`)
   }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]

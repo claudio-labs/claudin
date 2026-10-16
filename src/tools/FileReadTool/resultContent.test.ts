@@ -7,6 +7,7 @@ import {
   CYBER_RISK_MITIGATION_REMINDER,
   isMitigationExemptModel,
   mapReadResultToToolResultBlock,
+  markMemoryFileRead,
   maybeFlagReadReminder,
 } from 'src/tools/FileReadTool/resultContent.js'
 
@@ -75,6 +76,23 @@ describe('isMitigationExemptModel', () => {
     }
     expect(isMitigationExemptModel('claude-sonnet-5')).toBe(false)
     expect(isMitigationExemptModel('claude-fable-5')).toBe(false)
+  })
+})
+
+describe('the memory-file note', () => {
+  test('a Read of a memory past its expires: date opens with the re-verify note', () => {
+    const data = textResult('---\nname: x\nexpires: 2000-01-01\n---\n\nfact')
+    markMemoryFileRead(data, { mtimeMs: Date.now(), expires: '2000-01-01' })
+    const text = render(data)
+    expect(text).toStartWith('<system-reminder>Its `expires:` date, 2000-01-01, has passed')
+    expect(text).toContain('fact')
+  })
+
+  test('a fresh, unexpired memory and a file never marked carry no note', () => {
+    const fresh = textResult('fact')
+    markMemoryFileRead(fresh, { mtimeMs: Date.now(), expires: null })
+    expect(render(fresh)).not.toContain('<system-reminder>Its')
+    expect(render(textResult('fact'))).not.toContain('expires')
   })
 })
 

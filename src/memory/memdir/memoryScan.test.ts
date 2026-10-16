@@ -69,3 +69,13 @@ test('recursive: false reads only the directory own files, not a nested team dir
   const all = await scanMemoryFiles(tempDir, new AbortController().signal)
   expect(all.map(r => r.filename).sort()).toEqual(['mine.md', join('team', 'theirs.md')])
 })
+
+test('a valid expires: date rides the header; an absent or malformed one is null', async () => {
+  tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
+  await writeFile(join(tempDir, 'a.md'), '---\ntype: project\nexpires: 2026-09-30\n---\n')
+  await writeFile(join(tempDir, 'b.md'), '---\ntype: project\n---\n')
+  await writeFile(join(tempDir, 'c.md'), '---\ntype: project\nexpires: soon\n---\n')
+  const headers = await scanMemoryFiles(tempDir, new AbortController().signal)
+  const byName = Object.fromEntries(headers.map(h => [h.filename, h.expires]))
+  expect(byName).toEqual({ 'a.md': '2026-09-30', 'b.md': null, 'c.md': null })
+})
