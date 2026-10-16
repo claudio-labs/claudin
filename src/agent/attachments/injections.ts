@@ -307,6 +307,7 @@ export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
     kind: scopeOfMemoryType(file.type) ?? 'private',
     entryCount,
     totalEntryCount: Math.max(entryCount, totalEntryCount),
+    ...(file.shortenedEntryCount ? { shortenedEntryCount: file.shortenedEntryCount } : {}),
   }
 }
 
@@ -314,7 +315,7 @@ const memoryIndexSignature = (
   indexes: readonly MemoryIndexSummary[],
 ): string =>
   indexes
-    .map(i => `${i.path}:${i.entryCount}/${i.totalEntryCount}`)
+    .map(i => `${i.path}:${i.entryCount}/${i.totalEntryCount}/${i.shortenedEntryCount ?? 0}`)
     .join('|')
 
 /**

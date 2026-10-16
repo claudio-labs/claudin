@@ -4,7 +4,7 @@ import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
   countIndexEntries,
-  truncateEntrypointContent,
+  fitEntrypointContent,
 } from 'src/memory/memdir/memdir.js'
 
 // The cap is named BYTES and rendered through formatFileSize(), so it has to be
@@ -12,7 +12,7 @@ import {
 // undercounts multibyte content by up to ~4x, which let a large non-ASCII
 // MEMORY.md ship whole into the system prompt every turn while reporting
 // wasByteTruncated: false. Every case below fails against a `.length` version.
-describe('truncateEntrypointContent byte cap', () => {
+describe('fitEntrypointContent byte cap', () => {
   test('fires on multibyte content that is under the cap in characters', () => {
     // 50 short lines of CJK: under the line cap, under the byte cap when
     // counted as characters, ~3x over it in real bytes (each 一 is 3 bytes).
@@ -23,7 +23,7 @@ describe('truncateEntrypointContent byte cap', () => {
     expect(raw.length).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
     expect(Buffer.byteLength(raw)).toBeGreaterThan(MAX_ENTRYPOINT_BYTES)
 
-    const result = truncateEntrypointContent(raw)
+    const result = fitEntrypointContent(raw)
 
     expect(result.wasByteTruncated).toBe(true)
     expect(result.byteCount).toBe(Buffer.byteLength(raw))
@@ -34,7 +34,7 @@ describe('truncateEntrypointContent byte cap', () => {
 
   test('leaves small multibyte content untouched', () => {
     const raw = '# 見出し\n\n- 項目一つ\n- 項目二つ'
-    const result = truncateEntrypointContent(raw)
+    const result = fitEntrypointContent(raw)
 
     expect(result.wasByteTruncated).toBe(false)
     expect(result.wasLineTruncated).toBe(false)
@@ -49,7 +49,7 @@ describe('truncateEntrypointContent byte cap', () => {
     const line = '一'.repeat(100)
     const raw = Array.from({ length: 250 }, () => line).join('\n')
 
-    const result = truncateEntrypointContent(raw)
+    const result = fitEntrypointContent(raw)
 
     expect(result.wasLineTruncated).toBe(true)
     expect(result.wasByteTruncated).toBe(true)
@@ -64,7 +64,7 @@ describe('truncateEntrypointContent byte cap', () => {
     // Byte 25000 lands inside a 3-byte 一; decoding a split character yields
     // U+FFFD, which is itself 3 bytes and puts the body back over the cap.
     const raw = '一'.repeat(10_000)
-    const result = truncateEntrypointContent(raw)
+    const result = fitEntrypointContent(raw)
 
     expect(result.wasByteTruncated).toBe(true)
     const body = bodyOf(result.content)
@@ -79,7 +79,7 @@ describe('truncateEntrypointContent byte cap', () => {
     const line = 'x'.repeat(200)
     const raw = Array.from({ length: 150 }, () => line).join('\n')
 
-    const result = truncateEntrypointContent(raw)
+    const result = fitEntrypointContent(raw)
 
     expect(result.wasLineTruncated).toBe(false)
     expect(result.wasByteTruncated).toBe(true)
@@ -89,8 +89,79 @@ describe('truncateEntrypointContent byte cap', () => {
   })
 })
 
+// Over a cap, the index gives up blank lines, then hooks from the bottom up,
+// and only then its tail — every entry keeps its pointer for as long as it can.
+describe('fitEntrypointContent coverage first', () => {
+  const entry = (i: number, hook = 'what it covers, why it matters, who measured it first, which file it lives in, and the follow-up still open on it today') =>
+    `- [Memory ${String(i).padStart(3, '0')}](m${i}.md) — ${hook}`
+  const sections = (perSection: number, count: number, line = entry) =>
+    Array.from({ length: count }, (_, s) =>
+      [`## Section ${s}`, ...Array.from({ length: perSection }, (_, i) => line(s * perSection + i))].join('\n'),
+    ).join('\n\n')
+
+  test('over the line cap only through its blank lines: every entry, every hook, a NOTE', () => {
+    // 10 sections of 19 entries, blank lines between: 209 lines, 199 without them.
+    const raw = sections(19, 10, i => `- [M${i}](m${i}.md) — h`)
+    expect(raw.split('\n').length).toBeGreaterThan(MAX_ENTRYPOINT_LINES)
+    const result = fitEntrypointContent(raw)
+    expect(countIndexEntries(result.content)).toBe(190)
+    expect(result.shortenedEntryCount).toBe(0)
+    expect(result.content).toContain('> NOTE: MEMORY.md is 209 lines (limit: 200). Every entry was loaded, its blank lines dropped.')
+    expect(result.content).not.toContain('WARNING')
+    expect(result.content).toContain(`- [M189](m189.md) — h`)
+  })
+
+  test('over the byte cap: hooks go from the bottom up, every pointer stays', () => {
+    const raw = sections(20, 9)
+    expect(Buffer.byteLength(raw)).toBeGreaterThan(MAX_ENTRYPOINT_BYTES)
+    const result = fitEntrypointContent(raw)
+    const body = result.content.split('\n\n> NOTE:')[0]!
+    expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
+    expect(countIndexEntries(body)).toBe(180)
+    expect(body).toContain(entry(0))
+    expect(body.split('\n').at(-1)).toBe('- [Memory 179](m179.md)')
+    const hookless = body.split('\n').filter(l => l.startsWith('- ') && !l.includes(' — '))
+    expect(hookless.length).toBe(result.shortenedEntryCount)
+    expect(result.shortenedEntryCount).toBeGreaterThan(0)
+    expect(result.content).toContain(`${result.shortenedEntryCount} entries are shown without their hook`)
+  })
+
+  test('the hook is what follows the last link, so a grouped line and a dashed title keep their links', () => {
+    // At the bottom, so they are the first the byte cap shortens.
+    const filler = Array.from({ length: 190 }, (_, i) => entry(i)).join('\n')
+    const dashed = '- [Index — the cut](cut.md) — why the tail went'
+    const grouped = '- Censuses: [09-08](c1.md) · [09-20](c2.md) — rewrites are 39% of the cost'
+    const plain = '- A note with no link at all — and a dash'
+    const result = fitEntrypointContent([filler, dashed, grouped, plain].join('\n'))
+    const body = result.content.split('\n\n> ')[0]!.split('\n')
+    expect(body.slice(-3)).toEqual([
+      '- [Index — the cut](cut.md)',
+      '- Censuses: [09-08](c1.md) · [09-20](c2.md)',
+      plain,
+    ])
+  })
+
+  test('still over once every hook is gone: the tail is cut, and the warning says both', () => {
+    // 200 entries whose pointers alone pass the byte cap.
+    const longTitle = 'x'.repeat(140)
+    const raw = Array.from({ length: 200 }, (_, i) => `- [${longTitle}](m${i}.md) — hook ${i}`).join('\n')
+    const result = fitEntrypointContent(raw)
+    expect(result.content).toContain('> WARNING:')
+    expect(result.content).toContain('Only part of it was loaded, and 200 entries are shown without their hook')
+    expect(Buffer.byteLength(result.content.split('\n\n> WARNING:')[0]!)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
+    expect(countIndexEntries(result.content)).toBeLessThan(200)
+  })
+
+  test('within both caps nothing changes, blank lines included', () => {
+    const raw = sections(5, 3)
+    const result = fitEntrypointContent(raw)
+    expect(result.content).toBe(raw)
+    expect(result.shortenedEntryCount).toBe(0)
+  })
+})
+
 // countIndexEntries is what the transcript's "Loaded N memories" line counts,
-// and it is read on both sides of truncateEntrypointContent — the loaded body
+// and it is read on both sides of fitEntrypointContent — the loaded body
 // and the raw one — so the gap between the two is the truncation signal.
 describe('countIndexEntries', () => {
   test('counts top-level bullets, not headings or blank lines', () => {
@@ -122,7 +193,7 @@ describe('countIndexEntries', () => {
   })
 
   test('the WARNING line truncation appends is not an entry', () => {
-    const truncated = truncateEntrypointContent(
+    const truncated = fitEntrypointContent(
       Array.from({ length: 250 }, (_, i) => `- [M${i}](m${i}.md) — hook`).join('\n'),
     )
     expect(truncated.wasLineTruncated).toBe(true)

@@ -89,6 +89,27 @@ describe('memory indexes in getMemoryFiles', () => {
     expect(text).toContain('answers in pt-BR')
   })
 
+  test('an index over the byte cap loads every entry, the shortened ones counted', async () => {
+    const hook = 'what it covers, why it matters, who measured it, where it lives and what is still open'.repeat(2)
+    const lines = Array.from({ length: 150 }, (_, i) => `- [M${i}](m${i}.md) — ${hook}`)
+    const indexPath = join(privateDir, 'MEMORY.md')
+    writeFileSync(indexPath, `${lines.join('\n')}\n`)
+    try {
+      const index = (await getMemoryFiles()).find(f => f.path === indexPath)!
+      expect(index.content.match(/^- \[M\d+\]/gm)?.length).toBe(150)
+      expect(index.shortenedEntryCount).toBeGreaterThan(0)
+      expect(index.content).toContain(`${index.shortenedEntryCount} entries are shown without their hook`)
+      expect(index.rawContent).toBe(`${lines.join('\n')}\n`)
+    } finally {
+      writeFileSync(indexPath, '- [pnpm](project-pnpm.md) — this repo uses pnpm\n')
+    }
+  })
+
+  test('an index within its caps carries no shortened count', async () => {
+    const index = (await getMemoryFiles()).find(f => f.type === 'AutoMem')!
+    expect(index).not.toHaveProperty('shortenedEntryCount')
+  })
+
   test('CLAUDIN_GLOBAL_MEMORY=0 leaves the global index out', async () => {
     process.env.CLAUDIN_GLOBAL_MEMORY = '0'
     const types = (await getMemoryFiles()).map(f => f.type)

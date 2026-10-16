@@ -18,6 +18,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { formatFileSize } from 'src/shared/text/format.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
@@ -36,11 +37,17 @@ export const MAX_ENTRYPOINT_BYTES = 25_000
 // several memories behind one line and open with prose instead of `[` — those
 // are entries too. Anchored at column 0 so a nested sub-bullet is not one.
 const INDEX_ENTRY_RE = /^-[ \t]+\S/gm
+const ENTRY_LINE_RE = /^-[ \t]+\S/
+// An entry's hook is what follows the em dash after its LAST link — a line
+// grouping several memories (`- Censuses: [a](a.md) · [b](b.md) — hook`) has
+// its hook after the final one, and a title may carry a dash of its own.
+const INDEX_LINK_END_RE = /\]\([^)\s]*\)/g
+const HOOK_SEPARATOR = ' — '
 
 /**
  * Count the pointer lines in a MEMORY.md index body.
  *
- * Pass the post-truncateEntrypointContent `content` for what actually entered
+ * Pass the post-fitEntrypointContent `content` for what actually entered
  * context, and `rawContent` for what the file holds on disk; the gap between
  * the two is what a cap cut off. The `> WARNING:` line truncation appends is
  * not a bullet, so it never skews the count.
@@ -49,28 +56,66 @@ export function countIndexEntries(indexContent: string): number {
   return indexContent.match(INDEX_ENTRY_RE)?.length ?? 0
 }
 
+/** `line` without its hook, or null when it is not an entry or has none. */
+function entryWithoutHook(line: string): string | null {
+  if (!ENTRY_LINE_RE.test(line)) return null
+  let linkEnd = -1
+  for (const match of line.matchAll(INDEX_LINK_END_RE)) linkEnd = match.index + match[0].length
+  if (linkEnd < 0) return null
+  const hook = line.indexOf(HOOK_SEPARATOR, linkEnd)
+  return hook < 0 ? null : line.slice(0, hook)
+}
+
 // UTF-8 byte constants for the byte-space cut below.
 const NEWLINE_BYTE = 0x0a
 const CONTINUATION_MASK = 0xc0
 const CONTINUATION_BITS = 0x80
 
-export type EntrypointTruncation = {
+/**
+ * Cut `text` to the byte cap in byte space, so the cap actually bounds bytes.
+ * Prefers the last newline before the cap so a line is not sliced; otherwise
+ * a hard cut.
+ */
+function cutToByteCap(text: string): string {
+  const buf = Buffer.from(text, 'utf8')
+  const newlineByte = buf.lastIndexOf(NEWLINE_BYTE, MAX_ENTRYPOINT_BYTES)
+  let cutAt = newlineByte > 0 ? newlineByte : MAX_ENTRYPOINT_BYTES
+  // Never slice through a multibyte character. A hard cut landing on a
+  // continuation byte (0b10xxxxxx) decodes to U+FFFD, which is 3 bytes and
+  // would push the body back over the cap — back up to the char's first byte.
+  while (cutAt > 0 && (buf[cutAt]! & CONTINUATION_MASK) === CONTINUATION_BITS) {
+    cutAt--
+  }
+  return buf.subarray(0, cutAt).toString('utf8')
+}
+
+export type EntrypointFit = {
   content: string
   lineCount: number
   byteCount: number
+  /** The file on disk is over the line cap (whether or not a line was lost). */
   wasLineTruncated: boolean
+  /** The file on disk is over the byte cap (whether or not a line was lost). */
   wasByteTruncated: boolean
+  /** Entries that entered context without their hook, to fit. */
+  shortenedEntryCount: number
 }
 
 /**
- * Truncate MEMORY.md content to the line AND byte caps, appending a warning
- * that names which cap fired. Line-truncates first (natural boundary), then
- * byte-truncates at the last newline before the cap so we don't cut mid-line.
+ * Fit MEMORY.md content to the line AND byte caps. Within both it is returned
+ * as is, byte for byte. Over either, it gives up what costs the model least
+ * first — coverage before detail, the order ai-memory's brief budget uses:
+ *   1. the blank lines;
+ *   2. the hooks, from the bottom of the index up, so every entry keeps its
+ *      `- [Title](file.md)` pointer and the top keeps its detail;
+ *   3. only then the tail — the lines past the line cap, then the bytes past
+ *      the byte cap at the last newline before it.
+ * A `> NOTE:` says what was shortened when nothing was lost, a `> WARNING:`
+ * when the tail was.
  *
- * Shared by buildMemoryPrompt and claudemd getMemoryFiles (previously
- * duplicated the line-only logic).
+ * Shared by buildMemoryPrompt and claudemd getMemoryFiles.
  */
-export function truncateEntrypointContent(raw: string): EntrypointTruncation {
+export function fitEntrypointContent(raw: string): EntrypointFit {
   const trimmed = raw.trim()
   const contentLines = trimmed.split('\n')
   const lineCount = contentLines.length
@@ -92,27 +137,24 @@ export function truncateEntrypointContent(raw: string): EntrypointTruncation {
       byteCount,
       wasLineTruncated,
       wasByteTruncated,
+      shortenedEntryCount: 0,
     }
   }
 
-  let truncated = wasLineTruncated
-    ? contentLines.slice(0, MAX_ENTRYPOINT_LINES).join('\n')
-    : trimmed
-
-  if (Buffer.byteLength(truncated) > MAX_ENTRYPOINT_BYTES) {
-    // Cut in byte space so the cap actually bounds bytes. Prefer the last
-    // newline before the cap so we don't slice mid-line; otherwise hard-cut.
-    const buf = Buffer.from(truncated, 'utf8')
-    const newlineByte = buf.lastIndexOf(NEWLINE_BYTE, MAX_ENTRYPOINT_BYTES)
-    let cutAt = newlineByte > 0 ? newlineByte : MAX_ENTRYPOINT_BYTES
-    // Never slice through a multibyte character. A hard cut landing on a
-    // continuation byte (0b10xxxxxx) decodes to U+FFFD, which is 3 bytes and
-    // would push the body back over the cap — back up to the char's first byte.
-    while (cutAt > 0 && (buf[cutAt]! & CONTINUATION_MASK) === CONTINUATION_BITS) {
-      cutAt--
-    }
-    truncated = buf.subarray(0, cutAt).toString('utf8')
+  const lines = contentLines.filter(line => line.trim() !== '')
+  const lineCut = lines.length > MAX_ENTRYPOINT_LINES
+  if (lineCut) lines.length = MAX_ENTRYPOINT_LINES
+  let bytes = Buffer.byteLength(lines.join('\n'))
+  let shortenedEntryCount = 0
+  for (let i = lines.length - 1; i >= 0 && bytes > MAX_ENTRYPOINT_BYTES; i--) {
+    const short = entryWithoutHook(lines[i]!)
+    if (short === null) continue
+    bytes -= Buffer.byteLength(lines[i]!) - Buffer.byteLength(short)
+    lines[i] = short
+    shortenedEntryCount++
   }
+  const byteCut = bytes > MAX_ENTRYPOINT_BYTES
+  const body = byteCut ? cutToByteCap(lines.join('\n')) : lines.join('\n')
 
   const reason =
     wasByteTruncated && !wasLineTruncated
@@ -120,15 +162,22 @@ export function truncateEntrypointContent(raw: string): EntrypointTruncation {
       : wasLineTruncated && !wasByteTruncated
         ? `${lineCount} lines (limit: ${MAX_ENTRYPOINT_LINES})`
         : `${lineCount} lines and ${formatFileSize(byteCount)}`
+  const shortened =
+    shortenedEntryCount > 0
+      ? `${shortenedEntryCount} ${plural(shortenedEntryCount, 'entry is', 'entries are')} shown without their hook — open a file for its detail`
+      : ''
+  const footer =
+    lineCut || byteCut
+      ? `> WARNING: ${ENTRYPOINT_NAME} is ${reason}. Only part of it was loaded${shortened ? `, and ${shortened}` : ''}. Keep index entries to one line under ~200 chars; move detail into topic files.`
+      : `> NOTE: ${ENTRYPOINT_NAME} is ${reason}. Every entry was loaded, its blank lines dropped${shortened ? `; ${shortened}` : ''}. Keep index entries to one line under ~150 chars, or run /memory tidy.`
 
   return {
-    content:
-      truncated +
-      `\n\n> WARNING: ${ENTRYPOINT_NAME} is ${reason}. Only part of it was loaded. Keep index entries to one line under ~200 chars; move detail into topic files.`,
+    content: `${body}\n\n${footer}`,
     lineCount,
     byteCount,
     wasLineTruncated,
     wasByteTruncated,
+    shortenedEntryCount,
   }
 }
 
@@ -288,7 +337,7 @@ export function buildMemoryPrompt(params: {
   const lines = buildMemoryLines(displayName, memoryDir, extraGuidelines)
 
   if (entrypointContent.trim()) {
-    const t = truncateEntrypointContent(entrypointContent)
+    const t = fitEntrypointContent(entrypointContent)
     lines.push(`## ${ENTRYPOINT_NAME}`, '', t.content)
   } else {
     lines.push(
