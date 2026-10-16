@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   renderMemoryFileBlock,
+  renderNestedMemoryBlock,
   TEAM_MEMORY_TRUST_NOTE,
 } from 'src/memory/instructions/claudemd/memoryBlock.js'
 
@@ -46,5 +47,18 @@ describe('renderMemoryFileBlock', () => {
     // flagged as an injection itself; this one points the other way.
     expect(TEAM_MEMORY_TRUST_NOTE).toContain('tell the user')
     expect(TEAM_MEMORY_TRUST_NOTE).not.toMatch(/don't (tell|mention)|do not (tell|mention)/i)
+  })
+})
+
+describe('renderNestedMemoryBlock', () => {
+  test('a memory reads as renderMemoryFileBlock draws it', () => {
+    const file = { type: 'TeamMem' as const, path: '/r/.claudin/memory/team/bugs/x.md', content: 'Run it.' }
+    expect(renderNestedMemoryBlock(file)).toBe(renderMemoryFileBlock(file))
+  })
+
+  test('a rule keeps its bare heading and its content untrimmed, byte for byte', () => {
+    expect(renderNestedMemoryBlock({ type: 'Project', path: '/r/.claudin/rules/x.md', content: '\nUse pnpm.\n' })).toBe(
+      'Contents of /r/.claudin/rules/x.md:\n\n\nUse pnpm.\n',
+    )
   })
 })

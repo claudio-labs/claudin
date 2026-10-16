@@ -7,7 +7,7 @@ import {
   auditMemoryDirs,
   findExpiredMemories,
   findSecretShapedFiles,
-  type MemoryFile,
+  type AuditedFile,
   readMemoryFiles,
 } from 'src/memory/memdir/memoryAudit.js'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
@@ -17,7 +17,7 @@ import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 const GITHUB_PAT = ['ghp', 'x'.repeat(36)].join('_')
 const AWS_ACCESS_KEY = ['AKIA', 'Q'.repeat(16)].join('')
 
-const file = (scope: MemoryFile['scope'], path: string, content: string): MemoryFile => ({ scope, path, content })
+const file = (scope: AuditedFile['scope'], path: string, content: string): AuditedFile => ({ scope, path, content })
 
 describe('findSecretShapedFiles', () => {
   test('a team file with a secret is a finding, each label once', () => {

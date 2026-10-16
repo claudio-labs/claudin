@@ -11,7 +11,7 @@ import {
 // measured and cut in byte space. Measuring with `.length` (UTF-16 code units)
 // undercounts multibyte content by up to ~4x, which let a large non-ASCII
 // MEMORY.md ship whole into the system prompt every turn while reporting
-// wasByteTruncated: false. Every case below fails against a `.length` version.
+// overByteCap: false. Every case below fails against a `.length` version.
 describe('fitEntrypointContent byte cap', () => {
   test('fires on multibyte content that is under the cap in characters', () => {
     // 50 short lines of CJK: under the line cap, under the byte cap when
@@ -25,7 +25,7 @@ describe('fitEntrypointContent byte cap', () => {
 
     const result = fitEntrypointContent(raw)
 
-    expect(result.wasByteTruncated).toBe(true)
+    expect(result.overByteCap).toBe(true)
     expect(result.byteCount).toBe(Buffer.byteLength(raw))
     expect(Buffer.byteLength(bodyOf(result.content))).toBeLessThanOrEqual(
       MAX_ENTRYPOINT_BYTES,
@@ -36,8 +36,8 @@ describe('fitEntrypointContent byte cap', () => {
     const raw = '# 見出し\n\n- 項目一つ\n- 項目二つ'
     const result = fitEntrypointContent(raw)
 
-    expect(result.wasByteTruncated).toBe(false)
-    expect(result.wasLineTruncated).toBe(false)
+    expect(result.overByteCap).toBe(false)
+    expect(result.overLineCap).toBe(false)
     expect(result.content).toBe(raw)
     expect(result.byteCount).toBe(Buffer.byteLength(raw))
   })
@@ -51,8 +51,8 @@ describe('fitEntrypointContent byte cap', () => {
 
     const result = fitEntrypointContent(raw)
 
-    expect(result.wasLineTruncated).toBe(true)
-    expect(result.wasByteTruncated).toBe(true)
+    expect(result.overLineCap).toBe(true)
+    expect(result.overByteCap).toBe(true)
     expect(result.content).toContain('lines and')
     const body = bodyOf(result.content)
     expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
@@ -66,7 +66,7 @@ describe('fitEntrypointContent byte cap', () => {
     const raw = '一'.repeat(10_000)
     const result = fitEntrypointContent(raw)
 
-    expect(result.wasByteTruncated).toBe(true)
+    expect(result.overByteCap).toBe(true)
     const body = bodyOf(result.content)
     expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
     expect(body).not.toContain('\uFFFD')
@@ -81,8 +81,8 @@ describe('fitEntrypointContent byte cap', () => {
 
     const result = fitEntrypointContent(raw)
 
-    expect(result.wasLineTruncated).toBe(false)
-    expect(result.wasByteTruncated).toBe(true)
+    expect(result.overLineCap).toBe(false)
+    expect(result.overByteCap).toBe(true)
     const body = bodyOf(result.content)
     expect(body.endsWith(line)).toBe(true)
     expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
@@ -156,7 +156,7 @@ describe('fitEntrypointContent coverage first', () => {
     expect(arrived).toBeLessThan(200)
     // The count names what reached context, not what was shortened and then cut.
     expect(result.shortenedEntryCount).toBe(arrived)
-    expect(result.content).toContain(`Only part of it was loaded, and ${arrived} entries are shown without their hook`)
+    expect(result.content).toContain(`Only part of it was loaded. ${arrived} entries are shown without their hook`)
   })
 
   test('within both caps nothing changes, blank lines included', () => {
@@ -199,12 +199,13 @@ describe('countIndexEntries', () => {
     expect(countIndexEntries(index)).toBe(1)
   })
 
-  test('the WARNING line truncation appends is not an entry', () => {
+  test('the WARNING footer the fit appends is not an entry', () => {
     const truncated = fitEntrypointContent(
       Array.from({ length: 250 }, (_, i) => `- [M${i}](m${i}.md) — hook`).join('\n'),
     )
-    expect(truncated.wasLineTruncated).toBe(true)
+    expect(truncated.overLineCap).toBe(true)
     expect(truncated.content).toContain('> WARNING:')
+    expect(truncated.content).toContain('Keep index entries to one line under ~150 chars; move detail into topic files.')
     expect(countIndexEntries(truncated.content)).toBe(MAX_ENTRYPOINT_LINES)
   })
 

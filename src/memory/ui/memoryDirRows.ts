@@ -5,6 +5,7 @@ import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
 import {
   ENTRYPOINT_NAME,
+  INDEX_LINK_TARGET_RE,
   MEMORY_SCOPES,
   type MemoryScope,
 } from 'src/memory/memdir/memoryScopes.js'
@@ -139,17 +140,13 @@ export function buildMemoryDirRows(
   return rows
 }
 
-// A markdown link target: `- [Title](file.md) — hook`. Captured rather than
-// matched loosely because an index line may hold more than one link, and only
-// the pointer target decides whether the line belongs to the deleted memory.
-const INDEX_LINK_RE = /\]\(([^)]+)\)/
-
 /**
  * Drops `filename`'s pointer line from a MEMORY.md index, leaving everything
  * else — headers, the intro blockquote, `## Section` groupings, and any link
  * pointing somewhere else — byte-identical. Returns the input unchanged when
  * there is no pointer, which is the common case for a memory the model wrote
- * without indexing.
+ * without indexing. A line belongs to the memory its FIRST link targets: an
+ * index line may hold more than one link.
  */
 export function removeIndexPointer(
   indexContent: string,
@@ -157,8 +154,8 @@ export function removeIndexPointer(
 ): string {
   const lines = indexContent.split('\n')
   const kept = lines.filter(line => {
-    const match = INDEX_LINK_RE.exec(line)
-    return match === null || match[1] !== filename
+    const first = line.matchAll(INDEX_LINK_TARGET_RE).next().value
+    return first === undefined || first[1] !== filename
   })
   return kept.length === lines.length ? indexContent : kept.join('\n')
 }

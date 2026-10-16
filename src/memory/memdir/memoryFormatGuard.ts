@@ -15,6 +15,7 @@ import {
 } from 'src/memory/memdir/memoryDirs.js'
 import {
   ENTRYPOINT_NAME,
+  INDEX_LINK_TARGET_RE,
   MEMORY_SCOPE_SPECS,
   type MemoryScope,
 } from 'src/memory/memdir/memoryScopes.js'
@@ -235,9 +236,6 @@ export function checkMemoryFileFormatIn(
   return `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs)}`
 }
 
-/** Markdown link targets: `](target)`, up to the first space or `)`. */
-const LINK_TARGET_RE = /\]\(\s*<?([^)\s>]+)/g
-
 /**
  * What the tool calls of one response write into a memory index, by the
  * index's absolute path: a Write's content, an Edit's new_string, the lines a
@@ -284,7 +282,7 @@ export function indexTextFromResponse(
 
 /** Whether `index` links to `abs`, resolving each link target against the index's directory. */
 function indexLinks(index: string, root: string, abs: string): boolean {
-  for (const match of index.matchAll(LINK_TARGET_RE)) {
+  for (const match of index.matchAll(INDEX_LINK_TARGET_RE)) {
     const target = match[1]!.split('#')[0]!
     if (target && resolve(root, target) === abs) return true
   }

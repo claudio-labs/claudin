@@ -28,26 +28,16 @@ function memoryFreshnessText(mtimeMs: number): string {
   )
 }
 
-/**
- * Per-memory staleness note wrapped in <system-reminder> tags.
- * Returns '' for memories ≤ 1 day old.  Appended to FileReadTool output
- * (resultContent.ts) when the file read lives in a memory directory.
- */
-export function memoryFreshnessNote(mtimeMs: number): string {
-  const text = memoryFreshnessText(mtimeMs)
-  if (!text) return ''
-  return `<system-reminder>${text}</system-reminder>\n`
-}
-
 /** What a Read of a memory file knows of it: its mtime, and its `expires:` date when the read saw the frontmatter. */
 export type MemoryReadFacts = { mtimeMs: number; expires: string | null }
 
 /**
  * The note a Read of a memory file carries: the age caveat, and — past its
  * `expires:` date — a call to re-verify, in one <system-reminder>. '' when
- * neither applies. Rendered once, when the tool result is mapped, so the
- * day it compares against is the day of the Read and history stays
- * byte-stable.
+ * neither applies. Prefixed to FileReadTool output (resultContent.ts) when
+ * the file read lives in a memory directory, and rendered once, when the
+ * tool result is mapped, so the day it compares against is the day of the
+ * Read and history stays byte-stable.
  */
 export function memoryReadNote(facts: MemoryReadFacts, today: string = localDay()): string {
   const parts = [memoryFreshnessText(facts.mtimeMs)]

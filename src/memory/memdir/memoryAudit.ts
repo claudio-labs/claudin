@@ -19,7 +19,7 @@ import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScope
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { isENOENT } from 'src/shared/errors.js'
 
-export type MemoryFile = {
+export type AuditedFile = {
   scope: MemoryScope
   /** Absolute. */
   path: string
@@ -50,7 +50,7 @@ export type MemoryAudit = {
 }
 
 /** The team files whose content the secret scanner matches. */
-export function findSecretShapedFiles(files: readonly MemoryFile[]): SecretFinding[] {
+export function findSecretShapedFiles(files: readonly AuditedFile[]): SecretFinding[] {
   return files.flatMap(file => {
     if (file.scope !== 'team') return []
     const labels = [...new Set(scanForSecrets(file.content).map(match => match.label))]
@@ -59,7 +59,7 @@ export function findSecretShapedFiles(files: readonly MemoryFile[]): SecretFindi
 }
 
 /** The memory files whose `expires:` date is before `today`; indexes have none. */
-export function findExpiredMemories(files: readonly MemoryFile[], today: string): ExpiredFinding[] {
+export function findExpiredMemories(files: readonly AuditedFile[], today: string): ExpiredFinding[] {
   return files.flatMap(file => {
     if (basename(file.path) === ENTRYPOINT_NAME) return []
     const expires = expiresOf(file.content)
@@ -109,8 +109,8 @@ const defaultDeps: MemoryAuditDeps = {
 export async function readMemoryFiles(
   dirs: readonly MemoryDir[],
   deps: MemoryAuditDeps = defaultDeps,
-): Promise<MemoryFile[]> {
-  const files: MemoryFile[] = []
+): Promise<AuditedFile[]> {
+  const files: AuditedFile[] = []
   for (const dir of dirs) {
     const names = await deps.listMarkdown(dir.root, dir.scope === 'team')
     for (const name of names.sort()) {

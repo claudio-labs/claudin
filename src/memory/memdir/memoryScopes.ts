@@ -71,6 +71,15 @@ export const MEMORY_SCOPE_SPECS: Readonly<Record<MemoryScope, ScopeSpec>> = {
 export const ENTRYPOINT_NAME = 'MEMORY.md'
 
 /**
+ * A link target in an index line, `](target)` up to the first space, `>` or
+ * `)` — the one link grammar every reader of an index uses (memdir.ts fits
+ * the hook after the last link, memoryFormatGuard.ts asks whether a file is
+ * listed, memoryDirRows.ts drops a deleted memory's line). Global: read it
+ * with matchAll, never exec or test, so no caller shares its lastIndex.
+ */
+export const INDEX_LINK_TARGET_RE = /\]\(\s*<?([^)\s>]+)/g
+
+/**
  * The scope a getMemoryFiles type belongs to, or null for an instruction
  * file. A memory directory's files share its type — its index, and a memory
  * a `paths:` match attaches (pathScopedMemories.ts).
@@ -88,7 +97,7 @@ export function isMemoryFileType(type: MemoryType | string): boolean {
   return scopeOfMemoryType(type) !== null
 }
 
-/** A memory directory's index: its `MEMORY.md`, truncated at the index caps. */
+/** A memory directory's index: its `MEMORY.md`, fitted to the index caps (fitEntrypointContent). */
 export function isMemoryIndex(file: { type: MemoryType | string; path: string }): boolean {
   return isMemoryFileType(file.type) && basename(file.path) === ENTRYPOINT_NAME
 }

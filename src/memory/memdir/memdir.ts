@@ -3,6 +3,7 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import {
   ENTRYPOINT_NAME,
+  INDEX_LINK_TARGET_RE,
   isMemoryFileType,
   MEMORY_SCOPE_SPECS,
 } from 'src/memory/memdir/memoryScopes.js'
@@ -37,20 +38,22 @@ export const MAX_ENTRYPOINT_BYTES = 25_000
 // several memories behind one line and open with prose instead of `[` — those
 // are entries too. Anchored at column 0 so a nested sub-bullet is not one.
 const INDEX_ENTRY_RE = /^-[ \t]+\S/gm
-const ENTRY_LINE_RE = /^-[ \t]+\S/
+// The same bullet, tested on one line.
+const ENTRY_LINE_RE = new RegExp(INDEX_ENTRY_RE.source)
 // An entry's hook is what follows the em dash after its LAST link — a line
 // grouping several memories (`- Censuses: [a](a.md) · [b](b.md) — hook`) has
 // its hook after the final one, and a title may carry a dash of its own.
-const INDEX_LINK_END_RE = /\]\([^)\s]*\)/g
 const HOOK_SEPARATOR = ' — '
+// The line length every memory prompt asks of an index entry.
+const INDEX_LINE_CHARS = 150
 
 /**
  * Count the pointer lines in a MEMORY.md index body.
  *
  * Pass the post-fitEntrypointContent `content` for what actually entered
  * context, and `rawContent` for what the file holds on disk; the gap between
- * the two is what a cap cut off. The `> WARNING:` line truncation appends is
- * not a bullet, so it never skews the count.
+ * the two is what a cap cut off. The `> NOTE:` / `> WARNING:` footer the fit
+ * appends is not a bullet, so it never skews the count.
  */
 export function countIndexEntries(indexContent: string): number {
   return indexContent.match(INDEX_ENTRY_RE)?.length ?? 0
@@ -60,7 +63,7 @@ export function countIndexEntries(indexContent: string): number {
 function entryWithoutHook(line: string): string | null {
   if (!ENTRY_LINE_RE.test(line)) return null
   let linkEnd = -1
-  for (const match of line.matchAll(INDEX_LINK_END_RE)) linkEnd = match.index + match[0].length
+  for (const match of line.matchAll(INDEX_LINK_TARGET_RE)) linkEnd = match.index + match[0].length
   if (linkEnd < 0) return null
   const hook = line.indexOf(HOOK_SEPARATOR, linkEnd)
   return hook < 0 ? null : line.slice(0, hook)
@@ -93,10 +96,8 @@ export type EntrypointFit = {
   content: string
   lineCount: number
   byteCount: number
-  /** The file on disk is over the line cap (whether or not a line was lost). */
-  wasLineTruncated: boolean
-  /** The file on disk is over the byte cap (whether or not a line was lost). */
-  wasByteTruncated: boolean
+  overLineCap: boolean
+  overByteCap: boolean
   /** Entries that entered context without their hook, to fit. */
   shortenedEntryCount: number
 }
@@ -122,21 +123,21 @@ export function fitEntrypointContent(raw: string): EntrypointFit {
   // Real UTF-8 size. `.length` counts UTF-16 code units, which undercounts
   // multibyte content (CJK/emoji are 3-4 bytes each) by up to ~4x — a large
   // non-ASCII index would slip past this budget entirely while reporting
-  // wasByteTruncated: false, and the warning names the value as a file size.
+  // overByteCap: false, and the footer names the value as a file size.
   const byteCount = Buffer.byteLength(trimmed)
 
-  const wasLineTruncated = lineCount > MAX_ENTRYPOINT_LINES
+  const overLineCap = lineCount > MAX_ENTRYPOINT_LINES
   // Check original byte count — long lines are the failure mode the byte cap
-  // targets, so post-line-truncation size would understate the warning.
-  const wasByteTruncated = byteCount > MAX_ENTRYPOINT_BYTES
+  // targets, so the size after dropping lines would understate the footer.
+  const overByteCap = byteCount > MAX_ENTRYPOINT_BYTES
 
-  if (!wasLineTruncated && !wasByteTruncated) {
+  if (!overLineCap && !overByteCap) {
     return {
       content: trimmed,
       lineCount,
       byteCount,
-      wasLineTruncated,
-      wasByteTruncated,
+      overLineCap,
+      overByteCap,
       shortenedEntryCount: 0,
     }
   }
@@ -159,27 +160,29 @@ export function fitEntrypointContent(raw: string): EntrypointFit {
   const kept = body.split('\n').length
   const shortenedEntryCount = shortenedAt.filter(i => i < kept).length
 
-  const reason =
-    wasByteTruncated && !wasLineTruncated
-      ? `${formatFileSize(byteCount)} (limit: ${formatFileSize(MAX_ENTRYPOINT_BYTES)}) — index entries are too long`
-      : wasLineTruncated && !wasByteTruncated
-        ? `${lineCount} lines (limit: ${MAX_ENTRYPOINT_LINES})`
-        : `${lineCount} lines and ${formatFileSize(byteCount)}`
-  const shortened =
+  const reason = !overLineCap
+    ? `${formatFileSize(byteCount)} (limit: ${formatFileSize(MAX_ENTRYPOINT_BYTES)}) — index entries are too long`
+    : !overByteCap
+      ? `${lineCount} lines (limit: ${MAX_ENTRYPOINT_LINES})`
+      : `${lineCount} lines and ${formatFileSize(byteCount)}`
+  const lost = lineCut || byteCut
+  const footer = [
+    `> ${lost ? 'WARNING' : 'NOTE'}: ${ENTRYPOINT_NAME} is ${reason}.`,
+    lost ? 'Only part of it was loaded.' : 'Every entry was loaded, its blank lines dropped.',
     shortenedEntryCount > 0
-      ? `${shortenedEntryCount} ${plural(shortenedEntryCount, 'entry is', 'entries are')} shown without their hook — open a file for its detail`
-      : ''
-  const footer =
-    lineCut || byteCut
-      ? `> WARNING: ${ENTRYPOINT_NAME} is ${reason}. Only part of it was loaded${shortened ? `, and ${shortened}` : ''}. Keep index entries to one line under ~200 chars; move detail into topic files.`
-      : `> NOTE: ${ENTRYPOINT_NAME} is ${reason}. Every entry was loaded, its blank lines dropped${shortened ? `; ${shortened}` : ''}. Keep index entries to one line under ~150 chars, or run /memory tidy.`
+      ? `${shortenedEntryCount} ${plural(shortenedEntryCount, 'entry is', 'entries are')} shown without their hook — open a file for its detail.`
+      : '',
+    `Keep index entries to one line under ~${INDEX_LINE_CHARS} chars; ${lost ? 'move detail into topic files' : 'or run /memory tidy'}.`,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return {
     content: `${body}\n\n${footer}`,
     lineCount,
     byteCount,
-    wasLineTruncated,
-    wasByteTruncated,
+    overLineCap,
+    overByteCap,
     shortenedEntryCount,
   }
 }
@@ -256,7 +259,7 @@ export function buildMemoryLines(
   //
   // Ported from upstream's compact `# Memory`, keeping claudin's own
   // mechanics: the directory comes from paths.ts (unchanged), the index is
-  // still ENTRYPOINT_NAME with its MAX_ENTRYPOINT_LINES truncation, and the
+  // still ENTRYPOINT_NAME, fitted to its caps (fitEntrypointContent), and the
   // frontmatter keeps a top-level `type` (see MEMORY_FRONTMATTER_EXAMPLE for
   // why nesting it would break memoryScan). Three upstream additions land
   // here: `[[name]]` wikilinks between memories, the "ask what was

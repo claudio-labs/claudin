@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { memoryAgeDays, memoryFreshnessNote, memoryReadNote } from 'src/memory/memdir/memoryAge.js'
+import { memoryAgeDays, memoryReadNote } from 'src/memory/memdir/memoryAge.js'
 
 const DAY = 86_400_000
 const ago = (days: number, extraMs = 0) => Date.now() - days * DAY - extraMs
@@ -17,31 +17,20 @@ describe('memoryAgeDays', () => {
   })
 })
 
-describe('memoryFreshnessNote', () => {
-  test('says nothing for a memory written today or yesterday', () => {
-    expect(memoryFreshnessNote(ago(0, 1000))).toBe('')
-    expect(memoryFreshnessNote(ago(1, 1000))).toBe('')
-  })
-
-  test('wraps the age caveat in a system-reminder past one day', () => {
-    const note = memoryFreshnessNote(ago(17, 1000))
-    expect(note.startsWith('<system-reminder>This memory is 17 days old. ')).toBe(true)
-    expect(note).toContain('Verify against current code before asserting as fact.')
-    expect(note.endsWith('</system-reminder>\n')).toBe(true)
-  })
-})
-
 describe('memoryReadNote', () => {
   const TODAY = '2026-10-16'
 
-  test('a fresh memory with no expiry, or one not past it, says nothing', () => {
+  test('a memory written today or yesterday with no expiry, or one not past it, says nothing', () => {
     expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: null }, TODAY)).toBe('')
+    expect(memoryReadNote({ mtimeMs: ago(1, 1000), expires: null }, TODAY)).toBe('')
     expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: '2026-10-16' }, TODAY)).toBe('')
     expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: '2026-12-31' }, TODAY)).toBe('')
   })
 
-  test('an old memory alone is the age caveat, exactly as before', () => {
-    expect(memoryReadNote({ mtimeMs: ago(17, 1000), expires: null }, TODAY)).toBe(memoryFreshnessNote(ago(17, 1000)))
+  test('an old memory alone is the age caveat in a system-reminder, exactly as before', () => {
+    expect(memoryReadNote({ mtimeMs: ago(17, 1000), expires: null }, TODAY)).toBe(
+      '<system-reminder>This memory is 17 days old. Memories are point-in-time observations, not live state — claims about code behavior or file:line citations may be outdated. Verify against current code before asserting as fact.</system-reminder>\n',
+    )
   })
 
   test('a fresh memory past its expires: date asks for a re-verify', () => {

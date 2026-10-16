@@ -1,12 +1,14 @@
 /**
- * How a file of the CLAUDE.md family reads in context, whichever lane brings
- * it: getClaudeMds (instructions and the memory indexes) or a `paths:` match
- * (nested_memory). One renderer, so a memory always reads as a memory — a
- * team memory attached by `paths:` used to arrive as a bare `Contents of
- * <path>:`, the very shape of a `.claudin/rules/` file, whose lane it shares
- * and which IS an instruction.
+ * How a file of the CLAUDE.md family reads in context. getClaudeMds renders
+ * every file it loads with renderMemoryFileBlock — instructions and the memory
+ * indexes; the nested_memory lane renders with renderNestedMemoryBlock, where
+ * a memory a `paths:` match attaches reads the same way and a rule keeps its
+ * bare heading. So a memory always reads as a memory: a team memory attached
+ * by `paths:` used to arrive as a bare `Contents of <path>:`, the very shape of
+ * a `.claudin/rules/` file, whose lane it shares and which IS an instruction.
  */
 import type { MemoryType } from 'src/memory/memdir/types.js'
+import { isMemoryFileType } from 'src/memory/memdir/memoryScopes.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 
 /** What each file is, after its path. */
@@ -38,4 +40,17 @@ export function renderMemoryFileBlock(
       ? `${TEAM_MEMORY_TRUST_NOTE}\n\n<team-memory-content source="shared">\n${content}\n</team-memory-content>`
       : content
   return `Contents of ${file.path}${CONTEXT_DESCRIPTIONS[file.type]}:\n\n${body}`
+}
+
+/**
+ * A file the nested_memory lane attaches: a memory as renderMemoryFileBlock
+ * draws it, a rule — what that lane carried before memories rode it — byte
+ * for byte as it always read, so a resumed session's rules keep their cache.
+ */
+export function renderNestedMemoryBlock(
+  file: Pick<MemoryFileInfo, 'path' | 'type' | 'content'>,
+): string {
+  return isMemoryFileType(file.type)
+    ? renderMemoryFileBlock(file)
+    : `Contents of ${file.path}:\n\n${file.content}`
 }
