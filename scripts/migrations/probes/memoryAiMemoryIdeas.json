@@ -23,7 +23,9 @@
     "src/memory/autoDream/consolidationPrompt.test.ts",
     "src/commands/memory/tidy.test.ts",
     "src/commands/memory/tidyPrompt.test.ts",
-    "src/memory/ui/memoryDirRows.test.ts"
+    "src/memory/ui/memoryDirRows.test.ts",
+    "src/tools/NotebookEditTool/NotebookEditTool.test.ts",
+    "src/memory/memdir/memoryAuditCommand.e2e.test.ts"
   ],
   "source": "src/memory/memdir/memdir.ts",
   "probes": [
@@ -45,8 +47,8 @@
     },
     {
       "name": "the hook is looked for after the FIRST link",
-      "find": "  for (const match of line.matchAll(INDEX_LINK_END_RE)) linkEnd = match.index + match[0].length\n",
-      "replace": "  for (const match of line.matchAll(INDEX_LINK_END_RE)) { linkEnd = match.index + match[0].length; break }\n"
+      "find": "  for (const match of line.matchAll(INDEX_LINK_TARGET_RE)) linkEnd = match.index + match[0].length\n",
+      "replace": "  for (const match of line.matchAll(INDEX_LINK_TARGET_RE)) { linkEnd = match.index + match[0].length; break }\n"
     },
     {
       "name": "the transcript line forgets the shortened entries",
@@ -75,9 +77,9 @@
     },
     {
       "name": "a paths: memory is rendered like a rule again",
-      "source": "src/agent/messages/attachments.ts",
-      "find": "          content: isMemoryFileType(file.type)\n",
-      "replace": "          content: false\n"
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "  return isMemoryFileType(file.type)\n",
+      "replace": "  return false\n"
     },
     {
       "name": "the audit command never fails",
@@ -130,14 +132,14 @@
     {
       "name": "the scan header drops expires",
       "source": "src/memory/memdir/memoryScan.ts",
-      "find": "          expires: expires.kind === 'date' ? expires.date : null,\n",
+      "find": "          expires: validExpires(frontmatter.expires),\n",
       "replace": "          expires: null,\n"
     },
     {
       "name": "the dream digest drops the expired memories",
       "source": "src/memory/autoDream/dreamDigest.ts",
       "find": "  const expired = inputs.expired ?? []\n",
-      "replace": "  const expired: ExpiredFinding[] = []\n"
+      "replace": "  const expired: DigestExpired[] = []\n"
     },
     {
       "name": "the dream digest stops naming what a session wrote",
@@ -155,8 +157,8 @@
     {
       "name": "an index write counts as a memory written",
       "source": "src/memory/autoDream/memoryWrites.ts",
-      "find": "        if (basename(path) === ENTRYPOINT_NAME || !roots.some(root => path.startsWith(root))) continue\n",
-      "replace": "        if (!roots.some(root => path.startsWith(root))) continue\n"
+      "find": "filter(path => basename(path) !== ENTRYPOINT_NAME && findMemoryDir(dirs, path) !== null)",
+      "replace": "filter(path => findMemoryDir(dirs, path) !== null)"
     },
     {
       "name": "tidy runs without the audit's findings",
@@ -175,6 +177,30 @@
       "source": "src/memory/extract/prompts.ts",
       "find": "    '- A fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — gets `expires: YYYY-MM-DD` in its frontmatter, the last day it holds; past it the memory is flagged for re-verification, never deleted',\n",
       "replace": ""
+    },
+    {
+      "name": "the audit reads a directory named like a memory",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": ".filter(entry => entry.isFile() && entry.name.endsWith('.md'))",
+      "replace": ".filter(entry => entry.name.endsWith('.md'))"
+    },
+    {
+      "name": "the audit takes the settings' dirs only",
+      "source": "src/memory/memdir/memoryAuditCommand.ts",
+      "find": "const committed = gitRoot === null ? null : committedTeamMemPath(gitRoot)",
+      "replace": "const committed = gitRoot === null ? null : null"
+    },
+    {
+      "name": "NotebookEdit skips the team secret guard",
+      "source": "src/tools/NotebookEditTool/NotebookEditTool.ts",
+      "find": "const secretError = checkTeamMemSecrets(fullPath, new_source)",
+      "replace": "const secretError = null as string | null"
+    },
+    {
+      "name": "the shortened count includes entries the tail cut dropped",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "const shortenedEntryCount = shortenedAt.filter(i => i < kept).length",
+      "replace": "const shortenedEntryCount = shortenedAt.length"
     }
   ]
 }

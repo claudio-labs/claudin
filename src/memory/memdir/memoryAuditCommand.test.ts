@@ -1,5 +1,9 @@
-import { describe, expect, test } from 'bun:test'
-import { auditDirsFor, formatMemoryAudit } from 'src/memory/memdir/memoryAuditCommand.js'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { auditDirsFor, formatMemoryAudit, memoryAuditHandler } from 'src/memory/memdir/memoryAuditCommand.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 
 describe('auditDirsFor', () => {
@@ -23,8 +27,43 @@ describe('auditDirsFor', () => {
   })
 })
 
+// The handler's own wiring, in source: with memory switched off by the
+// environment, the committed team dir of the repo the cwd is in is still
+// audited. The e2e suite pins the same through the bundle.
+describe('memoryAuditHandler', () => {
+  const FLAG = 'CLAUDIN_DISABLE_AUTO_MEMORY'
+  let root: string
+  let prior: string | undefined
+  const logged: string[] = []
+  const realLog = console.log
+
+  beforeAll(() => {
+    prior = process.env[FLAG]
+    process.env[FLAG] = '1'
+    root = mkdtempSync(join(tmpdir(), 'audit-handler-'))
+    mkdirSync(join(root, '.git'))
+    mkdirSync(join(root, '.claudin', 'memory', 'team', 'bugs'), { recursive: true })
+    writeFileSync(join(root, '.claudin', 'memory', 'team', 'bugs', 'x.md'), `token: ghp_${'x'.repeat(36)}\n`)
+    console.log = (line: string) => void logged.push(line)
+  })
+  afterAll(() => {
+    console.log = realLog
+    if (prior === undefined) delete process.env[FLAG]
+    else process.env[FLAG] = prior
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  test('memory off still audits <gitRoot>/.claudin/memory/team/ and fails on its secret', async () => {
+    const code = await runWithCwdOverride(root, () => memoryAuditHandler({ json: true }))
+    expect(code).toBe(1)
+    expect(JSON.parse(logged.at(-1)!).findings).toEqual([
+      { kind: 'secret', path: '.claudin/memory/team/bugs/x.md', labels: [expect.any(String)] },
+    ])
+  })
+})
+
 const CWD = '/repo'
-const secret = { kind: 'secret' as const, path: '/repo/.claudin/memory/team/bugs/x.md', labels: ['GitHub PAT'] }
+const secret ={ kind: 'secret' as const, path: '/repo/.claudin/memory/team/bugs/x.md', labels: ['GitHub PAT'] }
 
 describe('formatMemoryAudit', () => {
   test('no findings: one line, exit 0', () => {
