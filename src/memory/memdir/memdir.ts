@@ -145,16 +145,19 @@ export function fitEntrypointContent(raw: string): EntrypointFit {
   const lineCut = lines.length > MAX_ENTRYPOINT_LINES
   if (lineCut) lines.length = MAX_ENTRYPOINT_LINES
   let bytes = Buffer.byteLength(lines.join('\n'))
-  let shortenedEntryCount = 0
+  const shortenedAt: number[] = []
   for (let i = lines.length - 1; i >= 0 && bytes > MAX_ENTRYPOINT_BYTES; i--) {
     const short = entryWithoutHook(lines[i]!)
     if (short === null) continue
     bytes -= Buffer.byteLength(lines[i]!) - Buffer.byteLength(short)
     lines[i] = short
-    shortenedEntryCount++
+    shortenedAt.push(i)
   }
   const byteCut = bytes > MAX_ENTRYPOINT_BYTES
   const body = byteCut ? cutToByteCap(lines.join('\n')) : lines.join('\n')
+  // What reached context: a shortened entry the byte cut then dropped is not shown at all.
+  const kept = body.split('\n').length
+  const shortenedEntryCount = shortenedAt.filter(i => i < kept).length
 
   const reason =
     wasByteTruncated && !wasLineTruncated
