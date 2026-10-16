@@ -206,7 +206,11 @@ function gridFromLines(lines: string[], width: number): string[][] {
 
 // Apply the diff (serialized like terminal.ts) onto a grid, advancing the
 // cursor by TERMINAL widths so the model/terminal drift is exercised.
-function replayDiff(grid: string[][], diff: ReturnType<LogUpdate['render']>) {
+function replayDiff(
+  grid: string[][],
+  diff: ReturnType<LogUpdate['render']>,
+  start = { row: 0, col: 0 },
+) {
   let ansi = ''
   for (const p of diff) {
     if (p.type === 'stdout') ansi += p.content
@@ -216,8 +220,8 @@ function replayDiff(grid: string[][], diff: ReturnType<LogUpdate['render']>) {
     else if (p.type === 'carriageReturn') ansi += '\r'
   }
   const width = grid[0].length
-  let row = 0
-  let col = 0
+  let row = start.row
+  let col = start.col
   let i = 0
   while (i < ansi.length) {
     const c = ansi[i]
@@ -637,7 +641,7 @@ test('main-screen rewrite defers to the in-place tail repaint when shrinking whi
 // repainted from viewport row 0, which put frame row 0 — the startup banner —
 // at the top of the screen and pulled the input box up with it. Captured live
 // as `screenH=15 viewportH=18 startY=0`. Bottom-anchoring keeps the block on
-// the last rows; the rows above keep whatever history was there.
+// the last rows, and the rows above it — all the old block's — are blanked.
 test('a frame that shrinks below the viewport stays anchored at the bottom', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
@@ -646,17 +650,18 @@ test('a frame that shrinks below the viewport stays anchored at the bottom', () 
   const stdout = collectStdout(diff)
 
   expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
-  // 6 rows erased and 6 repainted — NOT the 9 a viewport-filling repaint would
-  // touch, and no padding: the block already ends on the cursor row.
+  // All 9 usable rows erased, 3 padding LFs down to the anchor, 6 repainted.
   expect(
     diff.some(
-      p => p.type === 'clear' && p.count === 6 && p.repaintReason === 'offscreen',
+      p => p.type === 'clear' && p.count === 9 && p.repaintReason === 'offscreen',
     ),
   ).toBe(true)
   expect(diff.some(p => p.type === 'cursorMove' && p.y === -1)).toBe(true)
+  expect(stdout.startsWith('\n\n\n')).toBe(true)
   expect(stdout).toContain('ROW00xxxxx')
   expect(stdout).toContain('ROW05xxxxx')
-  expect(countNewlines(stdout)).toBe(6)
+  expect(countNewlines(stdout)).toBe(3 + 6)
+  expect(netRowDelta(diff)).toBe(0)
 })
 
 // The killswitch has to revert BOTH halves: the path choice and the padding.
@@ -687,83 +692,70 @@ test('CLAUDIN_LEGACY_FULL_RESET restores the clearing, top-anchored reset', () =
   }
 })
 
-// A frame that fits the viewport takes the SAME in-place repaint. It used to
-// fall through to the incremental path, which clears only the vacated rows and
-// leaves the cursor that many rows higher — see the regression below.
-test('shrinking a frame that fits the viewport repaints the tail in place', () => {
+// Reported 2026-10-16 from the inline renderer: typing `@` opens a 12-row file
+// list under the prompt, and every keystroke that shrank it — the list
+// narrowing, Esc closing it — left a copy of the frame's top on screen, so the
+// startup banner and the prompt stacked once per shrink. Both shapes below were
+// painted bottom-anchored, keeping whatever sat on the rows above the new
+// block — and those rows were the OLD frame's own rows, not history.
+const AT_PROMPT = ['banner 1', 'banner 2', '', '-- border --', '> @', '', '-- status --']
+const AT_LIST = Array.from({ length: 12 }, (_, i) => `  + dir${String(i).padStart(2, '0')}/`)
+const AT_OPEN = [...AT_PROMPT, ...AT_LIST]
+const AT_CLOSED = [...AT_PROMPT, 'auto mode on']
+const AT_WIDTH = 12
+
+function blankRows(count: number): string[] {
+  return Array.from({ length: count }, () => '')
+}
+
+// The terminal before a frame changes: the frame's last rows from viewport row
+// 0 (all of it when it fits, as in a fresh session) and the cursor parked one
+// row past them — on the last viewport row once the frame overflows.
+function terminalShowing(lines: string[], viewportHeight: number, width: number) {
+  const cursorRow = Math.min(lines.length, viewportHeight - 1)
+  const grid = gridFromLines(
+    [...lines.slice(lines.length - cursorRow), ...blankRows(viewportHeight - cursorRow)],
+    width,
+  )
+  return { grid, start: { row: cursorRow, col: 0 } }
+}
+
+function screenRows(grid: string[][]): string[] {
+  return grid.map(row => row.join('').trimEnd())
+}
+
+// A fresh session: the whole frame fits, its top row is on screen.
+test('closing the @ list of a frame that fits the viewport leaves no copy of the old frame', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
-  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 8), TALL_VIEWPORT)
-  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 5), TALL_VIEWPORT)
+  const VP = 46
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_OPEN, VP)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_CLOSED, VP)
+  const { grid, start } = terminalShowing(AT_OPEN, VP, AT_WIDTH)
   const diff = log.render(prev, next, false, true, false)
+  replayDiff(grid, diff, start)
 
   expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
-  // 5 erased and 5 repainted, not the 3 vacated rows — net zero movement.
-  expect(
-    diff.some(
-      p => p.type === 'clear' && p.count === 5 && p.repaintReason === 'offscreen',
-    ),
-  ).toBe(true)
-  expect(netRowDelta(diff)).toBe(0)
+  expect(screenRows(grid)).toEqual([...AT_CLOSED, ...blankRows(VP - AT_CLOSED.length)])
 })
 
-// 45 rows in a 46-row viewport: one row short of prevHadScrollback, which is
-// the shape a long session lands in once a compaction drops the frame under
-// the viewport. The next big shrink — a tool block collapsing to
-// "… +16 lines (ctrl+o to see all)" — used to strand the block: the
-// incremental path erased the 30 vacated rows and left the cursor 30 rows
-// higher, so the block kept its top row and the rows it gave up stayed blank
-// BELOW it. Nothing re-anchored afterwards (every later repaint is relative),
-// so the whole TUI sat in the top fifth of the terminal until a resize or
-// ctrl+L. Reported as "a sessão colapsa e fica no topo".
-const NEAR_VIEWPORT = 46
-const NEAR_VIEWPORT_LINES = Array.from(
-  { length: 45 },
-  (_, i) => `ROW${String(i).padStart(2, '0')}xxxxx`,
-)
-test('a big shrink of a frame that FITS the viewport keeps the block where it was', () => {
+// A longer session or a short terminal: the open list pushed the frame past
+// the viewport, so its top is in scrollback and the block stays on the bottom
+// rows — but every viewport row above it was the old block's.
+test('closing the @ list of a frame that overflowed blanks the old rows above the new block', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
-  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES, NEAR_VIEWPORT)
-  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES.slice(0, 15), NEAR_VIEWPORT)
+  const VP = 16
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_OPEN, VP)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_CLOSED, VP)
+  const { grid, start } = terminalShowing(AT_OPEN, VP, AT_WIDTH)
   const diff = log.render(prev, next, false, true, false)
-  const stdout = collectStdout(diff)
+  replayDiff(grid, diff, start)
 
   expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
-  // The block's last row lands on the row the old block's last row held.
-  expect(netRowDelta(diff)).toBe(0)
-  expect(
-    diff.some(
-      p => p.type === 'clear' && p.count === 15 && p.repaintReason === 'offscreen',
-    ),
-  ).toBe(true)
-  expect(stdout).toContain('ROW00xxxxx')
-  expect(stdout).toContain('ROW14xxxxx')
-  expect(stdout).not.toContain('ROW15xxxxx')
-})
-
-// What the killswitch has to restore, and the measurement the fix is against:
-// the same shrink on the old path ends 30 rows above where it started.
-test('CLAUDIN_LEGACY_FULL_RESET puts the fits-the-viewport shrink back on the incremental path', () => {
-  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
-  const saved = process.env.CLAUDIN_LEGACY_FULL_RESET
-  process.env.CLAUDIN_LEGACY_FULL_RESET = '1'
-  _resetLegacyFullResetCacheForTesting()
-  try {
-    const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES, NEAR_VIEWPORT)
-    const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES.slice(0, 15), NEAR_VIEWPORT)
-    const diff = log.render(prev, next, false, true, false)
-
-    expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
-    // Only the 30 vacated rows are cleared, and the cursor stays up there.
-    expect(diff.some(p => p.type === 'clear' && p.count === 30)).toBe(true)
-    expect(netRowDelta(diff)).toBe(-30)
-  } finally {
-    if (saved === undefined) {
-      delete process.env.CLAUDIN_LEGACY_FULL_RESET
-    } else {
-      process.env.CLAUDIN_LEGACY_FULL_RESET = saved
-    }
-    _resetLegacyFullResetCacheForTesting()
-  }
+  expect(screenRows(grid)).toEqual([
+    ...blankRows(VP - 1 - AT_CLOSED.length),
+    ...AT_CLOSED,
+    '',
+  ])
 })
 
 // Second half of the same bug: Ink.repaint() (ctrl+L, prepareFullRepaint,
