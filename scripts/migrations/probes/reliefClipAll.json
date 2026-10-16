@@ -1,0 +1,41 @@
+{
+  "test": [
+    "src/agent/compact/reliefPolicy.test.ts",
+    "src/agent/compact/microCompact.test.ts"
+  ],
+  "source": "src/agent/compact/reliefPolicy.ts",
+  "probes": [
+    {
+      "name": "a clip-all window event is marked to select everything",
+      "find": "        ...(input.windowClipAll ? { selectAll: true as const } : {}),\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the rss lane does not outbid a clip-all window event",
+      "find": "    if (best.kind === 'none' || (!best.selectAll && tokensToFree > best.tokensToFree)) {\n",
+      "replace": "    if (best.kind === 'none' || tokensToFree > best.tokensToFree) {\n"
+    },
+    {
+      "name": "clip-all reads its switch",
+      "find": "  return v !== '0' && v !== 'false'\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "the shell passes the switch to the decision",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "    windowClipAll: isReliefClipAllEnabled(),\n",
+      "replace": "    windowClipAll: false,\n"
+    },
+    {
+      "name": "the shell selects everything on a clip-all event",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  const ask = decision.selectAll ? Infinity : decision.tokensToFree\n",
+      "replace": "  const ask = decision.tokensToFree\n"
+    },
+    {
+      "name": "the rss lane ignores clip-all",
+      "find": "      best = {\n        kind: 'clip',\n        lane: 'rss',\n",
+      "replace": "      best = {\n        selectAll: input.windowClipAll ? true : undefined,\n        kind: 'clip',\n        lane: 'rss',\n"
+    }
+  ]
+}

@@ -479,7 +479,7 @@ function gradePhase(ws: string, graderDir: string, phase: Phase): Grade {
  */
 const HOST_ENV_RE = /^(CLAUDECODE$|CLAUDE_CODE_|CLAUDIN_(?!CONFIG_DIR$))/
 
-function armEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+export function armEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {}
   for (const [k, v] of Object.entries(process.env)) if (!HOST_ENV_RE.test(k)) env[k] = v
   return {

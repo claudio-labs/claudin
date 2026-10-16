@@ -48,6 +48,16 @@
  * reading 400-700k on every call (census 2026-09-26..28).
  * `scripts/bench/tokens/relief-ceiling-sim.ts` bounds the gain: +10% of
  * sub-agent reads at 200k, +6% at 250k, before the re-reads it causes.
+ *
+ * Clip-all, on by default since 2026-10-15: a window-lane event clips EVERY
+ * clearable result outside the protected turns, not one band. The cache is
+ * rewritten from the oldest clipped block either way, so a one-band clip
+ * rewrote 51k to free 24k; the extra clips cost no more rewrite and shrink
+ * every later read. A/B (context-relief-ab, Sonnet 5.5, 140k window, N=5):
+ * cost −22% SEPARATED (placebo +1%), rewrite 51k → 21k, end context 65k →
+ * 34k, edit-turn lookups 8 → 11 (overlap), 10/10 edits; replayed over the
+ * real 1M main threads, net saving $65 → $96 in four weeks. The rss lane
+ * keeps its own low-water target. `CLAUDIN_RELIEF_CLIP_ALL=0` turns it off.
  */
 
 import type { CacheProfile } from 'src/agent/cache/cacheProfile.js'
@@ -74,6 +84,8 @@ export type ReliefInput = {
   windowLaneEnabled: boolean
   /** Upper bound on the window-lane trigger (a sub-agent's ceiling). */
   triggerCap?: number
+  /** A window-lane event selects every candidate, not one band's worth. */
+  windowClipAll?: boolean
 }
 
 export type ReliefDecision =
@@ -86,6 +98,8 @@ export type ReliefDecision =
       tokensToFree: number
       trigger: number
       target: number
+      /** Select every candidate: set on a window-lane event under clip-all. */
+      selectAll?: true
     }
 
 /** A clearable tool_result, oldest first, with what stubbing it frees. */
@@ -194,6 +208,7 @@ export function decideRelief(input: ReliefInput): ReliefDecision {
         tokensToFree: input.usedTokens - target,
         trigger,
         target,
+        ...(input.windowClipAll ? { selectAll: true as const } : {}),
       }
     }
   }
@@ -204,8 +219,9 @@ export function decideRelief(input: ReliefInput): ReliefDecision {
   ) {
     const tokensToFree =
       input.retainedFullResultTokens - profile.retainedLowWaterTokens
-    // Both lanes fired: one clip event, sized by whichever asks for more.
-    if (best.kind === 'none' || tokensToFree > best.tokensToFree) {
+    // Both lanes fired: one clip event, sized by whichever asks for more —
+    // and a clip-all window event already asks for everything.
+    if (best.kind === 'none' || (!best.selectAll && tokensToFree > best.tokensToFree)) {
       best = {
         kind: 'clip',
         lane: 'rss',
@@ -249,6 +265,11 @@ export function isReliefWindowLaneEnabled(): boolean {
 export function isReliefStarvedCompactEnabled(): boolean {
   const v = process.env.CLAUDIN_RELIEF_STARVED_COMPACT
   return !(v === '0' || v === 'false')
+}
+
+export function isReliefClipAllEnabled(): boolean {
+  const v = process.env.CLAUDIN_RELIEF_CLIP_ALL
+  return v !== '0' && v !== 'false'
 }
 
 /** The sub-agent ceiling from CLAUDIN_SUBAGENT_RELIEF_TRIGGER, when set. */

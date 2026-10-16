@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import {
   decideRelief,
+  isReliefClipAllEnabled,
+  isReliefStarvedCompactEnabled,
   isReliefWindowLaneEnabled,
   reliefMargin,
   reliefTrigger,
@@ -127,6 +129,18 @@ describe('decideRelief — window lane', () => {
       decideRelief(input({ usedTokens: 170_000, windowLaneEnabled: false })),
     ).toEqual({ kind: 'none' })
   })
+
+  test('clip-all: the same event, marked to select every candidate', () => {
+    expect(decideRelief(input({ usedTokens: 140_000, windowClipAll: true }))).toEqual({
+      kind: 'clip',
+      lane: 'window',
+      tokensToFree: 45_500,
+      trigger: 135_000,
+      target: 94_500,
+      selectAll: true,
+    })
+    expect(decideRelief(input({ usedTokens: 134_999, windowClipAll: true }))).toEqual({ kind: 'none' })
+  })
 })
 
 describe('decideRelief — rss lane', () => {
@@ -167,6 +181,14 @@ describe('decideRelief — rss lane', () => {
       }),
     )
     expect(windowWins).toMatchObject({ lane: 'window', tokensToFree: 45_500 })
+  })
+
+  test('the rss lane never selects everything, and loses to a clip-all window event', () => {
+    expect(decideRelief(input({ retainedFullResultTokens: 260_000, windowClipAll: true }))).not.toHaveProperty('selectAll')
+    // window asks 45.5k, rss 135k: the clip-all window event still takes it.
+    expect(
+      decideRelief(input({ usedTokens: 140_000, retainedFullResultTokens: 260_000, windowClipAll: true })),
+    ).toMatchObject({ lane: 'window', selectAll: true })
   })
 })
 
@@ -220,6 +242,44 @@ describe('isReliefWindowLaneEnabled', () => {
     expect(isReliefWindowLaneEnabled()).toBe(false)
     process.env.CLAUDIN_DISABLE_RELIEF_POLICY = '0'
     expect(isReliefWindowLaneEnabled()).toBe(true)
+  })
+})
+
+describe('isReliefStarvedCompactEnabled', () => {
+  const saved = process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+    else process.env.CLAUDIN_RELIEF_STARVED_COMPACT = saved
+  })
+
+  test('on by default, off under =0 / =false', () => {
+    delete process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+    expect(isReliefStarvedCompactEnabled()).toBe(true)
+    process.env.CLAUDIN_RELIEF_STARVED_COMPACT = '0'
+    expect(isReliefStarvedCompactEnabled()).toBe(false)
+    process.env.CLAUDIN_RELIEF_STARVED_COMPACT = 'false'
+    expect(isReliefStarvedCompactEnabled()).toBe(false)
+    process.env.CLAUDIN_RELIEF_STARVED_COMPACT = '1'
+    expect(isReliefStarvedCompactEnabled()).toBe(true)
+  })
+})
+
+describe('isReliefClipAllEnabled', () => {
+  const saved = process.env.CLAUDIN_RELIEF_CLIP_ALL
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_RELIEF_CLIP_ALL
+    else process.env.CLAUDIN_RELIEF_CLIP_ALL = saved
+  })
+
+  test('on by default, off under =0 / =false', () => {
+    delete process.env.CLAUDIN_RELIEF_CLIP_ALL
+    expect(isReliefClipAllEnabled()).toBe(true)
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = '0'
+    expect(isReliefClipAllEnabled()).toBe(false)
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = 'false'
+    expect(isReliefClipAllEnabled()).toBe(false)
+    process.env.CLAUDIN_RELIEF_CLIP_ALL = '1'
+    expect(isReliefClipAllEnabled()).toBe(true)
   })
 })
 

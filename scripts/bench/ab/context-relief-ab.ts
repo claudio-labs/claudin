@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Context-relief A/B — two claudin binaries on the same long, mixed
- * search → read → edit session.
+ * Context-relief A/B — claudin builds, env variants of one build and Claude
+ * Code, each on the same long, mixed search → read → edit session.
  *
  * What it measures: how each build pays for context relief over a session
  * long enough to cross the relief triggers — prompt-cache writes and prefix
@@ -33,11 +33,21 @@
  *    Small on purpose — it is for watching how the cache behaves across
  *    the relief triggers, not a cost claim. Raise `--per-phase` to push
  *    past the old display cap (300 messages) on a bigger workload.
- *  - Sonnet 5 pinned on both arms. A run reporting another model is flagged.
- *  - Arm order ALTERNATES across reps; whichever runs first pays the cold
- *    prompt cache.
- *  - `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=true` on both arms so the server
+ *  - Sonnet 5 pinned on every arm. A run reporting another model is flagged.
+ *  - Arm order ROTATES across reps, so each arm takes the cold first slot in
+ *    turn. `--parallel` runs a rep's arms at once instead: every arm starts
+ *    cold, at the same hour.
+ *  - `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=true` on every arm so the server
  *    `clear_tool_uses` does not confound (the measured week ran without it).
+ *    The host session's CLAUDECODE / CLAUDE_CODE_* / CLAUDIN_* variables
+ *    never reach an arm (session-cache-ab's `armEnv`); an arm's own variables
+ *    come from `--variant=<label>:K=V,…`, which runs `--bin-a`'s binary.
+ *  - Cost is priced call by call with session-cache-ab's table (`costOf`),
+ *    which knows 1h writes. Claude Code's own figure under-prices them and
+ *    cliUsage's `estimateCost` prices every write at 5m; the CLI figure is
+ *    printed beside it, never compared.
+ *  - `clipped ids` is the last `clip-state` the transcript recorded: the
+ *    check that a relief arm's mechanism fired at all (Claude Code has none).
  *  - Graded: the marker comments that actually landed. A cheap arm that
  *    skipped edits is not a win.
  *
@@ -47,10 +57,13 @@
  *     --bin-a=v1.1.24:/tmp/claudin-v1.1.24/bin/claudin \
  *     --bin-b=branch:./bin/claudin --reps=3
  *   bun scripts/bench/ab/context-relief-ab.ts ... --window=140000 --json
+ *   bun scripts/bench/ab/context-relief-ab.ts --bin-a=claudindev:./bin/claudin \
+ *     --bin-b=claude:$(command -v claude) --variant=off:CLAUDIN_DISABLE_RELIEF_POLICY=1 \
+ *     --variant=placebo:CLAUDIN_BENCH_PLACEBO=1 --window=140000 --reps=5 --parallel
  *
- * `--window` caps the context window (CLAUDIN_AUTO_COMPACT_WINDOW, honored by
- * both builds); without it a native-1M model never reaches the trigger in 30
- * turns and the two arms are indistinguishable.
+ * `--window` caps the context window (CLAUDIN_AUTO_COMPACT_WINDOW, and Claude
+ * Code's CLAUDE_CODE_AUTO_COMPACT_WINDOW); without it a native-1M model never
+ * reaches the trigger in 30 turns and the arms are indistinguishable.
  */
 import { spawn } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -59,7 +72,8 @@ import { join, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { createInterface } from 'node:readline'
 import { REPO_ROOT } from '../../repoRoot'
-import { estimateCost, toolCallsFrom, type TimelineRow } from './cliUsage'
+import { sessionIdFrom, toolCallsFrom, transcriptPath } from './cliUsage'
+import { armEnv, armTable, costOf, type ArmRow } from './session-cache-ab'
 
 const DEFAULT_MODEL = 'claude-sonnet-5'
 const MARKER = 'relief-ab'
@@ -174,7 +188,15 @@ function verify(root: string, expected: number): { landed: number; expected: num
 // One arm = one session.
 // ---------------------------------------------------------------------------
 
-type ArmResult = {
+/** One API call's usage, the 1h/5m split of its cache write included. */
+export type UsageRow = { in: number; out: number; cR: number; cW: number; cW5m: number; cW1h: number }
+
+const USAGE_KEYS: ReadonlyArray<keyof UsageRow> = ['in', 'out', 'cR', 'cW', 'cW5m', 'cW1h']
+
+/** One session per rep: a binary, and the variables it runs with on top of the bench's. */
+export type ArmSpec = { label: string; path: string; env: Record<string, string> }
+
+export type ArmResult = {
   label: string
   bin: string
   rep: number
@@ -193,22 +215,22 @@ type ArmResult = {
   peakContext: number
   endContext: number
   costUsd: number | null
-  estCostUsd: number
+  pricedUsd: number
   model: string | null
   toolCalls: number
   toolMix: Record<string, number>
   reads: number
   rereads: number
   editLookups: number
+  clippedIds: number
   verdict: { landed: number; expected: number; duplicated: number }
-  timeline: TimelineRow[]
+  timeline: UsageRow[]
   workspace: string
   stderrHead: string
 }
 
 type Args = {
-  binA: { label: string; path: string } | null
-  binB: { label: string; path: string } | null
+  arms: ArmSpec[]
   reps: number
   perPhase: number
   model: string
@@ -217,18 +239,32 @@ type Args = {
   keep: boolean
   json: boolean
   dryRun: boolean
+  parallel: boolean
 }
 
-function parseBin(spec: string): { label: string; path: string } {
+function parseBin(spec: string): ArmSpec {
   const i = spec.indexOf(':')
   if (i <= 0) throw new Error(`--bin-x expects <label>:<path>, got ${spec}`)
-  return { label: spec.slice(0, i), path: resolve(spec.slice(i + 1)) }
+  return { label: spec.slice(0, i), path: resolve(spec.slice(i + 1)), env: {} }
 }
 
-function parseArgs(argv: string[]): Args {
+/** `<label>:K=V,K2=V2` → an arm on `--bin-a`'s binary with those variables. */
+function parseVariant(spec: string, base: ArmSpec): ArmSpec {
+  const colon = spec.indexOf(':')
+  const label = colon < 0 ? spec : spec.slice(0, colon)
+  if (!label) throw new Error(`--variant expects <label>:K=V,…, got ${spec}`)
+  const env: Record<string, string> = {}
+  for (const pair of colon < 0 ? [] : spec.slice(colon + 1).split(',').filter(Boolean)) {
+    const eq = pair.indexOf('=')
+    if (eq <= 0) throw new Error(`--variant ${label}: expected K=V, got ${pair}`)
+    env[pair.slice(0, eq)] = pair.slice(eq + 1)
+  }
+  return { label, path: base.path, env }
+}
+
+export function parseArgs(argv: string[]): Args {
   const a: Args = {
-    binA: null,
-    binB: null,
+    arms: [],
     reps: 1,
     perPhase: 10,
     model: DEFAULT_MODEL,
@@ -237,24 +273,80 @@ function parseArgs(argv: string[]): Args {
     keep: false,
     json: false,
     dryRun: false,
+    parallel: false,
   }
+  let binA: ArmSpec | null = null
+  let binB: ArmSpec | null = null
+  const variants: string[] = []
   for (const x of argv) {
     if (x === '--keep') a.keep = true
     else if (x === '--json') a.json = true
     else if (x === '--dry-run') a.dryRun = true
+    else if (x === '--parallel') a.parallel = true
     else if (x.startsWith('--reps=')) a.reps = Number(x.slice('--reps='.length))
     else if (x.startsWith('--per-phase=')) a.perPhase = Number(x.slice('--per-phase='.length))
     else if (x.startsWith('--model=')) a.model = x.slice('--model='.length)
     else if (x.startsWith('--window=')) a.window = Number(x.slice('--window='.length))
     else if (x.startsWith('--turn-timeout=')) a.turnTimeoutMs = Number(x.slice('--turn-timeout='.length))
-    else if (x.startsWith('--bin-a=')) a.binA = parseBin(x.slice('--bin-a='.length))
-    else if (x.startsWith('--bin-b=')) a.binB = parseBin(x.slice('--bin-b='.length))
+    else if (x.startsWith('--bin-a=')) binA = parseBin(x.slice('--bin-a='.length))
+    else if (x.startsWith('--bin-b=')) binB = parseBin(x.slice('--bin-b='.length))
+    else if (x.startsWith('--variant=')) variants.push(x.slice('--variant='.length))
     else throw new Error(`unknown arg ${x}`)
   }
+  // After the loop, so a --bin-a given after its variants still applies.
+  if (variants.length > 0 && !binA) throw new Error("--variant runs --bin-a's binary: give --bin-a")
+  const arms = [binA, binB, ...variants.map(v => parseVariant(v, binA!))].filter((x): x is ArmSpec => x !== null)
+  const labels = arms.map(arm => arm.label)
+  const dup = labels.find((l, i) => labels.indexOf(l) !== i)
+  if (dup) throw new Error(`two arms are labelled ${dup}`)
+  a.arms = arms
   return a
 }
 
-async function runArm(arm: { label: string; path: string }, rep: number, args: Args): Promise<ArmResult> {
+/** Rep r starts at arm (r − 1) mod n, so each arm takes the cold first slot in turn. */
+export function armOrder<T>(arms: readonly T[], rep: number): T[] {
+  const k = (((rep - 1) % arms.length) + arms.length) % arms.length
+  return [...arms.slice(k), ...arms.slice(0, k)]
+}
+
+/** The host's env minus its own CLI variables, the bench's switches, then the arm's. */
+export function armProcessEnv(arm: ArmSpec, window: number | null): NodeJS.ProcessEnv {
+  return armEnv({
+    // No server-side clear_tool_uses: the client policy is what is under test.
+    CLAUDIN_DISABLE_EXPERIMENTAL_BETAS: 'true',
+    // `--window` shrinks the window every arm sees, Claude Code's included,
+    // so a 30-turn session crosses the relief trigger.
+    ...(window ? { CLAUDIN_AUTO_COMPACT_WINDOW: String(window), CLAUDE_CODE_AUTO_COMPACT_WINDOW: String(window) } : {}),
+    ...arm.env,
+  })
+}
+
+export function pricedUsd(model: string, rows: readonly UsageRow[]): number {
+  const sum: UsageRow = { in: 0, out: 0, cR: 0, cW: 0, cW5m: 0, cW1h: 0 }
+  for (const r of rows) for (const k of USAGE_KEYS) sum[k] += r[k]
+  return costOf(model, sum)
+}
+
+/** Ids (results + inputs) in the last clip-state a transcript recorded; 0 without one. */
+export function clippedIdsFrom(transcript: string): number {
+  let n = 0
+  for (const line of transcript.split('\n')) {
+    if (!line.includes('"clip-state"')) continue
+    let e: { type?: unknown; resultIds?: unknown; inputFields?: unknown }
+    try {
+      e = JSON.parse(line)
+    } catch {
+      continue
+    }
+    if (e.type !== 'clip-state') continue
+    const results = Array.isArray(e.resultIds) ? e.resultIds.length : 0
+    const inputs = e.inputFields && typeof e.inputFields === 'object' ? Object.keys(e.inputFields).length : 0
+    n = results + inputs
+  }
+  return n
+}
+
+async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult> {
   const cwd = buildWorkspace()
   const corpus = corpusFrom(cwd)
   const turns = turnScript(corpus, args.perPhase)
@@ -272,25 +364,14 @@ async function runArm(arm: { label: string; path: string }, rep: number, args: A
     {
       cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        // Headless `-p` drains auto-backgrounded sub-agents non-deterministically;
-        // an orphaned one hides its tokens from the parent's usage.
-        CLAUDIN_DISABLE_BACKGROUND_TASKS: '1',
-        // Both arms without the server-side clear_tool_uses — the client
-        // policy is what is under test.
-        CLAUDIN_DISABLE_EXPERIMENTAL_BETAS: 'true',
-        // `--window` shrinks the context window both arms see (same env in
-        // both builds) so a 30-turn session crosses the relief trigger.
-        ...(args.window ? { CLAUDIN_AUTO_COMPACT_WINDOW: String(args.window) } : {}),
-      },
+      env: armProcessEnv(arm, args.window),
     },
   )
 
   const events: Record<string, unknown>[] = []
   const eventKind: Turn['kind'][] = []
   let activeKind: Turn['kind'] = 'grep'
-  const rows = new Map<string, TimelineRow>()
+  const rows = new Map<string, UsageRow>()
   const order: string[] = []
   let servedModel: string | null = null
   let costUsd: number | null = null
@@ -312,13 +393,16 @@ async function runArm(arm: { label: string; path: string }, rep: number, args: A
       const m = (v.message ?? {}) as Record<string, unknown>
       if (!servedModel && typeof m.model === 'string') servedModel = m.model
       const u = (m.usage ?? {}) as Record<string, number>
+      const split = ((m.usage ?? {}) as { cache_creation?: Record<string, number> }).cache_creation ?? {}
       const id = String(m.id ?? '')
       if (!id) return
-      const row: TimelineRow = {
+      const row: UsageRow = {
         in: u.input_tokens ?? 0,
         out: u.output_tokens ?? 0,
         cR: u.cache_read_input_tokens ?? 0,
         cW: u.cache_creation_input_tokens ?? 0,
+        cW5m: split.ephemeral_5m_input_tokens ?? 0,
+        cW1h: split.ephemeral_1h_input_tokens ?? 0,
       }
       const prev = rows.get(id)
       if (!prev) {
@@ -327,12 +411,9 @@ async function runArm(arm: { label: string; path: string }, rep: number, args: A
         return
       }
       // MAX per field: usage rows repeat per content block and output grows.
-      rows.set(id, {
-        in: Math.max(prev.in, row.in),
-        out: Math.max(prev.out, row.out),
-        cR: Math.max(prev.cR, row.cR),
-        cW: Math.max(prev.cW, row.cW),
-      })
+      const merged = { ...prev }
+      for (const k of USAGE_KEYS) merged[k] = Math.max(prev[k], row[k])
+      rows.set(id, merged)
     } else if (v.type === 'result') {
       if (typeof v.total_cost_usd === 'number') costUsd = v.total_cost_usd
       resolveTurn?.()
@@ -370,13 +451,14 @@ async function runArm(arm: { label: string; path: string }, rep: number, args: A
       break
     }
     turnsDone++
-    process.stderr.write(`\r${arm.label} rep ${rep}: turn ${turnsDone}/${turns.length} (${turn.kind})   `)
+    // Parallel arms would overwrite each other's progress line.
+    if (!args.parallel) process.stderr.write(`\r${arm.label} rep ${rep}: turn ${turnsDone}/${turns.length} (${turn.kind})   `)
   }
   child.stdin!.end()
   const exitCode = await Promise.race([exitPromise, new Promise<number>(r => setTimeout(() => r(-2), 15_000))])
   child.kill()
   const wallMs = performance.now() - t0
-  process.stderr.write('\n')
+  process.stderr.write(args.parallel ? `${arm.label} rep ${rep}: ${turnsDone}/${turns.length} turns\n` : '\n')
 
   const timeline = order.map(id => rows.get(id)!)
   let input = 0, output = 0, cacheRead = 0, cacheCreation = 0
@@ -447,6 +529,10 @@ async function runArm(arm: { label: string; path: string }, rep: number, args: A
   const verdict = verify(cwd, args.perPhase)
   if (!args.keep) rmSync(cwd, { recursive: true, force: true })
 
+  const sessionId = sessionIdFrom(events)
+  const transcript = sessionId ? transcriptPath(sessionId) : null
+  const clippedIds = transcript ? clippedIdsFrom(readFileSync(transcript, 'utf8')) : 0
+
   return {
     label: arm.label,
     bin: arm.path,
@@ -463,13 +549,14 @@ async function runArm(arm: { label: string; path: string }, rep: number, args: A
     peakContext,
     endContext,
     costUsd,
-    estCostUsd: estimateCost(servedModel ?? args.model, { input, output, cacheRead, cacheCreation }),
+    pricedUsd: pricedUsd(servedModel ?? args.model, timeline),
     model: servedModel,
     toolCalls: calls.length,
     toolMix,
     reads,
     rereads,
     editLookups,
+    clippedIds,
     verdict,
     timeline,
     workspace: args.keep ? cwd : '(removed)',
@@ -485,20 +572,39 @@ function fmt(n: number): string {
   return n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(Math.round(n))
 }
 
-function median(values: number[]): number {
-  const s = [...values].sort((a, b) => a - b)
-  return s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2
-}
-
 function printArm(a: ArmResult): void {
   const mix = Object.entries(a.toolMix).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k}:${v}`).join(' ')
   console.log(`  ${a.label} rep ${a.rep}  exit=${a.exitCode}  model=${a.model ?? '?'}  ${(a.wallMs / 1000).toFixed(0)}s`)
   console.log(`    turns ${a.turnsDone}/${a.turnsPlanned}  api calls ${a.apiCalls}  tool calls ${a.toolCalls}  [${mix}]`)
   console.log(`    in ${fmt(a.input)}  out ${fmt(a.output)}  cache read ${fmt(a.cacheRead)}  cache write ${fmt(a.cacheCreation)}  r:w ${a.rw === Infinity ? 'inf' : a.rw.toFixed(1)}:1`)
   console.log(`    prefix breaks ${a.prefixBreaks} (${fmt(a.breakTokens)} rewritten)  peak ctx ${fmt(a.peakContext)}  end ctx ${fmt(a.endContext)}`)
-  console.log(`    reads ${a.reads}  re-reads ${a.rereads}  lookups in edit turns ${a.editLookups}  edits landed ${a.verdict.landed}/${a.verdict.expected}${a.verdict.duplicated ? ` (${a.verdict.duplicated} duplicated)` : ''}`)
-  console.log(`    cost usd (CLI) ${a.costUsd === null ? 'n/a' : a.costUsd.toFixed(4)}  est ${a.estCostUsd.toFixed(4)}`)
+  console.log(`    reads ${a.reads}  re-reads ${a.rereads}  lookups in edit turns ${a.editLookups}  clipped ids ${a.clippedIds}  edits landed ${a.verdict.landed}/${a.verdict.expected}${a.verdict.duplicated ? ` (${a.verdict.duplicated} duplicated)` : ''}`)
+  console.log(`    cost usd priced ${a.pricedUsd.toFixed(4)}  (CLI ${a.costUsd === null ? 'n/a' : a.costUsd.toFixed(4)})`)
   if (a.apiCalls === 0 && a.stderrHead) console.log(`    STDERR: ${a.stderrHead}`)
+}
+
+/** Every arm against the first, median [min–max] with the range verdict once a rep repeats. */
+export function summaryTable(runs: readonly ArmResult[], labels: readonly string[]): string {
+  const of = (pick: (r: ArmResult) => number) => labels.map(l => runs.filter(r => r.label === l).map(pick))
+  const usd = (n: number) => `$${n.toFixed(3)}`
+  const int = (n: number) => String(Math.round(n))
+  const rows: ArmRow[] = [
+    ['cost, one price table', of(r => r.pricedUsd), usd],
+    ['cache write', of(r => r.cacheCreation), fmt],
+    ['cache read', of(r => r.cacheRead), fmt],
+    ['uncached input', of(r => r.input), fmt],
+    ['output', of(r => r.output), fmt],
+    ['api calls', of(r => r.apiCalls), int],
+    ['prefix breaks', of(r => r.prefixBreaks), int],
+    ['break tokens', of(r => r.breakTokens), fmt],
+    ['peak context', of(r => r.peakContext), fmt],
+    ['end context', of(r => r.endContext), fmt],
+    ['clipped ids', of(r => r.clippedIds), int],
+    ['re-reads', of(r => r.rereads), int],
+    ['edit-turn lookups', of(r => r.editLookups), int],
+    ['edits landed', of(r => r.verdict.landed), int],
+  ]
+  return armTable([...labels], rows, runs.length > labels.length)
 }
 
 function dryRun(args: Args): void {
@@ -532,11 +638,11 @@ async function main(): Promise<void> {
     dryRun(args)
     return
   }
-  if (!args.binA || !args.binB) {
-    console.error('need --bin-a=<label>:<path> and --bin-b=<label>:<path>')
+  if (args.arms.length < 2) {
+    console.error('need --bin-a=<label>:<path> and a second arm: --bin-b=<label>:<path> or --variant=<label>:K=V')
     process.exit(1)
   }
-  for (const b of [args.binA, args.binB]) {
+  for (const b of args.arms) {
     if (!existsSync(b.path)) {
       console.error(`${b.label}: ${b.path} not found`)
       process.exit(1)
@@ -545,36 +651,20 @@ async function main(): Promise<void> {
 
   const runs: ArmResult[] = []
   for (let rep = 1; rep <= args.reps; rep++) {
-    // Alternate: odd reps A first, even reps B first.
-    const orderArms = rep % 2 === 1 ? [args.binA, args.binB] : [args.binB, args.binA]
-    for (const arm of orderArms) {
-      const r = await runArm(arm, rep, args)
+    const ordered = armOrder(args.arms, rep)
+    const results: ArmResult[] = []
+    if (args.parallel) results.push(...(await Promise.all(ordered.map(arm => runArm(arm, rep, args)))))
+    else for (const arm of ordered) results.push(await runArm(arm, rep, args))
+    for (const r of results) {
       runs.push(r)
       printArm(r)
       if (r.model && !r.model.includes('sonnet-5')) console.log(`    ⚠ served model ${r.model} ≠ ${args.model}: do not compare cost across tiers`)
     }
   }
 
-  const byLabel = (label: string) => runs.filter(r => r.label === label)
-  const A = byLabel(args.binA.label)
-  const B = byLabel(args.binB.label)
-  const med = (rs: ArmResult[], k: keyof ArmResult) => median(rs.map(r => Number(r[k]) || 0))
-  console.log(`\n=== ${args.binA.label} vs ${args.binB.label}  (median of ${args.reps}, model ${args.model}, ${args.perPhase} turns per phase, window ${args.window ?? 'native'}) ===`)
-  const line = (name: string, k: keyof ArmResult, f: (n: number) => string = fmt) =>
-    console.log(`  ${name.padEnd(18)} ${f(med(A, k)).padStart(10)}  ${f(med(B, k)).padStart(10)}`)
-  console.log(`  ${''.padEnd(18)} ${args.binA.label.padStart(10)}  ${args.binB.label.padStart(10)}`)
-  line('cache write', 'cacheCreation')
-  line('cache read', 'cacheRead')
-  line('uncached input', 'input')
-  line('r:w', 'rw', n => `${n.toFixed(1)}:1`)
-  line('prefix breaks', 'prefixBreaks', String)
-  line('break tokens', 'breakTokens')
-  line('peak context', 'peakContext')
-  line('re-reads', 'rereads', String)
-  line('edit-turn lookups', 'editLookups', String)
-  console.log(`  ${'edits landed'.padEnd(18)} ${A.map(r => `${r.verdict.landed}/${r.verdict.expected}`).join(' ').padStart(10)}  ${B.map(r => `${r.verdict.landed}/${r.verdict.expected}`).join(' ').padStart(10)}`)
-  line('cost usd (CLI)', 'costUsd', n => `$${n.toFixed(3)}`)
-  line('est cost usd', 'estCostUsd', n => `$${n.toFixed(3)}`)
+  const labels = args.arms.map(a => a.label)
+  console.log(`\n=== ${labels.join(' vs ')}  (${args.reps} rep(s)${args.parallel ? ', parallel' : ''}, model ${args.model}, ${args.perPhase} turns per phase, window ${args.window ?? 'native'}) ===\n`)
+  console.log(summaryTable(runs, labels))
   if (args.reps < 3) console.log(`  ↑ ${args.reps} rep(s): directional only. Re-run with --reps=3 and compare RANGES, not medians.`)
 
   if (args.json) {
@@ -584,4 +674,4 @@ async function main(): Promise<void> {
   }
 }
 
-main()
+if (import.meta.main) await main()

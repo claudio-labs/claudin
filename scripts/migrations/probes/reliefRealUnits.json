@@ -17,8 +17,8 @@
     },
     {
       "name": "relief thinking: a first clip counts the thinking it drops",
-      "find": "    Math.max(1, decision.tokensToFree - thinkingDropped),\n",
-      "replace": "    Math.max(1, decision.tokensToFree),\n"
+      "find": "    Math.max(1, ask - thinkingDropped),\n",
+      "replace": "    Math.max(1, ask),\n"
     },
     {
       "name": "relief thinking: only on the thread's first clip",

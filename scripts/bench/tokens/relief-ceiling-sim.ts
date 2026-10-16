@@ -29,10 +29,18 @@
  *                      at --post-compact tokens (default 40k) and grows by the
  *                      recorded deltas from there; nothing older is clippable
  *
+ * Two more replay candidate selections the policy does not have (yet):
+ *   --clip-all         an event clips EVERY clearable block outside the last
+ *                      two calls, not just one band's worth: the rewrite
+ *                      starts at the oldest clipped block either way, so the
+ *                      extra clips shrink what is rewritten (2026-10-15)
+ *   --band=N           a fixed band instead of clamp(max(60k, 0.15·T), ≤0.3·T)
+ *
  * Run:
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26 --session=501d7261 --triggers=250000,300000,400000
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-10-02 --main --session=ed9c2e1c --triggers=735000 --min-event=band --starved-compact
+ *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-17 --main --triggers=735000 --min-event=band --starved-compact --clip-all
  *
  * Transcripts are DATA: only aggregates are printed.
  */
@@ -68,7 +76,7 @@ const CLEARABLE_INPUT: Record<string, readonly string[]> = {
   Agent: ['prompt'],
 }
 
-type Args = {
+export type Args = {
   since: number
   session: string | null
   triggers: number[]
@@ -76,13 +84,17 @@ type Args = {
   bandFloor: boolean
   starvedCompact: boolean
   postCompact: number
+  clipAll: boolean
+  band: number | null
 }
 
-function parseArgs(argv: readonly string[]): Args {
+export function parseArgs(argv: readonly string[]): Args {
   const get = (k: string) => argv.find(a => a.startsWith(`--${k}=`))?.slice(k.length + 3)
   const since = Date.parse(`${get('since') ?? '2026-09-26'}T00:00:00`)
   if (Number.isNaN(since)) throw new Error('--since=YYYY-MM-DD')
   const triggers = (get('triggers') ?? '200000,250000,300000,400000,500000').split(',').map(Number)
+  const band = get('band') === undefined ? null : Number(get('band'))
+  if (band !== null && !(band > 0)) throw new Error('--band=<tokens>')
   return {
     since,
     session: get('session') ?? null,
@@ -91,11 +103,13 @@ function parseArgs(argv: readonly string[]): Args {
     bandFloor: get('min-event') === 'band',
     starvedCompact: argv.includes('--starved-compact'),
     postCompact: Number(get('post-compact') ?? 40_000),
+    clipAll: argv.includes('--clip-all'),
+    band,
   }
 }
 
 type Block = { call: number; tokens: number }
-type Thread = { name: string; ctx: number[]; blocks: Block[] }
+export type Thread = { name: string; ctx: number[]; blocks: Block[] }
 
 function loadThread(path: string, main: boolean): Thread | null {
   const order: string[] = []
@@ -145,7 +159,7 @@ function loadThread(path: string, main: boolean): Thread | null {
   return { name, ctx: order.map(id => ctxById.get(id) ?? 0), blocks }
 }
 
-type Outcome = {
+export type Outcome = {
   events: number
   starved: number
   compactions: number
@@ -155,8 +169,8 @@ type Outcome = {
   reads: number
 }
 
-function simulate(t: Thread, trigger: number, args: Args): Outcome {
-  const band = Math.min(Math.max(BAND_MIN, trigger * BAND_TRIGGER_FRACTION), trigger * BAND_MAX_FRACTION)
+export function simulate(t: Thread, trigger: number, args: Args): Outcome {
+  const band = args.band ?? Math.min(Math.max(BAND_MIN, trigger * BAND_TRIGGER_FRACTION), trigger * BAND_MAX_FRACTION)
   const target = trigger - band
   const minEvent = args.bandFloor ? Math.max(MIN_EVENT_TOKENS, band) : MIN_EVENT_TOKENS
   const write = args.main ? WRITE_1H : WRITE_5M
@@ -173,7 +187,7 @@ function simulate(t: Thread, trigger: number, args: Args): Outcome {
       let got = 0
       const picked: number[] = []
       t.blocks.forEach((b, i) => {
-        if (got >= used - target || clipped.has(i) || b.call <= compactedThrough || b.call >= k - KEEP_RECENT_CALLS) return
+        if ((!args.clipAll && got >= used - target) || clipped.has(i) || b.call <= compactedThrough || b.call >= k - KEEP_RECENT_CALLS) return
         picked.push(i)
         got += b.tokens
       })
@@ -224,7 +238,8 @@ function main(): void {
   })
   console.log(
     `${args.main ? 'main' : 'sub-agent'} threads=${threads.length}  max ctx p50=${Math.round(median(threads.map(reach)) / 1000)}k  clearable share of the final context p50=${(100 * median(share)).toFixed(0)}%` +
-      `  min-event=${args.bandFloor ? 'band' : '4k'}${args.starvedCompact ? ` starved→compact@${args.postCompact / 1000}k` : ''}`,
+      `  min-event=${args.bandFloor ? 'band' : '4k'}${args.starvedCompact ? ` starved→compact@${args.postCompact / 1000}k` : ''}` +
+      `${args.clipAll ? '  clip-all' : ''}${args.band !== null ? `  band=${args.band / 1000}k` : ''}`,
   )
   console.log('trigger  threads-reached  events  starved  compactions  rewrite$  compact$   saved$    net$   net/reads')
   for (const trigger of args.triggers) {
@@ -248,4 +263,4 @@ function main(): void {
   }
 }
 
-main()
+if (import.meta.main) main()

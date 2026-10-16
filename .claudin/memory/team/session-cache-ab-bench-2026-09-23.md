@@ -1,6 +1,6 @@
 ---
 name: session-cache-ab-bench-2026-09-23
-description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms; 09-24 main at effort medium: +14% (overlap), first turn 17.3k vs 21.0k, gap = thinking + tool results; 10-09 Sonnet 5.5 baseline +17%, 0 breaks
+description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms; 09-24 main at effort medium: +14% (overlap), first turn 17.3k vs 21.0k, gap = thinking + tool results; 10-09 Sonnet 5.5 baseline +17%, 0 breaks; 10-15 Sonnet 5.5 rerun −18% SEPARATED (0 Read calls, resume write 7.2k → 737)
 type: project
 ---
 
@@ -241,3 +241,33 @@ only (3 a session) and misses the summarizer's.
   output, and on Opus nocap hit the read gate ([[request-count-levers-2026-09-24]]
   round 3). The lever it points at is to exempt pure file-read cats, up to a
   budget, from both cutters.
+
+**Sonnet 5.5 re-run (2026-10-15, run `-211421`: main @ 140cf15e = v1.1.44 vs
+Claude Code 2.1.301, same flags as 10-09; all 6 sessions 18/18 + one commit):**
+
+| median [min–max] | claude | claudindev |
+|---|---|---|
+| first-turn context | 23.6k | 16.4k (−30%, SEPARATED) |
+| turns before the first edit | 2 | 2 |
+| cache write | 43.0k | 33.7k [29.7k–42.6k] (−22%, SEPARATED) |
+| resume-turn cache write | 904 | 737 (overlap) |
+| output | 13.7k | 11.1k (−20%, SEPARATED) |
+| cache breaks / resume read-back | 0 / 100% | 0 / 100% |
+| cost (one price table) | $0.394 [0.383–0.410] | $0.323 [0.276–0.350] (−18%, SEPARATED) |
+
+- The +17% of 10-09 flipped. Claude Code stayed flat ($0.380 → $0.394), so
+  the move is claudindev's: 0 Read calls (the cats come back whole, 3 results
+  a session in `<bash-output-read>`), hence no "X was modified" reminders on
+  the resume turn (7.2k → 737) — the lever named above, now shipped
+  ([[bash-read-lane]]).
+- Cross-day comparison, but the control did not move. Claude Code added the AI
+  trailer 3/3, claudindev 0/3; `?? .claudin/` as before.
+
+**Guard for clip-all (same day, run `-231743` @ ebb13eec, N=5, arms claude,
+claudindev, `old` = `CLAUDIN_RELIEF_CLIP_ALL=0`, placebo; all 20 sessions
+18/18 + one commit, 0 breaks, resume 100%):** no clip-state in any run, so the
+relief clip never fires at ~44k on a 1M window. claudindev $0.343
+[0.318–0.352] overlaps `old` $0.314. The noise band of this run is
+claudindev against placebo, which is identical code: $0.343 vs $0.296. Against
+Claude Code ($0.416), the three claudin arms sit at −18% to −29%, all SEPARATED
+([[relief-clip-all]]).

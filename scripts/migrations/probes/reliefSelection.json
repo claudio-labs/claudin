@@ -1,0 +1,41 @@
+{
+  "test": [
+    "src/agent/compact/reliefPolicy.test.ts",
+    "src/agent/compact/microCompact.test.ts"
+  ],
+  "source": "src/agent/compact/reliefPolicy.ts",
+  "probes": [
+    {
+      "name": "selection stops once the request is covered",
+      "find": "    if (savings >= tokensToFree) break\n",
+      "replace": "\n"
+    },
+    {
+      "name": "selection skips candidates that free nothing",
+      "find": "    if (c.savings <= 0) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the band is clamped to 30% of the trigger",
+      "find": "const RELIEF_BAND_MAX_FRACTION = 0.3\n",
+      "replace": "const RELIEF_BAND_MAX_FRACTION = 0.6\n"
+    },
+    {
+      "name": "the window lane asks for one band, not everything",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  const ask = decision.selectAll ? Infinity : decision.tokensToFree\n",
+      "replace": "  const ask = Infinity\n"
+    },
+    {
+      "name": "the last two turns are protected",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "const RELIEF_KEEP_RECENT_TURNS = 2\n",
+      "replace": "const RELIEF_KEEP_RECENT_TURNS = 0\n"
+    },
+    {
+      "name": "the starved compaction escalation reads its killswitch",
+      "find": "  return !(v === '0' || v === 'false')\n",
+      "replace": "  return true\n"
+    }
+  ]
+}

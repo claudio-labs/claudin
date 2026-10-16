@@ -28,16 +28,30 @@
  *
  * Main-thread transcripts only, the bench's `-tmp-*` projects skipped.
  * Transcripts are DATA: only aggregates are printed.
+ *
+ * `--same-project` asks the other question (2026-10-15): what a new session
+ * would save if it read the first message's static reminders (CLAUDE.md,
+ * rules, memory indexes, the tool/agent/skill listings) that an earlier
+ * session of the SAME directory wrote. Today the per-session scratchpad line
+ * ends the system prompt, so every start rewrites them. A start counts when it
+ * wrote cache and another session in the same directory on the same model
+ * started within the hour; it saves min(written, --reminder-prefix) — an
+ * upper bound, since the cap is the reminders' size and memory edits between
+ * sessions are ignored. It measured 0.29% of spend and was not built.
  */
 import { readFileSync } from 'fs'
 import { basename } from 'path'
 import { pct, projectDirs, transcriptFiles, type Block } from './transcriptCorpus.js'
 
-const USAGE = 'usage: bun scripts/bench/tokens/cross-project-cache-estimate.ts --since=YYYY-MM-DD [--static-prefix=N] [--projects=<slug>]'
+const USAGE =
+  'usage: bun scripts/bench/tokens/cross-project-cache-estimate.ts --since=YYYY-MM-DD [--static-prefix=N] [--projects=<slug>] [--same-project [--reminder-prefix=N]]'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const BENCH_PROJECT_RE = /^-tmp-/
 const HOUR_MS = 60 * 60 * 1000
 const DEFAULT_STATIC_PREFIX = 14_000
+// Turn-1 writes on this repo, 2026-10-15: ~21.3k over the 12 latest sessions,
+// prompt, git status and date included — so the reminders are under this.
+const DEFAULT_REMINDER_PREFIX = 20_000
 const PRICE = { input: 1, read: 0.1, write1h: 2, write5m: 1.25, output: 5 }
 
 type Request = { at: number; cwd: string; model: string; input: number; read: number; write1h: number; write5m: number; output: number }
@@ -89,24 +103,47 @@ export function parseRequests(raw: string): Request[] {
 
 type Estimate = { starts: number; coldStarts: number; savedStarts: number; savedUnits: number; spendUnits: number }
 
+/** A session's starts: its first request, and the first after each hour-long gap. */
+function startsOf(reqs: readonly Request[]): Request[] {
+  return reqs.filter((r, i) => i === 0 || r.at - reqs[i - 1].at >= HOUR_MS)
+}
+
 export function estimate(sessions: readonly Request[][], staticPrefix: number): Estimate {
   const all = sessions.flat().sort((a, b) => a.at - b.at)
   const out: Estimate = { starts: 0, coldStarts: 0, savedStarts: 0, savedUnits: 0, spendUnits: 0 }
   for (const r of all) out.spendUnits += costOf(r)
   for (const reqs of sessions) {
-    reqs.forEach((r, i) => {
-      if (i > 0 && r.at - reqs[i - 1].at < HOUR_MS) return
+    for (const r of startsOf(reqs)) {
       out.starts++
       // It read the static prefix already (a same-directory session wrote it).
-      if (r.read >= staticPrefix) return
+      if (r.read >= staticPrefix) continue
       out.coldStarts++
       const other = all.some(o => o.model === r.model && o.cwd !== r.cwd && o.at < r.at && r.at - o.at < HOUR_MS)
-      if (!other) return
+      if (!other) continue
       const written = r.write1h + r.write5m
-      if (written <= 0) return
+      if (written <= 0) continue
       out.savedStarts++
       out.savedUnits += Math.min(written, staticPrefix) * (PRICE.write1h - PRICE.read)
-    })
+    }
+  }
+  return out
+}
+
+/** `--same-project`: starts that would read the reminders another start of their directory wrote. */
+export function estimateSameProject(sessions: readonly Request[][], reminderPrefix: number): Estimate {
+  const out: Estimate = { starts: 0, coldStarts: 0, savedStarts: 0, savedUnits: 0, spendUnits: 0 }
+  for (const r of sessions.flat()) out.spendUnits += costOf(r)
+  const starts = sessions.flatMap(startsOf)
+  for (const r of starts) {
+    out.starts++
+    const written = r.write1h + r.write5m
+    if (written <= 0) continue
+    out.coldStarts++
+    // Starts of one session sit an hour apart, so a hit is always another session.
+    const other = starts.some(o => o.model === r.model && o.cwd === r.cwd && o.at < r.at && r.at - o.at < HOUR_MS)
+    if (!other) continue
+    out.savedStarts++
+    out.savedUnits += Math.min(written, reminderPrefix) * (PRICE.write1h - PRICE.read)
   }
   return out
 }
@@ -115,11 +152,14 @@ function main(): void {
   const argv = process.argv.slice(2)
   const get = (k: string): string | null => argv.find(a => a.startsWith(`--${k}=`))?.slice(k.length + 3) ?? null
   const since = get('since') ?? ''
-  if (!DATE_RE.test(since) || argv.some(a => !['--since=', '--static-prefix=', '--projects='].some(p => a.startsWith(p)))) {
+  const known = ['--since=', '--static-prefix=', '--projects=', '--same-project', '--reminder-prefix=']
+  if (!DATE_RE.test(since) || argv.some(a => !known.some(p => a === p || (p.endsWith('=') && a.startsWith(p))))) {
     console.error(USAGE)
     process.exit(2)
   }
   const staticPrefix = Number(get('static-prefix') ?? DEFAULT_STATIC_PREFIX)
+  const reminderPrefix = Number(get('reminder-prefix') ?? DEFAULT_REMINDER_PREFIX)
+  const sameProject = argv.includes('--same-project')
   const sinceMs = Date.parse(`${since}T00:00:00`)
   const dirs = projectDirs(get('projects')).filter(d => !BENCH_PROJECT_RE.test(basename(d)))
   const sessions: Request[][] = []
@@ -132,6 +172,15 @@ function main(): void {
     }
     const reqs = parseRequests(raw).filter(r => r.at >= sinceMs)
     if (reqs.length > 0) sessions.push(reqs)
+  }
+  if (sameProject) {
+    const e = estimateSameProject(sessions, reminderPrefix)
+    console.log(`Same-project cache estimate since ${since}: ${sessions.length} main-thread sessions, reminder prefix ${reminderPrefix.toLocaleString('en-US')} tokens`)
+    console.log(`  starts (first request or after a 1h gap): ${e.starts}`)
+    console.log(`  starts that wrote cache: ${e.coldStarts}`)
+    console.log(`  of those, another session in the same directory on the same model started within 1h: ${e.savedStarts}`)
+    console.log(`  saving (upper bound): ${Math.round(e.savedUnits).toLocaleString('en-US')} units of ${Math.round(e.spendUnits).toLocaleString('en-US')} spent = ${pct(e.savedUnits, e.spendUnits)}`)
+    return
   }
   const e = estimate(sessions, staticPrefix)
   console.log(`Cross-project cache estimate since ${since}: ${sessions.length} main-thread sessions, static prefix ${staticPrefix.toLocaleString('en-US')} tokens`)
