@@ -19,6 +19,14 @@ import { writtenPaths } from 'src/tools/shared/writtenPaths.js'
 const TOOL_USE_MARK = '"tool_use"'
 
 /**
+ * Each root as a transcript line spells it: JSON escapes a backslash (every
+ * separator of a Windows path), so the raw root alone never matches there.
+ */
+function rootNeedles(roots: readonly string[]): string[] {
+  return [...new Set(roots.flatMap(root => [root, JSON.stringify(root).slice(1, -1)]))]
+}
+
+/**
  * The memory files the assistant turns of `lines` wrote, in order, once
  * each, indexes left out. Only a line carrying a tool use and one of `roots`
  * is parsed — a transcript runs to megabytes, and nearly every line is
@@ -30,8 +38,9 @@ export function memoryWritesFromTranscript(
   roots: readonly string[],
 ): string[] {
   const written: string[] = []
+  const needles = rootNeedles(roots)
   for (const line of lines) {
-    if (!line.includes(TOOL_USE_MARK) || !roots.some(root => line.includes(root))) continue
+    if (!line.includes(TOOL_USE_MARK) || !needles.some(needle => line.includes(needle))) continue
     let event: { type?: unknown; cwd?: unknown; message?: { content?: unknown } }
     try {
       event = JSON.parse(line)
@@ -58,9 +67,10 @@ export async function readMemoryWrites(
   roots: readonly string[],
 ): Promise<string[]> {
   const lines: string[] = []
+  const needles = rootNeedles(roots)
   const reader = createInterface({ input: createReadStream(transcriptPath, 'utf8'), crlfDelay: Infinity })
   for await (const line of reader) {
-    if (line.includes(TOOL_USE_MARK) && roots.some(root => line.includes(root))) lines.push(line)
+    if (line.includes(TOOL_USE_MARK) && needles.some(needle => line.includes(needle))) lines.push(line)
   }
   return memoryWritesFromTranscript(lines, cwd, roots)
 }
