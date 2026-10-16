@@ -1,5 +1,5 @@
 export const CODEX_OAUTH_ISSUER = 'https://auth.openai.com'
-export const CODEX_REFRESH_URL = `${CODEX_OAUTH_ISSUER}/oauth/token`
+const CODEX_REFRESH_URL = `${CODEX_OAUTH_ISSUER}/oauth/token`
 export const DEFAULT_CODEX_OAUTH_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 export const DEFAULT_CODEX_OAUTH_CALLBACK_PORT = 1455
 export const CODEX_OAUTH_SCOPE =
@@ -39,7 +39,7 @@ export function getCodexOAuthCallbackPort(
   return DEFAULT_CODEX_OAUTH_CALLBACK_PORT
 }
 
-export function decodeJwtPayload(
+function decodeJwtPayload(
   token: string,
 ): Record<string, unknown> | undefined {
   const parts = token.split('.')
@@ -56,6 +56,16 @@ export function decodeJwtPayload(
   } catch {
     return undefined
   }
+}
+
+export function parseJwtExpiryMs(token: string | undefined): number | undefined {
+  if (!token) return undefined
+  const payload = decodeJwtPayload(token)
+  const exp = payload?.exp
+  if (typeof exp === 'number' && Number.isFinite(exp)) {
+    return exp * 1000
+  }
+  return undefined
 }
 
 export function parseChatgptAccountId(
@@ -147,4 +157,74 @@ export async function exchangeCodexIdTokenForApiKey(
   }
 
   return apiKey
+}
+
+export type CodexTokenRefreshResponse = {
+  access_token: string
+  refresh_token?: string
+  id_token?: string
+}
+
+function getRefreshErrorMessage(
+  status: number,
+  bodyText: string,
+): string {
+  if (!bodyText.trim()) {
+    return `Codex token refresh failed with status ${status}.`
+  }
+
+  try {
+    const parsed = JSON.parse(bodyText) as Record<string, unknown>
+    const nestedError =
+      parsed.error && typeof parsed.error === 'object'
+        ? (parsed.error as Record<string, unknown>)
+        : undefined
+    const code = asTrimmedString(nestedError?.code ?? parsed.code)
+    const message =
+      asTrimmedString(nestedError?.message ?? parsed.error_description) ??
+      bodyText.trim()
+    return code
+      ? `Codex token refresh failed (${code}): ${message}`
+      : `Codex token refresh failed with status ${status}: ${message}`
+  } catch {
+    return `Codex token refresh failed with status ${status}: ${bodyText.trim()}`
+  }
+}
+
+export async function requestCodexTokenRefresh(
+  refreshToken: string,
+): Promise<CodexTokenRefreshResponse> {
+  const body = new URLSearchParams({
+    client_id: getCodexOAuthClientId(),
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  })
+
+  const response = await fetch(CODEX_REFRESH_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+    signal: AbortSignal.timeout(15_000),
+  })
+
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => '')
+    throw new Error(getRefreshErrorMessage(response.status, bodyText))
+  }
+
+  const payload = (await response.json()) as Record<string, unknown>
+  const accessToken = asTrimmedString(payload.access_token)
+  if (!accessToken) {
+    throw new Error(
+      'Codex token refresh succeeded without a new access token.',
+    )
+  }
+
+  return {
+    access_token: accessToken,
+    refresh_token: asTrimmedString(payload.refresh_token),
+    id_token: asTrimmedString(payload.id_token),
+  }
 }

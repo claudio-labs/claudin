@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
@@ -13,6 +16,7 @@ import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetu
 import { parseCustomHeaders } from 'src/providers/ui/ProviderManager.js'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import { getDefaultMainLoopModel } from 'src/providers/model/model.js'
+import { DEFAULT_CODEX_BASE_URL } from 'src/providers/presets/providerConfig.js'
 
 // Snapshot the real providerDiscovery module so the per-test mock can keep its
 // pure helpers (rankOllamaModels / recommendOllamaModel — used by the Ollama
@@ -34,6 +38,7 @@ const ORIGINAL_ENV = {
   CLAUDIN_USE_GITHUB: process.env.CLAUDIN_USE_GITHUB,
   GITHUB_TOKEN: process.env.GITHUB_TOKEN,
   GH_TOKEN: process.env.GH_TOKEN,
+  CODEX_HOME: process.env.CODEX_HOME,
 }
 
 // The afterEach only runs between tests, so clear a leak that is already here
@@ -1433,6 +1438,222 @@ test('ProviderManager resolves Codex OAuth state from async storage without sync
   expect(output).toContain('Log out Codex OAuth')
   expect(codexSyncRead).not.toHaveBeenCalled()
   expect(codexAsyncRead).toHaveBeenCalled()
+})
+
+// Points CODEX_HOME at a temp dir holding a Codex CLI ChatGPT login (or none),
+// so the setup screen reads a real file instead of the developer's own.
+function useCodexHome(options: { withLogin: boolean }): {
+  authPath: string
+  cleanup: () => void
+} {
+  const dir = mkdtempSync(join(tmpdir(), 'claudin-pm-codex-home-'))
+  const authPath = join(dir, 'auth.json')
+  if (options.withLogin) {
+    writeFileSync(
+      authPath,
+      JSON.stringify({
+        auth_mode: 'chatgpt',
+        tokens: {
+          id_token: 'id-cli',
+          access_token: 'access-cli',
+          refresh_token: 'refresh-cli',
+          account_id: 'acct_cli',
+        },
+      }),
+      'utf8',
+    )
+  }
+  process.env.CODEX_HOME = dir
+  return { authPath, cleanup: () => rmSync(dir, { force: true, recursive: true }) }
+}
+
+async function openCodexOAuthSetup(mounted: {
+  stdin: PassThrough
+  getOutput: () => string
+}): Promise<void> {
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Provider manager') && frame.includes('Add provider'),
+  )
+  mounted.stdin.write('\r')
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose provider preset'),
+  )
+  await navigateToPreset(mounted.stdin, 'Codex OAuth')
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Codex OAuth')
+  mounted.stdin.write('\r')
+}
+
+function noBrowserFlow() {
+  return mock(() => ({
+    state: 'waiting' as const,
+    authUrl: 'https://auth.openai.com/oauth/authorize',
+    browserOpened: true,
+  }))
+}
+
+test('ProviderManager links an existing Codex CLI login without opening the browser', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+  const codexHome = useCodexHome({ withLogin: true })
+
+  const addProviderProfile = mock(
+    (payload: Record<string, unknown>, options?: { makeActive?: boolean }) => ({
+      id: 'provider_codex_cli',
+      ...payload,
+      options,
+    }),
+  )
+  const useCodexOAuthFlow = noBrowserFlow()
+  mockProviderManagerDependencies({
+    addProviderProfile: addProviderProfile as unknown as (...args: never[]) => unknown,
+    useCodexOAuthFlow,
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  try {
+    await openCodexOAuthSetup(mounted)
+    await waitForFrameOutput(
+      mounted.getOutput,
+      frame => frame.includes('Found a Codex CLI login'),
+    )
+    await pressUntilFocused(mounted.stdin, mounted.getOutput, 'k', 'Use Codex CLI login')
+    mounted.stdin.write('\r')
+
+    await waitForCondition(() => addProviderProfile.mock.calls.length > 0)
+    expect(addProviderProfile.mock.calls[0]?.[0]).toMatchObject({
+      baseUrl: DEFAULT_CODEX_BASE_URL,
+      apiKey: '',
+      extras: { codexAuthPath: codexHome.authPath },
+    })
+    expect(addProviderProfile.mock.calls[0]?.[1]).toEqual({ makeActive: false })
+    expect(useCodexOAuthFlow).not.toHaveBeenCalled()
+
+    await waitForFrameOutput(
+      mounted.getOutput,
+      frame => frame.includes('Codex CLI login linked'),
+    )
+  } finally {
+    await mounted.dispose()
+    codexHome.cleanup()
+  }
+})
+
+test('ProviderManager re-linking a Codex CLI login updates the linked profile instead of adding one', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+  const codexHome = useCodexHome({ withLogin: true })
+
+  const linkedProfile = {
+    id: 'provider_codex_linked',
+    provider: 'openai',
+    name: 'Codex OAuth',
+    baseUrl: DEFAULT_CODEX_BASE_URL,
+    model: 'codexplan',
+    extras: { codexAuthPath: codexHome.authPath },
+  }
+  const addProviderProfile = mock(() => null)
+  const updateProviderProfile = mock(
+    (id: unknown, payload: unknown) => ({ id, ...(payload as object) }),
+  )
+  mockProviderManagerDependencies({
+    addProviderProfile: addProviderProfile as unknown as (...args: never[]) => unknown,
+    updateProviderProfile,
+    getProviderProfiles: () => [linkedProfile],
+    useCodexOAuthFlow: noBrowserFlow(),
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  try {
+    await openCodexOAuthSetup(mounted)
+    await waitForFrameOutput(
+      mounted.getOutput,
+      frame => frame.includes('Found a Codex CLI login'),
+    )
+    await pressUntilFocused(mounted.stdin, mounted.getOutput, 'k', 'Use Codex CLI login')
+    mounted.stdin.write('\r')
+
+    await waitForCondition(() => updateProviderProfile.mock.calls.length > 0)
+    expect(updateProviderProfile.mock.calls[0]?.[0]).toBe('provider_codex_linked')
+    expect(addProviderProfile).not.toHaveBeenCalled()
+  } finally {
+    await mounted.dispose()
+    codexHome.cleanup()
+  }
+})
+
+test('ProviderManager Codex OAuth still offers the browser next to a Codex CLI login', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+  const codexHome = useCodexHome({ withLogin: true })
+
+  const useCodexOAuthFlow = noBrowserFlow()
+  mockProviderManagerDependencies({ useCodexOAuthFlow })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  try {
+    await openCodexOAuthSetup(mounted)
+    await waitForFrameOutput(
+      mounted.getOutput,
+      frame => frame.includes('Found a Codex CLI login'),
+    )
+    expect(useCodexOAuthFlow).not.toHaveBeenCalled()
+    await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Sign in with browser')
+    mounted.stdin.write('\r')
+
+    await waitForFrameOutput(
+      mounted.getOutput,
+      frame => frame.includes('Browser opened'),
+    )
+    expect(useCodexOAuthFlow).toHaveBeenCalled()
+  } finally {
+    await mounted.dispose()
+    codexHome.cleanup()
+  }
+})
+
+test('ProviderManager Codex OAuth goes straight to the browser without a Codex CLI login', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+  const codexHome = useCodexHome({ withLogin: false })
+
+  const useCodexOAuthFlow = noBrowserFlow()
+  mockProviderManagerDependencies({ useCodexOAuthFlow })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  try {
+    await openCodexOAuthSetup(mounted)
+    const frame = await waitForFrameOutput(
+      mounted.getOutput,
+      output => output.includes('Browser opened'),
+    )
+    expect(frame).not.toContain('Found a Codex CLI login')
+    expect(useCodexOAuthFlow).toHaveBeenCalled()
+  } finally {
+    await mounted.dispose()
+    codexHome.cleanup()
+  }
 })
 
 test('ProviderManager hides Codex OAuth setup in bare mode', async () => {

@@ -1,5 +1,8 @@
 import type { ProviderProfile } from 'src/platform/config/config.js'
-import { DEFAULT_XAI_BASE_URL } from 'src/providers/presets/providerConfig.js'
+import {
+  DEFAULT_CODEX_BASE_URL,
+  DEFAULT_XAI_BASE_URL,
+} from 'src/providers/presets/providerConfig.js'
 import type {
   AtomicChatReadiness,
   OllamaGenerationReadiness,
@@ -61,6 +64,24 @@ export function isCodexOAuthProfile(
   profileId?: string,
 ): boolean {
   return Boolean(profile && profileId && profile.id === profileId)
+}
+
+/**
+ * Locate a Codex profile linked to a Codex CLI auth.json. Such a profile keeps
+ * no secure-storage credentials, so no stored profileId points at it — this
+ * signature is what lets a second link (or a browser login) update it instead
+ * of appending a duplicate.
+ */
+export function findCodexCliLinkedProfile(
+  profiles: ProviderProfile[],
+): ProviderProfile | undefined {
+  return profiles.find(
+    profile =>
+      profile.provider === 'openai' &&
+      profile.baseUrl === DEFAULT_CODEX_BASE_URL &&
+      !profile.apiKey &&
+      Boolean(profile.extras?.codexAuthPath),
+  )
 }
 
 /**
