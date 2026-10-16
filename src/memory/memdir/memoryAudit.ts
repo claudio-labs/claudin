@@ -12,7 +12,7 @@
  * it is handed; readMemoryFiles is the thin I/O shell.
  */
 import { readdir, readFile } from 'fs/promises'
-import { basename, join } from 'path'
+import { basename, join, relative } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryFrontmatterFields.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
@@ -75,14 +75,21 @@ export function auditFails(audit: MemoryAudit): boolean {
 }
 
 export type MemoryAuditDeps = {
-  /** Every `.md` under `root`, relative to it; [] when it does not exist. */
+  /** Every `.md` FILE under `root`, relative to it; [] when it does not exist. */
   listMarkdown(root: string, recursive: boolean): Promise<string[]>
   read(path: string): Promise<string>
 }
 
+/**
+ * Regular files only: a directory named `x.md` or a symlink — dangling, or
+ * pointing at content that is not what the repository commits — has nothing
+ * to scan, and reading one threw out of the audit.
+ */
 async function listMarkdown(root: string, recursive: boolean): Promise<string[]> {
   try {
-    return (await readdir(root, { recursive })).filter(name => name.endsWith('.md'))
+    return (await readdir(root, { recursive, withFileTypes: true }))
+      .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+      .map(entry => relative(root, join(entry.parentPath, entry.name)))
   } catch (e) {
     if (isENOENT(e)) return []
     throw e
