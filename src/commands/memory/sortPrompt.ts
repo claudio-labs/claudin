@@ -26,7 +26,9 @@ const KB = 1024
  * human veto per file; keep the instructions on `git mv`, never `mv`. What is
  * NOT prompted: the frontmatter keys added to a moved file and the index
  * edits, which go through the memory carve-out (internalPaths.ts) like any
- * memory write. The prompt says so, and asks for them in the report.
+ * memory write. The `mkdir` of a new category prompts too: a shell write into
+ * the team dir never rides the carve-out (checkShellEditableInternalPath). The
+ * prompt says so, and asks for the unprompted writes in the report.
  *
  * With the global dir on it also promotes what is about the user from the
  * private dir to the global one — the migration for memories saved before
@@ -79,7 +81,7 @@ For each file that moves:
 
 Do not rewrite the body. Do not rename the file. Do not merge, split or delete anything.
 
-The user approves each \`git mv\`; nothing else here asks them. The frontmatter keys of steps 3 and 4 and the index edit of Step 4 are written without a prompt, so the report lists every one of them.
+The user approves each \`git mv\`, and the \`mkdir\` of a category the first time it is created; nothing else here asks them. The frontmatter keys of steps 3 and 4 and the index edit of Step 4 are written without a prompt, so the report lists every one of them.
 
 ## Step 4 — Update the index (surgical)
 

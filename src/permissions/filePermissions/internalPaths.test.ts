@@ -20,6 +20,7 @@ import { getBundledSkillsRoot } from 'src/skills/bundledSkillsRoot.js'
 import {
   checkEditableInternalPath,
   checkReadableInternalPath,
+  checkShellEditableInternalPath,
   getClaudeSkillScope,
   isClaudeConfigFilePath,
   isClaudeSettingsPath,
@@ -87,6 +88,18 @@ describe('auto-memory carve-outs', () => {
   test('a team memory file rides the same carve-out', () => {
     const file = join(memDir, 'team', 'bugs', 'x.md')
     expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('allow')
+  })
+
+  test('a shell write keeps every carve-out but team memory', () => {
+    const team = join(memDir, 'team', 'bugs', 'x.md')
+    expect(checkShellEditableInternalPath(team).behavior).toBe('passthrough')
+    for (const file of [
+      join(memDir, 'feedback-x.md'),
+      join(getGlobalMemPath(), 'user-language.md'),
+      join(getPlansDirectory(), 'some-plan.md'),
+    ]) {
+      expect([file, checkShellEditableInternalPath(file).behavior]).toEqual([file, 'allow'])
+    }
   })
 
   test('a sibling directory sharing the prefix is not memory', () => {
@@ -271,7 +284,6 @@ describe('auto-memory carve-outs', () => {
       const cases: [string, string][] = [
         [join(getSessionMemoryDir(), 'summary.md'), 'Session memory files are allowed for reading'],
         [join(getProjectDir(getCwd()), 'session.jsonl'), 'Project directory files are allowed for reading'],
-        [join(getToolResultsDir(), 'out.txt'), 'Project directory files are allowed for reading'],
         [join(getScratchpadDir(), 'notes.txt'), 'Scratchpad files for current session are allowed for reading'],
         [join(getProjectTempDir(), 'other-session', 'x.txt'), 'Project temp directory files are allowed for reading'],
         [join(getCwd(), '.claudin', 'agent-memory', 'x.md'), 'Agent memory files are allowed for reading'],
@@ -282,6 +294,14 @@ describe('auto-memory carve-outs', () => {
       for (const [file, reason] of cases) {
         expect([file, reasonOf(checkReadableInternalPath(file, { file_path: file }))]).toEqual([file, reason])
       }
+    })
+
+    test('a persisted tool result is readable', () => {
+      // Its dir sits under the ORIGINAL cwd's project dir, the project-dir
+      // branch under the current one: which reason fires depends on whether an
+      // earlier suite moved the cwd, so only the verdict is pinned.
+      const file = join(getToolResultsDir(), 'out.txt')
+      expect(checkReadableInternalPath(file, { file_path: file }).behavior).toBe('allow')
     })
 
     test('the bare tasks and teams dirs are readable, a sibling sharing the prefix is not', () => {

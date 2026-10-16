@@ -15,9 +15,9 @@ import {
 } from 'src/shared/fs/fsOperations.js'
 import { containsPathTraversal } from 'src/shared/fs/path.js'
 import {
-  checkEditableInternalPath,
   checkPathSafetyForAutoEdit,
   checkReadableInternalPath,
+  checkShellEditableInternalPath,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
 } from 'src/permissions/filePermissions.js'
@@ -84,7 +84,7 @@ function isPathAllowed(
   // and internal editable paths live under ~/.claudin/ — matching the ordering in
   // checkWritePermissionForTool (filesystem.ts step 1.5)
   if (operationType !== 'read') {
-    const internalEditResult = checkEditableInternalPath(resolvedPath, {})
+    const internalEditResult = checkShellEditableInternalPath(resolvedPath)
     if (internalEditResult.behavior === 'allow') {
       return {
         allowed: true,
