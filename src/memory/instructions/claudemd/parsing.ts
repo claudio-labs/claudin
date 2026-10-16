@@ -1,7 +1,7 @@
 import { Lexer } from 'marked'
 import { extname } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { truncateEntrypointContent } from 'src/memory/memdir/memdir.js'
+import { fitEntrypointContent } from 'src/memory/memdir/memdir.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
@@ -108,14 +108,17 @@ function parseMemoryFileContent(
       ? extractIncludePathsFromTokens(tokens, includeBasePath)
       : []
 
-  // Truncate MEMORY.md entrypoints to the line AND byte caps — the index
-  // only: a memory a `paths:` match attaches shares its type, not its caps
+  // Fit MEMORY.md entrypoints to the line AND byte caps — the index only: a
+  // memory a `paths:` match attaches shares its type, not its caps
   let finalContent = strippedContent
+  let shortenedEntryCount = 0
   if (isMemoryIndex({ type, path: filePath })) {
-    finalContent = truncateEntrypointContent(strippedContent).content
+    const fit = fitEntrypointContent(strippedContent)
+    finalContent = fit.content
+    shortenedEntryCount = fit.shortenedEntryCount
   }
 
-  // Covers frontmatter strip, HTML comment strip, and MEMORY.md truncation
+  // Covers frontmatter strip, HTML comment strip, and MEMORY.md fitting
   const contentDiffersFromDisk = finalContent !== rawContent
   return {
     info: {
@@ -125,6 +128,7 @@ function parseMemoryFileContent(
       globs: paths,
       contentDiffersFromDisk,
       rawContent: contentDiffersFromDisk ? rawContent : undefined,
+      ...(shortenedEntryCount > 0 ? { shortenedEntryCount } : {}),
     },
     includePaths,
   }

@@ -80,5 +80,12 @@ jobs:
       - name: Smoke check
         run: bun run smoke
 
+      # Team memory is git-tracked, and the file tools' secret guard only sees
+      # what they write: this is the backstop for everything else (a human, a
+      # shell, another agent). The same `claudin memory audit` any repo with a
+      # team dir can run; it needs the bundle the smoke check just built.
+      - name: Audit team memory for secrets
+        run: bun run verify:team-memory
+
       - name: Run tests
         run: bun test

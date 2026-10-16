@@ -3,13 +3,15 @@ import {
   globalMemoryOffReason,
   isAutoMemoryEnabled,
 } from 'src/memory/memdir/paths.js'
-import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import { getMemoryDirs, type MemoryDir } from 'src/memory/memdir/memoryDirs.js'
+import { auditMemoryDirs, type MemoryAudit } from 'src/memory/memdir/memoryAudit.js'
 import {
   MEMORY_SCOPE_SPECS,
   MEMORY_SCOPES,
   type MemoryScope,
   withoutTrailingSep,
 } from 'src/memory/memdir/memoryScopes.js'
+import { logError } from 'src/shared/log.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import { buildMemorySortPrompt } from 'src/commands/memory/sortPrompt.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
@@ -81,6 +83,9 @@ export function memoryScopeOffMessage(scope: MemoryScope): string {
  * via metaMessages and lets the main conversation do the work. The Bash
  * permission prompt on each `rm` is the human gate; the merged file's edit
  * and the index edits go through the memory carve-out without a prompt.
+ * The memory audit runs first, and what it finds (an expired memory, a
+ * secret-shaped team file) rides in the prompt as findings to report; an
+ * audit that fails leaves them out rather than the tidy.
  * Returns null because no JSX is rendered — the same pattern as /goal set.
  *
  * Latent trap: the REPL's immediate-command dispatcher (src/agent/repl/REPL.tsx)
@@ -88,17 +93,26 @@ export function memoryScopeOffMessage(scope: MemoryScope): string {
  * query. Unreachable today (`/memory` is not `immediate: true`), but if that
  * ever changes, tidy would print "Running memory tidy…" and silently no-op.
  */
-export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
+export async function runMemoryTidy(
+  onDone: LocalJSXCommandOnDone,
+  audit: (dirs: readonly MemoryDir[]) => Promise<MemoryAudit> = auditMemoryDirs,
+): Promise<null> {
   const dirs = getMemoryDirs()
   if (dirs.length === 0) {
     onDone(`Memory tidy unavailable: ${AUTO_MEMORY_OFF}.`, { display: 'system' })
     return null
   }
+  let findings: MemoryAudit['findings'] = []
+  try {
+    findings = (await audit(dirs)).findings
+  } catch (error) {
+    logError(error)
+  }
 
   onDone('Running memory tidy — merging duplicate memories…', {
     display: 'system',
     shouldQuery: true,
-    metaMessages: [buildMemoryTidyPrompt(dirs)],
+    metaMessages: [buildMemoryTidyPrompt(dirs, findings)],
   })
   return null
 }

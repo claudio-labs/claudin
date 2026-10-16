@@ -14,6 +14,9 @@ export type MemoryFileInfo = {
   // Read, and Edit/Patch take it as a read (readBeforeEditMessages.ts).
   contentDiffersFromDisk?: boolean
   rawContent?: string
+  // A MEMORY.md index only: entries that entered context without their hook
+  // because the index is over a cap (fitEntrypointContent).
+  shortenedEntryCount?: number
 }
 
 export type MarkdownToken = {

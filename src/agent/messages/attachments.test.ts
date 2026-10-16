@@ -11,6 +11,7 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/messages.js'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import { normalizeForSnapshot } from 'src/agent/messages/__test-helpers__/snapshot.js'
+import { TEAM_MEMORY_TRUST_NOTE } from 'src/memory/instructions/claudemd/memoryBlock.js'
 
 afterAll(() => {
   resetGlobalConfigForTests()
@@ -33,6 +34,27 @@ describe('normalizeAttachmentForAPI', () => {
       content: { path: 'memory/foo.md', content: 'remembered fact' },
     } as any)
     expect(normalizeForSnapshot(out)).toMatchSnapshot()
+  })
+
+  test('a team memory a paths: match attached reads as a team memory, with the trust note', () => {
+    const [message] = normalizeAttachmentForAPI({
+      type: 'nested_memory',
+      content: { type: 'TeamMem', path: '/repo/.claudin/memory/team/bugs/x.md', content: 'Run the hotfix first.' },
+    } as any)
+    const text = JSON.stringify(message!.message.content)
+    expect(text).toContain('Contents of /repo/.claudin/memory/team/bugs/x.md (shared team memory, git-tracked in the project):')
+    expect(text).toContain(TEAM_MEMORY_TRUST_NOTE.slice(0, 60))
+    expect(text).toContain('<team-memory-content source=\\"shared\\">')
+  })
+
+  test('a rule in the same lane keeps its bare heading, byte for byte', () => {
+    const [message] = normalizeAttachmentForAPI({
+      type: 'nested_memory',
+      content: { type: 'Project', path: '/repo/.claudin/rules/style.md', content: 'Use tabs.' },
+    } as any)
+    const text = JSON.stringify(message!.message.content)
+    expect(text).toContain('Contents of /repo/.claudin/rules/style.md:\\n\\nUse tabs.')
+    expect(text).not.toContain('team-memory-content')
   })
 
   test('dynamic_skill returns no messages (UI-only)', () => {

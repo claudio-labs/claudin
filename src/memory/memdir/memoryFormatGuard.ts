@@ -15,11 +15,13 @@ import {
 } from 'src/memory/memdir/memoryDirs.js'
 import {
   ENTRYPOINT_NAME,
+  INDEX_LINK_TARGET_RE,
   MEMORY_SCOPE_SPECS,
   type MemoryScope,
 } from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { parseExpires } from 'src/memory/memdir/memoryExpires.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
 import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPaths.js'
 
@@ -180,6 +182,10 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs, bef
   ) {
     problems.push(`a ${file.scope} memory takes no \`paths:\` — it is not tied to the files of one project`)
   }
+  const expires = parseExpires(frontmatter.expires)
+  if (expires.kind === 'invalid') {
+    problems.push(`\`expires: ${expires.raw}\` is not a date — write the last day it holds as YYYY-MM-DD, or leave the key out`)
+  }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]
     if (!isFilled(value)) {
@@ -230,9 +236,6 @@ export function checkMemoryFileFormatIn(
   return `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs)}`
 }
 
-/** Markdown link targets: `](target)`, up to the first space or `)`. */
-const LINK_TARGET_RE = /\]\(\s*<?([^)\s>]+)/g
-
 /**
  * What the tool calls of one response write into a memory index, by the
  * index's absolute path: a Write's content, an Edit's new_string, the lines a
@@ -279,7 +282,7 @@ export function indexTextFromResponse(
 
 /** Whether `index` links to `abs`, resolving each link target against the index's directory. */
 function indexLinks(index: string, root: string, abs: string): boolean {
-  for (const match of index.matchAll(LINK_TARGET_RE)) {
+  for (const match of index.matchAll(INDEX_LINK_TARGET_RE)) {
     const target = match[1]!.split('#')[0]!
     if (target && resolve(root, target) === abs) return true
   }

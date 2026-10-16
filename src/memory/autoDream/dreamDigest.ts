@@ -12,10 +12,17 @@
  *     session, as getSessionFilesLite derives them from the head and tail of
  *     each transcript — `firstPrompt` is the user's own prompt text, clipped
  *     to `promptChars`; the transcript body, where a paste may hold a secret,
- *     is never handed over;
+ *     is never handed over — only the memory files the session wrote, read
+ *     from its tool calls (memoryWrites.ts), and, apart, the memory files
+ *     that changed in the period without a session to show for it;
  *   - the commit subjects since then, filtered to `feat`, `refactor` and
  *     breaking (`!`) — the `type(scope)!:` convention git-conventions.md
  *     already enforces is the impact classifier the team maintains for free.
+ *
+ * Beside them, from one scan of the memory dirs (memoryScan.ts, uncapped),
+ * the memories changed in the period with no session to show for it, and
+ * those past their `expires:` date, with what the dream does with one:
+ * re-verify it.
  *
  * buildDreamDigest is pure over injected inputs and capped so the digest stays
  * a few KB; collectDreamDigest is the I/O half, and each source that fails to
@@ -25,7 +32,12 @@
 import { readdir, readFile, stat } from 'fs/promises'
 import { join } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
+import { readMemoryWrites } from 'src/memory/autoDream/memoryWrites.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+import { type MemoryHeader, scanMemoryFiles } from 'src/memory/memdir/memoryScan.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { relativeIfInside } from 'src/shared/fs/path.js'
 import { logError } from 'src/shared/log.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import {
@@ -42,13 +54,22 @@ type DigestSession = {
   firstPrompt: string
   customTitle?: string
   summary?: string
+  /** The memory files the session's main agent wrote (absolute). */
+  memoryWrites?: string[]
 }
+
+type DigestExpired = { path: string; expires: string }
 
 export type DreamDigestInputs = {
   sinceMs: number
   plans: DigestPlan[]
   sessions: DigestSession[]
   commitSubjects: string[]
+  expired?: DigestExpired[]
+  /** Memory files modified in the period (absolute), whoever wrote them. */
+  changedMemories?: string[]
+  /** What a memory path is shown relative to (relativeIfInside). */
+  cwd: string
 }
 
 export type DreamDigestCaps = {
@@ -57,6 +78,10 @@ export type DreamDigestCaps = {
   sessionsChars: number
   promptChars: number
   commitsChars: number
+  expiredChars: number
+  /** Memory files named per session before the rest are counted. */
+  writesPerSession: number
+  changedChars: number
 }
 
 export const DEFAULT_DIGEST_CAPS: DreamDigestCaps = {
@@ -65,6 +90,9 @@ export const DEFAULT_DIGEST_CAPS: DreamDigestCaps = {
   sessionsChars: 2_000,
   promptChars: 200,
   commitsChars: 1_500,
+  expiredChars: 1_000,
+  writesPerSession: 5,
+  changedChars: 800,
 }
 
 const SECTION_HEADING_RE = /^## +(.+?)\s*$/
@@ -173,12 +201,16 @@ function renderPlan(plan: DigestPlan, caps: DreamDigestCaps): string {
   return parts.join('\n')
 }
 
-function renderSession(session: DigestSession, caps: DreamDigestCaps): string {
+function renderSession(session: DigestSession, caps: DreamDigestCaps, cwd: string): string {
   const title = session.customTitle ? `${clip(session.customTitle, 80)} — ` : ''
   const summary = session.summary
     ? ` · summary: ${clip(session.summary, caps.promptChars)}`
     : ''
-  return `- ${session.sessionId.slice(0, 8)} · ${title}"${clip(session.firstPrompt, caps.promptChars)}"${summary}`
+  const writes = session.memoryWrites ?? []
+  const named = writes.slice(0, caps.writesPerSession).map(p => relativeIfInside(p, cwd))
+  const more = writes.length > named.length ? ` and ${writes.length - named.length} more` : ''
+  const written = named.length > 0 ? `\n  memories written: ${named.join(', ')}${more}` : ''
+  return `- ${session.sessionId.slice(0, 8)} · ${title}"${clip(session.firstPrompt, caps.promptChars)}"${summary}${written}`
 }
 
 /** Fills `lines` from `items` until the character cap; returns how many were left out. */
@@ -225,10 +257,21 @@ export function buildDreamDigest(
     .filter(s => s.mtimeMs > inputs.sinceMs)
     .sort((a, b) => b.mtimeMs - a.mtimeMs)
   if (sessions.length > 0) {
-    const rendered = sessions.map(s => renderSession(s, caps))
+    const rendered = sessions.map(s => renderSession(s, caps, inputs.cwd))
     const { kept, left } = takeUnderCap(rendered, caps.sessionsChars)
     out.push('', `### Session prompts (${sessions.length})`, ...kept)
     if (left > 0) out.push(`…and ${left} more sessions.`)
+  }
+
+  const attributed = new Set(sessions.flatMap(s => s.memoryWrites ?? []))
+  const unattributed = (inputs.changedMemories ?? []).filter(p => !attributed.has(p))
+  if (unattributed.length > 0) {
+    const { kept, left } = takeUnderCap(
+      unattributed.map(p => `- ${relativeIfInside(p, inputs.cwd)}`),
+      caps.changedChars,
+    )
+    out.push('', `### Memories also changed in this period (${unattributed.length}) — by a background pass or by hand, no session to show for it`, ...kept)
+    if (left > 0) out.push(`…and ${left} more.`)
   }
 
   const commits = inputs.commitSubjects.filter(isImpactfulCommitSubject)
@@ -241,8 +284,24 @@ export function buildDreamDigest(
     if (left > 0) out.push(`…and ${left} more.`)
   }
 
-  if (plans.length === 0 && sessions.length === 0 && commits.length === 0) {
+  if (plans.length === 0 && sessions.length === 0 && commits.length === 0 && unattributed.length === 0) {
     out.push('', 'Nothing was modified in this period beyond the current session.')
+  }
+
+  const expired = inputs.expired ?? []
+  if (expired.length > 0) {
+    const { kept, left } = takeUnderCap(
+      expired.map(e => `- \`${e.path}\` — expired ${e.expires}`),
+      caps.expiredChars,
+    )
+    out.push(
+      '',
+      `## Memories past their \`expires:\` date (${expired.length})`,
+      '',
+      'Re-verify each against what you see now. Still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone is never a reason to delete.',
+      ...kept,
+    )
+    if (left > 0) out.push(`…and ${left} more.`)
   }
 
   return out.join('\n')
@@ -252,6 +311,8 @@ export type DreamDigestDeps = {
   listPlans(sinceMs: number): Promise<DigestPlan[]>
   listSessions(sessionIds: readonly string[]): Promise<DigestSession[]>
   commitSubjectsSince(sinceMs: number): Promise<string[]>
+  /** Every memory file's header, across the memory dirs. */
+  listMemoryHeaders(): Promise<MemoryHeader[]>
 }
 
 async function listPlansOnDisk(sinceMs: number): Promise<DigestPlan[]> {
@@ -281,13 +342,22 @@ async function listSessionsFromIndex(
     log => log.sessionId !== undefined && wanted.has(log.sessionId),
   )
   const { logs } = await enrichLogs(lite, 0, lite.length)
-  return logs.map(log => ({
-    sessionId: log.sessionId ?? '',
-    mtimeMs: log.modified.getTime(),
-    firstPrompt: log.firstPrompt,
-    customTitle: log.customTitle,
-    summary: log.summary,
-  }))
+  const dirs = getMemoryDirs()
+  return Promise.all(
+    logs.map(async log => ({
+      sessionId: log.sessionId ?? '',
+      mtimeMs: log.modified.getTime(),
+      firstPrompt: log.firstPrompt,
+      customTitle: log.customTitle,
+      summary: log.summary,
+      memoryWrites: log.fullPath
+        ? await readMemoryWrites(log.fullPath, getOriginalCwd(), dirs).catch(error => {
+            logError(error)
+            return []
+          })
+        : [],
+    })),
+  )
 }
 
 async function commitSubjectsFromGit(sinceMs: number): Promise<string[]> {
@@ -298,10 +368,22 @@ async function commitSubjectsFromGit(sinceMs: number): Promise<string[]> {
   return stdout.split('\n').filter(line => line.trim().length > 0)
 }
 
+async function memoryHeadersOnDisk(): Promise<MemoryHeader[]> {
+  const signal = new AbortController().signal
+  const headers: MemoryHeader[] = []
+  for (const dir of getMemoryDirs()) {
+    headers.push(
+      ...(await scanMemoryFiles(dir.root, signal, { recursive: dir.scope === 'team', limit: Infinity })),
+    )
+  }
+  return headers
+}
+
 const defaultDreamDigestDeps: DreamDigestDeps = {
   listPlans: listPlansOnDisk,
   listSessions: listSessionsFromIndex,
   commitSubjectsSince: commitSubjectsFromGit,
+  listMemoryHeaders: memoryHeadersOnDisk,
 }
 
 /**
@@ -322,10 +404,16 @@ export async function collectDreamDigest(
   sessionIds: readonly string[],
   deps: DreamDigestDeps = defaultDreamDigestDeps,
 ): Promise<string> {
-  const [plans, sessions, commitSubjects] = await Promise.all([
+  const [plans, sessions, commitSubjects, headers] = await Promise.all([
     orEmpty(deps.listPlans(sinceMs)),
     orEmpty(deps.listSessions(sessionIds)),
     orEmpty(deps.commitSubjectsSince(sinceMs)),
+    orEmpty(deps.listMemoryHeaders()),
   ])
-  return buildDreamDigest({ sinceMs, plans, sessions, commitSubjects })
+  const today = localDay()
+  const expired = headers.flatMap(h =>
+    h.expires !== null && isExpired(h.expires, today) ? [{ path: h.filePath, expires: h.expires }] : [],
+  )
+  const changedMemories = headers.filter(h => h.mtimeMs > sinceMs).map(h => h.filePath)
+  return buildDreamDigest({ sinceMs, plans, sessions, commitSubjects, expired, changedMemories, cwd: getOriginalCwd() })
 }

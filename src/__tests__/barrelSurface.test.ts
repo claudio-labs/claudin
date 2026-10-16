@@ -58,6 +58,7 @@ const SURFACES: ReadonlyArray<{
       'checkPathSafetyForAutoEdit',
       'checkReadPermissionForTool',
       'checkReadableInternalPath',
+      'checkShellEditableInternalPath',
       'checkWritePermissionForTool',
       'generateSuggestions',
       'getFileReadIgnorePatterns',

@@ -12,9 +12,9 @@ import { containsPathTraversal } from 'src/shared/fs/path.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
 import {
-  checkEditableInternalPath,
   checkPathSafetyForAutoEdit,
   checkReadableInternalPath,
+  checkShellEditableInternalPath,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
   pathInWorkingPath,
@@ -168,7 +168,7 @@ export function isPathAllowed(
   // and internal editable paths live under ~/.claudin/ — matching the ordering in
   // checkWritePermissionForTool (filesystem.ts step 1.5)
   if (operationType !== 'read') {
-    const internalEditResult = checkEditableInternalPath(resolvedPath, {})
+    const internalEditResult = checkShellEditableInternalPath(resolvedPath)
     if (internalEditResult.behavior === 'allow') {
       return {
         allowed: true,

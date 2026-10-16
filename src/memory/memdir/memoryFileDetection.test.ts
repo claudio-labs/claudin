@@ -127,9 +127,11 @@ describe('memory file detection', () => {
     expect(memoryScopeOf(join(memDir, 'team', 'bugs', 'x.md'))).toBe('team')
     expect(isAnyMemFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(true)
     expect(isAnyMemFile(join(root, 'project', 'src', 'index.ts'))).toBe(false)
-    // FileReadTool records the mtime the note is computed from through it.
+    // FileReadTool records the mtime and expires: date the note is computed from through it.
     const dispatch = readFileSync(new URL('../../tools/FileReadTool/readDispatch.ts', import.meta.url), 'utf8')
-    expect(dispatch).toContain('if (memoryScopeOf(fullFilePath) !== null) {\n    markMemoryFileMtime(data, mtimeMs)')
+    expect(dispatch).toContain(
+      'if (memoryScopeOf(fullFilePath) !== null) {\n    markMemoryFileRead(data, { mtimeMs, expires: offset === 1 ? expiresOf(content) : null })',
+    )
   })
 
   describe('with the global dir moved outside the config home', () => {

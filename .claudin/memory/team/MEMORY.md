@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
+- [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, team trust note, `memory audit`, expires:, digest provenance
 - [Git tool calls collapse like Bash (10-15)](decisions/git-tool-collapse.md) — SHELL_LANES row; a failed batch leaves the group
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline; routing its report rejected
@@ -63,8 +64,8 @@
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run in isolation first
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
 - [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked
-- FIXED: [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema freeze](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md)
-- FIXED: [WaitFor params](bugs/waitfor-drops-optional-params.md) · [resume re-wrote the cache](bugs/resume-rewrites-cache-prefix.md) — 40%→100% read-back
+- [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — link into team or TEAM/ on mac/win gets the private carve-out; not fixed
+- FIXED: [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
@@ -103,8 +104,7 @@
 - [tsc --noEmit reached ZERO (08-13)](typecheck-backlog-shape.md) — the ratchet and its absolute-path fingerprint trap
 - Removed: [upsell commands 09-15](upsell-commands-missing-login.md) · [growthbook.ts 09-25](growthbook-source-dead-stub-is-real.md) — dead but tested
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
-- [Token census 09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) — thinking stays resident
-- [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
+- Token censuses: [09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) · [09-09..10 — transcripts miss rule injections, ~19%](token-census-2026-09-10-hidden-injections.md)
 - [TTL-expiry check 10-12](ttl-expiry-check-2026-10-12.md) — main is 1h; clip→next-turn floor unexplained
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail is the new leak; sub-agent expiries gone; post-280 clips ~$54
 - Weekly censuses: [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) — rewrites 39% of cost
@@ -173,10 +173,8 @@
 - [Node engine floor 22.12.0](node-engine-floor-22.md) — commander 15 is ESM-only; breaks Node 20
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
 - Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
-- [Dependabot 10-06 — shell-quote 1.11 Bash bypass](dependabot-bumps-2026-10-06-audited.md) — fixed; Foundry default retires 11-30
-- [Dependabot #296 (10-13)](dependabot-bumps-2026-10-13-audited.md) — shell-quote 1.12 hid &> >| <> redirect targets; restored
-- [v8cache GC blocked process exit — fixed](startup-v8cache-gc-blocked-exit.md) — detached child + daily stamp
-- [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
+- shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
+- Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — the Gitea + tea flow is gone
 - [main's GitHub ruleset](main-branch-ruleset-protection.md) — admin bypass; an empty include made it inert

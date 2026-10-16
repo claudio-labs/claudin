@@ -1,3 +1,5 @@
+import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+
 /**
  * Days elapsed since mtime.  Floor-rounded — 0 for today, 1 for
  * yesterday, 2+ for older.  Negative inputs (future mtime, clock skew)
@@ -26,13 +28,24 @@ function memoryFreshnessText(mtimeMs: number): string {
   )
 }
 
+/** What a Read of a memory file knows of it: its mtime, and its `expires:` date when the read saw the frontmatter. */
+export type MemoryReadFacts = { mtimeMs: number; expires: string | null }
+
 /**
- * Per-memory staleness note wrapped in <system-reminder> tags.
- * Returns '' for memories ≤ 1 day old.  Appended to FileReadTool output
- * (resultContent.ts) when the file read lives in a memory directory.
+ * The note a Read of a memory file carries: the age caveat, and — past its
+ * `expires:` date — a call to re-verify, in one <system-reminder>. '' when
+ * neither applies. Prefixed to FileReadTool output (resultContent.ts) when
+ * the file read lives in a memory directory, and rendered once, when the
+ * tool result is mapped, so the day it compares against is the day of the
+ * Read and history stays byte-stable.
  */
-export function memoryFreshnessNote(mtimeMs: number): string {
-  const text = memoryFreshnessText(mtimeMs)
-  if (!text) return ''
-  return `<system-reminder>${text}</system-reminder>\n`
+export function memoryReadNote(facts: MemoryReadFacts, today: string = localDay()): string {
+  const parts = [memoryFreshnessText(facts.mtimeMs)]
+  if (facts.expires !== null && isExpired(facts.expires, today)) {
+    parts.push(
+      `Its \`expires:\` date, ${facts.expires}, has passed: re-verify it before relying on it, then move the date or remove the memory.`,
+    )
+  }
+  const text = parts.filter(Boolean).join(' ')
+  return text ? `<system-reminder>${text}</system-reminder>\n` : ''
 }

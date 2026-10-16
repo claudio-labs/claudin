@@ -70,11 +70,21 @@ describe('formatMemoryIndexCounts', () => {
 
   test('a cut index reports what arrived out of what the file holds', () => {
     // The whole point of the truncated form: without it the cap fires in
-    // silence, because the warning truncateEntrypointContent appends goes to
+    // silence, because the warning fitEntrypointContent appends goes to
     // the model and claude_md_delta renders null.
     expect(formatMemoryIndexCounts([index('auto', 16), index('team', 96, 121)])).toBe(
       'private memories index (16 entries), team memories index (96 of 121 entries)',
     )
+  })
+
+  test('entries shortened to fit are named beside the count, and a summary without the field says nothing', () => {
+    expect(formatMemoryIndexCounts([{ ...index('team', 178), shortenedEntryCount: 31 }])).toBe(
+      'team memories index (178 entries, 31 shortened)',
+    )
+    expect(formatMemoryIndexCounts([{ ...index('team', 150, 160), shortenedEntryCount: 150 }])).toBe(
+      'team memories index (150 of 160 entries, 150 shortened)',
+    )
+    expect(formatMemoryIndexCounts([{ ...index('team', 9), shortenedEntryCount: 0 }])).toBe('team memories index (9 entries)')
   })
 
   test('an empty index still reports its zero rather than vanishing', () => {

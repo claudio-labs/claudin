@@ -26,6 +26,16 @@ test('scanMemoryFiles finds .md files at shallow depth', async () => {
   expect(result[0].filename).toBe('note.md')
 })
 
+test('limit caps the newest-first list, and Infinity lifts the cap', async () => {
+  tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
+  for (let i = 0; i < 5; i++) {
+    await writeFile(join(tempDir, `m${i}.md`), `---\nname: m${i}\ntype: user\n---\nContent`)
+  }
+  const signal = new AbortController().signal
+  expect(await scanMemoryFiles(tempDir, signal, { limit: 2 })).toHaveLength(2)
+  expect(await scanMemoryFiles(tempDir, signal, { limit: Infinity })).toHaveLength(5)
+})
+
 test('scanMemoryFiles ignores MEMORY.md', async () => {
   tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
   await writeFile(join(tempDir, 'MEMORY.md'), '# index')
@@ -68,4 +78,14 @@ test('recursive: false reads only the directory own files, not a nested team dir
   expect(own.map(r => r.filename)).toEqual(['mine.md'])
   const all = await scanMemoryFiles(tempDir, new AbortController().signal)
   expect(all.map(r => r.filename).sort()).toEqual(['mine.md', join('team', 'theirs.md')])
+})
+
+test('a valid expires: date rides the header; an absent or malformed one is null', async () => {
+  tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
+  await writeFile(join(tempDir, 'a.md'), '---\ntype: project\nexpires: 2026-09-30\n---\n')
+  await writeFile(join(tempDir, 'b.md'), '---\ntype: project\n---\n')
+  await writeFile(join(tempDir, 'c.md'), '---\ntype: project\nexpires: soon\n---\n')
+  const headers = await scanMemoryFiles(tempDir, new AbortController().signal)
+  const byName = Object.fromEntries(headers.map(h => [h.filename, h.expires]))
+  expect(byName).toEqual({ 'a.md': '2026-09-30', 'b.md': null, 'c.md': null })
 })

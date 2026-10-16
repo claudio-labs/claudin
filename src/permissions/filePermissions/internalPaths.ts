@@ -296,6 +296,23 @@ export function checkEditableInternalPath(
 }
 
 /**
+ * checkEditableInternalPath for a shell write (Bash, PowerShell): the same
+ * carve-outs minus team memory. A file tool writing there runs
+ * checkTeamMemSecrets on the content first; a shell command carries no
+ * content the guard can see, so `echo <key> > team/x.md` would reach a
+ * git-tracked file unscanned. A shell write into the team dir goes through
+ * the normal permission flow instead — `.claudin/` asks.
+ */
+export function checkShellEditableInternalPath(
+  absolutePath: string,
+): PermissionResult {
+  if (memoryScopeForPermission(normalize(absolutePath)) === 'team') {
+    return { behavior: 'passthrough', message: '' }
+  }
+  return checkEditableInternalPath(absolutePath, {})
+}
+
+/**
  * Check if a path is an internal path that can be read without permission.
  * Returns a PermissionResult - either 'allow' if matched, or 'passthrough' to continue checking.
  */

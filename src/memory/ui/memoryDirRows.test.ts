@@ -31,6 +31,7 @@ function header(overrides: Partial<MemoryHeader> = {}): MemoryHeader {
     mtimeMs: NOW - DAY,
     description: 'a description',
     type: 'project',
+    expires: null,
     ...overrides,
   }
 }
@@ -70,6 +71,20 @@ describe('buildMemoryDirRows', () => {
       INDEX_PATH,
       join(PRIVATE_DIR, 'mine.md'),
     ])
+  })
+
+  test('a memory past its expires: date says so after its age; one through it, or without one, does not', () => {
+    const rows = buildMemoryDirRows(
+      [
+        header({ filename: 'oncall.md', expires: '2026-09-30' }),
+        header({ filename: 'freeze.md', expires: '2026-10-16' }),
+        header({ filename: 'plain.md' }),
+      ],
+      { indexPath: INDEX_PATH, indexExists: false, today: '2026-10-16' },
+    )
+    expect(rows[0]!.label).toEndWith('  expired 2026-09-30')
+    expect(rows[1]!.label).not.toContain('expired')
+    expect(rows[2]!.label).not.toContain('expired')
   })
 
   test('includeNested keeps them when the caller wants a flat view', () => {

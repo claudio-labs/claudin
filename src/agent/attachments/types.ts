@@ -55,8 +55,10 @@ export type CompactFileReferenceAttachment = {
 /**
  * One MEMORY.md index as it entered context. `entryCount` counts the pointer
  * lines the model actually received; `totalEntryCount` counts what the file
- * holds on disk. They differ only when truncateEntrypointContent cut the
- * index at its line or byte cap — a failure that is otherwise silent.
+ * holds on disk. They differ only when fitEntrypointContent cut the index's
+ * tail at its line or byte cap — a failure that is otherwise silent.
+ * `shortenedEntryCount` counts the entries that arrived without their hook
+ * so that the rest could arrive at all (absent in older transcripts).
  */
 export type MemoryIndexSummary = {
   path: string
@@ -66,6 +68,7 @@ export type MemoryIndexSummary = {
   kind: MemoryScope | 'auto'
   entryCount: number
   totalEntryCount: number
+  shortenedEntryCount?: number
 }
 
 export type PDFReferenceAttachment = {

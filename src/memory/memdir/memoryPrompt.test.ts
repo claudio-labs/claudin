@@ -236,6 +236,12 @@ describe('extraction prompts', () => {
     expect(prompt).toContain(typesSectionCombined(false).join('\n'))
   })
 
+  test('the extraction prompt asks for expires: on a fact with a natural end, and says it is never deleted for it', () => {
+    const prompt = buildExtractCombinedPrompt(12, '')
+    expect(prompt).toContain('gets `expires: YYYY-MM-DD` in its frontmatter, the last day it holds')
+    expect(prompt).toContain('flagged for re-verification, never deleted')
+  })
+
   test('with the global dir it takes the global scopes and says where each memory goes', () => {
     const GLOBAL = '/home/u/.claudin/memory/'
     const prompt = buildExtractCombinedPrompt(12, '', undefined, GLOBAL)

@@ -73,7 +73,7 @@ Look for new information worth persisting. Sources in rough priority order:
 
 1. **Decision sources** — the digest under "Additional context" lists the plans modified since the last consolidation (their \`## Context\`, their \`## Agreed Decisions\`, and a blast radius counted from their tasks), the prompts of the sessions in the period, and the impactful commits (\`feat\`, \`refactor\`, breaking). That is where product and architecture decisions surface. Read a plan in full only when its digest entry suggests a decision that clears the bar; a one-file plan or a routine prompt almost never does.
 2. **Daily logs** (\`logs/YYYY/MM/YYYY-MM-DD.md\`) if present — these are the append-only stream
-3. **Existing memories that drifted** — facts that contradict something you see in the codebase now
+3. **Existing memories that drifted** — facts that contradict something you see in the codebase now. The digest names the memories each session wrote: when one looks drifted, that session's transcript (the \`.jsonl\` in \`${transcriptDir}\` whose name starts with its id) holds why it was written — grep it first
 4. **Transcript search** — if you need specific context (e.g., "what was the error message from yesterday's build failure?"), grep the JSONL transcripts for narrow terms:
    \`grep -rn "<narrow term>" ${transcriptDir}/ --include="*.jsonl" | tail -50\`
 
@@ -88,6 +88,7 @@ Use the memory file format and type conventions from your system prompt's \`# Me
 Focus on:
 - Merging new signal into existing topic files rather than creating near-duplicates
 - Converting relative dates ("yesterday", "last week") to absolute dates so they remain interpretable after time passes
+- Giving a fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — \`expires: YYYY-MM-DD\` in its frontmatter, the last day it holds
 - Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source
 ${teamSection}
 ## Phase 4 — Prune and index

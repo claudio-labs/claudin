@@ -62,6 +62,7 @@ Commands:
   doctor                                            Check the health of your Claudin auto-updater. Note: The workspace trust dialog is skipped and stdio servers from .mcp.json are spawned for health checks. Only use this command in directories you trust.
   install [options] [target]                        Install Claudin native build. Use [target] to specify version (stable, latest, or specific version)
   mcp                                               Configure and manage MCP servers
+  memory                                            Inspect the memory directories
   plugin|plugins                                    Manage Claudin plugins
   setup-token                                       Set up a long-lived authentication token (requires Claude subscription)
   update|upgrade                                    Check for updates and install if available

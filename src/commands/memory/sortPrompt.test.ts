@@ -102,7 +102,9 @@ describe('buildMemorySortPrompt — promoting to the global dir', () => {
 
   test('the team part says the same of its own unprompted writes', () => {
     const prompt = buildMemorySortPrompt(TEAM)
-    expect(prompt).toContain('The user approves each `git mv`; nothing else here asks them.')
+    expect(prompt).toContain(
+      'The user approves each `git mv`, and the `mkdir` of a category the first time it is created; nothing else here asks them.',
+    )
     expect(prompt).toContain('**Written without a prompt**: every frontmatter key you added')
   })
 

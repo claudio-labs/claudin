@@ -49,6 +49,9 @@ export const DISPATCH_TABLE: readonly SubcommandSpec[] = [
   ] },
   { name: 'setup-token', source: 'src/platform/main/commands/setupToken.ts' },
   { name: 'agents', source: 'src/platform/main/commands/agents.ts' },
+  { name: 'memory', source: 'src/platform/main/commands/memory.ts', children: [
+    { name: 'audit', source: 'src/platform/main/commands/memory.ts' },
+  ] },
   { name: 'auto-mode', featureGate: 'TRANSCRIPT_CLASSIFIER', source: 'src/platform/main/commands/autoMode.ts', children: [
     { name: 'defaults', source: 'src/platform/main/commands/autoMode.ts' },
     { name: 'config', source: 'src/platform/main/commands/autoMode.ts' },

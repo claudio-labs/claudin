@@ -50,6 +50,7 @@
     "codegen:reasoning-catalog": "bun run scripts/codegen/reasoning-catalog.ts",
     "verify:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts --check",
     "verify:rules": "bun run scripts/verify/rules-check.ts",
+    "verify:team-memory": "node dist/cli.mjs memory audit",
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
     "smoke:hello": "bun run scripts/verify/smoke-hello.ts",
     "verify:privacy": "bun run scripts/verify/verify-no-phone-home.ts",

@@ -15,6 +15,7 @@ import { safeParseJSON } from 'src/shared/data/json.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parseCellId } from 'src/tools/shared/notebook.js'
 import { checkWritePermissionForTool } from 'src/permissions/filePermissions.js'
+import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import {
@@ -179,7 +180,7 @@ export const NotebookEditTool = buildTool({
   renderToolUseErrorMessage,
   renderToolResultMessage,
   async validateInput(
-    { notebook_path, cell_type, cell_id, edit_mode = 'replace' },
+    { notebook_path, new_source, cell_type, cell_id, edit_mode = 'replace' },
     toolUseContext: ToolUseContext,
   ) {
     const fullPath = isAbsolute(notebook_path)
@@ -198,6 +199,13 @@ export const NotebookEditTool = buildTool({
           'File must be a Jupyter notebook (.ipynb file). For editing other file types, use the FileEdit tool.',
         errorCode: 2,
       }
+    }
+
+    // A notebook in the team dir rides the same no-prompt memory carve-out
+    // as Write/Edit/Patch, so it gets their secret guard (teamMemSecretGuard.ts).
+    const secretError = checkTeamMemSecrets(fullPath, new_source)
+    if (secretError) {
+      return { result: false, message: secretError, errorCode: 0 }
     }
 
     if (

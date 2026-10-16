@@ -4,9 +4,41 @@ import {
   MAX_ENTRYPOINT_LINES,
 } from 'src/memory/memdir/memdir.js'
 import { type MemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
+import type { MemoryAudit } from 'src/memory/memdir/memoryAudit.js'
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 
 const KB = 1024
+
+/**
+ * What the memory audit found, for the model to report: never to fix here,
+ * since tidy only merges duplicates. Empty without findings, so the prompt
+ * is then exactly what it was.
+ */
+function findingsSection(findings: MemoryAudit['findings']): { section: string; report: string } {
+  if (findings.length === 0) return { section: '', report: '' }
+  const lines = findings.map(f =>
+    f.kind === 'expired'
+      ? `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
+      : `- Secret-shaped content (${f.labels.join(', ')}): \`${f.path}\``,
+  )
+  const secrets = findings.some(f => f.kind === 'secret')
+  const expired = findings.some(f => f.kind === 'expired')
+  return {
+    section: `
+## Found before you started
+
+The memory audit found these without any judgment — what to do about them is the user's call, not this tidy's:
+
+${lines.join('\n')}
+
+Do not delete, rewrite or re-date any of them here.${secrets ? ' A secret-shaped file: never repeat the matched text, in the report or anywhere else.' : ''}
+`,
+    report: [
+      ...(secrets ? ['- **Secret-shaped (team)**: each file above, first in the report — the user removes the secret and rotates it if it was ever committed'] : []),
+      ...(expired ? ['- **Expired, for review**: each memory past its `expires:` date, untouched — the user re-verifies it, then moves the date or removes it'] : []),
+    ].join('\n'),
+  }
+}
 
 /**
  * Builds the prompt for `/memory tidy` — a manual, conservative pass over the
@@ -21,9 +53,10 @@ const KB = 1024
  * `dirs` is the session's memory directories (memoryDirs.ts); the global one,
  * while it is on, is tidied by the same rules and never merged across.
  */
-export function buildMemoryTidyPrompt(dirs: readonly MemoryDir[]): string {
+export function buildMemoryTidyPrompt(dirs: readonly MemoryDir[], findings: MemoryAudit['findings'] = []): string {
   const { private: root, team, global } = promptRoots(dirs)
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
+  const found = findingsSection(findings)
 
   const teamSection = `
 ## Team memory
@@ -56,7 +89,7 @@ You are tidying the memory directory — a **conservative** pass that merges dup
 
 Memory directory: \`${root}\`
 ${DIR_EXISTS_GUIDANCE}
-${teamSection}${globalSection}
+${teamSection}${globalSection}${found.section}
 ---
 
 ## Step 1 — Orient
@@ -109,6 +142,6 @@ Finish with a brief summary:
 - **Ambiguous pairs left alone**: candidates you were not confident about, so the user can decide by hand
 - **Conflicts noted**: factual contradictions you kept as union
 - **Stale or broken observed**: outdated content, malformed frontmatter, or anything else you noticed but deliberately did NOT fix (tidy only merges duplicates)
-
+${found.report ? `${found.report}\n` : ''}
 If nothing was duplicated, say so — a tidy run that changes nothing is a correct outcome.`
 }

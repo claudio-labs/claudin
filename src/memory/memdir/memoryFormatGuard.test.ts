@@ -103,6 +103,15 @@ describe('checkMemoryFileFormatIn — what it refuses', () => {
     expect(check('x.md', '---\n---\nbody\n')).toContain('it has no frontmatter')
   })
 
+  test('an expires: that is not a calendar day is refused; a real one, anywhere, is not', () => {
+    expect(check('x.md', fromTemplate('project', ['expires: next friday']))).toContain(
+      '`expires: next friday` is not a date — write the last day it holds as YYYY-MM-DD, or leave the key out',
+    )
+    expect(check('x.md', fromTemplate('project', ['expires: 2026-02-30']))).toContain('`expires: 2026-02-30` is not a date')
+    expect(check('x.md', fromTemplate('project', ['expires: 2026-11-30']))).toBeNull()
+    expect(check('team/x.md', fromTemplate('project', ['expires: 2026-11-30']))).toBeNull()
+  })
+
   test('a missing name, description or type names the key', () => {
     const full = fromTemplate('feedback')
     expect(check('x.md', full.replace(/^name: .*\n/m, ''))).toContain('it lacks `name:`')

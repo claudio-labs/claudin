@@ -39,6 +39,7 @@ import {
   processMemoryFile,
   type MemoryFileInfo,
 } from 'src/memory/instructions/claudemd.js'
+import { TEAM_MEMORY_TRUST_NOTE } from 'src/memory/instructions/claudemd/memoryBlock.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
 let root: string
@@ -353,7 +354,7 @@ describe('getExternalClaudeMdIncludes', () => {
 })
 
 describe('getClaudeMds — the team index', () => {
-  test('is described as shared team memory and fenced as shared content', () => {
+  test('is described as shared team memory, framed as a teammate note and fenced as shared content', () => {
     const team: MemoryFileInfo = {
       path: '/repo/.claudin/memory/team/MEMORY.md',
       type: 'TeamMem',
@@ -362,7 +363,7 @@ describe('getClaudeMds — the team index', () => {
     const out = getClaudeMds([team])
 
     expect(out).toContain(
-      'Contents of /repo/.claudin/memory/team/MEMORY.md (shared team memory, git-tracked in the project):\n\n<team-memory-content source="shared">\n- [Uses pnpm](uses-pnpm.md) — never npm\n</team-memory-content>',
+      `Contents of /repo/.claudin/memory/team/MEMORY.md (shared team memory, git-tracked in the project):\n\n${TEAM_MEMORY_TRUST_NOTE}\n\n<team-memory-content source="shared">\n- [Uses pnpm](uses-pnpm.md) — never npm\n</team-memory-content>`,
     )
   })
 })

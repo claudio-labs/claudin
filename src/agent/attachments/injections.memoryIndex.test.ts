@@ -77,6 +77,11 @@ describe('toMemoryIndexSummary', () => {
   test('no rawContent means nothing was cut', () => {
     const summary = toMemoryIndexSummary(memoryFile({}))
     expect(summary.totalEntryCount).toBe(summary.entryCount)
+    expect(summary).not.toHaveProperty('shortenedEntryCount')
+  })
+
+  test('the entries fitting shortened ride along, for the transcript line', () => {
+    expect(toMemoryIndexSummary(memoryFile({ shortenedEntryCount: 31 })).shortenedEntryCount).toBe(31)
   })
 
   test('a rawContent SHORTER than content never reports a negative cut', () => {

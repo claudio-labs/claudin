@@ -2,6 +2,7 @@ export { checkPathSafetyForAutoEdit } from 'src/permissions/filePermissions/dang
 export {
   checkEditableInternalPath,
   checkReadableInternalPath,
+  checkShellEditableInternalPath,
   isClaudeSettingsPath,
 } from 'src/permissions/filePermissions/internalPaths.js'
 export { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'

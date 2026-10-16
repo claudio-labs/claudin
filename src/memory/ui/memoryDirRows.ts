@@ -1,9 +1,11 @@
 import { readdir } from 'fs/promises'
 import { basename, sep } from 'path'
 
+import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
 import {
   ENTRYPOINT_NAME,
+  INDEX_LINK_TARGET_RE,
   MEMORY_SCOPES,
   type MemoryScope,
 } from 'src/memory/memdir/memoryScopes.js'
@@ -109,9 +111,9 @@ function clipDescription(text: string | null): string | undefined {
 
 export function buildMemoryDirRows(
   headers: MemoryHeader[],
-  options: { indexPath: string; indexExists: boolean; includeNested?: boolean },
+  options: { indexPath: string; indexExists: boolean; includeNested?: boolean; today?: string },
 ): MemoryDirRow[] {
-  const { indexPath, indexExists, includeNested = false } = options
+  const { indexPath, indexExists, includeNested = false, today = localDay() } = options
 
   const rows: MemoryDirRow[] = []
   if (indexExists) {
@@ -125,8 +127,10 @@ export function buildMemoryDirRows(
 
   for (const header of headers) {
     if (!includeNested && isNestedEntry(header)) continue
+    // A memory past its `expires:` date says so where its age is shown.
+    const expired = header.expires !== null && isExpired(header.expires, today) ? `  expired ${header.expires}` : ''
     rows.push({
-      label: `${typeTag(header.type)}${header.filename.replace(/\.md$/, '')}  ${formatRelativeTimeAgo(new Date(header.mtimeMs))}`,
+      label: `${typeTag(header.type)}${header.filename.replace(/\.md$/, '')}  ${formatRelativeTimeAgo(new Date(header.mtimeMs))}${expired}`,
       value: header.filePath,
       description: clipDescription(header.description),
       isIndex: false,
@@ -136,17 +140,13 @@ export function buildMemoryDirRows(
   return rows
 }
 
-// A markdown link target: `- [Title](file.md) — hook`. Captured rather than
-// matched loosely because an index line may hold more than one link, and only
-// the pointer target decides whether the line belongs to the deleted memory.
-const INDEX_LINK_RE = /\]\(([^)]+)\)/
-
 /**
  * Drops `filename`'s pointer line from a MEMORY.md index, leaving everything
  * else — headers, the intro blockquote, `## Section` groupings, and any link
  * pointing somewhere else — byte-identical. Returns the input unchanged when
  * there is no pointer, which is the common case for a memory the model wrote
- * without indexing.
+ * without indexing. A line belongs to the memory its FIRST link targets: an
+ * index line may hold more than one link.
  */
 export function removeIndexPointer(
   indexContent: string,
@@ -154,8 +154,8 @@ export function removeIndexPointer(
 ): string {
   const lines = indexContent.split('\n')
   const kept = lines.filter(line => {
-    const match = INDEX_LINK_RE.exec(line)
-    return match === null || match[1] !== filename
+    const first = line.matchAll(INDEX_LINK_TARGET_RE).next().value
+    return first === undefined || first[1] !== filename
   })
   return kept.length === lines.length ? indexContent : kept.join('\n')
 }

@@ -95,6 +95,7 @@ export function buildExtractCombinedPrompt(
           '- The global dir is shared by every project and this run sees one: add a memory there, or add to one, but never delete, shrink or rewrite one — a write that does is refused',
         ]),
     '- Organize memory semantically by topic, not chronologically',
+    '- A fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — gets `expires: YYYY-MM-DD` in its frontmatter, the last day it holds; past it the memory is flagged for re-verification, never deleted',
     `- Update or remove memories that turn out to be wrong or outdated${globalDir === null ? '' : ' (in the private and team dirs)'}`,
     '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
   ]

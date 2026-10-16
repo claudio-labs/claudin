@@ -43,6 +43,7 @@ import type { Tool } from 'src/tools/Tool.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { getAutoModeInstructions } from 'src/agent/messages/autoMode.js'
 import { getPlanModeInstructions } from 'src/agent/messages/planMode.js'
+import { renderNestedMemoryBlock } from 'src/memory/instructions/claudemd/memoryBlock.js'
 import {
   wrapCommandText,
   wrapInSystemReminder,
@@ -296,7 +297,7 @@ Read the team config to discover your teammates' names. Check the task list peri
     case 'nested_memory': {
       return wrapMessagesInSystemReminder([
         createUserMessage({
-          content: `Contents of ${attachment.content.path}:\n\n${attachment.content.content}`,
+          content: renderNestedMemoryBlock(attachment.content),
           isMeta: true,
         }),
       ])

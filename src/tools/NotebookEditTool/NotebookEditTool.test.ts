@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { NotebookEditTool } from 'src/tools/NotebookEditTool/NotebookEditTool.js'
 
@@ -131,6 +132,22 @@ describe('NotebookEditTool', () => {
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
       expect(result.errorCode).toBe(5)
+    }
+  })
+
+  test('validateInput refuses a cell with a secret in team memory, as the file tools do', async () => {
+    // The team dir is git-tracked; NotebookEdit rides the same no-prompt
+    // carve-out as Write/Edit/Patch, so it needs their secret guard too.
+    const result = await NotebookEditTool.validateInput?.(
+      {
+        notebook_path: join(getTeamMemPath(), 'analysis.ipynb'),
+        new_source: `token = "${['ghp', 'x'.repeat(36)].join('_')}"`,
+      } as never,
+      makeCtx(),
+    )
+    expect(result?.result).toBe(false)
+    if (result && result.result === false) {
+      expect(result.message).toContain('cannot be written to team memory')
     }
   })
 

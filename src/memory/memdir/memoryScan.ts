@@ -8,6 +8,7 @@ import { readdir } from 'fs/promises'
 import { basename, join } from 'path'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
+import { validExpires } from 'src/memory/memdir/memoryExpires.js'
 import { type MemoryType, parseMemoryType } from 'src/memory/memdir/memoryTypes.js'
 
 export type MemoryHeader = {
@@ -16,6 +17,8 @@ export type MemoryHeader = {
   mtimeMs: number
   description: string | null
   type: MemoryType | undefined
+  /** A valid `expires:` date (memoryExpires.ts), or null. */
+  expires: string | null
 }
 
 const MAX_MEMORY_FILES = 200
@@ -35,11 +38,18 @@ const FRONTMATTER_MAX_LINES = 30
  * `recursive: false` reads the directory's own files only — the private
  * dir's, without the team dir nested in it, whose files would otherwise
  * count against the cap.
+ *
+ * `limit` is the cap, MAX_MEMORY_FILES by default — the extraction
+ * manifest's budget. The dream digest lifts it: a memory past its
+ * `expires:` date is likelier among the oldest files the cap would drop.
  */
 export async function scanMemoryFiles(
   memoryDir: string,
   signal: AbortSignal,
-  { recursive = true }: { recursive?: boolean } = {},
+  {
+    recursive = true,
+    limit = MAX_MEMORY_FILES,
+  }: { recursive?: boolean; limit?: number } = {},
 ): Promise<MemoryHeader[]> {
   try {
     const entries = await readdir(memoryDir, { recursive })
@@ -71,6 +81,7 @@ export async function scanMemoryFiles(
           mtimeMs,
           description: frontmatter.description || null,
           type: parseMemoryType(frontmatter.type),
+          expires: validExpires(frontmatter.expires),
         }
       }),
     )
@@ -82,7 +93,7 @@ export async function scanMemoryFiles(
       )
       .map(r => r.value)
       .sort((a, b) => b.mtimeMs - a.mtimeMs)
-      .slice(0, MAX_MEMORY_FILES)
+      .slice(0, limit)
   } catch {
     return []
   }

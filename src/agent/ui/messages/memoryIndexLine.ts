@@ -20,20 +20,23 @@ function scopeOf(index: MemoryIndexSummary): MemoryScope {
 function clause(index: MemoryIndexSummary): string {
   const label = memoryIndexLabel(scopeOf(index))
   // A cut index reports both halves: what arrived, and what the file holds.
-  // Otherwise the cap fires in silence — the warning truncateEntrypointContent
-  // appends goes to the model, never to the screen.
+  // Otherwise the cap fires in silence — the warning fitEntrypointContent
+  // appends goes to the model, never to the screen. Likewise the entries it
+  // shortened to keep the rest: "178 entries, 31 shortened".
   const entries =
     index.totalEntryCount > index.entryCount
       ? `${index.entryCount} of ${index.totalEntryCount} ${plural(index.totalEntryCount, 'entry', 'entries')}`
       : `${index.entryCount} ${plural(index.entryCount, 'entry', 'entries')}`
-  return `${label} (${entries})`
+  const shortened = index.shortenedEntryCount ? `, ${index.shortenedEntryCount} shortened` : ''
+  return `${label} (${entries}${shortened})`
 }
 
 /**
  * The index clause: "global memories index (4 entries), private memories
  * index (16 entries), team memories index (121 entries)", or "… team
- * memories index (96 of 121 entries)" when a cap cut one of them short. It
- * names the INDEX on purpose: the
+ * memories index (96 of 121 entries)" when a cap cut one of them short, and
+ * "(178 entries, 31 shortened)" when entries lost their hook to fit. It names
+ * the INDEX on purpose: the
  * MEMORY.md files are what enter context every session, and "Loaded 16
  * memories" read as if the memory files themselves had — those load on
  * demand, when the model follows a pointer or a `paths:` match attaches one
