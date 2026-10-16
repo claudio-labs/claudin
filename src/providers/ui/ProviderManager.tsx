@@ -99,6 +99,7 @@ import {
 import {
   describeAtomicChatSelectionIssue,
   describeOllamaSelectionIssue,
+  findCodexCliLinkedProfile,
   findCodexOAuthProfile,
   findKimiOAuthProfile,
   findXaiOAuthProfile,
@@ -1329,18 +1330,22 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         <CodexOAuthSetup
           onBack={() => setScreen('select-preset')}
           onConfigured={async (tokens, persistCredentials) => {
+            const linkedAuthPath = tokens.authPath
             const payload: ProviderProfileInput = {
               provider: 'openai',
               name: CODEX_OAUTH_PROVIDER_NAME,
               baseUrl: DEFAULT_CODEX_BASE_URL,
               model: CODEX_OAUTH_PROVIDER_MODEL,
               apiKey: '',
+              extras: linkedAuthPath
+                ? { codexAuthPath: linkedAuthPath }
+                : undefined,
             }
 
-            const existing = findCodexOAuthProfile(
-              getProviderProfiles(),
-              storedCodexOAuthProfileId,
-            )
+            const currentProfiles = getProviderProfiles()
+            const existing =
+              findCodexOAuthProfile(currentProfiles, storedCodexOAuthProfileId) ??
+              findCodexCliLinkedProfile(currentProfiles)
             // Adding from the /provider menu must not hijack the global active
             // pointer — only the first-run wizard activates what it creates.
             const activateOnSave = mode === 'first-run'
@@ -1372,11 +1377,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             setHasStoredCodexOAuthCredentials(true)
             setStoredCodexOAuthProfileId(saved.id)
             refreshProfiles()
+            const configuredPrefix = linkedAuthPath
+              ? 'Codex CLI login linked'
+              : 'Codex OAuth configured'
             let message: string
             if (!activateOnSave) {
               // Manage mode saved the profile without activating it — no
               // session switch happened, so don't claim one.
-              message = `Codex OAuth configured: ${saved.name} (active provider unchanged — activate it from "Set active provider")`
+              message = `${configuredPrefix}: ${saved.name} (active provider unchanged — activate it from "Set active provider")`
             } else {
               const settingsOverrideError =
                 clearStartupProviderOverrideFromUserSettings()
@@ -1388,7 +1396,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
                   : null,
               ].filter((warning): warning is string => Boolean(warning))
               message = buildCodexOAuthActivationMessage({
-                prefix: 'Codex OAuth configured',
+                prefix: configuredPrefix,
                 activationWarning,
                 warnings,
               })

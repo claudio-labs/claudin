@@ -2,13 +2,13 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { getSecureStorage } from 'src/platform/secureStorage/index.js'
+import { refreshCodexAuthFileIfNeeded } from 'src/providers/oauth/codexCliAuth.js'
 import {
   asTrimmedString,
-  CODEX_REFRESH_URL,
   exchangeCodexIdTokenForApiKey,
-  getCodexOAuthClientId,
   parseChatgptAccountId,
-  decodeJwtPayload,
+  parseJwtExpiryMs,
+  requestCodexTokenRefresh,
 } from 'src/providers/oauth/codexOAuthShared.js'
 
 export const CODEX_STORAGE_KEY = 'codex' as const
@@ -26,12 +26,6 @@ export type CodexCredentialBlob = {
   lastRefreshFailureAt?: number
 }
 
-type CodexTokenRefreshResponse = {
-  access_token?: string
-  refresh_token?: string
-  id_token?: string
-}
-
 let inFlightCodexRefresh:
   | Promise<{
       refreshed: boolean
@@ -42,16 +36,6 @@ let inMemoryLastRefreshFailureAt: number | null = null
 
 function getCodexSecureStorage() {
   return getSecureStorage({ allowPlainTextFallback: true })
-}
-
-function parseJwtExpiryMs(token: string | undefined): number | undefined {
-  if (!token) return undefined
-  const payload = decodeJwtPayload(token)
-  const exp = payload?.exp
-  if (typeof exp === 'number' && Number.isFinite(exp)) {
-    return exp * 1000
-  }
-  return undefined
 }
 
 function normalizeCodexCredentialBlob(
@@ -120,32 +104,6 @@ function isWithinRefreshFailureCooldown(
   return (
     now - lastRefreshFailureAt < CODEX_TOKEN_REFRESH_RETRY_COOLDOWN_MS
   )
-}
-
-function getRefreshErrorMessage(
-  status: number,
-  bodyText: string,
-): string {
-  if (!bodyText.trim()) {
-    return `Codex token refresh failed with status ${status}.`
-  }
-
-  try {
-    const parsed = JSON.parse(bodyText) as Record<string, unknown>
-    const nestedError =
-      parsed.error && typeof parsed.error === 'object'
-        ? (parsed.error as Record<string, unknown>)
-        : undefined
-    const code = asTrimmedString(nestedError?.code ?? parsed.code)
-    const message =
-      asTrimmedString(nestedError?.message ?? parsed.error_description) ??
-      bodyText.trim()
-    return code
-      ? `Codex token refresh failed (${code}): ${message}`
-      : `Codex token refresh failed with status ${status}: ${message}`
-  } catch {
-    return `Codex token refresh failed with status ${status}: ${bodyText.trim()}`
-  }
 }
 
 export function readCodexCredentials(): CodexCredentialBlob | undefined {
@@ -277,9 +235,19 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
     return { refreshed: false }
   }
 
+  const activeProvider = tryGetActiveProvider()
   // If the active profile already pins a Codex API key, skip the refresh.
-  if (tryGetActiveProvider()?.apiKey?.trim()) {
+  if (activeProvider?.apiKey?.trim()) {
     return { refreshed: false }
+  }
+
+  // A profile linked to a Codex CLI auth.json is served from that file
+  // (resolveRuntimeCodexCredentials), so that file is what gets refreshed.
+  const linkedAuthPath = asTrimmedString(activeProvider?.extras?.codexAuthPath)
+  if (linkedAuthPath) {
+    return {
+      refreshed: await refreshCodexAuthFileIfNeeded(linkedAuthPath, options),
+    }
   }
 
   const current = await readCodexCredentialsAsync()
@@ -313,39 +281,12 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
     const refreshAttemptedAt = Date.now()
 
     try {
-      const body = new URLSearchParams({
-        client_id: getCodexOAuthClientId(),
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-      })
-
-      const response = await fetch(CODEX_REFRESH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body,
-        signal: AbortSignal.timeout(15_000),
-      })
-
-      if (!response.ok) {
-        const bodyText = await response.text().catch(() => '')
-        throw new Error(getRefreshErrorMessage(response.status, bodyText))
-      }
-
-      const payload = (await response.json()) as CodexTokenRefreshResponse
-      const accessToken = asTrimmedString(payload.access_token)
-      if (!accessToken) {
-        throw new Error(
-          'Codex token refresh succeeded without a new access token.',
-        )
-      }
+      const payload = await requestCodexTokenRefresh(refreshToken)
 
       const next: CodexCredentialBlob = {
-        accessToken,
-        refreshToken:
-          asTrimmedString(payload.refresh_token) ?? current.refreshToken,
-        idToken: asTrimmedString(payload.id_token) ?? current.idToken,
+        accessToken: payload.access_token,
+        refreshToken: payload.refresh_token ?? current.refreshToken,
+        idToken: payload.id_token ?? current.idToken,
         accountId:
           parseChatgptAccountId(payload.id_token) ??
           parseChatgptAccountId(payload.access_token) ??

@@ -1,0 +1,69 @@
+{
+  "test": [
+    "src/providers/oauth/codexCliAuth.test.ts",
+    "src/providers/oauth/codexCredentials.linkedAuthFile.test.ts",
+    "src/providers/ui/ProviderManager.test.tsx"
+  ],
+  "source": "src/providers/oauth/codexCliAuth.ts",
+  "probes": [
+    {
+      "name": "a login without a refresh token is still offered",
+      "find": "if (!accessToken || !refreshToken) return undefined",
+      "replace": "if (!accessToken) return undefined"
+    },
+    {
+      "name": "the write-back drops the rest of the Codex CLI file",
+      "find": "        ...authFile,\n        tokens: {",
+      "replace": "        tokens: {"
+    },
+    {
+      "name": "the rotated refresh token is not written back",
+      "find": "refresh_token: payload.refresh_token ?? refreshToken,",
+      "replace": "refresh_token: refreshToken,"
+    },
+    {
+      "name": "the auth file is written world-readable",
+      "find": "mode: 0o600,",
+      "replace": "mode: 0o644,"
+    },
+    {
+      "name": "a still-valid token is refreshed anyway",
+      "find": "if (!options?.force) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a failed refresh does not back off",
+      "find": "      lastRefreshFailureAt.set(authPath, Date.now())\n",
+      "replace": ""
+    },
+    {
+      "name": "concurrent callers each send a refresh",
+      "find": "  inFlightRefreshes.set(authPath, refresh)\n",
+      "replace": ""
+    },
+    {
+      "name": "a linked profile refreshes secure storage instead of its file",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  if (linkedAuthPath) {\n    return {",
+      "replace": "  if (false) {\n    return {"
+    },
+    {
+      "name": "the CLI login is not linked into the profile",
+      "source": "src/providers/ui/ProviderManager.tsx",
+      "find": "                ? { codexAuthPath: linkedAuthPath }",
+      "replace": "                ? undefined"
+    },
+    {
+      "name": "re-linking appends a duplicate profile",
+      "source": "src/providers/ui/ProviderManager.tsx",
+      "find": "              findCodexOAuthProfile(currentProfiles, storedCodexOAuthProfileId) ??\n              findCodexCliLinkedProfile(currentProfiles)",
+      "replace": "              findCodexOAuthProfile(currentProfiles, storedCodexOAuthProfileId)"
+    },
+    {
+      "name": "the CLI login is never offered",
+      "source": "src/providers/ui/OAuthSetup.tsx",
+      "find": "    cliLogin ? 'choose' : 'browser',",
+      "replace": "    'browser',"
+    }
+  ]
+}
