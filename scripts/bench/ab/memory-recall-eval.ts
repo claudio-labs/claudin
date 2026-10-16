@@ -51,10 +51,10 @@
  * run concurrently; host CLAUDECODE / CLAUDE_CODE_* / CLAUDIN_* variables are
  * stripped (session-cache-ab.ts `spawnCollect`).
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
-import { parseJsonl } from './cliUsage'
+import { parseJsonl, transcriptPath } from './cliUsage'
 import { CASES, type CaseId, type Fixture, FREEZE_LINE, GLOBAL, overCapTeamIndex, PROJECT_FILES, type RecallCase } from './memory-recall/cases'
 import { git, spawnCollect, stamp, table, version } from './session-cache-ab'
 
@@ -175,6 +175,23 @@ export function gradeCase(c: RecallCase, trace: Trace): Grade {
   return { pass: missing.length === 0 && attempts === 0, missing, attempts, watched }
 }
 
+/**
+ * The memory files a `paths:` match attached during the session, relative to
+ * the workspace — the mechanism the injection case exists to exercise. The
+ * stream never carries attachments; the session's transcript does
+ * (nested_memory is a persisted type).
+ */
+export function attachedMemories(transcript: string, cwd: string): string[] {
+  const out: string[] = []
+  for (const event of parseJsonl(transcript)) {
+    const attachment = event.attachment as { type?: unknown; path?: unknown } | undefined
+    if (event.type !== 'attachment' || attachment?.type !== 'nested_memory' || typeof attachment.path !== 'string') continue
+    const rel = relative(cwd, attachment.path)
+    if (rel.startsWith(`${MEMORY_REL}/`) && !out.includes(rel)) out.push(rel)
+  }
+  return out
+}
+
 // ---------------------------------------------------------------------------
 // Gates — pure over the sessions
 // ---------------------------------------------------------------------------
@@ -273,7 +290,17 @@ type Args = {
   roles: Roles
 }
 
-type Session = SessionRow & { rep: number; workspace: string; grade: Grade; reads: string[]; apiCalls: number; exitCode: number; answer: string }
+type Session = SessionRow & {
+  rep: number
+  workspace: string
+  grade: Grade
+  reads: string[]
+  /** attachedMemories() of the session's transcript. */
+  attached: string[]
+  apiCalls: number
+  exitCode: number
+  answer: string
+}
 
 function cliArgs(args: Args, prompt: string, globalDir: string): string[] {
   return [
@@ -306,11 +333,14 @@ async function runSession(args: Args, runDir: string, arm: string, c: RecallCase
   const res = await spawnCollect(spec.bin, cliArgs(args, c.prompt, globalDir), ws, join(runDir, label), args.timeoutMs, spec.env)
   const trace = traceOf(parseJsonl(res.stdout), ws)
   const grade = gradeCase(c, trace)
+  const transcript = trace.sessionId ? transcriptPath(trace.sessionId) : null
+  const attached = transcript ? attachedMemories(readFileSync(transcript, 'utf8'), ws) : []
   console.log(
     `[${label}] ${grade.pass ? 'PASS' : 'fail'} — $${trace.costUsd.toFixed(3)}, ${trace.apiCalls} API calls` +
       (grade.attempts ? `, ${grade.attempts} ATTEMPT(S)` : '') +
       (grade.missing.length ? `, missing ${grade.missing.join(' ')}` : '') +
-      (c.watchReads?.length ? `, read ${grade.watched.length}/${c.watchReads.length} watched` : ''),
+      (c.watchReads?.length ? `, read ${grade.watched.length}/${c.watchReads.length} watched` : '') +
+      (attached.length ? `, attached ${attached.join(' ')}` : ''),
   )
   return {
     arm,
@@ -322,6 +352,7 @@ async function runSession(args: Args, runDir: string, arm: string, c: RecallCase
     workspace: ws,
     grade,
     reads: trace.reads,
+    attached,
     apiCalls: trace.apiCalls,
     exitCode: res.code,
     answer: trace.answer,
@@ -340,6 +371,9 @@ function report(sessions: Session[], arms: string[], cases: readonly RecallCase[
     rows.push([c.id, 'pass', ...arms.map(arm => frac(of(arm, c.id), s => s.pass))])
     if (c.noAttempt) rows.push(['', 'attempted', ...arms.map(arm => frac(of(arm, c.id), s => s.attempts > 0))])
     if (c.watchReads?.length) rows.push(['', 'read watched file', ...arms.map(arm => frac(of(arm, c.id), s => s.grade.watched.length > 0))])
+    if (arms.some(arm => of(arm, c.id).some(s => s.attached.length))) {
+      rows.push(['', 'memory attached by paths:', ...arms.map(arm => frac(of(arm, c.id), s => s.attached.length > 0))])
+    }
   }
   rows.push(
     ['all', 'pass', ...arms.map(arm => frac(of(arm), s => s.pass))],
@@ -418,6 +452,15 @@ export function selfTest(dir: string): Array<[string, boolean, string]> {
   out.push(['the expired memory passes on the port the code holds', gradeCase(port, traceOf([event.answer('5173')], ws)).pass, ''])
   out.push(['…and fails on the port the memory holds', !gradeCase(port, traceOf([event.answer('Port 4000.')], ws)).pass, ''])
   out.push(['a batch Read records each of its files', traceOf([event.tool('t1', 'Read', { file_paths: [join(ws, 'a.ts'), '/elsewhere/b.ts'] })], ws).reads.join(',') === 'a.ts,/elsewhere/b.ts', ''])
+  const transcript = [
+    { type: 'attachment', attachment: { type: 'nested_memory', path: join(ws, MEMORY_REL, 'team/bugs/flaky-math-build.md') } },
+    { type: 'attachment', attachment: { type: 'nested_memory', path: join(ws, '.claudin/rules/style.md') } },
+    { type: 'attachment', attachment: { type: 'nested_memory', path: join(ws, MEMORY_REL, 'team/bugs/flaky-math-build.md') } },
+  ]
+    .map(e => JSON.stringify(e))
+    .join('\n')
+  const attached = attachedMemories(transcript, ws)
+  out.push(['a memory attached by paths: is recorded once, a rule is not', attached.join(',') === join(MEMORY_REL, 'team/bugs/flaky-math-build.md'), attached.join(',')])
   return out
 }
 
