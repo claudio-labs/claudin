@@ -11,7 +11,7 @@
     "src/agent/messages/attachments.test.ts",
     "src/memory/memdir/memoryAudit.test.ts",
     "src/memory/memdir/memoryAuditCommand.test.ts",
-    "src/memory/memdir/memoryFrontmatterFields.test.ts",
+    "src/memory/memdir/memoryExpires.test.ts",
     "src/memory/memdir/memoryFormatGuard.test.ts",
     "src/memory/memdir/memoryAge.test.ts",
     "src/memory/memdir/memoryFileDetection.test.ts",
@@ -105,7 +105,7 @@
     },
     {
       "name": "an impossible calendar day passes as a date",
-      "source": "src/memory/memdir/memoryFrontmatterFields.ts",
+      "source": "src/memory/memdir/memoryExpires.ts",
       "find": "  return real ? { kind: 'date', date: raw } : { kind: 'invalid', raw }\n",
       "replace": "  return { kind: 'date', date: raw }\n"
     },

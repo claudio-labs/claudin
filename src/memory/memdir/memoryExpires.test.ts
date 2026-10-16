@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { expiresOf, isExpired, localDay, parseExpires } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { expiresOf, isExpired, localDay, parseExpires, validExpires } from 'src/memory/memdir/memoryExpires.js'
 
 describe('parseExpires', () => {
   test('absent, null or blank is no expiry', () => {
@@ -25,6 +25,12 @@ describe('parseExpires', () => {
 })
 
 describe('expiresOf', () => {
+  test('validExpires keeps a valid date and drops the rest', () => {
+    expect(validExpires('2026-12-01')).toBe('2026-12-01')
+    expect(validExpires('2026-02-30')).toBeNull()
+    expect(validExpires(undefined)).toBeNull()
+  })
+
   test('reads the date from the frontmatter, and nothing from a file without one', () => {
     expect(expiresOf('---\nname: x\nexpires: 2026-09-30\n---\n\nbody')).toBe('2026-09-30')
     expect(expiresOf('---\nname: x\n---\n\nbody')).toBeNull()

@@ -114,6 +114,7 @@ describe('buildDreamDigest', () => {
       'chore(deps): bump',
       'refactor(memory): delete the http sync',
     ],
+    cwd: '/repo',
   }
 
   test('renders only the period, with the radius, the sections and the filtered commits', () => {
@@ -142,6 +143,7 @@ describe('buildDreamDigest', () => {
       plans: [],
       sessions: [],
       commitSubjects: ['fix: nothing impactful'],
+      cwd: '/repo',
     })
     expect(digest).toContain('Nothing was modified in this period')
     expect(digest).not.toContain('###')
@@ -154,7 +156,7 @@ describe('buildDreamDigest', () => {
       content: PLAN,
     }))
     const digest = buildDreamDigest(
-      { sinceMs: since, plans: many, sessions: [], commitSubjects: [] },
+      { sinceMs: since, plans: many, sessions: [], commitSubjects: [], cwd: '/repo' },
       { ...DEFAULT_DIGEST_CAPS, plansChars: 1_200 },
     )
     expect(digest).toContain('### Plans modified (12)')
@@ -171,15 +173,16 @@ describe('buildDreamDigest', () => {
       sessions: [],
       commitSubjects: [],
       expired: [
-        { kind: 'expired', scope: 'team', path: '/repo/.claudin/memory/team/freeze.md', expires: '2026-09-30' },
-        { kind: 'expired', scope: 'global', path: '/home/u/.claudin/memory/rotation.md', expires: '2026-10-01' },
+        { path: '/repo/.claudin/memory/team/freeze.md', expires: '2026-09-30' },
+        { path: '/home/u/.claudin/memory/rotation.md', expires: '2026-10-01' },
       ],
+      cwd: '/repo',
     })
     expect(digest).toContain('Nothing was modified in this period')
     expect(digest).toContain('## Memories past their `expires:` date (2)')
     expect(digest).toContain('An expired date alone is never a reason to delete.')
     expect(digest).toContain('- `/repo/.claudin/memory/team/freeze.md` — expired 2026-09-30')
-    expect(buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [] })).not.toContain('expires:')
+    expect(buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], cwd: '/repo' })).not.toContain('expires:')
   })
 
   test('each session names the memories it wrote; what changed with no session is listed apart', () => {
@@ -202,7 +205,7 @@ describe('buildDreamDigest', () => {
   })
 
   test('only an unattributed change still counts as something modified', () => {
-    const digest = buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], changedMemories: ['/r/x.md'] })
+    const digest = buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], changedMemories: ['/r/x.md'], cwd: '/repo' })
     expect(digest).not.toContain('Nothing was modified')
     expect(digest).toContain('- /r/x.md')
   })
@@ -219,6 +222,7 @@ describe('buildDreamDigest', () => {
         },
       ],
       commitSubjects: [],
+      cwd: '/repo',
     })
     const line = digest.split('\n').find(l => l.startsWith('- long0000'))!
     expect(line.length).toBeLessThan(DEFAULT_DIGEST_CAPS.promptChars + 40)
@@ -240,10 +244,9 @@ describe('collectDreamDigest', () => {
         },
       ],
       commitSubjectsSince: async () => ['feat(x): the thing'],
-      listExpiredMemories: async () => {
+      listMemoryHeaders: async () => {
         throw new Error('memory dirs unreadable')
       },
-      listChangedMemories: async () => [],
     })
     expect(digest).not.toContain('### Plans')
     expect(digest).toContain('### Session prompts (1)')
@@ -251,14 +254,36 @@ describe('collectDreamDigest', () => {
     expect(digest).not.toContain('expires:')
   })
 
-  test('the expired memories the audit finds are handed over', async () => {
+  // One scan feeds both memory lists: the expired ones and what changed in
+  // the period, each derived from the same headers.
+  test('one scan of the memory headers yields the expired and the changed memories', async () => {
+    const header = (filePath: string, mtimeMs: number, expires: string | null) => ({
+      filename: filePath.split('/').pop()!,
+      filePath,
+      mtimeMs,
+      description: null,
+      type: 'project' as const,
+      expires,
+    })
+    let scans = 0
     const digest = await collectDreamDigest(1_000, [], {
       listPlans: async () => [],
       listSessions: async () => [],
       commitSubjectsSince: async () => [],
-      listExpiredMemories: async () => [{ kind: 'expired', scope: 'private', path: '/r/.claudin/memory/oncall.md', expires: '2026-09-30' }],
-      listChangedMemories: async () => [],
+      listMemoryHeaders: async () => {
+        scans++
+        return [
+          header('/r/.claudin/memory/oncall.md', 500, '2026-09-30'),
+          header('/r/.claudin/memory/later.md', 500, '2999-01-01'),
+          header('/r/.claudin/memory/team/bugs/new.md', 2_000, null),
+        ]
+      },
     })
+    expect(scans).toBe(1)
     expect(digest).toContain('- `/r/.claudin/memory/oncall.md` — expired 2026-09-30')
+    expect(digest).not.toContain('later.md')
+    expect(digest).toContain('### Memories also changed in this period (1)')
+    expect(digest).toContain('new.md')
+    expect(digest).not.toContain('- /r/.claudin/memory/oncall.md\n')
   })
 })

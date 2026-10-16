@@ -56,7 +56,7 @@ import {
   textPreviewApplies,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { markMemoryFileRead } from 'src/tools/FileReadTool/resultContent.js'
-import { expiresOf } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { expiresOf } from 'src/memory/memdir/memoryExpires.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**

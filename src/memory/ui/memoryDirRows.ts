@@ -1,7 +1,7 @@
 import { readdir } from 'fs/promises'
 import { basename, sep } from 'path'
 
-import { isExpired, localDay } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
 import {
   ENTRYPOINT_NAME,

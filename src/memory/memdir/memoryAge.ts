@@ -1,4 +1,4 @@
-import { isExpired, localDay } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
 
 /**
  * Days elapsed since mtime.  Floor-rounded — 0 for today, 1 for

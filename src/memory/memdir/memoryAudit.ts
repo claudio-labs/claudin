@@ -4,7 +4,7 @@
  * credential there reaches every teammate's next pull, whoever wrote it: the
  * file tools refuse one (teamMemSecretGuard.ts), but a human, another agent
  * or an editor writes past them — and memories past their `expires:` date
- * (memoryFrontmatterFields.ts), to be re-verified, never deleted.
+ * (memoryExpires.ts), to be re-verified, never deleted.
  *
  * One auditor and several readers — `claudin memory audit` (the CI and
  * pre-commit gate of any repo carrying a team dir), `/memory tidy`, the dream
@@ -14,7 +14,7 @@
 import { readdir, readFile } from 'fs/promises'
 import { basename, join, relative } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
-import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { isENOENT } from 'src/shared/errors.js'

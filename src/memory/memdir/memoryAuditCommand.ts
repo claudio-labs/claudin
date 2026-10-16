@@ -7,13 +7,14 @@
  * subcommand runs (src/platform/main/commands/memory.ts).
  */
 import { existsSync } from 'fs'
-import { isAbsolute, join, relative } from 'path'
+import { join } from 'path'
 import { auditFails, auditMemoryDirs, type MemoryAudit } from 'src/memory/memdir/memoryAudit.js'
 import { getMemoryDirs, type MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 import { committedTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
+import { relativeIfInside } from 'src/shared/fs/path.js'
 import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 
 export type MemoryAuditOptions = { json?: boolean }
@@ -33,12 +34,6 @@ export function auditDirsFor(
   return [...sessionDirs, { scope: 'team', root: committedTeamDir, index: join(committedTeamDir, ENTRYPOINT_NAME) }]
 }
 
-/** `path` relative to `cwd` when it is inside it, as a CI log should show it. */
-function shown(path: string, cwd: string): string {
-  const rel = relative(cwd, path)
-  return rel.startsWith('..') || isAbsolute(rel) ? path : rel
-}
-
 /** What the subcommand prints and the code it exits with. Pure. */
 export function formatMemoryAudit(
   audit: MemoryAudit | null,
@@ -55,7 +50,7 @@ export function formatMemoryAudit(
   }
   const exitCode = auditFails(audit) ? 1 : 0
   if (options.json) {
-    const findings = audit.findings.map(f => ({ ...f, path: shown(f.path, cwd) }))
+    const findings = audit.findings.map(f => ({ ...f, path: relativeIfInside(f.path, cwd) }))
     return { output: JSON.stringify({ files: audit.files, findings }, null, 2), exitCode }
   }
   if (audit.findings.length === 0) {
@@ -63,8 +58,8 @@ export function formatMemoryAudit(
   }
   const lines = audit.findings.map(f =>
     f.kind === 'secret'
-      ? `${shown(f.path, cwd)}: secret-shaped content (${f.labels.join(', ')})`
-      : `${shown(f.path, cwd)}: expired ${f.expires} — re-verify it, then move the date or remove the memory`,
+      ? `${relativeIfInside(f.path, cwd)}: secret-shaped content (${f.labels.join(', ')})`
+      : `${relativeIfInside(f.path, cwd)}: expired ${f.expires} — re-verify it, then move the date or remove the memory`,
   )
   return {
     output: [

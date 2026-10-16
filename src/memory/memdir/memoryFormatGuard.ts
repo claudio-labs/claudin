@@ -20,7 +20,7 @@ import {
 } from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
-import { parseExpires } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { parseExpires } from 'src/memory/memdir/memoryExpires.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
 import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPaths.js'
 

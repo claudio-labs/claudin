@@ -406,18 +406,21 @@ tail was, and the transcript line counts the shortened entries
 
 An optional `expires: YYYY-MM-DD` — the last day a fact holds — for one with
 a natural end: a freeze, a deadline, a rotation, a temporary workaround. It
-is parsed in one place (`memoryFrontmatterFields.ts`: a string or a YAML
+is parsed in one place (`memoryExpires.ts`: a string or a YAML
 `Date`, a real calendar day), refused by the format guard when malformed, and
 carried on the scan header. The extraction and dream prompts ask for it; the
 system prompt does not mention it.
 
-Past its date a memory is **surfaced, never deleted by code**: a Read of it
-carries one re-verify line beside the age note (`memoryReadNote` in
-`memoryAge.ts`, computed when the result is mapped, so history stays
-byte-stable); the audit finds it, and `claudin memory audit`, `/memory tidy`
-(as a finding to report), the dream digest (to re-verify — move the date,
-fix or delete it only when contradicted, outside the global dir) and the
-`/memory` browser (`expired <date>` on the row) all render that one result.
+Past its date a memory is **surfaced, never deleted by code**, read in two
+ways through the one `validExpires`. From a whole file's content
+(`expiresOf`): a Read of it carries one re-verify line beside the age note
+(`memoryReadNote` in `memoryAge.ts`, computed when the result is mapped, so
+history stays byte-stable), and the audit finds it for `claudin memory
+audit` and `/memory tidy` (as a finding to report). From the scan header
+(`memoryScan.ts`): the dream digest — one uncapped scan that also yields the
+memories changed in the period — hands it over to re-verify (move the date,
+fix or delete it only when contradicted, outside the global dir), and the
+`/memory` browser tags its row `expired <date>`.
 The index never shows it: an index that changed on a day boundary would
 rewrite the cached prefix at midnight. Known limit: a memory a `paths:`
 match attaches arrives with its frontmatter stripped, so it carries no

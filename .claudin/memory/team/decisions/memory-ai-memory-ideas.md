@@ -7,7 +7,7 @@ impact: functional
 paths:
   - "src/memory/memdir/memdir.ts"
   - "src/memory/memdir/memoryAudit.ts"
-  - "src/memory/memdir/memoryFrontmatterFields.ts"
+  - "src/memory/memdir/memoryExpires.ts"
   - "src/memory/instructions/claudemd/memoryBlock.ts"
   - "src/memory/autoDream/memoryWrites.ts"
   - "src/permissions/filePermissions/internalPaths.ts"

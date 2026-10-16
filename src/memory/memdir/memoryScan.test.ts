@@ -26,6 +26,16 @@ test('scanMemoryFiles finds .md files at shallow depth', async () => {
   expect(result[0].filename).toBe('note.md')
 })
 
+test('limit caps the newest-first list, and Infinity lifts the cap', async () => {
+  tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
+  for (let i = 0; i < 5; i++) {
+    await writeFile(join(tempDir, `m${i}.md`), `---\nname: m${i}\ntype: user\n---\nContent`)
+  }
+  const signal = new AbortController().signal
+  expect(await scanMemoryFiles(tempDir, signal, { limit: 2 })).toHaveLength(2)
+  expect(await scanMemoryFiles(tempDir, signal, { limit: Infinity })).toHaveLength(5)
+})
+
 test('scanMemoryFiles ignores MEMORY.md', async () => {
   tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
   await writeFile(join(tempDir, 'MEMORY.md'), '# index')

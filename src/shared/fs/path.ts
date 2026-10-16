@@ -96,6 +96,16 @@ export function expandPath(path: string, baseDir?: string): string {
 }
 
 /**
+ * `path` relative to `base` when it lies inside it, otherwise `path`
+ * unchanged: a relative form starting with `..` (outside) or absolute (another
+ * drive) would be ambiguous. Pure — toRelativePath is this against the cwd.
+ */
+export function relativeIfInside(path: string, base: string): string {
+  const rel = relative(base, path)
+  return rel.startsWith('..') || isAbsolute(rel) ? path : rel
+}
+
+/**
  * Converts an absolute path to a relative path from cwd, to save tokens in
  * tool output. If the path is outside cwd (relative path would start with ..),
  * returns the absolute path unchanged so it stays unambiguous.
@@ -104,9 +114,7 @@ export function expandPath(path: string, baseDir?: string): string {
  * @returns Relative path if under cwd, otherwise the original absolute path
  */
 export function toRelativePath(absolutePath: string): string {
-  const rel = relative(getCwd(), absolutePath)
-  // If the relative path would go outside cwd (starts with ..), keep absolute
-  return rel.startsWith('..') ? absolutePath : rel
+  return relativeIfInside(absolutePath, getCwd())
 }
 
 /**

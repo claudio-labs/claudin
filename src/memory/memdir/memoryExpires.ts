@@ -2,10 +2,14 @@
  * `expires: YYYY-MM-DD` — an optional frontmatter key of any memory: the last
  * day it is known to hold, for a fact with a natural end (a freeze, a
  * deadline, a temporary workaround, a rotation). Past it, the memory is
- * surfaced for review — on Read (memoryAge.ts), by the audit (memoryAudit.ts)
- * that /memory tidy, the dream digest and the /memory browser render — and
- * never deleted by code: whether it still holds is a judgment, and the dream
- * deletes only what it finds contradicted, as it always did.
+ * surfaced for review and never deleted by code: whether it still holds is a
+ * judgment, and the dream deletes only what it finds contradicted, as it
+ * always did.
+ *
+ * Two readers, both through validExpires: a whole file's content (expiresOf —
+ * the Read note in memoryAge.ts, and the audit behind `claudin memory audit`
+ * and /memory tidy), and the scan header (memoryScan.ts — the dream digest
+ * and the /memory browser).
  */
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 
@@ -39,10 +43,15 @@ export function parseExpires(value: unknown): Expires {
   return real ? { kind: 'date', date: raw } : { kind: 'invalid', raw }
 }
 
+/** A frontmatter `expires` value as its date when it is a valid one, else null. */
+export function validExpires(value: unknown): string | null {
+  const expires = parseExpires(value)
+  return expires.kind === 'date' ? expires.date : null
+}
+
 /** The valid `expires` date of a memory file's content, or null. */
 export function expiresOf(content: string): string | null {
-  const expires = parseExpires(parseFrontmatter(content).frontmatter.expires)
-  return expires.kind === 'date' ? expires.date : null
+  return validExpires(parseFrontmatter(content).frontmatter.expires)
 }
 
 /** Today as the calendar day an `expires:` date is compared with, in local time. */
