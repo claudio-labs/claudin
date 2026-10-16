@@ -132,12 +132,15 @@ describe('fitEntrypointContent coverage first', () => {
     const dashed = '- [Index — the cut](cut.md) — why the tail went'
     const grouped = '- Censuses: [09-08](c1.md) · [09-20](c2.md) — rewrites are 39% of the cost'
     const plain = '- A note with no link at all — and a dash'
-    const result = fitEntrypointContent([filler, dashed, grouped, plain].join('\n'))
+    // A pointer inside what follows the first dash is still a pointer: it stays.
+    const seeAlso = '- [Retry policy](retry.md) — see also [backoff](backoff.md)'
+    const result = fitEntrypointContent([filler, dashed, grouped, plain, seeAlso].join('\n'))
     const body = result.content.split('\n\n> ')[0]!.split('\n')
-    expect(body.slice(-3)).toEqual([
+    expect(body.slice(-4)).toEqual([
       '- [Index — the cut](cut.md)',
       '- Censuses: [09-08](c1.md) · [09-20](c2.md)',
       plain,
+      seeAlso,
     ])
   })
 

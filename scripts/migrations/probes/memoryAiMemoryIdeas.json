@@ -1,0 +1,180 @@
+{
+  "test": [
+    "src/tools/BashTool/teamMemoryShellWrites.test.ts",
+    "src/permissions/filePermissions/internalPaths.test.ts",
+    "src/memory/memdir/memdir.entrypointBytes.test.ts",
+    "src/agent/ui/messages/memoryIndexLine.test.ts",
+    "src/memory/instructions/claudemd.memoryIndexes.test.ts",
+    "src/agent/attachments/injections.memoryIndex.test.ts",
+    "src/memory/instructions/claudemd/memoryBlock.test.ts",
+    "src/memory/instructions/claudemd.test.ts",
+    "src/agent/messages/attachments.test.ts",
+    "src/memory/memdir/memoryAudit.test.ts",
+    "src/memory/memdir/memoryAuditCommand.test.ts",
+    "src/memory/memdir/memoryFrontmatterFields.test.ts",
+    "src/memory/memdir/memoryFormatGuard.test.ts",
+    "src/memory/memdir/memoryAge.test.ts",
+    "src/memory/memdir/memoryFileDetection.test.ts",
+    "src/memory/memdir/memoryScan.test.ts",
+    "src/memory/memdir/memoryPrompt.test.ts",
+    "src/tools/FileReadTool/resultContent.test.ts",
+    "src/memory/autoDream/dreamDigest.test.ts",
+    "src/memory/autoDream/memoryWrites.test.ts",
+    "src/memory/autoDream/consolidationPrompt.test.ts",
+    "src/commands/memory/tidy.test.ts",
+    "src/commands/memory/tidyPrompt.test.ts",
+    "src/memory/ui/memoryDirRows.test.ts"
+  ],
+  "source": "src/memory/memdir/memdir.ts",
+  "probes": [
+    {
+      "name": "a shell write into the team dir rides the memory carve-out again",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "  if (memoryScopeForPermission(normalize(absolutePath)) === 'team') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the blank lines are kept over a cap",
+      "find": "  const lines = contentLines.filter(line => line.trim() !== '')\n",
+      "replace": "  const lines = [...contentLines]\n"
+    },
+    {
+      "name": "a hook is counted but not dropped",
+      "find": "    lines[i] = short\n",
+      "replace": ""
+    },
+    {
+      "name": "the hook is looked for after the FIRST link",
+      "find": "  for (const match of line.matchAll(INDEX_LINK_END_RE)) linkEnd = match.index + match[0].length\n",
+      "replace": "  for (const match of line.matchAll(INDEX_LINK_END_RE)) { linkEnd = match.index + match[0].length; break }\n"
+    },
+    {
+      "name": "the transcript line forgets the shortened entries",
+      "source": "src/agent/ui/messages/memoryIndexLine.ts",
+      "find": "  const shortened = index.shortenedEntryCount ? `, ${index.shortenedEntryCount} shortened` : ''\n",
+      "replace": "  const shortened = ''\n"
+    },
+    {
+      "name": "parsing drops the shortened count",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "    shortenedEntryCount = fit.shortenedEntryCount\n",
+      "replace": ""
+    },
+    {
+      "name": "team memory loses its trust note",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "      ? `${TEAM_MEMORY_TRUST_NOTE}\\n\\n<team-memory-content source=\"shared\">\\n${content}\\n</team-memory-content>`\n",
+      "replace": "      ? `<team-memory-content source=\"shared\">\\n${content}\\n</team-memory-content>`\n"
+    },
+    {
+      "name": "control: the note reworded, its contract kept",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "Use it like a teammate's note:",
+      "replace": "Read it like a teammate's note:",
+      "expect": "green"
+    },
+    {
+      "name": "a paths: memory is rendered like a rule again",
+      "source": "src/agent/messages/attachments.ts",
+      "find": "          content: isMemoryFileType(file.type)\n",
+      "replace": "          content: false\n"
+    },
+    {
+      "name": "the audit command never fails",
+      "source": "src/memory/memdir/memoryAuditCommand.ts",
+      "find": "  const exitCode = auditFails(audit) ? 1 : 0\n",
+      "replace": "  const exitCode = 0\n"
+    },
+    {
+      "name": "the secret scan reaches past the team dir",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": "    if (file.scope !== 'team') return []\n",
+      "replace": ""
+    },
+    {
+      "name": "an expired memory fails the gate",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": "  return audit.findings.some(finding => finding.kind === 'secret')\n",
+      "replace": "  return audit.findings.length > 0\n"
+    },
+    {
+      "name": "any dated memory reads as expired",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": "    return expires !== null && isExpired(expires, today)\n",
+      "replace": "    return expires !== null\n"
+    },
+    {
+      "name": "an impossible calendar day passes as a date",
+      "source": "src/memory/memdir/memoryFrontmatterFields.ts",
+      "find": "  return real ? { kind: 'date', date: raw } : { kind: 'invalid', raw }\n",
+      "replace": "  return { kind: 'date', date: raw }\n"
+    },
+    {
+      "name": "the guard lets a malformed expires: through",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "  if (expires.kind === 'invalid') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a Read of an expired memory says nothing",
+      "source": "src/memory/memdir/memoryAge.ts",
+      "find": "  if (facts.expires !== null && isExpired(facts.expires, today)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the Read never hands over the expires: date",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "    markMemoryFileRead(data, { mtimeMs, expires: offset === 1 ? expiresOf(content) : null })\n",
+      "replace": "    markMemoryFileRead(data, { mtimeMs, expires: null })\n"
+    },
+    {
+      "name": "the scan header drops expires",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "          expires: expires.kind === 'date' ? expires.date : null,\n",
+      "replace": "          expires: null,\n"
+    },
+    {
+      "name": "the dream digest drops the expired memories",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "  const expired = inputs.expired ?? []\n",
+      "replace": "  const expired: ExpiredFinding[] = []\n"
+    },
+    {
+      "name": "the dream digest stops naming what a session wrote",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "  const written = named.length > 0 ? `\\n  memories written: ${named.join(', ')}${more}` : ''\n",
+      "replace": "  const written = ''\n"
+    },
+    {
+      "name": "control: a wider cap on the expired section",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "  expiredChars: 1_000,\n",
+      "replace": "  expiredChars: 1_200,\n",
+      "expect": "green"
+    },
+    {
+      "name": "an index write counts as a memory written",
+      "source": "src/memory/autoDream/memoryWrites.ts",
+      "find": "        if (basename(path) === ENTRYPOINT_NAME || !roots.some(root => path.startsWith(root))) continue\n",
+      "replace": "        if (!roots.some(root => path.startsWith(root))) continue\n"
+    },
+    {
+      "name": "tidy runs without the audit's findings",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "    findings = (await audit(dirs)).findings\n",
+      "replace": ""
+    },
+    {
+      "name": "the /memory browser hides expiry",
+      "source": "src/memory/ui/memoryDirRows.ts",
+      "find": "    const expired = header.expires !== null && isExpired(header.expires, today) ? `  expired ${header.expires}` : ''\n",
+      "replace": "    const expired = ''\n"
+    },
+    {
+      "name": "the extraction stops asking for expires:",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    '- A fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — gets `expires: YYYY-MM-DD` in its frontmatter, the last day it holds; past it the memory is flagged for re-verification, never deleted',\n",
+      "replace": ""
+    }
+  ]
+}
