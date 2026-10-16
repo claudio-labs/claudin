@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.1.45 — 2026-10-16
+
+### ✨ Features
+
+- feat(agent): collapse git tool calls with their commits and prs (#300) (b1fff758)
+
+### 🐛 Bug Fixes
+
+- fix(cache): stop image blocks from pinning the cache marker (#302) (140cf15e)
+- fix(agent): remove the phantom agent-launch warning (#301) (bc944af2)
+- fix(agents): run a sub-agent's background agents inline (#299) (ba69562a)
+- fix(tools): close the harness errors the 10-15 census found (#298) (b749d186)
+- fix(bash): capture &>, &>>, >| and <> targets after shell-quote 1.12 (#297) (c36a6e99)
+
+### ⚡ Performance
+
+- perf(compact): a relief clip frees every old result it rewrites (#303) (79b0382c)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 3 updates (#295) (b590e43a)
+- chore(deps): bump the production-dependencies group with 12 updates (#296) (1a077be5)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.44 — 2026-10-13
 
 ### ✨ Features
