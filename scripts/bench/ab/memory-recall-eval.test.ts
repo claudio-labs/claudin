@@ -23,9 +23,9 @@ describe('memory-recall-eval gates', () => {
   const gate = (rows: SessionRow[], name: string) => evaluateGates(rows, roles, 5).find(g => g.gate.startsWith(name))
 
   test('G1 needs the new arm to recover the tail and the base to miss it', () => {
-    expect(gate([...arm('new', 'index-tail', 4), ...arm('base', 'index-tail', 1)], 'G1')?.ok).toBe(true)
-    expect(gate([...arm('new', 'index-tail', 3), ...arm('base', 'index-tail', 0)], 'G1')?.ok).toBe(false)
-    expect(gate([...arm('new', 'index-tail', 5), ...arm('base', 'index-tail', 2)], 'G1')?.ok).toBe(false)
+    expect(gate([...arm('new', 'index-proactive', 4), ...arm('base', 'index-proactive', 1)], 'G1')?.ok).toBe(true)
+    expect(gate([...arm('new', 'index-proactive', 3), ...arm('base', 'index-proactive', 0)], 'G1')?.ok).toBe(false)
+    expect(gate([...arm('new', 'index-proactive', 5), ...arm('base', 'index-proactive', 2)], 'G1')?.ok).toBe(false)
   })
 
   test('G2 fails on a single attempt, whatever the pass count', () => {
@@ -41,9 +41,10 @@ describe('memory-recall-eval gates', () => {
     expect(gate([...arm('new', 'private-recall', 3), ...arm('base', 'private-recall', 5)], 'R private-recall')?.ok).toBe(false)
   })
 
-  test('G4 needs at least the base and 4 of 5', () => {
-    expect(gate([...arm('new', 'expired-memory', 4), ...arm('base', 'expired-memory', 4)], 'G4')?.ok).toBe(true)
-    expect(gate([...arm('new', 'expired-memory', 4), ...arm('base', 'expired-memory', 5)], 'G4')?.ok).toBe(false)
+  test('G4 needs more than the base and 4 of 5', () => {
+    expect(gate([...arm('new', 'expired-sole-source', 4), ...arm('base', 'expired-sole-source', 3)], 'G4')?.ok).toBe(true)
+    expect(gate([...arm('new', 'expired-sole-source', 4), ...arm('base', 'expired-sole-source', 4)], 'G4')?.ok).toBe(false)
+    expect(gate([...arm('new', 'expired-sole-source', 3), ...arm('base', 'expired-sole-source', 0)], 'G4')?.ok).toBe(false)
   })
 
   test('the cost gate allows 10% over the base median', () => {
@@ -53,11 +54,11 @@ describe('memory-recall-eval gates', () => {
   })
 
   test('a placebo as far from the base as the effect marks the effect as noise', () => {
-    const rows = [...arm('new', 'index-tail', 4), ...arm('base', 'index-tail', 1), ...arm('placebo', 'index-tail', 4)]
+    const rows = [...arm('new', 'index-proactive', 4), ...arm('base', 'index-proactive', 1), ...arm('placebo', 'index-proactive', 4)]
     const p = gate(rows, 'P placebo')!
     expect(p.ok).toBe(false)
-    expect(p.detail).toContain('NOT separated from noise on index-tail')
-    expect(gate([...arm('new', 'index-tail', 4), ...arm('base', 'index-tail', 1), ...arm('placebo', 'index-tail', 1)], 'P placebo')?.ok).toBe(true)
+    expect(p.detail).toContain('NOT separated from noise on index-proactive')
+    expect(gate([...arm('new', 'index-proactive', 4), ...arm('base', 'index-proactive', 1), ...arm('placebo', 'index-proactive', 1)], 'P placebo')?.ok).toBe(true)
   })
 
   test('no gate without both the base and the new arm', () => {

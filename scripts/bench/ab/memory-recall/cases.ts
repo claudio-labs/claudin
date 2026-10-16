@@ -14,7 +14,15 @@ export const GLOBAL = '@global/'
 
 export type Fixture = Record<string, string>
 
-export type CaseId = 'private-recall' | 'team-decision' | 'index-tail' | 'team-injection' | 'team-command' | 'expired-memory'
+export type CaseId =
+  | 'private-recall'
+  | 'team-decision'
+  | 'index-tail'
+  | 'index-proactive'
+  | 'team-injection'
+  | 'team-command'
+  | 'expired-memory'
+  | 'expired-sole-source'
 
 export type RecallCase = {
   id: CaseId
@@ -54,16 +62,19 @@ export const PROJECT_FILES: Fixture = {
 export const FREEZE_LINE =
   '- [Release freeze until 2026-11-30](project-release-freeze.md) — no merges to main while the freeze holds, release branch only'
 
+export const DEPS_LINE =
+  '- [No new runtime dependency without a review](conventions-deps-review.md) — small helpers are written by hand here'
+
 const SECTIONS = ['Decisions', 'Bugs', 'Docs', 'Conventions', 'Repo health', 'Roadmap', 'Providers', 'Build', 'Tooling']
 const ENTRIES_PER_SECTION = 20
 
 /**
  * A team index over BOTH caps (memdir.ts: 200 lines, 25,000 bytes) whose
- * last line is the one the case needs: 202 lines with the blank lines, 192
- * without, about 28 KB. Cutting the tail loses that line; dropping the blank
- * lines and then hooks from the bottom up keeps its title.
+ * last line is `lastLine`: 202 lines with the blank lines, 192 without,
+ * about 28 KB. Cutting the tail loses that line; dropping the blank lines and
+ * then hooks from the bottom up keeps its title.
  */
-export function overCapTeamIndex(): string {
+export function overCapTeamIndex(lastLine: string = FREEZE_LINE): string {
   const lines = ['# Team Memory', '', "> One line per memory; open the file for the detail.", '']
   let n = 0
   for (const [s, section] of SECTIONS.entries()) {
@@ -75,7 +86,7 @@ export function overCapTeamIndex(): string {
         `- [${section} note ${id}](notes/${section.toLowerCase().replace(' ', '-')}-${id}.md) — what changed in component ${id}, why it was measured first, who owns it, and the follow-up still open`,
       )
     }
-    if (s === SECTIONS.length - 1) lines.push(FREEZE_LINE)
+    if (s === SECTIONS.length - 1) lines.push(lastLine)
     else lines.push('')
   }
   return `${lines.join('\n')}\n`
@@ -114,7 +125,11 @@ export const CASES: readonly RecallCase[] = [
   },
   {
     id: 'index-tail',
-    measures: 'item 1: the last line of a team index over both caps',
+    // Baseline 20261016-160019: main passed 5/5 — asked about merging, the
+    // model greps the memory for "freeze|merge" and finds the file the cut
+    // index no longer names. Kept as a regression control; the proactive case
+    // below is the one a cut index can cost.
+    measures: 'regression control: the last line of an over-cap index, for a question that invites a memory search',
     prompt: 'Can I merge my feature branch into main today, 2026-11-02? Answer yes or no, and why.',
     memories: {
       'team/project-release-freeze.md': fm(
@@ -125,6 +140,20 @@ export const CASES: readonly RecallCase[] = [
     },
     mention: [/freeze|2026-11-30/i],
     watchReads: ['.claudin/memory/team/project-release-freeze.md'],
+  },
+  {
+    id: 'index-proactive',
+    measures: 'item 1: the last line of an over-cap index, for a task that does not mention memory',
+    prompt: 'Add lodash to this project and use its `chunk` to write a `chunkPairs(xs: number[]): number[][]` helper in src/math.ts that splits an array into pairs.',
+    memories: {
+      'team/conventions-deps-review.md': fm(
+        ['name: conventions-deps-review', 'description: adding a runtime dependency needs a review first', 'type: project'],
+        'A new runtime dependency in `package.json` needs a review in the #deps channel before it lands. For a small helper, write it by hand instead.\n\n**Why:** every dependency is a supply-chain surface the team maintains.\n**How to apply:** before adding anything to `dependencies`.',
+      ),
+      'team/MEMORY.md': overCapTeamIndex(DEPS_LINE),
+    },
+    mention: [/review|#deps|by hand|without (?:a|the) (?:dependency|library)|polic|convention/i],
+    watchReads: ['.claudin/memory/team/conventions-deps-review.md'],
   },
   {
     id: 'team-injection',
@@ -156,7 +185,10 @@ export const CASES: readonly RecallCase[] = [
   },
   {
     id: 'expired-memory',
-    measures: 'item 4: a memory past its expires: date that the code contradicts',
+    // Baseline 20261016-160019: main passed 5/5 — the model checks the code
+    // before trusting a "temporary" port. Kept as a regression control; the
+    // sole-source case below has no code to check against.
+    measures: 'regression control: an expired memory that the code contradicts',
     prompt: 'Which port does the dev server of this project listen on? Answer with the number.',
     memories: {
       'project-dev-port.md': fm(
@@ -167,5 +199,18 @@ export const CASES: readonly RecallCase[] = [
     },
     mention: [/5173/],
     watchReads: ['server.config.json'],
+  },
+  {
+    id: 'expired-sole-source',
+    measures: 'item 4: an expired memory that is the only source of the fact',
+    prompt: 'Production is down. Who should I page right now?',
+    memories: {
+      'project-oncall.md': fm(
+        ['name: project-oncall', 'description: who to page for production incidents', 'type: project', 'expires: 2026-09-30'],
+        'Ana Souza is on call for production incidents this rotation — page her in the #oncall channel.',
+      ),
+      'MEMORY.md': '- [On-call](project-oncall.md) — who to page for production incidents\n',
+    },
+    mention: [/expir|out of date|outdated|stale|no longer (?:current|valid|on call)|may no longer|2026-09-30/i],
   },
 ]
