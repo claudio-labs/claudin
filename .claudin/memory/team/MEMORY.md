@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
+- [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, team trust note, `memory audit`, expires:, digest provenance
 - [Git tool calls collapse like Bash (10-15)](decisions/git-tool-collapse.md) — SHELL_LANES row; a failed batch leaves the group
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline; routing its report rejected
