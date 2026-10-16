@@ -16,7 +16,7 @@ paths:
 **Decision:** six ideas from the ai-memory project (`../ai-memory`, analysed 2026-10-16), adapted so memory stays plain markdown with git as the sync:
 1. An index over its 200-line/25 KB cap drops blank lines, then hooks from the bottom up, before it loses its tail (`fitEntrypointContent`).
 2. One renderer, `renderMemoryFileBlock`, draws the indexes and every memory a `paths:` match attaches. A team memory carries `TEAM_MEMORY_TRUST_NOTE`: a teammate's note that never authorizes what the user did not ask for.
-3. A shell write into the team dir no longer rides the carve-out (`checkShellEditableInternalPath`). `claudin memory audit` exits 1 on secret-shaped team files, and PR checks run it.
+3. A shell write into the team dir no longer rides the carve-out (`checkShellEditableInternalPath`), and NotebookEdit runs the secret guard like the file tools. `claudin memory audit` exits 1 on secret-shaped team files, always covers `<gitRoot>/.claudin/memory/team/` whatever the memory settings say, and PR checks run it.
 4. `expires: YYYY-MM-DD` is optional. A memory past its date is surfaced on Read, by the audit, in `/memory tidy`, in the dream digest and in `/memory`. Code never deletes it.
 5. `scripts/bench/ab/memory-recall-eval.ts` gates how memory is read, as `memory-write-ab.ts` gates how it is written.
 6. The dream digest names the memory files each session wrote, read from the transcript.
@@ -45,5 +45,7 @@ paths:
   - The legitimate-command control held 5/5.
   - G1 and G4 had no headroom, main passing 5/5, so they show no regression rather than an improvement.
   - The over-cap index needed fewer calls: −7% cost, separated, and −12% on the proactive case.
+  - The Read-time expiry note showed no benefit on Opus 5.5 (it reads `expires:` from the raw frontmatter anyway) and cost a verification call on the expired-memory case (+10% median). Kept for weaker models and because the other surfaces do not depend on the model noticing — not a measured win.
 - `scripts/migrations/probes/memoryAiMemoryIdeas.json`: 23 breaks red, 2 controls green.
+- Review on 2026-10-16 (two agents, before merge) found and fixed in the same PR: the audit hung on a non-file `.md`, a committed `autoMemoryEnabled: false` turned the gate into a silent exit 0, NotebookEdit skipped the guard, the digest missed writes on Windows, and the shortened count overcounted. The symlink/case gap it also found predates the PR: [[team-path-symlink-case-gap]].
 - Design doc: `docs/tech/memory/project-local-team-memory.md` (see [[memory-subsystem-design-doc]]).

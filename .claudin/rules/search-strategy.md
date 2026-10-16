@@ -166,7 +166,7 @@ src/
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (54)                ← plugin discovery, install, marketplace, dxt/, hooks/ (4)
-├── memory/ (80)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+├── memory/ (96)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, autoDream/, session/, ui/, and instructions/ —
 │                                  memdir/pathScopedMemories.ts is the on-demand loader (a
 │                                  memory with `paths:` rides the rules' nested_memory lane),

@@ -17,11 +17,16 @@ paths:
 the `autoMemoryProjectLocal` opt-out; the three team categories and the bar
 each one has to clear (`TEAM_CATEGORIES` in `memoryTypes.ts` is the one
 source every prompt renders); the secret guard (`teamMemSecretGuard.ts`,
-blocks, team dir only); `paths:` on-demand loading and how it differs from a
-rule (`pathScopedMemories.ts`, memoized on directory mtimes); what the dream
-reads (`dreamDigest.ts`); what the transcript lines mean (`Loaded private
-memories index (N entries)` vs `Loaded 4 team bug memories`); and a "Verified
-unaffected" list of the permission paths.
+blocks, team dir only) and, since 2026-10-16, shell writes into the team dir
+asking plus `claudin memory audit` (`memoryAudit.ts`); `paths:` on-demand
+loading and how it differs from a rule (`pathScopedMemories.ts`, memoized on
+directory mtimes); the one renderer a memory gets in every lane, with the team
+trust note (`claudemd/memoryBlock.ts`); how an index over its caps is fit
+rather than cut (`fitEntrypointContent`); the optional `expires:` date and
+where it surfaces; what the dream reads (`dreamDigest.ts`, now with each
+session's memory writes and the expired memories); what the transcript lines
+mean (`Loaded private memories index (N entries)` vs `Loaded 4 team bug
+memories`); and a "Verified unaffected" list of the permission paths.
 
 **Start here when:** adding a memory-related prompt (render from
 `TEAM_CATEGORIES`, never restate the taxonomy), touching the attachment lane a

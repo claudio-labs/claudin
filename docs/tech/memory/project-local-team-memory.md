@@ -102,13 +102,26 @@ normal permission flow for `.claudin/` (`checkShellEditableInternalPath` in
 `internalPaths.ts`; the private and global dirs keep the carve-out for the
 shell). `/memory sort`'s `mkdir` of a new category prompts with it.
 
-What reaches the team dir past both — a human, another agent, an editor — is
-what `claudin memory audit` is for (`src/memory/memdir/memoryAudit.ts`, the
-subcommand in `src/platform/main/commands/memory.ts`): it scans every team
-file, indexes included, and exits 1 on a secret-shaped one (`--json` for a
-machine), which makes it a CI step or a pre-commit hook for any repo that
-carries a team dir. This repo's own PR checks run it (`verify:team-memory`).
-Memories past their `expires:` date are listed too, and never fail it.
+NotebookEdit rides the same carve-out as the file tools, so it runs the same
+guard on the cell it writes (`NotebookEditTool.ts` `validateInput`).
+
+What reaches the team dir past all of them — a human, another agent, an
+editor — is what `claudin memory audit` is for (`src/memory/memdir/memoryAudit.ts`,
+the subcommand in `src/platform/main/commands/memory.ts`): it scans every
+regular team file, indexes included, and exits 1 on a secret-shaped one
+(`--json` for a machine), which makes it a CI step or a pre-commit hook for
+any repo that carries a team dir. It always covers the committed team dir,
+`<gitRoot>/.claudin/memory/team/` (`committedTeamMemPath`), whatever the
+memory settings say — `autoMemoryEnabled: false` in the repo's own settings
+cannot switch the gate off — and an audit that throws exits 2 rather than
+hanging. This repo's own PR checks run it (`verify:team-memory`). Memories
+past their `expires:` date are listed too, and never fail it.
+
+Known gap, older than all of this: the team-dir tests (`isTeamMemPath`, and
+the scope `findMemoryDir` gives the shell carve-out) compare the path as
+written, so a symlink inside the private dir that points into team, or a
+case variant (`TEAM/`) on a case-insensitive filesystem, still reads as
+private — see team memory `bugs/team-path-symlink-case-gap.md`.
 
 ## Global memory
 

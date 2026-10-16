@@ -58,7 +58,8 @@ Both index cases give the same answer on every arm. They differ in how the model
 
 ## What item 4 cost
 
-On expired-memory, the re-verify note added a verification call: 4 calls against 2–3, and a median of $0.086 against $0.078. The model was going to find the right port anyway. The note matters where it is the only cue left:
-- a memory read in a range that skips its frontmatter;
-- a weaker model;
+On expired-memory, the re-verify note added a verification call: 4 calls against 2–3, and a median of $0.086 against $0.078. The model was going to find the right port anyway. No case here measured a benefit from the Read note; the arguments for keeping it are:
+- a weaker model, untested here;
 - the dream, tidy and `/memory` surfaces, which do not depend on the model noticing.
+
+The note needs the frontmatter in the read: a Read from line 1 carries it, and a range that skips the frontmatter, or a memory a `paths:` match attaches, gets none.
