@@ -182,6 +182,31 @@ describe('buildDreamDigest', () => {
     expect(buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [] })).not.toContain('expires:')
   })
 
+  test('each session names the memories it wrote; what changed with no session is listed apart', () => {
+    const writes = Array.from({ length: 7 }, (_, i) => `/repo/.claudin/memory/m${i}.md`)
+    const digest = buildDreamDigest({
+      sinceMs: since,
+      plans: [],
+      sessions: [{ sessionId: 'abcdef12-0000-0000-0000-000000000000', mtimeMs: since + 1, firstPrompt: 'remember pnpm', memoryWrites: writes }],
+      commitSubjects: [],
+      changedMemories: ['/repo/.claudin/memory/m0.md', '/repo/.claudin/memory/team/bugs/x.md', '/home/u/.claudin/memory/g.md'],
+      cwd: '/repo',
+    })
+    expect(digest).toContain(
+      '- abcdef12 · "remember pnpm"\n  memories written: .claudin/memory/m0.md, .claudin/memory/m1.md, .claudin/memory/m2.md, .claudin/memory/m3.md, .claudin/memory/m4.md and 2 more',
+    )
+    expect(digest).toContain('### Memories also changed in this period (2) — by a background pass or by hand')
+    expect(digest).toContain('- .claudin/memory/team/bugs/x.md')
+    expect(digest).toContain('- /home/u/.claudin/memory/g.md')
+    expect(digest).not.toContain('Nothing was modified')
+  })
+
+  test('only an unattributed change still counts as something modified', () => {
+    const digest = buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], changedMemories: ['/r/x.md'] })
+    expect(digest).not.toContain('Nothing was modified')
+    expect(digest).toContain('- /r/x.md')
+  })
+
   test('clips a long prompt to the prompt cap', () => {
     const digest = buildDreamDigest({
       sinceMs: since,
@@ -218,6 +243,7 @@ describe('collectDreamDigest', () => {
       listExpiredMemories: async () => {
         throw new Error('memory dirs unreadable')
       },
+      listChangedMemories: async () => [],
     })
     expect(digest).not.toContain('### Plans')
     expect(digest).toContain('### Session prompts (1)')
@@ -231,6 +257,7 @@ describe('collectDreamDigest', () => {
       listSessions: async () => [],
       commitSubjectsSince: async () => [],
       listExpiredMemories: async () => [{ kind: 'expired', scope: 'private', path: '/r/.claudin/memory/oncall.md', expires: '2026-09-30' }],
+      listChangedMemories: async () => [],
     })
     expect(digest).toContain('- `/r/.claudin/memory/oncall.md` — expired 2026-09-30')
   })

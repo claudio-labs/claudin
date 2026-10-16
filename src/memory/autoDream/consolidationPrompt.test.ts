@@ -26,6 +26,12 @@ describe('buildConsolidationPrompt', () => {
     expect(prompt).toContain('naming any team file you created')
   })
 
+  test('a drifted memory is traced through the transcript of the session that wrote it', () => {
+    expect(buildConsolidationPrompt(DIRS, TRANSCRIPTS, '')).toContain(
+      `The digest names the memories each session wrote: when one looks drifted, that session's transcript (the \`.jsonl\` in \`${TRANSCRIPTS}\` whose name starts with its id) holds why it was written`,
+    )
+  })
+
   test('asks for an expires: date on a fact with a natural end', () => {
     expect(buildConsolidationPrompt(DIRS, TRANSCRIPTS, '')).toContain(
       'a freeze, a deadline, a rotation, a temporary workaround — `expires: YYYY-MM-DD` in its frontmatter, the last day it holds',
