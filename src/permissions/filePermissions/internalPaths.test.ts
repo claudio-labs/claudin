@@ -2,11 +2,27 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
+import { getPlansDirectory } from 'src/agent/plans/plans.js'
+import { getScratchpadDir } from 'src/agent/scratchpad.js'
+import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
+import { getSessionMemoryDir } from 'src/memory/session/paths.js'
+import {
+  getOriginalCwd,
+  getProjectRoot,
+  setProjectRoot,
+} from 'src/platform/bootstrap/state.js'
+import { getProjectTempDir } from 'src/platform/tmpdir.js'
 import { getPrivateMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getProjectDir } from 'src/sessions/sessionStorage.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getBundledSkillsRoot } from 'src/skills/bundledSkillsRoot.js'
 import {
   checkEditableInternalPath,
   checkReadableInternalPath,
+  getClaudeSkillScope,
+  isClaudeConfigFilePath,
+  isClaudeSettingsPath,
 } from 'src/permissions/filePermissions/internalPaths.js'
 
 // The auto-memory carve-outs: the memory directory is read and written with
@@ -204,6 +220,129 @@ describe('auto-memory carve-outs', () => {
         expect(verdicts(join(globalDir, 'new.md'))).toEqual(['allow', 'allow'])
       } finally {
         rmSync(globalDir.replace(/\/$/, ''), { force: true })
+      }
+    })
+  })
+
+  // The carve-outs beside memory, each pinned by the reason that names it, so
+  // a reordering that lets an earlier branch swallow a later one shows.
+  describe('the other internal carve-outs', () => {
+    const reasonOf = (result: { behavior: string; decisionReason?: unknown }) =>
+      result.behavior === 'allow'
+        ? (result.decisionReason as { reason?: string } | undefined)?.reason
+        : result.behavior
+
+    test('each writable internal path is allowed under its own reason', () => {
+      const cases: [string, string][] = [
+        [join(getPlansDirectory(), 'some-plan.md'), 'Plan files for current session are allowed for writing'],
+        [join(getScratchpadDir(), 'notes.txt'), 'Scratchpad files for current session are allowed for writing'],
+        [join(getCwd(), '.claudin', 'agent-memory', 'x.md'), 'Agent memory files are allowed for writing'],
+        [join(getOriginalCwd(), '.claudin', 'launch.json'), 'Preview launch config is allowed for writing'],
+      ]
+      for (const [file, reason] of cases) {
+        expect([file, reasonOf(checkEditableInternalPath(file, { file_path: file }))]).toEqual([file, reason])
+      }
+    })
+
+    test('a plan file must sit directly in the plans dir and be markdown', () => {
+      for (const file of [
+        join(getPlansDirectory(), 'nested', 'plan.md'),
+        join(getPlansDirectory(), 'plan.txt'),
+      ]) {
+        expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+      }
+    })
+
+    test('CLAUDIN_SCRATCHPAD=0 takes the scratchpad carve-out with it', () => {
+      const prior = process.env.CLAUDIN_SCRATCHPAD
+      process.env.CLAUDIN_SCRATCHPAD = '0'
+      try {
+        const file = join(getScratchpadDir(), 'notes.txt')
+        expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+        expect(checkReadableInternalPath(file, { file_path: file }).behavior).not.toBe('passthrough')
+      } finally {
+        if (prior === undefined) delete process.env.CLAUDIN_SCRATCHPAD
+        else process.env.CLAUDIN_SCRATCHPAD = prior
+      }
+    })
+
+    test('each readable internal path is allowed under its own reason', () => {
+      const config = getClaudinConfigHomeDir()
+      const cases: [string, string][] = [
+        [join(getSessionMemoryDir(), 'summary.md'), 'Session memory files are allowed for reading'],
+        [join(getProjectDir(getCwd()), 'session.jsonl'), 'Project directory files are allowed for reading'],
+        [join(getToolResultsDir(), 'out.txt'), 'Project directory files are allowed for reading'],
+        [join(getScratchpadDir(), 'notes.txt'), 'Scratchpad files for current session are allowed for reading'],
+        [join(getProjectTempDir(), 'other-session', 'x.txt'), 'Project temp directory files are allowed for reading'],
+        [join(getCwd(), '.claudin', 'agent-memory', 'x.md'), 'Agent memory files are allowed for reading'],
+        [join(config, 'tasks', 'list.json'), 'Task files are allowed for reading'],
+        [join(config, 'teams', 'team.json'), 'Team files are allowed for reading'],
+        [join(getBundledSkillsRoot(), 'skill', 'ref.md'), 'Bundled skill reference files are allowed for reading'],
+      ]
+      for (const [file, reason] of cases) {
+        expect([file, reasonOf(checkReadableInternalPath(file, { file_path: file }))]).toEqual([file, reason])
+      }
+    })
+
+    test('the bare tasks and teams dirs are readable, a sibling sharing the prefix is not', () => {
+      const config = getClaudinConfigHomeDir()
+      for (const dir of ['tasks', 'teams']) {
+        expect(checkReadableInternalPath(join(config, dir), {}).behavior).toBe('allow')
+        expect(checkReadableInternalPath(join(config, `${dir}x`, 'a.json'), {}).behavior).toBe('passthrough')
+      }
+    })
+
+    test('a plan file is readable as one', () => {
+      const file = join(getPlansDirectory(), 'some-plan.md')
+      expect(reasonOf(checkReadableInternalPath(file, { file_path: file }))).toBe(
+        'Plan files for current session are allowed for reading',
+      )
+    })
+  })
+
+  describe('settings and config files', () => {
+    test('any project settings file counts, through a redundant ./ too', () => {
+      for (const file of [
+        '/somewhere/else/.claudin/settings.json',
+        '/somewhere/else/.claudin/settings.local.json',
+        '/somewhere/else/./.claudin/./settings.json',
+      ]) {
+        expect([file, isClaudeSettingsPath(file)]).toEqual([file, true])
+      }
+      expect(isClaudeSettingsPath('/somewhere/else/.claudin/settings.json.bak')).toBe(false)
+    })
+
+    test('commands, agents and skills of this project are config, other .claudin files are not', () => {
+      const base = join(getOriginalCwd(), '.claudin')
+      for (const dir of ['commands', 'agents', 'skills']) {
+        expect(isClaudeConfigFilePath(join(base, dir, 'x.md'))).toBe(true)
+      }
+      expect(isClaudeConfigFilePath(join(base, 'rules', 'x.md'))).toBe(false)
+    })
+  })
+
+  describe('getClaudeSkillScope', () => {
+    test('a file inside a project or global skill names that skill only', () => {
+      expect(getClaudeSkillScope(join(getOriginalCwd(), '.claudin', 'skills', 'MySkill', 'SKILL.md'))).toEqual({
+        skillName: 'MySkill',
+        pattern: '/.claudin/skills/MySkill/**',
+      })
+      expect(getClaudeSkillScope(join(getClaudinConfigHomeDir(), 'skills', 'deploy', 'refs', 'a.md'))).toEqual({
+        skillName: 'deploy',
+        pattern: '~/.claudin/skills/deploy/**',
+      })
+    })
+
+    test('no scope for a file directly under skills/, a traversal, a glob name or another dir', () => {
+      const skills = join(getOriginalCwd(), '.claudin', 'skills')
+      for (const file of [
+        join(skills, 'loose.md'),
+        `${skills}/v2..beta/SKILL.md`,
+        `${skills}/*/SKILL.md`,
+        `${skills}/a[b]/SKILL.md`,
+        join(getOriginalCwd(), '.claudin', 'rules', 'x', 'y.md'),
+      ]) {
+        expect([file, getClaudeSkillScope(file)]).toEqual([file, null])
       }
     })
   })
