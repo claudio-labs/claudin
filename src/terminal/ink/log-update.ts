@@ -664,23 +664,24 @@ function anchorRows(frame: Frame): {
 /**
  * Repaint the reachable tail WITHOUT clearing the screen.
  *
- * Precondition — exactly what `cursorAtBottom` asserts at the call site: the
- * physical cursor sits one row past the previous block's last row, which is
- * the LAST viewport row whenever that block overflowed. From there this steps up
- * one row, lets eraseLines(N) walk up blanking N rows (it ends at column 0 of
- * the topmost one), and repaints those same N rows. Net vertical movement is
- * ZERO, which is the whole point: nothing scrolls, so nothing is deposited in
- * scrollback, the screen never goes blank, and the cursor ends back on the row
- * the next frame expects it on — leaving restoreMainScreenCursor with nothing
- * to do.
+ * Precondition — exactly what `prevHadScrollback` asserts at the call site: the
+ * previous block overflowed, so it fills the viewport and the physical cursor
+ * sits on the LAST viewport row. From there this steps up one row, lets
+ * eraseLines(N) walk up blanking N rows (it ends at column 0 of the topmost
+ * one), walks back down over the padding and repaints the rest. Net vertical
+ * movement is ZERO, which is the whole point: nothing scrolls, so nothing is
+ * deposited in scrollback, the screen never goes blank, and the cursor ends
+ * back on the row the next frame expects it on — leaving
+ * restoreMainScreenCursor with nothing to do.
  *
  * Net zero is also what keeps the block where the user last saw it: the new
  * tail ends on the row the old tail ended on.
  *
- * The rows ABOVE the repainted block keep whatever was there. They are history
- * in the same sense as the rows already in scrollback: the user saw them, and
- * blanking them is what used to take eight messages off the screen (issue
- * #165).
+ * A new block that fits the viewport is padded, and the padding rows are
+ * erased too. Every viewport row belonged to the old block, so the ones left
+ * above the new block showed the frame's own rows a second time — closing the
+ * `@` list stacked the banner and the prompt there (2026-10-16). Scrollback is
+ * out of reach and keeps what the user saw.
  *
  * Returns null when there is nothing to paint (an emptied frame), so the
  * caller falls back to the reset.
@@ -690,7 +691,7 @@ function repaintTailInPlace(
   next: Frame,
   stylePool: StylePool,
 ): Diff | null {
-  const { rowsToPaint, startY } = anchorRows(next)
+  const { rowsToPaint, startY, padRows } = anchorRows(next)
   if (rowsToPaint <= 0) {
     return null
   }
@@ -705,9 +706,22 @@ function repaintTailInPlace(
 
   return [
     ...mover.diff,
-    { type: 'clear', count: rowsToPaint, repaintReason: 'offscreen' },
+    { type: 'clear', count: rowsToPaint + padRows, repaintReason: 'offscreen' },
+    ...padding(padRows),
     ...screen.diff,
   ]
+}
+
+/** CR plus one LF per padding row: walks down to a bottom-anchored block. */
+function padding(padRows: number): Diff {
+  const pad: Diff = []
+  if (padRows > 0) {
+    pad.push(CARRIAGE_RETURN)
+    for (let i = 0; i < padRows; i++) {
+      pad.push(NEWLINE)
+    }
+  }
+  return pad
 }
 
 function fullResetSequence_CAUSES_FLICKER(
@@ -732,16 +746,9 @@ function fullResetSequence_CAUSES_FLICKER(
   // position is not trustworthy) and for 'clear' (ctrl+L asked for a clean
   // screen). The per-turn shrink goes through repaintTailInPlace instead.
   const { startY, padRows } = anchorRows(frame)
-  const pad: Diff = []
-  if (padRows > 0) {
-    pad.push(CARRIAGE_RETURN)
-    for (let i = 0; i < padRows; i++) {
-      pad.push(NEWLINE)
-    }
-  }
   const screen = new VirtualScreen({ x: 0, y: startY }, frame.viewport.width)
   renderFrameSlice(screen, frame, startY, frame.screen.height, stylePool)
-  return [{ type: 'clearTerminal', reason }, ...pad, ...screen.diff]
+  return [{ type: 'clearTerminal', reason }, ...padding(padRows), ...screen.diff]
 }
 
 /**

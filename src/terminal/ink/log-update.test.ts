@@ -641,7 +641,7 @@ test('main-screen rewrite defers to the in-place tail repaint when shrinking whi
 // repainted from viewport row 0, which put frame row 0 — the startup banner —
 // at the top of the screen and pulled the input box up with it. Captured live
 // as `screenH=15 viewportH=18 startY=0`. Bottom-anchoring keeps the block on
-// the last rows; the rows above keep whatever history was there.
+// the last rows, and the rows above it — all the old block's — are blanked.
 test('a frame that shrinks below the viewport stays anchored at the bottom', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
@@ -650,17 +650,18 @@ test('a frame that shrinks below the viewport stays anchored at the bottom', () 
   const stdout = collectStdout(diff)
 
   expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
-  // 6 rows erased and 6 repainted — NOT the 9 a viewport-filling repaint would
-  // touch, and no padding: the block already ends on the cursor row.
+  // All 9 usable rows erased, 3 padding LFs down to the anchor, 6 repainted.
   expect(
     diff.some(
-      p => p.type === 'clear' && p.count === 6 && p.repaintReason === 'offscreen',
+      p => p.type === 'clear' && p.count === 9 && p.repaintReason === 'offscreen',
     ),
   ).toBe(true)
   expect(diff.some(p => p.type === 'cursorMove' && p.y === -1)).toBe(true)
+  expect(stdout.startsWith('\n\n\n')).toBe(true)
   expect(stdout).toContain('ROW00xxxxx')
   expect(stdout).toContain('ROW05xxxxx')
-  expect(countNewlines(stdout)).toBe(6)
+  expect(countNewlines(stdout)).toBe(3 + 6)
+  expect(netRowDelta(diff)).toBe(0)
 })
 
 // The killswitch has to revert BOTH halves: the path choice and the padding.
