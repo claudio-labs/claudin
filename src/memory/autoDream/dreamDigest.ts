@@ -344,7 +344,7 @@ async function listSessionsFromIndex(
     log => log.sessionId !== undefined && wanted.has(log.sessionId),
   )
   const { logs } = await enrichLogs(lite, 0, lite.length)
-  const roots = getMemoryDirs().map(dir => dir.root)
+  const dirs = getMemoryDirs()
   return Promise.all(
     logs.map(async log => ({
       sessionId: log.sessionId ?? '',
@@ -353,7 +353,7 @@ async function listSessionsFromIndex(
       customTitle: log.customTitle,
       summary: log.summary,
       memoryWrites: log.fullPath
-        ? await readMemoryWrites(log.fullPath, getOriginalCwd(), roots).catch(error => {
+        ? await readMemoryWrites(log.fullPath, getOriginalCwd(), dirs).catch(error => {
             logError(error)
             return []
           })

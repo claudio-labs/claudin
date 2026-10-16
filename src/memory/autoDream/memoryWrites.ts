@@ -13,64 +13,61 @@
 import { createReadStream } from 'fs'
 import { basename } from 'path'
 import { createInterface } from 'readline'
+import { findMemoryDir, type MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
+import { safeParseJSON } from 'src/shared/data/json.js'
 import { writtenPaths } from 'src/tools/shared/writtenPaths.js'
 
 const TOOL_USE_MARK = '"tool_use"'
+
+type TranscriptEvent = { type?: unknown; cwd?: unknown; message?: { content?: unknown } }
 
 /**
  * Each root as a transcript line spells it: JSON escapes a backslash (every
  * separator of a Windows path), so the raw root alone never matches there.
  */
-function rootNeedles(roots: readonly string[]): string[] {
-  return [...new Set(roots.flatMap(root => [root, JSON.stringify(root).slice(1, -1)]))]
+function rootNeedles(dirs: readonly MemoryDir[]): string[] {
+  return [...new Set(dirs.flatMap(dir => [dir.root, JSON.stringify(dir.root).slice(1, -1)]))]
 }
 
 /**
- * The memory files the assistant turns of `lines` wrote, in order, once
- * each, indexes left out. Only a line carrying a tool use and one of `roots`
- * is parsed — a transcript runs to megabytes, and nearly every line is
- * neither — and a line that does not parse is skipped.
+ * The memory files one transcript line wrote. Only a line carrying a tool
+ * use and a memory root is parsed — a transcript runs to megabytes and nearly
+ * every line is neither — and one that does not parse writes nothing.
  */
+function writesOfLine(line: string, cwd: string, dirs: readonly MemoryDir[], needles: readonly string[]): string[] {
+  if (!line.includes(TOOL_USE_MARK) || !needles.some(needle => line.includes(needle))) return []
+  const event = safeParseJSON(line, false) as TranscriptEvent | null
+  if (event?.type !== 'assistant' || !Array.isArray(event.message?.content)) return []
+  const at = typeof event.cwd === 'string' ? event.cwd : cwd
+  return (event.message.content as Array<{ type?: unknown; input?: unknown }>).flatMap(block =>
+    block?.type === 'tool_use'
+      ? writtenPaths(block.input, at).filter(path => basename(path) !== ENTRYPOINT_NAME && findMemoryDir(dirs, path) !== null)
+      : [],
+  )
+}
+
+/** The memory files the assistant turns of `lines` wrote, in order, once each, indexes left out. */
 export function memoryWritesFromTranscript(
   lines: Iterable<string>,
   cwd: string,
-  roots: readonly string[],
+  dirs: readonly MemoryDir[],
 ): string[] {
-  const written: string[] = []
-  const needles = rootNeedles(roots)
-  for (const line of lines) {
-    if (!line.includes(TOOL_USE_MARK) || !needles.some(needle => line.includes(needle))) continue
-    let event: { type?: unknown; cwd?: unknown; message?: { content?: unknown } }
-    try {
-      event = JSON.parse(line)
-    } catch {
-      continue
-    }
-    if (event.type !== 'assistant' || !Array.isArray(event.message?.content)) continue
-    const at = typeof event.cwd === 'string' ? event.cwd : cwd
-    for (const block of event.message.content as Array<{ type?: unknown; input?: unknown }>) {
-      if (block?.type !== 'tool_use') continue
-      for (const path of writtenPaths(block.input, at)) {
-        if (basename(path) === ENTRYPOINT_NAME || !roots.some(root => path.startsWith(root))) continue
-        if (!written.includes(path)) written.push(path)
-      }
-    }
-  }
-  return written
+  const needles = rootNeedles(dirs)
+  const written = new Set<string>()
+  for (const line of lines) for (const path of writesOfLine(line, cwd, dirs, needles)) written.add(path)
+  return [...written]
 }
 
 /** memoryWritesFromTranscript over a transcript file, streamed line by line. */
 export async function readMemoryWrites(
   transcriptPath: string,
   cwd: string,
-  roots: readonly string[],
+  dirs: readonly MemoryDir[],
 ): Promise<string[]> {
-  const lines: string[] = []
-  const needles = rootNeedles(roots)
+  const needles = rootNeedles(dirs)
+  const written = new Set<string>()
   const reader = createInterface({ input: createReadStream(transcriptPath, 'utf8'), crlfDelay: Infinity })
-  for await (const line of reader) {
-    if (line.includes(TOOL_USE_MARK) && needles.some(needle => line.includes(needle))) lines.push(line)
-  }
-  return memoryWritesFromTranscript(lines, cwd, roots)
+  for await (const line of reader) for (const path of writesOfLine(line, cwd, dirs, needles)) written.add(path)
+  return [...written]
 }

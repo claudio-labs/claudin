@@ -3,11 +3,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { memoryWritesFromTranscript, readMemoryWrites } from 'src/memory/autoDream/memoryWrites.js'
+import { testMemoryDir, testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 
 const CWD = '/repo'
 const PRIVATE = '/repo/.claudin/memory/'
 const GLOBAL = '/home/u/.claudin/memory/'
-const ROOTS = [PRIVATE, `${PRIVATE}team/`, GLOBAL]
+const ROOTS = testMemoryDirs({ private: PRIVATE, team: `${PRIVATE}team/`, global: GLOBAL })
 
 const toolUse = (input: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
   JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'X', input }] }, ...extra })
@@ -57,7 +58,7 @@ describe('a root the transcript JSON escapes', () => {
     const root = '/home/u/we\\ird/.claudin/memory/'
     const line = toolUse({ file_path: `${root}feedback-a.md`, content: '---' })
     expect(line).toContain('we\\\\ird')
-    expect(memoryWritesFromTranscript([line], CWD, [root])).toEqual([`${root}feedback-a.md`])
+    expect(memoryWritesFromTranscript([line], CWD, [testMemoryDir('private', root)])).toEqual([`${root}feedback-a.md`])
   })
 })
 
