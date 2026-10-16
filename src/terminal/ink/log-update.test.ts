@@ -206,7 +206,11 @@ function gridFromLines(lines: string[], width: number): string[][] {
 
 // Apply the diff (serialized like terminal.ts) onto a grid, advancing the
 // cursor by TERMINAL widths so the model/terminal drift is exercised.
-function replayDiff(grid: string[][], diff: ReturnType<LogUpdate['render']>) {
+function replayDiff(
+  grid: string[][],
+  diff: ReturnType<LogUpdate['render']>,
+  start = { row: 0, col: 0 },
+) {
   let ansi = ''
   for (const p of diff) {
     if (p.type === 'stdout') ansi += p.content
@@ -216,8 +220,8 @@ function replayDiff(grid: string[][], diff: ReturnType<LogUpdate['render']>) {
     else if (p.type === 'carriageReturn') ansi += '\r'
   }
   const width = grid[0].length
-  let row = 0
-  let col = 0
+  let row = start.row
+  let col = start.col
   let i = 0
   while (i < ansi.length) {
     const c = ansi[i]
@@ -764,6 +768,72 @@ test('CLAUDIN_LEGACY_FULL_RESET puts the fits-the-viewport shrink back on the in
     }
     _resetLegacyFullResetCacheForTesting()
   }
+})
+
+// Reported 2026-10-16 from the inline renderer: typing `@` opens a 12-row file
+// list under the prompt, and every keystroke that shrank it — the list
+// narrowing, Esc closing it — left a copy of the frame's top on screen, so the
+// startup banner and the prompt stacked once per shrink. Both shapes below were
+// painted bottom-anchored, keeping whatever sat on the rows above the new
+// block — and those rows were the OLD frame's own rows, not history.
+const AT_PROMPT = ['banner 1', 'banner 2', '', '-- border --', '> @', '', '-- status --']
+const AT_LIST = Array.from({ length: 12 }, (_, i) => `  + dir${String(i).padStart(2, '0')}/`)
+const AT_OPEN = [...AT_PROMPT, ...AT_LIST]
+const AT_CLOSED = [...AT_PROMPT, 'auto mode on']
+const AT_WIDTH = 12
+
+function blankRows(count: number): string[] {
+  return Array.from({ length: count }, () => '')
+}
+
+// The terminal before a frame changes: the frame's last rows from viewport row
+// 0 (all of it when it fits, as in a fresh session) and the cursor parked one
+// row past them — on the last viewport row once the frame overflows.
+function terminalShowing(lines: string[], viewportHeight: number, width: number) {
+  const cursorRow = Math.min(lines.length, viewportHeight - 1)
+  const grid = gridFromLines(
+    [...lines.slice(lines.length - cursorRow), ...blankRows(viewportHeight - cursorRow)],
+    width,
+  )
+  return { grid, start: { row: cursorRow, col: 0 } }
+}
+
+function screenRows(grid: string[][]): string[] {
+  return grid.map(row => row.join('').trimEnd())
+}
+
+// A fresh session: the whole frame fits, its top row is on screen.
+test('closing the @ list of a frame that fits the viewport leaves no copy of the old frame', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const VP = 46
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_OPEN, VP)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_CLOSED, VP)
+  const { grid, start } = terminalShowing(AT_OPEN, VP, AT_WIDTH)
+  const diff = log.render(prev, next, false, true, false)
+  replayDiff(grid, diff, start)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  expect(screenRows(grid)).toEqual([...AT_CLOSED, ...blankRows(VP - AT_CLOSED.length)])
+})
+
+// A longer session or a short terminal: the open list pushed the frame past
+// the viewport, so its top is in scrollback and the block stays on the bottom
+// rows — but every viewport row above it was the old block's.
+test('closing the @ list of a frame that overflowed blanks the old rows above the new block', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const VP = 16
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_OPEN, VP)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, AT_CLOSED, VP)
+  const { grid, start } = terminalShowing(AT_OPEN, VP, AT_WIDTH)
+  const diff = log.render(prev, next, false, true, false)
+  replayDiff(grid, diff, start)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  expect(screenRows(grid)).toEqual([
+    ...blankRows(VP - 1 - AT_CLOSED.length),
+    ...AT_CLOSED,
+    '',
+  ])
 })
 
 // Second half of the same bug: Ink.repaint() (ctrl+L, prepareFullRepaint,
