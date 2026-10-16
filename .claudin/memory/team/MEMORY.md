@@ -182,7 +182,7 @@
 - [main's GitHub ruleset](main-branch-ruleset-protection.md) — admin bypass; an empty include made it inert
 
 ## TUI / diff / tooling
-- [Inline TUI stranded the frame at the top — FIXED 09-11](inline-fullreset-per-message.md) — #172 anchored only one branch
+- [Inline shrink anchoring: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md) — it stacked @-list ghost rows
 - [Auto-wrap eats a row (side-panel checkerboard)](ink-autowrap-eats-a-row.md) — DECAWM off per paint
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/
 - [collapseRuns + blank-strip is safe since 06-27](bashfilter-collapseruns-blankstrip-footgun.md) — don't reintroduce marker-on-blank

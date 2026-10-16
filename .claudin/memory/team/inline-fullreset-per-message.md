@@ -1,8 +1,22 @@
 ---
 name: inline-fullreset-per-message
-description: FIXED 2026-09-11 — PR #172's bottom anchor covered ONLY the branch where the previous frame OVERFLOWS the viewport, so a frame that FITS stranded the whole UI in the top rows; keeps the mechanism, the probe numbers and the A/B that closed it
+description: 09-11 fix (#182) routed fitting frames through the in-place repaint — REVERSED 10-16, it stacked ghost copies of the banner/prompt on every shrink (the @ list); keeps the mechanism, the probe numbers and the A/B
 type: project
 ---
+
+**REVERSED 2026-10-16 (`fix/tui-at-list-ghost-rows`).** Routing a frame that
+FITS through `repaintTailInPlace` bottom-anchored it and kept the rows above —
+which, for a fitting frame, are the OLD frame's own top rows. Every shrink of k
+rows walked the UI k rows down and left k ghost rows; opening/closing the `@`
+file list (12 rows) stacked the banner and prompt once per keystroke (user
+screenshot, 160x40 tmux repro). Now: a fitting frame shrinks on the
+incremental path (top row stays put, vacated rows erased — what Claude Code
+does); the in-place repaint is back behind `prevHadScrollback`, and when its
+new block fits it erases the padding rows too (they were the old block's).
+The 45→15 "stranding" below is accepted: its trigger, compaction cutting the
+transcript, was removed by #182 itself. Pinned by the two `@ list` grid-replay
+tests in `log-update.test.ts`; the three tests pinning the old routing were
+deleted. The rest of this file is the 09-11 history.
 
 **Fixed on `fix/tui-anchor-fits-viewport` (2026-09-11).** PR #172 (`1ea4e2c3`,
 v1.1.28) had fixed only the *reset-path* half; GitHub #165 was closed COMPLETED
