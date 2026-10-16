@@ -1,19 +1,21 @@
 /**
  * The deterministic pass over the memory directories: what no model has to
- * judge. Today it finds secret-shaped content in the team dir — git-tracked,
- * so a credential there reaches every teammate's next pull, whoever wrote it:
- * the file tools refuse one (teamMemSecretGuard.ts), but a human, another
- * agent or an editor writes past them.
+ * judge. It finds secret-shaped content in the team dir — git-tracked, so a
+ * credential there reaches every teammate's next pull, whoever wrote it: the
+ * file tools refuse one (teamMemSecretGuard.ts), but a human, another agent
+ * or an editor writes past them — and memories past their `expires:` date
+ * (memoryFrontmatterFields.ts), to be re-verified, never deleted.
  *
  * One auditor and several readers — `claudin memory audit` (the CI and
- * pre-commit gate of any repo carrying a team dir), `/memory tidy` — so none
- * of them scans on its own. The core is pure over the files it is handed;
- * readMemoryFiles is the thin I/O shell.
+ * pre-commit gate of any repo carrying a team dir), `/memory tidy`, the dream
+ * digest — so none of them scans on its own. The core is pure over the files
+ * it is handed; readMemoryFiles is the thin I/O shell.
  */
 import { readdir, readFile } from 'fs/promises'
-import { join } from 'path'
+import { basename, join } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
-import type { MemoryScope } from 'src/memory/memdir/memoryScopes.js'
+import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryFrontmatterFields.js'
+import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { isENOENT } from 'src/shared/errors.js'
 
@@ -31,7 +33,15 @@ export type SecretFinding = {
   labels: string[]
 }
 
-type MemoryFinding = SecretFinding
+export type ExpiredFinding = {
+  kind: 'expired'
+  scope: MemoryScope
+  path: string
+  /** The `expires:` date that has passed. */
+  expires: string
+}
+
+type MemoryFinding = SecretFinding | ExpiredFinding
 
 export type MemoryAudit = {
   /** How many files were read. */
@@ -48,7 +58,18 @@ export function findSecretShapedFiles(files: readonly MemoryFile[]): SecretFindi
   })
 }
 
-/** Whether an audit should fail a gate: a secret anywhere it found one. */
+/** The memory files whose `expires:` date is before `today`; indexes have none. */
+export function findExpiredMemories(files: readonly MemoryFile[], today: string): ExpiredFinding[] {
+  return files.flatMap(file => {
+    if (basename(file.path) === ENTRYPOINT_NAME) return []
+    const expires = expiresOf(file.content)
+    return expires !== null && isExpired(expires, today)
+      ? [{ kind: 'expired' as const, scope: file.scope, path: file.path, expires }]
+      : []
+  })
+}
+
+/** Whether an audit should fail a gate: a secret anywhere it found one. An expired memory never does — a gate that goes red on a calendar day, with no change, is a gate nobody keeps. */
 export function auditFails(audit: MemoryAudit): boolean {
   return audit.findings.some(finding => finding.kind === 'secret')
 }
@@ -96,7 +117,8 @@ export async function readMemoryFiles(
 export async function auditMemoryDirs(
   dirs: readonly MemoryDir[],
   deps: MemoryAuditDeps = defaultDeps,
+  today: string = localDay(),
 ): Promise<MemoryAudit> {
   const files = await readMemoryFiles(dirs, deps)
-  return { files: files.length, findings: findSecretShapedFiles(files) }
+  return { files: files.length, findings: [...findSecretShapedFiles(files), ...findExpiredMemories(files, today)] }
 }

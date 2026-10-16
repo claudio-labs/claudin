@@ -145,7 +145,7 @@ function MemoryCommand({
   };
   const handleSelect = useCallback((value: string) => {
     if (value === TIDY_VALUE) {
-      runMemoryTidy(onDone);
+      void runMemoryTidy(onDone);
       return;
     }
     const target = parseBrowseValue(value);

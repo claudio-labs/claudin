@@ -26,6 +26,12 @@ describe('buildConsolidationPrompt', () => {
     expect(prompt).toContain('naming any team file you created')
   })
 
+  test('asks for an expires: date on a fact with a natural end', () => {
+    expect(buildConsolidationPrompt(DIRS, TRANSCRIPTS, '')).toContain(
+      'a freeze, a deadline, a rotation, a temporary workaround — `expires: YYYY-MM-DD` in its frontmatter, the last day it holds',
+    )
+  })
+
   test('points Phase 2 at the digest as the first source', () => {
     const prompt = buildConsolidationPrompt(DIRS, TRANSCRIPTS, 'DIGEST-BODY')
     const decisionSources = prompt.indexOf('**Decision sources**')

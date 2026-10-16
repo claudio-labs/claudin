@@ -1,8 +1,9 @@
 /**
  * `claudin memory audit` — memoryAudit.ts for a CI step or a pre-commit hook,
  * in any repo that carries a team memory dir. Exit 1 when the team dir holds
- * secret-shaped content, 0 otherwise. Imported only when the subcommand runs
- * (src/platform/main/commands/memory.ts).
+ * secret-shaped content, 0 otherwise — memories past their `expires:` date
+ * are listed for review and never fail it. Imported only when the subcommand
+ * runs (src/platform/main/commands/memory.ts).
  */
 import { isAbsolute, relative } from 'path'
 import { auditFails, auditMemoryDirs, type MemoryAudit } from 'src/memory/memdir/memoryAudit.js'
@@ -39,12 +40,16 @@ export function formatMemoryAudit(
   if (audit.findings.length === 0) {
     return { output: `Memory audit: ${audit.files} files, no findings.`, exitCode }
   }
-  const lines = audit.findings.map(f => `${shown(f.path, cwd)}: secret-shaped content (${f.labels.join(', ')})`)
+  const lines = audit.findings.map(f =>
+    f.kind === 'secret'
+      ? `${shown(f.path, cwd)}: secret-shaped content (${f.labels.join(', ')})`
+      : `${shown(f.path, cwd)}: expired ${f.expires} — re-verify it, then move the date or remove the memory`,
+  )
   return {
     output: [
       `Memory audit: ${audit.files} files, ${audit.findings.length} with findings.`,
       ...lines,
-      'Team memory is git-tracked: remove the secret, and rotate it if it was ever committed.',
+      ...(exitCode === 1 ? ['Team memory is git-tracked: remove the secret, and rotate it if it was ever committed.'] : []),
     ].join('\n'),
     exitCode,
   }

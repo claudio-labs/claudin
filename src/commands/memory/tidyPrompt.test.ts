@@ -12,6 +12,34 @@ const GLOBAL_ROOT = '/home/u/.claudin/memory'
 const MAX_KB = Math.round(MAX_ENTRYPOINT_BYTES / 1024)
 const DIRS = testMemoryDirs({ private: PRIVATE_ROOT, team: TEAM_ROOT })
 
+describe('buildMemoryTidyPrompt — audit findings', () => {
+  const expired = { kind: 'expired' as const, scope: 'team' as const, path: `${TEAM_ROOT}/freeze.md`, expires: '2026-09-30' }
+  const secret = { kind: 'secret' as const, path: `${TEAM_ROOT}/bugs/x.md`, labels: ['GitHub PAT'] }
+
+  test('no findings: the prompt is exactly what it was', () => {
+    expect(buildMemoryTidyPrompt(DIRS, [])).toBe(buildMemoryTidyPrompt(DIRS))
+    expect(buildMemoryTidyPrompt(DIRS)).not.toContain('Found before you started')
+  })
+
+  test('each finding is listed, to report and never to fix, with its own report heading', () => {
+    const prompt = buildMemoryTidyPrompt(DIRS, [secret, expired])
+    expect(prompt).toContain('## Found before you started')
+    expect(prompt).toContain(`- Secret-shaped content (GitHub PAT): \`${TEAM_ROOT}/bugs/x.md\``)
+    expect(prompt).toContain(`- Past its \`expires:\` date (2026-09-30): \`${TEAM_ROOT}/freeze.md\``)
+    expect(prompt).toContain('Do not delete, rewrite or re-date any of them here.')
+    expect(prompt).toContain('never repeat the matched text')
+    const report = prompt.slice(prompt.indexOf('## Step 5'))
+    expect(report).toContain('- **Secret-shaped (team)**')
+    expect(report).toContain('- **Expired, for review**')
+  })
+
+  test('only an expired memory: no secret wording', () => {
+    const prompt = buildMemoryTidyPrompt(DIRS, [expired])
+    expect(prompt).not.toContain('Secret-shaped')
+    expect(prompt).not.toContain('never repeat the matched text')
+  })
+})
+
 describe('buildMemoryTidyPrompt', () => {
   test('includes the private memory root and orient step', () => {
     const prompt = buildMemoryTidyPrompt(DIRS)

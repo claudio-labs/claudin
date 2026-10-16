@@ -51,6 +51,9 @@ function recordingOnDone(): {
   return { onDone, calls }
 }
 
+/** An audit that finds nothing, so the prompt under test does not depend on this checkout's memory. */
+const cleanAudit = async () => ({ files: 0, findings: [] })
+
 describe('parseMemorySubcommand', () => {
   test('empty or whitespace args → null (dialog flow)', () => {
     expect(parseMemorySubcommand('')).toBeNull()
@@ -140,12 +143,12 @@ describe('/memory <scope> with the directory off', () => {
 })
 
 describe('runMemoryTidy', () => {
-  test('hands the tidy prompt to the model via shouldQuery + metaMessages', () => {
+  test('hands the tidy prompt to the model via shouldQuery + metaMessages', async () => {
     // Pin enabled explicitly — isAutoMemoryEnabled() otherwise reads the
     // machine's real settings.json, making this test environment-dependent.
     process.env[DISABLE_ENV] = '0'
     const { onDone, calls } = recordingOnDone()
-    const returned = runMemoryTidy(onDone)
+    const returned = await runMemoryTidy(onDone, cleanAudit)
 
     expect(returned).toBeNull()
     expect(calls).toHaveLength(1)
@@ -159,10 +162,10 @@ describe('runMemoryTidy', () => {
     expect(prompt).toContain(getPrivateMemPath().replace(/[/\\]+$/, ''))
   })
 
-  test('the team section is included in the prompt', () => {
+  test('the team section is included in the prompt', async () => {
     process.env[DISABLE_ENV] = '0'
     const { onDone, calls } = recordingOnDone()
-    runMemoryTidy(onDone)
+    await runMemoryTidy(onDone, cleanAudit)
 
     const prompt = calls[0]?.options?.metaMessages?.[0] ?? ''
     expect(prompt).toContain('## Team memory')
@@ -171,23 +174,42 @@ describe('runMemoryTidy', () => {
     expect(prompt).toContain("`/memory sort`'s job")
   })
 
-  test('global dir on → global section included; off → not', () => {
+  test('global dir on → global section included; off → not', async () => {
     process.env[DISABLE_ENV] = '0'
     process.env[GLOBAL_ENV] = '1'
     const on = recordingOnDone()
-    runMemoryTidy(on.onDone)
+    await runMemoryTidy(on.onDone, cleanAudit)
     expect(on.calls[0]?.options?.metaMessages?.[0] ?? '').toContain('## Global memory')
 
     process.env[GLOBAL_ENV] = '0'
     const off = recordingOnDone()
-    runMemoryTidy(off.onDone)
+    await runMemoryTidy(off.onDone, cleanAudit)
     expect(off.calls[0]?.options?.metaMessages?.[0] ?? '').not.toContain('## Global memory')
   })
 
-  test('auto memory disabled → system warning, no query', () => {
+  test('the audit findings ride in the prompt; an audit that throws leaves them out, not the tidy', async () => {
+    process.env[DISABLE_ENV] = '0'
+    const found = recordingOnDone()
+    await runMemoryTidy(found.onDone, async () => ({
+      files: 2,
+      findings: [{ kind: 'expired', scope: 'private', path: '/r/.claudin/memory/oncall.md', expires: '2026-09-30' }],
+    }))
+    const prompt = found.calls[0]?.options?.metaMessages?.[0] ?? ''
+    expect(prompt).toContain('- Past its `expires:` date (2026-09-30): `/r/.claudin/memory/oncall.md`')
+    expect(prompt).toContain('- **Expired, for review**')
+
+    const failed = recordingOnDone()
+    await runMemoryTidy(failed.onDone, async () => {
+      throw new Error('unreadable')
+    })
+    expect(failed.calls[0]?.options?.shouldQuery).toBe(true)
+    expect(failed.calls[0]?.options?.metaMessages?.[0] ?? '').not.toContain('Found before you started')
+  })
+
+  test('auto memory disabled → system warning, no query', async () => {
     process.env[DISABLE_ENV] = '1'
     const { onDone, calls } = recordingOnDone()
-    const returned = runMemoryTidy(onDone)
+    const returned = await runMemoryTidy(onDone, cleanAudit)
 
     expect(returned).toBeNull()
     expect(calls).toHaveLength(1)

@@ -164,6 +164,24 @@ describe('buildDreamDigest', () => {
     expect(digest.length).toBeLessThan(3_000)
   })
 
+  test('expired memories get their own section with what to do, even in an empty period', () => {
+    const digest = buildDreamDigest({
+      sinceMs: since,
+      plans: [],
+      sessions: [],
+      commitSubjects: [],
+      expired: [
+        { kind: 'expired', scope: 'team', path: '/repo/.claudin/memory/team/freeze.md', expires: '2026-09-30' },
+        { kind: 'expired', scope: 'global', path: '/home/u/.claudin/memory/rotation.md', expires: '2026-10-01' },
+      ],
+    })
+    expect(digest).toContain('Nothing was modified in this period')
+    expect(digest).toContain('## Memories past their `expires:` date (2)')
+    expect(digest).toContain('An expired date alone is never a reason to delete.')
+    expect(digest).toContain('- `/repo/.claudin/memory/team/freeze.md` — expired 2026-09-30')
+    expect(buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [] })).not.toContain('expires:')
+  })
+
   test('clips a long prompt to the prompt cap', () => {
     const digest = buildDreamDigest({
       sinceMs: since,
@@ -197,9 +215,23 @@ describe('collectDreamDigest', () => {
         },
       ],
       commitSubjectsSince: async () => ['feat(x): the thing'],
+      listExpiredMemories: async () => {
+        throw new Error('memory dirs unreadable')
+      },
     })
     expect(digest).not.toContain('### Plans')
     expect(digest).toContain('### Session prompts (1)')
     expect(digest).toContain('- feat(x): the thing')
+    expect(digest).not.toContain('expires:')
+  })
+
+  test('the expired memories the audit finds are handed over', async () => {
+    const digest = await collectDreamDigest(1_000, [], {
+      listPlans: async () => [],
+      listSessions: async () => [],
+      commitSubjectsSince: async () => [],
+      listExpiredMemories: async () => [{ kind: 'expired', scope: 'private', path: '/r/.claudin/memory/oncall.md', expires: '2026-09-30' }],
+    })
+    expect(digest).toContain('- `/r/.claudin/memory/oncall.md` — expired 2026-09-30')
   })
 })

@@ -17,6 +17,9 @@
  *     breaking (`!`) — the `type(scope)!:` convention git-conventions.md
  *     already enforces is the impact classifier the team maintains for free.
  *
+ * Beside them, from the memory audit (memoryAudit.ts), the memories past
+ * their `expires:` date, with what the dream does with one: re-verify it.
+ *
  * buildDreamDigest is pure over injected inputs and capped so the digest stays
  * a few KB; collectDreamDigest is the I/O half, and each source that fails to
  * read is simply left out.
@@ -25,6 +28,8 @@
 import { readdir, readFile, stat } from 'fs/promises'
 import { join } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
+import { auditMemoryDirs, type ExpiredFinding } from 'src/memory/memdir/memoryAudit.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { logError } from 'src/shared/log.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
@@ -49,6 +54,7 @@ export type DreamDigestInputs = {
   plans: DigestPlan[]
   sessions: DigestSession[]
   commitSubjects: string[]
+  expired?: ExpiredFinding[]
 }
 
 export type DreamDigestCaps = {
@@ -57,6 +63,7 @@ export type DreamDigestCaps = {
   sessionsChars: number
   promptChars: number
   commitsChars: number
+  expiredChars: number
 }
 
 export const DEFAULT_DIGEST_CAPS: DreamDigestCaps = {
@@ -65,6 +72,7 @@ export const DEFAULT_DIGEST_CAPS: DreamDigestCaps = {
   sessionsChars: 2_000,
   promptChars: 200,
   commitsChars: 1_500,
+  expiredChars: 1_000,
 }
 
 const SECTION_HEADING_RE = /^## +(.+?)\s*$/
@@ -245,6 +253,22 @@ export function buildDreamDigest(
     out.push('', 'Nothing was modified in this period beyond the current session.')
   }
 
+  const expired = inputs.expired ?? []
+  if (expired.length > 0) {
+    const { kept, left } = takeUnderCap(
+      expired.map(e => `- \`${e.path}\` — expired ${e.expires}`),
+      caps.expiredChars,
+    )
+    out.push(
+      '',
+      `## Memories past their \`expires:\` date (${expired.length})`,
+      '',
+      'Re-verify each against what you see now. Still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone is never a reason to delete.',
+      ...kept,
+    )
+    if (left > 0) out.push(`…and ${left} more.`)
+  }
+
   return out.join('\n')
 }
 
@@ -252,6 +276,7 @@ export type DreamDigestDeps = {
   listPlans(sinceMs: number): Promise<DigestPlan[]>
   listSessions(sessionIds: readonly string[]): Promise<DigestSession[]>
   commitSubjectsSince(sinceMs: number): Promise<string[]>
+  listExpiredMemories(): Promise<ExpiredFinding[]>
 }
 
 async function listPlansOnDisk(sinceMs: number): Promise<DigestPlan[]> {
@@ -298,10 +323,16 @@ async function commitSubjectsFromGit(sinceMs: number): Promise<string[]> {
   return stdout.split('\n').filter(line => line.trim().length > 0)
 }
 
+async function expiredFromAudit(): Promise<ExpiredFinding[]> {
+  const { findings } = await auditMemoryDirs(getMemoryDirs())
+  return findings.filter((f): f is ExpiredFinding => f.kind === 'expired')
+}
+
 const defaultDreamDigestDeps: DreamDigestDeps = {
   listPlans: listPlansOnDisk,
   listSessions: listSessionsFromIndex,
   commitSubjectsSince: commitSubjectsFromGit,
+  listExpiredMemories: expiredFromAudit,
 }
 
 /**
@@ -322,10 +353,11 @@ export async function collectDreamDigest(
   sessionIds: readonly string[],
   deps: DreamDigestDeps = defaultDreamDigestDeps,
 ): Promise<string> {
-  const [plans, sessions, commitSubjects] = await Promise.all([
+  const [plans, sessions, commitSubjects, expired] = await Promise.all([
     orEmpty(deps.listPlans(sinceMs)),
     orEmpty(deps.listSessions(sessionIds)),
     orEmpty(deps.commitSubjectsSince(sinceMs)),
+    orEmpty(deps.listExpiredMemories()),
   ])
-  return buildDreamDigest({ sinceMs, plans, sessions, commitSubjects })
+  return buildDreamDigest({ sinceMs, plans, sessions, commitSubjects, expired })
 }

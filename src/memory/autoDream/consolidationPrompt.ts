@@ -88,6 +88,7 @@ Use the memory file format and type conventions from your system prompt's \`# Me
 Focus on:
 - Merging new signal into existing topic files rather than creating near-duplicates
 - Converting relative dates ("yesterday", "last week") to absolute dates so they remain interpretable after time passes
+- Giving a fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — \`expires: YYYY-MM-DD\` in its frontmatter, the last day it holds
 - Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source
 ${teamSection}
 ## Phase 4 — Prune and index

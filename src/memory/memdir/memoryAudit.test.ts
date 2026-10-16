@@ -5,6 +5,7 @@ import { join } from 'path'
 import {
   auditFails,
   auditMemoryDirs,
+  findExpiredMemories,
   findSecretShapedFiles,
   type MemoryFile,
   readMemoryFiles,
@@ -42,6 +43,36 @@ describe('auditFails', () => {
     expect(auditFails({ files: 3, findings: [] })).toBe(false)
     expect(auditFails({ files: 3, findings: [{ kind: 'secret', path: '/x', labels: ['GitHub PAT'] }] })).toBe(true)
   })
+
+  test('an expired memory alone never fails it', () => {
+    expect(auditFails({ files: 1, findings: [{ kind: 'expired', scope: 'team', path: '/x', expires: '2026-09-30' }] })).toBe(false)
+  })
+})
+
+describe('findExpiredMemories', () => {
+  const memo = (expires: string) => `---\nname: x\ndescription: x\ntype: project\nexpires: ${expires}\n---\n\nfact\n`
+
+  test('a memory of any scope past its date is a finding; through its date it is not', () => {
+    const findings = findExpiredMemories(
+      [
+        file('private', '/r/a.md', memo('2026-09-30')),
+        file('team', '/r/team/b.md', memo('2026-10-16')),
+        file('global', '/g/c.md', memo('2026-10-15')),
+        file('private', '/r/d.md', '---\nname: d\n---\n'),
+      ],
+      '2026-10-16',
+    )
+    expect(findings).toEqual([
+      { kind: 'expired', scope: 'private', path: '/r/a.md', expires: '2026-09-30' },
+      { kind: 'expired', scope: 'global', path: '/g/c.md', expires: '2026-10-15' },
+    ])
+  })
+
+  test('an index is never an expired memory, and a malformed date is not one either', () => {
+    expect(
+      findExpiredMemories([file('private', '/r/MEMORY.md', memo('2020-01-01')), file('private', '/r/e.md', memo('soon'))], '2026-10-16'),
+    ).toEqual([])
+  })
 })
 
 describe('readMemoryFiles and auditMemoryDirs', () => {
@@ -67,6 +98,13 @@ describe('readMemoryFiles and auditMemoryDirs', () => {
       const audit = await auditMemoryDirs(dirs)
       expect(audit.files).toBe(4)
       expect(audit.findings.map(f => f.path.slice(root.length))).toEqual(['/memory/team/MEMORY.md'])
+
+      writeFileSync(join(root, 'memory', 'team', 'bugs', 'b.md'), '---\nname: b\ntype: project\nexpires: 2026-09-30\n---\n')
+      const dated = await auditMemoryDirs(dirs, undefined, '2026-10-16')
+      expect(dated.findings.map(f => [f.kind, f.path.slice(root.length)])).toEqual([
+        ['secret', '/memory/team/MEMORY.md'],
+        ['expired', '/memory/team/bugs/b.md'],
+      ])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

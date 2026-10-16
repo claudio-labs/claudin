@@ -1,6 +1,7 @@
 import { readdir } from 'fs/promises'
 import { basename, sep } from 'path'
 
+import { isExpired, localDay } from 'src/memory/memdir/memoryFrontmatterFields.js'
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
 import {
   ENTRYPOINT_NAME,
@@ -109,9 +110,9 @@ function clipDescription(text: string | null): string | undefined {
 
 export function buildMemoryDirRows(
   headers: MemoryHeader[],
-  options: { indexPath: string; indexExists: boolean; includeNested?: boolean },
+  options: { indexPath: string; indexExists: boolean; includeNested?: boolean; today?: string },
 ): MemoryDirRow[] {
-  const { indexPath, indexExists, includeNested = false } = options
+  const { indexPath, indexExists, includeNested = false, today = localDay() } = options
 
   const rows: MemoryDirRow[] = []
   if (indexExists) {
@@ -125,8 +126,10 @@ export function buildMemoryDirRows(
 
   for (const header of headers) {
     if (!includeNested && isNestedEntry(header)) continue
+    // A memory past its `expires:` date says so where its age is shown.
+    const expired = header.expires !== null && isExpired(header.expires, today) ? `  expired ${header.expires}` : ''
     rows.push({
-      label: `${typeTag(header.type)}${header.filename.replace(/\.md$/, '')}  ${formatRelativeTimeAgo(new Date(header.mtimeMs))}`,
+      label: `${typeTag(header.type)}${header.filename.replace(/\.md$/, '')}  ${formatRelativeTimeAgo(new Date(header.mtimeMs))}${expired}`,
       value: header.filePath,
       description: clipDescription(header.description),
       isIndex: false,

@@ -27,6 +27,17 @@ describe('formatMemoryAudit', () => {
     expect(output).toContain('/elsewhere/team/x.md: secret-shaped content')
   })
 
+  test('an expired memory is listed with what to do, and exits 0 with no remedy for a secret', () => {
+    const expired = { kind: 'expired' as const, scope: 'private' as const, path: '/repo/.claudin/memory/project-oncall.md', expires: '2026-09-30' }
+    const { output, exitCode } = formatMemoryAudit({ files: 2, findings: [expired] }, CWD)
+    expect(exitCode).toBe(0)
+    expect(output.split('\n')).toEqual([
+      'Memory audit: 2 files, 1 with findings.',
+      '.claudin/memory/project-oncall.md: expired 2026-09-30 — re-verify it, then move the date or remove the memory',
+    ])
+    expect(formatMemoryAudit({ files: 2, findings: [secret, expired] }, CWD).exitCode).toBe(1)
+  })
+
   test('--json carries the same findings and the same exit code', () => {
     const { output, exitCode } = formatMemoryAudit({ files: 3, findings: [secret] }, CWD, { json: true })
     expect(exitCode).toBe(1)
