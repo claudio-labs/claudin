@@ -12,6 +12,7 @@ import { registerAutoModeCommand } from 'src/platform/main/commands/autoMode.js'
 import { registerDoctorCommand } from 'src/platform/main/commands/doctor.js';
 import { registerInstallCommand } from 'src/platform/main/commands/install.js';
 import { registerMcpCommands } from 'src/platform/main/commands/mcp.js';
+import { registerMemoryCommand } from 'src/platform/main/commands/memory.js';
 import { registerPluginCommands } from 'src/platform/main/commands/plugin.js';
 import { registerRemoteControlCommand } from 'src/platform/main/commands/remoteControl.js';
 import { registerSetupTokenCommand } from 'src/platform/main/commands/setupToken.js';
@@ -37,6 +38,7 @@ export function registerSubcommands(
 
   registerSetupTokenCommand(program);
   registerAgentsCommand(program);
+  registerMemoryCommand(program);
   registerAutoModeCommand(program);
   registerRemoteControlCommand(program);
 
