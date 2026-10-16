@@ -149,10 +149,14 @@ describe('fitEntrypointContent coverage first', () => {
     const longTitle = 'x'.repeat(140)
     const raw = Array.from({ length: 200 }, (_, i) => `- [${longTitle}](m${i}.md) — hook ${i}`).join('\n')
     const result = fitEntrypointContent(raw)
+    const body = result.content.split('\n\n> WARNING:')[0]!
     expect(result.content).toContain('> WARNING:')
-    expect(result.content).toContain('Only part of it was loaded, and 200 entries are shown without their hook')
-    expect(Buffer.byteLength(result.content.split('\n\n> WARNING:')[0]!)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
-    expect(countIndexEntries(result.content)).toBeLessThan(200)
+    expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
+    const arrived = countIndexEntries(body)
+    expect(arrived).toBeLessThan(200)
+    // The count names what reached context, not what was shortened and then cut.
+    expect(result.shortenedEntryCount).toBe(arrived)
+    expect(result.content).toContain(`Only part of it was loaded, and ${arrived} entries are shown without their hook`)
   })
 
   test('within both caps nothing changes, blank lines included', () => {

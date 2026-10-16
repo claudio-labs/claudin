@@ -50,6 +50,17 @@ describe('memoryWritesFromTranscript', () => {
   })
 })
 
+describe('a root the transcript JSON escapes', () => {
+  test('a backslash in the root path is matched as the JSON line spells it', () => {
+    // A Windows root is all backslashes; a POSIX dir may hold one too. The
+    // line stores it escaped (`\\`), so a raw substring test never matches.
+    const root = '/home/u/we\\ird/.claudin/memory/'
+    const line = toolUse({ file_path: `${root}feedback-a.md`, content: '---' })
+    expect(line).toContain('we\\\\ird')
+    expect(memoryWritesFromTranscript([line], CWD, [root])).toEqual([`${root}feedback-a.md`])
+  })
+})
+
 describe('readMemoryWrites', () => {
   test('streams a transcript file', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'memory-writes-'))

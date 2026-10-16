@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import {
@@ -105,6 +105,20 @@ describe('readMemoryFiles and auditMemoryDirs', () => {
         ['secret', '/memory/team/MEMORY.md'],
         ['expired', '/memory/team/bugs/b.md'],
       ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('a directory named like a memory and a dangling symlink are not files to read', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'memory-audit-entries-'))
+    try {
+      const dirs = testMemoryDirs({ private: join(root, 'memory'), team: join(root, 'memory', 'team') })
+      mkdirSync(join(root, 'memory', 'team', 'odd.md'), { recursive: true })
+      symlinkSync(join(root, 'nowhere.md'), join(root, 'memory', 'team', 'gone.md'))
+      writeFileSync(join(root, 'memory', 'team', 'real.md'), 'clean\n')
+      const files = await readMemoryFiles(dirs)
+      expect(files.map(f => f.path.slice(root.length))).toEqual(['/memory/team/real.md'])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
