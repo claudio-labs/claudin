@@ -8,7 +8,7 @@ type: project
 medium, the three `--hard` prompts): Claudin never asked for `reasoning.encrypted_content`
 and never replayed reasoning; codexShim's stream loop ignored `reasoning` output items.
 
-**Closed 2026-10-17** on branch `feat/codex-reasoning-replay` (killswitch
+**Closed 2026-10-17** in PR 307, branch `feat/codex-reasoning-replay` (killswitch
 `CLAUDIN_CODEX_REASONING_REPLAY=0`). Final capture, same setup, three arms:
 
 | | Codex 0.162.1 | Claudin | Claudin, killswitch |
@@ -36,14 +36,22 @@ input, and Codex's "responses_lite" prompt shape (one `exec` tool, developer mes
 - The backend rejects a bad reasoning replay with HTTP 200 + one SSE `error` event,
   `code: invalid_encrypted_content`, no completion. A synthetic `fc_` call id makes the
   completed response's `output` come back empty.
-- The first final capture still sent calls under synthetic ids: `normalizeMessagesForAPI`
-  rebuilds every tool_use from its standard fields (only Gemini's `extra_content` and now
-  `codex` survive). Unit tests passed because none rendered a tool_use under Codex.
+- The first final capture still sent calls under synthetic ids (0 of 10) with every unit
+  test green; the cause and the testing lesson are in `.claudin/rules/testing.md`,
+  "Provider-private block state goes through the whole render".
+
+**Review round (10-17):** three agents (conventions, design, bugs) found five real bugs the
+captures missed, all fixed in the PR with red tests first: a blank assistant turn after a
+switch to Anthropic, an empty thinking pane per reasoning item, `codexplan` without `max`,
+`codexplan` behind a relay on the 128k fallback, and a recovered stream error stopping the
+replay. Left as documented limits in `codex/items.ts`: the refusal latch is per process (a
+resumed session with refused items pays one failed request; a late refusal from a second
+agent drops the items captured in between). Not done, by choice: moving the replay into
+`codex/replay.ts`, renames, and fetching `/codex/models` instead of the static 3-model list.
 
 **How to apply:** re-run `scripts/bench/ab/codex-wire-capture.ts --arm=claudin-off` (needs
 mitmdump with its CA, a logged-in Codex CLI, a fresh build) whenever Codex CLI or codexShim
 changes; `scripts/bench/tokens/codex-reasoning-replay-probe.ts` re-asks the backend the
 replay's design questions. The runner deletes each flow file (the only copy of the token).
-For a provider-switch check, an Anthropic profile's `baseUrl` is NOT used by the SDK: set
-`ANTHROPIC_BASE_URL` to the mock and run `claudindev --bare`, or the request reaches the
-real API. Recipe for other Rust CLIs: [[mitmproxy-rust-binary-recipe]].
+The provider-switch check against a mock is in testing.md (same section). Recipe for other
+Rust CLIs: [[mitmproxy-rust-binary-recipe]].

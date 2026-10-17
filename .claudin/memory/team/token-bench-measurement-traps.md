@@ -93,6 +93,13 @@ were 3 (2026-09-29, fixed in the harness). Count per `tool_use_id` over the pars
 `tool_result` blocks. Assistant events are doubled too
 ([[stream-json-duplicate-assistant-events]]).
 
+**A reused scratch cwd changes the prompt between runs.** `wire-diff.ts --raw` on the Codex
+replay branch (2026-10-17) came out 5 characters longer than the `main` baseline recorded
+an hour earlier in the same directory: an earlier run had left an untracked `.claudin/`
+there, and the gitStatus block in the first user message read `?? .claudin/` instead of
+`(clean)`. Session UUIDs already differ per run. Compare after normalizing both, or give
+every run a fresh git repo, and diff the two `main` runs against each other as the placebo.
+
 **Why:** every number this bench produced before the last fix was wrong, and not
 conservatively so — 2.01× and 2.35× both looked defensible and both died to a
 direct check. The errors did not push in a consistent direction, so "it is
