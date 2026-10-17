@@ -1733,3 +1733,182 @@ describe('Codex SSE error events', () => {
     expect(seen).toContain('content_block_delta')
   })
 })
+
+// With captureCodexItems the reader keeps each Responses item's state on the
+// block it becomes, so the next request can replay it (codex/items.ts). Only
+// the Codex backend's caller asks for it.
+describe('Codex item capture', () => {
+  const ITEM_STREAM = [
+    sseEvent('response.output_item.added', { item: { id: 'rs_1', type: 'reasoning', summary: [] } }),
+    sseEvent('response.output_item.done', {
+      item: { id: 'rs_1', type: 'reasoning', summary: [], encrypted_content: 'enc-1' },
+    }),
+    sseEvent('response.output_item.added', {
+      item: { id: 'msg_1', type: 'message', role: 'assistant', content: [], phase: 'commentary' },
+    }),
+    sseEvent('response.content_part.added', { item_id: 'msg_1', part: { type: 'output_text', text: '' } }),
+    sseEvent('response.output_text.delta', { item_id: 'msg_1', delta: 'Reading.' }),
+    sseEvent('response.output_item.done', {
+      item: { id: 'msg_1', type: 'message', role: 'assistant', phase: 'commentary', content: [] },
+    }),
+    sseEvent('response.output_item.added', {
+      item: { id: 'fc_real', type: 'function_call', call_id: 'call_abc', name: 'Read', arguments: '' },
+    }),
+    sseEvent('response.function_call_arguments.delta', { item_id: 'fc_real', delta: '{"file_path":"/x"}' }),
+    sseEvent('response.output_item.done', { item: { id: 'fc_real', type: 'function_call', call_id: 'call_abc' } }),
+    sseEvent('response.completed', { response: { output: [] } }),
+  ].join('')
+
+  async function capturedEvents(chunks: string[]): Promise<Array<Record<string, unknown>>> {
+    const out: Array<Record<string, unknown>> = []
+    for await (const event of codexStreamToAnthropic(responseFromChunks(chunks), 'gpt-5.6-terra', undefined, {
+      captureCodexItems: true,
+    })) {
+      if (event.type === 'message_start') out.push({ type: event.type })
+      else if (event.type === 'message_delta') out.push({ type: event.type, delta: event.delta })
+      else out.push(event as unknown as Record<string, unknown>)
+    }
+    return out
+  }
+
+  test('reasoning, commentary and a call each keep their item state, in output order', async () => {
+    expect(await capturedEvents([ITEM_STREAM])).toEqual([
+      { type: 'message_start' },
+      {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_1', encrypted_content: 'enc-1' } },
+      },
+      { type: 'content_block_stop', index: 0 },
+      {
+        type: 'content_block_start',
+        index: 1,
+        content_block: { type: 'text', text: '', codex: { id: 'msg_1', phase: 'commentary' } },
+      },
+      { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Reading.' } },
+      { type: 'content_block_stop', index: 1 },
+      {
+        type: 'content_block_start',
+        index: 2,
+        content_block: { type: 'tool_use', id: 'call_abc', name: 'Read', input: {}, codex: { id: 'fc_real' } },
+      },
+      { type: 'content_block_delta', index: 2, delta: { type: 'input_json_delta', partial_json: '{"file_path":"/x"}' } },
+      { type: 'content_block_stop', index: 2 },
+      { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null } },
+      { type: 'message_stop' },
+    ])
+  })
+
+  test('a reasoning item without a payload, and text outside any message item, carry nothing', async () => {
+    const stream = [
+      sseEvent('response.output_item.done', { item: { id: 'rs_2', type: 'reasoning', summary: [] } }),
+      sseEvent('response.output_item.added', { item: { id: 'msg_1', type: 'message', phase: 'commentary' } }),
+      sseEvent('response.output_text.delta', { item_id: 'msg_1', delta: 'one' }),
+      sseEvent('response.output_item.done', { item: { id: 'msg_1', type: 'message' } }),
+      sseEvent('response.output_text.delta', { item_id: 'msg_x', delta: 'two' }),
+      sseEvent('response.completed', { response: { output: [] } }),
+    ].join('')
+    const starts = (await capturedEvents([stream]))
+      .filter(event => event.type === 'content_block_start')
+      .map(event => event.content_block)
+    expect(starts).toEqual([
+      { type: 'text', text: '', codex: { id: 'msg_1', phase: 'commentary' } },
+      { type: 'text', text: '' },
+    ])
+  })
+
+  test('a completed response keeps the same state on the same blocks', () => {
+    const message = convertCodexResponseToAnthropicMessage(
+      {
+        output: [
+          { type: 'reasoning', id: 'rs_1', summary: [], encrypted_content: 'enc-1' },
+          { type: 'reasoning', id: 'rs_2', summary: [] },
+          {
+            type: 'message',
+            id: 'msg_1',
+            phase: 'final_answer',
+            content: [{ type: 'output_text', text: 'Done.' }],
+          },
+          { type: 'function_call', id: 'fc_real', call_id: 'call_abc', name: 'Read', arguments: '{}' },
+        ],
+      },
+      'gpt-5.6-terra',
+      { captureCodexItems: true },
+    )
+    expect(message.content).toEqual([
+      { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_1', encrypted_content: 'enc-1' } },
+      { type: 'text', text: 'Done.', codex: { id: 'msg_1', phase: 'final_answer' } },
+      { type: 'tool_use', id: 'call_abc', name: 'Read', input: {}, codex: { id: 'fc_real' } },
+    ])
+  })
+})
+
+describe('which client branch captures Codex item state', () => {
+  const realFetch = globalThis.fetch
+  const managed = ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CHATGPT_ACCOUNT_ID', 'GITHUB_TOKEN'] as const
+  const saved = Object.fromEntries(managed.map(key => [key, process.env[key]]))
+
+  afterEach(() => {
+    globalThis.fetch = realFetch
+    for (const key of managed) {
+      if (saved[key] === undefined) delete process.env[key]
+      else process.env[key] = saved[key]
+    }
+  })
+
+  async function streamThroughClient(): Promise<Array<Record<string, unknown>>> {
+    globalThis.fetch = (async () =>
+      new Response(
+        [
+          sseEvent('response.output_item.done', {
+            item: { id: 'rs_1', type: 'reasoning', summary: [], encrypted_content: 'enc-1' },
+          }),
+          sseEvent('response.output_item.added', {
+            item: { id: 'msg_1', type: 'message', role: 'assistant', content: [], phase: 'final_answer' },
+          }),
+          sseEvent('response.output_text.delta', { item_id: 'msg_1', delta: 'ok' }),
+          sseEvent('response.output_item.done', { item: { id: 'msg_1', type: 'message' } }),
+          sseEvent('response.completed', { response: { output: [], usage: { input_tokens: 1, output_tokens: 1 } } }),
+        ].join(''),
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      )) as unknown as typeof fetch
+
+    const { createOpenAIShimClient } = await import('src/providers/shims/openaiShim.js')
+    const client = createOpenAIShimClient({}) as {
+      beta: {
+        messages: {
+          create: (params: Record<string, unknown>) => {
+            withResponse: () => Promise<{ data: AsyncIterable<Record<string, unknown>> }>
+          }
+        }
+      }
+    }
+    const { data } = await client.beta.messages
+      .create({ model: process.env.OPENAI_MODEL, messages: [{ role: 'user', content: 'hi' }], max_tokens: 64, stream: true })
+      .withResponse()
+    const starts: Array<Record<string, unknown>> = []
+    for await (const event of data) {
+      if (event.type === 'content_block_start') starts.push(event.content_block as Record<string, unknown>)
+    }
+    return starts
+  }
+
+  test('the Codex OAuth branch keeps the reasoning item and the message state', async () => {
+    process.env.OPENAI_BASE_URL = 'https://chatgpt.com/backend-api/codex'
+    process.env.OPENAI_MODEL = 'codexplan'
+    process.env.OPENAI_API_KEY = 'profile-key'
+    process.env.CODEX_API_KEY = 'codex-key'
+    process.env.CHATGPT_ACCOUNT_ID = 'acct-1'
+    expect(await streamThroughClient()).toEqual([
+      { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_1', encrypted_content: 'enc-1' } },
+      { type: 'text', text: '', codex: { id: 'msg_1', phase: 'final_answer' } },
+    ])
+  })
+
+  test('the GitHub Copilot branch reads the same stream without any of it', async () => {
+    process.env.CLAUDIN_USE_GITHUB = '1'
+    process.env.OPENAI_MODEL = 'gpt-5.5'
+    process.env.OPENAI_API_KEY = 'gh-key'
+    expect(await streamThroughClient()).toEqual([{ type: 'text', text: '' }])
+  })
+})

@@ -19,6 +19,12 @@ import {
   createThinkTagFilter,
   stripThinkTags,
 } from 'src/providers/shims/thinkTagSanitizer.js'
+import {
+  callStateFor,
+  messageStateFor,
+  reasoningBlockFor,
+  type CodexItemState,
+} from 'src/providers/shims/codex/items.js'
 
 export interface AnthropicUsage {
   input_tokens: number
@@ -834,17 +840,30 @@ export async function collectCodexCompletedResponse(
   return completedResponse
 }
 
+/**
+ * `captureCodexItems` keeps each Responses item's state on the block it becomes
+ * (codex/items.ts) so the next request can replay it. Only the Codex backend
+ * reads that state, so only its caller turns this on; Copilot and any other
+ * Responses caller read the stream exactly as before.
+ */
+export type CodexReadOptions = { captureCodexItems?: boolean }
+
 export async function* codexStreamToAnthropic(
   response: Response,
   model: string,
   signal?: AbortSignal,
+  options: CodexReadOptions = {},
 ): AsyncGenerator<AnthropicStreamEvent> {
   const messageId = makeMessageId()
+  const capture = options.captureCodexItems === true
   const toolBlocksByItemId = new Map<
     string,
     { index: number; toolUseId: string }
   >()
   let activeTextBlockIndex: number | null = null
+  // The message item the next text block belongs to, set on its
+  // output_item.added (which already carries the phase) and cleared on done.
+  let openMessageState: CodexItemState | undefined
   const thinkFilter = createThinkTagFilter()
   let nextContentBlockIndex = 0
   let sawToolUse = false
@@ -877,7 +896,11 @@ export async function* codexStreamToAnthropic(
     yield {
       type: 'content_block_start',
       index: activeTextBlockIndex,
-      content_block: { type: 'text', text: '' },
+      content_block: {
+        type: 'text',
+        text: '',
+        ...(openMessageState && { codex: openMessageState }),
+      },
     }
   }
 
@@ -905,6 +928,9 @@ export async function* codexStreamToAnthropic(
 
     if (event.event === 'response.output_item.added') {
       const item = payload.item
+      if (item?.type === 'message' && capture) {
+        openMessageState = messageStateFor(item)
+      }
       if (item?.type === 'function_call') {
         yield* closeActiveTextBlock()
         const blockIndex = nextContentBlockIndex++
@@ -914,6 +940,7 @@ export async function* codexStreamToAnthropic(
           toolUseId,
         })
         sawToolUse = true
+        const callState = capture ? callStateFor(item) : undefined
 
         yield {
           type: 'content_block_start',
@@ -923,6 +950,7 @@ export async function* codexStreamToAnthropic(
             id: toolUseId,
             name: item.name ?? 'tool',
             input: {},
+            ...(callState && { codex: callState }),
           },
         }
 
@@ -993,6 +1021,15 @@ export async function* codexStreamToAnthropic(
         }
       } else if (item?.type === 'message') {
         yield* closeActiveTextBlock()
+        openMessageState = undefined
+      } else if (item?.type === 'reasoning' && capture) {
+        const block = reasoningBlockFor(item)
+        if (block) {
+          yield* closeActiveTextBlock()
+          const blockIndex = nextContentBlockIndex++
+          yield { type: 'content_block_start', index: blockIndex, content_block: block }
+          yield { type: 'content_block_stop', index: blockIndex }
+        }
       }
       continue
     }
@@ -1043,17 +1080,27 @@ export async function* codexStreamToAnthropic(
 export function convertCodexResponseToAnthropicMessage(
   data: Record<string, any>,
   model: string,
+  options: CodexReadOptions = {},
 ): Record<string, unknown> {
+  const capture = options.captureCodexItems === true
   const content: Array<Record<string, unknown>> = []
   const output = Array.isArray(data.output) ? data.output : []
 
   for (const item of output) {
+    if (item?.type === 'reasoning') {
+      const block = capture ? reasoningBlockFor(item) : undefined
+      if (block) content.push(block)
+      continue
+    }
+
     if (item?.type === 'message' && Array.isArray(item.content)) {
+      const messageState = capture ? messageStateFor(item) : undefined
       for (const part of item.content) {
         if (part?.type === 'output_text') {
           content.push({
             type: 'text',
             text: stripThinkTags(part.text ?? ''),
+            ...(messageState && { codex: messageState }),
           })
         }
       }
@@ -1068,11 +1115,13 @@ export function convertCodexResponseToAnthropicMessage(
         input = { raw: item.arguments ?? '' }
       }
 
+      const callState = capture ? callStateFor(item) : undefined
       content.push({
         type: 'tool_use',
         id: item.call_id ?? item.id ?? makeMessageId(),
         name: item.name ?? 'tool',
         input,
+        ...(callState && { codex: callState }),
       })
     }
   }

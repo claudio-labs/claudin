@@ -247,6 +247,43 @@
       "source": "src/providers/shims/codex/backend.ts",
       "find": "    error.message.includes('invalid_encrypted_content')",
       "replace": "    true"
+    },
+    {
+      "name": "CAPTURE: the stream captures for every caller",
+      "find": "  const messageId = makeMessageId()\n  const capture = options.captureCodexItems === true",
+      "replace": "  const messageId = makeMessageId()\n  const capture = true"
+    },
+    {
+      "name": "CAPTURE: the completed-response converter captures for every caller",
+      "find": "): Record<string, unknown> {\n  const capture = options.captureCodexItems === true",
+      "replace": "): Record<string, unknown> {\n  const capture = true"
+    },
+    {
+      "name": "CAPTURE: the client asks every Responses caller to capture",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "                captureCodexItems: codexBackendActive(request),",
+      "replace": "                captureCodexItems: true,"
+    },
+    {
+      "name": "CAPTURE: the client never asks the Codex backend to capture",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "                captureCodexItems: codexBackendActive(request),",
+      "replace": "                captureCodexItems: false,"
+    },
+    {
+      "name": "CAPTURE: reasoning items are not kept",
+      "find": "        const block = reasoningBlockFor(item)\n        if (block) {\n          yield* closeActiveTextBlock()",
+      "replace": "        const block = undefined as Record<string, unknown> | undefined\n        if (block) {\n          yield* closeActiveTextBlock()"
+    },
+    {
+      "name": "CAPTURE: message state leaks into the next text block",
+      "find": "        yield* closeActiveTextBlock()\n        openMessageState = undefined",
+      "replace": "        yield* closeActiveTextBlock()"
+    },
+    {
+      "name": "CAPTURE: a call keeps no item id",
+      "find": "        const callState = capture ? callStateFor(item) : undefined\n\n",
+      "replace": "        const callState = undefined as { id: string } | undefined\n\n"
     }
   ]
 }
