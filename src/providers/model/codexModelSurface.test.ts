@@ -132,6 +132,20 @@ describe('a Codex OAuth profile', () => {
   })
 })
 
+// /provider writes `codexplan`, but a profile on the Codex backend can name a
+// model directly (edited, imported, or written by hand). Its requests already
+// go to the Codex backend (resolveProviderRequest reads the base URL); the
+// profile has to resolve as Codex too, or it gets the OpenAI tag, the
+// aggressive cache profile and its thinking-history strip.
+describe('a Codex backend profile whose model is not an alias', () => {
+  test('resolves to the Codex transport, provider tag and retain cache profile', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-model', model: 'gpt-5.6-terra' })
+    expect(tryGetActiveProvider()?.transport).toBe('codex_responses')
+    expect(getAPIProvider()).toBe('codex')
+    expect(getCacheProfile().name).toBe('retain')
+  })
+})
+
 describe('Codex model resolution, provider-independent', () => {
   test('the Codex aliases name concrete models', () => {
     expect(parseUserSpecifiedModel('codexplan')).toBe('gpt-5.5')
