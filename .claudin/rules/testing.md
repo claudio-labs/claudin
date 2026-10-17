@@ -305,13 +305,16 @@ src/agent/cache/imageFrontier.invariant.test.ts
 src/agent/attachments/renderStability.invariant.test.ts
 src/tools/toolSchemaStability.invariant.test.ts
 src/agent/prompts/systemPromptStability.invariant.test.ts
+src/providers/shims/codex/providerNeutrality.invariant.test.ts
 ```
 
 Do **not** chase the percentage. It cannot tell a real assertion from
-`expect(true).toBe(true)`, and the fourteen suites above are worth more than any
+`expect(true).toBe(true)`, and the fifteen suites above are worth more than any
 number it could report — they pin request-byte determinism (the prompt cache
-stops hitting the moment it breaks — the last seven are the prefix and marker
-guards mapped in cache.md §1), per-filter reduction, and the build-system invariants. What
+stops hitting the moment it breaks — seven of them, from `toolResultMessages` to
+`systemPromptStability`, are the prefix and marker guards mapped in cache.md §1),
+per-filter reduction, the build-system invariants, and that a change scoped to
+the Codex backend leaves every other provider's request alone. What
 the ratio is good for is noticing a *loss*: a refactor that
 deletes a suite along with the code it covered. Re-record deliberately with
 `bun run test:floor:update`.
@@ -586,7 +589,7 @@ committed `typecheck-baseline.json`.
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
 - [ ] Focused tests pass (`bun test <file>`)
-- [ ] `bun run test:floor` holds (14/14 invariant suites, ratio within 0.5pp)
+- [ ] `bun run test:floor` holds (15/15 invariant suites, ratio within 0.5pp)
 - [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
 - [ ] `bun run deadcode:exports` reports no NEW unused exports
 - [ ] If touching `src/providers/*`: `bun run test:provider`

@@ -18,7 +18,8 @@
     "src/agent/cache/imageFrontier.invariant.test.ts",
     "src/agent/attachments/renderStability.invariant.test.ts",
     "src/tools/toolSchemaStability.invariant.test.ts",
-    "src/agent/prompts/systemPromptStability.invariant.test.ts"
+    "src/agent/prompts/systemPromptStability.invariant.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts"
   ],
   "capturedAt": "2026-10-01"
 }
