@@ -5,7 +5,8 @@
     "src/sessions/conversationRecovery.test.ts",
     "src/providers/model/codexModelSurface.test.ts",
     "src/providers/shims/codex/items.test.ts",
-    "src/providers/shims/codex/backend.test.ts"
+    "src/providers/shims/codex/backend.test.ts",
+    "src/providers/shims/claude/renderMessages.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -324,6 +325,24 @@
       "name": "NEUTRALITY: every Responses caller gets the replay",
       "find": "  const replayCodexItems = codexBackendActive(options.request)",
       "replace": "  const replayCodexItems = true"
+    },
+    {
+      "name": "REDACT: no provider redacts Codex state",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    redactCodexItems: !activeSessionUsesCodexBackend(),",
+      "replace": "    redactCodexItems: false,"
+    },
+    {
+      "name": "REDACT: the Codex backend loses its own state",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    redactCodexItems: !activeSessionUsesCodexBackend(),",
+      "replace": "    redactCodexItems: true,"
+    },
+    {
+      "name": "REDACT: the render ignores the option",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "  if (options.redactCodexItems) {\n    messagesForAPI = stripCodexItems(messagesForAPI)",
+      "replace": "  if (false) {\n    messagesForAPI = stripCodexItems(messagesForAPI)"
     }
   ]
 }

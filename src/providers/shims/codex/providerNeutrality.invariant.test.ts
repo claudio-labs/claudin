@@ -341,6 +341,32 @@ describe('the shared message pipeline', () => {
     ]
   }
 
+  test.each([ANTHROPIC, OPENAI, COPILOT, LOCAL])(
+    'a Codex session continued under %o renders no Codex state',
+    profile => {
+      useProfile(profile)
+      const { messages } = renderMessagesForAPI(
+        [
+          createUserMessage({ content: 'hi' }),
+          createAssistantMessage({ content: CODEX_ASSISTANT_BLOCKS as never }),
+          createUserMessage({
+            content: [{ type: 'tool_result', tool_use_id: 'call_abc', content: 'numbers' }] as never,
+          }),
+        ],
+        [],
+        { useToolSearch: false, advisor: false, ...historyRedactions() },
+      )
+      const wire = JSON.stringify(messages.map(m => m.message.content))
+      expect(wire).not.toContain('"codex"')
+      expect(wire).not.toContain('enc-1')
+      const assistant = messages.find(m => m.type === 'assistant')
+      expect((assistant?.message.content as Array<{ type: string }>).map(block => block.type)).toEqual([
+        'text',
+        'tool_use',
+      ])
+    },
+  )
+
   test('Anthropic renders its own thinking block byte for byte', () => {
     useProfile(ANTHROPIC)
     const { messages } = renderMessagesForAPI(history(), [], {

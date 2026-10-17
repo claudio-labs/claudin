@@ -23,6 +23,8 @@ import {
   countMediaItems,
   stripExcessMediaItems,
 } from 'src/providers/shims/claude/messageConverters.js'
+import { activeSessionUsesCodexBackend } from 'src/providers/shims/codex/backend.js'
+import { stripCodexItems } from 'src/providers/shims/codex/items.js'
 
 export type RenderMessagesOptions = {
   /** The model-aware tool-search decision (isToolSearchEnabled). */
@@ -32,11 +34,16 @@ export type RenderMessagesOptions = {
   /** The cache profile's history redactions, each AND its config switch. */
   stripOldThinking: boolean
   stripOldNarration: boolean
+  /** Remove Codex item state (codex/items.ts): every provider but the Codex backend. */
+  redactCodexItems: boolean
 }
 
 /** The redactions half of RenderMessagesOptions: the cache profile's history
- *  redactions, each AND its config switch. */
-export type HistoryRedactions = Pick<RenderMessagesOptions, 'stripOldThinking' | 'stripOldNarration'>
+ *  redactions, each AND its config switch, and the Codex item redaction. */
+export type HistoryRedactions = Pick<
+  RenderMessagesOptions,
+  'stripOldThinking' | 'stripOldNarration' | 'redactCodexItems'
+>
 
 export function historyRedactions(): HistoryRedactions {
   const config = getGlobalConfig()
@@ -44,6 +51,7 @@ export function historyRedactions(): HistoryRedactions {
   return {
     stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled,
     stripOldNarration: enabled && !!config.narrationHistoryRedactionEnabled,
+    redactCodexItems: !activeSessionUsesCodexBackend(),
   }
 }
 
@@ -64,6 +72,14 @@ export function renderMessagesForAPI(
   options: RenderMessagesOptions,
 ): { messages: (UserMessage | AssistantMessage)[]; mediaStripped: number } {
   let messagesForAPI = normalizeMessagesForAPI(messages, tools)
+
+  // Codex item state (reasoning payloads, the backend's item ids) belongs on
+  // the Codex backend's wire only. Any other provider renders the history
+  // without it: the same bytes on every request of that provider, so nothing
+  // here becomes a mutation the clip frontier has to wait for.
+  if (options.redactCodexItems) {
+    messagesForAPI = stripCodexItems(messagesForAPI)
+  }
 
   // Model-specific post-processing: strip tool-search-specific fields if the
   // selected model doesn't support tool search.
