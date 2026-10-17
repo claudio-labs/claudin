@@ -162,8 +162,8 @@
     {
       "name": "SURFACE: a Codex alias profile stops resolving to the Codex transport",
       "source": "src/providers/presets/activeProvider.ts",
-      "find": "      if (isOpenAICodexShortcut(primaryModel)) {",
-      "replace": "      if (false) {"
+      "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
+      "replace": "      if (isCodexBaseUrl(profile.baseUrl)) {"
     },
     {
       "name": "ERROR EVENT: the stream ignores error events again",
@@ -390,6 +390,18 @@
       "source": "src/providers/transport/withRetry.ts",
       "find": "  if (isCodexReplayRejected(error)) {\n    return true\n  }",
       "replace": "  if (false) {\n    return true\n  }"
+    },
+    {
+      "name": "RESOLVE: a Codex backend profile resolves by its model alone",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
+      "replace": "      if (isOpenAICodexShortcut(primaryModel)) {"
+    },
+    {
+      "name": "NEUTRALITY: every OpenAI-compatible profile resolves as Codex",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
+      "replace": "      if (true) {"
     }
   ]
 }

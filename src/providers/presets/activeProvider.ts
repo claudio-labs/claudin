@@ -12,7 +12,7 @@ import { getGlobalConfig, onGlobalConfigChange } from 'src/platform/config/confi
 import type { ProviderProfile, ProviderProfileExtras } from 'src/platform/config/config.js'
 import { getActiveProviderProfile } from 'src/providers/presets/providerProfiles.js'
 import { getPrimaryModel } from 'src/providers/presets/providerModels.js'
-import { isOpenAICodexShortcut } from 'src/providers/presets/providerConfig.js'
+import { isCodexBaseUrl, isOpenAICodexShortcut } from 'src/providers/presets/providerConfig.js'
 
 export type Transport =
   | 'anthropic'
@@ -71,7 +71,9 @@ function resolveTransport(profile: ProviderProfile, primaryModel: string): Trans
       if (profile.extras?.githubToken) {
         return 'github_copilot'
       }
-      if (isOpenAICodexShortcut(primaryModel)) {
+      // A profile on the Codex backend is Codex whatever its model is called:
+      // its requests go there (resolveProviderRequest reads the base URL).
+      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {
         return 'codex_responses'
       }
       return 'openai_compat'

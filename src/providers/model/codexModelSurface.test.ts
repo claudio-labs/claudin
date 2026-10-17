@@ -144,6 +144,12 @@ describe('a Codex backend profile whose model is not an alias', () => {
     expect(getAPIProvider()).toBe('codex')
     expect(getCacheProfile().name).toBe('retain')
   })
+
+  test('and a Codex alias still names the Codex transport behind another base URL', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy', baseUrl: 'http://localhost:8000/v1' })
+    expect(tryGetActiveProvider()?.transport).toBe('codex_responses')
+    expect(getAPIProvider()).toBe('codex')
+  })
 })
 
 describe('Codex model resolution, provider-independent', () => {
