@@ -3,7 +3,9 @@
     "src/providers/shims/codexShim.test.ts",
     "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
     "src/sessions/conversationRecovery.test.ts",
-    "src/providers/model/codexModelSurface.test.ts"
+    "src/providers/model/codexModelSurface.test.ts",
+    "src/providers/shims/codex/items.test.ts",
+    "src/providers/shims/codex/backend.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -185,6 +187,66 @@
       "name": "NEUTRALITY: an error event before a completion now fails the stream",
       "find": "  if (!finalResponse && streamError) throw streamError",
       "replace": "  if (streamError) throw streamError"
+    },
+    {
+      "name": "ITEMS: the redaction keeps reasoning blocks",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "      .filter(block => !isCodexReasoningBlock(block))\n",
+      "replace": ""
+    },
+    {
+      "name": "ITEMS: the redaction leaves the codex field on text and calls",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "        const { codex: _codex, ...rest } = block\n        return rest",
+      "replace": "        return block"
+    },
+    {
+      "name": "ITEMS: the redaction leaves an empty assistant turn",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "      kept.push({ type: 'text', text: '[thinking omitted]', citations: [] })",
+      "replace": "      void kept"
+    },
+    {
+      "name": "ITEMS: an untouched history comes back as a new array",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  return changed ? (result as M[]) : messages",
+      "replace": "  return result as M[]"
+    },
+    {
+      "name": "ITEMS: a replayed reasoning item loses its id",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  return { type: 'reasoning', id: state.id, summary: [], encrypted_content: state.encrypted_content }",
+      "replace": "  return { type: 'reasoning', id: '', summary: [], encrypted_content: state.encrypted_content }"
+    },
+    {
+      "name": "ITEMS: a message forgets its phase",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  return { id: item.id, ...(typeof item.phase === 'string' && { phase: item.phase }) }",
+      "replace": "  return { id: item.id }"
+    },
+    {
+      "name": "BACKEND: the gate ignores the base URL",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "    isCodexBaseUrl(request.baseUrl) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "BACKEND: the killswitch is ignored",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CODEX_REASONING_REPLAY)",
+      "replace": "  return true"
+    },
+    {
+      "name": "BACKEND: the body asks for no encrypted reasoning",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "    include: ['reasoning.encrypted_content'],\n",
+      "replace": ""
+    },
+    {
+      "name": "BACKEND: any 400 counts as a refused replay",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "    error.message.includes('invalid_encrypted_content')",
+      "replace": "    true"
     }
   ]
 }
