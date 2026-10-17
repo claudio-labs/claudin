@@ -1666,3 +1666,70 @@ describe('convertCodexResponseToAnthropicMessage (characterization)', () => {
     expect(message.stop_reason).toBe('max_tokens')
   })
 })
+
+// The Codex backend answers some rejections with HTTP 200 and an SSE `error`
+// event instead of a status code — a replayed reasoning item it cannot decrypt
+// is one (payload captured live on 2026-10-16). A stream that ends on that
+// event must surface it, not read as an empty reply.
+describe('Codex SSE error events', () => {
+  const NESTED_ERROR = sseEvent('error', {
+    error: {
+      message:
+        'The encrypted content for item rs_097878fbd24a06d9016ad2ad77486481918186e4aff871592e could not be verified. Reason: Encrypted content could not be decrypted or parsed.',
+      type: 'invalid_request_error',
+      param: 'input',
+      code: 'invalid_encrypted_content',
+    },
+    sequence_number: 0,
+  })
+  // The Responses API reference puts the fields on the event itself.
+  const FLAT_ERROR = sseEvent('error', {
+    code: 'server_error',
+    message: 'The server had an error while processing your request.',
+    param: null,
+    sequence_number: 3,
+  })
+
+  async function rejectionOf(run: () => Promise<unknown>): Promise<{ status?: number; message: string }> {
+    try {
+      await run()
+    } catch (error) {
+      return error as { status?: number; message: string }
+    }
+    throw new Error('expected a rejection, got a reply')
+  }
+
+  test('a stream that ends on an error event throws the server error, as a 400', async () => {
+    const error = await rejectionOf(() => streamEvents([NESTED_ERROR]))
+    expect(error.status).toBe(400)
+    expect(error.message).toContain('invalid_encrypted_content')
+    expect(error.message).toContain('could not be verified')
+  })
+
+  test('collect throws the server error instead of "ended without a completed payload"', async () => {
+    const error = await rejectionOf(() => collectCodexCompletedResponse(responseFromChunks([NESTED_ERROR])))
+    expect(error.status).toBe(400)
+    expect(error.message).toContain('invalid_encrypted_content')
+  })
+
+  test('an error event with the fields on the event itself, not an invalid request, is a 500', async () => {
+    const error = await rejectionOf(() => streamEvents([FLAT_ERROR]))
+    expect(error.status).toBe(500)
+    expect(error.message).toContain('server_error')
+    expect(error.message).toContain('The server had an error')
+  })
+
+  test('text streamed before the error event is still delivered before the throw', async () => {
+    const seen: string[] = []
+    const error = await rejectionOf(async () => {
+      for await (const event of codexStreamToAnthropic(
+        responseFromChunks([TEXT_STREAM.split('event: response.completed')[0]!, NESTED_ERROR]),
+        'gpt-5.4',
+      )) {
+        seen.push(event.type)
+      }
+    })
+    expect(error.status).toBe(400)
+    expect(seen).toContain('content_block_delta')
+  })
+})
