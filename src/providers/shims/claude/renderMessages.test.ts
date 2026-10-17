@@ -103,3 +103,43 @@ describe('historyRedactions decides it by the backend the session talks to', () 
     expect(historyRedactions().redactCodexItems).toBe(true)
   })
 })
+
+// The final capture (2026-10-17) sent every call back under a synthetic fc_ id:
+// normalizeMessagesForAPI rebuilds each tool_use from its standard fields when
+// tool search is off, as it is on the Codex shim. A render under Codex must keep
+// the backend's id on the call; under any other provider it is gone, as before.
+describe('a tool call through the whole render', () => {
+  const CALL = { type: 'tool_use', id: 'call_abc', name: 'Read', input: { file_path: '/x' }, codex: { id: 'fc_real' } }
+
+  function renderedCall(redactCodexItems: boolean): unknown {
+    const history: Message[] = [
+      createUserMessage({ content: 'read it' }),
+      createAssistantMessage({ content: [TEXT, CALL] as never }),
+      createUserMessage({ content: [{ type: 'tool_result', tool_use_id: 'call_abc', content: '14 17' }] as never }),
+    ]
+    const { messages } = renderMessagesForAPI(history, [], {
+      useToolSearch: false,
+      advisor: false,
+      stripOldThinking: false,
+      stripOldNarration: false,
+      redactCodexItems,
+    })
+    const assistant = messages.find(m => m.type === 'assistant')!
+    return (assistant.message.content as Array<{ type: string }>).find(block => block.type === 'tool_use')
+  }
+
+  test('under Codex the call keeps the id the backend gave it', () => {
+    useProfile(CODEX_OAUTH)
+    expect(renderedCall(historyRedactions().redactCodexItems)).toEqual(CALL)
+  })
+
+  test('under Anthropic the call is the standard block', () => {
+    useProfile(ANTHROPIC)
+    expect(renderedCall(historyRedactions().redactCodexItems)).toEqual({
+      type: 'tool_use',
+      id: 'call_abc',
+      name: 'Read',
+      input: { file_path: '/x' },
+    })
+  })
+})
