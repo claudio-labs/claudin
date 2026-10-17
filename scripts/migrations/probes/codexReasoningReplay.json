@@ -229,8 +229,8 @@
     {
       "name": "BACKEND: the gate ignores the base URL",
       "source": "src/providers/shims/codex/backend.ts",
-      "find": "    isCodexBaseUrl(request.baseUrl) &&\n",
-      "replace": ""
+      "find": "  return request.transport === 'codex_responses' && isCodexBaseUrl(request.baseUrl)",
+      "replace": "  return request.transport === 'codex_responses'"
     },
     {
       "name": "BACKEND: the killswitch is ignored",
@@ -247,7 +247,7 @@
     {
       "name": "BACKEND: any 400 counts as a refused replay",
       "source": "src/providers/shims/codex/backend.ts",
-      "find": "    error.message.includes('invalid_encrypted_content')",
+      "find": "    error.message.includes(CODEX_REPLAY_REFUSED_CODE)",
       "replace": "    true"
     },
     {
@@ -263,13 +263,13 @@
     {
       "name": "CAPTURE: the client asks every Responses caller to capture",
       "source": "src/providers/shims/openaiShim/messagesClient.ts",
-      "find": "                captureCodexItems: codexBackendActive(request),",
+      "find": "                captureCodexItems: codexReplayActive(request),",
       "replace": "                captureCodexItems: true,"
     },
     {
       "name": "CAPTURE: the client never asks the Codex backend to capture",
       "source": "src/providers/shims/openaiShim/messagesClient.ts",
-      "find": "                captureCodexItems: codexBackendActive(request),",
+      "find": "                captureCodexItems: codexReplayActive(request),",
       "replace": "                captureCodexItems: false,"
     },
     {
@@ -319,24 +319,24 @@
     },
     {
       "name": "REPLAY: the Codex backend gets no replay",
-      "find": "  const replayCodexItems = codexBackendActive(options.request)",
+      "find": "  const replayCodexItems = codexReplayActive(options.request)",
       "replace": "  const replayCodexItems = false"
     },
     {
       "name": "NEUTRALITY: every Responses caller gets the replay",
-      "find": "  const replayCodexItems = codexBackendActive(options.request)",
+      "find": "  const replayCodexItems = codexReplayActive(options.request)",
       "replace": "  const replayCodexItems = true"
     },
     {
       "name": "REDACT: no provider redacts Codex state",
       "source": "src/providers/shims/claude/renderMessages.ts",
-      "find": "    redactCodexItems: !activeSessionUsesCodexBackend(),",
+      "find": "    redactCodexItems: !activeSessionReplaysCodexItems(),",
       "replace": "    redactCodexItems: false,"
     },
     {
       "name": "REDACT: the Codex backend loses its own state",
       "source": "src/providers/shims/claude/renderMessages.ts",
-      "find": "    redactCodexItems: !activeSessionUsesCodexBackend(),",
+      "find": "    redactCodexItems: !activeSessionReplaysCodexItems(),",
       "replace": "    redactCodexItems: true,"
     },
     {
@@ -348,13 +348,13 @@
     {
       "name": "RESUME: a Codex session loses its reasoning items",
       "source": "src/sessions/conversationRecovery.ts",
-      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionUsesCodexBackend())",
+      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionReplaysCodexItems())",
       "replace": "      ? stripThinkingBlocks(filteredThinking, false)"
     },
     {
       "name": "NEUTRALITY: every OpenAI-compatible resume keeps Codex reasoning",
       "source": "src/sessions/conversationRecovery.ts",
-      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionUsesCodexBackend())",
+      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionReplaysCodexItems())",
       "replace": "      ? stripThinkingBlocks(filteredThinking, true)"
     },
     {
@@ -402,6 +402,18 @@
       "source": "src/providers/presets/activeProvider.ts",
       "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
       "replace": "      if (true) {"
+    },
+    {
+      "name": "BACKEND: the session replay gate ignores the killswitch",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return activeSessionOnCodexBackend() && isCodexReasoningReplayEnabled()",
+      "replace": "  return activeSessionOnCodexBackend()"
+    },
+    {
+      "name": "BACKEND: the request replay gate ignores the killswitch",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return isCodexBackendRequest(request) && isCodexReasoningReplayEnabled()",
+      "replace": "  return isCodexBackendRequest(request)"
     }
   ]
 }

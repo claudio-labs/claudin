@@ -31,7 +31,7 @@ import {
 } from 'src/providers/shims/codex/items.js'
 import {
   CODEX_REPLAY_REFUSED_CODE,
-  codexBackendActive,
+  codexReplayActive,
   codexBackendBodyFields,
 } from 'src/providers/shims/codex/backend.js'
 
@@ -578,7 +578,7 @@ export async function performCodexRequest(options: {
   // tool_results downstream.
   // On the Codex backend every item comes back as the backend produced it,
   // reasoning included, and the body asks for the reasoning (codex/backend.ts).
-  const replayCodexItems = codexBackendActive(options.request)
+  const replayCodexItems = codexReplayActive(options.request)
   const compressedMessages = applyStableInputStubs(
     applyStableStubs(
       options.params.messages as Array<{

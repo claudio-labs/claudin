@@ -23,7 +23,7 @@ import {
   countMediaItems,
   stripExcessMediaItems,
 } from 'src/providers/shims/claude/messageConverters.js'
-import { activeSessionUsesCodexBackend } from 'src/providers/shims/codex/backend.js'
+import { activeSessionReplaysCodexItems } from 'src/providers/shims/codex/backend.js'
 import { stripCodexItems } from 'src/providers/shims/codex/items.js'
 
 export type RenderMessagesOptions = {
@@ -51,7 +51,7 @@ export function historyRedactions(): HistoryRedactions {
   return {
     stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled,
     stripOldNarration: enabled && !!config.narrationHistoryRedactionEnabled,
-    redactCodexItems: !activeSessionUsesCodexBackend(),
+    redactCodexItems: !activeSessionReplaysCodexItems(),
   }
 }
 

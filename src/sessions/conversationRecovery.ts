@@ -30,7 +30,7 @@ import {
 } from 'src/shared/fs/fileHistory.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
-import { activeSessionUsesCodexBackend } from 'src/providers/shims/codex/backend.js'
+import { activeSessionReplaysCodexItems } from 'src/providers/shims/codex/backend.js'
 import { isCodexReasoningBlock } from 'src/providers/shims/codex/items.js'
 import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
 import {
@@ -281,7 +281,7 @@ export function deserializeMessagesWithInterruptDetection(
     const provider = getAPIProvider()
     const isThirdPartyProvider = provider !== 'firstParty' && provider !== 'bedrock' && provider !== 'vertex' && provider !== 'foundry'
     const thinkingStripped = isThirdPartyProvider
-      ? stripThinkingBlocks(filteredThinking, activeSessionUsesCodexBackend())
+      ? stripThinkingBlocks(filteredThinking, activeSessionReplaysCodexItems())
       : filteredThinking
 
     // Filter out assistant messages with only whitespace text content.

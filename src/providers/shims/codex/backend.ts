@@ -38,28 +38,40 @@ export function isCodexReasoningReplayEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_CODEX_REASONING_REPLAY)
 }
 
-/** Whether this request goes to the ChatGPT Codex backend with the replay on. */
-export function codexBackendActive(
+/** Whether this request goes to the ChatGPT Codex backend. */
+export function isCodexBackendRequest(
   request: Pick<ResolvedProviderRequest, 'transport' | 'baseUrl'>,
 ): boolean {
-  return (
-    request.transport === 'codex_responses' &&
-    isCodexBaseUrl(request.baseUrl) &&
-    isCodexReasoningReplayEnabled()
+  return request.transport === 'codex_responses' && isCodexBaseUrl(request.baseUrl)
+}
+
+/** Whether this request goes to the Codex backend with the replay on. */
+export function codexReplayActive(
+  request: Pick<ResolvedProviderRequest, 'transport' | 'baseUrl'>,
+): boolean {
+  return isCodexBackendRequest(request) && isCodexReasoningReplayEnabled()
+}
+
+/**
+ * Whether the active session's requests go to the Codex backend. Decides what
+ * the ChatGPT account offers (its models, context window, effort levels),
+ * which the replay killswitch does not change.
+ */
+export function activeSessionOnCodexBackend(): boolean {
+  const provider = tryGetActiveProvider()
+  if (!provider) return false
+  return isCodexBackendRequest(
+    resolveProviderRequest({ model: provider.model, baseUrl: provider.baseUrl }),
   )
 }
 
 /**
- * Whether the active session's requests go to the Codex backend with the replay
- * on. Decides, for everything that runs before the shim (rendering, resume),
- * whether Codex item state is kept or redacted.
+ * Whether the active session replays Codex items. Decides, for everything that
+ * runs before the shim (rendering, resume), whether Codex item state is kept
+ * or redacted.
  */
-export function activeSessionUsesCodexBackend(): boolean {
-  const provider = tryGetActiveProvider()
-  if (!provider) return false
-  return codexBackendActive(
-    resolveProviderRequest({ model: provider.model, baseUrl: provider.baseUrl }),
-  )
+export function activeSessionReplaysCodexItems(): boolean {
+  return activeSessionOnCodexBackend() && isCodexReasoningReplayEnabled()
 }
 
 /** The body fields the Codex CLI adds; `reasoning.context` joins an effort only. */

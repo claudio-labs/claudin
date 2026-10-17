@@ -7,9 +7,11 @@ import {
 } from 'src/platform/config/config.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import {
-  activeSessionUsesCodexBackend,
-  codexBackendActive,
+  activeSessionOnCodexBackend,
+  activeSessionReplaysCodexItems,
+  codexReplayActive,
   codexBackendBodyFields,
+  isCodexBackendRequest,
   isCodexReasoningReplayEnabled,
   isCodexReplayRejected,
 } from 'src/providers/shims/codex/backend.js'
@@ -61,12 +63,14 @@ describe('which requests go to the Codex backend', () => {
     ['codex_responses', 'http://localhost:8000/v1', false],
     ['chat_completions', CODEX_BASE_URL, false],
   ] as const)('%s to %s → %p', (transport, baseUrl, active) => {
-    expect(codexBackendActive({ transport, baseUrl })).toBe(active)
+    expect(codexReplayActive({ transport, baseUrl })).toBe(active)
+    expect(isCodexBackendRequest({ transport, baseUrl })).toBe(active)
   })
 
-  test('none of them with the killswitch off', () => {
+  test('the killswitch turns the replay off, not the backend', () => {
     process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
-    expect(codexBackendActive({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL })).toBe(false)
+    expect(codexReplayActive({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL })).toBe(false)
+    expect(isCodexBackendRequest({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL })).toBe(true)
   })
 })
 
@@ -90,17 +94,20 @@ describe('which sessions go to the Codex backend', () => {
     [{ id: 'b-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' }, false],
   ] as Array<[ProviderProfile, boolean]>)('$1: %o', (profile, expected) => {
     useProfile(profile)
-    expect(activeSessionUsesCodexBackend()).toBe(expected)
+    expect(activeSessionReplaysCodexItems()).toBe(expected)
+    expect(activeSessionOnCodexBackend()).toBe(expected)
   })
 
   test('no profile is no Codex session', () => {
-    expect(activeSessionUsesCodexBackend()).toBe(false)
+    expect(activeSessionReplaysCodexItems()).toBe(false)
+    expect(activeSessionOnCodexBackend()).toBe(false)
   })
 
-  test('a Codex session with the killswitch off reads as any other provider', () => {
+  test('a Codex session with the killswitch off stays on the backend but replays nothing', () => {
     useProfile({ id: 'b-codex', name: 'Codex OAuth', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'codexplan' })
     process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
-    expect(activeSessionUsesCodexBackend()).toBe(false)
+    expect(activeSessionReplaysCodexItems()).toBe(false)
+    expect(activeSessionOnCodexBackend()).toBe(true)
   })
 })
 
