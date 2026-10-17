@@ -218,6 +218,39 @@ describe('recoveries the server asks for', () => {
     transport.closeAll()
   })
 
+  test('an error frame that says its status comes back as that HTTP status, like the POST', async () => {
+    const transport = make()
+    const http = httpSpy()
+    await (await transport.request(req({ ...settings, input: [user('hi')] }, http))).text()
+    script = (_frame, ws) => {
+      script = undefined
+      ws.send(JSON.stringify({ type: 'error', status: 429, error: { type: 'usage_limit_reached', message: 'The usage limit has been reached', resets_in_seconds: 60 } }))
+      return true
+    }
+    const response = await transport.request(req({ ...settings, input: [user('hi'), reply(1), user('more')] }, http))
+    expect(response.status).toBe(429)
+    expect(response.url).toContain('/backend-api/codex/responses')
+    expect(await response.json()).toEqual({ error: { type: 'usage_limit_reached', message: 'The usage limit has been reached', resets_in_seconds: 60 } })
+    expect(http.calls).toBe(0)
+    // the socket stays usable, without its chain
+    await (await transport.request(req({ ...settings, input: [user('hi'), reply(1), user('more')] }, http))).text()
+    expect(frames.at(-1)).toMatchObject({ conn: 1 })
+    expect(frames.at(-1)!.previous_response_id).toBeUndefined()
+    transport.closeAll()
+  })
+
+  test('an error frame with its fields at the top level keeps them as the body', async () => {
+    const transport = make()
+    script = (_frame, ws) => {
+      ws.send(JSON.stringify({ type: 'error', status: 400, code: 'invalid_encrypted_content', message: 'bad' }))
+      return true
+    }
+    const response = await transport.request(req({ ...settings, input: [user('hi')] }, httpSpy()))
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: { code: 'invalid_encrypted_content', message: 'bad' } })
+    transport.closeAll()
+  })
+
   test('any other error event reaches the reader, ends the response, and drops the chain', async () => {
     const transport = make()
     const http = httpSpy()

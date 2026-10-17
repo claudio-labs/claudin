@@ -52,6 +52,12 @@
       "replace": "if (drops < 0) latch("
     },
     {
+      "name": "an error frame's HTTP status is ignored and it streams as a 500",
+      "source": "src/providers/transport/responsesSocket/transport.ts",
+      "find": "  if (typeof status !== 'number' || status < 400 || status > 599) return undefined\n",
+      "replace": "  if (status !== status || true) return undefined\n"
+    },
+    {
       "name": "control: the debug line for a delta is worded differently",
       "source": "src/providers/transport/responsesSocket/transport.ts",
       "find": "frame incremental (",

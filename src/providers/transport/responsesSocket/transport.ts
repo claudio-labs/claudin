@@ -12,6 +12,11 @@
  *   and a message at most ~16 MiB (close 1009);
  * - with `store: false` only the last response is kept, per connection; an id
  *   it no longer has fails with `previous_response_not_found`.
+ * - an `error` frame carries the HTTP `status` the POST would have answered
+ *   with (`{"type":"error","status":429,"error":{…}}`). When it is the first
+ *   frame, the Response is that status with the error as its JSON body, as
+ *   the POST's would be, so a 429 (a usage limit) reaches the retry logic as
+ *   a 429 and not as a 500 read from the stream.
  *
  * The caller passes its POST as `http`. It runs whenever the socket cannot
  * serve: the latch is on, every socket is busy at the cap, the frame is too
@@ -90,6 +95,17 @@ function errorCode(data: Record<string, unknown>): string | undefined {
 
 function abortError(signal: AbortSignal): unknown {
   return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError')
+}
+
+/** The HTTP answer a POST would have given for an error frame, if it says its status. */
+function errorResponse(event: ServerEvent, url: string): Response | undefined {
+  const status = event.data.status
+  if (typeof status !== 'number' || status < 400 || status > 599) return undefined
+  const { type: _type, status: _status, ...rest } = event.data
+  const body = rest.error && typeof rest.error === 'object' ? { error: rest.error } : { error: rest }
+  const response = new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+  Object.defineProperty(response, 'url', { value: url })
+  return response
 }
 
 const encoder = new TextEncoder()
@@ -259,6 +275,15 @@ export function createResponsesSocketTransport(
           retried = true
           pool.discard(socket)
           continue
+        }
+      }
+      if (first.event.type === 'error') {
+        const refused = errorResponse(first.event, request.url)
+        if (refused) {
+          // The server ended this response and dropped the id it named.
+          socket.chain = undefined
+          pool.release(socket)
+          return refused
         }
       }
       return stream(socket, plan, first.event, request)
