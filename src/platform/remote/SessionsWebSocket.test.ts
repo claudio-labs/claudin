@@ -21,14 +21,14 @@
  * the run instead of failing. A watchdog subprocess (real time, measured
  * outside the faked timer system) rejects every pending wait after 4 s.
  *
- * logError is a no-op under the Claudin default privacy level, so the suite
- * opts into nonessential traffic to read errors from `getInMemoryErrors()`.
+ * Nothing here reads the error log: `src/shared/log.js` is mocked by sibling
+ * suites, which leaks across the whole run (testing.md, cross-file mock
+ * leaks), so what is asserted is what the caller and the server can see.
  */
 import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test'
 import type { Server, ServerWebSocket, Subprocess, TCPSocketListener } from 'bun'
 
 import type { SDKControlResponse } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import { getInMemoryErrors } from 'src/shared/log.js'
 
 import {
   SessionsWebSocket,
@@ -244,7 +244,6 @@ type Recorder = {
     close: number
     reconnecting: number
   }
-  lastErrorLogAtError: string[]
 }
 
 function makeRecorder(): Recorder {
@@ -252,7 +251,6 @@ function makeRecorder(): Recorder {
     messages: [],
     errors: [],
     counts: { connected: 0, close: 0, reconnecting: 0 },
-    lastErrorLogAtError: [],
     callbacks: {
       onMessage: message => {
         recorder.messages.push(message)
@@ -272,7 +270,6 @@ function makeRecorder(): Recorder {
       },
       onError: error => {
         recorder.errors.push(error)
-        recorder.lastErrorLogAtError.push(getInMemoryErrors().at(-1)?.error ?? '')
         notify()
       },
     },
@@ -332,7 +329,6 @@ beforeEach(() => {
     savedEnv[key] = process.env[key]
     delete process.env[key]
   }
-  process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC = '0'
   dials = []
   clientSockets = []
   clients = []
@@ -478,7 +474,7 @@ describe('SessionsWebSocket messages', () => {
     expect(recorder.errors).toEqual([])
   })
 
-  test('logs unparseable frames and keeps the connection', async () => {
+  test('an unparseable frame is skipped and the connection stays', async () => {
     const server = startServer()
     const recorder = makeRecorder()
     const { client, conn } = await connectedClient(server, recorder)
@@ -487,12 +483,8 @@ describe('SessionsWebSocket messages', () => {
     conn.ws.send(JSON.stringify({ type: 'after' }))
     await until(() => recorder.messages.length > 0)
 
-    // Nothing else logs between the two frames, so the parse failure is the
-    // newest entry.
-    expect(getInMemoryErrors().at(-1)?.error).toContain(
-      '[SessionsWebSocket] Failed to parse message',
-    )
     expect(recorder.messages).toEqual([{ type: 'after' }])
+    expect(recorder.errors).toEqual([])
     expect(client.isConnected()).toBe(true)
   })
 
@@ -548,19 +540,25 @@ describe('SessionsWebSocket sending', () => {
     expect(b.request_id).not.toBe(a.request_id)
   })
 
-  test('sending before connect is dropped and logged', () => {
-    const client = makeClient(makeRecorder())
+  test('sending before connect is dropped, not queued for the connection', async () => {
+    const server = startServer()
+    const recorder = makeRecorder()
+    const client = makeClient(recorder)
+    expect(() => client.sendControlRequest({ subtype: 'interrupt' })).not.toThrow()
+    expect(() =>
+      client.sendControlResponse({
+        type: 'control_response',
+        response: { subtype: 'success', request_id: 'r', response: {} },
+      } as SDKControlResponse),
+    ).not.toThrow()
+
+    await client.connect()
+    const conn = await connAt(server, 0)
+    await until(() => recorder.counts.connected > 0)
     client.sendControlRequest({ subtype: 'interrupt' })
-    expect(getInMemoryErrors().at(-1)?.error).toContain(
-      '[SessionsWebSocket] Cannot send: not connected',
-    )
-    client.sendControlResponse({
-      type: 'control_response',
-      response: { subtype: 'success', request_id: 'r', response: {} },
-    } as SDKControlResponse)
-    expect(getInMemoryErrors().at(-1)?.error).toContain(
-      '[SessionsWebSocket] Cannot send: not connected',
-    )
+    await until(() => conn.received.length > 0)
+    expect(conn.received).toHaveLength(1)
+    expect(JSON.parse(conn.received[0]!).type).toBe('control_request')
   })
 
   test('sending while the handshake is pending is dropped', async () => {
@@ -588,9 +586,6 @@ describe('SessionsWebSocket errors', () => {
 
     expect(recorder.errors).toHaveLength(1)
     expect(recorder.errors[0]!.message).toBe('[SessionsWebSocket] WebSocket error')
-    expect(recorder.lastErrorLogAtError[0]).toContain(
-      '[SessionsWebSocket] WebSocket error',
-    )
     expect(recorder.counts.reconnecting).toBe(0)
     expect(recorder.counts.connected).toBe(0)
     expect(client.isConnected()).toBe(false)

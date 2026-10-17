@@ -586,19 +586,9 @@ describe('createTransport — claudeai-proxy', () => {
     ).rejects.toThrow('No claude.ai OAuth token found')
   })
 
-  test('with a claude.ai token it builds a streamable HTTP transport (no request is made)', async () => {
-    process.env.CLAUDE_CODE_OAUTH_TOKEN = 'cai-token'
-    clearOAuthTokenCache()
-
-    const transport = await build('proxied', {
-      type: 'claudeai-proxy',
-      url: 'https://claude.ai/connector',
-      id: 'srv_123',
-      scope: 'claudeai',
-    })
-
-    expect(transport).toBeInstanceOf(StreamableHTTPClientTransport)
-  })
+  // No case with a token: the proxy URL comes from getOauthConfig(), and
+  // src/shared/constants/oauth.js is mocked by fastMode.test.ts for the whole
+  // run (testing.md, cross-file mock leaks), so its real value cannot be relied on.
 })
 
 describe('createTransport — rejected types', () => {
