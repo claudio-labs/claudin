@@ -467,6 +467,10 @@ function lookupByKey<T>(table: Record<string, T>, model: string): T | undefined 
   return undefined
 }
 
+function codexAccountLimitsFor(model: string) {
+  return activeSessionOnCodexBackend() ? getCodexAccountLimits(model) : undefined
+}
+
 /**
  * Look up the context window for an OpenAI-compatible model.
  * Returns undefined if the model is not in the table.
@@ -474,10 +478,6 @@ function lookupByKey<T>(table: Record<string, T>, model: string): T | undefined 
  * Falls back to prefix matching so dated variants like
  * "gpt-4o-2024-11-20" resolve to the base "gpt-4o" entry.
  */
-function codexAccountLimitsFor(model: string) {
-  return activeSessionOnCodexBackend() ? getCodexAccountLimits(model) : undefined
-}
-
 export function getOpenAIContextWindow(model: string): number | undefined {
   // On the Codex backend a ChatGPT account has its own limits, below the API's.
   const account = codexAccountLimitsFor(model)
@@ -512,8 +512,6 @@ export function getOpenAIContextWindow(model: string): number | undefined {
  * Returns undefined if the model is not in the table.
  */
 export function getOpenAIMaxOutputTokens(model: string): number | undefined {
-  const account = codexAccountLimitsFor(model)
-  if (account) return account.maxOutputTokens
   const known = lookupByModel(OPENAI_MAX_OUTPUT_TOKENS, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
   if (known !== undefined) return known
   try {

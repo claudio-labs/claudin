@@ -18,7 +18,7 @@
  * global config lives in memory, so a profile written with saveGlobalConfig is
  * the one tryGetActiveProvider resolves. No module is mocked.
  */
-import { afterAll, afterEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { APIError } from '@anthropic-ai/sdk'
 import { _resetCacheProfileForTesting, getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
@@ -97,6 +97,10 @@ function useProfile(profile: ProviderProfile): void {
   _resetCacheProfileForTesting()
   resetModelStringsForTestingOnly()
 }
+
+beforeEach(() => {
+  _resetReplayTrustForTesting()
+})
 
 afterEach(() => {
   resetGlobalConfigForTests()
@@ -411,9 +415,10 @@ describe('the model catalog the OpenAI API reads', () => {
     expect(getOpenAIContextWindow('gpt-5.6-terra')).toBe(1_050_000)
     expect(getOpenAIContextWindow('gpt-5.6-luna')).toBe(1_050_000)
     expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
-    expect(getOpenAIContextWindow('gpt-6-luna')).toBeUndefined()
+    // gpt-6-luna has no published API window; the ChatGPT account's stands in.
+    expect(getOpenAIContextWindow('gpt-6-luna')).toBe(272_000)
     expect(getOpenAIMaxOutputTokens('gpt-5.6-terra')).toBe(128_000)
-    expect(getOpenAIMaxOutputTokens('gpt-6-luna')).toBeUndefined()
+    expect(getOpenAIMaxOutputTokens('gpt-6-luna')).toBe(128_000)
   })
 
   test.each([

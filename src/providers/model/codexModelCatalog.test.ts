@@ -98,7 +98,6 @@ describe('codexModelCatalog — the ChatGPT account', () => {
     for (const id of ['gpt-6-luna', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
       expect(getCodexAccountLimits(id)).toEqual({
         contextWindow: 272_000,
-        maxOutputTokens: 128_000,
         effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
       })
     }
@@ -107,10 +106,10 @@ describe('codexModelCatalog — the ChatGPT account', () => {
     expect(getCodexAccountLimits('unknown')).toBeUndefined()
   })
 
-  test('the account-only model stays out of the API list and the API tables', () => {
+  test('the account-only model stays out of the API list, with the account limits in the tables', () => {
     expect(getFilteredCodexCatalog().map(entry => entry.id)).not.toContain('gpt-6-luna')
-    expect(CODEX_CONTEXT_WINDOWS['gpt-6-luna']).toBeUndefined()
-    expect(CODEX_MAX_OUTPUT_TOKENS['gpt-6-luna']).toBeUndefined()
+    expect(CODEX_CONTEXT_WINDOWS['gpt-6-luna']).toBe(272_000)
+    expect(CODEX_MAX_OUTPUT_TOKENS['gpt-6-luna']).toBe(128_000)
     // The API numbers of the shared models do not move.
     expect(CODEX_CONTEXT_WINDOWS['gpt-5.6-terra']).toBe(1_050_000)
   })

@@ -24,14 +24,13 @@
  * "not supported when using Codex with a ChatGPT account" there and stays for
  * API-key use. Those three carry an `account` record, read only when the
  * session is on the Codex backend: the picker, the context window and the
- * output limit. The API-side numbers (`contextInput`) do not change.
+ * effort levels. The 128k of output is the API's too, so `contextOutput` covers it.
  */
 import type { ReasoningEffort } from 'src/providers/presets/providerConfig.js'
 
 /** What the model gets on the Codex backend under a ChatGPT account. */
 export type CodexAccountLimits = {
   contextWindow: number
-  maxOutputTokens: number
   /**
    * The effort levels the account's catalog lists for it. `ultra` (gpt-5.6-terra)
    * is left out: Codex CLI 0.162.1 does not send it either — set to ultra, it
@@ -60,7 +59,6 @@ export type CodexModelEntry = {
 
 const CHATGPT_ACCOUNT: CodexAccountLimits = {
   contextWindow: 272_000,
-  maxOutputTokens: 128_000,
   effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
 }
 
@@ -74,6 +72,10 @@ export const CODEX_MODEL_CATALOG: readonly CodexModelEntry[] = [
     label: CODEX_DEFAULT_MODEL,
     description: 'GPT-6 Luna - the Codex CLI default',
     reasoningEffort: 'medium',
+    // Off the Codex backend (a relay in front of it, an API key) the same
+    // limits stand in, rather than the 128k fallback for unknown models.
+    contextInput: 272_000,
+    contextOutput: 128_000,
     account: CHATGPT_ACCOUNT,
     accountOnly: true,
   },
