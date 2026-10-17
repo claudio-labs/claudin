@@ -54,7 +54,7 @@ export type ResponsesSocketLimits = {
   maxFrameBytes: number
 }
 
-export const DEFAULT_RESPONSES_SOCKET_LIMITS: ResponsesSocketLimits = {
+const DEFAULT_RESPONSES_SOCKET_LIMITS: ResponsesSocketLimits = {
   maxSockets: 8,
   idleMs: 5 * 60_000,
   maxAgeMs: 55 * 60_000,

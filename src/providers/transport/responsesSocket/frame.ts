@@ -24,7 +24,7 @@ export type ResponsesChain = {
   outputIds: string[]
 }
 
-export type FrameReason =
+type FrameReason =
   | 'incremental'
   | 'no-chain'
   | 'settings-changed'

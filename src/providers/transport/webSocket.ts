@@ -25,7 +25,6 @@ import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
 
 export const WS_CONNECTING = 0
 export const WS_OPEN = 1
-export const WS_CLOSING = 2
 export const WS_CLOSED = 3
 
 export type WebSocketHandlers = {
