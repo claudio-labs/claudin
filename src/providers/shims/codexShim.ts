@@ -572,13 +572,13 @@ export async function performCodexRequest(options: {
   defaultHeaders: Record<string, string>
   signal?: AbortSignal
 }): Promise<Response> {
+  // On the Codex backend every item comes back as the backend produced it,
+  // reasoning included, and the body asks for the reasoning (codex/backend.ts).
+  const replayCodexItems = codexReplayActive(options.request)
   // applyStableStubs runs at the API boundary so the stable bytes are
   // what goes on the wire. No ensureToolResultPairing analogue exists
   // here — convertAnthropicMessagesToResponsesInput handles orphan
   // tool_results downstream.
-  // On the Codex backend every item comes back as the backend produced it,
-  // reasoning included, and the body asks for the reasoning (codex/backend.ts).
-  const replayCodexItems = codexReplayActive(options.request)
   const compressedMessages = applyStableInputStubs(
     applyStableStubs(
       options.params.messages as Array<{
@@ -877,7 +877,6 @@ function codexStreamError(data: Record<string, any>): APIError {
     data.error && typeof data.error === 'object'
       ? data.error
       : { code: data.code, message: data.message, param: data.param }
-  if (detail.code === CODEX_REPLAY_REFUSED_CODE) noteReplayRefused()
   const status = detail.type === 'invalid_request_error' ? 400 : 500
   return APIError.generate(
     status,
@@ -885,6 +884,14 @@ function codexStreamError(data: Record<string, any>): APIError {
     typeof detail.message === 'string' ? detail.message : 'Codex stream error',
     new Headers(),
   )
+}
+
+/** Raise the error a stream ended on, noting a refused reasoning replay first. */
+function raiseStreamError(error: APIError): never {
+  if ((error.error as { error?: { code?: unknown } } | undefined)?.error?.code === CODEX_REPLAY_REFUSED_CODE) {
+    noteReplayRefused()
+  }
+  throw error
 }
 
 export async function collectCodexCompletedResponse(
@@ -916,7 +923,7 @@ export async function collectCodexCompletedResponse(
   }
 
   if (!completedResponse) {
-    if (streamError) throw streamError
+    if (streamError) raiseStreamError(streamError)
     throw APIError.generate(
       500, undefined, 'Codex response ended without a completed payload',
       new Headers(),
@@ -1135,7 +1142,7 @@ export async function* codexStreamToAnthropic(
     }
   }
 
-  if (!finalResponse && streamError) throw streamError
+  if (!finalResponse && streamError) raiseStreamError(streamError)
 
   yield* closeActiveTextBlock()
   for (const toolBlock of toolBlocksByItemId.values()) {
