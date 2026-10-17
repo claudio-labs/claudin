@@ -1,7 +1,8 @@
 {
   "test": [
     "src/providers/shims/codexShim.test.ts",
-    "src/providers/shims/codex/providerNeutrality.invariant.test.ts"
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
+    "src/sessions/conversationRecovery.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -116,6 +117,18 @@
       "source": "src/providers/model/modelOptions.ts",
       "find": "if (getAdditionalModelOptionsCacheScope()?.startsWith('openai:')) {",
       "replace": "if (false) {"
+    },
+    {
+      "name": "resume keeps a thinking-only half once its blocks are stripped",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "    if (filtered.length === 0) return acc",
+      "replace": "    if (false) return acc"
+    },
+    {
+      "name": "resume keeps redacted thinking on OpenAI-compatible providers",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "(block: { type?: string }) => block.type !== 'thinking' && block.type !== 'redacted_thinking',",
+      "replace": "(block: { type?: string }) => block.type !== 'thinking',"
     }
   ]
 }
