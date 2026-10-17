@@ -134,8 +134,8 @@
     {
       "name": "resume keeps redacted thinking on OpenAI-compatible providers",
       "source": "src/sessions/conversationRecovery.ts",
-      "find": "(block: { type?: string }) => block.type !== 'thinking' && block.type !== 'redacted_thinking',",
-      "replace": "(block: { type?: string }) => block.type !== 'thinking',"
+      "find": "        (block.type !== 'thinking' && block.type !== 'redacted_thinking') ||",
+      "replace": "        block.type !== 'thinking' ||"
     },
     {
       "name": "SURFACE: codexplan names another model in the main loop",
