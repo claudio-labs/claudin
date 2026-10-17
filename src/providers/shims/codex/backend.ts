@@ -74,6 +74,16 @@ export function activeSessionReplaysCodexItems(): boolean {
   return activeSessionOnCodexBackend() && isCodexReasoningReplayEnabled()
 }
 
+/**
+ * The Codex item state to carry over when a block is rebuilt from its standard
+ * fields, as normalizeMessagesForAPI rebuilds every tool_use: the call's
+ * backend id on a session that replays it, nothing anywhere else.
+ */
+export function codexStateToKeep(block: unknown): { codex?: unknown } {
+  const codex = (block as { codex?: unknown } | null)?.codex
+  return codex !== undefined && activeSessionReplaysCodexItems() ? { codex } : {}
+}
+
 /** The body fields the Codex CLI adds; `reasoning.context` joins an effort only. */
 export function codexBackendBodyFields(
   reasoning: ResolvedProviderRequest['reasoning'],

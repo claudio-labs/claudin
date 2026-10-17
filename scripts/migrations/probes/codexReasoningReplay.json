@@ -476,6 +476,18 @@
       "source": "src/providers/model/codexModelCatalog.ts",
       "find": "  effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],",
       "replace": "  effortLevels: ['low', 'medium', 'high', 'xhigh'],"
+    },
+    {
+      "name": "KEEP: the render rebuilds a call without its backend id",
+      "source": "src/agent/messages/normalize.ts",
+      "find": "                    input: normalizedInput,\n                    ...(getAPIProvider() === 'gemini' && (block as any).extra_content ? { extra_content: (block as any).extra_content } : {}),\n                    ...codexStateToKeep(block),",
+      "replace": "                    input: normalizedInput,\n                    ...(getAPIProvider() === 'gemini' && (block as any).extra_content ? { extra_content: (block as any).extra_content } : {}),"
+    },
+    {
+      "name": "NEUTRALITY: every provider keeps a call's Codex state",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return codex !== undefined && activeSessionReplaysCodexItems() ? { codex } : {}",
+      "replace": "  return codex !== undefined ? { codex } : {}"
     }
   ]
 }

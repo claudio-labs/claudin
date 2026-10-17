@@ -11,6 +11,7 @@ import {
   activeSessionReplaysCodexItems,
   codexReplayActive,
   codexBackendBodyFields,
+  codexStateToKeep,
   isCodexBackendRequest,
   isCodexReasoningReplayEnabled,
   isCodexReplayRejected,
@@ -108,6 +109,30 @@ describe('which sessions go to the Codex backend', () => {
     process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
     expect(activeSessionReplaysCodexItems()).toBe(false)
     expect(activeSessionOnCodexBackend()).toBe(true)
+  })
+})
+
+describe('the item state a rebuilt block keeps', () => {
+  const CODEX = { id: 'b-codex', name: 'Codex OAuth', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'codexplan' } as ProviderProfile
+  const CALL = { type: 'tool_use', id: 'call_1', codex: { id: 'fc_real' } }
+
+  test('a session that replays keeps it', () => {
+    useProfile(CODEX)
+    expect(codexStateToKeep(CALL)).toEqual({ codex: { id: 'fc_real' } })
+  })
+
+  test('a block without state, or no block, keeps nothing', () => {
+    useProfile(CODEX)
+    expect(codexStateToKeep({ type: 'tool_use', id: 'call_1' })).toEqual({})
+    expect(codexStateToKeep(null)).toEqual({})
+  })
+
+  test('another provider, or the killswitch off, keeps nothing', () => {
+    useProfile({ id: 'b-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' })
+    expect(codexStateToKeep(CALL)).toEqual({})
+    useProfile(CODEX)
+    process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
+    expect(codexStateToKeep(CALL)).toEqual({})
   })
 })
 
