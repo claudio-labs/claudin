@@ -14,11 +14,14 @@
  * reasoning tokens each turn spent.
  *
  *   bun scripts/bench/ab/codex-wire-capture.ts [--model=gpt-5.6-terra] [--out=<dir>]
- *     [--claudin=claudindev] [--codex=codex] [--arm=claudin-off]
+ *     [--claudin=claudindev] [--codex=codex] [--arm=claudin-off] [--effort=max] [--only=claudin]
  *
  * `--arm=claudin-off` runs a third arm, Claudin with
  * CLAUDIN_CODEX_REASONING_REPLAY=0 — the body from before the replay, so the
  * table has a control.
+ * `--effort` pins Claudin's effort (CLAUDIN_EFFORT_LEVEL), `--only=claudin`
+ * skips the Codex CLI arm (for a model id only Claudin knows, as `codexplan`).
+ * Each turn's answer lands in <out>/<arm>-turn<n>.txt.
  *
  * Needs: mitmdump with its CA in ~/.mitmproxy, a Codex CLI logged in with a
  * ChatGPT account (~/.codex/auth.json), and a Claudin build. Claudin runs on a
@@ -48,6 +51,8 @@ export type CapturedRequest = {
   body: Record<string, unknown>
   items: Array<{ type?: string; id?: string; phase?: string; encrypted_content_len?: number }>
   usage: Array<{ input?: number; cached?: number; output?: number; reasoning?: number }>
+  /** Items in the completed response's own `output` (Claudin's HTTP requests only). */
+  completed_output?: number[]
 }
 
 /** Per arm: what its main-loop requests carry. */
@@ -183,14 +188,19 @@ function argValue(name: string, fallback: string): string {
   return hit ? hit.slice(name.length + 3) : fallback
 }
 
-function run(command: string, args: string[], cwd: string, env: Record<string, string>): Promise<number> {
+function run(command: string, args: string[], cwd: string, env: Record<string, string>, stdoutFile: string): Promise<number> {
   // Async on purpose: spawnSync would block the event loop while the CLI waits
   // on the network, which is harmless here but keeps the timeouts honest.
   return new Promise(resolve => {
-    const child = spawn(command, args, { cwd, env: { ...process.env, ...env } as Record<string, string>, stdio: 'ignore' })
+    const child = spawn(command, args, { cwd, env: { ...process.env, ...env } as Record<string, string>, stdio: ['ignore', 'pipe', 'ignore'] })
+    let stdout = ''
+    child.stdout.on('data', chunk => {
+      stdout += String(chunk)
+    })
     const timer = setTimeout(() => child.kill('SIGKILL'), 300_000)
     child.on('exit', code => {
       clearTimeout(timer)
+      writeFileSync(stdoutFile, stdout)
       resolve(code ?? 1)
     })
   })
@@ -236,6 +246,8 @@ async function main(): Promise<void> {
   const claudinBin = argValue('claudin', 'claudindev')
   const codexBin = argValue('codex', 'codex')
   const withControl = process.argv.includes('--arm=claudin-off')
+  const effort = argValue('effort', '')
+  const onlyClaudin = process.argv.includes('--only=claudin')
   const port = 8899
 
   const mitmCa = join(homedir(), '.mitmproxy', 'mitmproxy-ca-cert.pem')
@@ -256,16 +268,18 @@ async function main(): Promise<void> {
     CODEX_CA_CERTIFICATE: bundle,
   }
 
-  await recordArm('codex', out, proxyEnv, port, async env => {
-    const repo = join(out, 'repo-codex')
-    freshRepo(repo)
-    for (const [i, prompt] of PROMPTS.entries()) {
-      const args = i === 0
-        ? ['exec', '-m', model, '-s', 'read-only', prompt]
-        : ['exec', 'resume', '--last', '-m', model, prompt]
-      console.log(`codex turn ${i + 1}: exit ${await run(codexBin, args, repo, env)}`)
-    }
-  })
+  if (!onlyClaudin) {
+    await recordArm('codex', out, proxyEnv, port, async env => {
+      const repo = join(out, 'repo-codex')
+      freshRepo(repo)
+      for (const [i, prompt] of PROMPTS.entries()) {
+        const args = i === 0
+          ? ['exec', '-m', model, '-s', 'read-only', prompt]
+          : ['exec', 'resume', '--last', '-m', model, prompt]
+        console.log(`codex turn ${i + 1}: exit ${await run(codexBin, args, repo, env, join(out, `codex-turn${i + 1}.txt`))}`)
+      }
+    })
+  }
 
   const arms: Array<[string, Record<string, string>]> = [['claudin', {}]]
   if (withControl) arms.push(['claudin-off', { CLAUDIN_CODEX_REASONING_REPLAY: '0' }])
@@ -291,14 +305,17 @@ async function main(): Promise<void> {
         const args = i === 0
           ? ['-p', '--dangerously-skip-permissions', prompt]
           : ['-c', '-p', '--dangerously-skip-permissions', prompt]
-        console.log(`${arm} turn ${i + 1}: exit ${await run(claudinBin, args, repo, { ...env, CLAUDIN_CONFIG_DIR: cfg, ...armEnv })}`)
+        const turnEnv = { ...env, CLAUDIN_CONFIG_DIR: cfg, ...(effort && { CLAUDIN_EFFORT_LEVEL: effort }), ...armEnv }
+        console.log(`${arm} turn ${i + 1}: exit ${await run(claudinBin, args, repo, turnEnv, join(out, `${arm}-turn${i + 1}.txt`))}`)
       }
     })
   }
 
   const byLabel = readCaptures(join(out, 'cap'))
   const summaries: Record<string, ArmSummary> = {}
-  for (const arm of ['codex', ...arms.map(([name]) => name)]) summaries[arm] = summarizeArm(byLabel[arm] ?? [])
+  for (const arm of [...(onlyClaudin ? [] : ['codex']), ...arms.map(([name]) => name)]) {
+    summaries[arm] = summarizeArm(byLabel[arm] ?? [])
+  }
   const table = formatTable(summaries)
   writeFileSync(join(out, 'table.txt'), `${table}\n`)
   console.log(`\n${table}\n\nredacted captures: ${join(out, 'cap')}`)

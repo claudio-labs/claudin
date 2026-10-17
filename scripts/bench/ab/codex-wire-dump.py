@@ -82,12 +82,13 @@ def response(flow):
         body = json.loads(flow.request.get_text() or "{}")
     except ValueError:
         return
-    items, usage = [], []
+    items, usage, completed_output = [], [], []
     for ev in _events(flow.response.get_text() or ""):
         if ev.get("type") == "response.output_item.done":
             items.append(_summarize_item(ev.get("item") or {}))
         if ev.get("type") == "response.completed":
             usage.append(_usage(ev.get("response")))
+            completed_output.append(len((ev.get("response") or {}).get("output") or []))
     _write(_label(flow.request.headers), {
         "transport": "http",
         "status": flow.response.status_code,
@@ -95,6 +96,7 @@ def response(flow):
         "body": body,
         "items": items,
         "usage": usage,
+        "completed_output": completed_output,
     })
 
 
