@@ -100,6 +100,8 @@ export class WebSocketTransport implements Transport {
   // Track which runtime's WS we're using so we can detach listeners
   // with the matching API (removeEventListener vs. off).
   private isBunWs = false
+  // The server's last received id, from the 101 response (ws only).
+  private upgradeLastId: string | null = null
 
   // Captured at connect() time for handleOpenEvent timing. Stored as an
   // instance field so the onOpen handler can be a stable class-property
@@ -168,6 +170,7 @@ export class WebSocketTransport implements Transport {
       ws.addEventListener('pong', this.onPong)
     } else {
       const { default: WS } = await import('ws')
+      this.upgradeLastId = null
       const ws = new WS(this.url.href, {
         headers,
         agent: getWebSocketProxyAgent(this.url.href),
@@ -176,6 +179,7 @@ export class WebSocketTransport implements Transport {
       this.ws = ws
       this.isBunWs = false
 
+      ws.on('upgrade', this.onNodeUpgrade)
       ws.on('open', this.onNodeOpen)
       ws.on('message', this.onNodeMessage)
       ws.on('error', this.onNodeError)
@@ -232,6 +236,12 @@ export class WebSocketTransport implements Transport {
 
   // --- Node (ws package) event handlers ---
 
+  // ws 8 reports the upgrade response here; it has no `upgradeReq`.
+  private onNodeUpgrade = (res: { headers: Record<string, string | string[] | undefined> }) => {
+    const lastId = res.headers['x-last-request-id']
+    this.upgradeLastId = typeof lastId === 'string' && lastId ? lastId : null
+  }
+
   private onNodeOpen = () => {
     // Capture ws before handleOpenEvent() invokes onConnectCallback — if the
     // callback synchronously closes the transport, this.ws becomes null.
@@ -239,14 +249,10 @@ export class WebSocketTransport implements Transport {
     const ws = this.ws
     this.handleOpenEvent()
     if (!ws) return
-    // Check for last-id in upgrade response headers (ws package only)
-    const nws = ws as unknown as WsWebSocket & {
-      upgradeReq?: { headers?: Record<string, string> }
-    }
-    const upgradeResponse = nws.upgradeReq
-    if (upgradeResponse?.headers?.['x-last-request-id']) {
-      const serverLastId = upgradeResponse.headers['x-last-request-id']
-      this.replayBufferedMessages(serverLastId)
+    // Replay from the server's last id when the upgrade carried one;
+    // without it, replay everything, as on Bun (the server dedupes by uuid).
+    if (this.upgradeLastId || this.lastSentId) {
+      this.replayBufferedMessages(this.upgradeLastId ?? '')
     }
   }
 
@@ -353,6 +359,7 @@ export class WebSocketTransport implements Transport {
       nws.removeEventListener('pong' as 'message', this.onPong)
     } else {
       const nws = ws as unknown as WsWebSocket
+      nws.off('upgrade', this.onNodeUpgrade)
       nws.off('open', this.onNodeOpen)
       nws.off('message', this.onNodeMessage)
       nws.off('error', this.onNodeError)
