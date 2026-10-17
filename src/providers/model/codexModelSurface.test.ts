@@ -18,6 +18,7 @@ import {
   saveGlobalConfig,
   type ProviderProfile,
 } from 'src/platform/config/config.js'
+import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
 import { ALL_MODEL_CONFIGS } from 'src/providers/model/configs.js'
 import {
   getDefaultHaikuModel,
@@ -81,33 +82,23 @@ describe('a Codex OAuth profile', () => {
     expect(getDefaultSonnetModel()).toBe('codexplan')
     expect(getDefaultHaikuModel()).toBe('codexplan')
     expect(getSmallFastModel()).toBe('codexplan')
-    expect(getDefaultMainLoopModel()).toBe('gpt-5.5')
+    expect(getDefaultMainLoopModel()).toBe('gpt-6-luna')
   })
 
-  test('the /model picker lists the whole Codex catalog plus the Claude aliases mapped onto it', () => {
+  test("the /model picker lists what the ChatGPT account offers, and the profile's own model", () => {
     useProfile(CODEX_OAUTH)
     expect(getModelOptions(false).map(option => option.value)).toEqual([
       null,
-      'gpt-5.6-sol',
+      'gpt-6-luna',
       'gpt-5.6-terra',
       'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4',
-      'gpt-5.3-codex',
-      'gpt-5.3-codex-spark',
-      'codexspark',
-      'gpt-5.2-codex',
-      'gpt-5.1-codex-max',
-      'gpt-5.1-codex-mini',
-      'gpt-5.5-mini',
-      'gpt-5.4-mini',
-      'gpt-4o',
-      'gpt-4o[1m]',
-      'opus',
-      'gpt-4o-mini',
-      'haiku',
       'codexplan',
     ])
+  })
+
+  test("a Codex alias behind another base URL lists the profile's models, as before", () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy', baseUrl: 'http://localhost:8000/v1' })
+    expect(getModelOptions(false).map(option => option.value)).toEqual([null, 'codexplan'])
   })
 
   test('model names: the shared display table, else the id', () => {
@@ -116,12 +107,15 @@ describe('a Codex OAuth profile', () => {
     expect(renderModelName('gpt-6-luna')).toBe('gpt-6-luna')
   })
 
-  test('context windows: the catalog for known models, the shim fallback for unknown ones', () => {
+  test("context windows: the ChatGPT account's for its models, the API's for the rest", () => {
     useProfile(CODEX_OAUTH)
-    expect(getOpenAIContextWindow('gpt-5.6-terra')).toBe(1_050_000)
-    expect(getOpenAIContextWindow('gpt-6-luna')).toBeUndefined()
-    expect(getOpenAIMaxOutputTokens('gpt-6-luna')).toBeUndefined()
-    expect(getContextWindowForModel('gpt-5.6-terra')).toBe(1_050_000)
+    expect(getOpenAIContextWindow('gpt-6-luna')).toBe(272_000)
+    expect(getOpenAIContextWindow('gpt-5.6-terra')).toBe(272_000)
+    expect(getOpenAIContextWindow('gpt-5.6-luna')).toBe(272_000)
+    expect(getOpenAIMaxOutputTokens('gpt-6-luna')).toBe(128_000)
+    expect(getContextWindowForModel('gpt-5.6-terra')).toBe(272_000)
+    // Not offered to the account: the API's numbers, as before.
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
   })
 
   test('effort levels: the GPT-5 family list, nothing for gpt-6', () => {
@@ -154,12 +148,12 @@ describe('a Codex backend profile whose model is not an alias', () => {
 
 describe('Codex model resolution, provider-independent', () => {
   test('the Codex aliases name concrete models', () => {
-    expect(parseUserSpecifiedModel('codexplan')).toBe('gpt-5.5')
+    expect(parseUserSpecifiedModel('codexplan')).toBe('gpt-6-luna')
     expect(parseUserSpecifiedModel('codexspark')).toBe('gpt-5.3-codex-spark')
   })
 
   test.each([
-    ['codexplan', 'gpt-5.5', { effort: 'high' }],
+    ['codexplan', 'gpt-6-luna', { effort: 'medium' }],
     ['gpt-5.6-terra', 'gpt-5.6-terra', { effort: 'high' }],
     ['gpt-6-luna', 'gpt-6-luna', undefined],
   ] as const)('%s on the Codex backend resolves to %s with %o', (model, resolved, reasoning) => {
@@ -171,6 +165,6 @@ describe('Codex model resolution, provider-independent', () => {
 
   test('every Claude tier maps to the same Codex model', () => {
     const codexColumn = new Set(Object.values(ALL_MODEL_CONFIGS).map(config => config.codex))
-    expect([...codexColumn]).toEqual(['gpt-5.5'])
+    expect([...codexColumn]).toEqual([CODEX_DEFAULT_MODEL])
   })
 })

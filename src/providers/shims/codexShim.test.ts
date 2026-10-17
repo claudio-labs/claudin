@@ -139,8 +139,8 @@ describe('Codex provider config', () => {
 
     const resolved = resolveProviderRequest({ model: 'codexplan' })
     expect(resolved.transport).toBe('codex_responses')
-    expect(resolved.resolvedModel).toBe('gpt-5.5')
-    expect(resolved.reasoning).toEqual({ effort: 'high' })
+    expect(resolved.resolvedModel).toBe('gpt-6-luna')
+    expect(resolved.reasoning).toEqual({ effort: 'medium' })
     expect(resolved.baseUrl).toBe('https://chatgpt.com/backend-api/codex')
   })
 
@@ -165,7 +165,7 @@ describe('Codex provider config', () => {
 
     expect(resolved.transport).toBe('chat_completions')
     expect(resolved.baseUrl).toBe('http://127.0.0.1:8080/v1')
-    expect(resolved.resolvedModel).toBe('gpt-5.5')
+    expect(resolved.resolvedModel).toBe('gpt-6-luna')
   })
 
   test('transportSendsStrictToolSchemas tracks the per-request model', async () => {
@@ -228,7 +228,7 @@ describe('Codex provider config', () => {
     const resolved = resolveProviderRequest()
     expect(resolved.transport).toBe('codex_responses')
     expect(resolved.baseUrl).toBe('https://chatgpt.com/backend-api/codex')
-    expect(resolved.resolvedModel).toBe('gpt-5.5')
+    expect(resolved.resolvedModel).toBe('gpt-6-luna')
   })
 
   test('does not override custom base URL for codexplan (e.g., local provider)', async () => {

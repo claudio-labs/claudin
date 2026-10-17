@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import {
   CODEX_CONTEXT_WINDOWS,
+  CODEX_DEFAULT_MODEL,
   CODEX_MAX_OUTPUT_TOKENS,
   CODEX_MODEL_CATALOG,
   filterCodexModels,
+  getCodexAccountCatalog,
+  getCodexAccountLimits,
   getFilteredCodexCatalog,
   isCodexModelAllowed,
 } from 'src/providers/model/codexModelCatalog.js'
@@ -80,5 +83,31 @@ describe('codexModelCatalog — picker + derived maps', () => {
     expect(CODEX_MAX_OUTPUT_TOKENS['gpt-5.6-sol']).toBe(128_000)
     // codex-branded models without a declared window stay absent (default budget)
     expect(CODEX_CONTEXT_WINDOWS['gpt-5.3-codex']).toBeUndefined()
+  })
+})
+
+// What a ChatGPT account offers on the Codex backend (its own catalog,
+// 2026-10-16): three models, 272k of window, 128k of output.
+describe('codexModelCatalog — the ChatGPT account', () => {
+  test('codexplan names the Codex CLI default, and it leads the account list', () => {
+    expect(CODEX_DEFAULT_MODEL).toBe('gpt-6-luna')
+    expect(getCodexAccountCatalog().map(entry => entry.id)).toEqual(['gpt-6-luna', 'gpt-5.6-terra', 'gpt-5.6-luna'])
+  })
+
+  test('account limits for the account models only', () => {
+    for (const id of ['gpt-6-luna', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
+      expect(getCodexAccountLimits(id)).toEqual({ contextWindow: 272_000, maxOutputTokens: 128_000 })
+    }
+    expect(getCodexAccountLimits('gpt-5.6-sol')).toBeUndefined()
+    expect(getCodexAccountLimits('gpt-5.5')).toBeUndefined()
+    expect(getCodexAccountLimits('unknown')).toBeUndefined()
+  })
+
+  test('the account-only model stays out of the API list and the API tables', () => {
+    expect(getFilteredCodexCatalog().map(entry => entry.id)).not.toContain('gpt-6-luna')
+    expect(CODEX_CONTEXT_WINDOWS['gpt-6-luna']).toBeUndefined()
+    expect(CODEX_MAX_OUTPUT_TOKENS['gpt-6-luna']).toBeUndefined()
+    // The API numbers of the shared models do not move.
+    expect(CODEX_CONTEXT_WINDOWS['gpt-5.6-terra']).toBe(1_050_000)
   })
 })

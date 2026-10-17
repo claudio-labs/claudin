@@ -12,6 +12,7 @@ import {
   asTrimmedString,
   parseChatgptAccountId,
 } from 'src/providers/oauth/codexOAuthShared.js'
+import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 export const DEFAULT_CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex'
 export const DEFAULT_XAI_BASE_URL = 'https://api.x.ai/v1'
@@ -66,8 +67,10 @@ const CODEX_ALIAS_MODELS: Record<
   }
 > = {
   codexplan: {
-    model: 'gpt-5.5',
-    reasoningEffort: 'high',
+    // The Codex CLI's default model at its default effort. A ChatGPT account
+    // answers gpt-5.5 with 400 "not supported" since 2026-10.
+    model: CODEX_DEFAULT_MODEL,
+    reasoningEffort: 'medium',
   },
   // GPT-5.6 family (July 2026). Bare `gpt-5.6` follows the Codex CLI convention
   // of resolving the flagship tier (Sol). sol/terra/luna route via the Codex
