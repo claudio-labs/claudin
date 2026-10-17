@@ -55,6 +55,11 @@ export type WebSocketHandle = {
   readonly readyState: number
   /** Replace the handlers; later events go to these. */
   listen(handlers: WebSocketHandlers): void
+  /**
+   * Throws synchronously when the socket is not open, as both runtimes'
+   * send() does; the promise settles when the frame is written (at once on
+   * Bun) and never goes unhandled.
+   */
   send(data: string | Uint8Array): Promise<void>
   ping(): void
   close(code?: number, reason?: string): void
@@ -252,11 +257,17 @@ function openNode(
     },
     listen: replace,
     send(data) {
-      const socket = ws
-      if (!socket) return Promise.reject(new Error('WebSocket is not open'))
-      return new Promise((resolve, reject) => {
-        socket.send(data, error => (error ? reject(error) : resolve()))
+      if (!ws) throw new Error('WebSocket is not open')
+      let settle: { resolve(): void; reject(error: Error): void } | undefined
+      const sent = new Promise<void>((resolve, reject) => {
+        settle = { resolve, reject }
       })
+      // Callers that never await must not leave an unhandled rejection.
+      sent.catch(() => {})
+      // A socket that is not open throws here, synchronously, as ws.send
+      // always did; only the write's outcome arrives later.
+      ws.send(data, error => (error ? settle?.reject(error) : settle?.resolve()))
+      return sent
     },
     ping() {
       if (ws?.readyState === WS_OPEN) ws.ping()

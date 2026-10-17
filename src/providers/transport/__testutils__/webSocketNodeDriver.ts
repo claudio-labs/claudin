@@ -6,7 +6,7 @@
  */
 import { createServer as createHttpServer } from 'node:http'
 import { connect, createServer as createNetServer, type Socket } from 'node:net'
-import { WebSocketServer } from 'ws'
+import WS, { WebSocketServer } from 'ws'
 import { openWebSocket, type WebSocketHandle } from 'src/providers/transport/webSocket.js'
 
 type Report = Record<string, unknown>
@@ -105,17 +105,27 @@ async function detach(report: Report): Promise<void> {
   wss.on('connection', socket => socket.on('message', () => socket.send('late')))
   const port = await listen(http)
   const events: string[] = []
+  let instance: WS | undefined
+  class Recording extends WS {
+    constructor(...args: ConstructorParameters<typeof WS>) {
+      super(...args)
+      instance = this
+    }
+  }
+  const watched = ['open', 'upgrade', 'message', 'error', 'close', 'pong', 'unexpected-response']
   const handle = openWebSocket(`ws://127.0.0.1:${port}/`, {
     handlers: {
       onOpen: () => {
         events.push('open')
+        report.listenersBeforeDetach = watched.map(e => instance?.listenerCount(e) ?? -1)
         handle.detach()
+        report.listenersAfterDetach = watched.map(e => instance?.listenerCount(e) ?? -1)
         void handle.send('ping-me')
       },
       onMessage: data => events.push(`message:${data}`),
       onClose: () => events.push('close'),
     },
-  })
+  }, { loadWs: async () => Recording as unknown as typeof WS })
   await new Promise(resolve => setTimeout(resolve, 300))
   handle.close()
   await new Promise(resolve => setTimeout(resolve, 100))

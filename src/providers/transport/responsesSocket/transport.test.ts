@@ -37,7 +37,7 @@ beforeEach(() => {
   closed = []
   script = undefined
   responseCount = 0
-  server = Bun.serve<Conn, undefined>({
+  server = Bun.serve<Conn>({
     port: 0,
     fetch(req, srv) {
       if (new URL(req.url).pathname === '/refuse') return new Response('no', { status: 403 })
@@ -46,7 +46,7 @@ beforeEach(() => {
     },
     websocket: {
       message(ws, message) {
-        const frame = { ...(JSON.parse(String(message)) as Record<string, unknown>), conn: ws.data.id }
+        const frame: Frame = { ...(JSON.parse(String(message)) as Record<string, unknown>), conn: ws.data.id }
         frames.push(frame)
         if (script?.(frame, ws)) return
         const prev = frame.previous_response_id

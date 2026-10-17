@@ -1,4 +1,3 @@
-/* eslint-disable eslint-plugin-n/no-unsupported-features/node-builtins */
 /**
  * CONNECT-over-WebSocket relay for CCR upstreamproxy.
  *
@@ -18,33 +17,16 @@
 
 import { createServer, type Socket as NodeSocket } from 'node:net'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
-import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/providers/transport/proxy.js'
-
 // The CCR container runs behind an egress gateway — direct outbound is
 // blocked, so the WS upgrade must go through the same HTTP CONNECT proxy
-// everything else uses. undici's globalThis.WebSocket does not consult
-// the global dispatcher for the upgrade, so under Node we use the ws package
-// with an explicit agent (same pattern as SessionsWebSocket). Bun's native
-// WebSocket takes a proxy URL directly. Preloaded in startNodeRelay so
+// everything else uses. openWebSocket applies that proxy (and mTLS) for
+// whichever runtime we are on, and hands back its handle synchronously, so
 // openTunnel stays synchronous and the CONNECT state machine doesn't race.
-type WSCtor = typeof import('ws').default
-let nodeWSCtor: WSCtor | undefined
-
-// Intersection of the surface openTunnel touches. Both undici's
-// globalThis.WebSocket and the ws package satisfy this via property-style
-// onX handlers.
-type WebSocketLike = Pick<
-  WebSocket,
-  | 'onopen'
-  | 'onmessage'
-  | 'onerror'
-  | 'onclose'
-  | 'send'
-  | 'close'
-  | 'readyState'
-  | 'binaryType'
->
+import {
+  openWebSocket,
+  WS_OPEN,
+  type WebSocketHandle,
+} from 'src/providers/transport/webSocket.js'
 
 // Envoy per-request buffer cap. Week-1 Datadog payloads won't hit this, but
 // design for it so git-push doesn't need a relay rewrite.
@@ -108,7 +90,7 @@ export type UpstreamProxyRelay = {
 }
 
 type ConnState = {
-  ws?: WebSocketLike
+  ws?: WebSocketHandle
   connectBuf: Buffer
   pinger?: ReturnType<typeof setInterval>
   // Bytes that arrived after the CONNECT header but before ws.onopen fired.
@@ -247,7 +229,6 @@ export async function startNodeRelay(
   authHeader: string,
   wsAuthHeader: string,
 ): Promise<UpstreamProxyRelay> {
-  nodeWSCtor = (await import('ws')).default
   const states = new WeakMap<NodeSocket, ConnState>()
 
   const server = createServer(sock => {
@@ -364,58 +345,9 @@ function openTunnel(
     'Content-Type': 'application/proto',
     Authorization: wsAuthHeader,
   }
-  let ws: WebSocketLike
-  if (nodeWSCtor) {
-    ws = new nodeWSCtor(wsUrl, {
-      headers,
-      agent: getWebSocketProxyAgent(wsUrl),
-      ...getWebSocketTLSOptions(),
-    }) as unknown as WebSocketLike
-  } else {
-    ws = new globalThis.WebSocket(wsUrl, {
-      // @ts-expect-error — Bun extension; not in lib.dom WebSocket types
-      headers,
-      proxy: getWebSocketProxyUrl(wsUrl),
-      tls: getWebSocketTLSOptions() || undefined,
-    })
-  }
-  ws.binaryType = 'arraybuffer'
-  st.ws = ws
-
-  ws.onopen = () => {
-    // First chunk carries the CONNECT line plus Proxy-Authorization so the
-    // server can auth the tunnel and know the target host:port. Server
-    // responds with its own "HTTP/1.1 200" over the tunnel; we just pipe it.
-    const head =
-      `${connectLine}\r\n` + `Proxy-Authorization: ${authHeader}\r\n` + `\r\n`
-    ws.send(encodeChunk(Buffer.from(head, 'utf8')) as BufferSource)
-    // Flush anything that arrived while the WS handshake was in flight —
-    // trailing bytes from the CONNECT packet and any data() callbacks that
-    // fired before onopen.
-    st.wsOpen = true
-    for (const buf of st.pending) {
-      forwardToWs(ws, buf)
-    }
-    st.pending = []
-    // Not all WS implementations expose ping(); empty chunk works as an
-    // application-level keepalive the server can ignore.
-    st.pinger = setInterval(sendKeepalive, PING_INTERVAL_MS, ws)
-  }
-
-  ws.onmessage = ev => {
-    const raw =
-      ev.data instanceof ArrayBuffer
-        ? new Uint8Array(ev.data)
-        : new Uint8Array(Buffer.from(ev.data))
-    const payload = decodeChunk(raw)
-    if (payload && payload.length > 0) {
-      st.established = true
-      sock.write(payload)
-    }
-  }
-
-  ws.onerror = ev => {
-    const msg = 'message' in ev ? String(ev.message) : 'websocket error'
+  // The tunnel fails the same way whether the socket errors or (Node only)
+  // the upgrade is refused: a 502 unless TLS is already flowing, then end.
+  const fail = (msg: string): void => {
     logForDebugging(`[upstreamproxy] ws error: ${msg}`)
     if (st.closed) return
     st.closed = true
@@ -426,32 +358,71 @@ function openTunnel(
     cleanupConn(st)
   }
 
-  ws.onclose = () => {
-    if (st.closed) return
-    st.closed = true
-    sock.end()
-    cleanupConn(st)
+  const ws = openWebSocket(wsUrl, {
+    headers,
+    handlers: {
+      onOpen() {
+        // First chunk carries the CONNECT line plus Proxy-Authorization so the
+        // server can auth the tunnel and know the target host:port. Server
+        // responds with its own "HTTP/1.1 200" over the tunnel; we just pipe it.
+        const head =
+          `${connectLine}\r\n` + `Proxy-Authorization: ${authHeader}\r\n` + `\r\n`
+        void ws.send(encodeChunk(Buffer.from(head, 'utf8')))
+        // Flush anything that arrived while the WS handshake was in flight —
+        // trailing bytes from the CONNECT packet and any data() callbacks that
+        // fired before onopen.
+        st.wsOpen = true
+        for (const buf of st.pending) {
+          forwardToWs(ws, buf)
+        }
+        st.pending = []
+        // Not all WS implementations expose ping(); empty chunk works as an
+        // application-level keepalive the server can ignore.
+        st.pinger = setInterval(sendKeepalive, PING_INTERVAL_MS, ws)
+      },
+      // Every frame as bytes: the server may send a chunk as text or binary.
+      onBinary(raw) {
+        const payload = decodeChunk(raw)
+        if (payload && payload.length > 0) {
+          st.established = true
+          sock.write(payload)
+        }
+      },
+      onError(error) {
+        fail(error.message || 'websocket error')
+      },
+      onRefused(status) {
+        fail(`upgrade refused with ${status}`)
+      },
+      onClose() {
+        if (st.closed) return
+        st.closed = true
+        sock.end()
+        cleanupConn(st)
+      },
+    },
+  })
+  st.ws = ws
+}
+
+function sendKeepalive(ws: WebSocketHandle): void {
+  if (ws.readyState === WS_OPEN) {
+    void ws.send(encodeChunk(new Uint8Array(0)))
   }
 }
 
-function sendKeepalive(ws: WebSocketLike): void {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(encodeChunk(new Uint8Array(0)) as BufferSource)
-  }
-}
-
-function forwardToWs(ws: WebSocketLike, data: Buffer): void {
-  if (ws.readyState !== WebSocket.OPEN) return
+function forwardToWs(ws: WebSocketHandle, data: Buffer): void {
+  if (ws.readyState !== WS_OPEN) return
   for (let off = 0; off < data.length; off += MAX_CHUNK_BYTES) {
     const slice = data.subarray(off, off + MAX_CHUNK_BYTES)
-    ws.send(encodeChunk(slice) as BufferSource)
+    void ws.send(encodeChunk(slice))
   }
 }
 
 function cleanupConn(st: ConnState | undefined): void {
   if (!st) return
   if (st.pinger) clearInterval(st.pinger)
-  if (st.ws && st.ws.readyState <= WebSocket.OPEN) {
+  if (st.ws && st.ws.readyState <= WS_OPEN) {
     try {
       st.ws.close()
     } catch {

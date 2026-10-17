@@ -209,6 +209,53 @@ describe.each(RUNTIMES)('openWebSocket (%s branch)', (_name, deps) => {
   })
 })
 
+describe('detach removes every listener the opener attached', () => {
+  test('bun branch', async () => {
+    const Real = globalThis.WebSocket
+    const added: string[] = []
+    const removed: string[] = []
+    class Recording extends Real {
+      override addEventListener(type: string, ...rest: unknown[]): void {
+        added.push(type)
+        ;(super.addEventListener as (...a: unknown[]) => void)(type, ...rest)
+      }
+      override removeEventListener(type: string, ...rest: unknown[]): void {
+        removed.push(type)
+        ;(super.removeEventListener as (...a: unknown[]) => void)(type, ...rest)
+      }
+    }
+    globalThis.WebSocket = Recording as typeof WebSocket
+    try {
+      await waitFor<void>(resolve => {
+        open('/', { runtime: 'bun' }, { onOpen: () => resolve() })
+      })
+      handles[0]!.detach()
+      expect(added.length).toBeGreaterThanOrEqual(5)
+      expect(removed.sort()).toEqual(added.sort())
+    } finally {
+      globalThis.WebSocket = Real
+    }
+  })
+
+  test('node branch', async () => {
+    const { default: Shim } = await import('ws')
+    let instance: InstanceType<typeof Shim> | undefined
+    class Recording extends Shim {
+      constructor(...args: ConstructorParameters<typeof Shim>) {
+        super(...args)
+        instance = this
+      }
+    }
+    const events = ['open', 'upgrade', 'message', 'error', 'close', 'pong', 'unexpected-response']
+    await waitFor<void>(resolve => {
+      open('/', { runtime: 'node', loadWs: async () => Recording as unknown as typeof Shim }, { onOpen: () => resolve() })
+    })
+    expect(events.map(e => instance!.listenerCount(e)).every(n => n >= 1)).toBe(true)
+    handles[0]!.detach()
+    expect(events.map(e => instance!.listenerCount(e))).toEqual(events.map(() => 0))
+  })
+})
+
 describe('openWebSocket (node branch, before ws has loaded)', () => {
   test('close before the socket exists reports closed and never connects', async () => {
     let release: () => void = () => {}
@@ -225,7 +272,7 @@ describe('openWebSocket (node branch, before ws has loaded)', () => {
     })
     const handle = handles[0]!
     expect(handle.readyState).toBe(WS_CONNECTING)
-    await expect(handle.send('x')).rejects.toThrow('not open')
+    expect(() => handle.send('x')).toThrow('not open')
     handle.ping()
     handle.close(1000, 'done')
     expect(handle.readyState).toBe(WS_CLOSED)

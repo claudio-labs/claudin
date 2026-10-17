@@ -19,12 +19,8 @@ import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { getMCPUserAgent } from 'src/shared/http.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'
-import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
-import {
-  getProxyFetchOptions,
-  getWebSocketProxyAgent,
-  getWebSocketProxyUrl,
-} from 'src/providers/transport/proxy.js'
+import { getProxyFetchOptions } from 'src/providers/transport/proxy.js'
+import { openWebSocket } from 'src/providers/transport/webSocket.js'
 import { getSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { subprocessEnv } from 'src/shared/proc/subprocessEnv.js'
@@ -36,31 +32,6 @@ import {
   MCP_REQUEST_TIMEOUT_MS,
   wrapFetchWithTimeout,
 } from 'src/mcp/client/fetch.js'
-
-// Minimal interface for WebSocket instances passed to mcpWebSocketTransport
-type WsClientLike = {
-  readonly readyState: number
-  close(): void
-  send(data: string): void
-}
-
-/**
- * Create a ws.WebSocket client with the MCP protocol.
- * Bun's ws shim types lack the 3-arg constructor (url, protocols, options)
- * that the real ws package supports, so we cast the constructor here.
- */
-async function createNodeWsClient(
-  url: string,
-  options: Record<string, unknown>,
-): Promise<WsClientLike> {
-  const wsModule = await import('ws')
-  const WS = wsModule.default as unknown as new (
-    url: string,
-    protocols: string[],
-    options: Record<string, unknown>,
-  ) => WsClientLike
-  return new WS(url, ['mcp'], options)
-}
 
 export type InProcessMcpServer = {
   connect(t: Transport): Promise<void>
@@ -174,32 +145,16 @@ export async function createTransport(
         : undefined,
     )
   } else if (serverRef.type === 'ws-ide') {
-    const tlsOptions = getWebSocketTLSOptions()
     const wsHeaders = {
       'User-Agent': getMCPUserAgent(),
       ...(serverRef.authToken && {
         'X-Claude-Code-Ide-Authorization': serverRef.authToken,
       }),
     }
-
-    let wsClient: WsClientLike
-    if (typeof Bun !== 'undefined') {
-      // Bun's WebSocket supports headers/proxy/tls options but the DOM typings don't
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      wsClient = new globalThis.WebSocket(serverRef.url, {
-        protocols: ['mcp'],
-        headers: wsHeaders,
-        proxy: getWebSocketProxyUrl(serverRef.url),
-        tls: tlsOptions || undefined,
-      } as unknown as string[])
-    } else {
-      wsClient = await createNodeWsClient(serverRef.url, {
-        headers: wsHeaders,
-        agent: getWebSocketProxyAgent(serverRef.url),
-        ...(tlsOptions || {}),
-      })
-    }
-    transport = new WebSocketTransport(wsClient)
+    // The opener applies the proxy and TLS options for either runtime.
+    transport = new WebSocketTransport(
+      openWebSocket(serverRef.url, { headers: wsHeaders, protocols: ['mcp'] }),
+    )
   } else if (serverRef.type === 'ws') {
     logMCPDebug(
       name,
@@ -208,7 +163,6 @@ export async function createTransport(
 
     const combinedHeaders = await getMcpServerHeaders(name, serverRef)
 
-    const tlsOptions = getWebSocketTLSOptions()
     const wsHeaders = {
       'User-Agent': getMCPUserAgent(),
       ...(sessionIngressToken && {
@@ -231,24 +185,9 @@ export async function createTransport(
       })}`,
     )
 
-    let wsClient: WsClientLike
-    if (typeof Bun !== 'undefined') {
-      // Bun's WebSocket supports headers/proxy/tls options but the DOM typings don't
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      wsClient = new globalThis.WebSocket(serverRef.url, {
-        protocols: ['mcp'],
-        headers: wsHeaders,
-        proxy: getWebSocketProxyUrl(serverRef.url),
-        tls: tlsOptions || undefined,
-      } as unknown as string[])
-    } else {
-      wsClient = await createNodeWsClient(serverRef.url, {
-        headers: wsHeaders,
-        agent: getWebSocketProxyAgent(serverRef.url),
-        ...(tlsOptions || {}),
-      })
-    }
-    transport = new WebSocketTransport(wsClient)
+    transport = new WebSocketTransport(
+      openWebSocket(serverRef.url, { headers: wsHeaders, protocols: ['mcp'] }),
+    )
   } else if (serverRef.type === 'http') {
     logMCPDebug(name, `Initializing HTTP transport to ${serverRef.url}`)
     logMCPDebug(

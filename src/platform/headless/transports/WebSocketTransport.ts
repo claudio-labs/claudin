@@ -1,14 +1,13 @@
 import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type WsWebSocket from 'ws'
 import { CircularBuffer } from 'src/shared/data/CircularBuffer.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
 import {
-  getWebSocketProxyAgent,
-  getWebSocketProxyUrl,
-} from 'src/providers/transport/proxy.js'
+  openWebSocket,
+  type WebSocketHandle,
+  type WebSocketHandlers,
+} from 'src/providers/transport/webSocket.js'
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,
@@ -58,15 +57,8 @@ type WebSocketTransportState =
   | 'closing'
   | 'closed'
 
-// Common interface between globalThis.WebSocket and ws.WebSocket
-type WebSocketLike = {
-  close(): void
-  send(data: string): void
-  ping?(): void // Bun & ws both support this
-}
-
 export class WebSocketTransport implements Transport {
-  private ws: WebSocketLike | null = null
+  private ws: WebSocketHandle | null = null
   private lastSentId: string | null = null
   protected url: URL
   protected state: WebSocketTransportState = 'idle'
@@ -97,10 +89,8 @@ export class WebSocketTransport implements Transport {
 
   // Message buffering for replay on reconnection
   private messageBuffer: CircularBuffer<StdoutMessage>
-  // Track which runtime's WS we're using so we can detach listeners
-  // with the matching API (removeEventListener vs. off).
-  private isBunWs = false
-  // The server's last received id, from the 101 response (ws only).
+  // The server's last received id, from the 101 response. Only Node's ws
+  // reports the upgrade response; on Bun this stays null.
   private upgradeLastId: string | null = null
 
   // Captured at connect() time for handleOpenEvent timing. Stored as an
@@ -150,145 +140,69 @@ export class WebSocketTransport implements Transport {
       )
     }
 
-    if (typeof Bun !== 'undefined') {
-      // Bun's WebSocket supports headers/proxy options but the DOM typings don't
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      const ws = new globalThis.WebSocket(this.url.href, {
-        headers,
-        proxy: getWebSocketProxyUrl(this.url.href),
-        tls: getWebSocketTLSOptions() || undefined,
-      } as unknown as string[])
-      this.ws = ws
-      this.isBunWs = true
+    this.upgradeLastId = null
+    this.ws = openWebSocket(this.url.href, {
+      headers,
+      handlers: this.wsHandlers,
+    })
+  }
 
-      ws.addEventListener('open', this.onBunOpen)
-      ws.addEventListener('message', this.onBunMessage)
-      ws.addEventListener('error', this.onBunError)
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      ws.addEventListener('close', this.onBunClose)
-      // 'pong' is Bun-specific — not in DOM typings.
-      ws.addEventListener('pong', this.onPong)
-    } else {
-      const { default: WS } = await import('ws')
-      this.upgradeLastId = null
-      const ws = new WS(this.url.href, {
-        headers,
-        agent: getWebSocketProxyAgent(this.url.href),
-        ...getWebSocketTLSOptions(),
+  // One handler set for every connection, so doDisconnect() can drop it
+  // with handle.detach(): without that, each reconnect orphans the old
+  // socket + its closures until GC, which accumulates under network
+  // instability.
+  private readonly wsHandlers: WebSocketHandlers = {
+    // Only Node reports the 101 response; Bun never calls this.
+    onUpgrade: headers => {
+      const lastId = headers['x-last-request-id']
+      this.upgradeLastId = lastId ? lastId : null
+    },
+    onOpen: () => {
+      this.handleOpenEvent()
+      // Replay from the server's last id when the upgrade carried one;
+      // without it (always, on Bun), replay everything — the server
+      // deduplicates by uuid.
+      if (this.upgradeLastId || this.lastSentId) {
+        this.replayBufferedMessages(this.upgradeLastId ?? '')
+      }
+    },
+    onMessage: message => {
+      this.lastActivityTime = Date.now()
+      logForDiagnosticsNoPII('info', 'cli_websocket_message_received', {
+        length: message.length,
       })
-      this.ws = ws
-      this.isBunWs = false
-
-      ws.on('upgrade', this.onNodeUpgrade)
-      ws.on('open', this.onNodeOpen)
-      ws.on('message', this.onNodeMessage)
-      ws.on('error', this.onNodeError)
-      ws.on('close', this.onNodeClose)
-      ws.on('pong', this.onPong)
-    }
-  }
-
-  // --- Bun (native WebSocket) event handlers ---
-  // Stored as class-property arrow functions so they can be removed in
-  // doDisconnect(). Without removal, each reconnect orphans the old WS
-  // object + its 5 closures until GC, which accumulates under network
-  // instability. Mirrors the pattern in src/mcp/mcpWebSocketTransport.ts.
-
-  private onBunOpen = () => {
-    this.handleOpenEvent()
-    // Bun's WebSocket doesn't expose upgrade response headers,
-    // so replay all buffered messages. The server deduplicates by UUID.
-    if (this.lastSentId) {
-      this.replayBufferedMessages('')
-    }
-  }
-
-  private onBunMessage = (event: MessageEvent) => {
-    const message =
-      typeof event.data === 'string' ? event.data : String(event.data)
-    this.lastActivityTime = Date.now()
-    logForDiagnosticsNoPII('info', 'cli_websocket_message_received', {
-      length: message.length,
-    })
-    if (this.onData) {
-      this.onData(message)
-    }
-  }
-
-  private onBunError = () => {
-    logForDebugging('WebSocketTransport: Error', {
-      level: 'error',
-    })
-    logForDiagnosticsNoPII('error', 'cli_websocket_connect_error')
-    // close event fires after error — let it call handleConnectionError
-  }
-
-  // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-  private onBunClose = (event: CloseEvent) => {
-    const isClean = event.code === 1000 || event.code === 1001
-    logForDebugging(
-      `WebSocketTransport: Closed: ${event.code}`,
-      isClean ? undefined : { level: 'error' },
-    )
-    logForDiagnosticsNoPII('error', 'cli_websocket_connect_closed')
-    this.handleConnectionError(event.code)
-  }
-
-  // --- Node (ws package) event handlers ---
-
-  // ws 8 reports the upgrade response here; it has no `upgradeReq`.
-  private onNodeUpgrade = (res: { headers: Record<string, string | string[] | undefined> }) => {
-    const lastId = res.headers['x-last-request-id']
-    this.upgradeLastId = typeof lastId === 'string' && lastId ? lastId : null
-  }
-
-  private onNodeOpen = () => {
-    // Capture ws before handleOpenEvent() invokes onConnectCallback — if the
-    // callback synchronously closes the transport, this.ws becomes null.
-    // The old inline-closure code had this safety implicitly via closure capture.
-    const ws = this.ws
-    this.handleOpenEvent()
-    if (!ws) return
-    // Replay from the server's last id when the upgrade carried one;
-    // without it, replay everything, as on Bun (the server dedupes by uuid).
-    if (this.upgradeLastId || this.lastSentId) {
-      this.replayBufferedMessages(this.upgradeLastId ?? '')
-    }
-  }
-
-  private onNodeMessage = (data: Buffer) => {
-    const message = data.toString()
-    this.lastActivityTime = Date.now()
-    logForDiagnosticsNoPII('info', 'cli_websocket_message_received', {
-      length: message.length,
-    })
-    if (this.onData) {
-      this.onData(message)
-    }
-  }
-
-  private onNodeError = (err: Error) => {
-    logForDebugging(`WebSocketTransport: Error: ${err.message}`, {
-      level: 'error',
-    })
-    logForDiagnosticsNoPII('error', 'cli_websocket_connect_error')
-    // close event fires after error — let it call handleConnectionError
-  }
-
-  private onNodeClose = (code: number, _reason: Buffer) => {
-    const isClean = code === 1000 || code === 1001
-    logForDebugging(
-      `WebSocketTransport: Closed: ${code}`,
-      isClean ? undefined : { level: 'error' },
-    )
-    logForDiagnosticsNoPII('error', 'cli_websocket_connect_closed')
-    this.handleConnectionError(code)
-  }
-
-  // --- Shared handlers ---
-
-  private onPong = () => {
-    this.pongReceived = true
+      if (this.onData) {
+        this.onData(message)
+      }
+    },
+    onError: error => {
+      logForDebugging(`WebSocketTransport: Error: ${error.message}`, {
+        level: 'error',
+      })
+      logForDiagnosticsNoPII('error', 'cli_websocket_connect_error')
+      // close event fires after error — let it call handleConnectionError
+    },
+    // Node only: the opener reports a refused upgrade here instead of as an
+    // error; the close (1006) that follows drives the reconnect.
+    onRefused: status => {
+      logForDebugging(
+        `WebSocketTransport: Error: Unexpected server response: ${status}`,
+        { level: 'error' },
+      )
+      logForDiagnosticsNoPII('error', 'cli_websocket_connect_error')
+    },
+    onClose: code => {
+      const isClean = code === 1000 || code === 1001
+      logForDebugging(
+        `WebSocketTransport: Closed: ${code}`,
+        isClean ? undefined : { level: 'error' },
+      )
+      logForDiagnosticsNoPII('error', 'cli_websocket_connect_closed')
+      this.handleConnectionError(code)
+    },
+    onPong: () => {
+      this.pongReceived = true
+    },
   }
 
   private handleOpenEvent(): void {
@@ -326,7 +240,7 @@ export class WebSocketTransport implements Transport {
     }
 
     try {
-      this.ws.send(line)
+      void this.ws.send(line)
       this.lastActivityTime = Date.now()
       return true
     } catch (error) {
@@ -341,33 +255,6 @@ export class WebSocketTransport implements Transport {
     }
   }
 
-  /**
-   * Remove all listeners attached in connect() for the given WebSocket.
-   * Without this, each reconnect orphans the old WS object + its closures
-   * until GC — these accumulate under network instability. Mirrors the
-   * pattern in src/mcp/mcpWebSocketTransport.ts.
-   */
-  private removeWsListeners(ws: WebSocketLike): void {
-    if (this.isBunWs) {
-      const nws = ws as unknown as globalThis.WebSocket
-      nws.removeEventListener('open', this.onBunOpen)
-      nws.removeEventListener('message', this.onBunMessage)
-      nws.removeEventListener('error', this.onBunError)
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      nws.removeEventListener('close', this.onBunClose)
-      // 'pong' is Bun-specific — not in DOM typings
-      nws.removeEventListener('pong' as 'message', this.onPong)
-    } else {
-      const nws = ws as unknown as WsWebSocket
-      nws.off('upgrade', this.onNodeUpgrade)
-      nws.off('open', this.onNodeOpen)
-      nws.off('message', this.onNodeMessage)
-      nws.off('error', this.onNodeError)
-      nws.off('close', this.onNodeClose)
-      nws.off('pong', this.onPong)
-    }
-  }
-
   protected doDisconnect(): void {
     // Stop pinging and keepalive when disconnecting
     this.stopPingInterval()
@@ -379,7 +266,7 @@ export class WebSocketTransport implements Transport {
     if (this.ws) {
       // Remove listeners BEFORE close() so the old WS + closures can be
       // GC'd promptly instead of lingering until the next mark-and-sweep.
-      this.removeWsListeners(this.ws)
+      this.ws.detach()
       this.ws.close()
       this.ws = null
     }
@@ -714,7 +601,7 @@ export class WebSocketTransport implements Transport {
 
         this.pongReceived = false
         try {
-          this.ws.ping?.()
+          this.ws.ping()
         } catch (error) {
           logForDebugging(`WebSocketTransport: Ping failed: ${error}`, {
             level: 'error',
@@ -743,7 +630,7 @@ export class WebSocketTransport implements Transport {
     this.keepAliveInterval = setInterval(() => {
       if (this.state === 'connected' && this.ws) {
         try {
-          this.ws.send(KEEP_ALIVE_FRAME)
+          void this.ws.send(KEEP_ALIVE_FRAME)
           this.lastActivityTime = Date.now()
           logForDebugging(
             'WebSocketTransport: Sent periodic keep_alive data frame',

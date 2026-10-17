@@ -3,12 +3,15 @@ import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import type { Server, ServerWebSocket } from 'bun'
 
 import { WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'
+import {
+  openWebSocket,
+  type WebSocketHandle,
+} from 'src/providers/transport/webSocket.js'
 
 /*
  * Characterization of the MCP WebSocket transport as it runs under Bun, against
- * a real local server. These pin today's behaviour before the socket
- * construction moves behind the shared opener; the Node (`ws` package) branch
- * does not run under `bun test` and is not covered here.
+ * a real local server, over a socket from the shared opener. The opener's Node
+ * branch is covered by its own suite (webSocket.node.test.ts).
  */
 
 type ServerHandle = {
@@ -20,7 +23,7 @@ type ServerHandle = {
 }
 
 const servers: Server<unknown>[] = []
-const clients: WebSocket[] = []
+const clients: RecordingHandle[] = []
 
 function startServer(options: { refuse?: boolean } = {}): ServerHandle {
   const received: string[] = []
@@ -64,50 +67,62 @@ function startServer(options: { refuse?: boolean } = {}): ServerHandle {
   }
 }
 
-/** A real WebSocket that records listener churn, so the cleanup is observable. */
-class RecordingWebSocket extends WebSocket {
-  listenerLog: string[] = []
+/**
+ * A real opener handle that records the transport attaching (`listen`) and
+ * cleaning up (`detach`), lets a test see every frame the socket delivers,
+ * and can make send throw.
+ */
+type RecordingHandle = WebSocketHandle & {
+  listenerLog: string[]
   sendError: Error | undefined
-  override addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ): void {
-    this.listenerLog.push(`+${type}`)
-    super.addEventListener(type, listener, options)
-  }
-  override removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions,
-  ): void {
-    this.listenerLog.push(`-${type}`)
-    super.removeEventListener(type, listener, options)
-  }
-  override send(data: Parameters<WebSocket['send']>[0]): void {
-    if (this.sendError) throw this.sendError
-    super.send(data)
-  }
+  frames: string[]
 }
 
-function connect(url: string): RecordingWebSocket {
-  const ws = new RecordingWebSocket(url)
+function connect(url: string): RecordingHandle {
+  const inner = openWebSocket(url)
+  const ws: RecordingHandle = {
+    listenerLog: [],
+    sendError: undefined,
+    frames: [],
+    get url() {
+      return inner.url
+    },
+    get readyState() {
+      return inner.readyState
+    },
+    listen(handlers) {
+      ws.listenerLog.push('listen')
+      inner.listen({
+        ...handlers,
+        onMessage: data => {
+          ws.frames.push(data)
+          handlers.onMessage?.(data)
+        },
+      })
+    },
+    send(data) {
+      if (ws.sendError) throw ws.sendError
+      return inner.send(data)
+    },
+    ping: () => inner.ping(),
+    close: (code, reason) => inner.close(code, reason),
+    detach() {
+      ws.listenerLog.push('detach')
+      inner.detach()
+    },
+  }
   clients.push(ws)
   return ws
 }
 
-function waitForOpen(ws: WebSocket): Promise<void> {
+function waitForOpen(ws: WebSocketHandle): Promise<void> {
   return new Promise((resolve, reject) => {
-    ws.addEventListener('open', () => resolve(), { once: true })
-    ws.addEventListener('error', e => reject(e), { once: true })
+    ws.listen({ onOpen: resolve, onError: reject })
   })
 }
 
-function waitForClose(ws: WebSocket): Promise<void> {
-  if (ws.readyState === WebSocket.CLOSED) return Promise.resolve()
-  return new Promise(resolve => {
-    ws.addEventListener('close', () => resolve(), { once: true })
-  })
+async function waitForClose(ws: WebSocketHandle): Promise<void> {
+  await until(() => ws.readyState === WebSocket.CLOSED)
 }
 
 function nextMessage(transport: WebSocketTransport): Promise<JSONRPCMessage> {
@@ -141,40 +156,33 @@ afterEach(async () => {
 })
 
 describe('WebSocketTransport (Bun) — opening', () => {
-  test('start waits for a connecting socket, then drops its one-shot open/error listeners', async () => {
+  test('start waits for a connecting socket, attaching its handlers once', async () => {
     const server = startServer()
     const ws = connect(server.url)
     const transport = new WebSocketTransport(ws)
 
-    // One-shot open/error from the opened promise, then the persistent three.
-    expect(ws.listenerLog).toEqual([
-      '+open',
-      '+error',
-      '+message',
-      '+error',
-      '+close',
-    ])
+    expect(ws.listenerLog).toEqual(['listen'])
 
     await transport.start()
 
     expect(ws.readyState).toBe(WebSocket.OPEN)
-    expect(ws.listenerLog.slice(5)).toEqual(['-open', '-error'])
+    expect(ws.listenerLog).toEqual(['listen'])
   })
 
-  test('an already-open socket needs no one-shot listeners and starts at once', async () => {
+  test('an already-open socket starts at once', async () => {
     const server = startServer()
     const ws = connect(server.url)
     await waitForOpen(ws)
     ws.listenerLog = []
 
     const transport = new WebSocketTransport(ws)
-    expect(ws.listenerLog).toEqual(['+message', '+error', '+close'])
+    expect(ws.listenerLog).toEqual(['listen'])
 
     await transport.start()
-    expect(ws.listenerLog).toEqual(['+message', '+error', '+close'])
+    expect(ws.listenerLog).toEqual(['listen'])
   })
 
-  test('a refused handshake rejects start with the error event and reports it through onerror and onclose', async () => {
+  test('a refused handshake rejects start with the socket error and reports it through onerror and onclose', async () => {
     const server = startServer({ refuse: true })
     const ws = connect(server.url)
     const transport = new WebSocketTransport(ws)
@@ -190,19 +198,13 @@ describe('WebSocketTransport (Bun) — opening', () => {
       (e: unknown) => e,
     )
 
-    expect(failure).toBeInstanceOf(Event)
-    expect((failure as Event).type).toBe('error')
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toContain('Expected 101 status code')
     await waitForClose(ws)
     await until(() => closes === 1)
-    expect(errors.map(e => e.message)).toEqual(['WebSocket error'])
-    // The one-shot pair went on the error; the close then removed the persistent three.
-    expect(ws.listenerLog.slice(5)).toEqual([
-      '-open',
-      '-error',
-      '-message',
-      '-error',
-      '-close',
-    ])
+    expect(errors).toEqual([failure as Error])
+    // The close then detached the handlers.
+    expect(ws.listenerLog).toEqual(['listen', 'detach'])
   })
 
   test('start can only be called once', async () => {
@@ -319,14 +321,14 @@ describe('WebSocketTransport (Bun) — messages', () => {
     peer.send(JSON.stringify({ jsonrpc: '2.0', method: 'a' }))
     peer.send('garbage')
     // A round trip proves both frames were processed before the assertion.
-    const echoed = new Promise<string>(resolve => {
-      ws.addEventListener('message', e => {
-        if (String((e as MessageEvent).data) === 'sync') resolve('sync')
-      })
-    })
     peer.send('sync')
 
-    expect(await echoed).toBe('sync')
+    await until(() => ws.frames.includes('sync'))
+    expect(ws.frames).toEqual([
+      JSON.stringify({ jsonrpc: '2.0', method: 'a' }),
+      'garbage',
+      'sync',
+    ])
   })
 })
 
@@ -397,14 +399,7 @@ describe('WebSocketTransport (Bun) — closing', () => {
     // listener runs the cleanup first and close() then runs it again.
     expect(ws.readyState).toBe(WebSocket.CLOSED)
     expect(closes).toBe(2)
-    expect(ws.listenerLog).toEqual([
-      '-message',
-      '-error',
-      '-close',
-      '-message',
-      '-error',
-      '-close',
-    ])
+    expect(ws.listenerLog).toEqual(['detach', 'detach'])
     expect(await server.closedByClient).toBe(1000)
     expect(closes).toBe(2)
   })
@@ -425,7 +420,7 @@ describe('WebSocketTransport (Bun) — closing', () => {
     // Bun leaves a socket closed while connecting in CLOSING without events.
     expect(ws.readyState).toBe(WebSocket.CLOSING)
     expect(closes).toBe(1)
-    expect(ws.listenerLog).toEqual(['-message', '-error', '-close'])
+    expect(ws.listenerLog).toEqual(['detach'])
   })
 
   test('a server-side close fires onclose and removes the listeners; a later close() fires onclose again', async () => {
@@ -444,7 +439,7 @@ describe('WebSocketTransport (Bun) — closing', () => {
     peer.close(1000, 'bye')
     await closed
     await until(() => closes === 1)
-    expect(ws.listenerLog).toEqual(['-message', '-error', '-close'])
+    expect(ws.listenerLog).toEqual(['detach'])
 
     // close() does not call ws.close() on a CLOSED socket, but still runs the
     // cleanup, which calls onclose unconditionally.

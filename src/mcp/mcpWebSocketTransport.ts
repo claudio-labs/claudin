@@ -3,81 +3,56 @@ import {
   type JSONRPCMessage,
   JSONRPCMessageSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import type WsWebSocket from 'ws'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { toError } from 'src/shared/errors.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
+import {
+  WS_CONNECTING,
+  WS_OPEN,
+  type WebSocketHandle,
+} from 'src/providers/transport/webSocket.js'
 
-// WebSocket readyState constants (same for both native and ws)
-const WS_CONNECTING = 0
-const WS_OPEN = 1
-
-// Minimal interface shared by globalThis.WebSocket and ws.WebSocket
-type WebSocketLike = {
-  readonly readyState: number
-  close(): void
-  send(data: string): void
-}
-
+/**
+ * An MCP transport over a socket from the shared opener, which already hides
+ * the Bun/Node split: frames arrive as text, errors as Error, and send()
+ * settles once the frame is written on either runtime.
+ */
 export class WebSocketTransport implements Transport {
   private started = false
   private opened: Promise<void>
-  private isBun = typeof Bun !== 'undefined'
+  /** Settles `opened` with the first open or error; later ones are no-ops. */
+  private settleOpen: ((error?: Error) => void) | undefined
 
-  constructor(private ws: WebSocketLike) {
+  constructor(private ws: WebSocketHandle) {
     this.opened = new Promise((resolve, reject) => {
       if (this.ws.readyState === WS_OPEN) {
         resolve()
-      } else if (this.isBun) {
-        const nws = this.ws as unknown as globalThis.WebSocket
-        const onOpen = () => {
-          nws.removeEventListener('open', onOpen)
-          nws.removeEventListener('error', onError)
-          resolve()
-        }
-        const onError = (event: Event) => {
-          nws.removeEventListener('open', onOpen)
-          nws.removeEventListener('error', onError)
-          logForDiagnosticsNoPII('error', 'mcp_websocket_connect_fail')
-          reject(event)
-        }
-        nws.addEventListener('open', onOpen)
-        nws.addEventListener('error', onError)
-      } else {
-        const nws = this.ws as unknown as WsWebSocket
-        nws.on('open', () => {
-          resolve()
-        })
-        nws.on('error', error => {
-          logForDiagnosticsNoPII('error', 'mcp_websocket_connect_fail')
-          reject(error)
-        })
+        return
+      }
+      this.settleOpen = error => {
+        this.settleOpen = undefined
+        if (error) reject(error)
+        else resolve()
       }
     })
+    // A connect failure reaches onerror too; the rejection only matters to
+    // start(), which may never be called.
+    this.opened.catch(() => {})
 
-    // Attach persistent event handlers
-    if (this.isBun) {
-      const nws = this.ws as unknown as globalThis.WebSocket
-      nws.addEventListener('message', this.onBunMessage)
-      nws.addEventListener('error', this.onBunError)
-      nws.addEventListener('close', this.onBunClose)
-    } else {
-      const nws = this.ws as unknown as WsWebSocket
-      nws.on('message', this.onNodeMessage)
-      nws.on('error', this.onNodeError)
-      nws.on('close', this.onNodeClose)
-    }
+    this.ws.listen({
+      onOpen: () => this.settleOpen?.(),
+      onMessage: this.onSocketMessage,
+      onError: this.onSocketError,
+      onClose: () => this.handleCloseCleanup(),
+    })
   }
 
   onclose?: () => void
   onerror?: (error: Error) => void
   onmessage?: (message: JSONRPCMessage) => void
 
-  // Bun (native WebSocket) event handlers
-  private onBunMessage = (event: MessageEvent) => {
+  private onSocketMessage = (data: string) => {
     try {
-      const data =
-        typeof event.data === 'string' ? event.data : String(event.data)
       const messageObj = jsonParse(data)
       const message = JSONRPCMessageSchema.parse(messageObj)
       this.onmessage?.(message)
@@ -86,54 +61,26 @@ export class WebSocketTransport implements Transport {
     }
   }
 
-  private onBunError = () => {
-    this.handleError(new Error('WebSocket error'))
-  }
-
-  private onBunClose = () => {
-    this.handleCloseCleanup()
-  }
-
-  // Node (ws package) event handlers
-  private onNodeMessage = (data: Buffer) => {
-    try {
-      const messageObj = jsonParse(data.toString('utf-8'))
-      const message = JSONRPCMessageSchema.parse(messageObj)
-      this.onmessage?.(message)
-    } catch (error) {
-      this.handleError(error)
+  private onSocketError = (error: Error) => {
+    if (this.settleOpen) {
+      logForDiagnosticsNoPII('error', 'mcp_websocket_connect_fail')
+      this.settleOpen(error)
     }
-  }
-
-  private onNodeError = (error: unknown) => {
     this.handleError(error)
   }
 
-  private onNodeClose = () => {
-    this.handleCloseCleanup()
-  }
-
-  // Shared error handler
   private handleError(error: unknown): void {
     logForDiagnosticsNoPII('error', 'mcp_websocket_message_fail')
     this.onerror?.(toError(error))
   }
 
-  // Shared close handler with listener cleanup
+  // Runs on every close event and on every close() call, so onclose can fire
+  // twice when close() itself makes the socket emit 'close'.
   private handleCloseCleanup(): void {
     this.onclose?.()
-    // Clean up listeners after close
-    if (this.isBun) {
-      const nws = this.ws as unknown as globalThis.WebSocket
-      nws.removeEventListener('message', this.onBunMessage)
-      nws.removeEventListener('error', this.onBunError)
-      nws.removeEventListener('close', this.onBunClose)
-    } else {
-      const nws = this.ws as unknown as WsWebSocket
-      nws.off('message', this.onNodeMessage)
-      nws.off('error', this.onNodeError)
-      nws.off('close', this.onNodeClose)
-    }
+    // Detached, the socket can no longer report that it never opened.
+    this.settleOpen?.(new Error('WebSocket closed before it opened.'))
+    this.ws.detach()
   }
 
   /**
@@ -178,20 +125,7 @@ export class WebSocketTransport implements Transport {
     const json = jsonStringify(message)
 
     try {
-      if (this.isBun) {
-        // Native WebSocket.send() is synchronous (no callback)
-        this.ws.send(json)
-      } else {
-        await new Promise<void>((resolve, reject) => {
-          ;(this.ws as unknown as WsWebSocket).send(json, error => {
-            if (error) {
-              reject(error)
-            } else {
-              resolve()
-            }
-          })
-        })
-      }
+      await this.ws.send(json)
     } catch (error) {
       this.handleError(error)
       throw error

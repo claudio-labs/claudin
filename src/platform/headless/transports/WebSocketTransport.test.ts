@@ -728,16 +728,26 @@ describe('close', () => {
     t.setOnData(d => got.push(d))
     await t.connect()
     const conn = await connected(h, t)
-    const ws = priv(t).ws!
-    const removeSpy = spyOn(ws, 'removeEventListener')
-    const closeSpy = spyOn(ws, 'close')
+    const ws = priv(t).ws! as unknown as { detach(): void; close(): void }
+    // The opener owns the listeners; webSocket.test.ts proves detach() removes
+    // every one of them on both runtimes.
+    const order: string[] = []
+    const detachSpy = spyOn(ws, 'detach').mockImplementation(function (this: typeof ws) {
+      order.push('detach')
+    })
+    const closeSpy = spyOn(ws, 'close').mockImplementation(() => {
+      order.push('close')
+    })
 
     t.close()
 
-    expect(removeSpy.mock.calls.map(c => c[0]).sort()).toEqual(
-      ['close', 'error', 'message', 'open', 'pong'],
-    )
+    expect(detachSpy).toHaveBeenCalledTimes(1)
     expect(closeSpy).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(['detach', 'close'])
+    detachSpy.mockRestore()
+    closeSpy.mockRestore()
+    ws.detach()
+    ws.close()
     expect(priv(t).ws).toBeNull()
     expect(t.getStateLabel()).toBe('closing')
     expect(t.isConnectedStatus()).toBe(false)

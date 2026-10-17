@@ -42,7 +42,9 @@ test.skipIf(!node)('a refused upgrade reports its status and body, then closes, 
   expect(report.refusedEvents).toEqual(['refused:403:go away', 'close:1006'])
 })
 
-test.skipIf(!node)('detach drops every later event', () => {
+test.skipIf(!node)('detach removes every listener and drops every later event', () => {
+  expect((report.listenersBeforeDetach as number[]).every(n => n >= 1)).toBe(true)
+  expect(report.listenersAfterDetach).toEqual([0, 0, 0, 0, 0, 0, 0])
   expect(report.detachEvents).toEqual(['open'])
 })
 
