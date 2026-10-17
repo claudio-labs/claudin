@@ -54,6 +54,7 @@ import {
   performCodexRequest,
   type ShimCreateParams,
 } from 'src/providers/shims/codexShim.js'
+import { codexReplayActive } from 'src/providers/shims/codex/backend.js'
 import { fetchWithProxyRetry } from 'src/providers/transport/fetchWithProxyRetry.js'
 import {
   buildOpenAICompatibilityErrorMessage,
@@ -196,7 +197,9 @@ class OpenAIShimMessages {
         }
         return new OpenAIShimStream(
           (request.transport === 'codex_responses' || isResponsesStream)
-            ? codexStreamToAnthropic(response, request.resolvedModel, options?.signal)
+            ? codexStreamToAnthropic(response, request.resolvedModel, options?.signal, {
+                captureCodexItems: codexReplayActive(request),
+              })
             : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens, toolNames),
         )
       }
@@ -206,6 +209,7 @@ class OpenAIShimMessages {
         return convertCodexResponseToAnthropicMessage(
           data,
           request.resolvedModel,
+          { captureCodexItems: codexReplayActive(request) },
         )
       }
 

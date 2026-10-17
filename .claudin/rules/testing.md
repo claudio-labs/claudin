@@ -113,6 +113,27 @@ test('resolves provider from config', () => {
 
 **Never mock `tryGetActiveProvider()` in provider tests** — that defeats the purpose. Mock the config source instead.
 
+### Provider-private block state goes through the whole render
+
+A field a shim keeps on an Anthropic block for its own wire (Gemini's `extra_content`,
+the Codex `codex` item state) breaks in two places no shim-only test reaches:
+
+- `normalizeMessagesForAPI` rebuilds every `tool_use` from its standard fields
+  (`src/agent/messages/normalize.ts`). A new field needs a carve-out beside the two that
+  exist, or it is gone before the shim sees it: the Codex replay sent 0 of 10 calls under
+  the backend's id until a live capture caught it.
+- A redaction that runs after `normalizeMessagesForAPI` comes after its whitespace filter,
+  so removing a block can leave a turn of blank text the Anthropic API rejects;
+  `renderMessagesForAPI` re-runs the filter after `stripCodexItems`.
+
+Pin both by rendering a history that carries the field through `renderMessagesForAPI`,
+under the provider that keeps it and under one that must not see it
+(`src/providers/shims/claude/renderMessages.test.ts`).
+
+A live provider-switch check against a local mock: an Anthropic profile's `baseUrl` is not
+what the SDK calls. Set `ANTHROPIC_BASE_URL` to the mock and run `claudindev --bare` (which
+reads the profile's `apiKey`), or the request reaches the real API.
+
 ## Build-System Invariant Tests
 
 These tests in `scripts/` enforce build correctness — always run when touching `scripts/build/build.ts`:
@@ -305,13 +326,16 @@ src/agent/cache/imageFrontier.invariant.test.ts
 src/agent/attachments/renderStability.invariant.test.ts
 src/tools/toolSchemaStability.invariant.test.ts
 src/agent/prompts/systemPromptStability.invariant.test.ts
+src/providers/shims/codex/providerNeutrality.invariant.test.ts
 ```
 
 Do **not** chase the percentage. It cannot tell a real assertion from
-`expect(true).toBe(true)`, and the fourteen suites above are worth more than any
+`expect(true).toBe(true)`, and the fifteen suites above are worth more than any
 number it could report — they pin request-byte determinism (the prompt cache
-stops hitting the moment it breaks — the last seven are the prefix and marker
-guards mapped in cache.md §1), per-filter reduction, and the build-system invariants. What
+stops hitting the moment it breaks — seven of them, from `toolResultMessages` to
+`systemPromptStability`, are the prefix and marker guards mapped in cache.md §1),
+per-filter reduction, the build-system invariants, and that a change scoped to
+the Codex backend leaves every other provider's request alone. What
 the ratio is good for is noticing a *loss*: a refactor that
 deletes a suite along with the code it covered. Re-record deliberately with
 `bun run test:floor:update`.
@@ -586,7 +610,7 @@ committed `typecheck-baseline.json`.
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
 - [ ] Focused tests pass (`bun test <file>`)
-- [ ] `bun run test:floor` holds (14/14 invariant suites, ratio within 0.5pp)
+- [ ] `bun run test:floor` holds (15/15 invariant suites, ratio within 0.5pp)
 - [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
 - [ ] `bun run deadcode:exports` reports no NEW unused exports
 - [ ] If touching `src/providers/*`: `bun run test:provider`

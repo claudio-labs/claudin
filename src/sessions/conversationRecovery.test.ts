@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -15,6 +15,12 @@ import {
   resetSentBashGitInstructions,
 } from 'src/agent/attachments/attachments.js'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
+import {
+  resetGlobalConfigForTests,
+  saveGlobalConfig,
+  type ProviderProfile,
+} from 'src/platform/config/config.js'
+import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
@@ -198,4 +204,145 @@ test('a resumed transcript calls the renamed patch tool by its new name', () => 
   )
   expect(toolUses.map(b => (b as { name: string }).name)).toEqual([APPLY_PATCH_TOOL_NAME])
   expect((toolUses[0] as { input: unknown }).input).toEqual(patch)
+})
+
+// Resume drops thinking for every provider outside the Anthropic family
+// (firstParty, Bedrock, Vertex, Foundry keep it). Providers are switched through
+// the real resolver: under bun test the global config lives in memory.
+describe('thinking on resume, per provider', () => {
+  function useProfile(profile: ProviderProfile): void {
+    saveGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [profile],
+      activeProviderProfileId: profile.id,
+    }))
+    invalidateActiveProviderCache()
+  }
+
+  afterEach(() => {
+    resetGlobalConfigForTests()
+    invalidateActiveProviderCache()
+  })
+
+  function transcript() {
+    const split = createAssistantMessage({ content: 'second half' })
+    const thinkingHalf = createAssistantMessage({
+      content: [{ type: 'thinking', thinking: 'paired', signature: 'sig-2' }] as never,
+    })
+    // Streaming persists one message per block under the same message.id; the
+    // thinking-only half survives the orphan filter because its sibling has text.
+    thinkingHalf.message.id = split.message.id
+    return [
+      createUserMessage({ content: 'hi' }),
+      createAssistantMessage({
+        content: [
+          { type: 'thinking', thinking: 'deep', signature: 'sig-1' },
+          { type: 'redacted_thinking', data: 'opaque' },
+          { type: 'text', text: 'answer', citations: [] },
+        ] as never,
+      }),
+      createUserMessage({ content: 'more' }),
+      thinkingHalf,
+      split,
+    ]
+  }
+
+  function assistantBlockTypes(profile: ProviderProfile): string[][] {
+    useProfile(profile)
+    return deserializeMessagesWithInterruptDetection(transcript())
+      .messages.filter(m => m.type === 'assistant')
+      .map(m => (m.message.content as Array<{ type: string }>).map(block => block.type))
+  }
+
+  test('an OpenAI-compatible provider loses thinking, redacted thinking and thinking-only halves', () => {
+    expect(
+      assistantBlockTypes({
+        id: 'r-openai',
+        name: 'OpenAI',
+        provider: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5.6-terra',
+      }),
+    ).toEqual([['text'], ['text']])
+  })
+
+  test('the Codex backend loses the thinking it did not produce', () => {
+    expect(
+      assistantBlockTypes({
+        id: 'r-codex',
+        name: 'Codex',
+        provider: 'openai',
+        baseUrl: 'https://chatgpt.com/backend-api/codex',
+        model: 'codexplan',
+      }),
+    ).toEqual([['text'], ['text']])
+  })
+
+  test.each([
+    { id: 'r-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' },
+    { id: 'r-bedrock', name: 'Bedrock', provider: 'bedrock', baseUrl: 'https://bedrock.example', model: 'claude-opus-5-5' },
+  ] as ProviderProfile[])('$name keeps every block', profile => {
+    expect(assistantBlockTypes(profile)).toEqual([['thinking', 'redacted_thinking', 'text'], ['thinking'], ['text']])
+  })
+
+  // A Codex reasoning item is replayed on every request (codex/items.ts), so a
+  // resumed Codex session must still hold it, or the -c turn would send a
+  // shorter history than the turn before it and miss the cache.
+  describe('Codex reasoning items', () => {
+    const codexReasoning = {
+      type: 'thinking',
+      thinking: '',
+      signature: '',
+      codex: { id: 'rs_1', encrypted_content: 'enc-1' },
+    }
+    const codexText = { type: 'text', text: 'Reading.', citations: [], codex: { id: 'msg_1', phase: 'commentary' } }
+
+    function codexTranscriptBlocks(profile: ProviderProfile): unknown[][] {
+      useProfile(profile)
+      return deserializeMessagesWithInterruptDetection([
+        createUserMessage({ content: 'hi' }),
+        createAssistantMessage({
+          content: [{ type: 'thinking', thinking: 'anthropic', signature: 'sig' }, codexReasoning, codexText] as never,
+        }),
+      ])
+        .messages.filter(m => m.type === 'assistant')
+        .map(m => m.message.content as unknown[])
+    }
+
+    const CODEX_OAUTH: ProviderProfile = {
+      id: 'r-codex',
+      name: 'Codex',
+      provider: 'openai',
+      baseUrl: 'https://chatgpt.com/backend-api/codex',
+      model: 'codexplan',
+    }
+
+    test('survive a resume on the Codex backend, even under a model that is not an alias', () => {
+      expect(codexTranscriptBlocks(CODEX_OAUTH)).toEqual([[codexReasoning, codexText]])
+      expect(codexTranscriptBlocks({ ...CODEX_OAUTH, id: 'r-codex-model', model: 'gpt-5.6-terra' })).toEqual([
+        [codexReasoning, codexText],
+      ])
+    })
+
+    test('are stripped like any thinking everywhere else, and with the killswitch off', () => {
+      expect(
+        codexTranscriptBlocks({
+          id: 'r-openai',
+          name: 'OpenAI',
+          provider: 'openai',
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-5.6-terra',
+        }),
+      ).toEqual([[codexText]])
+
+      const original = process.env.CLAUDIN_CODEX_REASONING_REPLAY
+      process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
+      try {
+        expect(codexTranscriptBlocks(CODEX_OAUTH)).toEqual([[codexText]])
+      } finally {
+        if (original === undefined) delete process.env.CLAUDIN_CODEX_REASONING_REPLAY
+        else process.env.CLAUDIN_CODEX_REASONING_REPLAY = original
+      }
+    })
+  })
 })

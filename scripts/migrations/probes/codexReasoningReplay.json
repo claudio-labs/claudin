@@ -1,0 +1,529 @@
+{
+  "test": [
+    "src/providers/shims/codexShim.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
+    "src/sessions/conversationRecovery.test.ts",
+    "src/providers/model/codexModelSurface.test.ts",
+    "src/providers/shims/codex/items.test.ts",
+    "src/providers/shims/codex/backend.test.ts",
+    "src/providers/shims/claude/renderMessages.test.ts",
+    "src/providers/transport/withRetry.test.ts",
+    "src/providers/model/codexModelCatalog.test.ts",
+    "src/providers/model/reasoningCatalog.test.ts",
+    "src/agent/messages/streaming.test.ts"
+  ],
+  "source": "src/providers/shims/codexShim.ts",
+  "probes": [
+    {
+      "name": "a foreign tool id loses its fc_ prefix",
+      "find": "id: `fc_${value}`,",
+      "replace": "id: value,"
+    },
+    {
+      "name": "an errored tool result loses its Error: prefix",
+      "find": "return toolResult.is_error ? `Error: ${out}` : out",
+      "replace": "return out"
+    },
+    {
+      "name": "an image URL inside a tool result is dropped",
+      "find": "chunks.push(`[Image](${src.url})`)",
+      "replace": "void src"
+    },
+    {
+      "name": "the empty-history fallback sends no content",
+      "find": "            content: [{ type: 'input_text', text: '' }],",
+      "replace": "            content: [],"
+    },
+    {
+      "name": "tool_choice any is sent as auto",
+      "find": "if (choice.type === 'any') return 'required'",
+      "replace": "if (choice.type === 'any') return 'auto'"
+    },
+    {
+      "name": "sampling params reach GPT models",
+      "find": "if (!isTargetModel) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "the account header is not sent",
+      "find": "headers['ChatGPT-Account-Id'] = options.credentials.accountId",
+      "replace": "void options.credentials.accountId"
+    },
+    {
+      "name": "a misconfigured /v1/responses base URL is not collapsed",
+      "find": "return `${parsed.origin}/backend-api/codex/responses`",
+      "replace": "return raw"
+    },
+    {
+      "name": "an output-token cutoff reads as end_turn",
+      "find": "incompleteReason.includes('max_output_tokens')",
+      "replace": "incompleteReason.includes('never')"
+    },
+    {
+      "name": "the think filter's held tail is never flushed",
+      "find": "const tail = thinkFilter.flush()",
+      "replace": "const tail = ''"
+    },
+    {
+      "name": "tool calls left open at the end stay open",
+      "find": "  for (const toolBlock of toolBlocksByItemId.values()) {\n    yield {",
+      "replace": "  for (const toolBlock of [] as Array<{ index: number }>) {\n    yield {"
+    },
+    {
+      "name": "unparseable arguments become an empty input",
+      "find": "input = { raw: item.arguments ?? '' }",
+      "replace": "input = {}"
+    },
+    {
+      "name": "collect ignores response.failed",
+      "find": "    if (event.event === 'response.failed') {\n      const msg = event.data?.response?.error?.message ??",
+      "replace": "    if (false) {\n      const msg = event.data?.response?.error?.message ??"
+    },
+    {
+      "name": "NEUTRALITY: the Responses body carries include for every caller",
+      "find": "    store: false,\n    stream: true,\n",
+      "replace": "    store: false,\n    stream: true,\n    include: ['reasoning.encrypted_content'],\n"
+    },
+    {
+      "name": "NEUTRALITY: resume keeps thinking on OpenAI-compatible providers",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "const thinkingStripped = isThirdPartyProvider",
+      "replace": "const thinkingStripped = false && isThirdPartyProvider"
+    },
+    {
+      "name": "NEUTRALITY: a 500 counts as a thinking mismatch",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "if (!isSdkApiError(error) || error.status !== 400 || !error.message) {",
+      "replace": "if (!isSdkApiError(error) || !error.message) {"
+    },
+    {
+      "name": "NEUTRALITY: the OpenAI API window for gpt-5.6-terra shrinks to the ChatGPT account's",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    description: 'GPT-5.6 Terra with high reasoning',\n    reasoningEffort: 'high',\n    contextInput: 1_050_000,",
+      "replace": "    description: 'GPT-5.6 Terra with high reasoning',\n    reasoningEffort: 'high',\n    contextInput: 272_000,"
+    },
+    {
+      "name": "NEUTRALITY: the GPT-5 family fallback offers max to a local proxy",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "  'high',\n  'xhigh',\n]",
+      "replace": "  'high',\n  'xhigh',\n  'max',\n]"
+    },
+    {
+      "name": "NEUTRALITY: an unknown OpenAI-compatible host gets the retain cache profile",
+      "source": "src/agent/cache/cacheProfile.ts",
+      "find": "  return AGGRESSIVE_PROFILE\n}",
+      "replace": "  return RETAIN_PROFILE\n}"
+    },
+    {
+      "name": "NEUTRALITY: a Copilot profile stops resolving to the Copilot transport",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "if (profile.extras?.githubToken) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "NEUTRALITY: the OpenAI API picker lists more than the profile's models",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "if (getAdditionalModelOptionsCacheScope()?.startsWith('openai:')) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "resume keeps a thinking-only half once its blocks are stripped",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "    if (filtered.length === 0) return acc",
+      "replace": "    if (false) return acc"
+    },
+    {
+      "name": "resume keeps redacted thinking on OpenAI-compatible providers",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "        (block.type !== 'thinking' && block.type !== 'redacted_thinking') ||",
+      "replace": "        block.type !== 'thinking' ||"
+    },
+    {
+      "name": "SURFACE: codexplan names another model in the main loop",
+      "source": "src/providers/model/model.ts",
+      "find": "  if (modelString === 'codexplan') {\n    return CODEX_DEFAULT_MODEL",
+      "replace": "  if (modelString === 'codexplan') {\n    return 'gpt-5.5'"
+    },
+    {
+      "name": "SURFACE: a codexplan request resolves to another model",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "    model: CODEX_DEFAULT_MODEL,\n    reasoningEffort: 'medium',",
+      "replace": "    model: 'gpt-5.5',\n    reasoningEffort: 'medium',"
+    },
+    {
+      "name": "SURFACE: the Codex picker drops the catalog",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "    return [getDefaultOptionForUser(fastMode), ...getCodexModelOptions(), ...profileModelOptions]",
+      "replace": "    return [getDefaultOptionForUser(fastMode), ...profileModelOptions]"
+    },
+    {
+      "name": "SURFACE: one tier's Codex column drifts",
+      "source": "src/providers/model/configs.ts",
+      "find": "  codex: CODEX_DEFAULT_MODEL,\n  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',\n  minimax: 'MiniMax-M2.5',\n  mistral: 'mistral-medium-latest',\n} as const satisfies ModelConfig\n\nexport const CLAUDE_3_5_V2_SONNET_CONFIG",
+      "replace": "  codex: 'gpt-5.5',\n  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',\n  minimax: 'MiniMax-M2.5',\n  mistral: 'mistral-medium-latest',\n} as const satisfies ModelConfig\n\nexport const CLAUDE_3_5_V2_SONNET_CONFIG"
+    },
+    {
+      "name": "SURFACE: a Codex alias profile stops resolving to the Codex transport",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
+      "replace": "      if (isCodexBaseUrl(profile.baseUrl)) {"
+    },
+    {
+      "name": "ERROR EVENT: the stream ignores error events again",
+      "find": "    if (event.event === 'error') {\n      streamError = codexStreamError(payload)",
+      "replace": "    if (false) {\n      streamError = codexStreamError(payload)"
+    },
+    {
+      "name": "ERROR EVENT: collect ignores error events again",
+      "find": "      streamError = codexStreamError(event.data)",
+      "replace": "      void event"
+    },
+    {
+      "name": "ERROR EVENT: an invalid request is reported as a 500",
+      "find": "detail.type === 'invalid_request_error' ? 400 : 500",
+      "replace": "500"
+    },
+    {
+      "name": "ERROR EVENT: the flat event shape loses its fields",
+      "find": "      : { code: data.code, message: data.message, param: data.param }",
+      "replace": "      : {}"
+    },
+    {
+      "name": "NEUTRALITY: an error event before a completion now fails the stream",
+      "find": "  if (!finalResponse && streamError) raiseStreamError(streamError)",
+      "replace": "  if (streamError) raiseStreamError(streamError)"
+    },
+    {
+      "name": "ITEMS: the redaction keeps reasoning blocks",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "      .filter(block => !isCodexReasoningBlock(block))\n",
+      "replace": ""
+    },
+    {
+      "name": "ITEMS: the redaction leaves the codex field on text and calls",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "        const { codex: _codex, ...rest } = block\n        return rest",
+      "replace": "        return block"
+    },
+    {
+      "name": "ITEMS: the redaction leaves an empty assistant turn",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "      kept.push({ type: 'text', text: '[thinking omitted]', citations: [] })",
+      "replace": "      void kept"
+    },
+    {
+      "name": "ITEMS: an untouched history comes back as a new array",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  return changed ? (result as M[]) : messages",
+      "replace": "  return result as M[]"
+    },
+    {
+      "name": "ITEMS: a replayed reasoning item loses its id",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  return { type: 'reasoning', id: state.id, summary: [], encrypted_content: state.encrypted_content }",
+      "replace": "  return { type: 'reasoning', id: '', summary: [], encrypted_content: state.encrypted_content }"
+    },
+    {
+      "name": "ITEMS: a message forgets its phase",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  return { id: item.id, ...(typeof item.phase === 'string' && { phase: item.phase }) }",
+      "replace": "  return { id: item.id }"
+    },
+    {
+      "name": "BACKEND: the gate ignores the base URL",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return request.transport === 'codex_responses' && isCodexBaseUrl(request.baseUrl)",
+      "replace": "  return request.transport === 'codex_responses'"
+    },
+    {
+      "name": "BACKEND: the killswitch is ignored",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CODEX_REASONING_REPLAY)",
+      "replace": "  return true"
+    },
+    {
+      "name": "BACKEND: the body asks for no encrypted reasoning",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "    include: ['reasoning.encrypted_content'],\n",
+      "replace": ""
+    },
+    {
+      "name": "BACKEND: any 400 counts as a refused replay",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "    error.message.includes(CODEX_REPLAY_REFUSED_CODE)",
+      "replace": "    true"
+    },
+    {
+      "name": "CAPTURE: the stream captures for every caller",
+      "find": "  const messageId = makeMessageId()\n  const capture = options.captureCodexItems === true",
+      "replace": "  const messageId = makeMessageId()\n  const capture = true"
+    },
+    {
+      "name": "CAPTURE: the completed-response converter captures for every caller",
+      "find": "): Record<string, unknown> {\n  const capture = options.captureCodexItems === true",
+      "replace": "): Record<string, unknown> {\n  const capture = true"
+    },
+    {
+      "name": "CAPTURE: the client asks every Responses caller to capture",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "                captureCodexItems: codexReplayActive(request),",
+      "replace": "                captureCodexItems: true,"
+    },
+    {
+      "name": "CAPTURE: the client never asks the Codex backend to capture",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "                captureCodexItems: codexReplayActive(request),",
+      "replace": "                captureCodexItems: false,"
+    },
+    {
+      "name": "CAPTURE: reasoning items are not kept",
+      "find": "        const block = reasoningBlockFor(item)\n        if (block) {\n          yield* closeActiveTextBlock()",
+      "replace": "        const block = undefined as Record<string, unknown> | undefined\n        if (block) {\n          yield* closeActiveTextBlock()"
+    },
+    {
+      "name": "CAPTURE: message state leaks into the next text block",
+      "find": "        yield* closeActiveTextBlock()\n        openMessageState = undefined",
+      "replace": "        yield* closeActiveTextBlock()"
+    },
+    {
+      "name": "CAPTURE: a call keeps no item id",
+      "find": "        const callState = capture ? callStateFor(item) : undefined\n\n",
+      "replace": "        const callState = undefined as { id: string } | undefined\n\n"
+    },
+    {
+      "name": "REPLAY: reasoning items are not sent back",
+      "find": "      const reasoning = reasoningItemFor(block)\n      if (reasoning) {",
+      "replace": "      const reasoning = undefined as CodexReasoningInputItem | undefined\n      if (reasoning) {"
+    },
+    {
+      "name": "REPLAY: a call goes back under the synthetic id",
+      "find": "      items.push(functionCallItem(block, codexStateOf(block)?.id))\n      message = undefined",
+      "replace": "      items.push(functionCallItem(block))\n      message = undefined"
+    },
+    {
+      "name": "REPLAY: a call no longer splits the message around it",
+      "find": "      items.push(functionCallItem(block, codexStateOf(block)?.id))\n      message = undefined",
+      "replace": "      items.push(functionCallItem(block, codexStateOf(block)?.id))"
+    },
+    {
+      "name": "REPLAY: a message goes back without its phase",
+      "find": "      ...(state?.phase && { phase: state.phase }),\n",
+      "replace": ""
+    },
+    {
+      "name": "REPLAY: text of different messages merges",
+      "find": "    if (message && message.id === state?.id) {",
+      "replace": "    if (message) {"
+    },
+    {
+      "name": "REPLAY: the Codex backend body asks for nothing",
+      "find": "  if (replayCodexItems) {\n    Object.assign(body, codexBackendBodyFields(options.request.reasoning))",
+      "replace": "  if (false) {\n    Object.assign(body, codexBackendBodyFields(options.request.reasoning))"
+    },
+    {
+      "name": "REPLAY: the Codex backend gets no replay",
+      "find": "  const replayCodexItems = codexReplayActive(options.request)",
+      "replace": "  const replayCodexItems = false"
+    },
+    {
+      "name": "NEUTRALITY: every Responses caller gets the replay",
+      "find": "  const replayCodexItems = codexReplayActive(options.request)",
+      "replace": "  const replayCodexItems = true"
+    },
+    {
+      "name": "REDACT: no provider redacts Codex state",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    redactCodexItems: !replaysCodexItems,",
+      "replace": "    redactCodexItems: false,"
+    },
+    {
+      "name": "REDACT: the Codex backend loses its own state",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    redactCodexItems: !replaysCodexItems,",
+      "replace": "    redactCodexItems: true,"
+    },
+    {
+      "name": "REDACT: the render ignores the option",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "  if (options.redactCodexItems) {\n    const redacted = stripCodexItems(messagesForAPI)",
+      "replace": "  if (false) {\n    const redacted = stripCodexItems(messagesForAPI)"
+    },
+    {
+      "name": "RESUME: a Codex session loses its reasoning items",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionReplaysCodexItems())",
+      "replace": "      ? stripThinkingBlocks(filteredThinking, false)"
+    },
+    {
+      "name": "NEUTRALITY: every OpenAI-compatible resume keeps Codex reasoning",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionReplaysCodexItems())",
+      "replace": "      ? stripThinkingBlocks(filteredThinking, true)"
+    },
+    {
+      "name": "RESUME: the Codex backend keeps foreign thinking too",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "        (keepCodexReasoning && isCodexReasoningBlock(block)),",
+      "replace": "        keepCodexReasoning,"
+    },
+    {
+      "name": "REFUSAL: an SSE refusal does not stop the earlier items",
+      "find": "  if ((error.error as { error?: { code?: unknown } } | undefined)?.error?.code === CODEX_REPLAY_REFUSED_CODE) {\n    noteReplayRefused()\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "REFUSAL: an HTTP refusal does not stop the earlier items",
+      "find": "    if (errorBody.includes(CODEX_REPLAY_REFUSED_CODE)) noteReplayRefused()\n",
+      "replace": ""
+    },
+    {
+      "name": "REFUSAL: items captured after a refusal are dropped too",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  if (refusedEarlierItems) capturedSinceRefusal.add(item.id)\n",
+      "replace": ""
+    },
+    {
+      "name": "REFUSAL: the latch is ignored on replay",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  if (refusedEarlierItems && !capturedSinceRefusal.has(state.id)) return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "RETRY: a refused replay is not retried",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "  if (isCodexReplayRejected(error)) {\n    return true\n  }",
+      "replace": "  if (false) {\n    return true\n  }"
+    },
+    {
+      "name": "RESOLVE: a Codex backend profile resolves by its model alone",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
+      "replace": "      if (isOpenAICodexShortcut(primaryModel)) {"
+    },
+    {
+      "name": "NEUTRALITY: every OpenAI-compatible profile resolves as Codex",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "      if (isOpenAICodexShortcut(primaryModel) || isCodexBaseUrl(profile.baseUrl)) {",
+      "replace": "      if (true) {"
+    },
+    {
+      "name": "BACKEND: the session replay gate ignores the killswitch",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return activeSessionOnCodexBackend() && isCodexReasoningReplayEnabled()",
+      "replace": "  return activeSessionOnCodexBackend()"
+    },
+    {
+      "name": "BACKEND: the request replay gate ignores the killswitch",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return isCodexBackendRequest(request) && isCodexReasoningReplayEnabled()",
+      "replace": "  return isCodexBackendRequest(request)"
+    },
+    {
+      "name": "MODELS: the account window is ignored",
+      "source": "src/providers/model/openaiContextWindows.ts",
+      "find": "  if (account) return account.contextWindow",
+      "replace": "  void account"
+    },
+    {
+      "name": "NEUTRALITY: the ChatGPT account limits apply to every session",
+      "source": "src/providers/model/openaiContextWindows.ts",
+      "find": "  return activeSessionOnCodexBackend() ? getCodexAccountLimits(model) : undefined",
+      "replace": "  return getCodexAccountLimits(model)"
+    },
+    {
+      "name": "MODELS: the Codex picker lists the API catalog",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "  const catalog = activeSessionOnCodexBackend() ? getCodexAccountCatalog() : getFilteredCodexCatalog()",
+      "replace": "  const catalog = getFilteredCodexCatalog()"
+    },
+    {
+      "name": "MODELS: the Codex picker lists the Claude tiers again",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "  if (activeSessionOnCodexBackend()) {\n    return [getDefaultOptionForUser(fastMode), ...getCodexModelOptions(), ...profileModelOptions]",
+      "replace": "  if (false) {\n    return [getDefaultOptionForUser(fastMode), ...getCodexModelOptions(), ...profileModelOptions]"
+    },
+    {
+      "name": "NEUTRALITY: the account-only model enters the API list",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    !entry.accountOnly && isCodexModelAllowed(entry.id, { isPro: entry.isPro }),",
+      "replace": "    isCodexModelAllowed(entry.id, { isPro: entry.isPro }),"
+    },
+    {
+      "name": "MODELS: a model the account offers loses its limits",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    account: CHATGPT_ACCOUNT,\n    accountOnly: true,",
+      "replace": "    accountOnly: true,"
+    },
+    {
+      "name": "EFFORT: the account levels are never read",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??\n",
+      "replace": ""
+    },
+    {
+      "name": "NEUTRALITY: the account levels apply on every endpoint",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??\n",
+      "replace": "    getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels ??\n"
+    },
+    {
+      "name": "EFFORT: the account stops at xhigh",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "  effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],",
+      "replace": "  effortLevels: ['low', 'medium', 'high', 'xhigh'],"
+    },
+    {
+      "name": "KEEP: the render rebuilds a call without its backend id",
+      "source": "src/agent/messages/normalize.ts",
+      "find": "                    input: normalizedInput,\n                    ...(getAPIProvider() === 'gemini' && (block as any).extra_content ? { extra_content: (block as any).extra_content } : {}),\n                    ...codexStateToKeep(block),",
+      "replace": "                    input: normalizedInput,\n                    ...(getAPIProvider() === 'gemini' && (block as any).extra_content ? { extra_content: (block as any).extra_content } : {}),"
+    },
+    {
+      "name": "NEUTRALITY: every provider keeps a call's Codex state",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return codex !== undefined && activeSessionReplaysCodexItems() ? { codex } : {}",
+      "replace": "  return codex !== undefined ? { codex } : {}"
+    },
+    {
+      "name": "REVIEW: a blank turn left by the redaction goes out",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "      messagesForAPI = filterWhitespaceOnlyAssistantMessages(redacted)",
+      "replace": "      messagesForAPI = redacted"
+    },
+    {
+      "name": "REVIEW: the aggressive strip removes Codex reasoning",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled && !replaysCodexItems,",
+      "replace": "    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled,"
+    },
+    {
+      "name": "NEUTRALITY: the aggressive strip stops for every provider",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled && !replaysCodexItems,",
+      "replace": "    stripOldThinking: false,"
+    },
+    {
+      "name": "REVIEW: a textless thinking block opens the pane",
+      "source": "src/agent/messages/streaming.ts",
+      "find": "block.type === 'thinking' && block.thinking !== '' && !isProgressUpdateBlock(block)",
+      "replace": "block.type === 'thinking' && !isProgressUpdateBlock(block)"
+    },
+    {
+      "name": "REVIEW: the codexplan row loses the account levels",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "getCodexAccountLimits(getCodexAliasModel(model))",
+      "replace": "getCodexAccountLimits(model)"
+    },
+    {
+      "name": "REVIEW: a recovered stream error stops the replay",
+      "find": "  const status = detail.type === 'invalid_request_error' ? 400 : 500",
+      "replace": "  if (detail.code === CODEX_REPLAY_REFUSED_CODE) noteReplayRefused()\n  const status = detail.type === 'invalid_request_error' ? 400 : 500"
+    },
+    {
+      "name": "REVIEW: codexplan off the Codex backend falls back to 128k",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    contextInput: 272_000,\n    contextOutput: 128_000,\n    account: CHATGPT_ACCOUNT,",
+      "replace": "    account: CHATGPT_ACCOUNT,"
+    }
+  ]
+}

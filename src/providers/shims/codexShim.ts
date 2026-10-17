@@ -19,6 +19,21 @@ import {
   createThinkTagFilter,
   stripThinkTags,
 } from 'src/providers/shims/thinkTagSanitizer.js'
+import {
+  callStateFor,
+  codexStateOf,
+  messageStateFor,
+  noteReplayRefused,
+  reasoningBlockFor,
+  reasoningItemFor,
+  type CodexItemState,
+  type CodexReasoningInputItem,
+} from 'src/providers/shims/codex/items.js'
+import {
+  CODEX_REPLAY_REFUSED_CODE,
+  codexReplayActive,
+  codexBackendBodyFields,
+} from 'src/providers/shims/codex/backend.js'
 
 export interface AnthropicUsage {
   input_tokens: number
@@ -60,6 +75,9 @@ type ResponsesInputItem =
       type: 'message'
       role: 'user' | 'assistant'
       content: ResponsesInputPart[]
+      /** Replayed from the backend's own message item (codex/items.ts). */
+      id?: string
+      phase?: string
     }
   | {
       type: 'function_call'
@@ -73,6 +91,7 @@ type ResponsesInputItem =
       call_id: string
       output: string
     }
+  | CodexReasoningInputItem
 
 type ResponsesTool = {
   type: 'function'
@@ -223,8 +242,75 @@ function convertContentBlocksToResponsesParts(
   return parts
 }
 
+function functionCallItem(
+  toolUse: { id?: string; name?: string; input?: unknown },
+  itemId?: string,
+): ResponsesInputItem {
+  const normalized = normalizeToolUseId(toolUse.id)
+  return {
+    type: 'function_call',
+    id: itemId ?? normalized.id,
+    call_id: normalized.callId,
+    name: toolUse.name ?? 'tool',
+    arguments:
+      typeof toolUse.input === 'string'
+        ? toolUse.input
+        : JSON.stringify(toolUse.input ?? {}),
+  }
+}
+
+/**
+ * An assistant turn the way the Codex CLI replays it: every item in the order
+ * the backend produced it, under the id the backend gave it. A reasoning item
+ * comes back from its thinking block, consecutive text blocks of one message
+ * become that message again with its phase, and a call keeps its fc_ id.
+ * Blocks without item state (a turn from before the replay, or another
+ * provider's) keep their place, the synthetic call ids, and drop thinking.
+ */
+function replayAssistantItems(content: unknown): ResponsesInputItem[] {
+  if (!Array.isArray(content)) {
+    const parts = convertContentBlocksToResponsesParts(content, 'assistant')
+    return parts.length > 0 ? [{ type: 'message', role: 'assistant', content: parts }] : []
+  }
+
+  const items: ResponsesInputItem[] = []
+  let message: Extract<ResponsesInputItem, { type: 'message' }> | undefined
+  for (const block of content) {
+    if (block?.type === 'thinking' || block?.type === 'redacted_thinking') {
+      const reasoning = reasoningItemFor(block)
+      if (reasoning) {
+        items.push(reasoning)
+        message = undefined
+      }
+      continue
+    }
+    if (block?.type === 'tool_use') {
+      items.push(functionCallItem(block, codexStateOf(block)?.id))
+      message = undefined
+      continue
+    }
+    const parts = convertContentBlocksToResponsesParts([block], 'assistant')
+    if (parts.length === 0) continue
+    const state = codexStateOf(block)
+    if (message && message.id === state?.id) {
+      message.content.push(...parts)
+      continue
+    }
+    message = {
+      type: 'message',
+      role: 'assistant',
+      content: parts,
+      ...(state && { id: state.id }),
+      ...(state?.phase && { phase: state.phase }),
+    }
+    items.push(message)
+  }
+  return items
+}
+
 export function convertAnthropicMessagesToResponsesInput(
   messages: Array<{ role?: string; message?: { role?: string; content?: unknown }; content?: unknown }>,
+  options: { replayCodexItems?: boolean } = {},
 ): ResponsesInputItem[] {
   const items: ResponsesInputItem[] = []
 
@@ -274,6 +360,11 @@ export function convertAnthropicMessagesToResponsesInput(
     }
 
     if (role === 'assistant') {
+      if (options.replayCodexItems) {
+        items.push(...replayAssistantItems(content))
+        continue
+      }
+
       const textBlocks = Array.isArray(content)
         ? content.filter((block: { type?: string }) =>
             block.type !== 'tool_use' && block.type !== 'thinking')
@@ -291,17 +382,7 @@ export function convertAnthropicMessagesToResponsesInput(
         for (const toolUse of content.filter(
           (block: { type?: string }) => block.type === 'tool_use',
         )) {
-          const normalized = normalizeToolUseId(toolUse.id)
-          items.push({
-            type: 'function_call',
-            id: normalized.id,
-            call_id: normalized.callId,
-            name: toolUse.name ?? 'tool',
-            arguments:
-              typeof toolUse.input === 'string'
-                ? toolUse.input
-                : JSON.stringify(toolUse.input ?? {}),
-          })
+          items.push(functionCallItem(toolUse))
         }
       }
     }
@@ -491,6 +572,9 @@ export async function performCodexRequest(options: {
   defaultHeaders: Record<string, string>
   signal?: AbortSignal
 }): Promise<Response> {
+  // On the Codex backend every item comes back as the backend produced it,
+  // reasoning included, and the body asks for the reasoning (codex/backend.ts).
+  const replayCodexItems = codexReplayActive(options.request)
   // applyStableStubs runs at the API boundary so the stable bytes are
   // what goes on the wire. No ensureToolResultPairing analogue exists
   // here — convertAnthropicMessagesToResponsesInput handles orphan
@@ -504,7 +588,9 @@ export async function performCodexRequest(options: {
       }>,
     ),
   )
-  const input = convertAnthropicMessagesToResponsesInput(compressedMessages)
+  const input = convertAnthropicMessagesToResponsesInput(compressedMessages, {
+    replayCodexItems,
+  })
   const body: Record<string, unknown> = {
     model: options.request.resolvedModel,
     input: input.length > 0
@@ -557,6 +643,10 @@ export async function performCodexRequest(options: {
 
   if (options.request.reasoning) {
     body.reasoning = options.request.reasoning
+  }
+
+  if (replayCodexItems) {
+    Object.assign(body, codexBackendBodyFields(options.request.reasoning))
   }
 
   const isTargetModel =
@@ -646,6 +736,7 @@ export async function performCodexRequest(options: {
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown error')
+    if (errorBody.includes(CODEX_REPLAY_REFUSED_CODE)) noteReplayRefused()
     let errorResponse: object | undefined
     try { errorResponse = JSON.parse(errorBody) } catch { /* raw text */ }
     throw APIError.generate(
@@ -770,13 +861,52 @@ function determineStopReason(
   return 'end_turn'
 }
 
+/**
+ * The error a Codex SSE `error` event carries, as the APIError the retry and
+ * the UI read. The backend answers some rejections with HTTP 200 and this
+ * event — a replayed reasoning item it cannot decrypt is one — with the fields
+ * nested under `error`; the Responses API reference puts them on the event
+ * itself. An invalid request is a 400, as its HTTP form would be; anything
+ * else a 500, like response.failed.
+ *
+ * Callers raise it only when the stream ends without a completed response, so
+ * an error event followed by a completion reads as it always did.
+ */
+function codexStreamError(data: Record<string, any>): APIError {
+  const detail: Record<string, unknown> =
+    data.error && typeof data.error === 'object'
+      ? data.error
+      : { code: data.code, message: data.message, param: data.param }
+  const status = detail.type === 'invalid_request_error' ? 400 : 500
+  return APIError.generate(
+    status,
+    { error: detail },
+    typeof detail.message === 'string' ? detail.message : 'Codex stream error',
+    new Headers(),
+  )
+}
+
+/** Raise the error a stream ended on, noting a refused reasoning replay first. */
+function raiseStreamError(error: APIError): never {
+  if ((error.error as { error?: { code?: unknown } } | undefined)?.error?.code === CODEX_REPLAY_REFUSED_CODE) {
+    noteReplayRefused()
+  }
+  throw error
+}
+
 export async function collectCodexCompletedResponse(
   response: Response,
   signal?: AbortSignal,
 ): Promise<Record<string, any>> {
   let completedResponse: Record<string, any> | undefined
+  let streamError: APIError | undefined
 
   for await (const event of readSseEvents(response, signal)) {
+    if (event.event === 'error') {
+      streamError = codexStreamError(event.data)
+      continue
+    }
+
     if (event.event === 'response.failed') {
       const msg = event.data?.response?.error?.message ??
         event.data?.error?.message ?? 'Codex response failed'
@@ -793,6 +923,7 @@ export async function collectCodexCompletedResponse(
   }
 
   if (!completedResponse) {
+    if (streamError) raiseStreamError(streamError)
     throw APIError.generate(
       500, undefined, 'Codex response ended without a completed payload',
       new Headers(),
@@ -802,21 +933,35 @@ export async function collectCodexCompletedResponse(
   return completedResponse
 }
 
+/**
+ * `captureCodexItems` keeps each Responses item's state on the block it becomes
+ * (codex/items.ts) so the next request can replay it. Only the Codex backend
+ * reads that state, so only its caller turns this on; Copilot and any other
+ * Responses caller read the stream exactly as before.
+ */
+export type CodexReadOptions = { captureCodexItems?: boolean }
+
 export async function* codexStreamToAnthropic(
   response: Response,
   model: string,
   signal?: AbortSignal,
+  options: CodexReadOptions = {},
 ): AsyncGenerator<AnthropicStreamEvent> {
   const messageId = makeMessageId()
+  const capture = options.captureCodexItems === true
   const toolBlocksByItemId = new Map<
     string,
     { index: number; toolUseId: string }
   >()
   let activeTextBlockIndex: number | null = null
+  // The message item the next text block belongs to, set on its
+  // output_item.added (which already carries the phase) and cleared on done.
+  let openMessageState: CodexItemState | undefined
   const thinkFilter = createThinkTagFilter()
   let nextContentBlockIndex = 0
   let sawToolUse = false
   let finalResponse: Record<string, any> | undefined
+  let streamError: APIError | undefined
 
   const closeActiveTextBlock = async function* () {
     if (activeTextBlockIndex === null) return
@@ -844,7 +989,11 @@ export async function* codexStreamToAnthropic(
     yield {
       type: 'content_block_start',
       index: activeTextBlockIndex,
-      content_block: { type: 'text', text: '' },
+      content_block: {
+        type: 'text',
+        text: '',
+        ...(openMessageState && { codex: openMessageState }),
+      },
     }
   }
 
@@ -865,8 +1014,16 @@ export async function* codexStreamToAnthropic(
   for await (const event of readSseEvents(response, signal)) {
     const payload = event.data
 
+    if (event.event === 'error') {
+      streamError = codexStreamError(payload)
+      continue
+    }
+
     if (event.event === 'response.output_item.added') {
       const item = payload.item
+      if (item?.type === 'message' && capture) {
+        openMessageState = messageStateFor(item)
+      }
       if (item?.type === 'function_call') {
         yield* closeActiveTextBlock()
         const blockIndex = nextContentBlockIndex++
@@ -876,6 +1033,7 @@ export async function* codexStreamToAnthropic(
           toolUseId,
         })
         sawToolUse = true
+        const callState = capture ? callStateFor(item) : undefined
 
         yield {
           type: 'content_block_start',
@@ -885,6 +1043,7 @@ export async function* codexStreamToAnthropic(
             id: toolUseId,
             name: item.name ?? 'tool',
             input: {},
+            ...(callState && { codex: callState }),
           },
         }
 
@@ -955,6 +1114,15 @@ export async function* codexStreamToAnthropic(
         }
       } else if (item?.type === 'message') {
         yield* closeActiveTextBlock()
+        openMessageState = undefined
+      } else if (item?.type === 'reasoning' && capture) {
+        const block = reasoningBlockFor(item)
+        if (block) {
+          yield* closeActiveTextBlock()
+          const blockIndex = nextContentBlockIndex++
+          yield { type: 'content_block_start', index: blockIndex, content_block: block }
+          yield { type: 'content_block_stop', index: blockIndex }
+        }
       }
       continue
     }
@@ -973,6 +1141,8 @@ export async function* codexStreamToAnthropic(
       throw APIError.generate(500, undefined, msg, new Headers())
     }
   }
+
+  if (!finalResponse && streamError) raiseStreamError(streamError)
 
   yield* closeActiveTextBlock()
   for (const toolBlock of toolBlocksByItemId.values()) {
@@ -1003,17 +1173,27 @@ export async function* codexStreamToAnthropic(
 export function convertCodexResponseToAnthropicMessage(
   data: Record<string, any>,
   model: string,
+  options: CodexReadOptions = {},
 ): Record<string, unknown> {
+  const capture = options.captureCodexItems === true
   const content: Array<Record<string, unknown>> = []
   const output = Array.isArray(data.output) ? data.output : []
 
   for (const item of output) {
+    if (item?.type === 'reasoning') {
+      const block = capture ? reasoningBlockFor(item) : undefined
+      if (block) content.push(block)
+      continue
+    }
+
     if (item?.type === 'message' && Array.isArray(item.content)) {
+      const messageState = capture ? messageStateFor(item) : undefined
       for (const part of item.content) {
         if (part?.type === 'output_text') {
           content.push({
             type: 'text',
             text: stripThinkTags(part.text ?? ''),
+            ...(messageState && { codex: messageState }),
           })
         }
       }
@@ -1028,11 +1208,13 @@ export function convertCodexResponseToAnthropicMessage(
         input = { raw: item.arguments ?? '' }
       }
 
+      const callState = capture ? callStateFor(item) : undefined
       content.push({
         type: 'tool_use',
         id: item.call_id ?? item.id ?? makeMessageId(),
         name: item.name ?? 'tool',
         input,
+        ...(callState && { codex: callState }),
       })
     }
   }

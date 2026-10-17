@@ -76,6 +76,10 @@ const REQUIRED_SUITES = [
   'src/agent/attachments/renderStability.invariant.test.ts',
   'src/tools/toolSchemaStability.invariant.test.ts',
   'src/agent/prompts/systemPromptStability.invariant.test.ts',
+  // What every provider other than the ChatGPT Codex backend receives: the
+  // Codex reasoning replay hooks into functions Copilot, the OpenAI API and
+  // the shared message pipeline call too.
+  'src/providers/shims/codex/providerNeutrality.invariant.test.ts',
 ]
 
 /** Trees the ratio is measured over. `scripts/` carries the build invariants. */

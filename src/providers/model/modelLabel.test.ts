@@ -9,8 +9,11 @@ import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js
 // on (previously the merge suppressed the annotation, making the two flavors
 // indistinguishable).
 
-const realProviders = await import('src/providers/model/providers.js')
-const realModel = await import('src/providers/model/model.js')
+// Plain copies taken before any mock.module below. mock.restore() does not
+// revert a module mock, so afterEach installs these back; the live namespaces
+// would hand the stubs on to every later file in the run.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+const realModel = { ...(await import('src/providers/model/model.js')) }
 
 async function importRenderer(mergeEnabled: boolean) {
   mock.module('./providers.js', () => ({
@@ -49,6 +52,10 @@ beforeEach(() => {
 
 afterEach(() => {
   mock.restore()
+  mock.module('./providers.js', () => realProviders)
+  mock.module('./model.js', () => realModel)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/model.js', () => realModel)
   resetModelStringsForTestingOnly()
 })
 

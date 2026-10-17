@@ -36,8 +36,11 @@ import type {
   CatalogEndpoint,
 } from 'src/providers/model/reasoningCatalogTrim.js'
 import { activeTransportUsesOpenAiShim } from 'src/providers/model/providers.js'
+import { getCodexAccountLimits } from 'src/providers/model/codexModelCatalog.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
+  getCodexAliasModel,
+  isCodexBaseUrl,
   supportsCodexReasoningEffort,
   type ReasoningEffort,
 } from 'src/providers/presets/providerConfig.js'
@@ -236,7 +239,8 @@ const OPENAI_FAMILY_LEVELS: readonly CatalogEffortValue[] = [
 /**
  * THE resolver for a request that goes out through the OpenAI shim — the one
  * function the picker and the wire both call, which is what keeps them from
- * disagreeing. Precedence: the catalog, then the GPT-5 family fallback.
+ * disagreeing. Precedence: the catalog, then what a ChatGPT account offers on
+ * the Codex backend, then the GPT-5 family fallback.
  *
  * Returns undefined when nothing offers a level Claudin can show. A row whose
  * only level is `none`/`minimal`/`default` counts as nothing: those mean "think
@@ -254,6 +258,7 @@ export function resolveShimEffortValues(
 
   const values =
     lookupReasoningEffortValues(baseUrl, model) ??
+    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??
     (supportsCodexReasoningEffort(model) ? OPENAI_FAMILY_LEVELS : undefined)
 
   if (!values || pickerEffortLevels(values).length === 0) return undefined

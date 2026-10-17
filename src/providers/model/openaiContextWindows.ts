@@ -14,7 +14,9 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   CODEX_CONTEXT_WINDOWS,
   CODEX_MAX_OUTPUT_TOKENS,
+  getCodexAccountLimits,
 } from 'src/providers/model/codexModelCatalog.js'
+import { activeSessionOnCodexBackend } from 'src/providers/shims/codex/backend.js'
 
 // Exported for copilotModels.consistency.test.ts. Production code should
 // prefer getOpenAIContextWindow() / getOpenAIMaxOutputTokens() — those handle
@@ -465,6 +467,10 @@ function lookupByKey<T>(table: Record<string, T>, model: string): T | undefined 
   return undefined
 }
 
+function codexAccountLimitsFor(model: string) {
+  return activeSessionOnCodexBackend() ? getCodexAccountLimits(model) : undefined
+}
+
 /**
  * Look up the context window for an OpenAI-compatible model.
  * Returns undefined if the model is not in the table.
@@ -473,6 +479,9 @@ function lookupByKey<T>(table: Record<string, T>, model: string): T | undefined 
  * "gpt-4o-2024-11-20" resolve to the base "gpt-4o" entry.
  */
 export function getOpenAIContextWindow(model: string): number | undefined {
+  // On the Codex backend a ChatGPT account has its own limits, below the API's.
+  const account = codexAccountLimitsFor(model)
+  if (account) return account.contextWindow
   // Prefer the window the provider reported for THIS deployment via its /models
   // API — it's authoritative for routers that serve a truncated- or
   // extended-context variant under a well-known model id (e.g. a 32k "gpt-4o").

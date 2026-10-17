@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import axios from 'axios'
 
 const originalEnv = { ...process.env }
+// Plain copy taken before any mock.module below: afterEach installs it back,
+// or the stub would decide getAPIProvider() for every later file in the run.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+const realAxiosGet = axios.get
 
 async function importFreshModule() {
   return import(`./utils.ts?ts=${Date.now()}-${Math.random()}`)
@@ -13,14 +17,15 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env = { ...originalEnv }
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  axios.get = realAxiosGet
 })
 
 describe('checkDomainBlocklist', () => {
   test('returns allowed without API call in OpenAI mode', async () => {
     process.env.CLAUDIN_USE_OPENAI = '1'
-    const actual = await import('src/providers/model/providers.js')
     mock.module('src/providers/model/providers.js', () => ({
-      ...actual,
+      ...realProviders,
       getAPIProvider: () => 'openai',
       isFirstPartyAnthropicBaseUrl: () => false,
     }))
@@ -38,9 +43,8 @@ describe('checkDomainBlocklist', () => {
 
   test('returns allowed without API call in Gemini mode', async () => {
     process.env.CLAUDIN_USE_GEMINI = '1'
-    const actual = await import('src/providers/model/providers.js')
     mock.module('src/providers/model/providers.js', () => ({
-      ...actual,
+      ...realProviders,
       getAPIProvider: () => 'gemini',
       isFirstPartyAnthropicBaseUrl: () => false,
     }))
@@ -61,9 +65,8 @@ describe('checkDomainBlocklist', () => {
     delete process.env.CLAUDIN_USE_GEMINI
     delete process.env.CLAUDIN_USE_GITHUB
 
-    const actual = await import('src/providers/model/providers.js')
     mock.module('src/providers/model/providers.js', () => ({
-      ...actual,
+      ...realProviders,
       getAPIProvider: () => 'firstParty',
       isFirstPartyAnthropicBaseUrl: () => true,
     }))

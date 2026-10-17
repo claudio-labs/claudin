@@ -37,7 +37,12 @@ import {
   type ModelSetting,
 } from 'src/providers/model/model.js'
 import { has1mContext } from 'src/agent/context/context.js'
-import { getFilteredCodexCatalog } from 'src/providers/model/codexModelCatalog.js'
+import {
+  CODEX_DEFAULT_MODEL,
+  getCodexAccountCatalog,
+  getFilteredCodexCatalog,
+} from 'src/providers/model/codexModelCatalog.js'
+import { activeSessionOnCodexBackend } from 'src/providers/shims/codex/backend.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   getActiveOpenAIModelOptionsCache,
@@ -433,9 +438,9 @@ function getOpusPlanOption(): ModelOption {
 
 function getCodexPlanOption(): ModelOption {
   return {
-    value: 'gpt-5.5',
-    label: 'gpt-5.5',
-    description: 'GPT-5.5 on the Codex backend with high reasoning',
+    value: CODEX_DEFAULT_MODEL,
+    label: CODEX_DEFAULT_MODEL,
+    description: 'GPT-6 Luna on the Codex backend, the Codex CLI default',
   }
 }
 
@@ -447,12 +452,14 @@ function getCodexSparkOption(): ModelOption {
   }
 }
 
-// Picker list for Codex models. Sourced from the curated catalog and passed
-// through the opencode-style predicate (getFilteredCodexCatalog) so `pro`
-// variants are hidden by rule and future `gpt-X.Y > 5.4` models appear without
-// editing an enumeration. See src/providers/model/codexModelCatalog.ts.
+// Picker list for Codex models. On the Codex backend, what a ChatGPT account
+// offers there; anywhere else, the curated catalog through the opencode-style
+// predicate (getFilteredCodexCatalog) so `pro` variants are hidden by rule and
+// future `gpt-X.Y > 5.4` models appear without editing an enumeration. See
+// src/providers/model/codexModelCatalog.ts.
 function getCodexModelOptions(): ModelOption[] {
-  return getFilteredCodexCatalog().map(entry => ({
+  const catalog = activeSessionOnCodexBackend() ? getCodexAccountCatalog() : getFilteredCodexCatalog()
+  return catalog.map(entry => ({
     value: entry.id as ModelSetting,
     label: entry.label,
     description: entry.description,
@@ -571,6 +578,12 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
       const models = getProfileModelOptions(activeProfile)
       profileModelOptions.push(...models)
     }
+  }
+
+  // On the Codex backend a ChatGPT account offers a short list of its own; the
+  // Claude tiers below would map onto models it refuses.
+  if (activeSessionOnCodexBackend()) {
+    return [getDefaultOptionForUser(fastMode), ...getCodexModelOptions(), ...profileModelOptions]
   }
 
   // PAYG 1P API: Default (Sonnet 5.5) + Sonnet 5.5 + Sonnet 5 + Fable 5.1 +
@@ -788,7 +801,7 @@ export function getModelOptions(fastMode = false): ModelOption[] {
     return filterModelOptionsByAllowlist(options)
   } else if (customModel === 'opusplan') {
     return filterModelOptionsByAllowlist([...options, getOpusPlanOption()])
-  } else if (customModel === 'gpt-5.5') {
+  } else if (customModel === CODEX_DEFAULT_MODEL) {
     return filterModelOptionsByAllowlist([...options, getCodexPlanOption()])
   } else if (customModel === 'gpt-5.3-codex-spark') {
     return filterModelOptionsByAllowlist([...options, getCodexSparkOption()])

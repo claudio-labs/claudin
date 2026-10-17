@@ -23,6 +23,7 @@ import { invalidateClientCache } from 'src/providers/transport/clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from 'src/providers/oauth/githubModelsCredentials.js'
 import { refreshCodexAccessTokenIfNeeded } from 'src/providers/oauth/codexCredentials.js'
 import { forceRefreshOAuthWebTokenOn401 } from 'src/providers/shims/openaiShim/oauthProviderAuth.js'
+import { isCodexReplayRejected } from 'src/providers/shims/codex/backend.js'
 import {
   errorMessage,
   isSdkApiConnectionError,
@@ -158,6 +159,11 @@ export interface RetryContext {
 export function isThinkingBlockMismatchError(error: unknown): boolean {
   if (!isSdkApiError(error) || error.status !== 400 || !error.message) {
     return false
+  }
+  // The Codex backend refusing a replayed reasoning item it can no longer
+  // decrypt: the same recovery, since those items ride as thinking blocks.
+  if (isCodexReplayRejected(error)) {
+    return true
   }
   // Two shapes of the same recoverable problem — a prior assistant thinking
   // block is incompatible with the current request:

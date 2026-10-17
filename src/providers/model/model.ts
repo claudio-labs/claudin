@@ -31,6 +31,7 @@ import { LIGHTNING_BOLT } from 'src/shared/constants/figures.js'
 import { isModelAllowed } from 'src/providers/model/modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from 'src/providers/model/aliases.js'
 import { COPILOT_DISPLAY_NAMES } from 'src/providers/model/copilotModels.js'
+import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
 
 export type ModelShortName = string
 export type ModelName = string
@@ -62,9 +63,10 @@ export function getSmallFastModel(): ModelName {
   if (getAPIProvider() === 'openai') {
     return profileModel || 'gpt-4o-mini'
   }
-  // Codex provider — fall back to a codex-spark alias when no profile model.
+  // Codex provider — the Codex default when no profile model (a ChatGPT
+  // account refuses codex-spark).
   if (getAPIProvider() === 'codex') {
-    return profileModel || 'codexspark'
+    return profileModel || CODEX_DEFAULT_MODEL
   }
   // For GitHub Copilot provider
   if (getAPIProvider() === 'github') {
@@ -218,9 +220,9 @@ export function getDefaultOpusModel(): ModelName {
   if (getAPIProvider() === 'openai') {
     return profileModel || 'gpt-4o'
   }
-  // Codex provider: use user-specified model or default to gpt-5.5
+  // Codex provider: use user-specified model or the Codex default
   if (getAPIProvider() === 'codex') {
-    return profileModel || 'gpt-5.5'
+    return profileModel || CODEX_DEFAULT_MODEL
   }
   // GitHub Copilot provider
   if (getAPIProvider() === 'github') {
@@ -265,7 +267,7 @@ export function getDefaultSonnetModel(): ModelName {
   }
   // Codex provider
   if (getAPIProvider() === 'codex') {
-    return profileModel || 'gpt-5.5'
+    return profileModel || CODEX_DEFAULT_MODEL
   }
   // GitHub Copilot provider
   if (getAPIProvider() === 'github') {
@@ -304,7 +306,7 @@ export function getDefaultHaikuModel(): ModelName {
   }
   // Codex provider
   if (getAPIProvider() === 'codex') {
-    return profileModel || 'gpt-5.5'
+    return profileModel || CODEX_DEFAULT_MODEL
   }
   // GitHub Copilot provider
   if (getAPIProvider() === 'github') {
@@ -392,9 +394,9 @@ export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
   if (getAPIProvider() === 'openai') {
     return profileModel || 'gpt-4o'
   }
-  // Codex provider: always use the configured Codex model (default gpt-5.5)
+  // Codex provider: always use the configured Codex model (or the Codex default)
   if (getAPIProvider() === 'codex') {
-    return profileModel || 'gpt-5.5'
+    return profileModel || CODEX_DEFAULT_MODEL
   }
 
   // Max users and Team Premium get Opus as default. The [1m] merge suffix only
@@ -767,7 +769,7 @@ export function parseUserSpecifiedModel(
 
   // Handle Codex aliases - map to actual model names
   if (modelString === 'codexplan') {
-    return 'gpt-5.5'
+    return CODEX_DEFAULT_MODEL
   }
   if (modelString === 'codexspark') {
     return 'gpt-5.3-codex-spark'

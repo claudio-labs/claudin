@@ -12,6 +12,7 @@ import {
   asTrimmedString,
   parseChatgptAccountId,
 } from 'src/providers/oauth/codexOAuthShared.js'
+import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 export const DEFAULT_CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex'
 export const DEFAULT_XAI_BASE_URL = 'https://api.x.ai/v1'
@@ -66,8 +67,9 @@ const CODEX_ALIAS_MODELS: Record<
   }
 > = {
   codexplan: {
-    model: 'gpt-5.5',
-    reasoningEffort: 'high',
+    // The Codex CLI's default model at its default effort.
+    model: CODEX_DEFAULT_MODEL,
+    reasoningEffort: 'medium',
   },
   // GPT-5.6 family (July 2026). Bare `gpt-5.6` follows the Codex CLI convention
   // of resolving the flagship tier (Sol). sol/terra/luna route via the Codex
@@ -1031,6 +1033,13 @@ export function getReasoningEffortForModel(model: string): ReasoningEffort | und
   const alias = base as CodexAlias
   const aliasConfig = CODEX_ALIAS_MODELS[alias]
   return aliasConfig?.reasoningEffort
+}
+
+/** The model a Codex alias names, or the model itself when it is not one. */
+export function getCodexAliasModel(model: string): string {
+  const normalized = model.trim().toLowerCase()
+  const base = normalized.split('?', 1)[0] ?? normalized
+  return CODEX_ALIAS_MODELS[base as CodexAlias]?.model ?? model
 }
 
 export function supportsCodexReasoningEffort(model: string): boolean {

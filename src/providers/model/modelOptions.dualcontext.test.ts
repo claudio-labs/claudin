@@ -2,10 +2,13 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 
 import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 
-const realProviders = await import('src/providers/model/providers.js')
-const realAuth = await import('src/providers/auth/auth.js')
-const realAccess = await import('src/providers/model/check1mAccess.js')
-const realModel = await import('src/providers/model/model.js')
+// Plain copies taken before any mock.module below. mock.restore() does not
+// revert a module mock, so afterEach installs these back; the live namespaces
+// would hand the stubs on to every later file in the run.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+const realAuth = { ...(await import('src/providers/auth/auth.js')) }
+const realAccess = { ...(await import('src/providers/model/check1mAccess.js')) }
+const realModel = { ...(await import('src/providers/model/model.js')) }
 
 // Opus 5, Sonnet 5 and Fable 5 are all 1M-native: each is a single picker entry
 // with no separate [1m] variant (asserted below). Legacy generations were
@@ -58,6 +61,13 @@ beforeEach(() => {
 
 afterEach(() => {
   mock.restore()
+  mock.module('./providers.js', () => realProviders)
+  mock.module('src/providers/auth/auth.js', () => realAuth)
+  mock.module('./check1mAccess.js', () => realAccess)
+  mock.module('./model.js', () => realModel)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/check1mAccess.js', () => realAccess)
+  mock.module('src/providers/model/model.js', () => realModel)
   resetModelStringsForTestingOnly()
 })
 

@@ -16,8 +16,28 @@
  * The filter governs only the DISPLAYED list. Alias/transport resolution still
  * lives in CODEX_ALIAS_MODELS (src/providers/presets/providerConfig.ts) — a model
  * hidden from the picker still resolves if typed, exactly like opencode.
+ *
+ * A ChatGPT account on the Codex backend offers far less than the API: three
+ * models, which its own catalog lists (`GET /backend-api/codex/models
+ * ?client_version=…`, 2026-10-16), each with a 272k window (the Codex CLI
+ * compacts at 95% of it) and 128k of output. Every other id here answers 400
+ * "not supported when using Codex with a ChatGPT account" there and stays for
+ * API-key use. Those three carry an `account` record, read only when the
+ * session is on the Codex backend: the picker, the context window and the
+ * effort levels. The 128k of output is the API's too, so `contextOutput` covers it.
  */
 import type { ReasoningEffort } from 'src/providers/presets/providerConfig.js'
+
+/** What the model gets on the Codex backend under a ChatGPT account. */
+export type CodexAccountLimits = {
+  contextWindow: number
+  /**
+   * The effort levels the account's catalog lists for it. `ultra` (gpt-5.6-terra)
+   * is left out: Codex CLI 0.162.1 does not send it either — set to ultra, it
+   * sends `reasoning: {effort: "high", context: "all_turns"}` (captured 2026-10-16).
+   */
+  effortLevels: readonly ReasoningEffort[]
+}
 
 export type CodexModelEntry = {
   id: string
@@ -31,10 +51,34 @@ export type CodexModelEntry = {
   contextOutput?: number
   /** `pro`-tier variant — always excluded from the picker (opencode parity). */
   isPro?: boolean
+  /** Offered to a ChatGPT account on the Codex backend, with these limits. */
+  account?: CodexAccountLimits
+  /** Offered only there: kept out of the API picker. */
+  accountOnly?: boolean
 }
+
+const CHATGPT_ACCOUNT: CodexAccountLimits = {
+  contextWindow: 272_000,
+  effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+}
+
+/** What `codexplan` names, and the Codex default when a profile names nothing: the Codex CLI's own default. */
+export const CODEX_DEFAULT_MODEL = 'gpt-6-luna'
 
 // Curated candidate catalog. Order = picker order.
 export const CODEX_MODEL_CATALOG: readonly CodexModelEntry[] = [
+  {
+    id: CODEX_DEFAULT_MODEL,
+    label: CODEX_DEFAULT_MODEL,
+    description: 'GPT-6 Luna - the Codex CLI default',
+    reasoningEffort: 'medium',
+    // Off the Codex backend (a relay in front of it, an API key) the same
+    // limits stand in, rather than the 128k fallback for unknown models.
+    contextInput: 272_000,
+    contextOutput: 128_000,
+    account: CHATGPT_ACCOUNT,
+    accountOnly: true,
+  },
   // GPT-5.6 ships as three tiers (sol/terra/luna); the bare `gpt-5.6` alias
   // resolves to the flagship Sol in CODEX_ALIAS_MODELS. Context windows match
   // the official OpenAI model descriptors (developers.openai.com/api/docs/models):
@@ -54,6 +98,7 @@ export const CODEX_MODEL_CATALOG: readonly CodexModelEntry[] = [
     reasoningEffort: 'high',
     contextInput: 1_050_000,
     contextOutput: 128_000,
+    account: CHATGPT_ACCOUNT,
   },
   {
     id: 'gpt-5.6-luna',
@@ -62,6 +107,7 @@ export const CODEX_MODEL_CATALOG: readonly CodexModelEntry[] = [
     reasoningEffort: 'high',
     contextInput: 1_050_000,
     contextOutput: 128_000,
+    account: CHATGPT_ACCOUNT,
   },
   {
     id: 'gpt-5.5',
@@ -166,11 +212,21 @@ export function filterCodexModels(ids: readonly string[]): string[] {
   return ids.filter(id => isCodexModelAllowed(id))
 }
 
-/** Catalog entries that pass the filter, in picker order. */
+/** Catalog entries that pass the filter, in picker order: the API's list. */
 export function getFilteredCodexCatalog(): CodexModelEntry[] {
   return CODEX_MODEL_CATALOG.filter(entry =>
-    isCodexModelAllowed(entry.id, { isPro: entry.isPro }),
+    !entry.accountOnly && isCodexModelAllowed(entry.id, { isPro: entry.isPro }),
   )
+}
+
+/** What a ChatGPT account offers on the Codex backend, in picker order. */
+export function getCodexAccountCatalog(): CodexModelEntry[] {
+  return CODEX_MODEL_CATALOG.filter(entry => entry.account !== undefined)
+}
+
+/** The limits a ChatGPT account gives this model on the Codex backend, if it offers it. */
+export function getCodexAccountLimits(model: string): CodexAccountLimits | undefined {
+  return CODEX_MODEL_CATALOG.find(entry => entry.id === model)?.account
 }
 
 

@@ -157,6 +157,14 @@ describe('resolveShimEffortValues', () => {
     ])
   })
 
+  test("on the Codex backend a model the ChatGPT account offers gets the account's levels", () => {
+    const codex = 'https://chatgpt.com/backend-api/codex'
+    expect(resolveShimEffortValues(codex, 'gpt-6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(resolveShimEffortValues(codex, 'gpt-5.4')).toEqual(['low', 'medium', 'high', 'xhigh'])
+    // The same id behind any other endpoint is not the account's.
+    expect(resolveShimEffortValues('https://llm.example.test/v1', 'gpt-6-luna')).toBeUndefined()
+  })
+
   test('reports nothing for a non-reasoning model on an unknown endpoint', () => {
     expect(
       resolveShimEffortValues('https://llm.example.test/v1', 'gpt-4o'),
