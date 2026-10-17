@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.1.46 — 2026-10-17
+
+### ✨ Features
+
+- feat(providers): talk to codex over websocket like the codex cli (#308) (890b4575)
+- feat(providers): replay codex reasoning items like the codex cli (#307) (d57d5fef)
+- feat(providers): offer the codex cli login before the browser (#306) (6909f72a)
+- feat(memory): fit over-cap indexes, frame team memory, add expires: and memory audit (#305) (468a90a4)
+
+### 🐛 Bug Fixes
+
+- fix(tui): stop the @​ list leaving ghost rows in inline mode (#304) (5a07fd0f)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.45 — 2026-10-16
 
 ### ✨ Features
