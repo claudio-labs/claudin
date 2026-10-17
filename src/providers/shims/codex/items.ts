@@ -45,6 +45,13 @@ const isRecord = (value: unknown): value is Block =>
 // From then on, in this process, only the items captured after the refusal.
 // The history keeps the refused items and the thinking-strip retry covers a
 // single request, so without this every later request would fail first.
+//
+// Per process on purpose: a refusal names neither the message nor the account
+// it came from. Two limits follow. A new process starts trusting the history
+// again, so a resumed session with refused items pays one failed request. And a
+// refusal that arrives late, from a request sent before an earlier refusal (two
+// agents in flight after an account switch), also drops the items captured in
+// between; those turns lose their reasoning, nothing fails.
 let refusedEarlierItems = false
 const capturedSinceRefusal = new Set<string>()
 

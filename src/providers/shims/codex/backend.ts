@@ -13,9 +13,7 @@
  * by side.
  *
  * The gate is the backend, not the provider tag: GitHub Copilot sends its GPT-5+
- * models through the same Responses code, and a profile on the Codex backend
- * with a model that is not an alias resolved as `openai_compat` until
- * activeProvider.ts learned the base URL.
+ * models through the same Responses code.
  *
  * Killswitch: CLAUDIN_CODEX_REASONING_REPLAY=0 sends what Claudin sent before:
  * no include, context or verbosity, no reasoning items, synthetic call ids, and
