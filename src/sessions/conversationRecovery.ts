@@ -30,6 +30,8 @@ import {
 } from 'src/shared/fs/fileHistory.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
+import { activeSessionUsesCodexBackend } from 'src/providers/shims/codex/backend.js'
+import { isCodexReasoningBlock } from 'src/providers/shims/codex/items.js'
 import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
 import {
   createAssistantMessage,
@@ -188,15 +190,24 @@ export type DeserializeResult = {
 /**
  * Remove thinking/redacted_thinking content blocks from assistant messages.
  * Messages that become empty after stripping are removed entirely.
+ *
+ * `keepCodexReasoning` keeps the thinking blocks that stand for Codex
+ * reasoning items (codex/items.ts): the Codex backend reads them back on every
+ * request, as the Codex CLI does after a resume.
  */
-function stripThinkingBlocks(messages: NormalizedMessage[]): NormalizedMessage[] {
+function stripThinkingBlocks(
+  messages: NormalizedMessage[],
+  keepCodexReasoning: boolean,
+): NormalizedMessage[] {
   return messages.reduce<NormalizedMessage[]>((acc, msg) => {
     if (msg.type !== 'assistant' || !Array.isArray(msg.message?.content)) {
       acc.push(msg)
       return acc
     }
     const filtered = msg.message.content.filter(
-      (block: { type?: string }) => block.type !== 'thinking' && block.type !== 'redacted_thinking',
+      (block: { type?: string }) =>
+        (block.type !== 'thinking' && block.type !== 'redacted_thinking') ||
+        (keepCodexReasoning && isCodexReasoningBlock(block)),
     )
     if (filtered.length === 0) return acc
     // `NormalizedAssistantMessage` declares `content` as a 1-tuple, but the
@@ -270,7 +281,7 @@ export function deserializeMessagesWithInterruptDetection(
     const provider = getAPIProvider()
     const isThirdPartyProvider = provider !== 'firstParty' && provider !== 'bedrock' && provider !== 'vertex' && provider !== 'foundry'
     const thinkingStripped = isThirdPartyProvider
-      ? stripThinkingBlocks(filteredThinking)
+      ? stripThinkingBlocks(filteredThinking, activeSessionUsesCodexBackend())
       : filteredThinking
 
     // Filter out assistant messages with only whitespace text content.

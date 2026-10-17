@@ -343,6 +343,24 @@
       "source": "src/providers/shims/claude/renderMessages.ts",
       "find": "  if (options.redactCodexItems) {\n    messagesForAPI = stripCodexItems(messagesForAPI)",
       "replace": "  if (false) {\n    messagesForAPI = stripCodexItems(messagesForAPI)"
+    },
+    {
+      "name": "RESUME: a Codex session loses its reasoning items",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionUsesCodexBackend())",
+      "replace": "      ? stripThinkingBlocks(filteredThinking, false)"
+    },
+    {
+      "name": "NEUTRALITY: every OpenAI-compatible resume keeps Codex reasoning",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "      ? stripThinkingBlocks(filteredThinking, activeSessionUsesCodexBackend())",
+      "replace": "      ? stripThinkingBlocks(filteredThinking, true)"
+    },
+    {
+      "name": "RESUME: the Codex backend keeps foreign thinking too",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "        (keepCodexReasoning && isCodexReasoningBlock(block)),",
+      "replace": "        keepCodexReasoning,"
     }
   ]
 }

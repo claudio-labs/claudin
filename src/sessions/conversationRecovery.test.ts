@@ -266,7 +266,7 @@ describe('thinking on resume, per provider', () => {
     ).toEqual([['text'], ['text']])
   })
 
-  test('the Codex backend loses them too, today', () => {
+  test('the Codex backend loses the thinking it did not produce', () => {
     expect(
       assistantBlockTypes({
         id: 'r-codex',
@@ -283,5 +283,66 @@ describe('thinking on resume, per provider', () => {
     { id: 'r-bedrock', name: 'Bedrock', provider: 'bedrock', baseUrl: 'https://bedrock.example', model: 'claude-opus-5-5' },
   ] as ProviderProfile[])('$name keeps every block', profile => {
     expect(assistantBlockTypes(profile)).toEqual([['thinking', 'redacted_thinking', 'text'], ['thinking'], ['text']])
+  })
+
+  // A Codex reasoning item is replayed on every request (codex/items.ts), so a
+  // resumed Codex session must still hold it, or the -c turn would send a
+  // shorter history than the turn before it and miss the cache.
+  describe('Codex reasoning items', () => {
+    const codexReasoning = {
+      type: 'thinking',
+      thinking: '',
+      signature: '',
+      codex: { id: 'rs_1', encrypted_content: 'enc-1' },
+    }
+    const codexText = { type: 'text', text: 'Reading.', citations: [], codex: { id: 'msg_1', phase: 'commentary' } }
+
+    function codexTranscriptBlocks(profile: ProviderProfile): unknown[][] {
+      useProfile(profile)
+      return deserializeMessagesWithInterruptDetection([
+        createUserMessage({ content: 'hi' }),
+        createAssistantMessage({
+          content: [{ type: 'thinking', thinking: 'anthropic', signature: 'sig' }, codexReasoning, codexText] as never,
+        }),
+      ])
+        .messages.filter(m => m.type === 'assistant')
+        .map(m => m.message.content as unknown[])
+    }
+
+    const CODEX_OAUTH: ProviderProfile = {
+      id: 'r-codex',
+      name: 'Codex',
+      provider: 'openai',
+      baseUrl: 'https://chatgpt.com/backend-api/codex',
+      model: 'codexplan',
+    }
+
+    test('survive a resume on the Codex backend, even under a model that is not an alias', () => {
+      expect(codexTranscriptBlocks(CODEX_OAUTH)).toEqual([[codexReasoning, codexText]])
+      expect(codexTranscriptBlocks({ ...CODEX_OAUTH, id: 'r-codex-model', model: 'gpt-5.6-terra' })).toEqual([
+        [codexReasoning, codexText],
+      ])
+    })
+
+    test('are stripped like any thinking everywhere else, and with the killswitch off', () => {
+      expect(
+        codexTranscriptBlocks({
+          id: 'r-openai',
+          name: 'OpenAI',
+          provider: 'openai',
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-5.6-terra',
+        }),
+      ).toEqual([[codexText]])
+
+      const original = process.env.CLAUDIN_CODEX_REASONING_REPLAY
+      process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
+      try {
+        expect(codexTranscriptBlocks(CODEX_OAUTH)).toEqual([[codexText]])
+      } finally {
+        if (original === undefined) delete process.env.CLAUDIN_CODEX_REASONING_REPLAY
+        else process.env.CLAUDIN_CODEX_REASONING_REPLAY = original
+      }
+    })
   })
 })
