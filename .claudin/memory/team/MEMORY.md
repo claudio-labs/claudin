@@ -163,6 +163,7 @@
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
 - [Codex strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) — `pages:""` looped Read 135×; strip ""/null
 - [Codex OAuth prompt cache — key only](codex-oauth-prompt-cache-params.md) — Codex 400s on prompt_cache_retention
+- [Codex CLI 0.162 wire parity (10-16/17)](codex-0.162-wire-diff.md) — reasoning replay gap closed; account models, SSE error event, recipe
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — loopback PKCE, pinned port 56121
 
