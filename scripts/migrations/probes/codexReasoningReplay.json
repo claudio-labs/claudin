@@ -9,7 +9,8 @@
     "src/providers/shims/claude/renderMessages.test.ts",
     "src/providers/transport/withRetry.test.ts",
     "src/providers/model/codexModelCatalog.test.ts",
-    "src/providers/model/reasoningCatalog.test.ts"
+    "src/providers/model/reasoningCatalog.test.ts",
+    "src/agent/messages/streaming.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -189,8 +190,8 @@
     },
     {
       "name": "NEUTRALITY: an error event before a completion now fails the stream",
-      "find": "  if (!finalResponse && streamError) throw streamError",
-      "replace": "  if (streamError) throw streamError"
+      "find": "  if (!finalResponse && streamError) raiseStreamError(streamError)",
+      "replace": "  if (streamError) raiseStreamError(streamError)"
     },
     {
       "name": "ITEMS: the redaction keeps reasoning blocks",
@@ -332,20 +333,20 @@
     {
       "name": "REDACT: no provider redacts Codex state",
       "source": "src/providers/shims/claude/renderMessages.ts",
-      "find": "    redactCodexItems: !activeSessionReplaysCodexItems(),",
+      "find": "    redactCodexItems: !replaysCodexItems,",
       "replace": "    redactCodexItems: false,"
     },
     {
       "name": "REDACT: the Codex backend loses its own state",
       "source": "src/providers/shims/claude/renderMessages.ts",
-      "find": "    redactCodexItems: !activeSessionReplaysCodexItems(),",
+      "find": "    redactCodexItems: !replaysCodexItems,",
       "replace": "    redactCodexItems: true,"
     },
     {
       "name": "REDACT: the render ignores the option",
       "source": "src/providers/shims/claude/renderMessages.ts",
-      "find": "  if (options.redactCodexItems) {\n    messagesForAPI = stripCodexItems(messagesForAPI)",
-      "replace": "  if (false) {\n    messagesForAPI = stripCodexItems(messagesForAPI)"
+      "find": "  if (options.redactCodexItems) {\n    const redacted = stripCodexItems(messagesForAPI)",
+      "replace": "  if (false) {\n    const redacted = stripCodexItems(messagesForAPI)"
     },
     {
       "name": "RESUME: a Codex session loses its reasoning items",
@@ -367,7 +368,7 @@
     },
     {
       "name": "REFUSAL: an SSE refusal does not stop the earlier items",
-      "find": "  if (detail.code === CODEX_REPLAY_REFUSED_CODE) noteReplayRefused()\n",
+      "find": "  if ((error.error as { error?: { code?: unknown } } | undefined)?.error?.code === CODEX_REPLAY_REFUSED_CODE) {\n    noteReplayRefused()\n  }\n",
       "replace": ""
     },
     {
@@ -424,12 +425,6 @@
       "replace": "  void account"
     },
     {
-      "name": "MODELS: the account output limit is ignored",
-      "source": "src/providers/model/openaiContextWindows.ts",
-      "find": "  if (account) return account.maxOutputTokens",
-      "replace": "  void account"
-    },
-    {
       "name": "NEUTRALITY: the ChatGPT account limits apply to every session",
       "source": "src/providers/model/openaiContextWindows.ts",
       "find": "  return activeSessionOnCodexBackend() ? getCodexAccountLimits(model) : undefined",
@@ -462,14 +457,14 @@
     {
       "name": "EFFORT: the account levels are never read",
       "source": "src/providers/model/reasoningCatalog.ts",
-      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(model)?.effortLevels : undefined) ??\n",
+      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??\n",
       "replace": ""
     },
     {
       "name": "NEUTRALITY: the account levels apply on every endpoint",
       "source": "src/providers/model/reasoningCatalog.ts",
-      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(model)?.effortLevels : undefined) ??\n",
-      "replace": "    getCodexAccountLimits(model)?.effortLevels ??\n"
+      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??\n",
+      "replace": "    getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels ??\n"
     },
     {
       "name": "EFFORT: the account stops at xhigh",
@@ -488,6 +483,47 @@
       "source": "src/providers/shims/codex/backend.ts",
       "find": "  return codex !== undefined && activeSessionReplaysCodexItems() ? { codex } : {}",
       "replace": "  return codex !== undefined ? { codex } : {}"
+    },
+    {
+      "name": "REVIEW: a blank turn left by the redaction goes out",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "      messagesForAPI = filterWhitespaceOnlyAssistantMessages(redacted)",
+      "replace": "      messagesForAPI = redacted"
+    },
+    {
+      "name": "REVIEW: the aggressive strip removes Codex reasoning",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled && !replaysCodexItems,",
+      "replace": "    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled,"
+    },
+    {
+      "name": "NEUTRALITY: the aggressive strip stops for every provider",
+      "source": "src/providers/shims/claude/renderMessages.ts",
+      "find": "    stripOldThinking: enabled && !!config.thinkingHistoryRedactionEnabled && !replaysCodexItems,",
+      "replace": "    stripOldThinking: false,"
+    },
+    {
+      "name": "REVIEW: a textless thinking block opens the pane",
+      "source": "src/agent/messages/streaming.ts",
+      "find": "block.type === 'thinking' && block.thinking !== '' && !isProgressUpdateBlock(block)",
+      "replace": "block.type === 'thinking' && !isProgressUpdateBlock(block)"
+    },
+    {
+      "name": "REVIEW: the codexplan row loses the account levels",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "getCodexAccountLimits(getCodexAliasModel(model))",
+      "replace": "getCodexAccountLimits(model)"
+    },
+    {
+      "name": "REVIEW: a recovered stream error stops the replay",
+      "find": "  const status = detail.type === 'invalid_request_error' ? 400 : 500",
+      "replace": "  if (detail.code === CODEX_REPLAY_REFUSED_CODE) noteReplayRefused()\n  const status = detail.type === 'invalid_request_error' ? 400 : 500"
+    },
+    {
+      "name": "REVIEW: codexplan off the Codex backend falls back to 128k",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    contextInput: 272_000,\n    contextOutput: 128_000,\n    account: CHATGPT_ACCOUNT,",
+      "replace": "    account: CHATGPT_ACCOUNT,"
     }
   ]
 }
