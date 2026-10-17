@@ -6,7 +6,8 @@
     "src/providers/model/codexModelSurface.test.ts",
     "src/providers/shims/codex/items.test.ts",
     "src/providers/shims/codex/backend.test.ts",
-    "src/providers/shims/claude/renderMessages.test.ts"
+    "src/providers/shims/claude/renderMessages.test.ts",
+    "src/providers/transport/withRetry.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -361,6 +362,34 @@
       "source": "src/sessions/conversationRecovery.ts",
       "find": "        (keepCodexReasoning && isCodexReasoningBlock(block)),",
       "replace": "        keepCodexReasoning,"
+    },
+    {
+      "name": "REFUSAL: an SSE refusal does not stop the earlier items",
+      "find": "  if (detail.code === CODEX_REPLAY_REFUSED_CODE) noteReplayRefused()\n",
+      "replace": ""
+    },
+    {
+      "name": "REFUSAL: an HTTP refusal does not stop the earlier items",
+      "find": "    if (errorBody.includes(CODEX_REPLAY_REFUSED_CODE)) noteReplayRefused()\n",
+      "replace": ""
+    },
+    {
+      "name": "REFUSAL: items captured after a refusal are dropped too",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  if (refusedEarlierItems) capturedSinceRefusal.add(item.id)\n",
+      "replace": ""
+    },
+    {
+      "name": "REFUSAL: the latch is ignored on replay",
+      "source": "src/providers/shims/codex/items.ts",
+      "find": "  if (refusedEarlierItems && !capturedSinceRefusal.has(state.id)) return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "RETRY: a refused replay is not retried",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "  if (isCodexReplayRejected(error)) {\n    return true\n  }",
+      "replace": "  if (false) {\n    return true\n  }"
     }
   ]
 }

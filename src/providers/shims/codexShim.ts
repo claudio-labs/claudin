@@ -23,12 +23,14 @@ import {
   callStateFor,
   codexStateOf,
   messageStateFor,
+  noteReplayRefused,
   reasoningBlockFor,
   reasoningItemFor,
   type CodexItemState,
   type CodexReasoningInputItem,
 } from 'src/providers/shims/codex/items.js'
 import {
+  CODEX_REPLAY_REFUSED_CODE,
   codexBackendActive,
   codexBackendBodyFields,
 } from 'src/providers/shims/codex/backend.js'
@@ -734,6 +736,7 @@ export async function performCodexRequest(options: {
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown error')
+    if (errorBody.includes(CODEX_REPLAY_REFUSED_CODE)) noteReplayRefused()
     let errorResponse: object | undefined
     try { errorResponse = JSON.parse(errorBody) } catch { /* raw text */ }
     throw APIError.generate(
@@ -874,6 +877,7 @@ function codexStreamError(data: Record<string, any>): APIError {
     data.error && typeof data.error === 'object'
       ? data.error
       : { code: data.code, message: data.message, param: data.param }
+  if (detail.code === CODEX_REPLAY_REFUSED_CODE) noteReplayRefused()
   const status = detail.type === 'invalid_request_error' ? 400 : 500
   return APIError.generate(
     status,

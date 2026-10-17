@@ -40,6 +40,7 @@ import {
   tryGetActiveProvider,
 } from 'src/providers/presets/activeProvider.js'
 import { renderMessagesForAPI, historyRedactions } from 'src/providers/shims/claude/renderMessages.js'
+import { _resetReplayTrustForTesting } from 'src/providers/shims/codex/items.js'
 import { isThinkingBlockMismatchError } from 'src/providers/transport/withRetry.js'
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -100,6 +101,7 @@ function useProfile(profile: ProviderProfile): void {
 afterEach(() => {
   resetGlobalConfigForTests()
   invalidateActiveProviderCache()
+  _resetReplayTrustForTesting()
 })
 
 afterAll(() => {

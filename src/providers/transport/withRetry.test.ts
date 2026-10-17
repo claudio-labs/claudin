@@ -120,6 +120,48 @@ describe('isThinkingBlockMismatchError', () => {
   })
 })
 
+// --- the Codex backend refusing a replayed reasoning item ---
+describe('a refused Codex reasoning replay', () => {
+  // What codexShim raises for the backend's SSE error event (codexStreamError).
+  const refusal = () =>
+    APIError.generate(
+      400,
+      { error: { message: 'The encrypted content for item rs_1 could not be verified.', code: 'invalid_encrypted_content' } },
+      'The encrypted content for item rs_1 could not be verified.',
+      new Headers(),
+    )
+
+  test('reads as a thinking mismatch, so the strip-and-retry runs', async () => {
+    const { isThinkingBlockMismatchError, shouldRetry } = await importFreshWithRetryModule('codex')
+    expect(isThinkingBlockMismatchError(refusal())).toBe(true)
+    expect(shouldRetry(refusal())).toBe(true)
+  })
+
+  test('the retry goes out with the thinking stripped, and succeeds', async () => {
+    const { withRetry } = await importFreshWithRetryModule('codex')
+    const contexts: boolean[] = []
+    const generator = withRetry(
+      async () => ({}) as never,
+      async (_client: unknown, _attempt: number, context: { stripThinkingFromHistory?: boolean }) => {
+        contexts.push(context.stripThinkingFromHistory === true)
+        if (contexts.length === 1) throw refusal()
+        return 'ok'
+      },
+      { model: 'gpt-5.6-terra', thinkingConfig: { type: 'disabled' } as never, maxRetries: 2 },
+    )
+    let result: unknown
+    for (;;) {
+      const next = await generator.next()
+      if (next.done) {
+        result = next.value
+        break
+      }
+    }
+    expect(result).toBe('ok')
+    expect(contexts).toEqual([false, true])
+  })
+})
+
 // --- shouldRetry: thinking-block mismatch is retryable ---
 describe('shouldRetry - thinking-block mismatch', () => {
   test('a foreign-signature thinking 400 is retryable (so strip-and-retry runs)', async () => {

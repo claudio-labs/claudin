@@ -54,6 +54,12 @@ const {
 } = await import('src/providers/shims/codexShim.js')
 const { getSessionId } = await import('src/platform/bootstrap/state.js')
 const { __test: webSearchToolTest } = await import('src/tools/WebSearchTool/WebSearchTool.js')
+const { _resetReplayTrustForTesting } = await import('src/providers/shims/codex/items.js')
+
+// A refusal latches process-wide (codex/items.ts); the error-event tests raise one.
+beforeEach(() => {
+  _resetReplayTrustForTesting()
+})
 
 const tempDirs: string[] = []
 const originalEnv = {
@@ -2098,5 +2104,78 @@ describe('Codex item replay', () => {
       }
       expect(inputs.at(-1)).toHaveLength(REPLAYED.length + 1)
     })
+  })
+})
+
+// After the backend refuses a replayed reasoning item (the payload no longer
+// decrypts, as after a switch of ChatGPT account), the items captured before
+// the refusal stop going out, and the ones captured after keep going out.
+describe('a refused reasoning replay', () => {
+  const OLD = [
+    { role: 'user', content: 'hi' },
+    {
+      role: 'assistant',
+      content: [
+        { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_old', encrypted_content: 'old' } },
+        { type: 'text', text: 'hello', codex: { id: 'msg_old', phase: 'final_answer' } },
+      ],
+    },
+    { role: 'user', content: 'again' },
+  ]
+  const REFUSAL = {
+    message: 'The encrypted content for item rs_old could not be verified.',
+    type: 'invalid_request_error',
+    param: 'input',
+    code: 'invalid_encrypted_content',
+  }
+
+  function reasoningIdsIn(messages: Array<Record<string, unknown>>): string[] {
+    return convertAnthropicMessagesToResponsesInput(messages, { replayCodexItems: true })
+      .filter(item => item.type === 'reasoning')
+      .map(item => (item as { id: string }).id)
+  }
+
+  test('an SSE refusal stops the earlier items and keeps the later ones', async () => {
+    expect(reasoningIdsIn(OLD)).toEqual(['rs_old'])
+    await expect(streamEvents([sseEvent('error', { error: REFUSAL })])).rejects.toThrow('invalid_encrypted_content')
+    expect(reasoningIdsIn(OLD)).toEqual([])
+
+    const reply = convertCodexResponseToAnthropicMessage(
+      { output: [{ type: 'reasoning', id: 'rs_new', summary: [], encrypted_content: 'new' }] },
+      'gpt-5.6-terra',
+      { captureCodexItems: true },
+    )
+    expect(reasoningIdsIn([...OLD, { role: 'assistant', content: reply.content }])).toEqual(['rs_new'])
+  })
+
+  test('an HTTP 400 with the same code does the same', async () => {
+    const realFetch = globalThis.fetch
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async () =>
+      new Response(JSON.stringify({ error: REFUSAL }), { status: 400 })) as unknown as typeof fetch
+    try {
+      await expect(
+        performCodexRequest({
+          request: {
+            transport: 'codex_responses',
+            requestedModel: 'gpt-5.6-terra',
+            resolvedModel: 'gpt-5.6-terra',
+            baseUrl: 'https://chatgpt.com/backend-api/codex',
+          },
+          credentials: { apiKey: 'k', accountId: 'a', source: 'env' },
+          params: { model: 'gpt-5.6-terra', messages: OLD, max_tokens: 64 },
+          defaultHeaders: {},
+        }),
+      ).rejects.toMatchObject({ status: 400 })
+    } finally {
+      ;(globalThis as { fetch: typeof fetch }).fetch = realFetch
+    }
+    expect(reasoningIdsIn(OLD)).toEqual([])
+  })
+
+  test('any other error leaves the replay alone', async () => {
+    await expect(
+      streamEvents([sseEvent('error', { error: { ...REFUSAL, code: 'context_length_exceeded' } })]),
+    ).rejects.toThrow()
+    expect(reasoningIdsIn(OLD)).toEqual(['rs_old'])
   })
 })

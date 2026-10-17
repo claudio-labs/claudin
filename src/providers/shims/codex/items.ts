@@ -40,6 +40,25 @@ type Block = Record<string, unknown>
 const isRecord = (value: unknown): value is Block =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
+// Which reasoning items the backend can still decrypt: every one, until it
+// refuses one (a payload from another ChatGPT account no longer decrypts).
+// From then on, in this process, only the items captured after the refusal.
+// The history keeps the refused items and the thinking-strip retry covers a
+// single request, so without this every later request would fail first.
+let refusedEarlierItems = false
+const capturedSinceRefusal = new Set<string>()
+
+/** The backend refused a replayed reasoning item: stop sending the ones captured before. */
+export function noteReplayRefused(): void {
+  refusedEarlierItems = true
+  capturedSinceRefusal.clear()
+}
+
+export function _resetReplayTrustForTesting(): void {
+  refusedEarlierItems = false
+  capturedSinceRefusal.clear()
+}
+
 /** The Codex item state a block carries, if it carries a well-formed one. */
 export function codexStateOf(block: unknown): CodexItemState | undefined {
   if (!isRecord(block) || !isRecord(block.codex)) return undefined
@@ -64,6 +83,7 @@ export function isCodexReasoningBlock(block: unknown): boolean {
 /** The thinking block a `reasoning` output item becomes, or undefined when it has nothing to replay. */
 export function reasoningBlockFor(item: Block): Block | undefined {
   if (typeof item.id !== 'string' || typeof item.encrypted_content !== 'string') return undefined
+  if (refusedEarlierItems) capturedSinceRefusal.add(item.id)
   return {
     type: 'thinking',
     thinking: '',
@@ -88,6 +108,7 @@ export function reasoningItemFor(block: unknown): CodexReasoningInputItem | unde
   if (!isRecord(block) || block.type !== 'thinking') return undefined
   const state = codexStateOf(block)
   if (!state?.encrypted_content) return undefined
+  if (refusedEarlierItems && !capturedSinceRefusal.has(state.id)) return undefined
   return { type: 'reasoning', id: state.id, summary: [], encrypted_content: state.encrypted_content }
 }
 

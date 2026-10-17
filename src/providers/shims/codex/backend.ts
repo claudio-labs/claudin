@@ -31,6 +31,9 @@ import {
   type ResolvedProviderRequest,
 } from 'src/providers/presets/providerConfig.js'
 
+/** The code the backend answers with when a replayed reasoning payload no longer decrypts. */
+export const CODEX_REPLAY_REFUSED_CODE = 'invalid_encrypted_content'
+
 export function isCodexReasoningReplayEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_CODEX_REASONING_REPLAY)
 }
@@ -80,6 +83,6 @@ export function isCodexReplayRejected(error: unknown): boolean {
     isSdkApiError(error) &&
     error.status === 400 &&
     typeof error.message === 'string' &&
-    error.message.includes('invalid_encrypted_content')
+    error.message.includes(CODEX_REPLAY_REFUSED_CODE)
   )
 }

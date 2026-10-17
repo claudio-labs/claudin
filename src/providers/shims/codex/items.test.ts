@@ -1,10 +1,12 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 import {
+  _resetReplayTrustForTesting,
   callStateFor,
   codexStateOf,
   isCodexReasoningBlock,
   messageStateFor,
+  noteReplayRefused,
   reasoningBlockFor,
   reasoningItemFor,
   stripCodexItems,
@@ -14,6 +16,10 @@ import type { AssistantMessage, UserMessage } from 'src/shared/types/message.js'
 const REASONING = { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_1', encrypted_content: 'enc-1' } }
 const COMMENTARY = { type: 'text', text: 'Reading.', citations: [], codex: { id: 'msg_1', phase: 'commentary' } }
 const CALL = { type: 'tool_use', id: 'call_1', name: 'Read', input: { file_path: '/x' }, codex: { id: 'fc_1' } }
+
+beforeEach(() => {
+  _resetReplayTrustForTesting()
+})
 
 function assistant(blocks: unknown[]): AssistantMessage {
   return createAssistantMessage({ content: blocks as never })
@@ -137,5 +143,26 @@ describe('stripCodexItems, for every provider other than the Codex backend', () 
     ;(message.message as { content: unknown }).content = 'plain'
     const messages = [message]
     expect(stripCodexItems(messages)).toBe(messages)
+  })
+})
+
+describe('after the backend refuses a replayed reasoning item', () => {
+  test('only the items captured since are replayed', () => {
+    const before = reasoningBlockFor({ id: 'rs_old', encrypted_content: 'old' })
+    expect(reasoningItemFor(before)).toMatchObject({ id: 'rs_old' })
+
+    noteReplayRefused()
+    expect(reasoningItemFor(before)).toBeUndefined()
+    expect(reasoningItemFor(REASONING)).toBeUndefined()
+
+    const after = reasoningBlockFor({ id: 'rs_new', encrypted_content: 'new' })
+    expect(reasoningItemFor(after)).toEqual({ type: 'reasoning', id: 'rs_new', summary: [], encrypted_content: 'new' })
+  })
+
+  test('a second refusal drops what the first one let through', () => {
+    noteReplayRefused()
+    const kept = reasoningBlockFor({ id: 'rs_a', encrypted_content: 'a' })
+    noteReplayRefused()
+    expect(reasoningItemFor(kept)).toBeUndefined()
   })
 })
