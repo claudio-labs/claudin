@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 import {
   _resetReplayTrustForTesting,
@@ -18,6 +18,9 @@ const COMMENTARY = { type: 'text', text: 'Reading.', citations: [], codex: { id:
 const CALL = { type: 'tool_use', id: 'call_1', name: 'Read', input: { file_path: '/x' }, codex: { id: 'fc_1' } }
 
 beforeEach(() => {
+  _resetReplayTrustForTesting()
+})
+afterAll(() => {
   _resetReplayTrustForTesting()
 })
 

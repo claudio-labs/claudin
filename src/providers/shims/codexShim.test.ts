@@ -60,6 +60,9 @@ const { _resetReplayTrustForTesting } = await import('src/providers/shims/codex/
 beforeEach(() => {
   _resetReplayTrustForTesting()
 })
+afterAll(() => {
+  _resetReplayTrustForTesting()
+})
 
 const tempDirs: string[] = []
 const originalEnv = {

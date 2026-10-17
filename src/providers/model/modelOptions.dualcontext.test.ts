@@ -65,6 +65,9 @@ afterEach(() => {
   mock.module('src/providers/auth/auth.js', () => realAuth)
   mock.module('./check1mAccess.js', () => realAccess)
   mock.module('./model.js', () => realModel)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/check1mAccess.js', () => realAccess)
+  mock.module('src/providers/model/model.js', () => realModel)
   resetModelStringsForTestingOnly()
 })
 

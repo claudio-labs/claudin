@@ -54,6 +54,8 @@ afterEach(() => {
   mock.restore()
   mock.module('./providers.js', () => realProviders)
   mock.module('./model.js', () => realModel)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/model.js', () => realModel)
   resetModelStringsForTestingOnly()
 })
 
