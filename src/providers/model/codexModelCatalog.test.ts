@@ -96,7 +96,11 @@ describe('codexModelCatalog — the ChatGPT account', () => {
 
   test('account limits for the account models only', () => {
     for (const id of ['gpt-6-luna', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
-      expect(getCodexAccountLimits(id)).toEqual({ contextWindow: 272_000, maxOutputTokens: 128_000 })
+      expect(getCodexAccountLimits(id)).toEqual({
+        contextWindow: 272_000,
+        maxOutputTokens: 128_000,
+        effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+      })
     }
     expect(getCodexAccountLimits('gpt-5.6-sol')).toBeUndefined()
     expect(getCodexAccountLimits('gpt-5.5')).toBeUndefined()

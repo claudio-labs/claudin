@@ -32,6 +32,12 @@ import type { ReasoningEffort } from 'src/providers/presets/providerConfig.js'
 export type CodexAccountLimits = {
   contextWindow: number
   maxOutputTokens: number
+  /**
+   * The effort levels the account's catalog lists for it. `ultra` (gpt-5.6-terra)
+   * is left out: Codex CLI 0.162.1 does not send it either — set to ultra, it
+   * sends `reasoning: {effort: "high", context: "all_turns"}` (captured 2026-10-16).
+   */
+  effortLevels: readonly ReasoningEffort[]
 }
 
 export type CodexModelEntry = {
@@ -52,7 +58,11 @@ export type CodexModelEntry = {
   accountOnly?: boolean
 }
 
-const CHATGPT_ACCOUNT: CodexAccountLimits = { contextWindow: 272_000, maxOutputTokens: 128_000 }
+const CHATGPT_ACCOUNT: CodexAccountLimits = {
+  contextWindow: 272_000,
+  maxOutputTokens: 128_000,
+  effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+}
 
 /** What `codexplan` names, and the Codex default when a profile names nothing: the Codex CLI's own default. */
 export const CODEX_DEFAULT_MODEL = 'gpt-6-luna'

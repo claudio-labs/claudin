@@ -8,7 +8,8 @@
     "src/providers/shims/codex/backend.test.ts",
     "src/providers/shims/claude/renderMessages.test.ts",
     "src/providers/transport/withRetry.test.ts",
-    "src/providers/model/codexModelCatalog.test.ts"
+    "src/providers/model/codexModelCatalog.test.ts",
+    "src/providers/model/reasoningCatalog.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -457,6 +458,24 @@
       "source": "src/providers/model/codexModelCatalog.ts",
       "find": "    account: CHATGPT_ACCOUNT,\n    accountOnly: true,",
       "replace": "    accountOnly: true,"
+    },
+    {
+      "name": "EFFORT: the account levels are never read",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(model)?.effortLevels : undefined) ??\n",
+      "replace": ""
+    },
+    {
+      "name": "NEUTRALITY: the account levels apply on every endpoint",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(model)?.effortLevels : undefined) ??\n",
+      "replace": "    getCodexAccountLimits(model)?.effortLevels ??\n"
+    },
+    {
+      "name": "EFFORT: the account stops at xhigh",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "  effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],",
+      "replace": "  effortLevels: ['low', 'medium', 'high', 'xhigh'],"
     }
   ]
 }

@@ -32,6 +32,7 @@ import {
 import { getModelOptions } from 'src/providers/model/modelOptions.js'
 import { getOpenAIContextWindow, getOpenAIMaxOutputTokens } from 'src/providers/model/openaiContextWindows.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
+import { getAvailableEffortLevels, resolveAppliedEffort } from 'src/providers/effort/effort.js'
 import { resolveActiveShimEffortValues, resolveShimEffortValues } from 'src/providers/model/reasoningCatalog.js'
 import { invalidateActiveProviderCache, tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { resolveProviderRequest } from 'src/providers/presets/providerConfig.js'
@@ -118,11 +119,23 @@ describe('a Codex OAuth profile', () => {
     expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
   })
 
-  test('effort levels: the GPT-5 family list, nothing for gpt-6', () => {
+  test("effort levels: the account's, up to max, for every model it offers", () => {
     useProfile(CODEX_OAUTH)
-    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-terra')).toEqual(['low', 'medium', 'high', 'xhigh'])
-    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-6-luna')).toBeUndefined()
-    expect(resolveActiveShimEffortValues('gpt-5.6-terra')).toEqual(['low', 'medium', 'high', 'xhigh'])
+    const account = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-6-luna')).toEqual(account)
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-terra')).toEqual(account)
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-luna')).toEqual(account)
+    expect(resolveActiveShimEffortValues('gpt-6-luna')).toEqual(account)
+    // A model the account does not offer keeps the GPT-5 family list.
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-sol')).toEqual(['low', 'medium', 'high', 'xhigh'])
+  })
+
+  test('max is offered by /effort and goes out unchanged, not downgraded to high', () => {
+    useProfile(CODEX_OAUTH)
+    expect(getAvailableEffortLevels('gpt-6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(resolveAppliedEffort('gpt-6-luna', 'max')).toBe('max')
+    // Not an account model: max is still downgraded, as before.
+    expect(resolveAppliedEffort('gpt-5.6-sol', 'max')).toBe('high')
   })
 })
 
