@@ -1,0 +1,121 @@
+{
+  "test": [
+    "src/providers/shims/codexShim.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts"
+  ],
+  "source": "src/providers/shims/codexShim.ts",
+  "probes": [
+    {
+      "name": "a foreign tool id loses its fc_ prefix",
+      "find": "id: `fc_${value}`,",
+      "replace": "id: value,"
+    },
+    {
+      "name": "an errored tool result loses its Error: prefix",
+      "find": "return toolResult.is_error ? `Error: ${out}` : out",
+      "replace": "return out"
+    },
+    {
+      "name": "an image URL inside a tool result is dropped",
+      "find": "chunks.push(`[Image](${src.url})`)",
+      "replace": "void src"
+    },
+    {
+      "name": "the empty-history fallback sends no content",
+      "find": "            content: [{ type: 'input_text', text: '' }],",
+      "replace": "            content: [],"
+    },
+    {
+      "name": "tool_choice any is sent as auto",
+      "find": "if (choice.type === 'any') return 'required'",
+      "replace": "if (choice.type === 'any') return 'auto'"
+    },
+    {
+      "name": "sampling params reach GPT models",
+      "find": "if (!isTargetModel) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "the account header is not sent",
+      "find": "headers['ChatGPT-Account-Id'] = options.credentials.accountId",
+      "replace": "void options.credentials.accountId"
+    },
+    {
+      "name": "a misconfigured /v1/responses base URL is not collapsed",
+      "find": "return `${parsed.origin}/backend-api/codex/responses`",
+      "replace": "return raw"
+    },
+    {
+      "name": "an output-token cutoff reads as end_turn",
+      "find": "incompleteReason.includes('max_output_tokens')",
+      "replace": "incompleteReason.includes('never')"
+    },
+    {
+      "name": "the think filter's held tail is never flushed",
+      "find": "const tail = thinkFilter.flush()",
+      "replace": "const tail = ''"
+    },
+    {
+      "name": "tool calls left open at the end stay open",
+      "find": "  for (const toolBlock of toolBlocksByItemId.values()) {\n    yield {",
+      "replace": "  for (const toolBlock of [] as Array<{ index: number }>) {\n    yield {"
+    },
+    {
+      "name": "unparseable arguments become an empty input",
+      "find": "input = { raw: item.arguments ?? '' }",
+      "replace": "input = {}"
+    },
+    {
+      "name": "collect ignores response.failed",
+      "find": "    if (event.event === 'response.failed') {\n      const msg = event.data?.response?.error?.message ??",
+      "replace": "    if (false) {\n      const msg = event.data?.response?.error?.message ??"
+    },
+    {
+      "name": "NEUTRALITY: the Responses body carries include for every caller",
+      "find": "    store: false,\n    stream: true,\n",
+      "replace": "    store: false,\n    stream: true,\n    include: ['reasoning.encrypted_content'],\n"
+    },
+    {
+      "name": "NEUTRALITY: resume keeps thinking on OpenAI-compatible providers",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "const thinkingStripped = isThirdPartyProvider",
+      "replace": "const thinkingStripped = false && isThirdPartyProvider"
+    },
+    {
+      "name": "NEUTRALITY: a 500 counts as a thinking mismatch",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "if (!isSdkApiError(error) || error.status !== 400 || !error.message) {",
+      "replace": "if (!isSdkApiError(error) || !error.message) {"
+    },
+    {
+      "name": "NEUTRALITY: the OpenAI API window for gpt-5.6-terra shrinks to the ChatGPT account's",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    description: 'GPT-5.6 Terra with high reasoning',\n    reasoningEffort: 'high',\n    contextInput: 1_050_000,",
+      "replace": "    description: 'GPT-5.6 Terra with high reasoning',\n    reasoningEffort: 'high',\n    contextInput: 272_000,"
+    },
+    {
+      "name": "NEUTRALITY: the GPT-5 family fallback offers max to a local proxy",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "  'high',\n  'xhigh',\n]",
+      "replace": "  'high',\n  'xhigh',\n  'max',\n]"
+    },
+    {
+      "name": "NEUTRALITY: an unknown OpenAI-compatible host gets the retain cache profile",
+      "source": "src/agent/cache/cacheProfile.ts",
+      "find": "  return AGGRESSIVE_PROFILE\n}",
+      "replace": "  return RETAIN_PROFILE\n}"
+    },
+    {
+      "name": "NEUTRALITY: a Copilot profile stops resolving to the Copilot transport",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "if (profile.extras?.githubToken) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "NEUTRALITY: the OpenAI API picker lists more than the profile's models",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "if (getAdditionalModelOptionsCacheScope()?.startsWith('openai:')) {",
+      "replace": "if (false) {"
+    }
+  ]
+}
