@@ -97,6 +97,11 @@ describe('a Codex OAuth profile', () => {
     ])
   })
 
+  test('codexplan behind another base URL keeps a real window, not the 128k fallback', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy-window', baseUrl: 'http://localhost:8000/v1' })
+    expect(getContextWindowForModel('gpt-6-luna')).toBe(272_000)
+  })
+
   test("a Codex alias behind another base URL lists the profile's models, as before", () => {
     useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy', baseUrl: 'http://localhost:8000/v1' })
     expect(getModelOptions(false).map(option => option.value)).toEqual([null, 'codexplan'])
@@ -136,6 +141,12 @@ describe('a Codex OAuth profile', () => {
     expect(resolveAppliedEffort('gpt-6-luna', 'max')).toBe('max')
     // Not an account model: max is still downgraded, as before.
     expect(resolveAppliedEffort('gpt-5.6-sol', 'max')).toBe('high')
+  })
+
+  test('the codexplan row of /model offers what the model it names offers', () => {
+    useProfile(CODEX_OAUTH)
+    expect(getAvailableEffortLevels('codexplan')).toEqual(getAvailableEffortLevels('gpt-6-luna'))
+    expect(resolveAppliedEffort('codexplan', 'max')).toBe('max')
   })
 })
 

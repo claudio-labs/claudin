@@ -2179,3 +2179,30 @@ describe('a refused reasoning replay', () => {
     expect(reasoningIdsIn(OLD)).toEqual(['rs_old'])
   })
 })
+
+// Review finding, 2026-10-17: the refusal used to be noted when the event was
+// read, so a stream that recovered still stopped the replay.
+describe('an error event the stream recovers from', () => {
+  const HISTORY = [
+    {
+      role: 'assistant',
+      content: [{ type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_keep', encrypted_content: 'k' } }],
+    },
+  ]
+  const REFUSAL_THEN_COMPLETED = [
+    sseEvent('error', { error: { code: 'invalid_encrypted_content', type: 'invalid_request_error', message: 'x' } }),
+    sseEvent('response.completed', { response: { output: [] } }),
+  ]
+  const replayedReasoning = () =>
+    convertAnthropicMessagesToResponsesInput(HISTORY, { replayCodexItems: true }).filter(item => item.type === 'reasoning')
+
+  test('a refusal followed by a completed stream leaves the replay alone', async () => {
+    await streamEvents(REFUSAL_THEN_COMPLETED)
+    expect(replayedReasoning()).toHaveLength(1)
+  })
+
+  test('the same through collect', async () => {
+    await collectCodexCompletedResponse(responseFromChunks(REFUSAL_THEN_COMPLETED))
+    expect(replayedReasoning()).toHaveLength(1)
+  })
+})

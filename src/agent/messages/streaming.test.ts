@@ -298,3 +298,33 @@ describe('handleMessageFromStream', () => {
     })
   })
 })
+
+// Review finding, 2026-10-17: a Codex reasoning item is a thinking block with no
+// text, and opened an empty thinking pane for 30 seconds.
+describe('handleMessageFromStream and textless thinking', () => {
+  test('a thinking block with no text does not open the thinking pane', () => {
+    const r = makeRecorder()
+    handleMessageFromStream(
+      {
+        type: 'assistant',
+        message: {
+          id: 'msg_1',
+          role: 'assistant',
+          content: [{ type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_1', encrypted_content: 'x' } }],
+        },
+        uuid: '11111111-1111-4111-8111-111111111112',
+        timestamp: '2026-10-17T12:00:00.000Z',
+      } as any,
+      r.onMessage,
+      r.onUpdateLength,
+      r.onSetStreamMode,
+      r.onStreamingToolUses,
+      undefined,
+      r.onStreamingThinking,
+      r.onApiMetrics,
+      r.onStreamingText,
+    )
+    expect(r.messages).toHaveLength(1)
+    expect(r.streamingThinking).toEqual([])
+  })
+})

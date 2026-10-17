@@ -143,3 +143,44 @@ describe('a tool call through the whole render', () => {
     })
   })
 })
+
+// Review findings, 2026-10-17.
+describe('what the Codex redaction leaves behind', () => {
+  test('a turn left with only blank text after the reasoning goes is dropped, not sent', () => {
+    useProfile(ANTHROPIC)
+    const { messages } = renderMessagesForAPI(
+      [
+        createUserMessage({ content: 'hi' }),
+        createAssistantMessage({ content: [REASONING, { type: 'text', text: '\n\n', citations: [] }] as never }),
+        createUserMessage({ content: 'again' }),
+      ],
+      [],
+      { useToolSearch: false, advisor: false, stripOldThinking: false, stripOldNarration: false, redactCodexItems: true },
+    )
+    for (const message of messages.filter(m => m.type === 'assistant')) {
+      const blocks = message.message.content as Array<{ type: string; text?: string }>
+      expect(blocks.some(block => block.type !== 'text' || (block.text ?? '').trim() !== '')).toBe(true)
+    }
+  })
+})
+
+describe('the old-thinking strip and Codex reasoning', () => {
+  const originalProfile = process.env.CLAUDIN_CACHE_PROFILE
+  afterEach(() => {
+    if (originalProfile === undefined) delete process.env.CLAUDIN_CACHE_PROFILE
+    else process.env.CLAUDIN_CACHE_PROFILE = originalProfile
+    _resetCacheProfileForTesting()
+  })
+
+  test('under the aggressive profile a Codex session keeps its reasoning items', () => {
+    process.env.CLAUDIN_CACHE_PROFILE = 'aggressive'
+    useProfile(CODEX_OAUTH)
+    expect(historyRedactions().stripOldThinking).toBe(false)
+  })
+
+  test('every other provider still strips old thinking there', () => {
+    process.env.CLAUDIN_CACHE_PROFILE = 'aggressive'
+    useProfile(ANTHROPIC)
+    expect(historyRedactions().stripOldThinking).toBe(true)
+  })
+})
