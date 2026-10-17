@@ -62,7 +62,8 @@ export function handleMessageFromStream(
     // and would otherwise show twice for the pane's 30 seconds.
     if (message.type === 'assistant') {
       const thinkingBlock = message.message.content.find(
-        block => block.type === 'thinking' && !isProgressUpdateBlock(block),
+        // A block with no text (a Codex reasoning item) has nothing to show.
+        block => block.type === 'thinking' && block.thinking !== '' && !isProgressUpdateBlock(block),
       )
       if (thinkingBlock && thinkingBlock.type === 'thinking') {
         onStreamingThinking?.(() => ({
