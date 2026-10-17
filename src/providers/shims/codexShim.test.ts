@@ -2209,3 +2209,114 @@ describe('an error event the stream recovers from', () => {
     expect(replayedReasoning()).toHaveLength(1)
   })
 })
+
+const { _setCodexSocketTransportForTesting } = await import('src/providers/shims/codex/websocket.js')
+
+describe('performCodexRequest over the Codex WebSocket', () => {
+  const realFetch = globalThis.fetch
+  const savedFlag = process.env.CLAUDIN_CODEX_WEBSOCKET
+  type SocketCall = { url: string; socketUrl: string; headers: Record<string, string>; body: Record<string, unknown>; http: () => Promise<Response> }
+  let calls: SocketCall[]
+  let posted: Array<{ url: string; body: Record<string, unknown> }>
+
+  beforeEach(() => {
+    calls = []
+    posted = []
+    globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+      posted.push({ url: String(input), body: JSON.parse(init?.body as string) as Record<string, unknown> })
+      return new Response(TEXT_STREAM, { status: 200 })
+    }) as typeof fetch
+    _setCodexSocketTransportForTesting({
+      request: async request => {
+        calls.push(request)
+        return new Response(TEXT_STREAM, { status: 200 })
+      },
+      closeAll: () => {},
+      latched: false,
+    })
+  })
+
+  afterEach(() => {
+    globalThis.fetch = realFetch
+    _setCodexSocketTransportForTesting(undefined)
+    if (savedFlag === undefined) delete process.env.CLAUDIN_CODEX_WEBSOCKET
+    else process.env.CLAUDIN_CODEX_WEBSOCKET = savedFlag
+  })
+
+  async function send(baseUrl: string): Promise<Response> {
+    return performCodexRequest({
+      request: { transport: 'codex_responses', requestedModel: 'gpt-5.6-terra', resolvedModel: 'gpt-5.6-terra', baseUrl, reasoning: { effort: 'medium' } },
+      credentials: { apiKey: 'tok', accountId: 'acct', source: 'env' },
+      params: { model: 'gpt-5.6-terra', system: 'be brief', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1024 },
+      defaultHeaders: {},
+    })
+  }
+
+  test('the Codex backend sends over the socket the body it would POST; the POST is its fallback', async () => {
+    process.env.CLAUDIN_CODEX_WEBSOCKET = '1'
+    const response = await send('https://chatgpt.com/backend-api/codex')
+    expect(response.status).toBe(200)
+    expect(calls).toHaveLength(1)
+    expect(posted).toHaveLength(0)
+    const call = calls[0]!
+    expect(call.url).toBe('https://chatgpt.com/backend-api/codex/responses')
+    expect(call.socketUrl).toBe('wss://chatgpt.com/backend-api/codex/responses')
+    expect(call.headers['OpenAI-Beta']).toBe('responses_websockets=2026-02-06')
+    expect(call.headers['Content-Type']).toBeUndefined()
+    expect(call.headers.Authorization).toBe('Bearer tok')
+    expect(call.headers['ChatGPT-Account-Id']).toBe('acct')
+
+    await call.http()
+    expect(posted).toHaveLength(1)
+    expect(posted[0]!.url).toBe('https://chatgpt.com/backend-api/codex/responses')
+    expect(posted[0]!.body).toEqual(call.body)
+  })
+
+  test('the killswitch POSTs as before and never touches the socket', async () => {
+    process.env.CLAUDIN_CODEX_WEBSOCKET = '0'
+    await send('https://chatgpt.com/backend-api/codex')
+    expect(calls).toHaveLength(0)
+    expect(posted).toHaveLength(1)
+  })
+
+  test('a relay with its own baseUrl POSTs even with the socket on', async () => {
+    process.env.CLAUDIN_CODEX_WEBSOCKET = '1'
+    await send('http://localhost:8000/v1')
+    expect(calls).toHaveLength(0)
+    expect(posted).toHaveLength(1)
+  })
+
+  test('a refused socket answer surfaces like a refused POST', async () => {
+    process.env.CLAUDIN_CODEX_WEBSOCKET = '1'
+    _setCodexSocketTransportForTesting({
+      request: async () => new Response('{"error":{"message":"expired"}}', { status: 401 }),
+      closeAll: () => {},
+      latched: false,
+    })
+    const error = await send('https://chatgpt.com/backend-api/codex').catch((e: unknown) => e)
+    expect((error as { status?: number }).status).toBe(401)
+  })
+})
+
+describe('events only the WebSocket sends', () => {
+  // Codex CLI 0.163 capture (2026-10-17): these arrive between the usual
+  // events of every response, and none of them belongs in the message.
+  const WS_ONLY = [
+    sseEvent('codex.rate_limits', { plan_type: 'plus', rate_limits: { primary: { used_percent: 46 } } }),
+    sseEvent('codex.response.metadata', { headers: { 'x-codex-turn-state': 'gAAA', 'x-models-etag': 'W/"1"' } }),
+    sseEvent('response.metadata', { metadata: {} }),
+    sseEvent('responsesapi.websocket_timing', { timing: { queue_ms: 3 } }),
+  ]
+
+  test('a stream that carries them reads exactly as one that does not', async () => {
+    const [rateLimits, metadata, responseMetadata, timing] = WS_ONLY
+    const withThem = [rateLimits!, metadata!, TEXT_STREAM.replace('event: response.completed', `${responseMetadata}${timing}event: response.completed`)]
+    expect(await streamEvents(withThem)).toEqual(await streamEvents([TEXT_STREAM]))
+    expect(await streamEvents(withThem)).toEqual(TEXT_EVENTS)
+  })
+
+  test('the completed response is found past them', async () => {
+    const completed = await collectCodexCompletedResponse(responseFromChunks([...WS_ONLY, TEXT_STREAM]))
+    expect(completed.id).toBe('resp_1')
+  })
+})

@@ -34,6 +34,10 @@ import {
   codexReplayActive,
   codexBackendBodyFields,
 } from 'src/providers/shims/codex/backend.js'
+import {
+  codexSocketEligible,
+  requestOverCodexSocket,
+} from 'src/providers/shims/codex/websocket.js'
 
 export interface AnthropicUsage {
   input_tokens: number
@@ -721,18 +725,24 @@ export async function performCodexRequest(options: {
     }
   })()
 
-  const response = await fetchWithProxyRetry(
-    codexUrl,
-    {
-      method: 'POST',
-      headers,
-      // WHY: byte-identity required for implicit prefix caching on
-      // OpenAI Responses API. See src/shared/data/stableStringify.ts.
-      body: stableStringify(body),
-      signal: options.signal,
-    },
-    { provider: 'codex' },
-  )
+  const http = () =>
+    fetchWithProxyRetry(
+      codexUrl,
+      {
+        method: 'POST',
+        headers,
+        // WHY: byte-identity required for implicit prefix caching on
+        // OpenAI Responses API. See src/shared/data/stableStringify.ts.
+        body: stableStringify(body),
+        signal: options.signal,
+      },
+      { provider: 'codex' },
+    )
+  // The Codex backend gets the same body over a socket, as Codex CLI sends
+  // it; the POST stays the fallback (codex/websocket.ts).
+  const response = codexSocketEligible(options.request)
+    ? await requestOverCodexSocket({ url: codexUrl, headers, body, signal: options.signal, http })
+    : await http()
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown error')

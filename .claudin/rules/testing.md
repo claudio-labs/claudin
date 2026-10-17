@@ -296,6 +296,36 @@ more cheaply in its own module re-exported from the `.tsx` (e.g.
 > modules `bun test` loads fine. Verify importability with an actual `bun test`,
 > never `bun -e`.
 
+### A branch that only runs on Node is tested under node
+
+`bin/claudin` runs on Node; `bun test` runs everything on Bun, so a
+`typeof Bun === 'undefined'` branch never executes there, and no stand-in
+inside Bun replaces it for WebSockets: the name `ws` resolves to Bun's own shim
+(it calls send callbacks but emits neither `upgrade` nor
+`unexpected-response`), and the real package fails inside Bun ("Unexpected
+server response: 101"). Until 2026-10-17 every Node WebSocket branch in the
+tree was untested, and one had been dead for a whole `ws` major
+(`ws.upgradeReq`, gone in ws 8: the headless transport never replayed its
+buffer on Node).
+
+- Bundle a driver with the CLI — `bun build <driver.ts> --target=node
+  --outdir <tmp>` from `Bun.spawnSync([process.execPath, 'build', …])` — run it
+  with `node`, and assert on the JSON line it prints. In-process `Bun.build`
+  under `bun test` fails to resolve some `src/…` aliases the CLI resolves.
+- Worked examples: `src/providers/transport/webSocket.node.test.ts` (the
+  opener's Node branch against a real `WebSocketServer`) and
+  `src/platform/headless/transports/WebSocketTransport.node.test.ts`.
+- Bun's coverage does not count lines that ran in the subprocess; the node test
+  is the proof for that branch, not the percentage.
+- New WebSocket code goes through `openWebSocket`
+  (`src/providers/transport/webSocket.ts`): the split is tested there once,
+  and a caller that only hands over handlers is testable on Bun.
+
+`src/stubs/test-preload.ts` also sets `CLAUDIN_CODEX_WEBSOCKET=0` for the run:
+suites stub `fetch` to see what a Codex-backend request sends, and with the
+socket on (its runtime default) that request would open a real connection to
+chatgpt.com. A test of the socket path sets it to `1` itself.
+
 ## Coverage Targets
 
 | Area | Target | Notes |

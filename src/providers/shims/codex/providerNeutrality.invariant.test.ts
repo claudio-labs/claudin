@@ -278,6 +278,45 @@ describe('GitHub Copilot on the Responses API', () => {
     expect((body?.tools as unknown[]).length).toBe(1)
   })
 
+  test('with the Codex WebSocket on, Copilot still POSTs and never opens a socket', async () => {
+    const { _setCodexSocketTransportForTesting } = await import('src/providers/shims/codex/websocket.js')
+    const saved = process.env.CLAUDIN_CODEX_WEBSOCKET
+    let sockets = 0
+    let posts = 0
+    _setCodexSocketTransportForTesting({
+      request: async () => {
+        sockets += 1
+        return new Response('', { status: 200 })
+      },
+      closeAll: () => {},
+      latched: false,
+    })
+    globalThis.fetch = (async () => {
+      posts += 1
+      return new Response('', { status: 200 })
+    }) as unknown as typeof fetch
+    process.env.CLAUDIN_CODEX_WEBSOCKET = '1'
+    try {
+      await performCodexRequest({
+        request: {
+          transport: 'codex_responses',
+          requestedModel: 'gpt-5.5',
+          resolvedModel: 'gpt-5.5',
+          baseUrl: 'https://api.githubcopilot.com',
+        },
+        credentials: { apiKey: 'gh-neutral', source: 'env' },
+        params: { model: 'gpt-5.5', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1024 },
+        defaultHeaders: {},
+      })
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_CODEX_WEBSOCKET
+      else process.env.CLAUDIN_CODEX_WEBSOCKET = saved
+      _setCodexSocketTransportForTesting(undefined)
+    }
+    expect(sockets).toBe(0)
+    expect(posts).toBe(1)
+  })
+
   test('a stream with reasoning items reads as text and a tool call, nothing else', async () => {
     expect(await anthropicEventsOf(RESPONSES_STREAM.join('') + COMPLETED)).toEqual([
       { type: 'message_start' },

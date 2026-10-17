@@ -43,15 +43,15 @@ src/
 │   ├── hooks/ (18)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
 │   ├── plans/ goal/ autoFix/           ← planning + self-correction
 │   └── scratchpad.ts            ← the per-session scratchpad dir (permissions only consumes it)
-├── providers/ (296)             ← provider abstraction (start here for provider issues)
+├── providers/ (333)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (69)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   ├── shims/ (77)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
 │   │                              Completions renderer is openaiShim/ (~4.9k lines), which also
 │   │                              holds the ten end-to-end suites that drive the barrel with a
 │   │                              stubbed fetch over __testutils__/shimHarness.ts. Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
-│   ├── transport/ (36)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
+│   ├── transport/ (49)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
 │   ├── oauth/ (37)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
 │   ├── model/ (51)              ← model.ts (getMainLoopModel, getSmallFastModel),
 │   │                              providers.ts (getAPIProvider), modelOptions, catalogs.

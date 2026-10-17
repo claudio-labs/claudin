@@ -1,5 +1,10 @@
 import { mock } from 'bun:test'
 
+// Suites stub fetch to see what a Codex-backend request sends; with the Codex
+// WebSocket on (its runtime default) that request would open a real socket to
+// chatgpt.com instead. Tests of the socket path set it to 1 themselves.
+process.env.CLAUDIN_CODEX_WEBSOCKET ??= '0'
+
 // INERT, kept for documentation. Bun ≥1.3.9 resolves `bun:bundle` natively
 // before `mock.module` (or a bundler plugin) can intercept it — the same
 // resolution order that forced scripts/build/build.ts to rewrite `feature()` calls in

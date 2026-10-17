@@ -92,7 +92,13 @@ describe('summarizeArm', () => {
   })
 
   test('an arm with no requests summarizes to zeros', () => {
-    expect(summarizeArm([])).toMatchObject({ requests: 0, replayedReasoning: [], reasoningTokens: 0 })
+    expect(summarizeArm([])).toMatchObject({ requests: 0, replayedReasoning: [], reasoningTokens: 0, transports: [], framesWithPrevious: 0, inputItems: [] })
+  })
+
+  test('a WebSocket delta: the transport, the previous response it names, its few items', () => {
+    const full = { ...request({ input: [{}, {}, {}] }), transport: 'websocket' as const }
+    const delta = { ...request({ previous_response_id: 'resp_1', input: [{ type: 'function_call_output' }] }), transport: 'websocket' as const }
+    expect(summarizeArm([full, delta])).toMatchObject({ transports: ['websocket'], framesWithPrevious: 1, inputItems: [3, 1] })
   })
 })
 
@@ -101,6 +107,9 @@ describe('formatTable', () => {
     const table = formatTable({ codex: summarizeArm([CODEX_TURN]), claudin: summarizeArm([CLAUDIN_TURN]) })
     const lines = table.split('\n')
     expect(lines[0]).toMatch(/^\s+codex\s+claudin$/)
+    expect(lines.find(line => line.startsWith('transport'))).toMatch(/http\s+http$/)
+    expect(lines.find(line => line.startsWith('requests naming the previous response'))).toMatch(/0\/1\s+0\/1$/)
+    expect(lines.find(line => line.startsWith('input items per request'))).toMatch(/5\s+3$/)
     expect(lines.find(line => line.startsWith('reasoning items replayed per request'))).toMatch(/2\s+0$/)
     expect(lines.find(line => line.startsWith('field: text'))).toMatch(/1\/1\s+—$/)
     expect(lines.find(line => line.startsWith('calls under the backend id'))).toMatch(/1\/1\s+0\/1$/)

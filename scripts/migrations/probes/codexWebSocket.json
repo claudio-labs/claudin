@@ -1,0 +1,68 @@
+{
+  "test": [
+    "src/providers/transport/webSocket.test.ts",
+    "src/providers/transport/webSocket.node.test.ts",
+    "src/providers/transport/responsesSocket/frame.test.ts",
+    "src/providers/transport/responsesSocket/pool.test.ts",
+    "src/providers/transport/responsesSocket/transport.test.ts",
+    "src/providers/shims/codex/websocket.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
+    "src/providers/shims/codexShim.test.ts"
+  ],
+  "source": "src/providers/transport/responsesSocket/frame.ts",
+  "probes": [
+    {
+      "name": "the planner sends a delta after the tools changed",
+      "find": "if (settingsKey !== chain.settingsKey) return full(body, 'settings-changed', settingsKey, inputKeys)",
+      "replace": "void chain.settingsKey"
+    },
+    {
+      "name": "the chain keeps only the delta, not the full rendered input",
+      "find": "    reason: 'incremental',\n    settingsKey,\n    inputKeys,\n",
+      "replace": "    reason: 'incremental',\n    settingsKey,\n    inputKeys: delta.map(item => stableStringify(item)),\n"
+    },
+    {
+      "name": "the pool hands out a socket that is still busy",
+      "source": "src/providers/transport/responsesSocket/pool.ts",
+      "find": "if (socket.key === key && !socket.busy) idle.push(socket)",
+      "replace": "if (socket.key === key) idle.push(socket)"
+    },
+    {
+      "name": "Copilot goes over the Codex socket",
+      "source": "src/providers/shims/codex/websocket.ts",
+      "find": "return isCodexBackendRequest(request) && isCodexWebSocketEnabled()",
+      "replace": "return request.transport === 'codex_responses' && isCodexWebSocketEnabled()"
+    },
+    {
+      "name": "detach leaves the Bun message listener attached",
+      "source": "src/providers/transport/webSocket.ts",
+      "find": "      ws.removeEventListener('message', onMessage)\n",
+      "replace": ""
+    },
+    {
+      "name": "detach leaves the Node message listener attached",
+      "source": "src/providers/transport/webSocket.ts",
+      "find": "    socket.off('message', onMessage)\n",
+      "replace": ""
+    },
+    {
+      "name": "two lost responses in a row do not turn WebSocket off",
+      "source": "src/providers/transport/responsesSocket/transport.ts",
+      "find": "if (drops >= DROPS_BEFORE_LATCH) latch(",
+      "replace": "if (drops < 0) latch("
+    },
+    {
+      "name": "an error frame's HTTP status is ignored and it streams as a 500",
+      "source": "src/providers/transport/responsesSocket/transport.ts",
+      "find": "  if (typeof status !== 'number' || status < 400 || status > 599) return undefined\n",
+      "replace": "  if (status !== status || true) return undefined\n"
+    },
+    {
+      "name": "control: the debug line for a delta is worded differently",
+      "source": "src/providers/transport/responsesSocket/transport.ts",
+      "find": "frame incremental (",
+      "replace": "frame delta (",
+      "expect": "green"
+    }
+  ]
+}

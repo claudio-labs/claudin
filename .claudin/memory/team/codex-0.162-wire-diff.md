@@ -1,6 +1,6 @@
 ---
 name: codex-0.162-wire-diff
-description: Codex CLI 0.162.1 vs Claudin on the Codex backend — the reasoning replay gap found 2026-10-16 and closed on branch feat/codex-reasoning-replay (10-17); final capture, gates, and the traps the capture caught
+description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay closed in PR 307, WebSocket transport closed on feat/responses-websocket (10-17); captures, gates, the free-plan quota that ran out, and the traps the captures caught
 type: project
 ---
 
@@ -25,8 +25,20 @@ gpt-6-luna with `effort:"max"`: 200. A Codex session resumed under Anthropic sen
 `codex` field, no encrypted payload, standard tool_use blocks, no retry. The Anthropic
 wire (`wire-diff --raw`) is byte-identical to main's after normalizing session UUIDs.
 
-Still different on purpose: WebSocket + `previous_response_id` (Codex) vs HTTP with full
-input, and Codex's "responses_lite" prompt shape (one `exec` tool, developer messages).
+Still different on purpose: Codex's "responses_lite" prompt shape (one `exec` tool, developer
+messages), its `generate: false` prewarm and its telemetry (`x-codex-turn-metadata`,
+`client_metadata` in every frame).
+
+**Transport closed 2026-10-17** on branch `feat/responses-websocket` (killswitch
+`CLAUDIN_CODEX_WEBSOCKET=0`; design in `docs/tech/responses-websocket/README.md`). Claudin
+talks to the backend over a socket with deltas, like Codex CLI 0.163. Capture with
+`--arm=claudin-http`: 3/6 requests as deltas (input items `1 1 1 9 12 1` vs HTTP
+`1 4 6 9 12 15`), cached/input 131584/162798 vs 131584/162816 (resume turns included),
+answers equal, no 4xx. One-run A/B (5 reads): http 24.1 s, placebo 22.5 s, ws 10.0 s —
+not a measurement. The test account is a **free plan**: its 30-day window ran out during
+these checks (`usage_limit_reached`, resets ~2026-11-15). Over the socket that limit came
+as an `error` frame read as a 500 and retried 11 times; fixed (the frame's `status` is
+now the Response's).
 
 **Facts the capture and probes established:**
 - A ChatGPT account accepts only gpt-6-luna, gpt-5.6-terra, gpt-5.6-luna (272k window,

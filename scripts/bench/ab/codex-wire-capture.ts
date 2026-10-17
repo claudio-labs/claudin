@@ -6,7 +6,8 @@
  * Both CLIs run a three-prompt session (`exec` then `exec resume --last` twice
  * for Codex; `-p` then `-c -p` twice for Claudin) in throwaway git repos, each
  * arm through its own mitmdump. The Codex CLI talks WebSocket and Claudin HTTP, so the
- * comparison is per `response.create` frame / per POST, not per byte. Then the
+ * comparison is per `response.create` frame / per POST, not per byte (Claudin talks
+ * WebSocket too since 2026-10-17; the `claudin-http` arm is its POST). Then the
  * flow files are decoded offline by codex-wire-dump.py into one redacted JSON
  * per request, each flow file (the only copy of the tokens) is deleted, and the
  * comparison table prints: the body fields each side sends, how many reasoning
@@ -14,11 +15,13 @@
  * reasoning tokens each turn spent.
  *
  *   bun scripts/bench/ab/codex-wire-capture.ts [--model=gpt-5.6-terra] [--out=<dir>]
- *     [--claudin=claudindev] [--codex=codex] [--arm=claudin-off] [--effort=max] [--only=claudin]
+ *     [--claudin=claudindev] [--codex=codex] [--arm=claudin-off] [--arm=claudin-http]
+ *     [--effort=max] [--only=claudin]
  *
  * `--arm=claudin-off` runs a third arm, Claudin with
  * CLAUDIN_CODEX_REASONING_REPLAY=0 — the body from before the replay, so the
- * table has a control.
+ * table has a control. `--arm=claudin-http` runs Claudin with
+ * CLAUDIN_CODEX_WEBSOCKET=0, the POST + SSE transport.
  * `--effort` pins Claudin's effort (CLAUDIN_EFFORT_LEVEL), `--only=claudin`
  * skips the Codex CLI arm (for a model id only Claudin knows, as `codexplan`).
  * Each turn's answer lands in <out>/<arm>-turn<n>.txt.
@@ -58,6 +61,12 @@ export type CapturedRequest = {
 /** Per arm: what its main-loop requests carry. */
 export type ArmSummary = {
   requests: number
+  /** http and/or websocket. */
+  transports: string[]
+  /** Requests that named the previous response (a delta over a socket). */
+  framesWithPrevious: number
+  /** Items in each request's input: a delta carries only the new ones. */
+  inputItems: number[]
   /** Body keys, with how many requests sent each. */
   fields: Record<string, number>
   include: string[]
@@ -99,6 +108,9 @@ export function summarizeArm(requests: CapturedRequest[]): ArmSummary {
   const main = requests.filter(isMainLoopRequest)
   const summary: ArmSummary = {
     requests: main.length,
+    transports: [...new Set(main.map(r => r.transport))],
+    framesWithPrevious: main.filter(r => typeof r.body.previous_response_id === 'string').length,
+    inputItems: main.map(r => inputOf(r).length),
     fields: {},
     include: distinct(main.map(r => r.body.include)),
     reasoning: distinct(main.map(r => r.body.reasoning)),
@@ -146,6 +158,9 @@ export function formatTable(arms: Record<string, ArmSummary>): string {
   const allFields = [...new Set(names.flatMap(name => Object.keys(arms[name]!.fields)))].sort()
   const rows: Array<[string, ...string[]]> = [
     ['main-loop requests', ...names.map(n => String(arms[n]!.requests))],
+    ['transport', ...names.map(n => arms[n]!.transports.join(' + '))],
+    ['requests naming the previous response', ...names.map(n => `${arms[n]!.framesWithPrevious}/${arms[n]!.requests}`)],
+    ['input items per request', ...names.map(n => arms[n]!.inputItems.join(' '))],
     ['include', ...names.map(n => arms[n]!.include.join(' | '))],
     ['reasoning', ...names.map(n => arms[n]!.reasoning.join(' | '))],
     ['text', ...names.map(n => arms[n]!.text.join(' | '))],
@@ -188,7 +203,7 @@ function argValue(name: string, fallback: string): string {
   return hit ? hit.slice(name.length + 3) : fallback
 }
 
-function run(command: string, args: string[], cwd: string, env: Record<string, string>, stdoutFile: string): Promise<number> {
+export function run(command: string, args: string[], cwd: string, env: Record<string, string>, stdoutFile: string): Promise<number> {
   // Async on purpose: spawnSync would block the event loop while the CLI waits
   // on the network, which is harmless here but keeps the timeouts honest.
   return new Promise(resolve => {
@@ -206,13 +221,30 @@ function run(command: string, args: string[], cwd: string, env: Record<string, s
   })
 }
 
-function freshRepo(dir: string): void {
+export function freshRepo(dir: string, files: Record<string, string> = { 'notes.txt': NOTES }): void {
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'notes.txt'), NOTES)
+  for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content)
   spawnSync('git', ['init', '-q'], { cwd: dir })
-  spawnSync('git', ['add', 'notes.txt'], { cwd: dir })
+  spawnSync('git', ['add', '.'], { cwd: dir })
   spawnSync('git', ['-c', 'user.email=x@x', '-c', 'user.name=x', 'commit', '-qm', 'init'], { cwd: dir })
+}
+
+/** A throwaway Claudin config dir with one Codex profile linked to the Codex CLI's auth.json. */
+export function writeCodexProfileConfig(cfg: string, model: string, authJson: string): void {
+  mkdirSync(cfg, { recursive: true })
+  writeFileSync(join(cfg, 'config.json'), JSON.stringify({
+    providerProfiles: [{
+      id: 'provider_codexwire',
+      name: 'Codex wire capture',
+      provider: 'openai',
+      baseUrl: 'https://chatgpt.com/backend-api/codex',
+      model,
+      extras: { codexAuthPath: authJson },
+    }],
+    activeProviderProfileId: 'provider_codexwire',
+    hasCompletedOnboarding: true,
+  }, null, 2))
 }
 
 /** Records one arm through its own mitmdump, then decodes it into <out>/cap. */
@@ -245,7 +277,6 @@ async function main(): Promise<void> {
   const out = argValue('out', join(process.cwd(), `codex-wire-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`))
   const claudinBin = argValue('claudin', 'claudindev')
   const codexBin = argValue('codex', 'codex')
-  const withControl = process.argv.includes('--arm=claudin-off')
   const effort = argValue('effort', '')
   const onlyClaudin = process.argv.includes('--only=claudin')
   const port = 8899
@@ -282,22 +313,11 @@ async function main(): Promise<void> {
   }
 
   const arms: Array<[string, Record<string, string>]> = [['claudin', {}]]
-  if (withControl) arms.push(['claudin-off', { CLAUDIN_CODEX_REASONING_REPLAY: '0' }])
+  if (process.argv.includes('--arm=claudin-off')) arms.push(['claudin-off', { CLAUDIN_CODEX_REASONING_REPLAY: '0' }])
+  if (process.argv.includes('--arm=claudin-http')) arms.push(['claudin-http', { CLAUDIN_CODEX_WEBSOCKET: '0' }])
   for (const [arm, armEnv] of arms) {
     const cfg = join(out, `cfg-${arm}`)
-    mkdirSync(cfg, { recursive: true })
-    writeFileSync(join(cfg, 'config.json'), JSON.stringify({
-      providerProfiles: [{
-        id: 'provider_codexwire',
-        name: 'Codex wire capture',
-        provider: 'openai',
-        baseUrl: 'https://chatgpt.com/backend-api/codex',
-        model,
-        extras: { codexAuthPath: authJson },
-      }],
-      activeProviderProfileId: 'provider_codexwire',
-      hasCompletedOnboarding: true,
-    }, null, 2))
+    writeCodexProfileConfig(cfg, model, authJson)
     await recordArm(arm, out, proxyEnv, port, async env => {
       const repo = join(out, `repo-${arm}`)
       freshRepo(repo)

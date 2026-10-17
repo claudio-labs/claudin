@@ -1,11 +1,14 @@
-/* eslint-disable eslint-plugin-n/no-unsupported-features/node-builtins */
-
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   SDKControlPermissionRequest,
   StdoutMessage,
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import type { RemotePermissionResponse } from 'src/platform/remote/RemoteSessionManager.js'
+import {
+  openWebSocket,
+  WS_OPEN,
+  type WebSocketHandle,
+} from 'src/providers/transport/webSocket.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import type { RemoteMessageContent } from 'src/platform/teleport/api.js'
@@ -38,7 +41,7 @@ function isStdoutMessage(value: unknown): value is StdoutMessage {
 }
 
 export class DirectConnectSessionManager {
-  private ws: WebSocket | null = null
+  private ws: WebSocketHandle | null = null
   private config: DirectConnectConfig
   private callbacks: DirectConnectCallbacks
 
@@ -52,78 +55,83 @@ export class DirectConnectSessionManager {
     if (this.config.authToken) {
       headers['authorization'] = `Bearer ${this.config.authToken}`
     }
-    // Bun's WebSocket supports headers option but the DOM typings don't
-    this.ws = new WebSocket(this.config.wsUrl, {
+    // Through the shared opener, so the socket honors HTTPS_PROXY and the
+    // mTLS/CA settings and works under Node too; it used to be Bun-only.
+    this.ws = openWebSocket(this.config.wsUrl, {
       headers,
-    } as unknown as string[])
-
-    this.ws.addEventListener('open', () => {
-      this.callbacks.onConnected?.()
-    })
-
-    this.ws.addEventListener('message', event => {
-      const data = typeof event.data === 'string' ? event.data : ''
-      const lines = data.split('\n').filter((l: string) => l.trim())
-
-      for (const line of lines) {
-        let raw: unknown
-        try {
-          raw = jsonParse(line)
-        } catch {
-          continue
-        }
-
-        if (!isStdoutMessage(raw)) {
-          continue
-        }
-        const parsed = raw
-
-        // Handle control requests (permission requests)
-        if (parsed.type === 'control_request') {
-          if (parsed.request.subtype === 'can_use_tool') {
-            this.callbacks.onPermissionRequest(
-              parsed.request,
-              parsed.request_id,
-            )
-          } else {
-            // Send an error response for unrecognized subtypes so the
-            // server doesn't hang waiting for a reply that never comes.
-            logForDebugging(
-              `[DirectConnect] Unsupported control request subtype: ${parsed.request.subtype}`,
-            )
-            this.sendErrorResponse(
-              parsed.request_id,
-              `Unsupported control request subtype: ${parsed.request.subtype}`,
-            )
-          }
-          continue
-        }
-
-        // Forward SDK messages (assistant, result, system, etc.)
-        if (
-          parsed.type !== 'control_response' &&
-          parsed.type !== 'keep_alive' &&
-          parsed.type !== 'control_cancel_request' &&
-          parsed.type !== 'streamlined_text' &&
-          parsed.type !== 'streamlined_tool_use_summary' &&
-          !(parsed.type === 'system' && parsed.subtype === 'post_turn_summary')
-        ) {
-          this.callbacks.onMessage(parsed as SDKMessage)
-        }
-      }
-    })
-
-    this.ws.addEventListener('close', () => {
-      this.callbacks.onDisconnected?.()
-    })
-
-    this.ws.addEventListener('error', () => {
-      this.callbacks.onError?.(new Error('WebSocket connection error'))
+      handlers: {
+        onOpen: () => {
+          this.callbacks.onConnected?.()
+        },
+        onMessage: (data, isBinary) => {
+          if (!isBinary) this.handleFrame(data)
+        },
+        onClose: () => {
+          this.callbacks.onDisconnected?.()
+        },
+        onError: () => {
+          this.callbacks.onError?.(new Error('WebSocket connection error'))
+        },
+        onRefused: () => {
+          this.callbacks.onError?.(new Error('WebSocket connection error'))
+        },
+      },
     })
   }
 
+  private handleFrame(data: string): void {
+    const lines = data.split('\n').filter((l: string) => l.trim())
+
+    for (const line of lines) {
+      let raw: unknown
+      try {
+        raw = jsonParse(line)
+      } catch {
+        continue
+      }
+
+      if (!isStdoutMessage(raw)) {
+        continue
+      }
+      const parsed = raw
+
+      // Handle control requests (permission requests)
+      if (parsed.type === 'control_request') {
+        if (parsed.request.subtype === 'can_use_tool') {
+          this.callbacks.onPermissionRequest(
+            parsed.request,
+            parsed.request_id,
+          )
+        } else {
+          // Send an error response for unrecognized subtypes so the
+          // server doesn't hang waiting for a reply that never comes.
+          logForDebugging(
+            `[DirectConnect] Unsupported control request subtype: ${parsed.request.subtype}`,
+          )
+          this.sendErrorResponse(
+            parsed.request_id,
+            `Unsupported control request subtype: ${parsed.request.subtype}`,
+          )
+        }
+        continue
+      }
+
+      // Forward SDK messages (assistant, result, system, etc.)
+      if (
+        parsed.type !== 'control_response' &&
+        parsed.type !== 'keep_alive' &&
+        parsed.type !== 'control_cancel_request' &&
+        parsed.type !== 'streamlined_text' &&
+        parsed.type !== 'streamlined_tool_use_summary' &&
+        !(parsed.type === 'system' && parsed.subtype === 'post_turn_summary')
+      ) {
+        this.callbacks.onMessage(parsed as SDKMessage)
+      }
+    }
+  }
+
   sendMessage(content: RemoteMessageContent): boolean {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WS_OPEN) {
       return false
     }
 
@@ -137,7 +145,7 @@ export class DirectConnectSessionManager {
       parent_tool_use_id: null,
       session_id: '',
     })
-    this.ws.send(message)
+    void this.ws.send(message)
     return true
   }
 
@@ -145,7 +153,7 @@ export class DirectConnectSessionManager {
     requestId: string,
     result: RemotePermissionResponse,
   ): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WS_OPEN) {
       return
     }
 
@@ -163,14 +171,14 @@ export class DirectConnectSessionManager {
         },
       },
     })
-    this.ws.send(response)
+    void this.ws.send(response)
   }
 
   /**
    * Send an interrupt signal to cancel the current request
    */
   sendInterrupt(): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WS_OPEN) {
       return
     }
 
@@ -182,11 +190,11 @@ export class DirectConnectSessionManager {
         subtype: 'interrupt',
       },
     })
-    this.ws.send(request)
+    void this.ws.send(request)
   }
 
   private sendErrorResponse(requestId: string, error: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WS_OPEN) {
       return
     }
     const response = jsonStringify({
@@ -197,7 +205,7 @@ export class DirectConnectSessionManager {
         error,
       },
     })
-    this.ws.send(response)
+    void this.ws.send(response)
   }
 
   disconnect(): void {
@@ -208,6 +216,6 @@ export class DirectConnectSessionManager {
   }
 
   isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN
+    return this.ws?.readyState === WS_OPEN
   }
 }
