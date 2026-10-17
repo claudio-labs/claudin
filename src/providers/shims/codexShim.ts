@@ -21,10 +21,17 @@ import {
 } from 'src/providers/shims/thinkTagSanitizer.js'
 import {
   callStateFor,
+  codexStateOf,
   messageStateFor,
   reasoningBlockFor,
+  reasoningItemFor,
   type CodexItemState,
+  type CodexReasoningInputItem,
 } from 'src/providers/shims/codex/items.js'
+import {
+  codexBackendActive,
+  codexBackendBodyFields,
+} from 'src/providers/shims/codex/backend.js'
 
 export interface AnthropicUsage {
   input_tokens: number
@@ -66,6 +73,9 @@ type ResponsesInputItem =
       type: 'message'
       role: 'user' | 'assistant'
       content: ResponsesInputPart[]
+      /** Replayed from the backend's own message item (codex/items.ts). */
+      id?: string
+      phase?: string
     }
   | {
       type: 'function_call'
@@ -79,6 +89,7 @@ type ResponsesInputItem =
       call_id: string
       output: string
     }
+  | CodexReasoningInputItem
 
 type ResponsesTool = {
   type: 'function'
@@ -229,8 +240,75 @@ function convertContentBlocksToResponsesParts(
   return parts
 }
 
+function functionCallItem(
+  toolUse: { id?: string; name?: string; input?: unknown },
+  itemId?: string,
+): ResponsesInputItem {
+  const normalized = normalizeToolUseId(toolUse.id)
+  return {
+    type: 'function_call',
+    id: itemId ?? normalized.id,
+    call_id: normalized.callId,
+    name: toolUse.name ?? 'tool',
+    arguments:
+      typeof toolUse.input === 'string'
+        ? toolUse.input
+        : JSON.stringify(toolUse.input ?? {}),
+  }
+}
+
+/**
+ * An assistant turn the way the Codex CLI replays it: every item in the order
+ * the backend produced it, under the id the backend gave it. A reasoning item
+ * comes back from its thinking block, consecutive text blocks of one message
+ * become that message again with its phase, and a call keeps its fc_ id.
+ * Blocks without item state (a turn from before the replay, or another
+ * provider's) keep their place, the synthetic call ids, and drop thinking.
+ */
+function replayAssistantItems(content: unknown): ResponsesInputItem[] {
+  if (!Array.isArray(content)) {
+    const parts = convertContentBlocksToResponsesParts(content, 'assistant')
+    return parts.length > 0 ? [{ type: 'message', role: 'assistant', content: parts }] : []
+  }
+
+  const items: ResponsesInputItem[] = []
+  let message: Extract<ResponsesInputItem, { type: 'message' }> | undefined
+  for (const block of content) {
+    if (block?.type === 'thinking' || block?.type === 'redacted_thinking') {
+      const reasoning = reasoningItemFor(block)
+      if (reasoning) {
+        items.push(reasoning)
+        message = undefined
+      }
+      continue
+    }
+    if (block?.type === 'tool_use') {
+      items.push(functionCallItem(block, codexStateOf(block)?.id))
+      message = undefined
+      continue
+    }
+    const parts = convertContentBlocksToResponsesParts([block], 'assistant')
+    if (parts.length === 0) continue
+    const state = codexStateOf(block)
+    if (message && message.id === state?.id) {
+      message.content.push(...parts)
+      continue
+    }
+    message = {
+      type: 'message',
+      role: 'assistant',
+      content: parts,
+      ...(state && { id: state.id }),
+      ...(state?.phase && { phase: state.phase }),
+    }
+    items.push(message)
+  }
+  return items
+}
+
 export function convertAnthropicMessagesToResponsesInput(
   messages: Array<{ role?: string; message?: { role?: string; content?: unknown }; content?: unknown }>,
+  options: { replayCodexItems?: boolean } = {},
 ): ResponsesInputItem[] {
   const items: ResponsesInputItem[] = []
 
@@ -280,6 +358,11 @@ export function convertAnthropicMessagesToResponsesInput(
     }
 
     if (role === 'assistant') {
+      if (options.replayCodexItems) {
+        items.push(...replayAssistantItems(content))
+        continue
+      }
+
       const textBlocks = Array.isArray(content)
         ? content.filter((block: { type?: string }) =>
             block.type !== 'tool_use' && block.type !== 'thinking')
@@ -297,17 +380,7 @@ export function convertAnthropicMessagesToResponsesInput(
         for (const toolUse of content.filter(
           (block: { type?: string }) => block.type === 'tool_use',
         )) {
-          const normalized = normalizeToolUseId(toolUse.id)
-          items.push({
-            type: 'function_call',
-            id: normalized.id,
-            call_id: normalized.callId,
-            name: toolUse.name ?? 'tool',
-            arguments:
-              typeof toolUse.input === 'string'
-                ? toolUse.input
-                : JSON.stringify(toolUse.input ?? {}),
-          })
+          items.push(functionCallItem(toolUse))
         }
       }
     }
@@ -501,6 +574,9 @@ export async function performCodexRequest(options: {
   // what goes on the wire. No ensureToolResultPairing analogue exists
   // here — convertAnthropicMessagesToResponsesInput handles orphan
   // tool_results downstream.
+  // On the Codex backend every item comes back as the backend produced it,
+  // reasoning included, and the body asks for the reasoning (codex/backend.ts).
+  const replayCodexItems = codexBackendActive(options.request)
   const compressedMessages = applyStableInputStubs(
     applyStableStubs(
       options.params.messages as Array<{
@@ -510,7 +586,9 @@ export async function performCodexRequest(options: {
       }>,
     ),
   )
-  const input = convertAnthropicMessagesToResponsesInput(compressedMessages)
+  const input = convertAnthropicMessagesToResponsesInput(compressedMessages, {
+    replayCodexItems,
+  })
   const body: Record<string, unknown> = {
     model: options.request.resolvedModel,
     input: input.length > 0
@@ -563,6 +641,10 @@ export async function performCodexRequest(options: {
 
   if (options.request.reasoning) {
     body.reasoning = options.request.reasoning
+  }
+
+  if (replayCodexItems) {
+    Object.assign(body, codexBackendBodyFields(options.request.reasoning))
   }
 
   const isTargetModel =

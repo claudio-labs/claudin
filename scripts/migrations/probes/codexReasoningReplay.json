@@ -284,6 +284,46 @@
       "name": "CAPTURE: a call keeps no item id",
       "find": "        const callState = capture ? callStateFor(item) : undefined\n\n",
       "replace": "        const callState = undefined as { id: string } | undefined\n\n"
+    },
+    {
+      "name": "REPLAY: reasoning items are not sent back",
+      "find": "      const reasoning = reasoningItemFor(block)\n      if (reasoning) {",
+      "replace": "      const reasoning = undefined as CodexReasoningInputItem | undefined\n      if (reasoning) {"
+    },
+    {
+      "name": "REPLAY: a call goes back under the synthetic id",
+      "find": "      items.push(functionCallItem(block, codexStateOf(block)?.id))\n      message = undefined",
+      "replace": "      items.push(functionCallItem(block))\n      message = undefined"
+    },
+    {
+      "name": "REPLAY: a call no longer splits the message around it",
+      "find": "      items.push(functionCallItem(block, codexStateOf(block)?.id))\n      message = undefined",
+      "replace": "      items.push(functionCallItem(block, codexStateOf(block)?.id))"
+    },
+    {
+      "name": "REPLAY: a message goes back without its phase",
+      "find": "      ...(state?.phase && { phase: state.phase }),\n",
+      "replace": ""
+    },
+    {
+      "name": "REPLAY: text of different messages merges",
+      "find": "    if (message && message.id === state?.id) {",
+      "replace": "    if (message) {"
+    },
+    {
+      "name": "REPLAY: the Codex backend body asks for nothing",
+      "find": "  if (replayCodexItems) {\n    Object.assign(body, codexBackendBodyFields(options.request.reasoning))",
+      "replace": "  if (false) {\n    Object.assign(body, codexBackendBodyFields(options.request.reasoning))"
+    },
+    {
+      "name": "REPLAY: the Codex backend gets no replay",
+      "find": "  const replayCodexItems = codexBackendActive(options.request)",
+      "replace": "  const replayCodexItems = false"
+    },
+    {
+      "name": "NEUTRALITY: every Responses caller gets the replay",
+      "find": "  const replayCodexItems = codexBackendActive(options.request)",
+      "replace": "  const replayCodexItems = true"
     }
   ]
 }

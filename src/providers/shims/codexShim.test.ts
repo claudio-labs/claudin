@@ -1447,7 +1447,14 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
   })
 
   test('reasoning goes out as resolved, and sampling only for models that are not GPT or Codex', async () => {
-    expect((await send({ reasoning: { effort: 'xhigh' } })).body.reasoning).toEqual({ effort: 'xhigh' })
+    // The Codex backend also gets the context the Codex CLI sends; see the replay tests.
+    expect((await send({ reasoning: { effort: 'xhigh' } })).body.reasoning).toEqual({
+      effort: 'xhigh',
+      context: 'all_turns',
+    })
+    expect(
+      (await send({ baseUrl: 'https://api.githubcopilot.com', reasoning: { effort: 'xhigh' } })).body.reasoning,
+    ).toEqual({ effort: 'xhigh' })
     expect((await send()).body).not.toHaveProperty('reasoning')
 
     const gpt = await send({ params: { temperature: 0.2, top_p: 0.9 } })
@@ -1910,5 +1917,186 @@ describe('which client branch captures Codex item state', () => {
     process.env.OPENAI_MODEL = 'gpt-5.5'
     process.env.OPENAI_API_KEY = 'gh-key'
     expect(await streamThroughClient()).toEqual([{ type: 'text', text: '' }])
+  })
+})
+
+// On the Codex backend each assistant turn goes back the way Codex CLI 0.162.1
+// sends it (captured 2026-10-16): reasoning → message(commentary) → call →
+// output → reasoning → message(final_answer), under the backend's own ids.
+describe('Codex item replay', () => {
+  const REASONING_1 = { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_1', encrypted_content: 'enc-1' } }
+  const REASONING_2 = { type: 'thinking', thinking: '', signature: '', codex: { id: 'rs_2', encrypted_content: 'enc-2' } }
+  const COMMENTARY = { type: 'text', text: 'Reading.', codex: { id: 'msg_1', phase: 'commentary' } }
+  const CALL = { type: 'tool_use', id: 'call_abc', name: 'Read', input: { file_path: '/x' }, codex: { id: 'fc_real' } }
+  const FINAL = { type: 'text', text: 'It has 5 numbers.', codex: { id: 'msg_2', phase: 'final_answer' } }
+
+  const TURN = [
+    { role: 'user', content: 'how many numbers?' },
+    { role: 'assistant', content: [REASONING_1, COMMENTARY, CALL] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'call_abc', content: '14 17 22 29 35' }] },
+    { role: 'assistant', content: [REASONING_2, FINAL] },
+  ]
+
+  const REPLAYED = [
+    { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'how many numbers?' }] },
+    { type: 'reasoning', id: 'rs_1', summary: [], encrypted_content: 'enc-1' },
+    { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Reading.' }], id: 'msg_1', phase: 'commentary' },
+    { type: 'function_call', id: 'fc_real', call_id: 'call_abc', name: 'Read', arguments: '{"file_path":"/x"}' },
+    { type: 'function_call_output', call_id: 'call_abc', output: '14 17 22 29 35' },
+    { type: 'reasoning', id: 'rs_2', summary: [], encrypted_content: 'enc-2' },
+    { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'It has 5 numbers.' }], id: 'msg_2', phase: 'final_answer' },
+  ]
+
+  test('a turn replays its items in order, under the ids the backend gave them', () => {
+    expect(convertAnthropicMessagesToResponsesInput(TURN, { replayCodexItems: true })).toEqual(REPLAYED as never)
+  })
+
+  test('without the option the same history converts as before', () => {
+    expect(convertAnthropicMessagesToResponsesInput(TURN)).toEqual([
+      { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'how many numbers?' }] },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Reading.' }] },
+      { type: 'function_call', id: 'fc_abc', call_id: 'call_abc', name: 'Read', arguments: '{"file_path":"/x"}' },
+      { type: 'function_call_output', call_id: 'call_abc', output: '14 17 22 29 35' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'It has 5 numbers.' }] },
+    ])
+  })
+
+  test('text blocks of one message merge, another message or a call splits them', () => {
+    const second = { type: 'text', text: 'more', codex: { id: 'msg_1', phase: 'commentary' } }
+    const other = { type: 'text', text: 'other', codex: { id: 'msg_9' } }
+    expect(
+      convertAnthropicMessagesToResponsesInput(
+        [{ role: 'assistant', content: [COMMENTARY, second, other, { type: 'text', text: 'loose' }, { type: 'text', text: 'too' }, CALL, { type: 'text', text: 'after' }] }],
+        { replayCodexItems: true },
+      ),
+    ).toEqual([
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: 'Reading.' }, { type: 'output_text', text: 'more' }],
+        id: 'msg_1',
+        phase: 'commentary',
+      },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'other' }], id: 'msg_9' },
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: 'loose' }, { type: 'output_text', text: 'too' }],
+      },
+      { type: 'function_call', id: 'fc_real', call_id: 'call_abc', name: 'Read', arguments: '{"file_path":"/x"}' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'after' }] },
+    ] as never)
+  })
+
+  test('blocks without item state keep their place and synthetic ids; foreign thinking is dropped', () => {
+    expect(
+      convertAnthropicMessagesToResponsesInput(
+        [
+          { role: 'assistant', content: 'a plain reply' },
+          {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'anthropic', signature: 'sig' },
+              { type: 'redacted_thinking', data: 'opaque' },
+              { type: 'text', text: 'first' },
+              { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'A' } },
+              { type: 'tool_use', id: 'call_1', name: 'Bash', input: { command: 'ls' } },
+              { type: 'text', text: 'then' },
+            ],
+          },
+        ],
+        { replayCodexItems: true },
+      ),
+    ).toEqual([
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'a plain reply' }] },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'first' }] },
+      { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'Bash', arguments: '{"command":"ls"}' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'then' }] },
+    ] as never)
+  })
+
+  test('an empty assistant turn replays as nothing', () => {
+    expect(convertAnthropicMessagesToResponsesInput([{ role: 'assistant', content: [] }], { replayCodexItems: true })).toEqual([])
+  })
+
+  describe('the request body', () => {
+    const realFetch = globalThis.fetch
+    const originalSwitch = process.env.CLAUDIN_CODEX_REASONING_REPLAY
+    let bodies: Array<Record<string, unknown>> = []
+
+    beforeEach(() => {
+      bodies = []
+      ;(globalThis as { fetch: typeof fetch }).fetch = (async (_input: unknown, init?: RequestInit) => {
+        bodies.push(JSON.parse(init?.body as string) as Record<string, unknown>)
+        return new Response('', { status: 200 })
+      }) as typeof fetch
+    })
+
+    afterEach(() => {
+      ;(globalThis as { fetch: typeof fetch }).fetch = realFetch
+      if (originalSwitch === undefined) delete process.env.CLAUDIN_CODEX_REASONING_REPLAY
+      else process.env.CLAUDIN_CODEX_REASONING_REPLAY = originalSwitch
+    })
+
+    async function sendTurn(
+      messages: Array<Record<string, unknown>>,
+      baseUrl = 'https://chatgpt.com/backend-api/codex',
+    ): Promise<Record<string, unknown>> {
+      await performCodexRequest({
+        request: {
+          transport: 'codex_responses',
+          requestedModel: 'gpt-5.6-terra',
+          resolvedModel: 'gpt-5.6-terra',
+          baseUrl,
+          reasoning: { effort: 'medium' },
+        },
+        credentials: { apiKey: 'test-key', accountId: 'acct', source: 'env' },
+        params: {
+          model: 'gpt-5.6-terra',
+          system: 'You are terse.',
+          messages,
+          tools: [{ name: 'Read', description: 'Reads', input_schema: { type: 'object', properties: {} } }],
+          max_tokens: 1024,
+        },
+        defaultHeaders: {},
+      })
+      return bodies.at(-1)!
+    }
+
+    test('the Codex backend gets the fields the Codex CLI sends, and the replayed items', async () => {
+      const body = await sendTurn(TURN)
+      expect(body.include).toEqual(['reasoning.encrypted_content'])
+      expect(body.reasoning).toEqual({ effort: 'medium', context: 'all_turns' })
+      expect(body.text).toEqual({ verbosity: 'low' })
+      expect(body.parallel_tool_calls).toBe(true)
+      expect(body.store).toBe(false)
+      expect(body.input).toEqual(REPLAYED)
+    })
+
+    test('with the killswitch off the body is the one sent before the replay', async () => {
+      process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
+      const body = await sendTurn(TURN)
+      expect(body).not.toHaveProperty('include')
+      expect(body).not.toHaveProperty('text')
+      expect(body.reasoning).toEqual({ effort: 'medium' })
+      expect(body.input).toEqual(convertAnthropicMessagesToResponsesInput(TURN))
+    })
+
+    test('every request of a session sends the previous one as a prefix of its input', async () => {
+      const history: Array<Record<string, unknown>> = [TURN[0]!]
+      const inputs: unknown[][] = [(await sendTurn([...history])).input as unknown[]]
+      for (const next of TURN.slice(1)) {
+        history.push(next)
+        inputs.push((await sendTurn([...history])).input as unknown[])
+      }
+      history.push({ role: 'user', content: 'and the sum?' })
+      inputs.push((await sendTurn([...history])).input as unknown[])
+
+      for (let i = 1; i < inputs.length; i++) {
+        const previous = inputs[i - 1]!
+        expect(JSON.stringify(inputs[i]!.slice(0, previous.length))).toBe(JSON.stringify(previous))
+      }
+      expect(inputs.at(-1)).toHaveLength(REPLAYED.length + 1)
+    })
   })
 })
