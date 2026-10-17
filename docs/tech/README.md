@@ -19,3 +19,4 @@ docs/tech/
 | [`web-researcher/`](web-researcher/) | Implementado (2026-05-16) | — |
 | [`repo-map/`](repo-map/) | Avaliado e medido (2026-08-16/17) — ranking e closures rejeitados; profundidade dirigida ≤2 segue aberta; 3 implementações irmãs auditadas | probe em [`scripts/bench/repomap/`](../../scripts/bench/repomap/) |
 | [`cache/`](cache/) | Clip-frontier shipped (default ON); pesquisa de cache nativo por provider (xAI/Codex/OpenAI) em 2026-08-20 — gap do Grok ainda não medido | — |
+| [`responses-websocket/`](responses-websocket/) | Implementado (2026-10-17) — `openWebSocket` para todo WebSocket do repo; Codex por socket com delta, default ON (`CLAUDIN_CODEX_WEBSOCKET=0`) | capturas em [`scripts/bench/ab/`](../../scripts/bench/ab/) |
