@@ -294,7 +294,7 @@ describe('GitHub Copilot on the Responses API', () => {
     globalThis.fetch = (async () => {
       posts += 1
       return new Response('', { status: 200 })
-    }) as typeof fetch
+    }) as unknown as typeof fetch
     process.env.CLAUDIN_CODEX_WEBSOCKET = '1'
     try {
       await performCodexRequest({
