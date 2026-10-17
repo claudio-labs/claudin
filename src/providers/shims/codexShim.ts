@@ -770,13 +770,44 @@ function determineStopReason(
   return 'end_turn'
 }
 
+/**
+ * The error a Codex SSE `error` event carries, as the APIError the retry and
+ * the UI read. The backend answers some rejections with HTTP 200 and this
+ * event — a replayed reasoning item it cannot decrypt is one — with the fields
+ * nested under `error`; the Responses API reference puts them on the event
+ * itself. An invalid request is a 400, as its HTTP form would be; anything
+ * else a 500, like response.failed.
+ *
+ * Callers raise it only when the stream ends without a completed response, so
+ * an error event followed by a completion reads as it always did.
+ */
+function codexStreamError(data: Record<string, any>): APIError {
+  const detail: Record<string, unknown> =
+    data.error && typeof data.error === 'object'
+      ? data.error
+      : { code: data.code, message: data.message, param: data.param }
+  const status = detail.type === 'invalid_request_error' ? 400 : 500
+  return APIError.generate(
+    status,
+    { error: detail },
+    typeof detail.message === 'string' ? detail.message : 'Codex stream error',
+    new Headers(),
+  )
+}
+
 export async function collectCodexCompletedResponse(
   response: Response,
   signal?: AbortSignal,
 ): Promise<Record<string, any>> {
   let completedResponse: Record<string, any> | undefined
+  let streamError: APIError | undefined
 
   for await (const event of readSseEvents(response, signal)) {
+    if (event.event === 'error') {
+      streamError = codexStreamError(event.data)
+      continue
+    }
+
     if (event.event === 'response.failed') {
       const msg = event.data?.response?.error?.message ??
         event.data?.error?.message ?? 'Codex response failed'
@@ -793,6 +824,7 @@ export async function collectCodexCompletedResponse(
   }
 
   if (!completedResponse) {
+    if (streamError) throw streamError
     throw APIError.generate(
       500, undefined, 'Codex response ended without a completed payload',
       new Headers(),
@@ -817,6 +849,7 @@ export async function* codexStreamToAnthropic(
   let nextContentBlockIndex = 0
   let sawToolUse = false
   let finalResponse: Record<string, any> | undefined
+  let streamError: APIError | undefined
 
   const closeActiveTextBlock = async function* () {
     if (activeTextBlockIndex === null) return
@@ -864,6 +897,11 @@ export async function* codexStreamToAnthropic(
 
   for await (const event of readSseEvents(response, signal)) {
     const payload = event.data
+
+    if (event.event === 'error') {
+      streamError = codexStreamError(payload)
+      continue
+    }
 
     if (event.event === 'response.output_item.added') {
       const item = payload.item
@@ -973,6 +1011,8 @@ export async function* codexStreamToAnthropic(
       throw APIError.generate(500, undefined, msg, new Headers())
     }
   }
+
+  if (!finalResponse && streamError) throw streamError
 
   yield* closeActiveTextBlock()
   for (const toolBlock of toolBlocksByItemId.values()) {

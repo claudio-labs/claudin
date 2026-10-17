@@ -160,6 +160,31 @@
       "source": "src/providers/presets/activeProvider.ts",
       "find": "      if (isOpenAICodexShortcut(primaryModel)) {",
       "replace": "      if (false) {"
+    },
+    {
+      "name": "ERROR EVENT: the stream ignores error events again",
+      "find": "    if (event.event === 'error') {\n      streamError = codexStreamError(payload)",
+      "replace": "    if (false) {\n      streamError = codexStreamError(payload)"
+    },
+    {
+      "name": "ERROR EVENT: collect ignores error events again",
+      "find": "      streamError = codexStreamError(event.data)",
+      "replace": "      void event"
+    },
+    {
+      "name": "ERROR EVENT: an invalid request is reported as a 500",
+      "find": "detail.type === 'invalid_request_error' ? 400 : 500",
+      "replace": "500"
+    },
+    {
+      "name": "ERROR EVENT: the flat event shape loses its fields",
+      "find": "      : { code: data.code, message: data.message, param: data.param }",
+      "replace": "      : {}"
+    },
+    {
+      "name": "NEUTRALITY: an error event before a completion now fails the stream",
+      "find": "  if (!finalResponse && streamError) throw streamError",
+      "replace": "  if (streamError) throw streamError"
     }
   ]
 }
