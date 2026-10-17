@@ -123,10 +123,17 @@ describe.each(RUNTIMES)('openWebSocket (%s branch)', (_name, deps) => {
   })
 
   test('a binary frame reaches onMessage as text when there is no onBinary', async () => {
-    const text = waitFor<string>(resolve => {
-      open('/', deps, { onOpen: () => void handles[0]!.send('bytes'), onMessage: resolve })
+    const got = waitFor<[string, boolean]>(resolve => {
+      open('/', deps, { onOpen: () => void handles[0]!.send('bytes'), onMessage: (data, isBinary) => resolve([data, isBinary]) })
     })
-    expect(await text).toBe('\u0001\u0002\u0003')
+    expect(await got).toEqual(['\u0001\u0002\u0003', true])
+  })
+
+  test('a text frame is not flagged binary', async () => {
+    const got = waitFor<boolean>(resolve => {
+      open('/', deps, { onOpen: () => void handles[0]!.send('echo'), onMessage: (_data, isBinary) => resolve(isBinary) })
+    })
+    expect(await got).toBe(false)
   })
 
   test('sends bytes', async () => {

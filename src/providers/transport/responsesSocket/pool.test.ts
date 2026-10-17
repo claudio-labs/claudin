@@ -181,7 +181,7 @@ describe('PooledSocket', () => {
     const seen: string[] = []
     socket.sink = { event: e => seen.push(e.type), closed: () => {} }
     for (const text of ['not json', '42', 'null', '{"no":"type"}', '{"type":7}', '{"type":"response.created"}']) {
-      fake.handlers.onMessage?.(text)
+      fake.handlers.onMessage?.(text, false)
     }
     expect(seen).toEqual(['response.created'])
   })
@@ -189,6 +189,6 @@ describe('PooledSocket', () => {
   test('a frame with no request waiting is dropped', () => {
     const { fake } = oneSocket()
     openFake(fake)
-    expect(() => fake.handlers.onMessage?.('{"type":"response.created"}')).not.toThrow()
+    expect(() => fake.handlers.onMessage?.('{"type":"response.created"}', false)).not.toThrow()
   })
 })

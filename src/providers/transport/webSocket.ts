@@ -32,7 +32,8 @@ export type WebSocketHandlers = {
   onOpen?(): void
   /** Node only: the headers of the 101 response, lower-cased. */
   onUpgrade?(headers: Record<string, string>): void
-  onMessage?(data: string): void
+  /** `isBinary` says the frame was binary, decoded here as UTF-8. */
+  onMessage?(data: string, isBinary: boolean): void
   /** When set, every frame arrives here as bytes and `onMessage` is skipped. */
   onBinary?(data: Uint8Array): void
   onError?(error: Error): void
@@ -108,9 +109,9 @@ export function openWebSocket(
 ): WebSocketHandle {
   const runtime = deps.runtime ?? (typeof Bun !== 'undefined' ? 'bun' : 'node')
   let handlers: WebSocketHandlers = options.handlers ?? {}
-  const deliver = (data: unknown): void => {
+  const deliver = (data: unknown, isBinary: boolean): void => {
     if (handlers.onBinary) handlers.onBinary(toBytes(data))
-    else handlers.onMessage?.(toText(data))
+    else handlers.onMessage?.(toText(data), isBinary)
   }
   return runtime === 'bun'
     ? openBun(url, options, () => handlers, h => { handlers = h }, deliver)
@@ -122,7 +123,7 @@ function openBun(
   options: WebSocketOpenOptions,
   current: () => WebSocketHandlers,
   replace: (h: WebSocketHandlers) => void,
-  deliver: (data: unknown) => void,
+  deliver: (data: unknown, isBinary: boolean) => void,
 ): WebSocketHandle {
   const init = {
     headers: options.headers ?? {},
@@ -135,7 +136,7 @@ function openBun(
   const ws = new globalThis.WebSocket(url, init as unknown as string[])
   ws.binaryType = 'arraybuffer'
   const onOpen = (): void => current().onOpen?.()
-  const onMessage = (event: MessageEvent): void => deliver(event.data)
+  const onMessage = (event: MessageEvent): void => deliver(event.data, typeof event.data !== 'string')
   const onError = (event: Event): void => {
     const message = (event as ErrorEvent).message
     current().onError?.(new Error(message || 'WebSocket error'))
@@ -181,7 +182,7 @@ function openNode(
   options: WebSocketOpenOptions,
   current: () => WebSocketHandlers,
   replace: (h: WebSocketHandlers) => void,
-  deliver: (data: unknown) => void,
+  deliver: (data: unknown, isBinary: boolean) => void,
   loadWs: () => Promise<WsCtor>,
 ): WebSocketHandle {
   let ws: WsWebSocket | undefined
@@ -190,7 +191,7 @@ function openNode(
   let refused = false
   const onOpen = (): void => current().onOpen?.()
   const onUpgrade = (res: IncomingMessage): void => current().onUpgrade?.(flatHeaders(res.headers))
-  const onMessage = (data: unknown): void => deliver(data)
+  const onMessage = (data: unknown, isBinary: boolean): void => deliver(data, isBinary)
   // After a refusal, the abort below surfaces as a socket hang-up; the
   // refusal already said what happened.
   const onError = (error: Error): void => {

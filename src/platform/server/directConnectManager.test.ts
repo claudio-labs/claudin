@@ -469,3 +469,48 @@ describe('close, error and disconnect', () => {
     expect(cb.onDisconnected).not.toHaveBeenCalled()
   })
 })
+
+describe('through the shared opener', () => {
+  test('the socket goes through HTTPS_PROXY (it used to ignore it)', async () => {
+    const { createServer, connect } = await import('node:net')
+    const connects: string[] = []
+    const sockets: Array<{ destroy(): void }> = []
+    const proxy = createServer(client => {
+      sockets.push(client)
+      client.once('data', chunk => {
+        const target = chunk.toString('latin1').match(/^CONNECT ([^ ]+) HTTP/)?.[1]
+        if (!target) return void client.destroy()
+        connects.push(target)
+        const [host, port] = target.split(':')
+        const upstream = connect(Number(port), host, () => {
+          client.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+          upstream.pipe(client)
+          client.pipe(upstream)
+        })
+        sockets.push(upstream)
+      })
+    })
+    await new Promise<void>(resolve => proxy.listen(0, '127.0.0.1', resolve))
+    const saved = { https: process.env.HTTPS_PROXY, lower: process.env.https_proxy, no: process.env.NO_PROXY, lowerNo: process.env.no_proxy }
+    delete process.env.https_proxy
+    delete process.env.NO_PROXY
+    delete process.env.no_proxy
+    process.env.HTTPS_PROXY = `http://127.0.0.1:${(proxy.address() as { port: number }).port}`
+    try {
+      const h = startServer()
+      const cb = makeCallbacks()
+      makeManager(h.wsUrl, cb, 'tok').connect()
+      await waitFor(() => cb.onConnected.mock.calls.length === 1, 'connected through the proxy', 3000)
+      expect(connects).toEqual([new URL(h.wsUrl).host])
+      expect(h.authHeaders).toEqual(['Bearer tok'])
+    } finally {
+      for (const [key, value] of [['HTTPS_PROXY', saved.https], ['https_proxy', saved.lower], ['NO_PROXY', saved.no], ['no_proxy', saved.lowerNo]] as const) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+      for (const m of managers.splice(0)) m.disconnect()
+      for (const s of sockets) s.destroy()
+      await new Promise<void>(resolve => proxy.close(() => resolve()))
+    }
+  })
+})
