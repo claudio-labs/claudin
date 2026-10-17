@@ -2,7 +2,8 @@
   "test": [
     "src/providers/shims/codexShim.test.ts",
     "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
-    "src/sessions/conversationRecovery.test.ts"
+    "src/sessions/conversationRecovery.test.ts",
+    "src/providers/model/codexModelSurface.test.ts"
   ],
   "source": "src/providers/shims/codexShim.ts",
   "probes": [
@@ -129,6 +130,36 @@
       "source": "src/sessions/conversationRecovery.ts",
       "find": "(block: { type?: string }) => block.type !== 'thinking' && block.type !== 'redacted_thinking',",
       "replace": "(block: { type?: string }) => block.type !== 'thinking',"
+    },
+    {
+      "name": "SURFACE: codexplan names another model in the main loop",
+      "source": "src/providers/model/model.ts",
+      "find": "  if (modelString === 'codexplan') {\n    return 'gpt-5.5'",
+      "replace": "  if (modelString === 'codexplan') {\n    return 'gpt-5.4'"
+    },
+    {
+      "name": "SURFACE: a codexplan request resolves to another model",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "  codexplan: {\n    model: 'gpt-5.5',",
+      "replace": "  codexplan: {\n    model: 'gpt-5.4',"
+    },
+    {
+      "name": "SURFACE: the Codex picker drops the catalog",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "    payg3pOptions.push(...getCodexModelOptions())",
+      "replace": "    void getCodexModelOptions"
+    },
+    {
+      "name": "SURFACE: one tier's Codex column drifts",
+      "source": "src/providers/model/configs.ts",
+      "find": "  codex: 'gpt-5.5',\n  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',\n  minimax: 'MiniMax-M2.5',\n  mistral: 'mistral-medium-latest',\n} as const satisfies ModelConfig\n\nexport const CLAUDE_3_5_V2_SONNET_CONFIG",
+      "replace": "  codex: 'gpt-5.4',\n  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',\n  minimax: 'MiniMax-M2.5',\n  mistral: 'mistral-medium-latest',\n} as const satisfies ModelConfig\n\nexport const CLAUDE_3_5_V2_SONNET_CONFIG"
+    },
+    {
+      "name": "SURFACE: a Codex alias profile stops resolving to the Codex transport",
+      "source": "src/providers/presets/activeProvider.ts",
+      "find": "      if (isOpenAICodexShortcut(primaryModel)) {",
+      "replace": "      if (false) {"
     }
   ]
 }
