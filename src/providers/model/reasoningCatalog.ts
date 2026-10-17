@@ -39,6 +39,7 @@ import { activeTransportUsesOpenAiShim } from 'src/providers/model/providers.js'
 import { getCodexAccountLimits } from 'src/providers/model/codexModelCatalog.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
+  getCodexAliasModel,
   isCodexBaseUrl,
   supportsCodexReasoningEffort,
   type ReasoningEffort,
@@ -257,7 +258,7 @@ export function resolveShimEffortValues(
 
   const values =
     lookupReasoningEffortValues(baseUrl, model) ??
-    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(model)?.effortLevels : undefined) ??
+    (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??
     (supportsCodexReasoningEffort(model) ? OPENAI_FAMILY_LEVELS : undefined)
 
   if (!values || pickerEffortLevels(values).length === 0) return undefined
