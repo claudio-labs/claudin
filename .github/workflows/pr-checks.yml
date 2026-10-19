@@ -20,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          # From .node-version, which holds the engines floor (22.12.0). PR CI
+          # From .node-version, which holds the engines floor (22.19.0). PR CI
           # runs the OLDEST supported Node on purpose: a `node-version: 22`
           # here would silently track the latest 22.x and let a PR use an API
           # the floor does not have. The release workflows deliberately differ

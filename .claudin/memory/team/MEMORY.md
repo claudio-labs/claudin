@@ -172,10 +172,11 @@
 - [Native-binary distribution (bun --compile)](compile-binary-distribution.md) — rg+sharp vendored; strip breaks binaries
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
-- [Node engine floor 22.12.0](node-engine-floor-22.md) — commander 15 is ESM-only; breaks Node 20
+- [Node engine floor 22.19.0 (10-19)](node-engine-floor-22.md) — undici 8.12 zstd; was 22.12 for commander 15
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
 - Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
+- [undici 8.12 needs Node 22.15 zstd; floor raised to 22.19 (#310)](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md) — CI-only, dev boxes run 24
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — the Gitea + tea flow is gone

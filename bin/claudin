@@ -17,7 +17,10 @@ import { fileURLToPath, pathToFileURL } from 'url'
 // Minimum Node version. Raised from >=20 to >=22.12.0 when commander v15 went
 // ESM-only; below this, the dynamic import of dist/cli.mjs fails deep inside
 // commander with a cryptic ERR_REQUIRE_ESM. Surface a clear message instead.
-const MIN_NODE = '22.12.0'
+// Raised again to >=22.19.0, undici's own floor, when undici 8.12 began
+// binding zlib.createZstdDecompress at load: before Node 22.15 that function
+// is missing and every API request fails with "reading 'bind'".
+const MIN_NODE = '22.19.0'
 {
   const cur = process.versions.node.split('.').map(Number)
   const min = MIN_NODE.split('.').map(Number)

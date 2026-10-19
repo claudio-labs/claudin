@@ -2,7 +2,7 @@
 <h1 align="center"><img src="https://www.claudiolabs.ai/img/icon.png" alt="" width="34" align="texttop" /> Claudin</h1>
 
 <p align="center">
-  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22.12+-339933?style=flat-square&logo=node.js&logoColor=white" />
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22.19+-339933?style=flat-square&logo=node.js&logoColor=white" />
   <a href="https://github.com/claudio-labs/claudin/actions/workflows/pr-checks.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/claudio-labs/claudin/pr-checks.yml?branch=main&style=flat-square&label=CI" /></a>
   <img alt="release" src="https://img.shields.io/npm/v/@claudiolabs/claudin?style=flat-square&label=release&color=CB3837" />
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-2563eb?style=flat-square" /></a>
@@ -25,7 +25,7 @@ Install the native binary for your platform:
 curl -fsSL https://claudiolabs.ai/install.sh | sh
 ```
 
-Or install through npm (needs Node.js 22.12+):
+Or install through npm (needs Node.js 22.19+):
 
 ```bash
 npm install -g @claudiolabs/claudin@latest
