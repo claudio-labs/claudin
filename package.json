@@ -53,6 +53,7 @@
     "verify:team-memory": "node dist/cli.mjs memory audit",
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
     "smoke:hello": "bun run scripts/verify/smoke-hello.ts",
+    "smoke:binary": "bun run scripts/verify/smoke-binary.ts",
     "verify:privacy": "bun run scripts/verify/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
     "build:release": "CLAUDIN_RELEASE_BUILD=1 bun run build",

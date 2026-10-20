@@ -313,6 +313,10 @@ jobs:
           case "${{ matrix.platform }}" in win32-*) BIN="$BIN.exe";; esac
           "$BIN" --version
           "$BIN" --help >/dev/null
+          # --version and --help never load the main chunk, so a binary that
+          # crashes at startup passes them (#310 did). This runs a copy outside
+          # the checkout through one -p round trip against a local mock.
+          bun run smoke:binary "$BIN"
       - name: Upload platform payload
         uses: actions/upload-artifact@v7
         with:
@@ -351,6 +355,7 @@ jobs:
               BIN=dist/bin/linux-arm64-musl/claudin
               "$BIN" --version
               "$BIN" --help >/dev/null
+              bun run smoke:binary "$BIN"
             '
       - name: Reclaim ownership from the container (root) for upload
         run: sudo chown -R "$(id -u):$(id -g)" dist
