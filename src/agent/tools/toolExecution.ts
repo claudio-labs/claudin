@@ -37,6 +37,7 @@ import type {
   ProgressMessage,
   StopHookInfo,
 } from 'src/shared/types/message.js'
+import type { ToolPermissionRecord } from 'src/shared/types/permissions.js'
 import { count } from 'src/shared/data/array.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -155,6 +156,15 @@ export function classifyToolError(error: unknown): string {
     return 'Error'
   }
   return 'UnknownError'
+}
+
+/** A decision-store entry as the tool_result message keeps it: the message has its own timestamp. */
+function permissionRecordOf(
+  entry: (ToolPermissionRecord & { timestamp: number }) | undefined,
+): ToolPermissionRecord | undefined {
+  if (!entry) return undefined
+  const { timestamp: _timestamp, ...record } = entry
+  return record
 }
 
 function getNextImagePasteId(messages: Message[]): number {
@@ -1005,6 +1015,8 @@ async function checkPermissionsAndCallTool(
 
   if (permissionDecision.behavior !== 'allow') {
     logForDebugging(`${tool.name} tool permission denied`)
+    const deniedBy = permissionRecordOf(toolUseContext.toolDecisions?.get(toolUseID))
+    toolUseContext.toolDecisions?.delete(toolUseID)
 
     let errorMessage = permissionDecision.message
     // Only use generic "Execution stopped" message if we don't have a detailed hook message
@@ -1053,6 +1065,7 @@ async function checkPermissionsAndCallTool(
         imagePasteIds: rejectImageIds,
         toolUseResult: `Error: ${errorMessage}`,
         sourceToolAssistantUUID: assistantMessage.uuid,
+        permissionDecision: deniedBy,
       }),
     })
 
@@ -1095,9 +1108,10 @@ async function checkPermissionsAndCallTool(
     processedInput = permissionDecision.updatedInput
   }
 
-  // Kept for the cleanup in the finally block below, which removes this tool
-  // call's decision entry from the per-turn map.
+  // Copied onto the call's tool_result message, and removed from the
+  // per-turn map by the finally block below.
   const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
+  const permissionRecord = permissionRecordOf(decisionInfo)
 
   const startTime = Date.now()
 
@@ -1257,6 +1271,7 @@ async function checkPermissionsAndCallTool(
               : toolUseResult,
           mcpMeta: toolUseContext.agentId ? undefined : mcpMeta,
           sourceToolAssistantUUID: assistantMessage.uuid,
+          permissionDecision: permissionRecord,
         }),
         contextModifier: toolContextModifier
           ? {
@@ -1481,6 +1496,7 @@ async function checkPermissionsAndCallTool(
               ? error.mcpMeta
               : undefined,
           sourceToolAssistantUUID: assistantMessage.uuid,
+          permissionDecision: permissionRecord,
         }),
       },
       ...hookMessages,

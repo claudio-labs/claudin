@@ -148,7 +148,10 @@ export type SetToolJSXFn = (
 ) => void
 
 // Import tool permission types from centralized location to break import cycles
-import type { ToolPermissionRulesBySource } from 'src/shared/types/permissions.js'
+import type {
+  ToolPermissionRecord,
+  ToolPermissionRulesBySource,
+} from 'src/shared/types/permissions.js'
 
 // Re-export for backwards compatibility
 export type { ToolPermissionRulesBySource }
@@ -309,14 +312,7 @@ export type ToolUseContext = {
     maxTokens?: number
     maxSizeBytes?: number
   }
-  toolDecisions?: Map<
-    string,
-    {
-      source: string
-      decision: 'accept' | 'reject'
-      timestamp: number
-    }
-  >
+  toolDecisions?: Map<string, ToolPermissionRecord & { timestamp: number }>
   queryTracking?: QueryChainTracking
   /** Callback factory for requesting interactive prompts from the user.
    * Returns a prompt callback bound to the given source name.

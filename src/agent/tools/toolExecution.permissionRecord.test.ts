@@ -4,9 +4,9 @@
 // beside `toolUseResult` on the message record and never reaches the model.
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod/v4'
-import { normalizeMessagesForAPI } from 'src/agent/messages/normalize.js'
 import { runToolUse } from 'src/agent/tools/toolExecution.js'
 import { logPermissionDecision } from 'src/permissions/toolPermission/permissionLogging.js'
+import { userMessageToMessageParam } from 'src/providers/shims/claude/messageConverters.js'
 import { buildTool, getEmptyToolPermissionContext, type ToolUseContext } from 'src/tools/Tool.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 import type { Message, UserMessage } from 'src/shared/types/message.js'
@@ -117,6 +117,12 @@ describe('the permission decision on the tool_result message', () => {
       deciding({ decision: 'accept', source: 'config', reason: RULE }, { behavior: 'allow', updatedInput: { command: 'ok' }, decisionReason: RULE }),
     )
     expect(message.permissionDecision).toBeDefined()
-    expect(JSON.stringify(normalizeMessagesForAPI([message]))).not.toContain('permissionDecision')
+    // The wire takes `message.message` only, as it does for toolUseResult.
+    for (const addCache of [false, true]) {
+      const param = JSON.stringify(userMessageToMessageParam(message, addCache, true))
+      expect(param).toContain('ran ok')
+      expect(param).not.toContain('permissionDecision')
+      expect(param).not.toContain('PermProbe')
+    }
   })
 })

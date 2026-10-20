@@ -322,6 +322,27 @@ export type PermissionDecisionReason =
       reason: string
     }
 
+/**
+ * A tool call's permission decision, as its tool_result message keeps it:
+ * persisted with the transcript beside `toolUseResult`, never sent to the
+ * model. What a census reads to count prompts, rule hits and verdicts.
+ */
+export type ToolPermissionRecord = {
+  decision: 'accept' | 'reject'
+  /**
+   * Who decided: `config` (a rule, the mode, a safety check), `classifier`,
+   * `hook`, or the user — `user_temporary`, `user_permanent`, `user_reject`,
+   * `user_abort`.
+   */
+  source: string
+  /** The decision reason's `type` when there was one: `rule`, `mode`, `classifier`, … */
+  reason?: string
+  /** What the reason said: the rule, the mode, the classifier's or hook's words (≤200 chars). */
+  detail?: string
+  /** How long the prompt waited for its answer. */
+  waitMs?: number
+}
+
 // ============================================================================
 // Bash Classifier Types
 // ============================================================================
