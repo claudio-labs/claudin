@@ -188,7 +188,8 @@ describe('request determinism — message prefix', () => {
 
   test('idle gap clips old Patch INPUTS: the patch body leaves the wire and the next turn is prefix-stable', async () => {
     const history: Message[] = []
-    for (let i = 0; i < 9; i++) {
+    // 14 calls: the last 10 keep their patch, toolu_0..3 lose it.
+    for (let i = 0; i < 14; i++) {
       history.push(
         ...exchange(`toolu_${i}`, 'Success. Applied the patch.', 90, {
           name: 'Patch',
@@ -202,7 +203,10 @@ describe('request determinism — message prefix', () => {
     // input stub; the kept tail still carries its patch.
     expect(turnN.bytes[0]).not.toContain('PATCH_0_')
     expect(turnN.bytes[0]).toContain('tokens of patchText from Patch')
-    expect(turnN.bytes.join('\n')).toContain('PATCH_8_')
+    const wire = turnN.bytes.join('\n')
+    expect(wire).not.toContain('PATCH_3_')
+    expect(wire).toContain('PATCH_4_')
+    expect(wire).toContain('PATCH_13_')
     // The one-line results were never stubbed — input-only ids stay out of
     // the result set.
     expect(turnN.bytes[1]).toContain('Success. Applied the patch.')

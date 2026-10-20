@@ -457,6 +457,10 @@ describe('relief policy — window lane via microcompactMessages', () => {
     const inputs = getClippedInputFields()
     expect(inputs.size).toBeGreaterThan(0)
     expect(inputs.get('toolu_0')).toEqual(['patchText'])
+    // The last 10 calls keep their patch: toolu_3..11 and the tail's result
+    // are the 10 newest user turns.
+    expect(inputs.has('toolu_2')).toBe(true)
+    expect(inputs.has('toolu_3')).toBe(false)
     // Input-only ids never enter the result set: that set stubs regardless
     // of size and would trade "Success." for a stub of the same length.
     expect(getClippedIds().size).toBe(0)

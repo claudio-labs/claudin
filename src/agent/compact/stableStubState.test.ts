@@ -1344,14 +1344,15 @@ describe('collectClearableCandidates — tool_use input side', () => {
     ['Patch', ['patchText']],
     ['Write', ['content']],
   ])
+  /** Enough later turns to put a call outside the input window of 10. */
+  const tail = (n: number): Msg[] => Array.from({ length: n }, (_, i) => userText(`tail ${i}`))
 
   test('a clearable input is a candidate of its own, flagged input-only when the result is not clearable', () => {
     const msgs: Msg[] = [
       userText('prompt'),
       assistantToolUse('p', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('p', 'Success. Applied the patch.'),
-      userText('tail 1'),
-      userText('tail 2'),
+      ...tail(10),
     ]
     const { candidates } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
     expect(candidates).toHaveLength(1)
@@ -1368,8 +1369,7 @@ describe('collectClearableCandidates — tool_use input side', () => {
       userText('prompt'),
       assistantToolUse('w', 'Write', { content: bigText(2_000), file_path: '/f' }),
       userToolResult('w', bigText(1_000)),
-      userText('tail 1'),
-      userText('tail 2'),
+      ...tail(10),
     ]
     const { candidates, clearableTokens } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
     expect(candidates).toHaveLength(1)
@@ -1387,8 +1387,7 @@ describe('collectClearableCandidates — tool_use input side', () => {
       userText('prompt'),
       assistantToolUse('p', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('p', 'Success. Applied the patch.'),
-      userText('tail 1'),
-      userText('tail 2'),
+      ...tail(10),
     ]
     expect(collectClearableCandidates(msgs, 2, 0).candidates).toEqual([])
   })
@@ -1402,12 +1401,53 @@ describe('collectClearableCandidates — tool_use input side', () => {
       userToolResult('small', 'ok'),
       assistantToolUse('recent', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('recent', 'ok'),
+      ...tail(9),
     ]
     addClippedInputs('done', ['patchText'])
     const { candidates } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
-    // 'done' is clipped, 'small' frees nothing, 'recent' sits in the last 2
-    // user turns.
+    // 'done' is clipped, 'small' frees nothing, 'recent' has its result in
+    // the last 10 user turns.
     expect(candidates).toEqual([])
+  })
+
+  // A relief clip on 2026-10-16 stubbed the patchText of calls 30 s to 2.5 min
+  // old, keeping only the newest; 58 s later the model sent a NEW Patch whose
+  // patchText was the placeholder it had been looking at.
+  test('the inputs of the last 10 calls stay whole; the 11th is a candidate', () => {
+    const msgs: Msg[] = [userText('prompt')]
+    for (let i = 0; i < 12; i++) {
+      msgs.push(assistantToolUse(`p${i}`, 'Patch', { patchText: bigText(2_000) }), userToolResult(`p${i}`, 'ok'))
+    }
+    const { candidates } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
+    expect(candidates.map(c => c.toolUseId)).toEqual(['p0', 'p1'])
+  })
+
+  test('a call keeps its input longer than its result', () => {
+    // The result window is still 2 user turns; the input window counts the
+    // call by where its RESULT sits, so call k is not clipped one round trip
+    // before its result is.
+    const msgs: Msg[] = [userText('prompt')]
+    for (let i = 0; i < 4; i++) {
+      msgs.push(assistantToolUse(`w${i}`, 'Write', { content: bigText(2_000), file_path: '/f' }), userToolResult(`w${i}`, bigText(1_000)))
+    }
+    msgs.push(...tail(7))
+    const { candidates } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
+    // w0 sits 11 user turns back (its input goes too), w1..w3 within 10:
+    // their results are candidates, their inputs are not.
+    expect(candidates.map(c => [c.toolUseId, c.inputFields ?? null])).toEqual([
+      ['w0', ['content']],
+      ['w1', null],
+      ['w2', null],
+      ['w3', null],
+    ])
+  })
+
+  test('with fewer than 10 user turns no input is a candidate', () => {
+    const msgs: Msg[] = [userText('prompt')]
+    for (let i = 0; i < 4; i++) {
+      msgs.push(assistantToolUse(`p${i}`, 'Patch', { patchText: bigText(2_000) }), userToolResult(`p${i}`, 'ok'))
+    }
+    expect(collectClearableCandidates(msgs, 2, 0, () => true, FIELDS).candidates).toEqual([])
   })
 })
 
