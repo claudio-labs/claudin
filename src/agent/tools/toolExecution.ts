@@ -37,7 +37,8 @@ import type {
   ProgressMessage,
   StopHookInfo,
 } from 'src/shared/types/message.js'
-import type { ToolPermissionRecord } from 'src/shared/types/permissions.js'
+import type { PermissionDecision, ToolPermissionRecord } from 'src/shared/types/permissions.js'
+import { buildPermissionRecord } from 'src/permissions/toolPermission/permissionLogging.js'
 import { count } from 'src/shared/data/array.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -158,13 +159,25 @@ export function classifyToolError(error: unknown): string {
   return 'UnknownError'
 }
 
-/** A decision-store entry as the tool_result message keeps it: the message has its own timestamp. */
+/**
+ * The decision a tool_result message keeps: the store's entry when the
+ * canUseTool logged one (the REPL's, with who answered and how long it took),
+ * else one read off the verdict itself (print mode and the SDK log nothing).
+ * The message has its own timestamp.
+ */
 function permissionRecordOf(
   entry: (ToolPermissionRecord & { timestamp: number }) | undefined,
-): ToolPermissionRecord | undefined {
-  if (!entry) return undefined
-  const { timestamp: _timestamp, ...record } = entry
-  return record
+  verdict: PermissionDecision,
+): ToolPermissionRecord {
+  if (entry) {
+    const { timestamp: _timestamp, ...record } = entry
+    return record
+  }
+  return buildPermissionRecord({
+    decision: verdict.behavior === 'allow' ? 'accept' : 'reject',
+    source: 'config',
+    reason: verdict.decisionReason,
+  })
 }
 
 function getNextImagePasteId(messages: Message[]): number {
@@ -1015,7 +1028,7 @@ async function checkPermissionsAndCallTool(
 
   if (permissionDecision.behavior !== 'allow') {
     logForDebugging(`${tool.name} tool permission denied`)
-    const deniedBy = permissionRecordOf(toolUseContext.toolDecisions?.get(toolUseID))
+    const deniedBy = permissionRecordOf(toolUseContext.toolDecisions?.get(toolUseID), permissionDecision)
     toolUseContext.toolDecisions?.delete(toolUseID)
 
     let errorMessage = permissionDecision.message
@@ -1111,7 +1124,7 @@ async function checkPermissionsAndCallTool(
   // Copied onto the call's tool_result message, and removed from the
   // per-turn map by the finally block below.
   const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
-  const permissionRecord = permissionRecordOf(decisionInfo)
+  const permissionRecord = permissionRecordOf(decisionInfo, permissionDecision)
 
   const startTime = Date.now()
 

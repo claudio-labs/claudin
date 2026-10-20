@@ -6,7 +6,10 @@
 // record of every prompt, rule hit and classifier verdict.
 import { feature } from 'bun:bundle'
 import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
-import type { PermissionDecisionReason } from 'src/shared/types/permissions.js'
+import type {
+  PermissionDecisionReason,
+  ToolPermissionRecord,
+} from 'src/shared/types/permissions.js'
 import type { Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js'
 import type {
   PermissionApprovalSource,
@@ -83,6 +86,28 @@ function reasonDetail(reason: PermissionDecisionReason): string | undefined {
   }
 }
 
+/**
+ * The record of a decision, whoever made it. Print mode and the SDK hand
+ * hasPermissionsToUseTool's verdict back without logging it, so toolExecution
+ * builds one from the verdict when the store has none.
+ */
+function buildPermissionRecord(
+  args: PermissionDecisionArgs,
+  permissionPromptStartTimeMs?: number,
+): ToolPermissionRecord {
+  const { decision, source, reason } = args
+  const detail = reason ? reasonDetail(reason) : undefined
+  return {
+    decision,
+    source: source === 'config' ? automaticSource(reason) : sourceToString(source),
+    ...(reason ? { reason: reason.type } : {}),
+    ...(detail ? { detail: detail.slice(0, DETAIL_MAX_CHARS) } : {}),
+    ...(permissionPromptStartTimeMs !== undefined
+      ? { waitMs: Date.now() - permissionPromptStartTimeMs }
+      : {}),
+  }
+}
+
 // Single entry point for all permission decision logging. Called by permission
 // handlers after every approve/reject; records the decision on the context.
 function logPermissionDecision(
@@ -92,24 +117,16 @@ function logPermissionDecision(
   permissionPromptStartTimeMs?: number,
 ): void {
   const { toolUseContext, toolUseID } = ctx
-  const { decision, source, reason } = args
-  const detail = reason ? reasonDetail(reason) : undefined
 
   // Persist decision on the context so downstream code can inspect what happened
   if (!toolUseContext.toolDecisions) {
     toolUseContext.toolDecisions = new Map()
   }
   toolUseContext.toolDecisions.set(toolUseID, {
-    decision,
-    source: source === 'config' ? automaticSource(reason) : sourceToString(source),
-    ...(reason ? { reason: reason.type } : {}),
-    ...(detail ? { detail: detail.slice(0, DETAIL_MAX_CHARS) } : {}),
-    ...(permissionPromptStartTimeMs !== undefined
-      ? { waitMs: Date.now() - permissionPromptStartTimeMs }
-      : {}),
+    ...buildPermissionRecord(args, permissionPromptStartTimeMs),
     timestamp: Date.now(),
   })
 }
 
-export { logPermissionDecision }
+export { buildPermissionRecord, logPermissionDecision }
 export type { PermissionLogContext, PermissionDecisionArgs }
