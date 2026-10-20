@@ -267,6 +267,31 @@ function findTurnCutoffIndex(
 }
 
 /**
+ * How many user turns back a call's INPUT stays whole, whatever window the
+ * caller keeps results in. A "turn" here is a user message, so in a tool loop
+ * it is one round trip. With the result window alone (2), a call's input went
+ * one round trip before its result: a relief clip on 2026-10-16 stubbed the
+ * patchText of calls 30 s to 2.5 min old, and the model's next Patch carried
+ * the placeholder it had been looking at as its patchText. The rewrite starts
+ * at the oldest clipped block either way, so keeping the tail costs no cache.
+ */
+export const KEEP_RECENT_INPUT_TURNS = 10
+
+/** The tool_use ids answered at or after `fromIdx`. */
+function toolResultIdsFrom(messages: readonly AnyMessage[], fromIdx: number): Set<string> {
+  const ids = new Set<string>()
+  for (let i = fromIdx; i < messages.length; i++) {
+    const content = getInner(messages[i]!).content
+    if (!Array.isArray(content)) continue
+    for (const block of content as AnyContentBlock[]) {
+      const id = (block as { tool_use_id?: string }).tool_use_id
+      if (block?.type === 'tool_result' && id) ids.add(id)
+    }
+  }
+  return ids
+}
+
+/**
  * Prune tool_result content that is older than `keepTurns` turns.
  *
  * Complements applyStableStubs: that mechanism only fires at ≥50% context
@@ -376,6 +401,8 @@ function clearableInputTokens(
  * call that is clearable on both sides — Write, Edit — is ONE candidate
  * with the two savings summed, so one clip event covers both; ids whose
  * inputs were already clipped contribute only their result side.
+ * A call's input is protected while its result sits in the last
+ * `max(keepRecentTurns, KEEP_RECENT_INPUT_TURNS)` user turns.
  */
 export function collectClearableCandidates(
   messages: readonly AnyMessage[],
@@ -406,6 +433,14 @@ export function collectClearableCandidates(
   const clipped = getClippedIds()
   const clippedInputs = getClippedInputFields()
   const toolNames = indexToolUses(messages)
+  // Judged by where the RESULT sits: the call itself is one message earlier,
+  // and with parallel calls several.
+  const inputCutoffIdx = findTurnCutoffIndex(
+    messages,
+    Math.max(keepRecentTurns, KEEP_RECENT_INPUT_TURNS),
+  )
+  const recentCalls =
+    inputCutoffIdx > 0 ? toolResultIdsFrom(messages, inputCutoffIdx) : null
   const headTokensEstimate =
     stubKeepHeadChars > 0 ? Math.ceil(stubKeepHeadChars / 4) : 0
   const candidates: ReliefCandidate[] = []
@@ -417,10 +452,10 @@ export function collectClearableCandidates(
     const content = inner.content
     if (!Array.isArray(content)) continue
     if (role === 'assistant') {
-      if (inputFieldsByTool.size === 0) continue
+      if (inputFieldsByTool.size === 0 || recentCalls === null) continue
       for (const block of content as ToolUseBlock[]) {
         if (block?.type !== 'tool_use' || !block.id) continue
-        if (clippedInputs.has(block.id)) continue
+        if (clippedInputs.has(block.id) || recentCalls.has(block.id)) continue
         const fields = inputFieldsByTool.get(block.name ?? '')
         if (!fields || !block.input || typeof block.input !== 'object') continue
         const savings = clearableInputTokens(
