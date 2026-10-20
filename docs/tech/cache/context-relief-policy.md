@@ -124,13 +124,29 @@ One decision, one source of truth, no message ever dropped from the API view:
     $65.47 → $96.24 over 8 threads in four weeks (upper bound, as above).
   - The rss lane keeps its low-water target: it bounds memory, not cache.
   - Killswitch `CLAUDIN_RELIEF_CLIP_ALL=0` (back to one band).
+- **A call keeps its input for 10 user turns (2026-10-19).** The protected
+  `keepRecentTurns`=2 counts user messages, and every tool_result is one, so
+  it is two round trips — and a call's INPUT, one message before its result,
+  went one round trip earlier still. A mid-turn clip on 2026-10-16 stubbed
+  the patchText of four Patch/Write calls 30 s to 2.5 min old, and 58 s later
+  the model sent a new Patch whose patchText was the `[clipped: …]`
+  placeholder (refused by `clipStubEcho.ts`); cd29d57b did the same.
+  `collectClearableCandidates` now keeps an input while its call's result
+  sits in the last `max(keepRecentTurns, KEEP_RECENT_INPUT_TURNS)` = 10 user
+  turns, for both lanes that clip inputs (window relief and the idle-gap
+  clip). Results keep their window of 2.
+  - It costs no cache: the rewrite starts at the oldest clipped block either
+    way. `relief-ceiling-sim.ts --since=2026-10-12 --main --clip-all
+    --min-event=band --starved-compact --input-keep=2|10` moves net savings
+    by under 1.3% at every trigger from 300k to 700k.
 
 Tests: `reliefPolicy.test.ts` (the decision table), `microCompact.test.ts`
 (the shell: clip-all by default, the oldest-first band under `=0`, the rss
 lane untouched by clip-all, no re-clip on the next request, analysis
-callers, killswitch), `stableStubState.test.ts` (the candidate walk and the
-rss lane end to end, pins), `requestDeterminism.invariant.test.ts`
-(byte-stability of the new post-turn pipeline). Break-probe specs:
+callers, killswitch), `stableStubState.test.ts` (the candidate walk, the
+input window and the rss lane end to end, pins),
+`requestDeterminism.invariant.test.ts` (byte-stability of the new post-turn
+pipeline, and the idle-gap clip's input window). Break-probe specs:
 `scripts/migrations/probes/reliefSelection.json`, `reliefClipAll.json`.
 
 Adoption bench: `scripts/bench/ab/context-relief-ab.ts` — see the section at
