@@ -12,7 +12,7 @@ paths:
 ---
 
 Found while covering each file to ≥70% before moving its socket to `openWebSocket`
-(branch `feat/responses-websocket`, 2026-10-17). The suites pin today's behavior, so
+(#308, merged 2026-10-17). The suites pin today's behavior, so
 fixing one means changing its test on purpose, in its own `fix(…)` commit.
 
 - **SessionsWebSocket**: the retry limits (4001 ×3, others ×5) never apply to a real
@@ -20,6 +20,8 @@ fixing one means changing its test on purpose, in its own `fix(…)` commit.
   accept-then-drop server is redialed every 2 s forever. `reconnect()` races: `close()`
   does not detach the old socket, and a late close from it nulls the new one. A throwing
   constructor leaves the state `connecting` and every later `connect()` is ignored.
+  Its `close and reconnect` tests (3–4, 5 s timeouts) went red in CI's full suite on the
+  #309 and #310 runs (2026-10-19). They pass alone on Node 22.12 and 24. Undiagnosed.
 - **relay**: an upstream that closes cleanly before any data gives the client a bare
   disconnect, no 502; `decodeChunk` reads a truncated varint (`0a 80`) as a keepalive;
   after a 400 the header buffer is not reset, so more data sends 400 again.

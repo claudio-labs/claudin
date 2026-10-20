@@ -1,6 +1,6 @@
 ---
 name: dependabot-bumps-2026-10-19-undici-zstd-node-floor
-description: Dependabot #310 — undici 8.12 needs zlib zstd (Node 22.15+); on the 22.12 floor every API call died. Fixed by raising the floor to 22.19.0
+description: Dependabot #310 — undici 8.12 needs zlib zstd (Node 22.15+), floor raised to 22.19.0; SDK 0.135 imports @opentelemetry/api, which crashed the compiled binary until it was bundled
 type: project
 ---
 
@@ -28,6 +28,29 @@ SIGTERMed at 100 s, with empty stderr.
 - **Not caused by #310:** `SessionsWebSocket close and reconnect` (3–4 tests,
   5 s timeouts waiting for the close to cross loopback) was red on main's own
   run for #309 too. It passes alone on Node 22.12 and 24, so it is a full-suite
-  flake and was left undiagnosed.
+  flake and was left undiagnosed (see [[websocket-sites-latent-bugs]]).
+- **SDK 0.135 broke the `--compile` binary, found after the merge.** From 0.134
+  the SDK traces natively, and `client.mjs` imports `@opentelemetry/api`
+  statically. `scripts/build/build.ts` kept it in `external` for both builds, so
+  the standalone binary had a `require` it could not resolve. `-p` then died at
+  startup in `enableConfigs` with `getFsImplementation().existsSync` undefined,
+  not a "module not found". `--version` still exits 0 (it is a fast path), so
+  neither `bun run smoke` nor the release matrix can see this
+  ([[release-smoke-only-runs-version]] has the repro). A/B against a mock
+  Messages server (2026-10-19): the binary at 869a2f03 answers, HEAD crashes, and
+  HEAD without that `external` entry answers. **Fix:** bundle `@opentelemetry/api`
+  in both builds, which also stops the Node bundle importing an undeclared
+  transitive dep. No release had shipped it, since v1.1.46 predates #310.
+  Nothing in `src/` imports OpenTelemetry, and the old `@opentelemetry/*` devDeps
+  are gone. `@opentelemetry/api` belongs to the SDK, so it is not ours to remove.
+  The other `@opentelemetry/*` entries in `external` name packages that nothing
+  imports.
+- **Audited, no action:** SDK error classes, retries, timeout, headers and the
+  deprecated-model list are unchanged; tracing adds no header without a global
+  OTel provider. bedrock/vertex/foundry only gained tracing hooks. undici's
+  ProxyAgent, `Agent` and fetch `accept-encoding` are unchanged. execa 10.1.1 now
+  validates option types, and every call site passes valid ones. google-auth
+  moved to gaxios 8, react and p-map are patches, and zod caps container size
+  before parsing elements.
 
-Related: [[dependabot-bumps-2026-09-28-audited]], [[node-engine-floor-22]].
+Related: [[dependabot-bumps-2026-09-28-audited]], [[node-engine-floor-22]], [[opentelemetry-devdep-stubbed]] (the decision to bundle it).

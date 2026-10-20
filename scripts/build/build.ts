@@ -703,8 +703,10 @@ ${exports}
     },
   ],
   external: [
-    // OpenTelemetry — too many named exports to stub, kept external
-    '@opentelemetry/api',
+    // OpenTelemetry — too many named exports to stub, kept external. Not
+    // @opentelemetry/api: @anthropic-ai/sdk ≥0.134 imports it from client.mjs,
+    // and left external it crashed the compiled binary at startup (no
+    // node_modules beside it to resolve from), so it bundles in both builds.
     '@opentelemetry/api-logs',
     '@opentelemetry/core',
     '@opentelemetry/exporter-trace-otlp-grpc',

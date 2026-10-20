@@ -4,12 +4,11 @@
 
 ## Decisions
 - [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, team trust note, `memory audit`, expires:, digest provenance
-- [Git tool calls collapse like Bash (10-15)](decisions/git-tool-collapse.md) — SHELL_LANES row; a failed batch leaves the group
+- [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket default on; prewarm rejected
+- Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline; routing its report rejected
 - [Navigation map syncs at the end of a turn, /map (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
-- [Every MCP call collapses, with a batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) — Calling/Called; errored calls leave the group
-- [Collapsed writes: one ⎿ line, no stack (10-12)](decisions/collapsed-writes-one-line.md) — latest op of any kind owns it; no clock on writes
 - [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut (10-10)](decisions/summarizer-lossless.md)
 - [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
@@ -46,13 +45,12 @@
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
-- [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08
+- [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — SDK 0.135 imports it; external crashed the binary
 
 ## Bugs
 - FIXED 10-15 (#302): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; "mutated at 14" still open
-- FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; guards in cache.md §1
+- FIXED 10-19: [Release smoke ran only --version on the binary](bugs/release-smoke-only-runs-version.md) — now `smoke:binary`, a -p round trip against a mock
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
-- FIXED 10-12: [Resume restored a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages checks is_error
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source
@@ -66,7 +64,7 @@
 - [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — link into team or TEAM/ on mac/win gets the private carve-out; not fixed
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
-- FIXED: [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
+- FIXED: [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [resume read a refused Write](bugs/resume-restores-refused-write.md) · [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
@@ -164,7 +162,7 @@
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
 - [Codex strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) — `pages:""` looped Read 135×; strip ""/null
 - [Codex OAuth prompt cache — key only](codex-oauth-prompt-cache-params.md) — Codex 400s on prompt_cache_retention
-- [Codex CLI wire parity (10-16/17)](codex-0.162-wire-diff.md) — replay (PR 307) + WebSocket closed; free-plan quota ran out
+- [Codex CLI wire parity (10-16/17)](codex-0.162-wire-diff.md) — replay #307 + WebSocket #308, in v1.1.46; free-plan quota ran out
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — loopback PKCE, pinned port 56121
 
@@ -172,11 +170,10 @@
 - [Native-binary distribution (bun --compile)](compile-binary-distribution.md) — rg+sharp vendored; strip breaks binaries
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
-- [Node engine floor 22.19.0 (10-19)](node-engine-floor-22.md) — undici 8.12 zstd; was 22.12 for commander 15
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
 - Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
-- [undici 8.12 needs Node 22.15 zstd; floor raised to 22.19 (#310)](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md) — CI-only, dev boxes run 24
+- [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310: undici zstd + SDK 0.135 OTel binary crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — the Gitea + tea flow is gone
