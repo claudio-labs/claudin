@@ -111,6 +111,22 @@ describe('the permission decision on the tool_result message', () => {
     })
   })
 
+  test('a canUseTool that logs nothing (print mode, the SDK) still leaves the decision', async () => {
+    // `-p` hands hasPermissionsToUseTool's verdict back as is: the first live
+    // run of this branch recorded nothing on any of its three tool_results.
+    const reason = { type: 'classifier' as const, classifier: 'auto-mode', reason: 'Allowed: a file write in the working directory' }
+    const allowedSilently = (async (_t: unknown, input: unknown) => ({ behavior: 'allow', updatedInput: input, decisionReason: reason })) as never
+    const message = await resultMessage('ok', allowedSilently)
+    expect(message.permissionDecision).toEqual({
+      decision: 'accept',
+      source: 'classifier',
+      reason: 'classifier',
+      detail: 'Allowed: a file write in the working directory',
+    })
+    const deniedSilently = (async () => ({ behavior: 'deny', message: 'denied', decisionReason: RULE })) as never
+    expect((await resultMessage('no', deniedSilently)).permissionDecision).toMatchObject({ decision: 'reject', source: 'config', reason: 'rule' })
+  })
+
   test('it never reaches the model', async () => {
     const message = await resultMessage(
       'ok',
