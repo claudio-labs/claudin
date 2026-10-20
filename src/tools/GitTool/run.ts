@@ -20,7 +20,7 @@ import { oneLineCommand } from 'src/tools/GitTool/display.js'
 import {
   diagnoseGitFailure,
   isEnvironmentalFailure,
-  noUpstreamAnswer,
+  readOnlyAnswer,
   reportsNoChecksYet,
 } from 'src/tools/GitTool/errors.js'
 import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
@@ -384,7 +384,7 @@ export async function runGitBatch(
       const effectiveCode = exitCodeAfterRewrite(plan, run.code)
       const answer =
         !stall && !run.interrupted && effectiveCode !== 0 && isReadOnlyGitCommand(command)
-          ? noUpstreamAnswer(rawStdout)
+          ? readOnlyAnswer(command, effectiveCode, rawStdout)
           : null
       const isError = !stall && answer === null && (effectiveCode !== 0 || run.interrupted)
       const filtered = full

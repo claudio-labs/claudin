@@ -102,8 +102,10 @@ const GH_NO_PR_RE = /no pull requests found|Could not resolve to a PullRequest/i
 /** `gh pr checks` before GitHub registered any run for the branch. */
 const GH_NO_CHECKS_RE = /^no checks reported on the '.+' branch/m
 const NO_UPSTREAM_RE = /^fatal: no upstream configured for branch '([^']+)'/m
-/** A `gh pr checks` row — name, state, elapsed, URL, tab-separated — in the failed state. */
-const GH_FAILED_CHECK_RE = /\tfail\t/
+/** The workflow run a GitHub Actions check URL belongs to. */
+const GH_ACTIONS_RUN_RE = /\/actions\/runs\/(\d+)/
+/** What `gh pr checks` exits with when a check failed — and when it found none. */
+const GH_CHECKS_FAILED_EXIT = 1
 /** `gh` failures every later `gh` command in a batch would repeat. */
 const GH_ENVIRONMENT_RES: readonly RegExp[] = [GH_NOT_AUTHENTICATED_RE, GH_RATE_LIMIT_RE, GH_NOT_FOUND_RE]
 
@@ -298,13 +300,50 @@ export function reportsNoChecksYet(output: string): boolean {
  * `git rev-parse --abbrev-ref @{u}` on a branch that was never pushed exits
  * 128, and that IS what the model asked: the pre-PR read checks tracking
  * before the first push, so every new branch "failed" it — about 8 of the 53
- * Git errors in the 2026-10-08..15 census. `run.ts` reports it as an answer,
- * for read-only commands only.
+ * Git errors in the 2026-10-08..15 census.
  */
-export function noUpstreamAnswer(output: string): string | null {
+function noUpstreamAnswer(output: string): string | null {
   const branch = NO_UPSTREAM_RE.exec(output)?.[1]
   if (branch === undefined) return null
   return `\`${branch}\` has no upstream: it was never pushed, or was pushed without \`-u\`. \`git push -u origin ${branch}\` sets one.`
+}
+
+/**
+ * `gh pr checks` exits 1 when a check failed, and when GitHub has registered
+ * no check for the branch. Either is the state of CI the model asked for: the
+ * 2026-10-16..19 census saw four come back `is_error`. A failed check names
+ * the command that shows its log, with the run id read from the check's URL.
+ */
+function ghChecksAnswer(command: string, exitCode: number, output: string): string | null {
+  if (exitCode !== GH_CHECKS_FAILED_EXIT || ghCommandPair(command) !== 'pr checks') return null
+  if (GH_NO_CHECKS_RE.test(output)) {
+    return 'No checks are registered for this branch yet. After a push they usually appear within seconds — a `--watch` waits up to 90s for them — and if they never do, no workflow runs on this branch.'
+  }
+  // Rows are name, state, elapsed, URL, description, tab-separated. A watch
+  // prints one table per refresh, hence the sets.
+  const names = new Set<string>()
+  const runs = new Set<string>()
+  for (const line of output.split('\n')) {
+    const [name, state, , url] = line.split('\t')
+    if (state !== 'fail' || !name) continue
+    names.add(name)
+    const run = url === undefined ? undefined : GH_ACTIONS_RUN_RE.exec(url)?.[1]
+    if (run !== undefined) runs.add(run)
+  }
+  if (names.size === 0) return null
+  const failed = `${names.size} check${names.size === 1 ? '' : 's'} failed: ${[...names].join(', ')}.`
+  if (runs.size === 0) return failed
+  const views = [...runs].map(run => `\`gh run view ${run} --log-failed\``).join(' and ')
+  return `${failed} ${views} ${runs.size === 1 ? 'shows the failing step' : 'show the failing steps'}.`
+}
+
+/**
+ * The reply a read's non-zero exit carries, when it carries one. `run.ts`
+ * reports it instead of an error — for read-only commands only, since a write
+ * that exits non-zero did not do its job whatever it printed.
+ */
+export function readOnlyAnswer(command: string, exitCode: number, output: string): string | null {
+  return noUpstreamAnswer(output) ?? ghChecksAnswer(command, exitCode, output)
 }
 
 /** Exported for the tests, which assert the sentence rather than the fold. */
@@ -318,7 +357,7 @@ export function diagnose(
   if (exitCode === SIGTERM_EXIT) {
     return 'The command was still running when the timeout stopped it, so anything below is partial. Pass a larger `timeout` if it legitimately takes that long.'
   }
-  if (isGh(command)) return diagnoseGh(command, output)
+  if (isGh(command)) return diagnoseGh(output)
 
   // Repository-level failures first: they explain every later symptom.
   if (NOT_A_REPO_RE.test(output)) {
@@ -408,7 +447,7 @@ export function diagnose(
   return null
 }
 
-function diagnoseGh(command: string, output: string): string | null {
+function diagnoseGh(output: string): string | null {
   if (GH_NOT_AUTHENTICATED_RE.test(output)) {
     return '`gh` is not authenticated. Run `gh auth login` (or set `GH_TOKEN`) before using the forge commands.'
   }
@@ -423,12 +462,6 @@ function diagnoseGh(command: string, output: string): string | null {
   }
   if (NOT_A_REPO_RE.test(output)) {
     return 'Not inside a git repository, so `gh` cannot tell which repo you mean. Change directory, or pass `--repo owner/name`.'
-  }
-  if (GH_NO_CHECKS_RE.test(output)) {
-    return 'No checks are registered for this branch yet. After a push they usually appear within seconds — a `--watch` waits up to 90s for them — and if they never do, no workflow runs on this branch.'
-  }
-  if (ghCommandPair(command) === 'pr checks' && GH_FAILED_CHECK_RE.test(output)) {
-    return "A check failed — `gh` exits 1 for that. `gh run view <run-id> --log-failed` shows the failing step; the run id is in the check's URL."
   }
   return null
 }

@@ -377,17 +377,17 @@ describe('bad arguments', () => {
   })
 })
 
-describe('gh', () => {
-  function runFakeGh(args: string[], rule: FakeGhRule): string {
-    const fake = installFakeGh([rule], { fallback: rule })
-    try {
-      const res = Bun.spawnSync(['gh', ...args], { env: fake.env })
-      return `${res.stdout.toString()}${res.stderr.toString()}`
-    } finally {
-      fake.cleanup()
-    }
+function runFakeGh(args: string[], rule: FakeGhRule): string {
+  const fake = installFakeGh([rule], { fallback: rule })
+  try {
+    const res = Bun.spawnSync(['gh', ...args], { env: fake.env })
+    return `${res.stdout.toString()}${res.stderr.toString()}`
+  } finally {
+    fake.cleanup()
   }
+}
 
+describe('gh', () => {
   test('not authenticated', () => {
     const output = runFakeGh(['pr', 'view', '12'], GH_NOT_AUTHENTICATED)
     expect(output).toContain('gh auth login')
