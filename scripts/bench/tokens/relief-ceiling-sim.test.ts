@@ -23,6 +23,13 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--band=x'])).toThrow('--band')
     expect(() => parseArgs(['--band=0'])).toThrow('--band')
   })
+
+  test('--input-keep defaults to the policy (10) and rejects a non-count', () => {
+    expect(BASE.inputKeep).toBe(10)
+    expect(parseArgs(['--input-keep=2']).inputKeep).toBe(2)
+    expect(() => parseArgs(['--input-keep=x'])).toThrow('--input-keep')
+    expect(() => parseArgs(['--input-keep=-1'])).toThrow('--input-keep')
+  })
 })
 
 describe('simulate', () => {
@@ -48,5 +55,13 @@ describe('simulate', () => {
     const formula = simulate(THREAD, 70_000, BASE)
     const wide = simulate(THREAD, 70_000, { ...BASE, band: 40_000 })
     expect(wide.saved).toBeGreaterThan(formula.saved)
+  })
+
+  test('inputs keep the last --input-keep calls, results only the last two', () => {
+    // Inputs only, on calls 4..7: the 70k trigger is crossed at call 7, where
+    // all four sit outside the result window but inside an input window of 10.
+    const inputs: Thread = { ...THREAD, blocks: [4, 5, 6, 7].map(call => ({ call, tokens: 30_000, input: true })) }
+    expect(simulate(inputs, 70_000, { ...BASE, clipAll: true }).events).toBe(0)
+    expect(simulate(inputs, 70_000, { ...BASE, clipAll: true, inputKeep: 2 }).events).toBeGreaterThan(0)
   })
 })

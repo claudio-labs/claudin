@@ -275,7 +275,7 @@ function findTurnCutoffIndex(
  * the placeholder it had been looking at as its patchText. The rewrite starts
  * at the oldest clipped block either way, so keeping the tail costs no cache.
  */
-export const KEEP_RECENT_INPUT_TURNS = 10
+const KEEP_RECENT_INPUT_TURNS = 10
 
 /** The tool_use ids answered at or after `fromIdx`. */
 function toolResultIdsFrom(messages: readonly AnyMessage[], fromIdx: number): Set<string> {
