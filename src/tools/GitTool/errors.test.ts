@@ -33,7 +33,7 @@ import {
   repoWithUnreachableOrigin,
   writeRepoFile,
 } from 'src/tools/GitTool/__fixtures__/repo.js'
-import { diagnose, diagnoseGitFailure } from 'src/tools/GitTool/errors.js'
+import { diagnose, diagnoseGitFailure, readOnlyAnswer } from 'src/tools/GitTool/errors.js'
 
 afterAll(() => {
   cleanupAllRepos()
@@ -416,20 +416,6 @@ describe('gh', () => {
     expect(diagnose('gh pr view', 1, output)).toContain('No pull request matches')
   })
 
-  test('a failed check says where the failing step is', () => {
-    // `gh pr checks` exits 1 when a check failed; the rows are tab-separated.
-    const output = runFakeGh(['pr', 'checks', '4'], {
-      match: '',
-      stdout: 'smoke-and-tests\tfail\t32s\thttps://github.com/o/r/actions/runs/38076085366/job/114283200164\t\n',
-      exitCode: 1,
-    })
-    const line = diagnose('gh pr checks 4', 1, output)
-    expect(line).toContain('A check failed')
-    expect(line).toContain('gh run view <run-id> --log-failed')
-    // Only `pr checks` exits 1 for a failed check; another command's `fail` row is not that.
-    expect(diagnose('gh run list', 1, output)).toBeNull()
-  })
-
   test('a git diagnosis never leaks into a gh command', () => {
     // `nothing to commit` is a git signature; a gh failure carrying it must not
     // be diagnosed as a commit problem.
@@ -456,5 +442,66 @@ describe('the fold', () => {
     const folded = diagnoseGitFailure('git commit -m x', 1, '   ')
     expect(folded).toContain('most likely by a git hook')
     expect(folded).not.toContain('\n\n')
+  })
+})
+
+/**
+ * A non-zero exit that IS the reply to a read. The 2026-10-16..19 census saw
+ * four `gh pr checks` come back `is_error` for checks that failed or did not
+ * exist yet — what the model asked, both times.
+ */
+describe('read-only answers', () => {
+  const RUN = 'https://github.com/o/r/actions/runs/38076085366/job/114283200164'
+
+  test('a failed check names the check and the command that shows its log', () => {
+    // `gh pr checks` exits 1 when a check failed; the rows are tab-separated.
+    const output = runFakeGh(['pr', 'checks', '4'], {
+      match: '',
+      stdout: `smoke-and-tests\tfail\t32s\t${RUN}\t\nlint\tpass\t9s\thttps://github.com/o/r/actions/runs/38076085366/job/2\t\n`,
+      exitCode: 1,
+    })
+    const answer = readOnlyAnswer('gh pr checks 4', 1, output)
+    expect(answer).toContain('1 check failed: smoke-and-tests')
+    expect(answer).toContain('`gh run view 38076085366 --log-failed`')
+  })
+
+  test('failed checks in two runs name both runs, once each', () => {
+    const output =
+      `a\tfail\t1s\t${RUN}\t\n` +
+      'b\tfail\t1s\thttps://github.com/o/r/actions/runs/38076085366/job/3\t\n' +
+      'c\tfail\t1s\thttps://github.com/o/r/actions/runs/99/job/4\t\n'
+    const answer = readOnlyAnswer('gh pr checks 4', 1, output)
+    expect(answer).toContain('3 checks failed: a, b, c')
+    expect(answer).toContain('`gh run view 38076085366 --log-failed`')
+    expect(answer).toContain('`gh run view 99 --log-failed`')
+    expect(answer?.match(/38076085366/g)).toHaveLength(1)
+  })
+
+  test('a failed check with no run URL still answers', () => {
+    const answer = readOnlyAnswer('gh pr checks 4', 1, 'external\tfail\t0\thttps://ci.example.test/x\t\n')
+    expect(answer).toContain('1 check failed: external')
+    expect(answer).not.toContain('gh run view')
+  })
+
+  test('no checks yet is an answer, with the reason', () => {
+    const output = runFakeGh(['pr', 'checks', '5'], {
+      match: '',
+      stderr: "no checks reported on the 'feat/x' branch\n",
+      exitCode: 1,
+    })
+    expect(readOnlyAnswer('gh pr checks 5', 1, output)).toContain('No checks are registered for this branch yet')
+  })
+
+  test('no upstream is an answer', () => {
+    const answer = readOnlyAnswer('git rev-parse --abbrev-ref @{u}', 128, "fatal: no upstream configured for branch 'feat/x'\n")
+    expect(answer).toContain('`feat/x` has no upstream')
+  })
+
+  test('the same text from another command, or another exit, is no answer', () => {
+    const failed = `smoke-and-tests\tfail\t32s\t${RUN}\t\n`
+    // Only `pr checks` exits 1 for a failed check; another command's `fail` row is not that.
+    expect(readOnlyAnswer('gh run list', 1, failed)).toBeNull()
+    expect(readOnlyAnswer('gh pr checks 4', 4, failed)).toBeNull()
+    expect(readOnlyAnswer('gh pr checks 4', 1, 'HTTP 502: Bad Gateway\n')).toBeNull()
   })
 })

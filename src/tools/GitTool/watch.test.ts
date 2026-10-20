@@ -166,13 +166,28 @@ describe('`gh pr checks` exit 8', () => {
     // `gh pr checks` exits 1 when a check failed; the census saw that stop the
     // `gh run list` asked for in the same call.
     fakeGh.setRules([
-      { match: 'pr checks', stdout: 'smoke-and-tests\tfail\t32s\thttps://example.test/run/7\t\n', exitCode: 1 },
+      { match: 'pr checks', stdout: 'smoke-and-tests\tfail\t32s\thttps://github.com/o/r/actions/runs/7/job/8\t\n', exitCode: 1 },
       { match: 'run list', stdout: 'completed\tfailure\tci\tmain\n' },
     ])
     const result = await run(['gh pr checks 4', 'gh run list --limit 1'])
     expect(result.outcomes).toHaveLength(2)
     expect(result.notRun).toEqual([])
     expect(result.outcomes[1]?.output).toContain('completed')
+  }, 30_000)
+
+  test('a failing check is the answer, not an error', async () => {
+    // What the model asked was the state of CI; the 2026-10-16..19 census saw
+    // four of these marked `is_error`.
+    fakeGh.setRules([
+      { match: 'pr checks', stdout: 'smoke-and-tests\tfail\t32s\thttps://github.com/o/r/actions/runs/7/job/8\t\n', exitCode: 1 },
+    ])
+    const result = await run(['gh pr checks 4', 'git --version'])
+    expect(result.outcomes[0]?.answer).toContain('1 check failed: smoke-and-tests')
+    expect(batchFailed(result)).toBe(false)
+    const text = formatGitBatchResult(result)
+    expect(text).toContain('smoke-and-tests\tfail')
+    expect(text).toContain('`gh run view 7 --log-failed`')
+    expect(text).not.toContain('Exit code 1')
   }, 30_000)
 
   test('a signed-out gh stops the reads behind it, which would only fail the same way', async () => {
@@ -214,7 +229,9 @@ describe('`gh pr checks` before the checks exist', () => {
     const result = await run(['gh pr checks 5 --watch'], { noChecksGraceMs: 1_000, noChecksRetryMs: 200 })
     expect(Date.now() - startedAt).toBeLessThan(10_000)
     expect(checksCalls()).toBeGreaterThan(1)
-    expect(batchFailed(result)).toBe(true)
+    // Waiting longer would not change it: no workflow runs on the branch.
+    expect(batchFailed(result)).toBe(false)
+    expect(result.outcomes[0]?.answer).toContain('No checks are registered for this branch yet')
     expect(formatGitBatchResult(result)).toContain('No checks are registered for this branch yet')
   }, 30_000)
 
@@ -240,6 +257,7 @@ describe('`gh pr checks` before the checks exist', () => {
     fakeGh.setRules([NO_CHECKS])
     const result = await run(['gh pr checks 5'], { noChecksGraceMs: 10_000, noChecksRetryMs: 100 })
     expect(checksCalls()).toBe(1)
+    expect(batchFailed(result)).toBe(false)
     expect(formatGitBatchResult(result)).toContain('No checks are registered for this branch yet')
   }, 30_000)
 })
