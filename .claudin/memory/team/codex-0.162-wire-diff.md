@@ -1,6 +1,6 @@
 ---
 name: codex-0.162-wire-diff
-description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay closed in PR 307, WebSocket transport closed on feat/responses-websocket (10-17); captures, gates, the free-plan quota that ran out, and the traps the captures caught
+description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay (#307) and WebSocket transport (#308) closed 10-17, both in v1.1.46; captures, gates, the free-plan quota that ran out, the traps the captures caught
 type: project
 ---
 
@@ -29,8 +29,9 @@ Still different on purpose: Codex's "responses_lite" prompt shape (one `exec` to
 messages), its `generate: false` prewarm and its telemetry (`x-codex-turn-metadata`,
 `client_metadata` in every frame).
 
-**Transport closed 2026-10-17** on branch `feat/responses-websocket` (killswitch
-`CLAUDIN_CODEX_WEBSOCKET=0`; design in `docs/tech/responses-websocket/README.md`). Claudin
+**Transport closed 2026-10-17** in #308 (killswitch `CLAUDIN_CODEX_WEBSOCKET=0`; design in
+`docs/tech/responses-websocket/README.md`; the defaults and what was rejected are in
+[[codex-backend-speaks-codex-cli-wire]]). Claudin
 talks to the backend over a socket with deltas, like Codex CLI 0.163. Capture with
 `--arm=claudin-http`: 3/6 requests as deltas (input items `1 1 1 9 12 1` vs HTTP
 `1 4 6 9 12 15`), cached/input 131584/162798 vs 131584/162816 (resume turns included),

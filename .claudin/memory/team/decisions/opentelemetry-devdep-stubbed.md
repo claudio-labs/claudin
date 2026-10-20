@@ -1,20 +1,27 @@
 ---
-name: OpenTelemetry is devDep-only and fully build-stubbed — don't remove for "security"
-description: Why the @opentelemetry/* packages stay in the tree even though Claudin uses zero OTel at runtime; verdict on removing them
+name: opentelemetry-devdep-stubbed
+description: Since 2026-10-19 @opentelemetry/api is bundled in both builds, not external; SDK 0.135 imports it and, left external, it crashed the compiled binary. Replaces the 07-08 "keep the OTel devDeps" verdict
 type: project
-scope: build/telemetry-stubs
-impact: rejected
+scope: build
+impact: structural
+paths:
+  - "scripts/build/build.ts"
 ---
 
-OpenTelemetry is NOT used at runtime in Claudin. Do not spend effort removing the `@opentelemetry/*` deps to "improve security" — it yields ~zero benefit.
+**Decision:** `@opentelemetry/api` is dropped from the `external` list in `scripts/build/build.ts`, so Bun bundles it into both the Node bundle and the `--compile` binary. The other `@opentelemetry/*` entries stay external.
 
-- The 8 `@opentelemetry/*` packages are in **devDependencies**, not `dependencies` → npm consumers of `@claudiolabs/claudin` never install them; zero runtime/bundle footprint for end users.
-- `noTelemetryPlugin` stubs every OTel-importing module (instrumentation, sessionTracing, perfettoTracing, firstPartyEventLogger, firstPartyEventLoggingExporter, bigqueryExporter, analytics/*) → the built `dist/cli.mjs` + chunks contain ZERO live `@opentelemetry` imports (verified by grep).
-- `scripts/build.ts` marks `@opentelemetry/*` as `external` AND also provides noop OTel exports (`trace`/`context`/`SpanStatusCode`/etc.) in its inline stub module.
-- The deps remain only so `bun run typecheck` (tsc) can resolve the surviving `import type {...} from '@opentelemetry/*'` references in ~10 source files (state.ts, telemetryAttributes.ts, init.ts, events.ts, logger.ts, betaSessionTracing.ts, etc.).
+**Why:** `@anthropic-ai/sdk` ≥0.134 imports `@opentelemetry/api` statically from `client.mjs`, for native tracing. Left external, the standalone binary carried a `require` it could not resolve, and `-p` died at startup in `enableConfigs`. That failure did not read as "module not found". It was measured on 2026-10-19 against a mock Messages server: the binary built at 869a2f03 answers, #310's binary crashes, and #310 with the package bundled answers ([[dependabot-bumps-2026-10-19-undici-zstd-node-floor]]).
 
-**Verdict (2026-07-08): keep them.** Removing requires replacing those `import type` refs across ~10 files with local minimal types, for near-zero security gain (devDeps don't ship). Only worth doing for a leaner dev tree / fewer Dependabot bumps.
+**What changes for a teammate:**
+- **Don't put it back in `external`** next to its siblings, which look like the same case and are not.
+- **A package in `external` must resolve at runtime.** `bun --compile` has no `node_modules` beside the binary, so any package left in `external` that a bundled dependency imports breaks the binary.
+- **Check a dependency bump with a real request.** Run `-p` against a mock, from outside the checkout. `--version` cannot catch this ([[release-smoke-only-runs-version]]).
 
-**Why:** recurring "can we remove OTel to improve security" question; the runtime path is already neutralized by the build stubs + `verify:privacy`.
+**Rejected:**
+- **Bundling it only for `--compile`:** the Node bundle would then import a transitive dependency that Claudin never declares.
+- **Vendoring it beside the binary, like sharp:** it is pure JS, so bundling is enough.
+- **Removing it:** it is the SDK's own dependency.
 
-**How to apply:** If asked again, cite that OTel is devDep-only + fully build-stubbed. If the user still wants removal, do the `import type` cleanup first, then `bun run typecheck` + `build` + `verify:privacy` to confirm nothing breaks.
+**What it replaces:** the 2026-07-08 verdict to keep the `@opentelemetry/*` devDeps for typecheck. Those devDeps are gone from `package.json`, nothing in `src/` imports OpenTelemetry any more, and the SDK only calls the no-op API, because nothing registers a provider.
+
+**Evidence:** the #310 follow-up session of 2026-10-19; the comment beside `external` in `scripts/build/build.ts`.
