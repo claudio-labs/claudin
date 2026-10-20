@@ -112,6 +112,7 @@ export async function validateModel(
   try {
     await sideQuery({
       model: normalizedModel,
+      querySource: 'model_validation',
       max_tokens: 1,
       maxRetries: 0,
       messages: [

@@ -164,6 +164,7 @@ async function classifyYoloActionXml(
     ]
     stage1Opts = {
       model,
+      querySource: 'auto_mode',
       max_tokens: 64 + thinkingPadding,
       system: systemBlocks,
       temperature: 0,
@@ -235,6 +236,7 @@ async function classifyYoloActionXml(
       const stage2Start = Date.now()
       const stage2Opts = {
         model,
+        querySource: 'auto_mode' as const,
         max_tokens: STAGE2_MAX_TOKENS * attempt + thinkingPadding,
         system: systemBlocks,
         temperature: 0,
@@ -594,6 +596,7 @@ async function classifyYoloActionUnbounded(
     const start = Date.now()
     const sideQueryOpts = {
       model,
+      querySource: 'auto_mode' as const,
       max_tokens: 4096 + thinkingPadding,
       system: [
         {

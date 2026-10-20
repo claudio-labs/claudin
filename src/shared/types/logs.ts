@@ -188,6 +188,21 @@ export type CostStateModelUsage = {
 }
 
 /**
+ * One spend source's share of a CostStateEntry: a `QuerySource` (the main
+ * thread, an agent, the auto-mode classifier, a memory fork) or one of the
+ * cost tracker's own labels. Claudin-only — Claude Code's entry has no such
+ * field, and an entry without it restores to an empty map.
+ */
+export type CostStateSourceUsage = {
+  calls: number
+  costUSD: number
+  inputTokens: number
+  outputTokens: number
+  cacheReadInputTokens: number
+  cacheCreationInputTokens: number
+}
+
+/**
  * The session's running cost, in Claude Code's `cost-state` shape (2.1.280):
  * stamped at exit and before /clear or /resume switch away, restored by
  * --resume and -c. Last-wins on load, and never a chain participant — `type`
@@ -206,6 +221,7 @@ export type CostStateEntry = {
   startTime: number
   modelUsage: Record<string, CostStateModelUsage>
   hasUnknownModelCost?: boolean
+  sourceUsage?: Record<string, CostStateSourceUsage>
 }
 
 export type FileHistorySnapshotMessage = {

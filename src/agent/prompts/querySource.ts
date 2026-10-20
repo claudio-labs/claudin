@@ -43,6 +43,8 @@ type InternalQuerySource =
   | 'away_summary'
   | 'bash_classifier'
   | 'bash_extract_prefix'
+  // The auto-mode classifier's capability probe (`permissions/classifierProbe.ts`).
+  | 'classifier_probe'
   | 'compact'
   | 'extract_memories'
   | 'feedback'

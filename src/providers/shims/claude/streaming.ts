@@ -1426,6 +1426,7 @@ export async function* queryModel(
               costUSDForPart,
               usageForSdk,
               options.model,
+              options.querySource,
             );
 
             const refusalMessage = getErrorMessageIfRefusal(
@@ -1912,6 +1913,7 @@ export async function* queryModel(
         fallbackCost,
         fallbackUsage,
         options.model,
+        options.querySource,
       );
     }
 
