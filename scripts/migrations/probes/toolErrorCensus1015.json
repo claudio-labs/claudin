@@ -77,9 +77,9 @@
     },
     {
       "name": "no upstream is an error again",
-      "source": "src/tools/GitTool/run.ts",
-      "find": "          ? noUpstreamAnswer(rawStdout)",
-      "replace": "          ? null"
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  if (upstream !== null) return { text: upstream, stopsWrites: false }",
+      "replace": "  if (false) return { text: upstream, stopsWrites: false }"
     },
     {
       "name": "a write's no-upstream is answered too",

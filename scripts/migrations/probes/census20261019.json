@@ -2,13 +2,16 @@
   "test": [
     "src/tools/GitTool/watch.test.ts",
     "src/tools/GitTool/errors.test.ts",
+    "src/tools/GitTool/families.test.ts",
     "src/agent/compact/stableStubState.test.ts",
     "src/agent/compact/microCompact.test.ts",
     "src/agent/compact/requestDeterminism.invariant.test.ts",
     "src/agent/cost-tracker.sourceUsage.test.ts",
     "src/agent/sideQuery.test.ts",
+    "src/sessions/sessionRestore.costState.test.ts",
     "src/permissions/toolPermission/permissionLogging.test.ts",
-    "src/agent/tools/toolExecution.permissionRecord.test.ts"
+    "src/agent/tools/toolExecution.permissionRecord.test.ts",
+    "scripts/bench/tokens/relief-ceiling-sim.test.ts"
   ],
   "source": "src/tools/GitTool/errors.ts",
   "probes": [
@@ -25,8 +28,19 @@
     },
     {
       "name": "readOnlyAnswer asks the gh checks shape",
-      "find": "  return noUpstreamAnswer(output) ?? ghChecksAnswer(command, exitCode, output)",
-      "replace": "  return noUpstreamAnswer(output)"
+      "find": "  const checks = ghChecksAnswer(command, exitCode, output)",
+      "replace": "  const checks = null"
+    },
+    {
+      "name": "a checks answer still stops a write behind it",
+      "find": "  return checks === null ? null : { text: checks, stopsWrites: true }",
+      "replace": "  return checks === null ? null : { text: checks, stopsWrites: false }"
+    },
+    {
+      "name": "run.ts stops the batch on an answer that holds writes",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "        (isError || answer?.stopsWrites === true) &&",
+      "replace": "        isError &&"
     },
     {
       "name": "run.ts reports the answer",
@@ -71,16 +85,28 @@
       "replace": "  sourceUsage = {}"
     },
     {
+      "name": "the transcript loader keeps sourceUsage",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "    sourceUsage: z\n      .record(",
+      "replace": "    sourceUsageDropped: z\n      .record("
+    },
+    {
+      "name": "a malformed sourceUsage is dropped alone",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "      .optional()\n      .catch(undefined),",
+      "replace": "      .optional(),"
+    },
+    {
       "name": "a side query stays out of the cache metrics",
       "source": "src/agent/cost-tracker.ts",
       "find": "  recordSpend(cost, usage, model, querySource)",
       "replace": "  addToTotalSessionCost(cost, usage, model, querySource)"
     },
     {
-      "name": "an auto-mode verdict is the classifier's, not config",
+      "name": "nobody was asked: the source is automatic",
       "source": "src/permissions/toolPermission/permissionLogging.ts",
-      "find": "  if (reason?.type === 'classifier') return 'classifier'\n",
-      "replace": ""
+      "find": "    source: source === 'config' ? 'automatic' : sourceToString(source),",
+      "replace": "    source: source === 'config' ? 'config' : sourceToString(source),"
     },
     {
       "name": "the detail is capped",
@@ -108,9 +134,15 @@
     },
     {
       "name": "a verdict nobody logged still becomes the record",
-      "source": "src/agent/tools/toolExecution.ts",
-      "find": "  return buildPermissionRecord({\n    decision: verdict.behavior === 'allow' ? 'accept' : 'reject',",
-      "replace": "  return { decision: 'accept', source: 'config' }\n  return buildPermissionRecord({\n    decision: verdict.behavior === 'allow' ? 'accept' : 'reject',"
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "    decision: verdict.behavior === 'allow' ? 'accept' : 'reject',",
+      "replace": "    decision: 'accept',"
+    },
+    {
+      "name": "the simulator's mirror of the input window",
+      "source": "scripts/bench/tokens/relief-ceiling-sim.ts",
+      "find": "const KEEP_RECENT_INPUT_RESULTS = 10",
+      "replace": "const KEEP_RECENT_INPUT_RESULTS = 11"
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: tool-cache-permission-census-2026-10-19
-description: Census A=10-12..15 vs B=10-16..19 (first window on 1.1.45/46) — $1,488→$596, uncached tail $234→$0, 10-15 expected-zeros hold; Git 5.7%; relief stubbed 30-s-old patch inputs; sideQuery spend (auto-mode classifier) was in no cost counter; permission decisions unpersisted — all four fixed on fix/census-2026-10-19
+description: Census A=10-12..15 vs B=10-16..19 (first window on 1.1.45/46) — $1,488→$596, uncached tail $234→$0, 10-15 expected-zeros hold; Git 5.7%; relief stubbed 30-s-old patch inputs; sideQuery spend (auto-mode classifier) was in no cost counter; permission decisions unpersisted — all four fixed in PR 312
 type: project
 ---
 
@@ -24,12 +24,15 @@ caveat is that infra-home-lab, where they clustered, was idle). Read
 "No agent was actually launched" warning (10 → 0, #301) are all 0. No tool
 crash.
 
-**Found in B, and what fix/census-2026-10-19 did about it:**
+**Found in B, and what PR #312 did about it:**
 - **Git 5.7%, the worst built-in.**
   - 4× `gh pr checks` exit 1, for a failing check or for none yet, marked
     `is_error`. FIXED: `readOnlyAnswer` (`GitTool/errors.ts`) makes both an
     answer, the way #298 handled no-upstream. A failed check names
-    `gh run view <id> --log-failed`.
+    `gh run view <id> --log-failed`. Unlike no-upstream, a checks answer still
+    stops a write queued behind it (`stopsWrites`): the first version let
+    `["gh pr checks 4", "gh pr merge 4"]` merge a PR whose CI had just
+    failed, and the bug-hunting review agent caught it with a repro test.
   - 5× `git pull` refused for a dirty tree, all in ferrous-dns. The dirty files
     are the harness's own (`.claudin/memory/team/*`, the map-synced
     `search-strategy.md`). The diagnosis already names `--autostash`. Left to
@@ -50,17 +53,25 @@ crash.
   bashClassifier and permissionExplainer were missing from `/cost`,
   `--max-budget-usd` and the cost-state. FIXED: `addSideQueryCost`. Every
   spend is now kept per source in `cost-state.sourceUsage`; side queries stay
-  out of the cache metrics. Their real size is still unmeasured: the next
-  census reads it.
+  out of the cache metrics. The loader's zod schema has to declare the field
+  (`transcriptLoad.ts`); the review found that an undeclared one was dropped
+  on every resume. Their real size is still unmeasured: the next census
+  reads it. Live run (Opus 5.5, 3 tool calls): the classifier was $0.053 of
+  $0.258 cold and $0.006 of $0.089 warm.
 - **Permissions were not persisted.** B had 6 classifier denials, all correct:
   mitmdump recording bearer tokens ×3 (one a retry of the same denied
   command), an unredacted config print, sudo, and a /tmp write against "do not
   modify". 9 of 10 user rejections were ExitPlanMode feedback. Approvals,
   prompts and rule hits could not be counted. FIXED: each tool_result record
   carries `permissionDecision` {decision, source, reason, detail, waitMs}.
-  Auto-mode verdicts are `classifier` now, not `config`. In
+  `source` says who decided — `automatic` when nobody was asked — and
+  `reason` says why (`rule`, `mode`, `classifier`, …). Before, an auto-mode
+  denial read as `config`, like a deny rule. In
   `~/.claudin/settings.json`, 138 of the 230 allow rules are one-off literal
   commands: 51 on `/home/viudes/projects/claudio/…`, 40 on pre-reorg paths.
+  The user approved a cleanup on 10-20: 230 → 135 rules. It removed the old
+  claudio paths, the pre-reorg paths, parse fragments, pid-specific rules and
+  a literal push to main.
 - **Media-cap strip** (81744358, Sonnet, playwright, 10-17 14:33-14:41): six
   rewrites of ~520k each, $12.6, half of B's rewrite dollars. This is the
   unbatched design the user chose ([[clip-frontier-stalls-on-image-blocks]]).
