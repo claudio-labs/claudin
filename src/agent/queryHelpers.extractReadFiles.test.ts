@@ -462,8 +462,8 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
   })
 })
 
-// CLAUDIN_OWN_WRITES: a read file the model's own call changed was brought up
-// to date in the process (attachments/ownWrites.ts), and the paths ride on the
+// Own writes, on by default: a read file the model's own call changed was brought
+// up to date in the process (attachments/ownWrites.ts), and the paths ride on the
 // call's tool_result message — for any tool, and whether it returned or threw.
 // Without this the resumed prompt reported the model's own edit as the user's:
 // the 2026-10-09 A/B's whole resume write.

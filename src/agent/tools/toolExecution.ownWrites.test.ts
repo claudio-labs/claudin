@@ -31,7 +31,8 @@ afterAll(() => {
 })
 beforeEach(() => {
   priorFlag = process.env[FLAG]
-  process.env[FLAG] = '1'
+  // Unset on purpose: on by default.
+  delete process.env[FLAG]
 })
 afterEach(() => {
   if (priorFlag === undefined) delete process.env[FLAG]
@@ -145,7 +146,7 @@ describe('a read file the call itself changed', () => {
   })
 
   test('switch off: no line, and the watcher reports the change as before', async () => {
-    delete process.env[FLAG]
+    process.env[FLAG] = '0'
     const { result, text, later } = await run('off.ts', { then: 'return' })
     expect(text).not.toContain('you had read changed')
     expect(later).toMatchObject({ type: 'edited_text_file' })

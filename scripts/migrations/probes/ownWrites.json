@@ -11,6 +11,16 @@
       "replace": "\n"
     },
     {
+      "name": "own-writes: off by default again",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_OWN_WRITES)\n",
+      "replace": "  return process.env.CLAUDIN_OWN_WRITES === '1'\n"
+    },
+    {
+      "name": "own-writes: =0 is ignored",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_OWN_WRITES)\n",
+      "replace": "  return process.env.CLAUDIN_OWN_WRITES !== 'off'\n"
+    },
+    {
       "name": "own-writes: a change from before the command is taken as its own",
       "find": "        if (mtime < startedAt || mtime <= state.timestamp) return null\n",
       "replace": "        if (mtime <= state.timestamp) return null\n"

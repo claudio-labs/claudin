@@ -68,10 +68,10 @@
  *      middle, and are not summarized on top
  *  16. one cut off   — CLAUDIN_BASH_ONE_CUT=0: the same output is cut to 15+15 and
  *      loses the error
- *  17. own writes on — CLAUDIN_OWN_WRITES=1: p1 Read a.ts, then a python
+ *  17. own writes on — the default: p1 Read a.ts, then a python
  *      edit of it in Bash, whose result names the file; neither p1's next
  *      request nor p2 (--resume) carries a "was modified" note for it
- *  18. own writes off — the default: p2 carries the note
+ *  18. own writes off — CLAUDIN_OWN_WRITES=0, the killswitch: p2 carries the note
  *  19. compaction: a Grep with 42 matches and their context, past the old
  *      cut's 10 per file, reaches the model whole
  *  20. paging: a Bash result past its 30k line comes back as its first lines
@@ -87,12 +87,12 @@
  * Scenarios 24-26 are the tool loop claiming what any call changed
  * (attachments/ownWrites.ts), past the Bash-only refresh 17 measured first:
  *
- *  24. own writes, a failing run — CLAUDIN_OWN_WRITES=1: the python edit then
+ *  24. own writes, a failing run — the default: the python edit then
  *      `exit 1`; the error names a.ts, and no "was modified" note follows in p1 or p2
- *  25. own writes, a Git call — CLAUDIN_OWN_WRITES=1, a.ts committed: Read, Patch,
+ *  25. own writes, a Git call — the default, a.ts committed: Read, Patch,
  *      then `git checkout -- a.ts` through the Git tool; its result names a.ts,
  *      the file is back on disk, and no note follows in p1 or p2
- *  26. own writes off (the control for 25): the Git result names nothing, and the note comes
+ *  26. own writes off (CLAUDIN_OWN_WRITES=0, the control for 25): the Git result names nothing, and the note comes
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -658,7 +658,8 @@ const SCENARIOS: Scenario[] = [
   {
     key: '17',
     title: 'own writes on: the resumed prompt does not call the edit the user\'s',
-    env: { CLAUDIN_OWN_WRITES: '1' },
+    // Unset on purpose: on by default.
+    env: {},
     script: ws => [
       { prompt: 'Rename alpha in a.ts.', steps: [READ_A(ws), PYTHON_EDIT_A, DONE] },
       { prompt: 'Anything else?', steps: [DONE] },
@@ -673,7 +674,7 @@ const SCENARIOS: Scenario[] = [
   {
     key: '18',
     title: 'own writes off (the control for 17)',
-    env: {},
+    env: { CLAUDIN_OWN_WRITES: '0' },
     script: ws => [
       { prompt: 'Rename alpha in a.ts.', steps: [READ_A(ws), PYTHON_EDIT_A, DONE] },
       { prompt: 'Anything else?', steps: [DONE] },
@@ -770,7 +771,7 @@ const SCENARIOS: Scenario[] = [
   {
     key: '24',
     title: 'own writes, a failing run: the error still claims the edit',
-    env: { CLAUDIN_OWN_WRITES: '1' },
+    env: {},
     script: ws => [
       { prompt: 'Rename alpha in a.ts and check.', steps: [READ_A(ws), PYTHON_EDIT_A_FAILING, DONE] },
       { prompt: 'Anything else?', steps: [DONE] },
@@ -785,7 +786,7 @@ const SCENARIOS: Scenario[] = [
   {
     key: '25',
     title: 'own writes, a Git call: a checkout is the call\'s, not the user\'s',
-    env: { CLAUDIN_OWN_WRITES: '1' },
+    env: {},
     git: true,
     prepare: commitWorkspace,
     script: ws => [
@@ -803,7 +804,7 @@ const SCENARIOS: Scenario[] = [
   {
     key: '26',
     title: 'own writes off, a Git call (the control for 25)',
-    env: {},
+    env: { CLAUDIN_OWN_WRITES: '0' },
     git: true,
     prepare: commitWorkspace,
     script: ws => [

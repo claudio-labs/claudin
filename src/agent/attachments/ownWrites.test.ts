@@ -26,7 +26,8 @@ afterAll(() => {
 })
 beforeEach(() => {
   priorFlag = process.env[FLAG]
-  process.env[FLAG] = '1'
+  // Unset on purpose: on by default.
+  delete process.env[FLAG]
 })
 afterEach(() => {
   if (priorFlag === undefined) delete process.env[FLAG]
@@ -76,7 +77,7 @@ describe('refreshOwnWrites', () => {
 
   // The control: without the refresh, the watcher reports the same change.
   test('flag off: nothing moves, and the next prompt reports the change as before', async () => {
-    delete process.env[FLAG]
+    process.env[FLAG] = '0'
     const p = join(dir, 'off.ts')
     writeAt(p, 'export const a = 1\n', -60)
     const ctx = makeContext()
@@ -215,7 +216,7 @@ describe('settleOwnWrites: which calls may claim a change', () => {
   })
 
   test('switch off: nothing is claimed', async () => {
-    delete process.env[FLAG]
+    process.env[FLAG] = '0'
     expect(await claims({ isReadOnly: () => false })).toBe(false)
   })
 })
@@ -283,8 +284,8 @@ describe('the tool loop: a read file a Bash command rewrote', () => {
         PROBE_DIR: probeDir,
         PROBE_COMMAND: command,
       }
-      if (flag) env[FLAG] = '1'
-      else delete env[FLAG]
+      if (flag) delete env[FLAG]
+      else env[FLAG] = '0'
       const child = spawnSync(process.execPath, ['--preload', './src/stubs/test-preload.ts', '-e', CALL_PROBE], {
         cwd: REPO_ROOT,
         encoding: 'utf8',

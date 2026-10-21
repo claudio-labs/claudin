@@ -45,15 +45,18 @@
  * background command or agent goes on writing after its call returned; those
  * changes stay the watcher's.
  *
- * `CLAUDIN_OWN_WRITES=1` turns it on. Off by default until the session A/B
- * decides. Read per call, so a test can set it.
+ * On by default since 2026-10-21: in the branch-point replay (team memory
+ * `edit-method-census-2026-10-21`) the model's next action was the same with
+ * the line as with the notes, and the context ~2% of a session smaller.
+ * `CLAUDIN_OWN_WRITES=0` brings the watcher's notes back. Read per call, so a
+ * test can set it.
  */
 import {
   changedFileCandidates,
   isRangeEntry,
   refreshRangeEntry,
 } from 'src/agent/attachments/changedFile.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
@@ -66,7 +69,7 @@ import type { Tool } from 'src/tools/Tool.js'
 const OWN_WRITE_MAX_BYTES = 10 * 1024 * 1024
 
 function isOwnWritesEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_OWN_WRITES)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_OWN_WRITES)
 }
 
 export type OwnWrites = {
