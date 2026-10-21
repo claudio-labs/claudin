@@ -68,9 +68,9 @@
  *      middle, and are not summarized on top
  *  16. one cut off   — CLAUDIN_BASH_ONE_CUT=0: the same output is cut to 15+15 and
  *      loses the error
- *  17. own writes on — CLAUDIN_BASH_OWN_WRITES=1: p1 Read a.ts, then a python
- *      edit of it in Bash, whose result names the file; p2 (--resume) carries no
- *      "was modified" note for it
+ *  17. own writes on — CLAUDIN_OWN_WRITES=1: p1 Read a.ts, then a python
+ *      edit of it in Bash, whose result names the file; neither p1's next
+ *      request nor p2 (--resume) carries a "was modified" note for it
  *  18. own writes off — the default: p2 carries the note
  *  19. compaction: a Grep with 42 matches and their context, past the old
  *      cut's 10 per file, reaches the model whole
@@ -83,6 +83,16 @@
  *      reaches the model whole: the failure in its middle and its last line
  *  23. a failing run past the line (~70k, spilled) is paged from its saved
  *      file like a passing one: the file holds its last line, the summary
+ *
+ * Scenarios 24-26 are the tool loop claiming what any call changed
+ * (attachments/ownWrites.ts), past the Bash-only refresh 17 measured first:
+ *
+ *  24. own writes, a failing run — CLAUDIN_OWN_WRITES=1: the python edit then
+ *      `exit 1`; the error names a.ts, and no "was modified" note follows in p1 or p2
+ *  25. own writes, a Git call — CLAUDIN_OWN_WRITES=1, a.ts committed: Read, Patch,
+ *      then `git checkout -- a.ts` through the Git tool; its result names a.ts,
+ *      the file is back on disk, and no note follows in p1 or p2
+ *  26. own writes off (the control for 25): the Git result names nothing, and the note comes
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -249,14 +259,23 @@ function readPage(text: string): { shown: number; page: string[]; file: string[]
   return { shown: Number(pointer[1]), page: page.split('\n'), file: readFileSync(path, 'utf8').trimEnd().split('\n') }
 }
 const READ_A = (ws: string): Step => ({ tool: 'Read', input: { file_path: join(ws, 'a.ts') } })
+const PYTHON_EDIT_A_COMMAND = `python3 -c "import pathlib; p = pathlib.Path('a.ts'); p.write_text(p.read_text().replace('alpha', 'alpha-2'))"`
 const PYTHON_EDIT_A: Step = {
   tool: 'Bash',
-  input: {
-    command: `python3 -c "import pathlib; p = pathlib.Path('a.ts'); p.write_text(p.read_text().replace('alpha', 'alpha-2'))"`,
-    description: 'Rename alpha in a.ts',
-  },
+  input: { command: PYTHON_EDIT_A_COMMAND, description: 'Rename alpha in a.ts' },
 }
-const OWN_WRITE_LINE = '(1 file you had read changed under this command — your read now matches the disk: a.ts)'
+const OWN_WRITE_LINE = '(1 file you had read changed under this call — your read now matches the disk: a.ts)'
+const PYTHON_EDIT_A_FAILING: Step = {
+  tool: 'Bash',
+  input: { command: `${PYTHON_EDIT_A_COMMAND} && exit 1`, description: 'Rename alpha in a.ts' },
+}
+const GIT_RESTORE_A: Step = { tool: 'Git', input: { commands: ['git checkout -- a.ts'] } }
+/** Scenario 25-26's base: a.ts committed, so a checkout can bring it back. */
+const commitWorkspace = (run: ScenarioRun): undefined => {
+  git(run.ws, ['add', '-A'])
+  git(run.ws, ['-c', 'user.name=e2e', '-c', 'user.email=e2e@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'base'])
+  return undefined
+}
 const MODIFIED_NOTE = 'a.ts was modified, either by the user or by a linter'
 /** Whether a main-loop request the CLI sent in `phase` carries `text` anywhere. */
 const sentInPhase = (run: ScenarioRun, phase: number, text: string): boolean =>
@@ -639,7 +658,7 @@ const SCENARIOS: Scenario[] = [
   {
     key: '17',
     title: 'own writes on: the resumed prompt does not call the edit the user\'s',
-    env: { CLAUDIN_BASH_OWN_WRITES: '1' },
+    env: { CLAUDIN_OWN_WRITES: '1' },
     script: ws => [
       { prompt: 'Rename alpha in a.ts.', steps: [READ_A(ws), PYTHON_EDIT_A, DONE] },
       { prompt: 'Anything else?', steps: [DONE] },
@@ -647,6 +666,7 @@ const SCENARIOS: Scenario[] = [
     expect: run => [
       onResult(run, 0, 1, 'p1 the python edit names the file it brought up to date', r => !r.isError && r.text.includes(OWN_WRITE_LINE)),
       onDisk(run, 0, 'a.ts', 'p1 a.ts was edited on disk', c => c.includes(A_AFTER)),
+      { label: 'p1 the next request carries no "was modified" note for a.ts', ok: !sentInPhase(run, 0, MODIFIED_NOTE) },
       { label: 'p2 (--resume) carries no "was modified" note for a.ts', ok: run.phases.length === 2 && !sentInPhase(run, 1, MODIFIED_NOTE) },
     ],
   },
@@ -745,6 +765,54 @@ const SCENARIOS: Scenario[] = [
       onResult(run, 0, 0, 'p1 the saved file holds every line, the summary last', r =>
         readPage(r.text)?.file.join('\n') === FAILING_SPILL_LINES.join('\n'),
       ),
+    ],
+  },
+  {
+    key: '24',
+    title: 'own writes, a failing run: the error still claims the edit',
+    env: { CLAUDIN_OWN_WRITES: '1' },
+    script: ws => [
+      { prompt: 'Rename alpha in a.ts and check.', steps: [READ_A(ws), PYTHON_EDIT_A_FAILING, DONE] },
+      { prompt: 'Anything else?', steps: [DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 1, 'p1 the failed run names the file it brought up to date', r => r.isError && r.text.includes(OWN_WRITE_LINE)),
+      onDisk(run, 0, 'a.ts', 'p1 a.ts was edited on disk', c => c.includes(A_AFTER)),
+      { label: 'p1 the next request carries no "was modified" note for a.ts', ok: !sentInPhase(run, 0, MODIFIED_NOTE) },
+      { label: 'p2 (--resume) carries no "was modified" note for a.ts', ok: run.phases.length === 2 && !sentInPhase(run, 1, MODIFIED_NOTE) },
+    ],
+  },
+  {
+    key: '25',
+    title: 'own writes, a Git call: a checkout is the call\'s, not the user\'s',
+    env: { CLAUDIN_OWN_WRITES: '1' },
+    git: true,
+    prepare: commitWorkspace,
+    script: ws => [
+      { prompt: 'Try a rename in a.ts, then undo it.', steps: [READ_A(ws), PATCH_A, GIT_RESTORE_A, DONE] },
+      { prompt: 'Anything else?', steps: [DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 1, 'p1 the Patch applies', isPatchSuccess),
+      onResult(run, 0, 2, 'p1 the Git result names the file it brought up to date', r => !r.isError && r.text.includes(OWN_WRITE_LINE)),
+      onDisk(run, 0, 'a.ts', 'p1 a.ts is back as committed', c => c.includes(A_BEFORE) && !c.includes(A_AFTER)),
+      { label: 'p1 the next request carries no "was modified" note for a.ts', ok: !sentInPhase(run, 0, MODIFIED_NOTE) },
+      { label: 'p2 (--resume) carries no "was modified" note for a.ts', ok: run.phases.length === 2 && !sentInPhase(run, 1, MODIFIED_NOTE) },
+    ],
+  },
+  {
+    key: '26',
+    title: 'own writes off, a Git call (the control for 25)',
+    env: {},
+    git: true,
+    prepare: commitWorkspace,
+    script: ws => [
+      { prompt: 'Try a rename in a.ts, then undo it.', steps: [READ_A(ws), PATCH_A, GIT_RESTORE_A, DONE] },
+      { prompt: 'Anything else?', steps: [DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 2, 'p1 the Git result names nothing', r => !r.isError && !r.text.includes(OWN_WRITE_LINE)),
+      { label: 'p1 or p2 carries the "was modified" note for a.ts', ok: sentInPhase(run, 0, MODIFIED_NOTE) || sentInPhase(run, 1, MODIFIED_NOTE) },
     ],
   },
 ]
