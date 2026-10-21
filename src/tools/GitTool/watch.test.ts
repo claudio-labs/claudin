@@ -190,6 +190,29 @@ describe('`gh pr checks` exit 8', () => {
     expect(text).not.toContain('Exit code 1')
   }, 30_000)
 
+  test('a failing check still stops a write behind it', async () => {
+    // An answer, but not a green light: `["gh pr checks 4", "gh pr merge 4"]`
+    // must not merge a PR whose CI just failed, as it did not when this exit
+    // was an error.
+    fakeGh.setRules([
+      { match: 'pr checks', stdout: 'smoke-and-tests\tfail\t32s\thttps://github.com/o/r/actions/runs/7/job/8\t\n', exitCode: 1 },
+      { match: 'pr merge', stdout: 'Merged pull request #4\n' },
+    ])
+    const result = await run(['gh pr checks 4', 'gh pr merge 4 --squash'])
+    expect(result.outcomes[0]?.answer).toContain('1 check failed')
+    expect(result.notRun).toEqual(['gh pr merge 4 --squash'])
+  }, 30_000)
+
+  test('no checks yet stops a write behind it too', async () => {
+    fakeGh.setRules([
+      { match: 'pr checks', stderr: "no checks reported on the 'feat/x' branch\n", exitCode: 1 },
+      { match: 'pr merge', stdout: 'Merged pull request #4\n' },
+    ])
+    const result = await run(['gh pr checks 4', 'gh pr merge 4 --squash'])
+    expect(result.outcomes[0]?.answer).toContain('No checks are registered')
+    expect(result.notRun).toEqual(['gh pr merge 4 --squash'])
+  }, 30_000)
+
   test('a signed-out gh stops the reads behind it, which would only fail the same way', async () => {
     fakeGh.setRules([{ ...GH_NOT_AUTHENTICATED, match: 'pr' }])
     const result = await run(['gh pr view 9', 'gh pr list'])

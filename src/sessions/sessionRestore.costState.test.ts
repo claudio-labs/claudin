@@ -25,10 +25,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
+  addSideQueryCost,
   addToTotalLinesChanged,
   addToTotalSessionCost,
   getCostSinceRestoreUSD,
   getCostStateEntryFor,
+  getSourceUsage,
   getTotalCacheReadInputTokens,
   getTotalCost,
   getTotalLinesAdded,
@@ -244,6 +246,24 @@ describe('cost-state — written, read back, restored', () => {
     expect(getTotalCacheReadInputTokens()).toBe(written.cacheRead)
     expect(getTotalOutputTokens()).toBe(written.output)
     expect(getTotalLinesAdded()).toBe(written.lines)
+  })
+
+  test('the spend by source round-trips through the transcript loader too', async () => {
+    // The loader's schema did not declare `sourceUsage`, and a zod object drops
+    // what it does not declare: every real resume restored an empty map.
+    const { sid } = openSession()
+    addToTotalSessionCost(0.75, usage({ input: 12, output: 900, cacheRead: 150_000 }), MODEL, 'repl_main_thread')
+    addSideQueryCost(0.05, usage({ input: 2_000, output: 40 }), MODEL, 'auto_mode')
+    const written = getSourceUsage()
+
+    getProject().reAppendCostState()
+    resetCostState()
+
+    const log = await getLastSessionLog(sid)
+    restoreCostStateForResume(sid, log!, NO_PROJECT_CONFIG)
+
+    expect(Object.keys(written)).toEqual(['repl_main_thread', 'auto_mode'])
+    expect(getSourceUsage()).toEqual(written)
   })
 
   test('with two entries the last one wins', async () => {
