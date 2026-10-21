@@ -1766,9 +1766,12 @@ export function turnsBeforeFirstEdit(calls: readonly Call[], phase1Turns: number
 export const RESPONSE_KINDS = ['patch', 'edit tool', 'bash edit', 'test or build', 'read', 'git', 'other tool', 'final answer'] as const
 export type ResponseKind = (typeof RESPONSE_KINDS)[number]
 export type KindThinking = { think: number; turns: number; thinkingTurns: number }
+/** One phase split at its first edit: what the model thought planning it, what it thought after, and that edit's size. */
+export type PhasePlanning = { untilFirstEdit: number; after: number; firstEditFiles: number }
 
 const CHECK_TOOLS: ReadonlySet<string> = new Set(['RunTests', 'Typecheck', 'Build'])
 const SEARCH_TOOLS: ReadonlySet<string> = new Set(['Read', 'Grep', 'Glob'])
+const EDIT_KINDS: ReadonlySet<ResponseKind> = new Set(['patch', 'edit tool', 'bash edit'])
 /** A response under this many thinking tokens counts as one that did not think. */
 const THOUGHT_FLOOR = 50
 
@@ -1790,14 +1793,19 @@ export function responseKindOf(calls: readonly Call[]): ResponseKind {
   return 'other tool'
 }
 
+function callsByTurnOf(calls: readonly Call[]): Map<number, Call[]> {
+  const byTurn = new Map<number, Call[]>()
+  for (const c of calls) byTurn.set(c.turn, [...(byTurn.get(c.turn) ?? []), c])
+  return byTurn
+}
+
 /** A session's main-thread thinking summed per kind of response, with how many responses of each kind thought at all. */
 export function thinkingByKind(r: Pick<RunResult, 'turns' | 'calls'>): Record<ResponseKind, KindThinking> {
   const out = Object.fromEntries(RESPONSE_KINDS.map(k => [k, { think: 0, turns: 0, thinkingTurns: 0 }])) as Record<
     ResponseKind,
     KindThinking
   >
-  const callsByTurn = new Map<number, Call[]>()
-  for (const c of r.calls) callsByTurn.set(c.turn, [...(callsByTurn.get(c.turn) ?? []), c])
+  const callsByTurn = callsByTurnOf(r.calls)
   for (const t of r.turns) {
     const kind = out[responseKindOf(callsByTurn.get(t.n) ?? [])]
     const think = t.think ?? 0
@@ -1806,6 +1814,32 @@ export function thinkingByKind(r: Pick<RunResult, 'turns' | 'calls'>): Record<Re
     if (think > THOUGHT_FLOOR) kind.thinkingTurns++
   }
   return out
+}
+
+/**
+ * Each phase split at its first edit response (`EDIT_KINDS`): the thinking up
+ * to and including it is where the model planned the change, the rest is
+ * carrying it out. The first edit's size is the files a patch names (Add,
+ * Update, Delete) or one per other edit call. A phase with no edit is all
+ * planning.
+ */
+export function planningThinking(r: Pick<RunResult, 'turns' | 'calls'>): Record<Phase, PhasePlanning> {
+  const callsByTurn = callsByTurnOf(r.calls)
+  const sum = (turns: readonly Turn[]) => turns.reduce((a, t) => a + (t.think ?? 0), 0)
+  const filesOf = (c: Call): number => {
+    if (PATCH_TOOLS.has(c.name)) {
+      return [...String(c.input.patchText ?? '').matchAll(PATCH_PATH_RE)].filter(m => m[1] !== 'Move to').length
+    }
+    return EDIT_TOOLS.has(c.name) || (c.name === 'Bash' && BASH_EDIT_RE.test(commandOf(c))) ? 1 : 0
+  }
+  const split = (phase: Phase): PhasePlanning => {
+    const turns = r.turns.filter(t => t.phase === phase)
+    const first = turns.findIndex(t => EDIT_KINDS.has(responseKindOf(callsByTurn.get(t.n) ?? [])))
+    if (first < 0) return { untilFirstEdit: sum(turns), after: 0, firstEditFiles: 0 }
+    const files = (callsByTurn.get(turns[first]!.n) ?? []).reduce((a, c) => a + filesOf(c), 0)
+    return { untilFirstEdit: sum(turns.slice(0, first + 1)), after: sum(turns.slice(first + 1)), firstEditFiles: files }
+  }
+  return { 1: split(1), 2: split(2) }
 }
 
 type ClaudinPart = 'memory' | 'rules' | 'other'
@@ -2141,6 +2175,14 @@ function thinkingKindTable(runs: RunResult[], arms: Arm[]): string {
   for (const phase of PHASES) {
     const opener = (r: RunResult) => r.turns.find(t => t.phase === phase)?.think ?? 0
     rows.push([`phase ${phase} first response: thinking`, byArm.map(rs => rs.map(opener)), fmtK])
+  }
+  const planning = byArm.map(rs => rs.map(planningThinking))
+  for (const phase of PHASES) {
+    rows.push(
+      [`phase ${phase}: thinking up to its first edit (incl.)`, planning.map(ps => ps.map(p => p[phase].untilFirstEdit)), fmtK],
+      [`phase ${phase}: thinking after it`, planning.map(ps => ps.map(p => p[phase].after)), fmtK],
+      [`phase ${phase}: files in the first edit`, planning.map(ps => ps.map(p => p[phase].firstEditFiles)), fmtInt],
+    )
   }
   return armTable(arms, rows, runs.length > arms.length)
 }

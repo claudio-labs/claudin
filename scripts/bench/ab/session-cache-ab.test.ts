@@ -13,6 +13,7 @@ import {
   isGlobReadCommand,
   parseArgs,
   phaseArgs,
+  planningThinking,
   readsOfShownFiles,
   readTargetsOf,
   requestCensus,
@@ -329,6 +330,37 @@ describe('thinkingByKind — thinking summed per kind of response', () => {
     expect(kinds.patch).toEqual({ think: 630, turns: 2, thinkingTurns: 1 })
     expect(kinds['final answer']).toEqual({ think: 0, turns: 1, thinkingTurns: 0 })
     expect(kinds['bash edit']).toEqual({ think: 0, turns: 0, thinkingTurns: 0 })
+  })
+})
+
+describe('planningThinking — each phase split at its first edit', () => {
+  const turn = (n: number, phase: 1 | 2, think: number | null) => ({ n, phase, think })
+  const twoFilePatch = '*** Begin Patch\n*** Update File: src/a.ts\n@@\n-a\n+b\n*** Add File: src/c.ts\n+c\n*** End Patch'
+
+  test('the thinking up to and including the first edit, the rest after it, and the files that edit named', () => {
+    lastTurn = 0
+    const calls = [
+      call('Read', { file_paths: ['src/a.ts', 'src/b.ts'] }),
+      call('Patch', { patchText: twoFilePatch }),
+      bash('bun test'),
+      bash("python3 - <<'EOF'\nopen('src/a.ts','w').write('x')\nEOF", 'ok', { phase: 2 }),
+      call('Edit', { file_path: 'src/b.ts' }, { phase: 2 }),
+    ]
+    const turns = [turn(1, 1, 300), turn(2, 1, 500), turn(3, 1, 100), turn(4, 2, 50), turn(5, 2, null)]
+    expect(planningThinking({ turns: turns as never, calls })).toEqual({
+      1: { untilFirstEdit: 800, after: 100, firstEditFiles: 2 },
+      2: { untilFirstEdit: 50, after: 0, firstEditFiles: 1 },
+    })
+  })
+
+  test('a phase that never edits is all planning', () => {
+    lastTurn = 0
+    const calls = [call('Read', { file_path: 'src/a.ts' }), bash('git status')]
+    const turns = [turn(1, 1, 200), turn(2, 1, 40), turn(3, 2, 70)]
+    expect(planningThinking({ turns: turns as never, calls })).toEqual({
+      1: { untilFirstEdit: 240, after: 0, firstEditFiles: 0 },
+      2: { untilFirstEdit: 70, after: 0, firstEditFiles: 0 },
+    })
   })
 })
 

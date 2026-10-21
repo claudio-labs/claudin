@@ -63,6 +63,18 @@
       "source": "scripts/bench/ab/session-cache-ab.ts",
       "find": "if (think > THOUGHT_FLOOR) kind.thinkingTurns++",
       "replace": "if (think >= 0) kind.thinkingTurns++"
+    },
+    {
+      "name": "planning leaves out the first edit's own thinking",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "untilFirstEdit: sum(turns.slice(0, first + 1))",
+      "replace": "untilFirstEdit: sum(turns.slice(0, first))"
+    },
+    {
+      "name": "a first patch counts as one file whatever it names",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "return [...String(c.input.patchText ?? '').matchAll(PATCH_PATH_RE)].filter(m => m[1] !== 'Move to').length",
+      "replace": "return 1"
     }
   ]
 }
