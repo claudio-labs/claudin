@@ -8,7 +8,7 @@ paths:
   - "src/tools/shared/outputFilter/Bash/readLane.ts"
   - "src/tools/shared/outputFilter/Bash/index.ts"
   - "src/tools/shared/outputFilter/Bash/floor.ts"
-  - "src/tools/BashTool/ownWrites.ts"
+  - "src/agent/attachments/ownWrites.ts"
 ---
 
 **Decision (user, 2026-10-09, branch `perf/bash-read-lane`):** two levers ON by default, one parked.
@@ -20,7 +20,10 @@ paths:
   - Diagnostics past 8k chars take it too.
   - `BashTool.skipsResultSummarizer` keeps the summarizer away from every result the filter ran on, below the 30k persist line.
   - `=0` brings back the 15+15 cap and the summarizer.
-- **Own writes** (`CLAUDIN_BASH_OWN_WRITES=1`, OFF): after a Bash command, a read file it changed is brought up to date in `readFileState`, and the result names it. `refreshedFiles` lets `/resume` rebuild it.
+- **Own writes** (still OFF): after a Bash command, a read file it changed is brought up to date in `readFileState`, and the result names it. `refreshedFiles` lets `/resume` rebuild it.
+  - Generalized 2026-10-21 on `fix/own-writes-every-tool`. It now runs once per call in `toolExecution.ts`, for any tool that may change files, and on error too.
+  - The switch was renamed `CLAUDIN_OWN_WRITES=1`. `refreshedFiles` moved onto the tool_result message.
+  - The default is still undecided; see [[edit-method-census-2026-10-21]].
 
 **Why:** on Sonnet 5.5 both CLIs read with `cat`, and claudindev's cap, then the summarizer, cut it. The model then read every file again with Read. Those Reads also put six "modified by the user or by a linter" notes on the resume turn after its python edits. Session A/B `/tmp/session-cache-ab/20261009-225600`, N=5, simultaneous, all 30 sessions 18/18:
 
