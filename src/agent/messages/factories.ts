@@ -41,7 +41,10 @@ import type {
 } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { formatTokens } from 'src/shared/text/format.js'
-import type { PermissionMode } from 'src/shared/types/permissions.js'
+import type {
+  PermissionMode,
+  ToolPermissionRecord,
+} from 'src/shared/types/permissions.js'
 import {
   CANCEL_MESSAGE,
   INTERRUPT_MESSAGE,
@@ -169,6 +172,7 @@ export function createUserMessage({
   timestamp,
   imagePasteIds,
   sourceToolAssistantUUID,
+  permissionDecision,
   permissionMode,
   origin,
 }: {
@@ -188,6 +192,8 @@ export function createUserMessage({
   imagePasteIds?: number[]
   // For tool_result messages: the UUID of the assistant message containing the matching tool_use
   sourceToolAssistantUUID?: UUID
+  // For tool_result messages: the permission decision behind the call (never sent to the model)
+  permissionDecision?: ToolPermissionRecord
   // Permission mode when message was sent (for rewind restoration)
   permissionMode?: PermissionMode
   summarizeMetadata?: {
@@ -215,6 +221,7 @@ export function createUserMessage({
     mcpMeta,
     imagePasteIds,
     sourceToolAssistantUUID,
+    permissionDecision,
     permissionMode,
     origin,
   }

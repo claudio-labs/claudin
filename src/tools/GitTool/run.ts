@@ -20,7 +20,7 @@ import { oneLineCommand } from 'src/tools/GitTool/display.js'
 import {
   diagnoseGitFailure,
   isEnvironmentalFailure,
-  noUpstreamAnswer,
+  readOnlyAnswer,
   reportsNoChecksYet,
 } from 'src/tools/GitTool/errors.js'
 import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
@@ -384,7 +384,7 @@ export async function runGitBatch(
       const effectiveCode = exitCodeAfterRewrite(plan, run.code)
       const answer =
         !stall && !run.interrupted && effectiveCode !== 0 && isReadOnlyGitCommand(command)
-          ? noUpstreamAnswer(rawStdout)
+          ? readOnlyAnswer(command, effectiveCode, rawStdout)
           : null
       const isError = !stall && answer === null && (effectiveCode !== 0 || run.interrupted)
       const filtered = full
@@ -413,11 +413,13 @@ export async function runGitBatch(
         output: rendered,
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),
-        ...(answer !== null ? { answer } : {}),
+        ...(answer !== null ? { answer: answer.text } : {}),
       }
       // A stall is not a failure, so it never stops the rest: `["gh pr checks
       // --watch", "gh pr view"]` still delivers the second one.
-      stopsBatch = isError && failureStopsBatch(opts.commands.slice(index), run, filtered)
+      stopsBatch =
+        (isError || answer?.stopsWrites === true) &&
+        failureStopsBatch(opts.commands.slice(index), run, filtered)
     } catch (e) {
       logError(`Git: exec failed for \`${command}\` — ${String(e)}`)
       return {

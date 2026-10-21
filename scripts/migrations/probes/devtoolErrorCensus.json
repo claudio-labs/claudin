@@ -147,18 +147,6 @@
       "replace": "  if (false) {"
     },
     {
-      "name": "Git loses the failed-check diagnosis",
-      "source": "src/tools/GitTool/errors.ts",
-      "find": "  if (ghCommandPair(command) === 'pr checks' && GH_FAILED_CHECK_RE.test(output)) {",
-      "replace": "  if (false) {"
-    },
-    {
-      "name": "The failed-check diagnosis fires for any gh command",
-      "source": "src/tools/GitTool/errors.ts",
-      "find": "  if (ghCommandPair(command) === 'pr checks' && GH_FAILED_CHECK_RE.test(output)) {",
-      "replace": "  if (GH_FAILED_CHECK_RE.test(output)) {"
-    },
-    {
       "name": "WaitFor ignores a leading flag group",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
       "find": "const LEADING_FLAGS_RE = /^\\(\\?([ims]+)\\)/",

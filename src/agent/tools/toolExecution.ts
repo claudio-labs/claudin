@@ -37,6 +37,7 @@ import type {
   ProgressMessage,
   StopHookInfo,
 } from 'src/shared/types/message.js'
+import { recordFromVerdict } from 'src/permissions/toolPermission/permissionLogging.js'
 import { count } from 'src/shared/data/array.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -1005,6 +1006,10 @@ async function checkPermissionsAndCallTool(
 
   if (permissionDecision.behavior !== 'allow') {
     logForDebugging(`${tool.name} tool permission denied`)
+    // The store's entry when the canUseTool logged one (the REPL's, with who
+    // answered and how long it took), else the verdict's own.
+    const deniedBy = toolUseContext.toolDecisions?.get(toolUseID) ?? recordFromVerdict(permissionDecision)
+    toolUseContext.toolDecisions?.delete(toolUseID)
 
     let errorMessage = permissionDecision.message
     // Only use generic "Execution stopped" message if we don't have a detailed hook message
@@ -1053,6 +1058,7 @@ async function checkPermissionsAndCallTool(
         imagePasteIds: rejectImageIds,
         toolUseResult: `Error: ${errorMessage}`,
         sourceToolAssistantUUID: assistantMessage.uuid,
+        permissionDecision: deniedBy,
       }),
     })
 
@@ -1095,9 +1101,10 @@ async function checkPermissionsAndCallTool(
     processedInput = permissionDecision.updatedInput
   }
 
-  // Kept for the cleanup in the finally block below, which removes this tool
-  // call's decision entry from the per-turn map.
+  // Copied onto the call's tool_result message (or the verdict's own, as on
+  // the deny path), and removed from the per-turn map by the finally below.
   const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
+  const permissionRecord = decisionInfo ?? recordFromVerdict(permissionDecision)
 
   const startTime = Date.now()
 
@@ -1257,6 +1264,7 @@ async function checkPermissionsAndCallTool(
               : toolUseResult,
           mcpMeta: toolUseContext.agentId ? undefined : mcpMeta,
           sourceToolAssistantUUID: assistantMessage.uuid,
+          permissionDecision: permissionRecord,
         }),
         contextModifier: toolContextModifier
           ? {
@@ -1481,6 +1489,7 @@ async function checkPermissionsAndCallTool(
               ? error.mcpMeta
               : undefined,
           sourceToolAssistantUUID: assistantMessage.uuid,
+          permissionDecision: permissionRecord,
         }),
       },
       ...hookMessages,

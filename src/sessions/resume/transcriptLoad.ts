@@ -102,6 +102,23 @@ const costStateEntrySchema = lazySchema(() => {
       }),
     ),
     hasUnknownModelCost: z.boolean().optional(),
+    // Claudin's own, absent from Claude Code's entry. Undeclared, the object
+    // dropped it and every resume restored an empty spend by source. A bad one
+    // is dropped alone: it must not cost the entry its totals.
+    sourceUsage: z
+      .record(
+        z.string(),
+        z.object({
+          calls: amount,
+          costUSD: amount,
+          inputTokens: amount,
+          outputTokens: amount,
+          cacheReadInputTokens: amount,
+          cacheCreationInputTokens: amount,
+        }),
+      )
+      .optional()
+      .catch(undefined),
   })
 })
 

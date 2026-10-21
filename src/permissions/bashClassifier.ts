@@ -267,6 +267,7 @@ export async function classifyBashCommand(
   try {
     const response = await sideQuery({
       model: getMainLoopModel(),
+      querySource: 'bash_classifier',
       max_tokens: 512,
       system: systemPrompt,
       temperature: 0,
@@ -388,6 +389,7 @@ export async function generateGenericDescription(
   try {
     const response = await sideQuery({
       model: getMainLoopModel(),
+      querySource: 'bash_classifier',
       max_tokens: 256,
       system: GENERIC_DESCRIPTION_SYSTEM_PROMPT,
       temperature: 0,

@@ -182,7 +182,7 @@ async function fire(key: string, generation: number): Promise<void> {
         cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
         output_tokens: usage.output_tokens ?? 0,
       } as Parameters<typeof calculateUSDCost>[1])
-      addToTotalSessionCost(cost, usage as Parameters<typeof addToTotalSessionCost>[1], req.model)
+      addToTotalSessionCost(cost, usage as Parameters<typeof addToTotalSessionCost>[1], req.model, 'cache_keep_alive')
       logForDebugging(
         `[cache keep-alive] ${key}: read ${usage.cache_read_input_tokens ?? 0} created ${usage.cache_creation_input_tokens ?? 0} ($${cost.toFixed(4)})`,
       )

@@ -163,6 +163,7 @@ Explain this command in context.`
     // Use sideQuery with forced tool choice for guaranteed structured output
     const response = await sideQuery({
       model,
+      querySource: 'permission_explainer',
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
       tools: [EXPLAIN_COMMAND_TOOL],

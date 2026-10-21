@@ -41,7 +41,10 @@ import type { UUID } from 'crypto'
 import type { SDKAssistantMessageErrorSchema } from 'src/platform/entrypoints/sdk/coreSchemas.js'
 import type { z } from 'zod/v4'
 import type { Progress } from 'src/tools/Tool.js'
-import type { PermissionMode } from 'src/shared/types/permissions.js'
+import type {
+  PermissionMode,
+  ToolPermissionRecord,
+} from 'src/shared/types/permissions.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import type { MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import type {
@@ -183,6 +186,8 @@ export type UserMessage = MessageBase & {
   imagePasteIds?: number[]
   /** For tool_result messages: the assistant message holding the matching tool_use. */
   sourceToolAssistantUUID?: UUID
+  /** For tool_result messages: the permission decision that let the call run or stopped it. Never sent to the model. */
+  permissionDecision?: ToolPermissionRecord
   /** Permission mode in force when the message was sent (for rewind restoration). */
   permissionMode?: PermissionMode
   summarizeMetadata?: {

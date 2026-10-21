@@ -39,3 +39,11 @@ half their context after a clip, and re-fetch a little more. The design doc
 of its "tuning the band buys almost nothing": the rewrite size `R` is not fixed.
 The guards are the break-probe specs `reliefSelection.json` and
 `reliefClipAll.json`.
+
+**Amended 2026-10-19:** "the last two turns" protects RESULTS only. A call's
+INPUT (patchText, content, new_string) stays whole while its result is among
+the 10 newest tool results (`KEEP_RECENT_INPUT_RESULTS`, `clipFrontier.ts`),
+after a clip left the model copying a `[clipped: …]` placeholder into a new
+Patch (#312).
+The simulator puts the cost at under 1.3% of net savings
+([[tool-cache-permission-census-2026-10-19]]).

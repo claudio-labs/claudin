@@ -151,6 +151,7 @@ export async function autoModeCritiqueHandler(options: {
   try {
     response = await sideQuery({
       model,
+      querySource: 'auto_mode_critique',
       system: CRITIQUE_SYSTEM_PROMPT,
       max_tokens: 4096,
       messages: [

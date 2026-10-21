@@ -39,7 +39,9 @@ import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   CostStateEntry,
   CostStateModelUsage,
+  CostStateSourceUsage,
 } from 'src/shared/types/logs.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { getAdvisorUsage } from 'src/platform/doctor/advisor.js'
 import {
   getCurrentProjectConfig,
@@ -83,6 +85,23 @@ let sessionStartTime = Date.now()
 let restoredCostUSD = 0
 
 /**
+ * What a spend was for: the request's `QuerySource`, or a label of the
+ * tracker's own for a request that has none.
+ */
+export type SpendSource = QuerySource | 'cache_keep_alive'
+
+/** A spend recorded without a source still counts, under this name. */
+const UNATTRIBUTED = 'unattributed'
+
+/**
+ * The session's spend by source, beside the per-model totals, carried by the
+ * `cost-state` entry. The 2026-10-16..19 census could not name 6.6% of the
+ * spend from the transcripts, and could not see the auto-mode classifier at
+ * all; this is what it reads instead.
+ */
+let sourceUsage: Record<string, CostStateSourceUsage> = {}
+
+/**
  * The session whose WHOLE cost the counters hold — Claude Code's cost-ledger
  * owner, and the only session a `cost-state` entry is stamped for.
  * `undefined` until the process's first stamp claims its session; a reset
@@ -108,6 +127,7 @@ export function resetCostState(): void {
   resetBytesSaved()
   sessionStartTime = Date.now()
   restoredCostUSD = 0
+  sourceUsage = {}
   costStateOwner = getSessionId()
 }
 
@@ -170,6 +190,8 @@ export function restoreCostStateForSession(sessionId: string): boolean {
     return false
   }
   setCostStateForRestore(data)
+  // The slot keeps per-model totals only: no source to put them under.
+  sourceUsage = {}
   return true
 }
 
@@ -306,6 +328,7 @@ export function getCostStateEntryFor(
     startTime: sessionStartTime,
     modelUsage: persistedModelUsage(),
     hasUnknownModelCost: hasUnknownModelCost(),
+    sourceUsage: copySourceUsage(sourceUsage),
   }
 }
 
@@ -383,6 +406,7 @@ function restoreCostStateFromEntry(entry: CostStateEntry): void {
     modelUsage: withModelLimits(entry.modelUsage),
   })
   if (entry.hasUnknownModelCost) setHasUnknownModelCost()
+  sourceUsage = copySourceUsage(entry.sourceUsage ?? {})
   sessionStartTime = Math.min(entry.startTime, sessionStartTime)
 }
 
@@ -434,6 +458,64 @@ function persistedModelUsage(): Record<string, CostStateModelUsage> {
       },
     ]),
   )
+}
+
+function copySourceUsage(
+  usage: Readonly<Record<string, CostStateSourceUsage>>,
+): Record<string, CostStateSourceUsage> {
+  return Object.fromEntries(
+    Object.entries(usage).map(([source, u]) => [source, { ...u }]),
+  )
+}
+
+/** The session's spend by source, as the `cost-state` entry would carry it. */
+export function getSourceUsage(): Record<string, CostStateSourceUsage> {
+  return copySourceUsage(sourceUsage)
+}
+
+function addToSourceUsage(cost: number, usage: Usage, source: string): void {
+  const entry = (sourceUsage[source] ??= {
+    calls: 0,
+    costUSD: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0,
+  })
+  entry.calls++
+  entry.costUSD += cost
+  entry.inputTokens += usage.input_tokens
+  entry.outputTokens += usage.output_tokens
+  entry.cacheReadInputTokens += usage.cache_read_input_tokens ?? 0
+  entry.cacheCreationInputTokens += usage.cache_creation_input_tokens ?? 0
+}
+
+/** The accounting every spend goes through: per model, session total, per source. */
+function recordSpend(
+  cost: number,
+  usage: Usage,
+  model: string,
+  source: SpendSource | undefined,
+): void {
+  const modelUsage = addToTotalModelUsage(cost, usage, model)
+  addToTotalCostState(cost, modelUsage, model)
+  addToSourceUsage(cost, usage, source ?? UNATTRIBUTED)
+}
+
+/**
+ * A side query's spend (`sideQuery()`: the auto-mode classifier, the bash
+ * classifier, the permission explainer, model validation). It counts in the
+ * session cost, the budget and the `cost-state`, but not in the cache
+ * metrics: the hit rate and the `[Cache:]` line describe the conversation's
+ * own prefix, and a classifier prompt is not part of it.
+ */
+export function addSideQueryCost(
+  cost: number,
+  usage: Usage,
+  model: string,
+  querySource: QuerySource,
+): void {
+  recordSpend(cost, usage, model, querySource)
 }
 
 /**
@@ -773,9 +855,9 @@ export function addToTotalSessionCost(
   cost: number,
   usage: Usage,
   model: string,
+  source?: SpendSource,
 ): number {
-  const modelUsage = addToTotalModelUsage(cost, usage, model)
-  addToTotalCostState(cost, modelUsage, model)
+  recordSpend(cost, usage, model, source)
 
   // Record normalized cache metrics for REPL display + /cache-stats.
   // Resolved from the current process provider — at this point `usage` has
@@ -821,6 +903,7 @@ export function addToTotalSessionCost(
       advisorCost,
       advisorUsage,
       advisorUsage.model,
+      source,
     )
   }
   return totalCost

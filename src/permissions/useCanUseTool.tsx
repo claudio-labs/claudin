@@ -45,7 +45,8 @@ function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateActi
           }
           ctx.logDecision({
             decision: "accept",
-            source: "config"
+            source: "config",
+            reason: result.decisionReason
           });
           resolve(ctx.buildAllow(result.updatedInput ?? input, {
             decisionReason: result.decisionReason
@@ -72,7 +73,8 @@ function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateActi
                 toolUseID
               }, {
                 decision: "reject",
-                source: "config"
+                source: "config",
+                reason: result.decisionReason
               });
               if (feature("TRANSCRIPT_CLASSIFIER") && result.decisionReason?.type === "classifier" && result.decisionReason.classifier === "auto-mode") {
                 recordAutoModeDenial({

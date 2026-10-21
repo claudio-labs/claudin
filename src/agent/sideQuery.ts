@@ -19,6 +19,9 @@ import {
   normalizeModelStringForAPI,
 } from 'src/providers/model/model.js'
 import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
+import { addSideQueryCost } from 'src/agent/cost-tracker.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
+import { calculateUSDCost } from 'src/providers/usage/modelCost.js'
 
 type MessageParam = Anthropic.MessageParam
 type TextBlockParam = Anthropic.TextBlockParam
@@ -31,6 +34,8 @@ type BetaThinkingConfigParam = Anthropic.Beta.Messages.BetaThinkingConfigParam
 export type SideQueryOptions = {
   /** Model to use for the query */
   model: string
+  /** What the query is for: its spend is counted in the session cost under this name. */
+  querySource: QuerySource
   /**
    * System prompt - string or array of text blocks (will be prefixed with CLI attribution).
    *
@@ -107,6 +112,7 @@ function extractFirstUserMessageText(messages: MessageParam[]): string {
 export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
   const {
     model,
+    querySource,
     system,
     messages,
     tools,
@@ -215,6 +221,11 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
   const now = Date.now()
   const lastCompletion = getLastApiCompletionTimestamp()
   setLastApiCompletionTimestamp(now)
+
+  // Outside the streaming shim, so nothing else bills this call.
+  if (response.usage) {
+    addSideQueryCost(calculateUSDCost(model, response.usage), response.usage, model, querySource)
+  }
 
   return response
 }

@@ -1,0 +1,148 @@
+{
+  "test": [
+    "src/tools/GitTool/watch.test.ts",
+    "src/tools/GitTool/errors.test.ts",
+    "src/tools/GitTool/families.test.ts",
+    "src/agent/compact/stableStubState.test.ts",
+    "src/agent/compact/microCompact.test.ts",
+    "src/agent/compact/requestDeterminism.invariant.test.ts",
+    "src/agent/cost-tracker.sourceUsage.test.ts",
+    "src/agent/sideQuery.test.ts",
+    "src/sessions/sessionRestore.costState.test.ts",
+    "src/permissions/toolPermission/permissionLogging.test.ts",
+    "src/agent/tools/toolExecution.permissionRecord.test.ts",
+    "scripts/bench/tokens/relief-ceiling-sim.test.ts"
+  ],
+  "source": "src/tools/GitTool/errors.ts",
+  "probes": [
+    {
+      "name": "a failed check is read from its row",
+      "comment": "The fixes for the 2026-10-16..19 census, one probe per line they rest on.",
+      "find": "    if (state !== 'fail' || !name) continue",
+      "replace": "    if (state !== 'failed' || !name) continue"
+    },
+    {
+      "name": "no checks yet is an answer",
+      "find": "  if (GH_NO_CHECKS_RE.test(output)) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "readOnlyAnswer asks the gh checks shape",
+      "find": "  const checks = ghChecksAnswer(command, exitCode, output)",
+      "replace": "  const checks = null"
+    },
+    {
+      "name": "a checks answer still stops a write behind it",
+      "find": "  return checks === null ? null : { text: checks, stopsWrites: true }",
+      "replace": "  return checks === null ? null : { text: checks, stopsWrites: false }"
+    },
+    {
+      "name": "run.ts stops the batch on an answer that holds writes",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "        (isError || answer?.stopsWrites === true) &&",
+      "replace": "        isError &&"
+    },
+    {
+      "name": "run.ts reports the answer",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "          ? readOnlyAnswer(command, effectiveCode, rawStdout)",
+      "replace": "          ? null"
+    },
+    {
+      "name": "an input whose result is recent is no candidate",
+      "source": "src/agent/compact/stableStubState/clipFrontier.ts",
+      "find": "        if (clippedInputs.has(block.id) || recentCalls.has(block.id)) continue",
+      "replace": "        if (clippedInputs.has(block.id)) continue"
+    },
+    {
+      "name": "the input window is 10 results",
+      "source": "src/agent/compact/stableStubState/clipFrontier.ts",
+      "find": "export const KEEP_RECENT_INPUT_RESULTS = 10",
+      "replace": "export const KEEP_RECENT_INPUT_RESULTS = 2"
+    },
+    {
+      "name": "sideQuery bills its usage",
+      "source": "src/agent/sideQuery.ts",
+      "find": "    addSideQueryCost(calculateUSDCost(model, response.usage), response.usage, model, querySource)",
+      "replace": "    void addSideQueryCost"
+    },
+    {
+      "name": "every spend is kept per source",
+      "source": "src/agent/cost-tracker.ts",
+      "find": "  addToSourceUsage(cost, usage, source ?? UNATTRIBUTED)",
+      "replace": "  void source"
+    },
+    {
+      "name": "the cost-state entry carries sourceUsage",
+      "source": "src/agent/cost-tracker.ts",
+      "find": "    sourceUsage: copySourceUsage(sourceUsage),\n",
+      "replace": ""
+    },
+    {
+      "name": "a resume restores sourceUsage",
+      "source": "src/agent/cost-tracker.ts",
+      "find": "  sourceUsage = copySourceUsage(entry.sourceUsage ?? {})",
+      "replace": "  sourceUsage = {}"
+    },
+    {
+      "name": "the transcript loader keeps sourceUsage",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "    sourceUsage: z\n      .record(",
+      "replace": "    sourceUsageDropped: z\n      .record("
+    },
+    {
+      "name": "a malformed sourceUsage is dropped alone",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "      .optional()\n      .catch(undefined),",
+      "replace": "      .optional(),"
+    },
+    {
+      "name": "a side query stays out of the cache metrics",
+      "source": "src/agent/cost-tracker.ts",
+      "find": "  recordSpend(cost, usage, model, querySource)",
+      "replace": "  addToTotalSessionCost(cost, usage, model, querySource)"
+    },
+    {
+      "name": "nobody was asked: the source is automatic",
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "    source: source === 'config' ? 'automatic' : sourceToString(source),",
+      "replace": "    source: source === 'config' ? 'config' : sourceToString(source),"
+    },
+    {
+      "name": "the detail is capped",
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "detail.slice(0, DETAIL_MAX_CHARS)",
+      "replace": "detail"
+    },
+    {
+      "name": "a prompt records its wait",
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "      ? { waitMs: Date.now() - permissionPromptStartTimeMs }",
+      "replace": "      ? {}"
+    },
+    {
+      "name": "a denied call's tool_result carries the decision",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "        permissionDecision: deniedBy,\n",
+      "replace": ""
+    },
+    {
+      "name": "an allowed call's tool_result carries the decision",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "          mcpMeta: toolUseContext.agentId ? undefined : mcpMeta,\n          sourceToolAssistantUUID: assistantMessage.uuid,\n          permissionDecision: permissionRecord,\n",
+      "replace": "          mcpMeta: toolUseContext.agentId ? undefined : mcpMeta,\n          sourceToolAssistantUUID: assistantMessage.uuid,\n"
+    },
+    {
+      "name": "a verdict nobody logged still becomes the record",
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "    decision: verdict.behavior === 'allow' ? 'accept' : 'reject',",
+      "replace": "    decision: 'accept',"
+    },
+    {
+      "name": "the simulator's mirror of the input window",
+      "source": "scripts/bench/tokens/relief-ceiling-sim.ts",
+      "find": "const KEEP_RECENT_INPUT_RESULTS = 10",
+      "replace": "const KEEP_RECENT_INPUT_RESULTS = 11"
+    }
+  ]
+}

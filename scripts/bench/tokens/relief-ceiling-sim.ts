@@ -36,6 +36,14 @@
  *                      extra clips shrink what is rewritten (2026-10-15)
  *   --band=N           a fixed band instead of clamp(max(60k, 0.15·T), ≤0.3·T)
  *
+ * And one the policy has since 2026-10-19:
+ *   --input-keep=N     a tool INPUT stays whole for the last N calls (default
+ *                      KEEP_RECENT_INPUT_RESULTS); results keep the last two
+ *                      either way. `--input-keep=2` replays the policy before
+ *                      it. The policy counts tool results and this counts
+ *                      API calls, so with parallel calls the replay protects a
+ *                      little more than the app does
+ *
  * Run:
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26 --session=501d7261 --triggers=250000,300000,400000
@@ -51,6 +59,10 @@ import { contentText, projectDirs, transcriptFiles } from './transcriptCorpus.js
 const CHARS_PER_TOKEN = 3
 const HEAD_CHARS = 2_000
 const KEEP_RECENT_CALLS = 2
+// Mirror of KEEP_RECENT_INPUT_RESULTS in src/agent/compact/stableStubState/clipFrontier.ts,
+// which relief-ceiling-sim.test.ts pins equal: importing it loads the app's
+// module graph, which a bare `bun scripts/…` run cannot resolve.
+const KEEP_RECENT_INPUT_RESULTS = 10
 const BAND_MIN = 60_000
 const BAND_TRIGGER_FRACTION = 0.15
 const BAND_MAX_FRACTION = 0.3
@@ -86,6 +98,7 @@ export type Args = {
   postCompact: number
   clipAll: boolean
   band: number | null
+  inputKeep: number
 }
 
 export function parseArgs(argv: readonly string[]): Args {
@@ -95,6 +108,8 @@ export function parseArgs(argv: readonly string[]): Args {
   const triggers = (get('triggers') ?? '200000,250000,300000,400000,500000').split(',').map(Number)
   const band = get('band') === undefined ? null : Number(get('band'))
   if (band !== null && !(band > 0)) throw new Error('--band=<tokens>')
+  const inputKeep = Number(get('input-keep') ?? KEEP_RECENT_INPUT_RESULTS)
+  if (!Number.isInteger(inputKeep) || inputKeep < 0) throw new Error('--input-keep=<calls>')
   return {
     since,
     session: get('session') ?? null,
@@ -105,11 +120,17 @@ export function parseArgs(argv: readonly string[]): Args {
     postCompact: Number(get('post-compact') ?? 40_000),
     clipAll: argv.includes('--clip-all'),
     band,
+    inputKeep,
   }
 }
 
-type Block = { call: number; tokens: number }
+type Block = { call: number; tokens: number; input?: boolean }
 export type Thread = { name: string; ctx: number[]; blocks: Block[] }
+
+/** Whether call `k`'s request keeps `b` whole: inputs keep at least what results do. */
+function isProtected(b: Block, k: number, inputKeep: number): boolean {
+  return b.call >= k - (b.input ? Math.max(KEEP_RECENT_CALLS, inputKeep) : KEEP_RECENT_CALLS)
+}
 
 function loadThread(path: string, main: boolean): Thread | null {
   const order: string[] = []
@@ -140,7 +161,7 @@ function loadThread(path: string, main: boolean): Thread | null {
           const v = input[field]
           if (typeof v === 'string') chars += v.length
         }
-        if (chars > 0) blocks.push({ call, tokens: chars / CHARS_PER_TOKEN })
+        if (chars > 0) blocks.push({ call, tokens: chars / CHARS_PER_TOKEN, input: true })
       }
     } else if (o.type === 'user' && Array.isArray(m?.content)) {
       for (const b of m.content as Record<string, unknown>[]) {
@@ -187,7 +208,7 @@ export function simulate(t: Thread, trigger: number, args: Args): Outcome {
       let got = 0
       const picked: number[] = []
       t.blocks.forEach((b, i) => {
-        if ((!args.clipAll && got >= used - target) || clipped.has(i) || b.call <= compactedThrough || b.call >= k - KEEP_RECENT_CALLS) return
+        if ((!args.clipAll && got >= used - target) || clipped.has(i) || b.call <= compactedThrough || isProtected(b, k, args.inputKeep)) return
         picked.push(i)
         got += b.tokens
       })
@@ -233,13 +254,13 @@ function main(): void {
   // injections, heads — is the floor no relief lowers.
   const share = threads.map(t => {
     const last = t.ctx.length - 1
-    const clearable = t.blocks.filter(b => b.call < last - KEEP_RECENT_CALLS).reduce((s, b) => s + b.tokens, 0)
+    const clearable = t.blocks.filter(b => !isProtected(b, last, args.inputKeep)).reduce((s, b) => s + b.tokens, 0)
     return clearable / Math.max(1, t.ctx[last] ?? 1)
   })
   console.log(
     `${args.main ? 'main' : 'sub-agent'} threads=${threads.length}  max ctx p50=${Math.round(median(threads.map(reach)) / 1000)}k  clearable share of the final context p50=${(100 * median(share)).toFixed(0)}%` +
       `  min-event=${args.bandFloor ? 'band' : '4k'}${args.starvedCompact ? ` starved→compact@${args.postCompact / 1000}k` : ''}` +
-      `${args.clipAll ? '  clip-all' : ''}${args.band !== null ? `  band=${args.band / 1000}k` : ''}`,
+      `${args.clipAll ? '  clip-all' : ''}${args.band !== null ? `  band=${args.band / 1000}k` : ''}  input-keep=${args.inputKeep}`,
   )
   console.log('trigger  threads-reached  events  starved  compactions  rewrite$  compact$   saved$    net$   net/reads')
   for (const trigger of args.triggers) {

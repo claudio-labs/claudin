@@ -197,7 +197,7 @@ function createPermissionContext(
             }
             logPermissionDecision(
               { tool, input, toolUseContext, messageId, toolUseID },
-              { decision: 'accept', source: { type: 'classifier' } },
+              { decision: 'accept', source: { type: 'classifier' }, reason: classifierDecision },
               undefined,
             )
             return {
@@ -235,7 +235,11 @@ function createPermissionContext(
             )
           } else if (decision.behavior === 'deny') {
             this.logDecision(
-              { decision: 'reject', source: { type: 'hook' } },
+              {
+                decision: 'reject',
+                source: { type: 'hook' },
+                reason: { type: 'hook', hookName: 'PermissionRequest', reason: decision.message },
+              },
               { permissionPromptStartTimeMs },
             )
             if (decision.interrupt) {

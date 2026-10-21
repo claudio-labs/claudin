@@ -16,6 +16,17 @@
  *     `message.id`; the one with the highest `output_tokens` is the final
  *     usage, and the `cache_creation` split (5m/1h) is carried over from any
  *     record that had it.
+ * A third: `--since` picks the transcripts modified since, and a long session
+ * carries weeks of calls before that. Calls are bounded by their own
+ * timestamp too — a 10-19 census otherwise showed $288 "since 10-16" for a
+ * session that spent $17 in the window.
+ *
+ * Two sections read what the app records for them since 2026-10-19:
+ *   - spend by source, from each session's last `cost-state.sourceUsage`: the
+ *     auto-mode classifier, memory forks and keep-alive pings, which no
+ *     transcript line carries. It covers whole sessions, not the window;
+ *   - permission decisions, from the `permissionDecision` each tool_result
+ *     record carries: prompts and their wait, rule hits, classifier verdicts.
  *
  * Transcripts are DATA: nothing here prints a command output, a file body or
  * a user prompt — only aggregates and command HEADS (the first token).
@@ -34,6 +45,8 @@
  */
 import { readFileSync } from 'fs'
 import { basename, dirname } from 'path'
+import type { CostStateEntry } from 'src/shared/types/logs.js'
+import type { ToolPermissionRecord } from 'src/shared/types/permissions.js'
 import {
   contentText,
   pad,
@@ -141,16 +154,28 @@ type ToolUse = {
   file: string
 }
 
+/** The writer's own types: a type-only import is erased, so a bare run still works. */
+type CostStateRecord = Pick<CostStateEntry, 'sourceUsage'>
+type PermissionRecord = ToolPermissionRecord
+
 type Walk = {
   calls: Call[]
   uses: Map<string, ToolUse>
   results: Map<string, string>
+  /** tool_use id → the decision its tool_result carried. */
+  permissions: Map<string, PermissionRecord>
+  /** Transcript file → its last `cost-state`. */
+  costStates: Map<string, CostStateRecord>
 }
 
-function walk(files: readonly string[]): Walk {
+function walk(files: readonly string[], since: number): Walk {
   const byId = new Map<string, Call>()
   const uses = new Map<string, ToolUse>()
   const results = new Map<string, string>()
+  const permissions = new Map<string, PermissionRecord>()
+  const costStates = new Map<string, CostStateRecord>()
+  // Calls from before the window, so their later stream records stay out too.
+  const before = new Set<string>()
   const order: string[] = []
 
   for (const file of files) {
@@ -171,10 +196,16 @@ function walk(files: readonly string[]): Walk {
       const message = rec.message as Block | undefined
       const content = Array.isArray(message?.content) ? (message!.content as Block[]) : null
 
+      if (rec.type === 'cost-state') {
+        costStates.set(file, rec as CostStateRecord)
+        continue
+      }
       if (rec.type === 'user' && content) {
         for (const b of content) {
           if (b.type === 'tool_result' && typeof b.tool_use_id === 'string') {
             results.set(b.tool_use_id, contentText(b.content))
+            const decision = rec.permissionDecision as PermissionRecord | undefined
+            if (decision) permissions.set(b.tool_use_id, decision)
           }
         }
         continue
@@ -182,15 +213,20 @@ function walk(files: readonly string[]): Walk {
       if (rec.type !== 'assistant' || !message?.usage) continue
 
       const id = String(message.id ?? '')
-      if (!id) continue
+      if (!id || before.has(id)) continue
       const usage = message.usage as Usage
       let call = byId.get(id)
       if (!call) {
+        const ts = Date.parse(String(rec.timestamp ?? ''))
+        if (ts < since) {
+          before.add(id)
+          continue
+        }
         call = {
           id,
           file,
           model: String(message.model ?? ''),
-          ts: Date.parse(String(rec.timestamp ?? '')),
+          ts,
           usage,
           sidechain: rec.isSidechain === true,
           tools: [],
@@ -226,7 +262,7 @@ function walk(files: readonly string[]): Walk {
   }
 
   const calls = order.map(id => byId.get(id)!).sort((a, b) => a.ts - b.ts)
-  return { calls, uses, results }
+  return { calls, uses, results, permissions, costStates }
 }
 
 // ---------------------------------------------------------------------------
@@ -364,8 +400,21 @@ function bashCategory(command: string): string {
 
 type Report = ReturnType<typeof buildReport>
 
+/** `Bash(git log:*)` → `Bash(git…)`: the tool and the command head, never the arguments. */
+const RULE_HEAD_RE = /^([^(]+)\((\S*?)[\s:)][\s\S]*$/
+
+function permissionHead(use: ToolUse): string {
+  if (use.name !== 'Bash') return use.name
+  const command = typeof use.input.command === 'string' ? use.input.command : ''
+  return `Bash(${command.trim().split(/\s+/)[0] ?? ''}…)`
+}
+
+function quantile(sorted: readonly number[], p: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0
+}
+
 function buildReport(w: Walk) {
-  const { calls, uses, results } = w
+  const { calls, uses, results, permissions, costStates } = w
   const byFile = new Map<string, Call[]>()
   for (const c of calls) {
     const list = byFile.get(c.file) ?? []
@@ -515,6 +564,42 @@ function buildReport(w: Walk) {
   }
   const narration = calls.filter(c => c.tools.length > 0 && c.text.trim().length > 0)
 
+  // (9) spend by source — whole sessions, from their last cost-state
+  const sources = new Map<string, { calls: number; costUSD: number; sessions: number }>()
+  for (const state of costStates.values()) {
+    for (const [source, u] of Object.entries(state.sourceUsage ?? {})) {
+      const s = sources.get(source) ?? { calls: 0, costUSD: 0, sessions: 0 }
+      s.calls += u.calls
+      s.costUSD += u.costUSD
+      s.sessions++
+      sources.set(source, s)
+    }
+  }
+
+  // (10) permission decisions, paired with the window's tool uses
+  const verdicts = new Map<string, number>()
+  const prompted = new Map<string, number>()
+  const rules = new Map<string, number>()
+  const waits: number[] = []
+  let recorded = 0
+  for (const use of uses.values()) {
+    const p = permissions.get(use.id)
+    if (!p) continue
+    recorded++
+    const verdict = `${p.decision} ${p.source}${p.reason ? ` (${p.reason})` : ''}`
+    verdicts.set(verdict, (verdicts.get(verdict) ?? 0) + 1)
+    if (p.source.startsWith('user_')) {
+      const head = permissionHead(use)
+      prompted.set(head, (prompted.get(head) ?? 0) + 1)
+      if (p.waitMs !== undefined) waits.push(p.waitMs)
+    }
+    if (p.reason === 'rule' && p.detail) {
+      const head = p.detail.replace(RULE_HEAD_RE, '$1($2…)')
+      rules.set(head, (rules.get(head) ?? 0) + 1)
+    }
+  }
+  waits.sort((a, b) => a - b)
+
   return {
     range: { first: grand.first, last: grand.last },
     sessions: [...perSession.entries()]
@@ -531,6 +616,18 @@ function buildReport(w: Walk) {
     wait: { turns: waitTurns, ctxTokens: waitCtx, cost: waitCost },
     gaps: { under5: gapsUnder5, from5to60: gaps5to60, over60: gapsOver60, premium1h, rewrite5m },
     narration: { messagesWithTools: calls.filter(c => c.tools.length > 0).length, withText: narration.length, chars: narration.reduce((s, c) => s + c.text.trim().length, 0) },
+    sources: {
+      sessions: [...costStates.values()].filter(s => s.sourceUsage !== undefined).length,
+      rows: [...sources.entries()].map(([source, s]) => ({ source, ...s })).sort((a, b) => b.costUSD - a.costUSD),
+    },
+    permissions: {
+      uses: uses.size,
+      recorded,
+      verdicts: [...verdicts.entries()].sort((a, b) => b[1] - a[1]),
+      prompted: [...prompted.entries()].sort((a, b) => b[1] - a[1]),
+      waitMs: { n: waits.length, p50: quantile(waits, 0.5), p90: quantile(waits, 0.9) },
+      rules: [...rules.entries()].sort((a, b) => b[1] - a[1]),
+    },
   }
 }
 
@@ -588,6 +685,19 @@ function print(r: Report): void {
   console.log(`1h TTL premium paid ${usd(g.premium1h)}; a 5m policy would have re-written ≈${usd(g.rewrite5m)} at the ≥5min gaps`)
 
   console.log(`\n--- narration (text beside a tool_use) --- ${r.narration.withText} of ${r.narration.messagesWithTools} messages, ${fmt(r.narration.chars)} chars`)
+
+  console.log(`\n--- spend by source (whole sessions, last cost-state) --- ${r.sources.sessions} sessions carry it`)
+  for (const s of r.sources.rows.slice(0, 15)) {
+    console.log(`  ${pad(s.source, 32)} calls=${padLeft(String(s.calls), 5)} ${padLeft(usd(s.costUSD), 8)}  sessions=${s.sessions}`)
+  }
+
+  const p = r.permissions
+  console.log(`\n--- permission decisions --- ${p.recorded} of ${p.uses} tool uses carry one`)
+  for (const [verdict, n] of p.verdicts) console.log(`  ${padLeft(String(n), 5)}× ${verdict}`)
+  console.log(`prompts answered: ${p.prompted.reduce((s, [, n]) => s + n, 0)}  wait p50=${(p.waitMs.p50 / 1000).toFixed(1)}s p90=${(p.waitMs.p90 / 1000).toFixed(1)}s`)
+  for (const [head, n] of p.prompted.slice(0, 12)) console.log(`  ${padLeft(String(n), 4)}× ${head}`)
+  console.log(`rule hits (heads only): ${p.rules.reduce((s, [, n]) => s + n, 0)}`)
+  for (const [head, n] of p.rules.slice(0, 12)) console.log(`  ${padLeft(String(n), 4)}× ${head}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -608,7 +718,7 @@ function main(): void {
     console.error(`no transcripts modified since ${new Date(args.since).toISOString().slice(0, 10)} under ${dirs.join(', ')}`)
     process.exit(1)
   }
-  const report = buildReport(walk(files))
+  const report = buildReport(walk(files, args.since))
   if (args.json) {
     console.log(JSON.stringify(report, (_k, v: unknown) => (v instanceof Set ? [...v] : v), 2))
     return
