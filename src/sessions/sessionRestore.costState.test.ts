@@ -253,7 +253,7 @@ describe('cost-state — written, read back, restored', () => {
     // what it does not declare: every real resume restored an empty map.
     const { sid } = openSession()
     addToTotalSessionCost(0.75, usage({ input: 12, output: 900, cacheRead: 150_000 }), MODEL, 'repl_main_thread')
-    addSideQueryCost(0.05, usage({ input: 2_000, output: 40 }), MODEL, 'auto_mode')
+    addSideQueryCost(0.05, usage({ input: 2_000, output: 40, cacheRead: 30_000 }), MODEL, 'auto_mode')
     const written = getSourceUsage()
 
     getProject().reAppendCostState()
@@ -264,6 +264,17 @@ describe('cost-state — written, read back, restored', () => {
 
     expect(Object.keys(written)).toEqual(['repl_main_thread', 'auto_mode'])
     expect(getSourceUsage()).toEqual(written)
+  })
+
+  test('a malformed spend by source is dropped alone, the totals still restore', async () => {
+    const { sid, path } = openSession()
+    appendEntryToFile(path, { ...stamped(sid, 2.5), sourceUsage: { auto_mode: { calls: 'x' } } })
+
+    const log = await getLastSessionLog(sid)
+    expect(restoreCostStateForResume(sid, log!, NO_PROJECT_CONFIG)).toBe('cost-state')
+
+    expect(getTotalCost()).toBe(2.5)
+    expect(getSourceUsage()).toEqual({})
   })
 
   test('with two entries the last one wins', async () => {
