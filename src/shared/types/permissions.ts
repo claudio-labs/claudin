@@ -330,9 +330,10 @@ export type PermissionDecisionReason =
 export type ToolPermissionRecord = {
   decision: 'accept' | 'reject'
   /**
-   * Who decided: `config` (a rule, the mode, a safety check), `classifier`,
-   * `hook`, or the user — `user_temporary`, `user_permanent`, `user_reject`,
-   * `user_abort`.
+   * Who decided: `automatic` (nobody was asked — a rule, the mode, a safety
+   * check, the auto-mode classifier; `reason` says which), `classifier` (the
+   * bash classifier answering a prompt), `hook`, or the user —
+   * `user_temporary`, `user_permanent`, `user_reject`, `user_abort`.
    */
   source: string
   /** The decision reason's `type` when there was one: `rule`, `mode`, `classifier`, … */

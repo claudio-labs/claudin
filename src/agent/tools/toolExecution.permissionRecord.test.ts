@@ -86,7 +86,7 @@ describe('the permission decision on the tool_result message', () => {
       'ok',
       deciding({ decision: 'accept', source: 'config', reason: RULE }, { behavior: 'allow', updatedInput: { command: 'ok' }, decisionReason: RULE }),
     )
-    expect(message.permissionDecision).toMatchObject({ decision: 'accept', source: 'config', reason: 'rule', detail: 'PermProbe' })
+    expect(message.permissionDecision).toMatchObject({ decision: 'accept', source: 'automatic', reason: 'rule', detail: 'PermProbe' })
   })
 
   test('an allowed call that threw carries it too', async () => {
@@ -105,7 +105,7 @@ describe('the permission decision on the tool_result message', () => {
     )
     expect(message.permissionDecision).toMatchObject({
       decision: 'reject',
-      source: 'classifier',
+      source: 'automatic',
       reason: 'classifier',
       detail: 'Uses sudo, which the user did not ask for',
     })
@@ -119,12 +119,12 @@ describe('the permission decision on the tool_result message', () => {
     const message = await resultMessage('ok', allowedSilently)
     expect(message.permissionDecision).toEqual({
       decision: 'accept',
-      source: 'classifier',
+      source: 'automatic',
       reason: 'classifier',
       detail: 'Allowed: a file write in the working directory',
     })
     const deniedSilently = (async () => ({ behavior: 'deny', message: 'denied', decisionReason: RULE })) as never
-    expect((await resultMessage('no', deniedSilently)).permissionDecision).toMatchObject({ decision: 'reject', source: 'config', reason: 'rule' })
+    expect((await resultMessage('no', deniedSilently)).permissionDecision).toMatchObject({ decision: 'reject', source: 'automatic', reason: 'rule' })
   })
 
   test('it never reaches the model', async () => {

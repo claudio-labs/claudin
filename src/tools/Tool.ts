@@ -312,7 +312,7 @@ export type ToolUseContext = {
     maxTokens?: number
     maxSizeBytes?: number
   }
-  toolDecisions?: Map<string, ToolPermissionRecord & { timestamp: number }>
+  toolDecisions?: Map<string, ToolPermissionRecord>
   queryTracking?: QueryChainTracking
   /** Callback factory for requesting interactive prompts from the user.
    * Returns a prompt callback bound to the given source name.

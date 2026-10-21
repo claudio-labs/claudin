@@ -34,22 +34,22 @@ describe('the permission decision record', () => {
         rule: { source: 'userSettings', ruleBehavior: 'allow', ruleValue: { toolName: 'Bash', ruleContent: 'git log:*' } },
       },
     })
-    expect(record).toMatchObject({ decision: 'accept', source: 'config', reason: 'rule', detail: 'Bash(git log:*)' })
+    expect(record).toMatchObject({ decision: 'accept', source: 'automatic', reason: 'rule', detail: 'Bash(git log:*)' })
   })
 
-  test('an auto-mode verdict is the classifier, with its reason capped at 200 characters', () => {
+  test('an auto-mode verdict is automatic, with the classifier as its reason, capped at 200 characters', () => {
     const record = logged({
       decision: 'reject',
       source: 'config',
       reason: { type: 'classifier', classifier: 'auto-mode', reason: 'x'.repeat(500) },
     })
-    expect(record).toMatchObject({ decision: 'reject', source: 'classifier', reason: 'classifier' })
+    expect(record).toMatchObject({ decision: 'reject', source: 'automatic', reason: 'classifier' })
     expect(record?.detail).toHaveLength(200)
   })
 
   test('a mode says which', () => {
     expect(logged({ decision: 'accept', source: 'config', reason: { type: 'mode', mode: 'acceptEdits' } })).toMatchObject({
-      source: 'config',
+      source: 'automatic',
       reason: 'mode',
       detail: 'acceptEdits',
     })
@@ -63,6 +63,6 @@ describe('the permission decision record', () => {
 
   test('a decision with no reason and no prompt keeps only who and what', () => {
     const record = logged({ decision: 'accept', source: 'config' })
-    expect(Object.keys(record ?? {}).sort()).toEqual(['decision', 'source', 'timestamp'])
+    expect(Object.keys(record ?? {}).sort()).toEqual(['decision', 'source'])
   })
 })

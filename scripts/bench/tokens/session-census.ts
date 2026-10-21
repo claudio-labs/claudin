@@ -45,6 +45,8 @@
  */
 import { readFileSync } from 'fs'
 import { basename, dirname } from 'path'
+import type { CostStateEntry } from 'src/shared/types/logs.js'
+import type { ToolPermissionRecord } from 'src/shared/types/permissions.js'
 import {
   contentText,
   pad,
@@ -152,17 +154,9 @@ type ToolUse = {
   file: string
 }
 
-type CostStateRecord = {
-  sourceUsage?: Record<string, { calls: number; costUSD: number }>
-}
-
-type PermissionRecord = {
-  decision: 'accept' | 'reject'
-  source: string
-  reason?: string
-  detail?: string
-  waitMs?: number
-}
+/** The writer's own types: a type-only import is erased, so a bare run still works. */
+type CostStateRecord = Pick<CostStateEntry, 'sourceUsage'>
+type PermissionRecord = ToolPermissionRecord
 
 type Walk = {
   calls: Call[]
@@ -592,7 +586,7 @@ function buildReport(w: Walk) {
     const p = permissions.get(use.id)
     if (!p) continue
     recorded++
-    const verdict = `${p.decision} ${p.source}${p.reason && p.reason !== p.source ? ` (${p.reason})` : ''}`
+    const verdict = `${p.decision} ${p.source}${p.reason ? ` (${p.reason})` : ''}`
     verdicts.set(verdict, (verdicts.get(verdict) ?? 0) + 1)
     if (p.source.startsWith('user_')) {
       const head = permissionHead(use)

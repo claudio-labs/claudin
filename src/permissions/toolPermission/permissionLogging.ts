@@ -7,6 +7,7 @@
 import { feature } from 'bun:bundle'
 import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
 import type {
+  PermissionDecision,
   PermissionDecisionReason,
   ToolPermissionRecord,
 } from 'src/shared/types/permissions.js'
@@ -57,16 +58,6 @@ function sourceToString(
   }
 }
 
-/**
- * Who made a decision nobody was asked about. `config` covered all of them,
- * so an auto-mode denial looked like a deny rule; the reason tells them apart.
- */
-function automaticSource(reason: PermissionDecisionReason | undefined): string {
-  if (reason?.type === 'classifier') return 'classifier'
-  if (reason?.type === 'hook') return 'hook'
-  return 'config'
-}
-
 function reasonDetail(reason: PermissionDecisionReason): string | undefined {
   switch (reason.type) {
     case 'rule':
@@ -87,9 +78,10 @@ function reasonDetail(reason: PermissionDecisionReason): string | undefined {
 }
 
 /**
- * The record of a decision, whoever made it. Print mode and the SDK hand
- * hasPermissionsToUseTool's verdict back without logging it, so toolExecution
- * builds one from the verdict when the store has none.
+ * The record of a decision. `source` says who decided and `reason` why: a
+ * `config` decision — a rule, the mode, a safety check, the auto-mode
+ * classifier — is `automatic`, nobody was asked, and its reason tells them
+ * apart (an auto-mode denial used to read like a deny rule).
  */
 function buildPermissionRecord(
   args: PermissionDecisionArgs,
@@ -99,13 +91,25 @@ function buildPermissionRecord(
   const detail = reason ? reasonDetail(reason) : undefined
   return {
     decision,
-    source: source === 'config' ? automaticSource(reason) : sourceToString(source),
+    source: source === 'config' ? 'automatic' : sourceToString(source),
     ...(reason ? { reason: reason.type } : {}),
     ...(detail ? { detail: detail.slice(0, DETAIL_MAX_CHARS) } : {}),
     ...(permissionPromptStartTimeMs !== undefined
       ? { waitMs: Date.now() - permissionPromptStartTimeMs }
       : {}),
   }
+}
+
+/**
+ * The record of a verdict no canUseTool logged: print mode and the SDK hand
+ * hasPermissionsToUseTool's answer back as it is, so nobody was asked.
+ */
+function recordFromVerdict(verdict: PermissionDecision): ToolPermissionRecord {
+  return buildPermissionRecord({
+    decision: verdict.behavior === 'allow' ? 'accept' : 'reject',
+    source: 'config',
+    reason: verdict.decisionReason,
+  })
 }
 
 // Single entry point for all permission decision logging. Called by permission
@@ -122,11 +126,11 @@ function logPermissionDecision(
   if (!toolUseContext.toolDecisions) {
     toolUseContext.toolDecisions = new Map()
   }
-  toolUseContext.toolDecisions.set(toolUseID, {
-    ...buildPermissionRecord(args, permissionPromptStartTimeMs),
-    timestamp: Date.now(),
-  })
+  toolUseContext.toolDecisions.set(
+    toolUseID,
+    buildPermissionRecord(args, permissionPromptStartTimeMs),
+  )
 }
 
-export { buildPermissionRecord, logPermissionDecision }
+export { logPermissionDecision, recordFromVerdict }
 export type { PermissionLogContext, PermissionDecisionArgs }
