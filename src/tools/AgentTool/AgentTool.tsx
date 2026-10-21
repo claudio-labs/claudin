@@ -1310,6 +1310,9 @@ export const AgentTool = buildTool({
   isReadOnly() {
     return true; // delegates permission checks to its underlying tools
   },
+  mayChangeFiles() {
+    return true; // an inline sub-agent edits files the parent read (ownWrites.ts)
+  },
   toAutoClassifierInput(input) {
     const i = input as AgentToolInput;
     const tags = [i.subagent_type, i.mode ? `mode=${i.mode}` : undefined].filter((t): t is string => t !== undefined);

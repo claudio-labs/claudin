@@ -24,6 +24,7 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
+import { settleOwnWrites } from 'src/agent/attachments/ownWrites.js'
 import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
@@ -1107,6 +1108,8 @@ async function checkPermissionsAndCallTool(
   const permissionRecord = decisionInfo ?? recordFromVerdict(permissionDecision)
 
   const startTime = Date.now()
+  // Where the call started, for naming the files it changed (ownWrites.ts).
+  const callCwd = getCwd()
 
   startSessionActivity('tool_exec')
   // If processedInput still points at the backfill clone, no hook/permission
@@ -1161,6 +1164,11 @@ async function checkPermissionsAndCallTool(
     )
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
+    // What a read file became while this call ran is the call's
+    // (agent/attachments/ownWrites.ts): claimed before the PostToolUse hooks
+    // run, so the watcher never reports it as the user's.
+    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd)
+    const ownWritesNote = ownWrites.note === null ? null : `\n\n${ownWrites.note}`
     const resultAdviceNote = adviceNoteAfterCall(tool, callInput, result.data, adviceNote)
 
     // Invalidate the local tool-result cache for any successful write. Reads
@@ -1208,11 +1216,14 @@ async function checkPermissionsAndCallTool(
       // Build content blocks - tool result first, then optional feedback
       const contentBlocks: ContentBlockParam[] = [
         withToolAdvice(
-          withSerialEditHint(
-            toolResultBlock,
-            tool.name,
-            toolUseContext,
-            processedInput,
+          withToolAdvice(
+            withSerialEditHint(
+              toolResultBlock,
+              tool.name,
+              toolUseContext,
+              processedInput,
+            ),
+            ownWritesNote,
           ),
           resultAdviceNote,
         ),
@@ -1265,6 +1276,7 @@ async function checkPermissionsAndCallTool(
           mcpMeta: toolUseContext.agentId ? undefined : mcpMeta,
           sourceToolAssistantUUID: assistantMessage.uuid,
           permissionDecision: permissionRecord,
+          refreshedFiles: ownWrites.changed.length > 0 ? [...ownWrites.changed] : undefined,
         }),
         contextModifier: toolContextModifier
           ? {
@@ -1382,6 +1394,9 @@ async function checkPermissionsAndCallTool(
   } catch (error) {
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
+    // A failed or interrupted call changed what it changed: a python edit
+    // followed by a failing test run still claims the edit.
+    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd)
 
     // Handle MCP auth errors by updating the client status to 'needs-auth'
     // This updates the /mcp display to show the server needs re-authorization
@@ -1476,7 +1491,9 @@ async function checkPermissionsAndCallTool(
                 input,
                 toolUseContext,
                 isInterrupt,
-              ) + (isInterrupt || !adviceNote ? '' : adviceNote),
+              ) +
+                (ownWrites.note === null ? '' : `\n\n${ownWrites.note}`) +
+                (isInterrupt || !adviceNote ? '' : adviceNote),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -1490,6 +1507,7 @@ async function checkPermissionsAndCallTool(
               : undefined,
           sourceToolAssistantUUID: assistantMessage.uuid,
           permissionDecision: permissionRecord,
+          refreshedFiles: ownWrites.changed.length > 0 ? [...ownWrites.changed] : undefined,
         }),
       },
       ...hookMessages,

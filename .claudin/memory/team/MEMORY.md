@@ -77,7 +77,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%
-- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided
+- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided · [bash-first edits in auto+bypass, cost-neutral, 10-21](edit-method-census-2026-10-21.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches go in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — it hides bugs users hit elsewhere; verify from a throwaway cwd
@@ -110,6 +110,7 @@
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md) — 4 gaps fixed
+- [NEXT census: check own writes (ON 10-21)](own-writes-next-census-checks.md) — re-Reads/Edit misses after Git, formatter, sub-agent claims
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features

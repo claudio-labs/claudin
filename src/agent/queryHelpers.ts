@@ -668,8 +668,8 @@ export function extractReadFilesFromMessages(
   }
 
   /**
-   * A read file a Bash command changed and brought up to date
-   * (`BashTool/ownWrites.ts`): the whole-file entry the Read left takes the
+   * A read file a call changed and brought up to date
+   * (`attachments/ownWrites.ts`): the whole-file entry the Read left takes the
    * disk's bytes, so the resumed prompt does not report the model's own edit
    * as the user's. Only while the file is unchanged since the result came
    * back, and only over a whole-file Read — a slice is left for the watcher,
@@ -862,10 +862,17 @@ export function extractReadFilesFromMessages(
             for (const filePath of creditedFilesOf(message.toolUseResult)) {
               cacheCreditFromDisk(filePath, answeredAt)
             }
-            for (const filePath of pathsOf(message.toolUseResult, 'refreshedFiles')) {
-              cacheOwnWriteFromDisk(filePath, answeredAt)
-            }
           }
+        }
+      }
+
+      // The read files a call changed under it, named on its tool_result
+      // message — for any tool, and whether it returned or threw: a failed
+      // run's edits stand.
+      if (message.refreshedFiles && message.timestamp) {
+        const answeredAt = new Date(message.timestamp).getTime()
+        for (const filePath of message.refreshedFiles) {
+          cacheOwnWriteFromDisk(filePath, answeredAt)
         }
       }
     }
@@ -876,13 +883,8 @@ export function extractReadFilesFromMessages(
 
 /** The paths a Bash result's Out names as credited reads; none when it has no such field. */
 function creditedFilesOf(toolUseResult: unknown): string[] {
-  return pathsOf(toolUseResult, 'creditedFiles')
-}
-
-/** The paths a Bash result's Out names under `field`; none when it has no such field. */
-function pathsOf(toolUseResult: unknown, field: 'creditedFiles' | 'refreshedFiles'): string[] {
   if (typeof toolUseResult !== 'object' || toolUseResult === null) return []
-  const paths = (toolUseResult as Record<string, unknown>)[field]
+  const paths = (toolUseResult as Record<string, unknown>).creditedFiles
   if (!Array.isArray(paths)) return []
   return paths.filter((path): path is string => typeof path === 'string')
 }

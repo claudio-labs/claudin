@@ -460,26 +460,65 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
     const cache = extractReadFilesFromMessages([...failed, use!, notBash, result!], dir)
     expect(cache.get(p)).toBeUndefined()
   })
+})
 
-  // CLAUDIN_BASH_OWN_WRITES: a read file the command changed was brought up
-  // to date in the process (ownWrites.ts). Without this the resumed prompt
-  // reported the model's own edit as the user's — the 2026-10-09 A/B's whole
-  // resume write.
-  test('a read file the command changed takes the disk bytes, so the resume reports nothing', () => {
-    const p = join(dir, 'own.ts')
+// Own writes, on by default: a read file the model's own call changed was brought
+// up to date in the process (attachments/ownWrites.ts), and the paths ride on the
+// call's tool_result message — for any tool, and whether it returned or threw.
+// Without this the resumed prompt reported the model's own edit as the user's:
+// the 2026-10-09 A/B's whole resume write.
+describe("extractReadFilesFromMessages — a call's own writes", () => {
+  /** A `name` call answered at `answeredAt`, its message naming `refreshedFiles`. */
+  function call(
+    name: string,
+    input: Record<string, unknown>,
+    answeredAt: number,
+    refreshedFiles: string[],
+    opts: { isError?: boolean } = {},
+  ): Message[] {
+    const use = toolUse(name, input)
+    const result = toolResult(use, opts.isError ? 'Exit code 1' : 'ok', opts) as unknown as Record<string, unknown>
+    result.timestamp = new Date(answeredAt).toISOString()
+    result.refreshedFiles = refreshedFiles
+    return [use, result as unknown as Message]
+  }
+
+  /** `path` written with `content`, dated a minute before `answeredAt`. */
+  function writeBefore(path: string, content: string, answeredAt: number): void {
+    writeFileSync(path, content)
+    const before = new Date(answeredAt - 60_000)
+    utimesSync(path, before, before)
+  }
+
+  const fromDisk = (p: string, content: string): FileState => ({
+    content,
+    timestamp: getFileModificationTime(p),
+    offset: undefined,
+    limit: undefined,
+    dedupExempt: true,
+  })
+
+  test('a read file a Git call changed takes the disk bytes, so the resume reports nothing', () => {
+    const p = join(dir, 'own-git.ts')
     const now = Date.now()
     writeBefore(p, 'new1\nnew2\n', now)
     const cache = extractReadFilesFromMessages(
-      [...read(p, {}, 'old1\nold2'), ...bash(`python3 edit.py`, '', now, { refreshedFiles: [p] })],
+      [...read(p, {}, 'old1\nold2'), ...call('Git', { commands: ['git stash'] }, now, [p])],
       dir,
     )
-    expect(cache.get(p)).toEqual({
-      content: 'new1\nnew2\n',
-      timestamp: getFileModificationTime(p),
-      offset: undefined,
-      limit: undefined,
-      dedupExempt: true,
-    })
+    expect(cache.get(p)).toEqual(fromDisk(p, 'new1\nnew2\n'))
+  })
+
+  // A python edit followed by a failing test run: the call threw, the edit stands.
+  test('a call that failed still claims what it changed', () => {
+    const p = join(dir, 'own-failed.ts')
+    const now = Date.now()
+    writeBefore(p, 'new1\nnew2\n', now)
+    const cache = extractReadFilesFromMessages(
+      [...read(p, {}, 'old1\nold2'), ...call('Bash', { command: 'python3 edit.py && bun test' }, now, [p], { isError: true })],
+      dir,
+    )
+    expect(cache.get(p)).toEqual(fromDisk(p, 'new1\nnew2\n'))
   })
 
   test('changed again after the result, it keeps what the Read showed', () => {
@@ -487,7 +526,7 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
     const answeredAt = Date.now() - 120_000
     writeFileSync(p, 'user edit\nafter\n')
     const cache = extractReadFilesFromMessages(
-      [...read(p, {}, 'old1\nold2'), ...bash(`python3 edit.py`, '', answeredAt, { refreshedFiles: [p] })],
+      [...read(p, {}, 'old1\nold2'), ...call('Bash', { command: 'python3 edit.py' }, answeredAt, [p])],
       dir,
     )
     expect(cache.get(p)).toMatchObject({ content: 'old1\nold2' })
@@ -502,7 +541,7 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
     const cache = extractReadFilesFromMessages(
       [
         ...read(sliced, { offset: 1, limit: 1 }, 'l1'),
-        ...bash(`python3 edit.py`, '', now, { refreshedFiles: [sliced, unread] }),
+        ...call('Agent', { description: 'd', prompt: 'p' }, now, [sliced, unread]),
       ],
       dir,
     )

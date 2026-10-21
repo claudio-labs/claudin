@@ -30,7 +30,6 @@ import {
 } from 'src/tools/shared/outputFilter/Bash/index.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
 import { creditShownFiles, fitWholeFiles, renderNotShownNote, type FittedRead } from 'src/tools/BashTool/creditShownFiles.js';
-import { refreshOwnWrites } from 'src/tools/BashTool/ownWrites.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
 import { inputSchema, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
@@ -488,14 +487,6 @@ export const BashTool = buildTool({
     // is how the model learns of it.
     if (credit.credited.length > 0) data.creditedFiles = [...credit.credited];
     if (credit.note !== null) data.readNote = data.readNote ? `${data.readNote}\n${credit.note}` : credit.note;
-    // CLAUDIN_BASH_OWN_WRITES: a file the model had read and this command
-    // changed is brought up to date here, so the next prompt does not call the
-    // change the user's (ownWrites.ts). A backgrounded run is still writing.
-    if (data.backgroundTaskId === undefined) {
-      const own = await refreshOwnWrites(toolUseContext.readFileState, commandStartedAt, commandStartCwd);
-      if (own.changed.length > 0) data.refreshedFiles = [...own.changed];
-      if (own.note !== null) data.readNote = data.readNote ? `${data.readNote}\n${own.note}` : own.note;
-    }
     return {
       data
     };
