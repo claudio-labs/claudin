@@ -12,7 +12,7 @@ import {
 } from 'src/shared/fs/fileStateCache.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
-import { refreshOwnWrites } from 'src/tools/BashTool/ownWrites.js'
+import { refreshOwnWrites } from 'src/agent/attachments/ownWrites.js'
 
 const FLAG = 'CLAUDIN_BASH_OWN_WRITES'
 let dir: string

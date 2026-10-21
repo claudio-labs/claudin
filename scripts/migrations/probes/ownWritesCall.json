@@ -1,6 +1,6 @@
 {
   "test": [
-    "src/tools/BashTool/ownWrites.test.ts"
+    "src/agent/attachments/ownWrites.test.ts"
   ],
   "source": "src/tools/BashTool/BashTool.tsx",
   "probes": [

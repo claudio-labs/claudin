@@ -30,7 +30,7 @@ import {
 } from 'src/tools/shared/outputFilter/Bash/index.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
 import { creditShownFiles, fitWholeFiles, renderNotShownNote, type FittedRead } from 'src/tools/BashTool/creditShownFiles.js';
-import { refreshOwnWrites } from 'src/tools/BashTool/ownWrites.js';
+import { refreshOwnWrites } from 'src/agent/attachments/ownWrites.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
 import { inputSchema, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';

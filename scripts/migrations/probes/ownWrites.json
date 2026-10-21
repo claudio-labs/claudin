@@ -1,9 +1,9 @@
 {
   "test": [
-    "src/tools/BashTool/ownWrites.test.ts",
+    "src/agent/attachments/ownWrites.test.ts",
     "src/agent/queryHelpers.extractReadFiles.test.ts"
   ],
-  "source": "src/tools/BashTool/ownWrites.ts",
+  "source": "src/agent/attachments/ownWrites.ts",
   "probes": [
     {
       "name": "own-writes: on whatever the flag says",
