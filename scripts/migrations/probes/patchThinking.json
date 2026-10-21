@@ -1,0 +1,68 @@
+{
+  "test": [
+    "src/tools/ApplyPatchTool/prompt.test.ts",
+    "src/agent/prompts/prompts.test.ts",
+    "src/agent/prompts/steeringToggles.test.ts",
+    "scripts/bench/ab/session-cache-ab.test.ts"
+  ],
+  "_note": "The patch-thinking A/B arms of 2026-10-21 (CLAUDIN_LEAN_PATCH_PROMPT, CLAUDIN_SOFT_BATCH) and the session A/B report rows that judge them (thinking by response kind, patch misses). Each probe breaks one wire the tests claim to guard.",
+  "source": "src/tools/ApplyPatchTool/prompt.ts",
+  "probes": [
+    {
+      "name": "the Patch description ignores CLAUDIN_LEAN_PATCH_PROMPT",
+      "find": "const LEAN = isLeanPatchPromptEnabled()",
+      "replace": "const LEAN = false"
+    },
+    {
+      "name": "the lean description keeps the one-section rule the parser rescues",
+      "find": "const ONE_SECTION_PER_FILE = LEAN ? '' :",
+      "replace": "const ONE_SECTION_PER_FILE = false ? '' :"
+    },
+    {
+      "name": "the default anchor rules drift by one clause",
+      "find": ", not a fragment like \"@@ function greet(\" — it is matched against an entire line",
+      "replace": " — it is matched against an entire line"
+    },
+    {
+      "name": "the Patch description ignores CLAUDIN_SOFT_BATCH",
+      "find": "const TYPICAL_FLOW = isSoftBatchEnabled()",
+      "replace": "const TYPICAL_FLOW = false"
+    },
+    {
+      "name": "the Anthropic addendum ignores CLAUDIN_SOFT_BATCH",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "export const ANTHROPIC_BATCHED_EDITS_ADDENDUM = isSoftBatchEnabled()",
+      "replace": "export const ANTHROPIC_BATCHED_EDITS_ADDENDUM = false"
+    },
+    {
+      "name": "the soft toggle reads the wrong variable",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "isEnvTruthy(process.env.CLAUDIN_SOFT_BATCH)",
+      "replace": "isEnvTruthy(process.env.CLAUDIN_SOFT_BATCHES)"
+    },
+    {
+      "name": "the lean toggle reads the wrong variable",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "isEnvTruthy(process.env.CLAUDIN_LEAN_PATCH_PROMPT)",
+      "replace": "isEnvTruthy(process.env.CLAUDIN_LEAN_PATCH)"
+    },
+    {
+      "name": "a patch response is filed as another edit tool",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  if (calls.some(c => PATCH_TOOLS.has(c.name))) return 'patch'\n",
+      "replace": ""
+    },
+    {
+      "name": "a patch that left hunks NOT applied is never marked partial",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "NOT_APPLIED_RE.test(result.text) ? { partial: true }",
+      "replace": "false ? { partial: true }"
+    },
+    {
+      "name": "every response counts as one that thought",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "if (think > THOUGHT_FLOOR) kind.thinkingTurns++",
+      "replace": "if (think >= 0) kind.thinkingTurns++"
+    }
+  ]
+}

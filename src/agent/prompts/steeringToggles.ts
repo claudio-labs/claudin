@@ -140,3 +140,33 @@ export function isSubagentBatchingEnabled(): boolean {
 export function isOneCallCommitEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_ONE_CALL_COMMIT)
 }
+
+/*
+ * The patch-thinking levers of 2026-10-21 (team memory
+ * `thinking-gap-is-patch-shape-2026-10-21`). On Opus 5.5 claudin thinks about
+ * twice what Claude Code does, and the excess sits in the batched Patch
+ * workflow: the Read turns that gather a multi-file change and the Patch that
+ * lands it. Each lever is an A/B arm, OFF until promoted: `=1` changes its
+ * text, unset leaves every prompt byte-identical. Process-constant, like the
+ * toggles above, and read once at module load by the prompts they change.
+ */
+
+/**
+ * `CLAUDIN_LEAN_PATCH_PROMPT=1`: the Patch description drops the format rules
+ * patchFormat.ts now rescues on its own — a fragment `@@` anchor, the anchor
+ * restated as the hunk's first line, one section per file, the order of bare
+ * hunks — so the model has fewer rules to check before it sends a patch.
+ */
+export function isLeanPatchPromptEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_LEAN_PATCH_PROMPT)
+}
+
+/**
+ * `CLAUDIN_SOFT_BATCH=1`: a multi-file change is still ONE Patch, but neither
+ * the Anthropic addendum nor the Patch description asks for every file to be
+ * Read first in a single message, nor calls one patch per file the
+ * anti-pattern — the instruction that gathers the whole plan into one turn.
+ */
+export function isSoftBatchEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_SOFT_BATCH)
+}

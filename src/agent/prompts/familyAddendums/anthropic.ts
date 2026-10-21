@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { isOnePatchChangeEnabled } from 'src/agent/prompts/steeringToggles.js'
+import { isOnePatchChangeEnabled, isSoftBatchEnabled } from 'src/agent/prompts/steeringToggles.js'
 
 // Anthropic family addendum.
 //
@@ -32,8 +32,14 @@ const SPLIT_PATCH_ANTI_PATTERN = ONE_PATCH_CHANGE
   ? 'One patch per file, or code then tests then docs in separate calls,'
   : 'One patch per file'
 
-export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
-  `When a change touches several files${CHANGE_SCOPE} land it as ONE Patch call with a section per file, and Read every one of those files first in a single message${CAT_COUNTS_AS_READ}. ${SPLIT_PATCH_ANTI_PATTERN} is the anti-pattern here, not the careful option.`
+// CLAUDIN_SOFT_BATCH (off by default, steeringToggles.ts): the change is still
+// ONE Patch, but the clause stops there — no "Read every one of those files
+// first in a single message", no anti-pattern. The patch-thinking A/B of
+// 2026-10-21 found claudin's Read turns before a batched patch thinking ~3x
+// Claude Code's. Read once at module load; off, the text is byte-identical.
+export const ANTHROPIC_BATCHED_EDITS_ADDENDUM = isSoftBatchEnabled()
+  ? `When a change touches several files${CHANGE_SCOPE} land it as ONE Patch call with a section per file.`
+  : `When a change touches several files${CHANGE_SCOPE} land it as ONE Patch call with a section per file, and Read every one of those files first in a single message${CAT_COUNTS_AS_READ}. ${SPLIT_PATCH_ANTI_PATTERN} is the anti-pattern here, not the careful option.`
 
 // CLAUDIN_TOTAL_TOKENS=1 (off by default, an A/B arm; team memory
 // `claude-code-2.1.284-wire-diff`, item 1): the budget line Claude Code 2.1.284

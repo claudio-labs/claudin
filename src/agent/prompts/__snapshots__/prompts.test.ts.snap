@@ -78,3 +78,5 @@ exports[`request-count levers A — CLAUDIN_RESPONSE_CHAINS harness bullet bulle
 exports[`request-count levers S — CLAUDIN_SUBAGENT_BATCHING note on, it names the shared request and the batch Read 1`] = `"Independent tool calls go in ONE response: they share a single request, while one call per response costs a request each. Read takes several files at once with \`file_paths\`."`;
 
 exports[`request-count levers B — CLAUDIN_ONE_PATCH_CHANGE addendum flag on: the tests and docs of a change go in its ONE Patch 1`] = `"When a change touches several files, its tests and docs included, land it as ONE Patch call with a section per file, and Read every one of those files first in a single message. One patch per file, or code then tests then docs in separate calls, is the anti-pattern here, not the careful option."`;
+
+exports[`patch-thinking levers — CLAUDIN_SOFT_BATCH addendum flag on: still ONE Patch, without the read-everything-first order or the anti-pattern 1`] = `"When a change touches several files, land it as ONE Patch call with a section per file."`;
