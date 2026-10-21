@@ -521,7 +521,8 @@ function withToolAdvice(block: ToolResultBlockParam, note: string | null): ToolR
  * The advice note a successful result carries. A Bash `cat` whose every file
  * the read credit counted (`creditedFiles`, BashTool/creditShownFiles.ts)
  * keeps no note sending the model to Read them: it would only read again what
- * it holds (redirectLanes.ts, `isReadAdviceMoot`).
+ * it holds (redirectLanes.ts, `isReadAdviceMoot`). The same for a `sed -n`
+ * slice it counted (`creditedRanges`).
  */
 export function adviceNoteAfterCall(
   tool: Pick<Tool, 'name'>,
@@ -531,10 +532,19 @@ export function adviceNoteAfterCall(
 ): string | null {
   if (note === null || tool.name !== BASH_TOOL_NAME) return note
   const command = (input as { command?: unknown } | null)?.command
-  const credited = (output as { creditedFiles?: unknown } | null)?.creditedFiles
-  if (typeof command !== 'string' || !Array.isArray(credited)) return note
-  const paths = credited.filter((path): path is string => typeof path === 'string')
-  return isReadAdviceMoot(command, getCwd(), paths) ? null : note
+  const out = output as { creditedFiles?: unknown; creditedRanges?: unknown } | null
+  const credited = out?.creditedFiles
+  const sliced = out?.creditedRanges
+  if (typeof command !== 'string' || (!Array.isArray(credited) && !Array.isArray(sliced))) return note
+  const paths = Array.isArray(credited) ? credited.filter((path): path is string => typeof path === 'string') : []
+  const ranges = Array.isArray(sliced) ? sliced.filter(isCreditedRange) : []
+  return isReadAdviceMoot(command, getCwd(), paths, ranges) ? null : note
+}
+
+function isCreditedRange(value: unknown): value is { path: string; offset: number; limit: number } {
+  if (typeof value !== 'object' || value === null) return false
+  const range = value as Record<string, unknown>
+  return typeof range.path === 'string' && Number.isInteger(range.offset) && Number.isInteger(range.limit)
 }
 
 function streamedCheckPermissionsAndCallTool(

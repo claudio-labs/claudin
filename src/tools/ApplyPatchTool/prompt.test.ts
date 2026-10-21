@@ -40,7 +40,7 @@ describe('Patch DESCRIPTION under CLAUDIN_BASH_READ_CREDIT', () => {
   const ANY_READ =
     'any Read counts: the whole file, an outline, a symbol, or a range. Nothing has to be re-read'
   const ANY_READ_OR_CAT =
-    'any Read counts: the whole file, an outline, a symbol, or a range — a Bash `cat` that printed the whole file counts too. Nothing has to be re-read'
+    'any Read counts: the whole file, an outline, a symbol, or a range — a Bash `cat` that printed the whole file, or a `sed -n A,Bp` slice of it, counts too. Nothing has to be re-read'
 
   test('flag off: byte-identical to the snapshot above', async () => {
     const off = await loadPatchPrompt(false)

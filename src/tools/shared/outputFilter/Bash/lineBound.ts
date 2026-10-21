@@ -52,6 +52,7 @@ import { walkCommandSegments } from "src/platform/bash/segments.js";
 import {
   cdTarget,
   type ReadWord,
+  sedPrintOf,
   wordsOf,
 } from "src/tools/shared/outputFilter/Bash/fileReadShape.js";
 
@@ -70,17 +71,6 @@ const DASH_COUNT_RE = /^-(\d+)$/;
 const GLUED_COUNT_RE = /^-n(\d+)$/;
 /** What `head` and `tail` print with no count. */
 const DEFAULT_HEAD_TAIL_LINES = 10;
-
-/** One sed command of a range print: `12p` or `12,40p`. */
-const SED_PRINT_RE = /^(\d+)(?:,(\d+))?p$/;
-const SED_SCRIPT_SPLIT_RE = /[;\n]/;
-const SED_QUIET_FLAGS: ReadonlySet<string> = new Set(["-n", "--quiet", "--silent"]);
-/** Flags that change how a script is read, not which lines it prints. */
-const SED_INERT_FLAGS: ReadonlySet<string> = new Set(["-E", "-r", "--regexp-extended"]);
-const SED_SEPARATE_FLAGS: ReadonlySet<string> = new Set(["-s", "--separate"]);
-const SED_EXPRESSION_FLAGS: ReadonlySet<string> = new Set(["-e", "--expression"]);
-/** `-nE`, `-ne`: short flags run together; an `e` at the end takes the next word. */
-const SED_SHORT_FLAGS_RE = /^-[nErs]*e?$/;
 
 /** `NR>=A && NR<=B`, either side strict or not, then an optional body. */
 const AWK_RANGE_RE = /^\s*NR\s*(>=?)\s*(\d+)\s*&&\s*NR\s*(<=?)\s*(\d+)\s*(\{[\s\S]*\})?\s*$/;
@@ -158,70 +148,15 @@ function headOrTailBound(args: readonly ReadWord[], scope: Scope): StageBound | 
   return { lines: count * (lines + 2), files };
 }
 
-/** The lines one sed script prints, or null when any command in it is not a numeric range print. */
-function sedScriptLines(script: string): number | null {
-  let lines = 0;
-  for (const part of script.split(SED_SCRIPT_SPLIT_RE)) {
-    const command = part.trim();
-    if (command === "") continue;
-    const match = SED_PRINT_RE.exec(command);
-    if (!match) return null;
-    const from = Number(match[1]);
-    const to = match[2] === undefined ? from : Number(match[2]);
-    // `40,12p` prints line 40 alone.
-    lines += Math.max(to - from + 1, 1);
-  }
-  return lines > 0 ? lines : null;
-}
-
-/** `sed -n` with a script of numeric range prints; null without `-n`, where sed prints every line. */
+/** `sed -n` with a script of numeric range prints (`sedPrintOf`); null without `-n`, where sed prints every line. */
 function sedBound(args: readonly ReadWord[], scope: Scope): StageBound | null {
-  let quiet = false;
-  let separate = false;
-  const scripts: string[] = [];
-  const positional: ReadWord[] = [];
-  let afterDoubleDash = false;
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]!;
-    const text = arg.text;
-    if (!afterDoubleDash && text === "--") {
-      afterDoubleDash = true;
-      continue;
-    }
-    if (afterDoubleDash || !text.startsWith("-") || text === "-") {
-      positional.push(arg);
-      continue;
-    }
-    if (SED_QUIET_FLAGS.has(text)) quiet = true;
-    else if (SED_SEPARATE_FLAGS.has(text)) separate = true;
-    else if (SED_INERT_FLAGS.has(text)) continue;
-    else if (SED_EXPRESSION_FLAGS.has(text) || (SED_SHORT_FLAGS_RE.test(text) && text.endsWith("e"))) {
-      if (text.includes("n") && !text.startsWith("--")) quiet = true;
-      if (text.includes("s") && !text.startsWith("--")) separate = true;
-      const script = args[++i];
-      if (!script || script.glob) return null;
-      scripts.push(script.text);
-    } else if (SED_SHORT_FLAGS_RE.test(text)) {
-      if (text.includes("n")) quiet = true;
-      if (text.includes("s")) separate = true;
-    } else return null;
-  }
-  if (!quiet) return null;
-  if (scripts.length === 0) {
-    const script = positional.shift();
-    if (!script || script.glob) return null;
-    scripts.push(script.text);
-  }
-  let lines = 0;
-  for (const script of scripts) {
-    const scriptLines = sedScriptLines(script);
-    if (scriptLines === null) return null;
-    lines += scriptLines;
-  }
+  const print = sedPrintOf(args);
+  if (!print) return null;
+  const lines = print.ranges.reduce((n, [from, to]) => n + to - from + 1, 0);
   // One stream across every file, unless `-s` restarts the line count in each.
-  if (!separate || positional.length === 0) return { lines, files: positional };
-  const count = pathCount(positional, scope);
-  return count === null ? null : { lines: lines * count, files: positional };
+  if (!print.separate || print.files.length === 0) return { lines, files: print.files };
+  const count = pathCount(print.files, scope);
+  return count === null ? null : { lines: lines * count, files: print.files };
 }
 
 /** `awk` whose program is an `NR` range with at most a print body; NR counts across files. */

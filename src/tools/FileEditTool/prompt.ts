@@ -16,7 +16,7 @@ const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
 
 function getPreReadInstruction(): string {
   const mustRead = READ_CREDIT
-    ? `You must read the file first — with \`${FILE_READ_TOOL_NAME}\`, or a Bash \`cat\` that printed it whole.`
+    ? `You must read the file first — with \`${FILE_READ_TOOL_NAME}\`, a Bash \`cat\` that printed it whole, or a \`sed -n\` slice of it.`
     : `You must use your \`${FILE_READ_TOOL_NAME}\` tool at least once in the conversation before editing.`
   return `\n- ${mustRead} Any ${FILE_READ_TOOL_NAME} of the file counts — the whole file, an outline, a symbol or a range — and nothing has to be re-read: \`old_string\` is matched against the file as it is on disk. `
 }
@@ -34,7 +34,7 @@ export function getEditToolDescription(): string {
  */
 export function buildCompactEditToolDescription(): string {
   const mustRead = READ_CREDIT
-    ? `You must read the file first — with \`${FILE_READ_TOOL_NAME}\`, or a Bash \`cat\` that printed it whole; any ${FILE_READ_TOOL_NAME} counts, a range or an outline included.`
+    ? `You must read the file first — with \`${FILE_READ_TOOL_NAME}\`, a Bash \`cat\` that printed it whole, or a \`sed -n\` slice of it; any ${FILE_READ_TOOL_NAME} counts, a range or an outline included.`
     : `You must ${FILE_READ_TOOL_NAME} the file in this conversation before editing; any ${FILE_READ_TOOL_NAME} counts, a range or an outline included.`
   return `Performs exact string replacement in a file.
 

@@ -3,6 +3,7 @@ import {
   catReadsOf,
   isPureFileRead,
   parsePureFileRead,
+  sedRangeReadsOf,
 } from "src/tools/shared/outputFilter/Bash/fileReadShape.js";
 
 // Verbatim from the recorded bench (`scripts/bench/ab/session-cache-ab.ts`,
@@ -247,6 +248,47 @@ describe("catReadsOf — the cat segments of any command", () => {
   for (const [name, command] of Object.entries(NOTHING)) {
     test(`names nothing for ${name}: ${JSON.stringify(command)}`, () => {
       expect(catReadsOf(command)).toEqual([]);
+    });
+  }
+});
+
+// The read credit's slices: a `sed -n` range of one file, in any command, by
+// the same walk as catReadsOf.
+describe("sedRangeReadsOf — the sed -n slices of any command", () => {
+  const slice = (text: string, from: number, to: number, dir?: string) => ({
+    word: { text, glob: false, ...(dir ? { dir } : {}) },
+    from,
+    to,
+  });
+
+  test("a range, quoted or not, a single line, beside cats and after a cd", () => {
+    expect(sedRangeReadsOf("sed -n 40,60p src/a.ts")).toEqual([slice("src/a.ts", 40, 60)]);
+    expect(sedRangeReadsOf("sed -n '1,30p' test/quote.test.ts; cat README.md")).toEqual([
+      slice("test/quote.test.ts", 1, 30),
+    ]);
+    expect(catReadsOf("sed -n '1,30p' test/quote.test.ts; cat README.md")).toEqual([{ text: "README.md", glob: false }]);
+    expect(sedRangeReadsOf("sed -n 12p a.ts && sed -ne '5,9p' b.ts")).toEqual([slice("a.ts", 12, 12), slice("b.ts", 5, 9)]);
+    expect(sedRangeReadsOf("cd src && sed -n 3,8p cart.ts")).toEqual([slice("cart.ts", 3, 8, "src")]);
+    expect(sedRangeReadsOf("sed -n 40,12p a.ts")).toEqual([slice("a.ts", 40, 40)]);
+  });
+
+  const NOTHING: Record<string, string> = {
+    "no -n": "sed 1,5p a.ts",
+    "a regex address": "sed -n '/export/p' a.ts",
+    "an open-ended range": "sed -n '10,$p' a.ts",
+    "two ranges": "sed -n '1,5p;20,30p' a.ts",
+    "two files": "sed -n 1,5p a.ts b.ts",
+    "a glob": "sed -n 1,5p src/*.ts",
+    "a variable": "sed -n 1,5p $F",
+    "an in-place edit": "sed -i 's/a/b/' a.ts",
+    "a slice piped onward": "sed -n 1,40p a.ts | grep x",
+    "a slice in a loop": "for f in a.ts b.ts; do sed -n 1,5p $f; done",
+    "a redirect": "sed -n 1,5p a.ts > b.ts",
+    "stdin": "cat a.ts | sed -n 1,5p",
+  };
+  for (const [name, command] of Object.entries(NOTHING)) {
+    test(`names nothing for ${name}: ${JSON.stringify(command)}`, () => {
+      expect(sedRangeReadsOf(command)).toEqual([]);
     });
   }
 });

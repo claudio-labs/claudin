@@ -166,7 +166,7 @@ describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM under CLAUDIN_BASH_READ_CREDIT', () =
 
   const READ_FIRST = 'Read every one of those files first in a single message. One patch'
   const READ_OR_CAT_FIRST =
-    'Read every one of those files first in a single message (files a `cat` already printed whole count as read). One patch'
+    'Read every one of those files first in a single message (files a `cat` already printed whole, or a `sed -n` slice printed part of, count as read). One patch'
 
   test('flag off: byte-identical to the snapshot above', async () => {
     const off = await loadAnthropic(false)

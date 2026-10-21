@@ -204,6 +204,30 @@ describe('isReadAdviceMoot — the call already counted every file the note name
   test('a command this lane does not map', () => {
     expect(isReadAdviceMoot('bun run build', CWD, [at('package.json')])).toBe(false)
   })
+
+  // A credited `sed -n` slice (creditShownFiles.ts) makes the ranged Read the
+  // note suggests for it moot, and only that one.
+  test('every slice inside a credited range: moot', () => {
+    const command = 'sed -n 4,7p package.json; sed -n 3,6p tsconfig.json'
+    const ranges = [
+      { path: at('package.json'), offset: 4, limit: 4 },
+      { path: at('tsconfig.json'), offset: 3, limit: 4 },
+    ]
+    expect(isReadAdviceMoot(command, CWD, undefined, ranges)).toBe(true)
+    expect(isReadAdviceMoot(command, CWD, [], ranges)).toBe(true)
+  })
+
+  test('a slice outside every credited range, or on another file: the note stands', () => {
+    const command = 'sed -n 4,7p package.json; sed -n 3,6p tsconfig.json'
+    expect(isReadAdviceMoot(command, CWD, undefined, [{ path: at('package.json'), offset: 4, limit: 4 }])).toBe(false)
+    expect(isReadAdviceMoot('sed -n 4,9p package.json', CWD, undefined, [{ path: at('package.json'), offset: 4, limit: 4 }])).toBe(false)
+    expect(isReadAdviceMoot('sed -n 4,7p package.json', CWD, undefined, [{ path: at('tsconfig.json'), offset: 4, limit: 4 }])).toBe(false)
+  })
+
+  test('a file credited whole does not make a slice of it moot, nor a slice a whole Read', () => {
+    expect(isReadAdviceMoot('sed -n 4,7p package.json', CWD, [at('package.json')])).toBe(false)
+    expect(isReadAdviceMoot('cat package.json', CWD, [], [{ path: at('package.json'), offset: 1, limit: 50 }])).toBe(false)
+  })
 })
 
 describe('BashTool wiring', () => {

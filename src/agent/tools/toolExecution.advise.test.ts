@@ -237,6 +237,17 @@ describe('adviceNoteAfterCall — a Bash read the credit already counted', () =>
     ).toBe(READ_NOTE)
   })
 
+  test('a sed -n slice the credit counted: the note goes; one it did not: it stands', () => {
+    const command = `sed -n 1,2p ${a}`
+    expect(
+      adviceNoteAfterCall(BASH, { command }, { stdout: '', creditedRanges: [{ path: a, offset: 1, limit: 2 }] }, READ_NOTE),
+    ).toBeNull()
+    expect(
+      adviceNoteAfterCall(BASH, { command }, { stdout: '', creditedRanges: [{ path: b, offset: 1, limit: 2 }] }, READ_NOTE),
+    ).toBe(READ_NOTE)
+    expect(adviceNoteAfterCall(BASH, { command }, { stdout: '', creditedRanges: [{ path: a }] }, READ_NOTE)).toBe(READ_NOTE)
+  })
+
   test('no creditedFiles — the credit is off, or showed nothing whole: the note stands', () => {
     expect(adviceNoteAfterCall(BASH, { command: `cat ${a} ${b}` }, { stdout: '' }, READ_NOTE)).toBe(READ_NOTE)
   })

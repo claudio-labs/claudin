@@ -427,6 +427,34 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
     expect(cache.get(p)).toBeUndefined()
   })
 
+  // A `sed -n` slice comes back as the ranged read it was, never as the whole file.
+  test('a credited slice is restored as that range, and never narrows a whole read', () => {
+    const p = join(dir, 'slice.ts')
+    const now = Date.now()
+    writeBefore(p, 'L1\nL2\nL3\nL4\nL5\n', now)
+    const sliced = bash(`sed -n 2,4p ${p}`, 'L2\nL3\nL4', now, { creditedRanges: [{ path: p, offset: 2, limit: 3 }] })
+    expect(extractReadFilesFromMessages(sliced, dir).get(p)).toEqual({
+      content: 'L2\nL3\nL4',
+      timestamp: getFileModificationTime(p),
+      offset: 2,
+      limit: 3,
+      dedupExempt: true,
+    })
+    const wholeThenSlice = [...bash(`cat ${p}`, 'L1\nL2\nL3\nL4\nL5', now, { creditedFiles: [p] }), ...sliced]
+    expect(extractReadFilesFromMessages(wholeThenSlice, dir).get(p)?.limit).toBeUndefined()
+  })
+
+  test('a slice written after the result is not restored', () => {
+    const p = join(dir, 'slice-later.ts')
+    const answeredAt = Date.now() - 120_000
+    writeFileSync(p, 'a\nb\nc\n')
+    const cache = extractReadFilesFromMessages(
+      bash(`sed -n 1,2p ${p}`, 'a\nb', answeredAt, { creditedRanges: [{ path: p, offset: 1, limit: 2 }] }),
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
   test('a result without creditedFiles leaves an earlier entry as it was', () => {
     const p = join(dir, 'kept.ts')
     const now = Date.now()

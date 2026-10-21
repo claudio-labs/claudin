@@ -32,7 +32,7 @@ export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
 // cost every request a line (lean3 A/B, team memory
 // `claude-code-2.1.284-wire-diff`).
 const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
-  ? ' — a Bash `cat` that printed the whole file counts too'
+  ? ' — a Bash `cat` that printed the whole file, or a `sed -n A,Bp` slice of it, counts too'
   : ''
 const LEAN = isLeanPatchPromptEnabled()
 const ANCHOR_RULES = LEAN

@@ -18,7 +18,7 @@ import { isOnePatchChangeEnabled, isSoftBatchEnabled } from 'src/agent/prompts/s
 // those files first" says so too — otherwise it sends the model back to Read
 // what it was just shown. Read once at module load, like the credit itself.
 const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
-  ? ' (files a `cat` already printed whole count as read)'
+  ? ' (files a `cat` already printed whole, or a `sed -n` slice printed part of, count as read)'
   : ''
 
 // CLAUDIN_ONE_PATCH_CHANGE (off by default, steeringToggles.ts): the request
