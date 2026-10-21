@@ -49,7 +49,7 @@ extract-claude-code-prompt.ts). The CC variants ran through a dispatch shim pass
   The steer is not what makes CC on Opus 5.5 use the shell.
 - The one Claudin-specific cost: a file it Read and then changed via Bash comes back as
   `edited_text_file`. That happened in 3 of 5 bashfirst sessions and in none of the other arms;
-  one session got 11 notes, ~30k chars, and a 6.4k resume write. Own writes is the fix (`CLAUDIN_OWN_WRITES`, still off).
+  one session got 11 notes, ~30k chars, and a 6.4k resume write. Own writes is the fix (`CLAUDIN_OWN_WRITES`, on since 10-21).
 - Claudin arms think about 2× as much as CC arms (4.5k vs 2.4k, SEPARATED). That holds with or without the steer.
 - The run took about 50% of the Max 5x 5-hour window (4→54%), and the 7-day window went 4→7%.
 
@@ -65,7 +65,7 @@ time, `ownWrites.ts` was hooked only in BashTool.tsx, so Git/Build/RunTests were
 The bashfirst arm above (Read, then a Bash edit) is the bench the parked own-writes decision
 asked for ([[bash-read-lane]]).
 
-**Implemented the same day: branch `fix/own-writes-every-tool`, pushed 10-21, no PR yet.**
+**Implemented the same day: branch `fix/own-writes-every-tool`, pushed and opened as a PR 10-21.**
 - What it does now:
   - `settleOwnWrites` (`src/agent/attachments/ownWrites.ts`) runs in `runToolUse` after `call()`
     settles, whether it returned, threw or was interrupted, and before PostToolUse hooks.
@@ -73,7 +73,7 @@ asked for ([[bash-read-lane]]).
     `isReadOnly()=true` for permissions, so it sets `mayChangeFiles` to true.
   - The paths go on the tool_result message (`refreshedFiles`), and `extractReadFilesFromMessages`
     rebuilds them for any tool.
-  - The switch is `CLAUDIN_OWN_WRITES=1`, still OFF.
+  - The switch is `CLAUDIN_OWN_WRITES`; on by default since the flip below.
 - Zero-cost proof: read-credit-e2e scenarios 17, 18 and 24-26 pass through the bundle (a failing
   Bash run, a Git checkout, the off control). Scenarios 2, 7 and 10 fail on main too: stale
   read-gate expectations, not from this branch.
@@ -102,6 +102,8 @@ asked for ([[bash-read-lane]]).
     - mean output 1742 vs 1660 tokens;
     - context 367–1627 tokens smaller per event, −$0.073 over 4 sessions (≈ −2% of session cost).
   - That run took the 5h window from 84% to 92%.
+- **Flipped ON 10-21 by the user** (`=0` killswitch). The replay covered only edits the
+  model wrote itself; the watch list for the next census is [[own-writes-next-census-checks]].
 
 **How to apply:** a CC arm under `--dangerously-skip-permissions` edits with Bash by design.
 So an edit-shape, read-gate or own-writes comparison against it compares prompts, not
