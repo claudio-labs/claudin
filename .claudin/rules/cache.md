@@ -478,8 +478,8 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   keep the full call), and an input-only id never enters the result set,
   which stubs whatever it is given. Added 2026-09-20 after a 958k session
   whose transcript was 40% tool_use inputs no clip could reach. "Never
-  re-reads" stops at the tail: an input is no candidate while its result
-  sits in the last 10 user turns (`KEEP_RECENT_INPUT_TURNS`,
+  re-reads" stops at the tail (2026-10-19): an input is no candidate while
+  its result is among the 10 newest user messages (`KEEP_RECENT_INPUT_RESULTS`,
   `clipFrontier.ts`). With the result window of 2, a clip stubbed patches 30 s
   old and the model's next Patch sent the placeholder as its patchText.
 - Anything that removes or rewrites messages behind the marker must call

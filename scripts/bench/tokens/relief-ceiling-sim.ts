@@ -37,10 +37,12 @@
  *   --band=N           a fixed band instead of clamp(max(60k, 0.15·T), ≤0.3·T)
  *
  * And one the policy has since 2026-10-19:
- *   --input-keep=N     a tool INPUT stays whole for the last N calls
- *                      (default 10, KEEP_RECENT_INPUT_TURNS in clipFrontier.ts);
- *                      results keep the last two either way. `--input-keep=2`
- *                      replays the policy before it
+ *   --input-keep=N     a tool INPUT stays whole for the last N calls (default
+ *                      KEEP_RECENT_INPUT_RESULTS); results keep the last two
+ *                      either way. `--input-keep=2` replays the policy before
+ *                      it. The policy counts tool results and this counts
+ *                      API calls, so with parallel calls the replay protects a
+ *                      little more than the app does
  *
  * Run:
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26
@@ -57,8 +59,10 @@ import { contentText, projectDirs, transcriptFiles } from './transcriptCorpus.js
 const CHARS_PER_TOKEN = 3
 const HEAD_CHARS = 2_000
 const KEEP_RECENT_CALLS = 2
-// Mirror of KEEP_RECENT_INPUT_TURNS (src/agent/compact/stableStubState/clipFrontier.ts).
-const KEEP_RECENT_INPUT_CALLS = 10
+// Mirror of KEEP_RECENT_INPUT_RESULTS in src/agent/compact/stableStubState/clipFrontier.ts,
+// which relief-ceiling-sim.test.ts pins equal: importing it loads the app's
+// module graph, which a bare `bun scripts/…` run cannot resolve.
+const KEEP_RECENT_INPUT_RESULTS = 10
 const BAND_MIN = 60_000
 const BAND_TRIGGER_FRACTION = 0.15
 const BAND_MAX_FRACTION = 0.3
@@ -104,7 +108,7 @@ export function parseArgs(argv: readonly string[]): Args {
   const triggers = (get('triggers') ?? '200000,250000,300000,400000,500000').split(',').map(Number)
   const band = get('band') === undefined ? null : Number(get('band'))
   if (band !== null && !(band > 0)) throw new Error('--band=<tokens>')
-  const inputKeep = Number(get('input-keep') ?? KEEP_RECENT_INPUT_CALLS)
+  const inputKeep = Number(get('input-keep') ?? KEEP_RECENT_INPUT_RESULTS)
   if (!Number.isInteger(inputKeep) || inputKeep < 0) throw new Error('--input-keep=<calls>')
   return {
     since,

@@ -267,15 +267,17 @@ function findTurnCutoffIndex(
 }
 
 /**
- * How many user turns back a call's INPUT stays whole, whatever window the
- * caller keeps results in. A "turn" here is a user message, so in a tool loop
- * it is one round trip. With the result window alone (2), a call's input went
- * one round trip before its result: a relief clip on 2026-10-16 stubbed the
- * patchText of calls 30 s to 2.5 min old, and the model's next Patch carried
- * the placeholder it had been looking at as its patchText. The rewrite starts
- * at the oldest clipped block either way, so keeping the tail costs no cache.
+ * A call's INPUT stays whole while its result is among this many newest user
+ * messages, whatever window the caller keeps results in. Every tool_result is
+ * a user message of its own, so this counts results: 10 sequential calls, or
+ * fewer round trips when calls run in parallel. With the result window alone
+ * (2), a call's input went one message before its result: a relief clip on
+ * 2026-10-16 stubbed the patchText of calls 30 s to 2.5 min old, and the
+ * model's next Patch carried the placeholder it had been looking at as its
+ * patchText. The rewrite starts at the oldest clipped block either way, so
+ * keeping the tail costs no cache.
  */
-const KEEP_RECENT_INPUT_TURNS = 10
+export const KEEP_RECENT_INPUT_RESULTS = 10
 
 /** The tool_use ids answered at or after `fromIdx`. */
 function toolResultIdsFrom(messages: readonly AnyMessage[], fromIdx: number): Set<string> {
@@ -402,7 +404,7 @@ function clearableInputTokens(
  * with the two savings summed, so one clip event covers both; ids whose
  * inputs were already clipped contribute only their result side.
  * A call's input is protected while its result sits in the last
- * `max(keepRecentTurns, KEEP_RECENT_INPUT_TURNS)` user turns.
+ * `max(keepRecentTurns, KEEP_RECENT_INPUT_RESULTS)` user messages.
  */
 export function collectClearableCandidates(
   messages: readonly AnyMessage[],
@@ -437,7 +439,7 @@ export function collectClearableCandidates(
   // and with parallel calls several.
   const inputCutoffIdx = findTurnCutoffIndex(
     messages,
-    Math.max(keepRecentTurns, KEEP_RECENT_INPUT_TURNS),
+    Math.max(keepRecentTurns, KEEP_RECENT_INPUT_RESULTS),
   )
   const recentCalls =
     inputCutoffIdx > 0 ? toolResultIdsFrom(messages, inputCutoffIdx) : null

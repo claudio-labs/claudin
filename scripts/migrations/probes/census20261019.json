@@ -41,10 +41,10 @@
       "replace": "        if (clippedInputs.has(block.id)) continue"
     },
     {
-      "name": "the input window is 10 user turns",
+      "name": "the input window is 10 results",
       "source": "src/agent/compact/stableStubState/clipFrontier.ts",
-      "find": "const KEEP_RECENT_INPUT_TURNS = 10",
-      "replace": "const KEEP_RECENT_INPUT_TURNS = 2"
+      "find": "export const KEEP_RECENT_INPUT_RESULTS = 10",
+      "replace": "export const KEEP_RECENT_INPUT_RESULTS = 2"
     },
     {
       "name": "sideQuery bills its usage",

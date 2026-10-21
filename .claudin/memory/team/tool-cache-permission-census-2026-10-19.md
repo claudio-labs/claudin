@@ -39,7 +39,7 @@ crash.
   30 s to 2.5 min old. Each was followed within a minute by a new Patch whose
   patchText was the `[clipped: …]` placeholder, which `clipStubEcho` refused.
   The cause: the result window is 2 user turns, and an input went one round
-  trip before its result. FIXED: `KEEP_RECENT_INPUT_TURNS = 10`
+  trip before its result. FIXED: `KEEP_RECENT_INPUT_RESULTS = 10`
   (`clipFrontier.ts`), for both lanes. Re-reads in the next 15 min were 4 and
   7, against 1 and 0 before; that is the result window, which is unchanged
   (clip-all's A/B).

@@ -124,7 +124,7 @@ One decision, one source of truth, no message ever dropped from the API view:
     $65.47 → $96.24 over 8 threads in four weeks (upper bound, as above).
   - The rss lane keeps its low-water target: it bounds memory, not cache.
   - Killswitch `CLAUDIN_RELIEF_CLIP_ALL=0` (back to one band).
-- **A call keeps its input for 10 user turns (2026-10-19).** The protected
+- **A call keeps its input for its 10 newest results (2026-10-19).** The protected
   `keepRecentTurns`=2 counts user messages, and every tool_result is one, so
   it is two round trips — and a call's INPUT, one message before its result,
   went one round trip earlier still. A mid-turn clip on 2026-10-16 stubbed
@@ -132,8 +132,9 @@ One decision, one source of truth, no message ever dropped from the API view:
   the model sent a new Patch whose patchText was the `[clipped: …]`
   placeholder (refused by `clipStubEcho.ts`); cd29d57b did the same.
   `collectClearableCandidates` now keeps an input while its call's result
-  sits in the last `max(keepRecentTurns, KEEP_RECENT_INPUT_TURNS)` = 10 user
-  turns, for both lanes that clip inputs (window relief and the idle-gap
+  sits in the last `max(keepRecentTurns, KEEP_RECENT_INPUT_RESULTS)` = 10 user
+  messages — 10 tool results, so fewer round trips when calls run in
+  parallel — for both lanes that clip inputs (window relief and the idle-gap
   clip). Results keep their window of 2.
   - It costs no cache: the rewrite starts at the oldest clipped block either
     way. `relief-ceiling-sim.ts --since=2026-10-12 --main --clip-all

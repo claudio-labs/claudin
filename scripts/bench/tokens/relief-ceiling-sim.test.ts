@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { KEEP_RECENT_INPUT_RESULTS } from 'src/agent/compact/stableStubState/clipFrontier.js'
 import { parseArgs, simulate, type Args, type Thread } from './relief-ceiling-sim'
 
 const BASE: Args = parseArgs(['--main'])
@@ -25,7 +26,7 @@ describe('parseArgs', () => {
   })
 
   test('--input-keep defaults to the policy (10) and rejects a non-count', () => {
-    expect(BASE.inputKeep).toBe(10)
+    expect(BASE.inputKeep).toBe(KEEP_RECENT_INPUT_RESULTS)
     expect(parseArgs(['--input-keep=2']).inputKeep).toBe(2)
     expect(() => parseArgs(['--input-keep=x'])).toThrow('--input-keep')
     expect(() => parseArgs(['--input-keep=-1'])).toThrow('--input-keep')
