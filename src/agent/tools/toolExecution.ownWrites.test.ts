@@ -12,7 +12,7 @@ import { runToolUse } from 'src/agent/tools/toolExecution.js'
 import { ShellError } from 'src/shared/errors.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import { createFileStateCacheWithSizeLimit, type FileState } from 'src/shared/fs/fileStateCache.js'
-import { buildTool, getEmptyToolPermissionContext, type ToolUseContext } from 'src/tools/Tool.js'
+import { buildTool, getEmptyToolPermissionContext, type Tool, type ToolUseContext } from 'src/tools/Tool.js'
 
 const FLAG = 'CLAUDIN_OWN_WRITES'
 let dir: string
@@ -116,12 +116,13 @@ async function run(name: string, input: Omit<ProbeInput, 'path'>) {
   return { path, context, result, text: JSON.stringify(result.message.content), later }
 }
 
-const NOTE = (name: string) => `(1 file you had read changed under this call — your read now matches the disk: ${name})`
+// The probe's files live outside the cwd, so the line names them whole.
+const NOTE = (path: string) => `(1 file you had read changed under this call — your read now matches the disk: ${path})`
 
 describe('a read file the call itself changed', () => {
   test('a call that returns claims it: the result names it, the next prompt says nothing', async () => {
     const { path, result, text, later } = await run('returned.ts', { then: 'return' })
-    expect(text).toContain(NOTE('returned.ts'))
+    expect(text).toContain(NOTE(path))
     expect(later).toBeNull()
     expect(result.refreshedFiles).toEqual([path])
   })
@@ -130,7 +131,7 @@ describe('a read file the call itself changed', () => {
   test('a call that throws claims it too', async () => {
     const { path, result, text, later } = await run('threw.ts', { then: 'throw' })
     expect(text).toContain('FAIL test/quote.test.ts')
-    expect(text).toContain(NOTE('threw.ts'))
+    expect(text).toContain(NOTE(path))
     expect(later).toBeNull()
     expect(result.refreshedFiles).toEqual([path])
   })
@@ -168,8 +169,10 @@ describe('the tools that get it with no code of their own', () => {
   // Agent stays read-only for permissions (it delegates them), so it says so apart.
   test('the Agent call may change files, while staying read-only for permissions', async () => {
     const { AgentTool } = await import('src/tools/AgentTool/AgentTool.js')
+    // Seen as the tool loop sees any tool.
+    const tool: Pick<Tool, 'isReadOnly' | 'mayChangeFiles'> = AgentTool
     const input = { description: 'd', prompt: 'p' } as never
-    expect(AgentTool.isReadOnly(input)).toBe(true)
-    expect(AgentTool.mayChangeFiles?.(input)).toBe(true)
+    expect(tool.isReadOnly(input)).toBe(true)
+    expect(tool.mayChangeFiles?.(input)).toBe(true)
   })
 })

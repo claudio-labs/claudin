@@ -175,6 +175,7 @@ export function createUserMessage({
   permissionDecision,
   permissionMode,
   origin,
+  refreshedFiles,
 }: {
   content: string | ContentBlockParam[]
   isMeta?: true
@@ -194,6 +195,8 @@ export function createUserMessage({
   sourceToolAssistantUUID?: UUID
   // For tool_result messages: the permission decision behind the call (never sent to the model)
   permissionDecision?: ToolPermissionRecord
+  // For tool_result messages: read files the call changed under it (never sent to the model)
+  refreshedFiles?: readonly string[]
   // Permission mode when message was sent (for rewind restoration)
   permissionMode?: PermissionMode
   summarizeMetadata?: {
@@ -224,6 +227,7 @@ export function createUserMessage({
     permissionDecision,
     permissionMode,
     origin,
+    refreshedFiles,
   }
   return m
 }

@@ -533,6 +533,13 @@ export type Tool<
   /** Defaults to false. Only set when the tool performs irreversible operations (delete, overwrite, send). */
   isDestructive?(input: z.infer<Input>): boolean
   /**
+   * Whether a call may change files on disk while it runs; the tool loop then
+   * claims for the call what a read file became (agent/attachments/ownWrites.ts).
+   * Defaults to `!isReadOnly(input)`. Set it on a tool that is read-only for
+   * permissions yet runs work that writes: Agent, whose sub-agent edits.
+   */
+  mayChangeFiles?(input: z.infer<Input>): boolean
+  /**
    * What should happen when the user submits a new message while this tool
    * is running.
    *

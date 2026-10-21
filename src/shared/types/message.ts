@@ -188,6 +188,13 @@ export type UserMessage = MessageBase & {
   sourceToolAssistantUUID?: UUID
   /** For tool_result messages: the permission decision that let the call run or stopped it. Never sent to the model. */
   permissionDecision?: ToolPermissionRecord
+  /**
+   * For tool_result messages: absolute paths of the read files the call
+   * changed while it ran, whose read state it brought up to date
+   * (agent/attachments/ownWrites.ts). `/resume` rebuilds them from disk.
+   * Never sent to the model.
+   */
+  refreshedFiles?: readonly string[]
   /** Permission mode in force when the message was sent (for rewind restoration). */
   permissionMode?: PermissionMode
   summarizeMetadata?: {

@@ -490,7 +490,7 @@ describe("extractReadFilesFromMessages — a call's own writes", () => {
     utimesSync(path, before, before)
   }
 
-  const fromDisk = (p: string, content: string) => ({
+  const fromDisk = (p: string, content: string): FileState => ({
     content,
     timestamp: getFileModificationTime(p),
     offset: undefined,

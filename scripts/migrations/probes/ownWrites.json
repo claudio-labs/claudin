@@ -12,18 +12,18 @@
     },
     {
       "name": "own-writes: a change from before the command is taken as its own",
-      "find": "        if (mtime < startedAt || mtime <= state.timestamp) return\n",
-      "replace": "        if (mtime <= state.timestamp) return\n"
+      "find": "        if (mtime < startedAt || mtime <= state.timestamp) return null\n",
+      "replace": "        if (mtime <= state.timestamp) return null\n"
     },
     {
       "name": "own-writes: an untouched file is refreshed anyway",
-      "find": "        if (mtime < startedAt || mtime <= state.timestamp) return\n",
-      "replace": "        if (mtime < startedAt) return\n"
+      "find": "        if (mtime < startedAt || mtime <= state.timestamp) return null\n",
+      "replace": "        if (mtime < startedAt) return null\n"
     },
     {
       "name": "own-writes: an outline entry is taken for a read",
-      "find": "      if (state.isPartialView || state.refreshFailed) return\n",
-      "replace": "      if (state.refreshFailed) return\n"
+      "find": "      if (state.isPartialView || state.refreshFailed) return null\n",
+      "replace": "      if (state.refreshFailed) return null\n"
     },
     {
       "name": "own-writes: the entry keeps the old bytes",
@@ -56,9 +56,29 @@
       "replace": "\n"
     },
     {
+      "name": "own-writes: a file outside the cwd is named by a ../ chain",
+      "find": "  const names = changed.map(path => relativeIfInside(path, cwd)).join(', ')\n",
+      "replace": "  const names = changed.map(path => require('path').relative(cwd, path) || path).join(', ')\n"
+    },
+    {
+      "name": "own-writes gate: every call claims, read-only or not",
+      "find": "    return tool.mayChangeFiles?.(input as never) ?? !tool.isReadOnly(input as never)\n",
+      "replace": "    return true\n"
+    },
+    {
+      "name": "own-writes gate: mayChangeFiles is never asked",
+      "find": "    return tool.mayChangeFiles?.(input as never) ?? !tool.isReadOnly(input as never)\n",
+      "replace": "    return !tool.isReadOnly(input as never)\n"
+    },
+    {
+      "name": "own-writes gate: a tool that cannot say is taken for read-only",
+      "find": "    // As buildTool's default for isReadOnly: assume it writes.\n    return true\n",
+      "replace": "    return false\n"
+    },
+    {
       "name": "own-writes resume: the paths are never read back",
       "source": "src/agent/queryHelpers.ts",
-      "find": "            for (const filePath of pathsOf(message.toolUseResult, 'refreshedFiles')) {\n              cacheOwnWriteFromDisk(filePath, answeredAt)\n            }\n",
+      "find": "        for (const filePath of message.refreshedFiles) {\n          cacheOwnWriteFromDisk(filePath, answeredAt)\n        }\n",
       "replace": "\n"
     },
     {

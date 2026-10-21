@@ -12,9 +12,9 @@ import {
 } from 'src/shared/fs/fileStateCache.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
-import { refreshOwnWrites } from 'src/agent/attachments/ownWrites.js'
+import { type FileChangingTool, refreshOwnWrites, settleOwnWrites } from 'src/agent/attachments/ownWrites.js'
 
-const FLAG = 'CLAUDIN_BASH_OWN_WRITES'
+const FLAG = 'CLAUDIN_OWN_WRITES'
 let dir: string
 let priorFlag: string | undefined
 
@@ -67,7 +67,7 @@ describe('refreshOwnWrites', () => {
     const own = await refreshOwnWrites(ctx.readFileState, startedAt, dir)
 
     expect(own.changed).toEqual([p])
-    expect(own.note).toBe('(1 file you had read changed under this command — your read now matches the disk: quote.ts)')
+    expect(own.note).toBe('(1 file you had read changed under this call — your read now matches the disk: quote.ts)')
     const entry = ctx.readFileState.get(p)!
     // A Read's content carries no final newline, and the entry is now one.
     expect(entry).toMatchObject({ content: 'export const a = 2', timestamp: getFileModificationTime(p), dedupExempt: true })
@@ -169,12 +169,59 @@ describe('refreshOwnWrites', () => {
     const startedAt = Date.now()
     for (const p of [first, second]) writeAt(p, 'y\n', 5)
     const own = await refreshOwnWrites(ctx.readFileState, startedAt, dir)
-    expect(own.note).toBe('(2 files you had read changed under this command — your read now matches the disk: a-first.ts, b-second.ts)')
+    expect(own.note).toBe('(2 files you had read changed under this call — your read now matches the disk: a-first.ts, b-second.ts)')
+  })
+
+  test('a file outside where the call ran is named whole', async () => {
+    const p = join(dir, 'outside.ts')
+    writeAt(p, 'x\n', -60)
+    const ctx = makeContext()
+    ctx.readFileState.set(p, readEntry(p))
+    const startedAt = Date.now()
+    writeAt(p, 'y\n', 5)
+    const own = await refreshOwnWrites(ctx.readFileState, startedAt, join(dir, 'elsewhere'))
+    expect(own.note).toBe(`(1 file you had read changed under this call — your read now matches the disk: ${p})`)
   })
 })
 
-// What BashTool.call() makes of it, in a child process so the bootstrap cwd it
-// sets cannot leak into the files that run after this one.
+describe('settleOwnWrites: which calls may claim a change', () => {
+  /** Whether `tool`'s call claims a read file rewritten while it ran. */
+  async function claims(tool: FileChangingTool): Promise<boolean> {
+    const p = join(dir, `settle-${Math.random().toString(36).slice(2)}.ts`)
+    writeAt(p, 'x\n', -60)
+    const ctx = makeContext()
+    ctx.readFileState.set(p, readEntry(p))
+    const startedAt = Date.now()
+    writeAt(p, 'y\n', 5)
+    return (await settleOwnWrites(tool, {}, ctx.readFileState, startedAt, dir)).changed.length === 1
+  }
+
+  test('a call that may write claims it; a read-only one does not', async () => {
+    expect(await claims({ isReadOnly: () => false })).toBe(true)
+    expect(await claims({ isReadOnly: () => true })).toBe(false)
+  })
+
+  // Agent: read-only for permissions, yet its sub-agent edits.
+  test('mayChangeFiles overrides isReadOnly, either way', async () => {
+    expect(await claims({ isReadOnly: () => true, mayChangeFiles: () => true })).toBe(true)
+    expect(await claims({ isReadOnly: () => false, mayChangeFiles: () => false })).toBe(false)
+  })
+
+  test('a tool that cannot say is taken to write, as buildTool assumes', async () => {
+    const throwing = () => {
+      throw new Error('no answer for this input')
+    }
+    expect(await claims({ isReadOnly: throwing })).toBe(true)
+  })
+
+  test('switch off: nothing is claimed', async () => {
+    delete process.env[FLAG]
+    expect(await claims({ isReadOnly: () => false })).toBe(false)
+  })
+})
+
+// What the tool loop makes of a real Bash command, in a child process so the
+// bootstrap cwd it sets cannot leak into the files that run after this one.
 const REPO_ROOT = resolve(import.meta.dir, '..', '..', '..')
 const CALL_PROBE = `
 const src = path => ${JSON.stringify(join(REPO_ROOT, 'src'))} + '/' + path
@@ -185,6 +232,7 @@ const { getDefaultAppState } = await import(src('terminal/state/AppStateStore.js
 const { createFileStateCacheWithSizeLimit, READ_FILE_STATE_CACHE_SIZE } = await import(src('shared/fs/fileStateCache.js'))
 const { getFileModificationTime } = await import(src('shared/fs/file.js'))
 const { refreshChangedFile } = await import(src('agent/attachments/changedFile.js'))
+const { runToolUse } = await import(src('agent/tools/toolExecution.js'))
 const { BashTool } = await import(src('tools/BashTool/BashTool.js'))
 const dir = process.env.PROBE_DIR
 const file = dir + '/quote.ts'
@@ -196,17 +244,33 @@ const context = {
   getAppState: () => appState,
   setAppState: update => { appState = update(appState) },
   readFileState: createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE),
+  messages: [],
+  options: { tools: [BashTool], mcpClients: [], isNonInteractiveSession: true, mainLoopModel: 'claude-opus-5-5' },
+  setInProgressToolUseIDs: () => {},
+  setResponseLength: () => {},
+  updateFileHistoryState: () => {},
+  updateAttributionState: () => {},
 }
 // What a whole-file Read left behind.
 context.readFileState.set(file, { content: readFileSync(file, 'utf8'), timestamp: getFileModificationTime(file), offset: 1, limit: undefined })
-const { data } = await BashTool.call({ command: process.env.PROBE_COMMAND }, context)
+const toolUse = { type: 'tool_use', id: 'toolu_probe', name: 'Bash', input: { command: process.env.PROBE_COMMAND } }
+const assistant = { type: 'assistant', uuid: 'a-probe', message: { id: 'msg_probe', role: 'assistant', content: [toolUse] } }
+const allow = async (_tool, input) => ({ behavior: 'allow', updatedInput: input })
+let result
+for await (const update of runToolUse(toolUse, assistant, allow, context)) {
+  if (update.message?.type === 'user') result = update.message
+}
 const later = await refreshChangedFile(file, file, context.readFileState.get(file), context)
-process.stdout.write(JSON.stringify({ readNote: data.readNote ?? null, later }))
+const block = result.message.content[0]
+process.stdout.write(JSON.stringify({ text: String(block.content), isError: block.is_error === true, refreshedFiles: result.refreshedFiles ?? null, later }))
 process.exit(0)
 `
 
-describe('call(): a read file the command rewrote', () => {
-  const run = (flag: boolean): { readNote: string | null; later: unknown } => {
+type Probed = { text: string; isError: boolean; refreshedFiles: string[] | null; later: unknown }
+
+describe('the tool loop: a read file a Bash command rewrote', () => {
+  const edit = `python3 -c "open('quote.ts','w').write('export const a = 2\\\\n')"`
+  const run = (flag: boolean, command: string): Probed => {
     const probeDir = realpathSync(mkdtempSync(join(tmpdir(), 'own-writes-call-')))
     const configDir = mkdtempSync(join(tmpdir(), 'own-writes-config-'))
     try {
@@ -217,7 +281,7 @@ describe('call(): a read file the command rewrote', () => {
         NODE_NO_WARNINGS: '1',
         CLAUDIN_CONFIG_DIR: configDir,
         PROBE_DIR: probeDir,
-        PROBE_COMMAND: `python3 -c "open('quote.ts','w').write('export const a = 2\\\\n')"`,
+        PROBE_COMMAND: command,
       }
       if (flag) env[FLAG] = '1'
       else delete env[FLAG]
@@ -228,23 +292,37 @@ describe('call(): a read file the command rewrote', () => {
         timeout: 60_000,
       })
       if (child.status !== 0) throw new Error(`call() probe failed (exit ${child.status})\n${child.stdout}\n${child.stderr}`)
-      return JSON.parse(child.stdout) as { readNote: string | null; later: unknown }
+      const probed = JSON.parse(child.stdout) as Probed
+      return { ...probed, refreshedFiles: probed.refreshedFiles?.map(p => p.replace(probeDir, '<dir>')) ?? null }
     } finally {
       rmSync(probeDir, { recursive: true, force: true })
       rmSync(configDir, { recursive: true, force: true })
     }
   }
+  const LINE = '(1 file you had read changed under this call — your read now matches the disk: quote.ts)'
 
-  test('flag on: the result names it, and the next prompt carries no change notice', () => {
-    expect(run(true)).toEqual({
-      readNote: '(1 file you had read changed under this command — your read now matches the disk: quote.ts)',
-      later: null,
-    })
+  test('switch on: the result names it, and the next prompt carries no change notice', () => {
+    const { text, isError, refreshedFiles, later } = run(true, edit)
+    expect(isError).toBe(false)
+    expect(text.endsWith(`\n\n${LINE}`)).toBe(true)
+    expect(refreshedFiles).toEqual(['<dir>/quote.ts'])
+    expect(later).toBeNull()
   })
 
-  test('flag off: no line, and the change notice follows as before', () => {
-    const { readNote, later } = run(false)
-    expect(readNote).toBeNull()
+  // A non-zero exit throws inside BashTool.call(), past any refresh of its own.
+  test('switch on, the command then failing: the edit is claimed all the same', () => {
+    const { text, isError, refreshedFiles, later } = run(true, `${edit} && echo 'FAIL test/quote.test.ts' && exit 1`)
+    expect(isError).toBe(true)
+    expect(text).toContain('FAIL test/quote.test.ts')
+    expect(text.endsWith(`\n\n${LINE}`)).toBe(true)
+    expect(refreshedFiles).toEqual(['<dir>/quote.ts'])
+    expect(later).toBeNull()
+  })
+
+  test('switch off: no line, and the change notice follows as before', () => {
+    const { text, refreshedFiles, later } = run(false, edit)
+    expect(text).not.toContain('you had read changed')
+    expect(refreshedFiles).toBeNull()
     expect(later).toMatchObject({ type: 'edited_text_file' })
   })
 })

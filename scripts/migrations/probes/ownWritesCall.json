@@ -1,18 +1,45 @@
 {
   "test": [
+    "src/agent/tools/toolExecution.ownWrites.test.ts",
     "src/agent/attachments/ownWrites.test.ts"
   ],
-  "source": "src/tools/BashTool/BashTool.tsx",
+  "source": "src/agent/tools/toolExecution.ts",
   "probes": [
     {
-      "name": "own-writes call(): the refresh never runs",
-      "find": "      const own = await refreshOwnWrites(toolUseContext.readFileState, commandStartedAt, commandStartCwd);\n      if (own.changed.length > 0) data.refreshedFiles = [...own.changed];\n      if (own.note !== null) data.readNote = data.readNote ? `${data.readNote}\\n${own.note}` : own.note;\n",
-      "replace": "\n"
+      "name": "own-writes loop: a call that returns never settles",
+      "find": "    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd)\n    const ownWritesNote",
+      "replace": "    const ownWrites = { changed: [] as readonly string[], note: null as string | null }\n    const ownWritesNote"
     },
     {
-      "name": "own-writes call(): the refresh runs but the result says nothing",
-      "find": "      if (own.note !== null) data.readNote = data.readNote ? `${data.readNote}\\n${own.note}` : own.note;\n",
-      "replace": "\n"
+      "name": "own-writes loop: a call that throws never settles",
+      "find": "    // followed by a failing test run still claims the edit.\n    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd)\n",
+      "replace": "    // followed by a failing test run still claims the edit.\n    const ownWrites = { changed: [] as readonly string[], note: null as string | null }\n"
+    },
+    {
+      "name": "own-writes loop: a returned result says nothing",
+      "find": "            ownWritesNote,\n",
+      "replace": "            null,\n"
+    },
+    {
+      "name": "own-writes loop: a failed result says nothing",
+      "find": "                (ownWrites.note === null ? '' : `\\n\\n${ownWrites.note}`) +\n",
+      "replace": ""
+    },
+    {
+      "name": "own-writes loop: a returned call's message names no paths",
+      "find": "          refreshedFiles: ownWrites.changed.length > 0 ? [...ownWrites.changed] : undefined,\n        }),\n        contextModifier",
+      "replace": "        }),\n        contextModifier"
+    },
+    {
+      "name": "own-writes loop: a failed call's message names no paths",
+      "find": "          refreshedFiles: ownWrites.changed.length > 0 ? [...ownWrites.changed] : undefined,\n        }),\n      },\n      ...hookMessages,",
+      "replace": "        }),\n      },\n      ...hookMessages,"
+    },
+    {
+      "name": "own-writes loop: Agent is taken for a call that cannot write",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "  mayChangeFiles() {\n    return true; // an inline sub-agent edits files the parent read (ownWrites.ts)\n",
+      "replace": "  mayChangeFiles() {\n    return false;\n"
     }
   ]
 }
