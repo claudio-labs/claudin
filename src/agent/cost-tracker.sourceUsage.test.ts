@@ -8,7 +8,7 @@
  * could not account for had no name. These pin that every spend is counted
  * under its source and survives a resume.
  */
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
 import {
   addSideQueryCost,
   addToTotalSessionCost,
@@ -36,6 +36,9 @@ function usage(input: number, output: number, cacheRead = 0, cacheCreation = 0):
 const NO_CONFIG = { restoreFromProjectConfig: () => false }
 
 beforeEach(() => {
+  resetCostState()
+})
+afterAll(() => {
   resetCostState()
 })
 

@@ -8,14 +8,8 @@
  * a census reads. The client is replaced at its module, the way
  * `analyzeContext.test.ts` does it; the rest of `sideQuery` runs for real.
  */
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { invalidateClientCache } from 'src/providers/transport/clientCache.js'
-
-// The build inlines MACRO; the fingerprint reads its VERSION.
-;(globalThis as Record<string, unknown>).MACRO = {
-  VERSION: '99.0.0',
-  DISPLAY_VERSION: '0.0.0-test',
-}
 
 const realClient = { ...(await import('src/providers/transport/client.js')) }
 const { sideQuery } = await import('src/agent/sideQuery.js')
@@ -51,11 +45,23 @@ function restoreClient(): void {
   invalidateClientCache()
 }
 
+// The build inlines MACRO; the fingerprint reads its VERSION. Put back
+// whatever an earlier file left there.
+let priorMacro: unknown
+beforeAll(() => {
+  priorMacro = (globalThis as Record<string, unknown>).MACRO
+  ;(globalThis as Record<string, unknown>).MACRO ??= { VERSION: 'test' }
+})
 beforeEach(() => {
   resetCostState()
 })
 afterEach(restoreClient)
-afterAll(restoreClient)
+afterAll(() => {
+  restoreClient()
+  resetCostState()
+  if (priorMacro === undefined) delete (globalThis as Record<string, unknown>).MACRO
+  else (globalThis as Record<string, unknown>).MACRO = priorMacro
+})
 
 describe('sideQuery spend', () => {
   test("a classifier call is in the session cost, under its source", async () => {
