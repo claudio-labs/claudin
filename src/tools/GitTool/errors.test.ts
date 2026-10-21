@@ -460,7 +460,7 @@ describe('read-only answers', () => {
       stdout: `smoke-and-tests\tfail\t32s\t${RUN}\t\nlint\tpass\t9s\thttps://github.com/o/r/actions/runs/38076085366/job/2\t\n`,
       exitCode: 1,
     })
-    const answer = readOnlyAnswer('gh pr checks 4', 1, output)
+    const answer = readOnlyAnswer('gh pr checks 4', 1, output)?.text
     expect(answer).toContain('1 check failed: smoke-and-tests')
     expect(answer).toContain('`gh run view 38076085366 --log-failed`')
   })
@@ -470,7 +470,7 @@ describe('read-only answers', () => {
       `a\tfail\t1s\t${RUN}\t\n` +
       'b\tfail\t1s\thttps://github.com/o/r/actions/runs/38076085366/job/3\t\n' +
       'c\tfail\t1s\thttps://github.com/o/r/actions/runs/99/job/4\t\n'
-    const answer = readOnlyAnswer('gh pr checks 4', 1, output)
+    const answer = readOnlyAnswer('gh pr checks 4', 1, output)?.text
     expect(answer).toContain('3 checks failed: a, b, c')
     expect(answer).toContain('`gh run view 38076085366 --log-failed`')
     expect(answer).toContain('`gh run view 99 --log-failed`')
@@ -478,7 +478,7 @@ describe('read-only answers', () => {
   })
 
   test('a failed check with no run URL still answers', () => {
-    const answer = readOnlyAnswer('gh pr checks 4', 1, 'external\tfail\t0\thttps://ci.example.test/x\t\n')
+    const answer = readOnlyAnswer('gh pr checks 4', 1, 'external\tfail\t0\thttps://ci.example.test/x\t\n')?.text
     expect(answer).toContain('1 check failed: external')
     expect(answer).not.toContain('gh run view')
   })
@@ -489,12 +489,20 @@ describe('read-only answers', () => {
       stderr: "no checks reported on the 'feat/x' branch\n",
       exitCode: 1,
     })
-    expect(readOnlyAnswer('gh pr checks 5', 1, output)).toContain('No checks are registered for this branch yet')
+    expect(readOnlyAnswer('gh pr checks 5', 1, output)?.text).toContain('No checks are registered for this branch yet')
   })
 
   test('no upstream is an answer', () => {
     const answer = readOnlyAnswer('git rev-parse --abbrev-ref @{u}', 128, "fatal: no upstream configured for branch 'feat/x'\n")
-    expect(answer).toContain('`feat/x` has no upstream')
+    expect(answer?.text).toContain('`feat/x` has no upstream')
+  })
+
+  test('a checks answer still stops a write behind it; no upstream does not', () => {
+    // Neither is an error, but a failed or missing check is no green light for
+    // the `gh pr merge` or `git push` the model queued after reading it.
+    expect(readOnlyAnswer('gh pr checks 4', 1, `x\tfail\t1s\t${RUN}\t\n`)?.stopsWrites).toBe(true)
+    expect(readOnlyAnswer('gh pr checks 4', 1, "no checks reported on the 'feat/x' branch\n")?.stopsWrites).toBe(true)
+    expect(readOnlyAnswer('git rev-parse @{u}', 128, "fatal: no upstream configured for branch 'x'\n")?.stopsWrites).toBe(false)
   })
 
   test('the same text from another command, or another exit, is no answer', () => {

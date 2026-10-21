@@ -341,9 +341,19 @@ function ghChecksAnswer(command: string, exitCode: number, output: string): stri
  * The reply a read's non-zero exit carries, when it carries one. `run.ts`
  * reports it instead of an error — for read-only commands only, since a write
  * that exits non-zero did not do its job whatever it printed.
+ *
+ * `stopsWrites`: whether a write queued behind it still must not run. No
+ * upstream says nothing against a commit; a failed or missing check is no
+ * green light, and `["gh pr checks 4", "gh pr merge 4"]` stopped at the
+ * checks while their exit was an error.
  */
-export function readOnlyAnswer(command: string, exitCode: number, output: string): string | null {
-  return noUpstreamAnswer(output) ?? ghChecksAnswer(command, exitCode, output)
+export type ReadOnlyAnswer = { text: string; stopsWrites: boolean }
+
+export function readOnlyAnswer(command: string, exitCode: number, output: string): ReadOnlyAnswer | null {
+  const upstream = noUpstreamAnswer(output)
+  if (upstream !== null) return { text: upstream, stopsWrites: false }
+  const checks = ghChecksAnswer(command, exitCode, output)
+  return checks === null ? null : { text: checks, stopsWrites: true }
 }
 
 /** Exported for the tests, which assert the sentence rather than the fold. */

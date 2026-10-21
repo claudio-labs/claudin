@@ -413,11 +413,13 @@ export async function runGitBatch(
         output: rendered,
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),
-        ...(answer !== null ? { answer } : {}),
+        ...(answer !== null ? { answer: answer.text } : {}),
       }
       // A stall is not a failure, so it never stops the rest: `["gh pr checks
       // --watch", "gh pr view"]` still delivers the second one.
-      stopsBatch = isError && failureStopsBatch(opts.commands.slice(index), run, filtered)
+      stopsBatch =
+        (isError || answer?.stopsWrites === true) &&
+        failureStopsBatch(opts.commands.slice(index), run, filtered)
     } catch (e) {
       logError(`Git: exec failed for \`${command}\` — ${String(e)}`)
       return {
