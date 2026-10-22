@@ -1,6 +1,6 @@
 ---
 name: patch-thinking-levers-not-promoted
-description: Claudin keeps its batched-Patch edit flow — the 2026-10-21/22 levers against the extra thinking (CLAUDIN_BASH_FIRST, CLAUDIN_SOFT_BATCH, CLAUDIN_LEAN_PATCH_PROMPT, the sed -n read credit) were measured on Opus 5.5 and Sonnet 5.5 and left opt-in on branch perf/patch-thinking, unmerged; the user judged today's default the more economical
+description: Claudin keeps its batched-Patch edit flow — the 2026-10-21/22 levers against the extra thinking were measured on Opus 5.5 and Sonnet 5.5 and none became a default; CLAUDIN_LEAN_PATCH_PROMPT, CLAUDIN_SOFT_BATCH and the sed -n slice credit ship off like the cat credit, CLAUDIN_BASH_FIRST stays on the local branch perf/patch-thinking
 type: project
 scope: src/agent/prompts/steeringToggles.ts
 impact: rejected
@@ -8,12 +8,14 @@ impact: rejected
 
 **Decision (user, 2026-10-22):** Claudin keeps today's file-editing flow: read the batch, then
 land a multi-file change as ONE Patch. None of the levers built to cut the thinking around that
-flow becomes a default. They stay as opt-in switches on the local branch `perf/patch-thinking`,
-which is not merged:
-- `CLAUDIN_BASH_FIRST`: file work through Bash, as Claude Code does on Opus 5.5;
-- `CLAUDIN_SOFT_BATCH`: ONE Patch, without "Read every file first";
-- `CLAUDIN_LEAN_PATCH_PROMPT`: the Patch description without the rules the parser rescues;
-- the `sed -n` slice read credit.
+flow becomes a default.
+- Three are in the code and off by default, the way the `cat` read credit already was. Unset,
+  every prompt is byte-identical (branch `perf/patch-thinking-opt-in`):
+  - `CLAUDIN_SOFT_BATCH`: ONE Patch, without "Read every file first";
+  - `CLAUDIN_LEAN_PATCH_PROMPT`: the Patch description without the rules the parser rescues;
+  - the `sed -n` slice read credit, which rides the same `CLAUDIN_BASH_READ_CREDIT` as the `cat`.
+- `CLAUDIN_BASH_FIRST` (file work through Bash, as Claude Code does on Opus 5.5) stays only on
+  the local branch `perf/patch-thinking` (`35ab977b`, `462a7bd9`), never merged.
 
 **Why:** today's default is the more economical one in the mode people run it in.
 - **Opus 5.5 high, auto.** Fixed bash-first edited like Claude Code: 0 patches, and a 1-file
@@ -27,9 +29,11 @@ which is not merged:
   replaces visible text.
 
 **What changes for a teammate:** nothing; every default is unchanged. The study is in
-[[thinking-gap-is-patch-shape-2026-10-21]]. The bench rows that measure this live on the same
-branch: thinking by response kind, thinking up to the first edit, first-edit size and patch
-misses (`scripts/bench/ab/session-cache-ab.ts`).
+[[thinking-gap-is-patch-shape-2026-10-21]]. The session report
+(`scripts/bench/ab/session-cache-ab.ts`) gained the rows that measure this: thinking by response
+kind, thinking up to the first edit, first-edit size and patch misses. An arm is one
+`--variant=<label>:CLAUDIN_…=1` away. The probe specs are `patchThinking.json` and
+`sedReadCredit.json`.
 
 **Reopen it when:** the classifier stops charging for Bash edits in auto mode, a placebo-gated
 N≥8 Opus run puts bash-first beyond the noise, or latency to the first visible answer becomes the

@@ -45,7 +45,7 @@
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
-- [Patch-thinking levers NOT promoted (10-22)](decisions/patch-thinking-levers-not-promoted.md) — today's batched Patch is cheaper; bash-first etc. opt-in, unmerged
+- [Patch-thinking levers NOT promoted (10-22)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; lean/soft/sed -n ship off, bash-first branch-only
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — SDK 0.135 imports it; external crashed the binary
 
 ## Bugs

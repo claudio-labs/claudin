@@ -142,7 +142,8 @@ meaning of Claude Code's default strict steer. The first wording followed its re
   - The `+64%` row in the report compares against claudindev's median of 14, which ran low.
 
 **Decision 2026-10-22:** the user kept today's batched-Patch flow as the more economical one. Every
-lever stays opt-in on the unmerged branch ([[patch-thinking-levers-not-promoted]]).
+lever stays opt-in. Lean, soft and the `sed -n` credit ship off by default, and bash-first stays
+on the local branch `perf/patch-thinking` ([[patch-thinking-levers-not-promoted]]).
 
 **How to apply:** to cut thinking or latency, change the edit shape (bash-first text, smaller
 patches), not the prompt prose or the wire. Benchmark thinking questions on Opus, or force Patch on
