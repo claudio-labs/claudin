@@ -30,7 +30,11 @@ fixing one means changing its test on purpose, in its own `fix(…)` commit.
   - **Not the file order.** Replaying CI's exact 189-file order with `CI=1` locally passed.
   - **Not the Bun version.** CI and local both run 1.3.11 from `.bun-version`.
   - **No local repro.** 96 runs of the file, 16 in parallel, never failed.
-  - What is left is the GitHub runner itself. Re-running the job has turned it green.
+  - **Not the runner image.** Green and red runs both had `ubuntu-24.04 20261015.610`.
+  - **Not a foreign real timer.** Bun's fake timers do not fire a 1 ms interval leaked by an
+    earlier file.
+  - On #314 it failed 3 of 3 attempts, a rerun included. Main went green twice with the same
+    file order. The ~105 ms is too steady (103–106 in every red run) to be load noise.
 - **relay**: an upstream that closes cleanly before any data gives the client a bare
   disconnect, no 502; `decodeChunk` reads a truncated varint (`0a 80`) as a keepalive;
   after a 400 the header buffer is not reset, so more data sends 400 again.
