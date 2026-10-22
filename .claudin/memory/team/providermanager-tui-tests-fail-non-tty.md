@@ -44,12 +44,20 @@ on its own. Confirm this cause in seconds with
 `CLAUDIN_SIMPLE=1 bun test src/providers/ui/ProviderManager.test.tsx` — it
 reproduces exactly those three. See [[full-suite-in-ci-portability]].
 
+**2026-10-22, a FOURTH cause: an Enter dropped on a Select that just mounted.**
+"manual model step starts empty from a preset, keeps the value when editing" timed
+out every time with output piped (`| grep`, `bun run test:provider`) and passed with
+output sent to a file, which is how the full `bun test` passed it. Instrumenting
+the wait showed the last frame still on "Choose a model" with "Enter manually"
+focused. That row is first, so `pressUntilFocused` pressed nothing, and the
+test's `write('\r')` landed before the Select's passive-effect key listener
+existed. Whether the output is a pipe or a file changes the timing enough to
+flip it. Fixed with `confirmFocusedRow`, which re-presses Enter only while the row
+is still the focused one on screen, at the three confirms in that test. Other
+`pressUntilFocused` + `write('\r')` pairs whose target can already be focused
+(the Codex login choices) carry the same latent race.
+
 **So the triage order for a ProviderManager timeout is now:** (1) is bare mode
 leaked in — run the one-liner above; (2) has `PRESET_ORDER` drifted from the
-screen's list; (3) only then look at the environment.
-
-**2026-10-22, not triaged:** "manual model step starts empty from a preset, keeps
-the value when editing" times out in isolation and under `bun run test:provider`,
-on `main` (6f1420ae) as well, while the full `bun test` passes it. The inverse of
-the leak above is the first guess: something an earlier file sets in the full run
-would be what makes it pass.
+screen's list; (3) does a confirm follow a `pressUntilFocused` that pressed
+nothing — log the last frame on timeout; (4) only then look at the environment.

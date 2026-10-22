@@ -453,6 +453,36 @@ async function pressUntilFocused(
   throw new Error(`Timed out waiting for the "${label}" row to take focus`)
 }
 
+// The same race on confirm. When the row a test wants is already focused,
+// pressUntilFocused presses nothing, so nothing proves the Select's listener
+// exists yet, and an Enter written straight after its first frame is dropped
+// ("Enter manually" is row 1 of a Select that mounts when discovery fails).
+// Re-press only while that row is still the focused one on screen: a delivered
+// Enter replaces the Select well inside the window, so a re-press cannot reach
+// the next screen.
+async function confirmFocusedRow(
+  stdin: { write: (data: string) => void },
+  getOutput: () => string,
+  label: string,
+  options?: { presses?: number; perPressMs?: number },
+): Promise<void> {
+  const presses = options?.presses ?? 8
+  const perPressMs = options?.perPressMs ?? 500
+
+  for (let press = 0; press < presses; press++) {
+    stdin.write('\r')
+    const deadline = Date.now() + perPressMs
+    while (Date.now() < deadline) {
+      await Bun.sleep(10)
+      if (!isRowFocused(getOutput, label)) {
+        return
+      }
+    }
+  }
+
+  throw new Error(`Timed out waiting for Enter on the "${label}" row`)
+}
+
 async function mountProviderManager(
   ProviderManager: React.ComponentType<{
     mode: 'first-run' | 'manage'
@@ -1341,7 +1371,7 @@ test('ProviderManager manual model step starts empty from a preset, keeps the va
 
   // Pick "Enter manually": the edit keeps the saved value.
   await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Enter manually')
-  mounted.stdin.write('\r')
+  await confirmFocusedRow(mounted.stdin, mounted.getOutput, 'Enter manually')
   const editManualFrame = await waitForFrameOutput(
     mounted.getOutput,
     frame => frame.includes('Step 4 of 4'),
@@ -1368,7 +1398,7 @@ test('ProviderManager manual model step starts empty from a preset, keeps the va
   // walk up to 'Add provider' (a no-op when it is already focused) before
   // confirming.
   await pressUntilFocused(mounted.stdin, mounted.getOutput, 'k', 'Add provider')
-  mounted.stdin.write('\r')
+  await confirmFocusedRow(mounted.stdin, mounted.getOutput, 'Add provider')
 
   await waitForFrameOutput(
     mounted.getOutput,
@@ -1396,7 +1426,7 @@ test('ProviderManager manual model step starts empty from a preset, keeps the va
   )
 
   await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Enter manually')
-  mounted.stdin.write('\r')
+  await confirmFocusedRow(mounted.stdin, mounted.getOutput, 'Enter manually')
   const createManualFrame = await waitForFrameOutput(
     mounted.getOutput,
     frame => frame.includes('Step 4 of 4'),
