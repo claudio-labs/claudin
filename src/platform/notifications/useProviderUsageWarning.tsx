@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useEffect, useRef } from 'react'
 
 import { useLiveLimits } from 'src/providers/liveLimitsHook.js'
+import type { APIProvider } from 'src/providers/model/providers.js'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import { Text } from 'src/terminal/ink.js'
 
@@ -17,16 +18,17 @@ import { Text } from 'src/terminal/ink.js'
  */
 export function useProviderUsageWarning(): void {
   const { addNotification } = useNotifications()
-  const { announcement, overage } = useLiveLimits()
-  const announcedRef = useRef<string | undefined>(undefined)
+  const { announcement, overage, provider } = useLiveLimits()
+  // Per provider: a /provider round trip must not repeat what was said.
+  const announcedRef = useRef(new Map<APIProvider, string>())
   const overageShownRef = useRef(false)
 
   const announcementId = announcement?.id
   const announcementText = announcement?.text
   useEffect(() => {
     if (announcementId === undefined || announcementText === undefined) return
-    if (announcementId === announcedRef.current) return
-    announcedRef.current = announcementId
+    if (announcedRef.current.get(provider) === announcementId) return
+    announcedRef.current.set(provider, announcementId)
     addNotification({
       key: 'rate-limit-warning',
       jsx: <Text color="warning">{announcementText}</Text>,
@@ -35,7 +37,7 @@ export function useProviderUsageWarning(): void {
       // it, rather than being dropped as a duplicate key.
       fold: (_current, next) => next,
     })
-  }, [announcementId, announcementText, addNotification])
+  }, [provider, announcementId, announcementText, addNotification])
 
   useEffect(() => {
     if (!overage) {

@@ -752,6 +752,10 @@ export async function performCodexRequest(options: {
     ? await requestOverCodexSocket({ url: codexUrl, headers, body, signal: options.signal, http })
     : await http()
 
+  // Over HTTP the plan's usage windows ride every response's headers — a
+  // 429's too, which is where they read 100%.
+  recordCodexLimits(normalizeCodexRateLimitHeaders(response.headers))
+
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown error')
     if (errorBody.includes(CODEX_REPLAY_REFUSED_CODE)) noteReplayRefused()
@@ -764,8 +768,6 @@ export async function performCodexRequest(options: {
     )
   }
 
-  // Over HTTP the plan's usage windows ride every response's headers.
-  recordCodexLimits(normalizeCodexRateLimitHeaders(response.headers))
   return response
 }
 

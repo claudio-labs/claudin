@@ -25,6 +25,7 @@ import {
   DEFAULT_OPENAI_BASE_URL,
 } from 'src/providers/presets/providerConfig.js'
 import {
+  getClaudeReachedWindow,
   getClaudeWarningWindow,
   getRateLimitWarning,
   getUsingOverageText,
@@ -176,7 +177,7 @@ const claudeLive: LiveLimitsSource = {
   read: (providerLabel, nowMs) => {
     const limits = currentLimits
     const text = getRateLimitWarning(limits, providerLabel)
-    const window = getClaudeWarningWindow(limits)
+    const window = getClaudeWarningWindow(limits) ?? getClaudeReachedWindow(limits)
     const standing = window
       ? standingWindow([window], SUBSCRIPTION_STANDING_FLOOR_PERCENT, nowMs)
       : undefined

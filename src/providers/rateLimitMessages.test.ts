@@ -575,24 +575,31 @@ describe('Claude subscription limit text', () => {
     test.each([
       'Anthropic · session limit reached · resets 3pm (in 2h)',
       'Anthropic · weekly Sonnet limit reached',
-      'Anthropic · now using extra usage · your weekly limit · resets 3pm',
-      'Anthropic · close to your extra usage spending limit',
       'Anthropic · out of extra usage',
       'My Claude Max · usage limit reached',
+      'Codex OAuth · 5h limit reached · resets 4:10pm (in 1h 12m)',
+      'Codex OAuth · 30d limit reached',
+      'OpenAI · quota exhausted · enable billing for this provider, or switch with /provider',
     ])('%s', text => {
       expect(isRateLimitErrorMessage(text)).toBe(true)
     })
 
     test.each([
       `You've hit your session limit · resets 3pm (in 2h)`,
-      "You've used 92% of your weekly limit",
-      "You're now using extra usage",
-      "You're close to your extra usage spending limit",
       "You're out of extra usage",
       'Rate limit reached · OpenAI · resets in 2h 14m',
       'Quota exhausted · OpenAI · enable billing for this provider, or switch with /provider',
     ])('a message from before the provider came first still routes: %s', text => {
       expect(isRateLimitErrorMessage(text)).toBe(true)
+    })
+
+    test.each([
+      'Anthropic · now using extra usage · your weekly limit · resets 3pm',
+      'Anthropic · close to your extra usage spending limit',
+      "You've used 92% of your weekly limit",
+      "You're close to your extra usage spending limit",
+    ])('a warning is a toast, never transcript text, so it does not: %s', text => {
+      expect(isRateLimitErrorMessage(text)).toBe(false)
     })
 
     test('ordinary text does not', () => {

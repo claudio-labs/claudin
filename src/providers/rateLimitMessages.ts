@@ -23,30 +23,28 @@ import {
 } from 'src/providers/usageWarnings.js'
 
 /**
- * The shape every limit message has — `<provider> · <what happened>` — so the
- * renderer can tell one from ordinary text. Built from the same phrases the
- * formatters below use.
+ * The shape every limit message the transcript records has —
+ * `<provider> · <limit> reached`, `<provider> · quota exhausted` — so the
+ * renderer can tell one from ordinary text. The provider is a profile name,
+ * free text that may hold ` · ` itself, so the match is on what follows it:
+ * only the limit names the formatters below write (`5h`/`30d`/`weekly` are
+ * Codex windows), never a free-form one, which is what keeps prose like
+ * `Step 2 · token limit reached` out. Warnings are toasts, never transcript
+ * text, so they are not here.
  */
-const LIMIT_EVENT_PHRASES = [
-  '[\\w ]*limit reached',
-  'quota exhausted',
-  'out of extra usage',
-  'now using extra usage',
-  'close to your extra usage spending limit',
-]
+const LIMIT_NAMES = 'rate|usage|session|weekly(?: Opus| Sonnet)?|\\d+[mhd]'
 const LIMIT_MESSAGE_RE = new RegExp(
-  `^[^·\\n]{1,80} · (?:${LIMIT_EVENT_PHRASES.join('|')})(?: · |$)`,
+  `^[^\\n]+? · (?:(?:${LIMIT_NAMES}) limit reached|quota exhausted|out of extra usage)(?: · [^\\n]*)?$`,
 )
 
 /**
  * How limit messages started before they named the provider first. A resumed
  * transcript still carries them, so they keep routing to the limit renderer.
+ * Only the errors: the warnings of that time ("You've used …", "You're close
+ * to …") were toasts, and as prefixes they caught ordinary replies.
  */
 const LEGACY_LIMIT_PREFIXES = [
   "You've hit your",
-  "You've used",
-  "You're now using extra usage",
-  "You're close to",
   "You're out of extra usage",
   'Rate limit reached',
   'Quota exhausted',
@@ -175,6 +173,23 @@ export function getClaudeWarningWindow(limits: ClaudeAILimits): LimitWindow | nu
     key: limits.rateLimitType ?? 'unified',
     label,
     usedPercent: limits.utilization * 100,
+    resetsAtMs: limits.resetsAt ? limits.resetsAt * 1000 : undefined,
+  }
+}
+
+/**
+ * The window a reached limit is, full, for the footer to keep until it
+ * resets. Not once overage has taken over: the footer says that instead.
+ */
+export function getClaudeReachedWindow(limits: ClaudeAILimits): LimitWindow | null {
+  if (limits.status !== 'rejected' || limits.isUsingOverage) return null
+  if (limits.rateLimitType === 'overage') return null
+  const label = claudeWindowLabel(limits.rateLimitType)
+  if (!label) return null
+  return {
+    key: limits.rateLimitType ?? 'unified',
+    label,
+    usedPercent: 100,
     resetsAtMs: limits.resetsAt ? limits.resetsAt * 1000 : undefined,
   }
 }
