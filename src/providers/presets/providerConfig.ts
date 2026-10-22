@@ -739,11 +739,12 @@ export function isDirectOpenAIProvider(): boolean {
 
 export function resolveCodexAuthPath(
   env: NodeJS.ProcessEnv = process.env,
+  profile?: CodexCredentialProfile,
 ): string {
   // Profile takes precedence over CODEX_AUTH_JSON_PATH / CODEX_HOME envs so
   // re-running /provider can switch the auth file without requiring the user
   // to clear their shell exports.
-  const profilePath = readActiveProviderCodexAuthPath()
+  const profilePath = readProfileCodexAuthPath(profile)
   if (profilePath) return profilePath
 
   const explicit = asTrimmedString(env.CODEX_AUTH_JSON_PATH)
@@ -755,22 +756,34 @@ export function resolveCodexAuthPath(
   return join(homedir(), '.codex', 'auth.json')
 }
 
-function readActiveProviderCodexAuthPath(): string | undefined {
+/**
+ * The profile whose Codex credentials are read. Callers name one when it is
+ * not the active profile — /usage reads a Codex profile's limits whichever
+ * provider is active — and the active one answers otherwise.
+ */
+export type CodexCredentialProfile = {
+  apiKey?: string
+  extras?: { codexAuthPath?: string; codexAccountId?: string }
+}
+
+function readCodexProfile(
+  profile: CodexCredentialProfile | undefined,
+): CodexCredentialProfile | undefined {
+  if (profile) return profile
   try {
     const { tryGetActiveProvider } = require('src/providers/presets/activeProvider.js') as typeof import('src/providers/presets/activeProvider.js')
-    return asTrimmedString(tryGetActiveProvider()?.extras?.codexAuthPath)
+    return tryGetActiveProvider() ?? undefined
   } catch {
     return undefined
   }
 }
 
-function readActiveProviderCodexAccountId(): string | undefined {
-  try {
-    const { tryGetActiveProvider } = require('src/providers/presets/activeProvider.js') as typeof import('src/providers/presets/activeProvider.js')
-    return asTrimmedString(tryGetActiveProvider()?.extras?.codexAccountId)
-  } catch {
-    return undefined
-  }
+function readProfileCodexAuthPath(profile?: CodexCredentialProfile): string | undefined {
+  return asTrimmedString(readCodexProfile(profile)?.extras?.codexAuthPath)
+}
+
+function readProfileCodexAccountId(profile?: CodexCredentialProfile): string | undefined {
+  return asTrimmedString(readCodexProfile(profile)?.extras?.codexAccountId)
 }
 
 function loadCodexAuthJson(
@@ -878,12 +891,13 @@ function resolveEnvOrAuthJsonCodexCredentials(
   env: NodeJS.ProcessEnv,
   options?: {
     explicitAuthPathOnly?: boolean
+    profile?: CodexCredentialProfile
   },
 ): ResolvedCodexCredentials {
   // CODEX_API_KEY is a last-resort power-user escape hatch; the chatgpt
   // account id is sourced from the profile first.
   const envApiKey = asTrimmedString(env.CODEX_API_KEY)
-  const profileAccountId = readActiveProviderCodexAccountId()
+  const profileAccountId = readProfileCodexAccountId(options?.profile)
   const envAccountId =
     profileAccountId ??
     asTrimmedString(env.CODEX_ACCOUNT_ID) ??
@@ -897,7 +911,7 @@ function resolveEnvOrAuthJsonCodexCredentials(
     }
   }
 
-  const profileAuthPath = readActiveProviderCodexAuthPath()
+  const profileAuthPath = readProfileCodexAuthPath(options?.profile)
   const explicitAuthPathConfigured = Boolean(
     profileAuthPath ??
       asTrimmedString(env.CODEX_AUTH_JSON_PATH) ??
@@ -912,7 +926,7 @@ function resolveEnvOrAuthJsonCodexCredentials(
     }
   }
 
-  const authPath = resolveCodexAuthPath(env)
+  const authPath = resolveCodexAuthPath(env, options?.profile)
   const authJson = loadCodexAuthJson(authPath)
   return resolveCodexAuthJsonCredentials({
     authJson,
@@ -927,13 +941,16 @@ export function resolveRuntimeCodexCredentials(options?: {
     CodexCredentialBlob,
     'apiKey' | 'accessToken' | 'idToken' | 'accountId'
   >
+  profile?: CodexCredentialProfile
 }): ResolvedCodexCredentials {
   const env = options?.env ?? process.env
+  const profile = options?.profile
   const explicitCredentials = resolveEnvOrAuthJsonCodexCredentials(env, {
     explicitAuthPathOnly: true,
+    profile,
   })
   const explicitAuthPathConfigured = Boolean(
-    readActiveProviderCodexAuthPath() ??
+    readProfileCodexAuthPath(profile) ??
       asTrimmedString(env.CODEX_AUTH_JSON_PATH) ??
       asTrimmedString(env.CODEX_HOME),
   )
@@ -954,30 +971,32 @@ export function resolveRuntimeCodexCredentials(options?: {
     return resolveStoredCodexCredentials({
       storedCredentials: options.storedCredentials,
       envAccountId:
-        readActiveProviderCodexAccountId() ??
+        readProfileCodexAccountId(profile) ??
         asTrimmedString(env.CODEX_ACCOUNT_ID) ??
         asTrimmedString(env.CHATGPT_ACCOUNT_ID),
     })
   }
 
   if (hasStoredCredentialsOption) {
-    return resolveEnvOrAuthJsonCodexCredentials(env)
+    return resolveEnvOrAuthJsonCodexCredentials(env, { profile })
   }
 
-  return resolveCodexApiCredentials(env)
+  return resolveCodexApiCredentials(env, profile)
 }
 
 export function resolveCodexApiCredentials(
   env: NodeJS.ProcessEnv = process.env,
+  profile?: CodexCredentialProfile,
 ): ResolvedCodexCredentials {
   const envAccountId =
-    readActiveProviderCodexAccountId() ??
+    readProfileCodexAccountId(profile) ??
     asTrimmedString(env.CODEX_ACCOUNT_ID) ??
     asTrimmedString(env.CHATGPT_ACCOUNT_ID)
   const envOrExplicitAuthJsonCredentials = resolveEnvOrAuthJsonCodexCredentials(
     env,
     {
       explicitAuthPathOnly: true,
+      profile,
     },
   )
 
@@ -1004,7 +1023,7 @@ export function resolveCodexApiCredentials(
       return resolvedStoredCredentials
     }
 
-    const authPath = resolveCodexAuthPath(env)
+    const authPath = resolveCodexAuthPath(env, profile)
     const authJson = loadCodexAuthJson(authPath)
     const resolvedAuthJsonCredentials = resolveCodexAuthJsonCredentials({
       authJson,
@@ -1024,7 +1043,7 @@ export function resolveCodexApiCredentials(
     return resolvedStoredCredentials
   }
 
-  return resolveEnvOrAuthJsonCodexCredentials(env)
+  return resolveEnvOrAuthJsonCodexCredentials(env, { profile })
 }
 
 export function getReasoningEffortForModel(model: string): ReasoningEffort | undefined {

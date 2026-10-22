@@ -132,10 +132,10 @@ describe('getLimitsFetcher', () => {
       snapshots: [{ limitName: 'codex', primary: { usedPercent: 40, windowMinutes: 300 } }],
     })
     spies.push(fetchSpy)
-    const limits = await getLimitsFetcher('codex')!(
-      profile({ transport: 'codex_responses', baseUrl: 'https://chatgpt.com/backend-api/codex' }),
-    )
-    expect(fetchSpy).toHaveBeenCalledWith({ baseUrl: 'https://chatgpt.com/backend-api/codex' })
+    const codexProfile = profile({ transport: 'codex_responses', baseUrl: 'https://chatgpt.com/backend-api/codex' })
+    const limits = await getLimitsFetcher('codex')!(codexProfile)
+    // The profile goes too: its credentials are the ones that ask.
+    expect(fetchSpy).toHaveBeenCalledWith({ baseUrl: 'https://chatgpt.com/backend-api/codex', profile: codexProfile })
     expect(limits.plan).toBe('Plus')
     expect(limits.rows[0]).toMatchObject({ kind: 'window', usedPercent: 40 })
   })

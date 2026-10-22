@@ -21,6 +21,10 @@ import {
 import type { APIProvider } from 'src/providers/model/providers.js'
 import type { ResolvedProvider } from 'src/providers/presets/activeProvider.js'
 import {
+  DEFAULT_CODEX_BASE_URL,
+  DEFAULT_OPENAI_BASE_URL,
+} from 'src/providers/presets/providerConfig.js'
+import {
   getClaudeWarningWindow,
   getRateLimitWarning,
   getUsingOverageText,
@@ -114,8 +118,23 @@ async function fetchClaudeLimits(): Promise<ProviderLimits> {
   }
 }
 
+const TRAILING_SLASH_RE = /\/+$/
+
+/**
+ * Where a Codex profile's requests go. A `codexplan` profile left on the
+ * OpenAI preset's URL, or on none, talks to the Codex backend
+ * (resolveProviderRequest swaps it in), so that is where its limits are.
+ */
+function codexBackendUrl(baseUrl: string): string {
+  const url = baseUrl.trim().replace(TRAILING_SLASH_RE, '')
+  return !url || url === DEFAULT_OPENAI_BASE_URL ? DEFAULT_CODEX_BASE_URL : url
+}
+
 async function fetchCodexLimits(profile: ResolvedProvider): Promise<ProviderLimits> {
-  const usage = await fetchCodexUsage({ baseUrl: profile.baseUrl })
+  const usage = await fetchCodexUsage({
+    baseUrl: codexBackendUrl(profile.baseUrl),
+    profile,
+  })
   return {
     plan: formatCodexPlanType(usage.planType),
     rows: buildCodexUsageRows(usage.snapshots),

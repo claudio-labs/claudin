@@ -5,6 +5,7 @@ import {
 import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import {
+  type CodexCredentialProfile,
   DEFAULT_CODEX_BASE_URL,
   isCodexBaseUrl,
   resolveRuntimeCodexCredentials,
@@ -420,11 +421,12 @@ export function getCodexUsageUrl(baseUrl = DEFAULT_CODEX_BASE_URL): string {
 
 /**
  * The ChatGPT plan's Codex usage windows. `baseUrl` is the Codex profile's
- * own, so /usage can ask about a Codex profile that is not the active one;
- * without it, the active provider's.
+ * own and `profile` the one whose credentials ask, so /usage can read a
+ * Codex profile that is not the active one; without them, the active
+ * provider's.
  */
 export async function fetchCodexUsage(
-  options: { baseUrl?: string } = {},
+  options: { baseUrl?: string; profile?: CodexCredentialProfile } = {},
 ): Promise<CodexUsageData> {
   const baseUrl = options.baseUrl ?? resolveProviderRequest().baseUrl
   if (!isCodexBaseUrl(baseUrl)) {
@@ -433,7 +435,9 @@ export async function fetchCodexUsage(
     )
   }
 
-  const refreshResult = await refreshCodexAccessTokenIfNeeded().catch(
+  const refreshResult = await refreshCodexAccessTokenIfNeeded({
+    profile: options.profile,
+  }).catch(
     async error => {
       logForDebugging(
         `[codex] access token refresh failed before usage fetch: ${error instanceof Error ? error.message : String(error)}`,
@@ -448,6 +452,7 @@ export async function fetchCodexUsage(
 
   const credentials = resolveRuntimeCodexCredentials({
     storedCredentials: refreshResult.credentials,
+    profile: options.profile,
   })
   if (!credentials.apiKey) {
     const oauthHint = isBareMode() ? '' : ', choose Codex OAuth in /provider'
