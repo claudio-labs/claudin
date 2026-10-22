@@ -10,6 +10,8 @@ import {
   resolveRuntimeCodexCredentials,
   resolveProviderRequest,
 } from 'src/providers/presets/providerConfig.js'
+import type { UsageLimitRow } from 'src/providers/usage/providerLimits.js'
+import { formatWindowDuration } from 'src/providers/usageWarnings.js'
 
 export type CodexUsageWindow = {
   usedPercent: number
@@ -35,18 +37,7 @@ export type CodexUsageData = {
   snapshots: CodexUsageSnapshot[]
 }
 
-export type CodexUsageRow =
-  | {
-      kind: 'window'
-      label: string
-      usedPercent: number
-      resetsAt?: string
-    }
-  | {
-      kind: 'text'
-      label: string
-      value: string
-    }
+export type CodexUsageRow = UsageLimitRow
 
 type RecordLike = Record<string, unknown>
 
@@ -248,32 +239,63 @@ export function normalizeCodexUsagePayload(payload: unknown): CodexUsageData {
   }
 }
 
+/**
+ * The `codex.rate_limits` event the Codex backend streams over its socket:
+ * `{plan_type, rate_limits: {primary, secondary}, credits}`. Its
+ * `rate_limits` is ONE snapshot, where the usage endpoint's is a collection.
+ */
+export function normalizeCodexRateLimitEvent(payload: unknown): CodexUsageData {
+  if (!isRecord(payload)) return { snapshots: [] }
+  const snapshot = normalizeSnapshot(payload.rate_limits, 'codex')
+  if (snapshot) snapshot.credits ??= normalizeCredits(payload.credits)
+  return {
+    planType: asString(payload.plan_type),
+    snapshots: snapshot ? [snapshot] : [],
+  }
+}
+
+function headerNumber(headers: Headers, name: string): number | undefined {
+  const raw = headers.get(name)
+  if (raw === null || raw.trim() === '') return undefined
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : undefined
+}
+
+function headerWindow(
+  headers: Headers,
+  slot: 'primary' | 'secondary',
+): CodexUsageWindow | undefined {
+  const usedPercent = headerNumber(headers, `x-codex-${slot}-used-percent`)
+  if (usedPercent === undefined) return undefined
+  const windowMinutes = headerNumber(headers, `x-codex-${slot}-window-minutes`)
+  // A plan without this window still sends it, as 0% of 0 minutes.
+  if (usedPercent === 0 && !windowMinutes) return undefined
+  return {
+    usedPercent,
+    windowMinutes: windowMinutes || undefined,
+    resetsAt: toIsoFromUnixSeconds(headerNumber(headers, `x-codex-${slot}-reset-at`)),
+  }
+}
+
+/**
+ * The `x-codex-*` headers every Codex backend response carries over HTTP, or
+ * undefined when it carried none.
+ */
+export function normalizeCodexRateLimitHeaders(
+  headers: Headers,
+): CodexUsageData | undefined {
+  const primary = headerWindow(headers, 'primary')
+  const secondary = headerWindow(headers, 'secondary')
+  if (!primary && !secondary) return undefined
+  return {
+    planType: asString(headers.get('x-codex-plan-type')),
+    snapshots: [{ limitName: 'codex', primary, secondary }],
+  }
+}
+
 function capitalizeFirst(value: string): string {
   if (!value) return value
   return value[0]!.toUpperCase() + value.slice(1)
-}
-
-function formatWindowDuration(
-  windowMinutes: number | undefined,
-  fallback: string,
-): string {
-  if (windowMinutes === undefined || windowMinutes <= 0) {
-    return fallback
-  }
-
-  if (windowMinutes === 60 * 24 * 7) {
-    return 'weekly'
-  }
-
-  if (windowMinutes % (60 * 24) === 0) {
-    return `${windowMinutes / (60 * 24)}d`
-  }
-
-  if (windowMinutes % 60 === 0) {
-    return `${windowMinutes / 60}h`
-  }
-
-  return `${windowMinutes}m`
 }
 
 function formatCreditBalance(rawBalance: string | undefined): string | undefined {
@@ -396,7 +418,21 @@ export function getCodexUsageUrl(baseUrl = DEFAULT_CODEX_BASE_URL): string {
   return new URL('/backend-api/wham/usage', baseUrl).toString()
 }
 
-export async function fetchCodexUsage(): Promise<CodexUsageData> {
+/**
+ * The ChatGPT plan's Codex usage windows. `baseUrl` is the Codex profile's
+ * own, so /usage can ask about a Codex profile that is not the active one;
+ * without it, the active provider's.
+ */
+export async function fetchCodexUsage(
+  options: { baseUrl?: string } = {},
+): Promise<CodexUsageData> {
+  const baseUrl = options.baseUrl ?? resolveProviderRequest().baseUrl
+  if (!isCodexBaseUrl(baseUrl)) {
+    throw new Error(
+      'Codex usage is only available with the official ChatGPT Codex backend.',
+    )
+  }
+
   const refreshResult = await refreshCodexAccessTokenIfNeeded().catch(
     async error => {
       logForDebugging(
@@ -409,12 +445,6 @@ export async function fetchCodexUsage(): Promise<CodexUsageData> {
       }
     },
   )
-  const request = resolveProviderRequest()
-  if (!isCodexBaseUrl(request.baseUrl)) {
-    throw new Error(
-      'Codex usage is only available with the official ChatGPT Codex backend.',
-    )
-  }
 
   const credentials = resolveRuntimeCodexCredentials({
     storedCredentials: refreshResult.credentials,
@@ -432,7 +462,7 @@ export async function fetchCodexUsage(): Promise<CodexUsageData> {
     )
   }
 
-  const response = await fetch(getCodexUsageUrl(request.baseUrl), {
+  const response = await fetch(getCodexUsageUrl(baseUrl), {
     method: 'GET',
     headers: {
       Accept: 'application/json',

@@ -103,6 +103,7 @@ const COST_KEYS = [
   'cumulativeLinesAdded',
   'cumulativeLinesRemoved',
   'cumulativeModelUsage',
+  'cumulativeProviderUsage',
   'lastCost',
   'lastAPIDuration',
   'lastAPIDurationWithoutRetries',
@@ -118,6 +119,7 @@ const COST_KEYS = [
   'lastFpsAverage',
   'lastFpsLow1Pct',
   'lastModelUsage',
+  'lastProviderUsage',
   'lastSessionId',
 ] as const satisfies ReadonlyArray<keyof ProjectConfig>
 
@@ -372,6 +374,7 @@ describe('getStoredSessionCosts', () => {
       totalLinesRemoved: 0,
       lastDuration: undefined,
       modelUsage: undefined,
+      providerUsage: {},
     })
   })
 })

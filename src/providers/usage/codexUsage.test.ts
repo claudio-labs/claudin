@@ -4,6 +4,8 @@ import {
   buildCodexUsageRows,
   formatCodexPlanType,
   getCodexUsageUrl,
+  normalizeCodexRateLimitEvent,
+  normalizeCodexRateLimitHeaders,
   normalizeCodexUsagePayload,
 } from 'src/providers/usage/codexUsage.js'
 
@@ -200,5 +202,87 @@ describe('Codex usage helpers', () => {
     expect(getCodexUsageUrl('https://chatgpt.com/backend-api/codex')).toBe(
       'https://chatgpt.com/backend-api/wham/usage',
     )
+  })
+})
+
+// Both shapes as captured from the Codex backend on 2026-10-22 (free plan).
+describe('live rate limits from a Codex response', () => {
+  test('the codex.rate_limits socket event: one snapshot, plus its credits', () => {
+    const data = normalizeCodexRateLimitEvent({
+      type: 'codex.rate_limits',
+      plan_type: 'free',
+      rate_limits: {
+        allowed: true,
+        limit_reached: false,
+        primary: { used_percent: 12, window_minutes: 43200, reset_after_seconds: 2591988, reset_at: 1795289225 },
+        secondary: null,
+      },
+      code_review_rate_limits: null,
+      additional_rate_limits: null,
+      credits: { has_credits: true, unlimited: false, balance: '5' },
+      promo: null,
+    })
+    expect(data).toEqual({
+      planType: 'free',
+      snapshots: [
+        {
+          limitName: 'codex',
+          primary: { usedPercent: 12, windowMinutes: 43200, resetsAt: '2026-11-21T19:27:05.000Z' },
+          secondary: undefined,
+          credits: { hasCredits: true, unlimited: false, balance: '5' },
+        },
+      ],
+    })
+  })
+
+  test('an event without rate limits, or not an object, gives no snapshot', () => {
+    expect(normalizeCodexRateLimitEvent({ type: 'codex.rate_limits' }).snapshots).toEqual([])
+    expect(normalizeCodexRateLimitEvent('nope').snapshots).toEqual([])
+  })
+
+  test('the x-codex-* headers of an HTTP response; an absent window is dropped', () => {
+    const headers = new Headers({
+      'x-codex-plan-type': 'free',
+      'x-codex-primary-used-percent': '76',
+      'x-codex-primary-window-minutes': '300',
+      'x-codex-primary-reset-at': '1795289222',
+      'x-codex-primary-reset-after-seconds': '2592000',
+      'x-codex-secondary-used-percent': '0',
+      'x-codex-secondary-window-minutes': '0',
+      'x-codex-secondary-reset-after-seconds': '0',
+    })
+    expect(normalizeCodexRateLimitHeaders(headers)).toEqual({
+      planType: 'free',
+      snapshots: [
+        {
+          limitName: 'codex',
+          primary: { usedPercent: 76, windowMinutes: 300, resetsAt: '2026-11-21T19:27:02.000Z' },
+          secondary: undefined,
+        },
+      ],
+    })
+  })
+
+  test('a weekly secondary window is kept', () => {
+    const data = normalizeCodexRateLimitHeaders(
+      new Headers({
+        'x-codex-primary-used-percent': '10',
+        'x-codex-primary-window-minutes': '300',
+        'x-codex-secondary-used-percent': '91.5',
+        'x-codex-secondary-window-minutes': '10080',
+      }),
+    )
+    expect(data?.snapshots[0]?.secondary).toEqual({
+      usedPercent: 91.5,
+      windowMinutes: 10080,
+      resetsAt: undefined,
+    })
+  })
+
+  test('a response with no x-codex-* headers carries no limits', () => {
+    expect(normalizeCodexRateLimitHeaders(new Headers({ 'content-type': 'text/event-stream' }))).toBeUndefined()
+    expect(
+      normalizeCodexRateLimitHeaders(new Headers({ 'x-codex-primary-used-percent': 'garbage' })),
+    ).toBeUndefined()
   })
 })

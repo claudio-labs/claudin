@@ -39,6 +39,7 @@ import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   CostStateEntry,
   CostStateModelUsage,
+  CostStateProviderUsage,
   CostStateSourceUsage,
 } from 'src/shared/types/logs.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
@@ -57,6 +58,9 @@ import { resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js'
 import { getCanonicalName } from 'src/providers/model/model.js'
 import { calculateUSDCost } from 'src/providers/usage/modelCost.js'
+import { addModelUsageTo } from 'src/providers/usage/modelUsage.js'
+import { ENV_KEY_PREFIX } from 'src/providers/usage/providerAttribution.js'
+import { resolveProviderLabel } from 'src/providers/providerLabel.js'
 export {
   getTotalCostUSD as getTotalCost,
   getTotalDuration,
@@ -102,6 +106,27 @@ const UNATTRIBUTED = 'unattributed'
 let sourceUsage: Record<string, CostStateSourceUsage> = {}
 
 /**
+ * The session's spend by provider profile, beside the per-model totals — what
+ * /usage groups by. Keyed by profile id (`env:<provider>` with no profile),
+ * and carried by the `cost-state` entry and the project config like the
+ * per-model totals. Spend recorded before it existed is only per model;
+ * /usage estimates that part (providerAttribution.ts).
+ */
+let providerUsage: Record<string, CostStateProviderUsage> = {}
+
+/** Who a spend is billed to: a profile key and the name it has at the time. */
+export type SpendProvider = { key: string; name: string }
+
+function activeSpendProvider(): SpendProvider {
+  const active = tryGetActiveProvider()
+  const tag = getAPIProvider()
+  return {
+    key: active?.profileId ?? `${ENV_KEY_PREFIX}${tag}`,
+    name: resolveProviderLabel(active?.name, tag),
+  }
+}
+
+/**
  * The session whose WHOLE cost the counters hold — Claude Code's cost-ledger
  * owner, and the only session a `cost-state` entry is stamped for.
  * `undefined` until the process's first stamp claims its session; a reset
@@ -128,10 +153,11 @@ export function resetCostState(): void {
   sessionStartTime = Date.now()
   restoredCostUSD = 0
   sourceUsage = {}
+  providerUsage = {}
   costStateOwner = getSessionId()
 }
 
-type StoredCostState = {
+export type StoredCostState = {
   totalCostUSD: number
   totalAPIDuration: number
   totalAPIDurationWithoutRetries: number
@@ -140,6 +166,7 @@ type StoredCostState = {
   totalLinesRemoved: number
   lastDuration: number | undefined
   modelUsage: { [modelName: string]: ModelUsage } | undefined
+  providerUsage: Record<string, CostStateProviderUsage>
 }
 
 /**
@@ -171,7 +198,19 @@ export function getStoredSessionCosts(
     totalLinesRemoved: projectConfig.lastLinesRemoved ?? 0,
     lastDuration: projectConfig.lastDuration,
     modelUsage,
+    providerUsage: copyProviderUsage(projectConfig.lastProviderUsage ?? {}),
   }
+}
+
+/**
+ * Put a project-config slot back into the counters: the per-model totals and
+ * the per-provider split. The slot keeps no per-source totals, so those start
+ * over.
+ */
+export function restoreStoredSessionCosts(data: StoredCostState): void {
+  setCostStateForRestore(data)
+  sourceUsage = {}
+  providerUsage = copyProviderUsage(data.providerUsage)
 }
 
 /**
@@ -189,9 +228,7 @@ export function restoreCostStateForSession(sessionId: string): boolean {
   if (!data) {
     return false
   }
-  setCostStateForRestore(data)
-  // The slot keeps per-model totals only: no source to put them under.
-  sourceUsage = {}
+  restoreStoredSessionCosts(data)
   return true
 }
 
@@ -263,7 +300,9 @@ export function recomputeCostStateFromMessages(
       continue
     }
     const cost = calculateUSDCost(model, usage)
-    addToTotalSessionCost(cost, usage, model)
+    // A transcript does not say which provider answered: the replayed spend
+    // stays per model only, and /usage estimates its provider.
+    addToTotalSessionCost(cost, usage, model, undefined, null)
   }
 }
 
@@ -329,6 +368,7 @@ export function getCostStateEntryFor(
     modelUsage: persistedModelUsage(),
     hasUnknownModelCost: hasUnknownModelCost(),
     sourceUsage: copySourceUsage(sourceUsage),
+    providerUsage: copyProviderUsage(providerUsage),
   }
 }
 
@@ -407,6 +447,7 @@ function restoreCostStateFromEntry(entry: CostStateEntry): void {
   })
   if (entry.hasUnknownModelCost) setHasUnknownModelCost()
   sourceUsage = copySourceUsage(entry.sourceUsage ?? {})
+  providerUsage = copyProviderUsage(entry.providerUsage ?? {})
   sessionStartTime = Math.min(entry.startTime, sessionStartTime)
 }
 
@@ -473,6 +514,44 @@ export function getSourceUsage(): Record<string, CostStateSourceUsage> {
   return copySourceUsage(sourceUsage)
 }
 
+function copyModelUsageMap(
+  usage: Readonly<Record<string, CostStateModelUsage>>,
+): Record<string, CostStateModelUsage> {
+  return Object.fromEntries(
+    Object.entries(usage).map(([model, u]) => [model, { ...u }]),
+  )
+}
+
+function copyProviderUsage(
+  usage: Readonly<Record<string, CostStateProviderUsage>>,
+): Record<string, CostStateProviderUsage> {
+  return Object.fromEntries(
+    Object.entries(usage).map(([key, bucket]) => [
+      key,
+      { name: bucket.name, models: copyModelUsageMap(bucket.models) },
+    ]),
+  )
+}
+
+/** Adds `source` into `target` (which it mutates); a later name wins. */
+function mergeProviderUsageInto(
+  target: Record<string, CostStateProviderUsage>,
+  source: Readonly<Record<string, CostStateProviderUsage>>,
+): void {
+  for (const [key, bucket] of Object.entries(source)) {
+    const into = (target[key] ??= { name: bucket.name, models: {} })
+    into.name = bucket.name
+    for (const [model, usage] of Object.entries(bucket.models)) {
+      addModelUsageTo(into.models, model, usage)
+    }
+  }
+}
+
+/** The session's spend by provider profile, as the `cost-state` entry would carry it. */
+export function getProviderUsage(): Record<string, CostStateProviderUsage> {
+  return copyProviderUsage(providerUsage)
+}
+
 function addToSourceUsage(cost: number, usage: Usage, source: string): void {
   const entry = (sourceUsage[source] ??= {
     calls: 0,
@@ -490,16 +569,42 @@ function addToSourceUsage(cost: number, usage: Usage, source: string): void {
   entry.cacheCreationInputTokens += usage.cache_creation_input_tokens ?? 0
 }
 
-/** The accounting every spend goes through: per model, session total, per source. */
+function addToProviderUsage(
+  cost: number,
+  usage: Usage,
+  model: string,
+  provider: SpendProvider,
+): void {
+  const bucket = (providerUsage[provider.key] ??= {
+    name: provider.name,
+    models: {},
+  })
+  bucket.name = provider.name
+  addModelUsageTo(bucket.models, model, {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cacheReadInputTokens: usage.cache_read_input_tokens ?? 0,
+    cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,
+    webSearchRequests: usage.server_tool_use?.web_search_requests ?? 0,
+    costUSD: cost,
+  })
+}
+
+/**
+ * The accounting every spend goes through: per model, session total, per
+ * source, and per provider unless nobody can say which one answered.
+ */
 function recordSpend(
   cost: number,
   usage: Usage,
   model: string,
   source: SpendSource | undefined,
+  provider: SpendProvider | null,
 ): void {
   const modelUsage = addToTotalModelUsage(cost, usage, model)
   addToTotalCostState(cost, modelUsage, model)
   addToSourceUsage(cost, usage, source ?? UNATTRIBUTED)
+  if (provider) addToProviderUsage(cost, usage, model, provider)
 }
 
 /**
@@ -515,7 +620,7 @@ export function addSideQueryCost(
   model: string,
   querySource: QuerySource,
 ): void {
-  recordSpend(cost, usage, model, querySource)
+  recordSpend(cost, usage, model, querySource, activeSpendProvider())
 }
 
 /**
@@ -555,23 +660,16 @@ export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
 
     let cumulativeModelUsage = baseCumulativeModelUsage
     if (isNewSession && current.lastModelUsage) {
-      cumulativeModelUsage = { ...baseCumulativeModelUsage }
+      cumulativeModelUsage = copyModelUsageMap(baseCumulativeModelUsage)
       for (const [model, usage] of Object.entries(current.lastModelUsage)) {
-        const prev = cumulativeModelUsage[model]
-        cumulativeModelUsage[model] = prev
-          ? {
-              inputTokens: prev.inputTokens + usage.inputTokens,
-              outputTokens: prev.outputTokens + usage.outputTokens,
-              cacheReadInputTokens:
-                prev.cacheReadInputTokens + usage.cacheReadInputTokens,
-              cacheCreationInputTokens:
-                prev.cacheCreationInputTokens + usage.cacheCreationInputTokens,
-              webSearchRequests:
-                prev.webSearchRequests + usage.webSearchRequests,
-              costUSD: prev.costUSD + usage.costUSD,
-            }
-          : { ...usage }
+        addModelUsageTo(cumulativeModelUsage, model, usage)
       }
+    }
+
+    let cumulativeProviderUsage = current.cumulativeProviderUsage ?? {}
+    if (isNewSession && current.lastProviderUsage) {
+      cumulativeProviderUsage = copyProviderUsage(cumulativeProviderUsage)
+      mergeProviderUsageInto(cumulativeProviderUsage, current.lastProviderUsage)
     }
 
     return {
@@ -591,6 +689,7 @@ export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
       lastFpsAverage: fpsMetrics?.averageFps,
       lastFpsLow1Pct: fpsMetrics?.low1PctFps,
       lastModelUsage: persistedModelUsage(),
+      lastProviderUsage: copyProviderUsage(providerUsage),
       lastSessionId: currentSessionId,
       cumulativeCost,
       cumulativeAPIDuration,
@@ -598,6 +697,7 @@ export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
       cumulativeLinesAdded,
       cumulativeLinesRemoved,
       cumulativeModelUsage,
+      cumulativeProviderUsage,
     }
   })
 }
@@ -642,6 +742,8 @@ export type ProjectTotals = {
       costUSD: number
     }
   >
+  /** Spend by provider profile; models spent before it was recorded are absent. */
+  providerUsage: Record<string, CostStateProviderUsage>
 }
 
 export function getProjectTotals(): ProjectTotals {
@@ -661,43 +763,23 @@ export function getProjectTotals(): ProjectTotals {
     config.lastSessionId !== currentSessionId
 
   const merged: ProjectTotals['modelUsage'] = {}
-  const addUsage = (
-    model: string,
-    usage: {
-      inputTokens: number
-      outputTokens: number
-      cacheReadInputTokens: number
-      cacheCreationInputTokens: number
-      webSearchRequests: number
-      costUSD: number
-    },
-  ): void => {
-    const prev = merged[model]
-    merged[model] = prev
-      ? {
-          inputTokens: prev.inputTokens + usage.inputTokens,
-          outputTokens: prev.outputTokens + usage.outputTokens,
-          cacheReadInputTokens:
-            prev.cacheReadInputTokens + usage.cacheReadInputTokens,
-          cacheCreationInputTokens:
-            prev.cacheCreationInputTokens + usage.cacheCreationInputTokens,
-          webSearchRequests: prev.webSearchRequests + usage.webSearchRequests,
-          costUSD: prev.costUSD + usage.costUSD,
-        }
-      : { ...usage }
-  }
-
   for (const [model, usage] of Object.entries(cumulativeModelUsage)) {
-    addUsage(model, usage)
+    addModelUsageTo(merged, model, usage)
   }
   if (includeLastAsPending && config.lastModelUsage) {
     for (const [model, usage] of Object.entries(config.lastModelUsage)) {
-      addUsage(model, usage)
+      addModelUsageTo(merged, model, usage)
     }
   }
   for (const [model, usage] of Object.entries(liveModelUsage)) {
-    addUsage(model, usage)
+    addModelUsageTo(merged, model, usage)
   }
+
+  const mergedProviders = copyProviderUsage(config.cumulativeProviderUsage ?? {})
+  if (includeLastAsPending && config.lastProviderUsage) {
+    mergeProviderUsageInto(mergedProviders, config.lastProviderUsage)
+  }
+  mergeProviderUsageInto(mergedProviders, providerUsage)
 
   const pendingCost = includeLastAsPending ? (config.lastCost ?? 0) : 0
   const pendingAPIDuration = includeLastAsPending
@@ -733,6 +815,7 @@ export function getProjectTotals(): ProjectTotals {
       pendingLinesRemoved +
       getTotalLinesRemoved(),
     modelUsage: merged,
+    providerUsage: mergedProviders,
   }
 }
 
@@ -856,8 +939,10 @@ export function addToTotalSessionCost(
   usage: Usage,
   model: string,
   source?: SpendSource,
+  /** Who answered; null when nobody can say (a transcript replay). */
+  provider: SpendProvider | null = activeSpendProvider(),
 ): number {
-  recordSpend(cost, usage, model, source)
+  recordSpend(cost, usage, model, source, provider)
 
   // Record normalized cache metrics for REPL display + /cache-stats.
   // Resolved from the current process provider — at this point `usage` has
@@ -904,6 +989,7 @@ export function addToTotalSessionCost(
       advisorUsage,
       advisorUsage.model,
       source,
+      provider,
     )
   }
   return totalCost

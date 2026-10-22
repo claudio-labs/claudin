@@ -178,13 +178,35 @@ describe('fetchCodexUsage', () => {
 
   test('rejects a profile that is not on the official Codex backend', async () => {
     setProfile({ baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.4' })
-    storedCredentials({ accessToken: 'access-1', accountId: 'acct-1' })
+    let refreshed = false
+    refreshImpl = async () => {
+      refreshed = true
+      return { refreshed: false }
+    }
     stubFetch(() => Response.json(USAGE_PAYLOAD))
 
     await expect(fetchCodexUsage()).rejects.toThrow(
       'Codex usage is only available with the official ChatGPT Codex backend.',
     )
     expect(fetchCalls).toHaveLength(0)
+    // Rejected before the Codex token is refreshed for nothing.
+    expect(refreshed).toBe(false)
+  })
+
+  test('a Codex profile that is not the active one: its own base URL is used', async () => {
+    setProfile({ baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.4' })
+    storedCredentials({ accessToken: 'access-1', accountId: 'acct-1' })
+    stubFetch(() => Response.json(USAGE_PAYLOAD))
+
+    await fetchCodexUsage({ baseUrl: 'https://chatgpt.com/backend-api/codex' })
+
+    expect(fetchCalls[0]!.url).toBe('https://chatgpt.com/backend-api/wham/usage')
+  })
+
+  test('a non-Codex base URL passed in is rejected the same way', async () => {
+    await expect(
+      fetchCodexUsage({ baseUrl: 'https://openrouter.ai/api/v1' }),
+    ).rejects.toThrow('Codex usage is only available with the official ChatGPT Codex backend.')
   })
 
   test('missing api key names /provider and the auth.json path', async () => {

@@ -50,13 +50,13 @@ import { restoreClippedState, snapshotClippedState } from 'src/agent/compact/sta
 import {
   getOriginalCwd,
   getSessionId,
-  setCostStateForRestore,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import {
   getStoredSessionCosts,
   resetCostState,
   restoreCostStateForResume,
+  restoreStoredSessionCosts,
   saveCurrentSessionCosts,
 } from 'src/agent/cost-tracker.js'
 
@@ -341,7 +341,7 @@ export async function resumeSession(
         {
           restoreFromProjectConfig: () => {
             if (!targetSessionCosts) return false
-            setCostStateForRestore(targetSessionCosts)
+            restoreStoredSessionCosts(targetSessionCosts)
             return true
           },
         },

@@ -55,6 +55,7 @@ const {
 const { getSessionId } = await import('src/platform/bootstrap/state.js')
 const { __test: webSearchToolTest } = await import('src/tools/WebSearchTool/WebSearchTool.js')
 const { _resetReplayTrustForTesting } = await import('src/providers/shims/codex/items.js')
+const { getCodexLimits, resetCodexLimitsForTesting } = await import('src/providers/codexLimits.js')
 
 // A refusal latches process-wide (codex/items.ts); the error-event tests raise one.
 beforeEach(() => {
@@ -1420,6 +1421,22 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
     expect(body.input).toEqual([{ type: 'message', role: 'user', content: [{ type: 'input_text', text: '' }] }])
   })
 
+  test("a response's x-codex-* headers reach the live limits", async () => {
+    resetCodexLimitsForTesting()
+    reply = () =>
+      new Response('', {
+        status: 200,
+        headers: {
+          'x-codex-plan-type': 'plus',
+          'x-codex-primary-used-percent': '76',
+          'x-codex-primary-window-minutes': '300',
+        },
+      })
+    await send()
+    expect(getCodexLimits()?.snapshots[0]?.primary).toMatchObject({ usedPercent: 76, windowMinutes: 300 })
+    resetCodexLimitsForTesting()
+  })
+
   test('the system prompt becomes instructions, from a string, blocks or anything else', async () => {
     expect((await send({ params: { system: 'be terse' } })).body.instructions).toBe('be terse')
     expect(
@@ -1604,6 +1621,20 @@ describe('Codex SSE stream reading (characterization)', () => {
 })
 
 describe('collectCodexCompletedResponse (characterization)', () => {
+  test('a codex.rate_limits event on the way reaches the live limits', async () => {
+    resetCodexLimitsForTesting()
+    const response = responseFromChunks([
+      sseEvent('codex.rate_limits', {
+        plan_type: 'plus',
+        rate_limits: { primary: { used_percent: 91, window_minutes: 10080, reset_at: 1795289225 }, secondary: null },
+      }),
+      sseEvent('response.completed', { response: { id: 'resp_rl', output: [] } }),
+    ])
+    expect(await collectCodexCompletedResponse(response)).toEqual({ id: 'resp_rl', output: [] })
+    expect(getCodexLimits()?.snapshots[0]?.primary).toMatchObject({ usedPercent: 91, windowMinutes: 10080 })
+    resetCodexLimitsForTesting()
+  })
+
   test.each(['response.completed', 'response.incomplete'])('returns the payload of %s', async event => {
     const response = responseFromChunks([
       sseEvent('response.output_text.delta', { delta: 'ignored' }),

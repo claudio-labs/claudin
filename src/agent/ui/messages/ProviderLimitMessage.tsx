@@ -6,8 +6,6 @@ import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
 import {
   formatProviderLimitHead,
   formatProviderLimitMessage,
-  PROVIDER_LIMIT_PREFIX,
-  QUOTA_EXHAUSTED_PREFIX,
 } from 'src/providers/rateLimitMessages.js'
 import { useProviderRateLimit } from 'src/providers/rateLimitStateHook.js'
 import { Text } from 'src/terminal/ink.js'
@@ -21,8 +19,10 @@ const COUNTDOWN_TICK_MS = 30_000
 /**
  * Routes a rate-limit message to the renderer that owns it.
  *
- * A provider limit gets the live countdown below. Anything else — the Anthropic
- * subscription limit among them — is shown as recorded.
+ * Every one goes through ProviderLimitMessage: a message about the provider
+ * limit currently in force gets the live countdown, and anything else — the
+ * Anthropic subscription limit, a limit since cleared, a message from before
+ * limits named their provider first — is shown as recorded.
  *
  * There used to be a third path here: `RateLimitMessage`, which appended an
  * upsell line (`/upgrade or /extra-usage to finish what you're working on`) and
@@ -31,17 +31,7 @@ const COUNTDOWN_TICK_MS = 30_000
  * commands are gone and so is the upsell; the limit text itself is unchanged.
  */
 export function LimitMessage({ text }: { text: string }) {
-  if (
-    text.startsWith(PROVIDER_LIMIT_PREFIX) ||
-    text.startsWith(QUOTA_EXHAUSTED_PREFIX)
-  ) {
-    return <ProviderLimitMessage text={text} />
-  }
-  return (
-    <MessageResponse>
-      <Text color="error">{text}</Text>
-    </MessageResponse>
-  )
+  return <ProviderLimitMessage text={text} />
 }
 
 /**

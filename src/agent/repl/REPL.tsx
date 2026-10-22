@@ -229,7 +229,7 @@ import { usePluginAutoupdateNotification } from 'src/platform/notifications/useP
 import { performStartupChecks } from 'src/plugins/performStartupChecks.js';
 import { UserTextMessage } from 'src/agent/ui/messages/UserTextMessage.js';
 import { AwsAuthStatusBox } from 'src/providers/ui/AwsAuthStatusBox.js';
-import { useRateLimitWarningNotification } from 'src/platform/notifications/useRateLimitWarningNotification.js';
+import { useProviderUsageWarning } from 'src/platform/notifications/useProviderUsageWarning.js';
 import { useDeprecationWarningNotification } from 'src/platform/notifications/useDeprecationWarningNotification.js';
 import { useNpmDeprecationNotification } from 'src/platform/notifications/useNpmDeprecationNotification.js';
 import { useIDEStatusIndicator } from 'src/platform/notifications/useIDEStatusIndicator.js';
@@ -532,7 +532,7 @@ export function REPL({
   usePluginInstallationStatus();
   usePluginAutoupdateNotification();
   useSettingsErrors();
-  useRateLimitWarningNotification(mainLoopModel);
+  useProviderUsageWarning();
   useFastModeNotification();
   useDeprecationWarningNotification(mainLoopModel);
   useNpmDeprecationNotification();

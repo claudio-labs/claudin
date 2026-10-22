@@ -15,11 +15,7 @@ import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
 
 // Re-export message functions from centralized location
-export {
-  getRateLimitErrorMessage,
-  getRateLimitWarning,
-  getUsingOverageText,
-} from 'src/providers/rateLimitMessages.js'
+export { getRateLimitErrorMessage } from 'src/providers/rateLimitMessages.js'
 
 type QuotaStatus = 'allowed' | 'allowed_warning' | 'rejected'
 

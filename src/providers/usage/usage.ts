@@ -1,15 +1,17 @@
 import axios from 'axios'
-import { getOauthConfig } from 'src/shared/constants/oauth.js'
+import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/shared/constants/oauth.js'
 import {
+  checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   hasProfileScope,
-  isClaudeAISubscriber,
 } from 'src/providers/auth/auth.js'
-import { getAuthHeaders } from 'src/shared/http.js'
 import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
-import { isOAuthTokenExpired } from 'src/providers/oauth/client.js'
+import {
+  isOAuthTokenExpired,
+  shouldUseClaudeAIAuth,
+} from 'src/providers/oauth/client.js'
 
-export type RateLimit = {
+type RateLimit = {
   utilization: number | null // a percentage from 0 to 100
   resets_at: string | null // ISO 8601 timestamp
 }
@@ -30,26 +32,37 @@ export type Utilization = {
   extra_usage?: ExtraUsage | null
 }
 
+/**
+ * The claude.ai login's usage windows, whichever provider is active: /usage
+ * shows an Anthropic profile's limits while Codex answers, too. So this reads
+ * the stored login itself rather than asking isClaudeAISubscriber(), which is
+ * false whenever the active transport is not Anthropic's. `{}` with no
+ * claude.ai login that can read the profile endpoints; `null` when the token
+ * is expired and could not be refreshed — a login not in use is not kept
+ * fresh by the request path.
+ */
 export async function fetchUtilization(): Promise<Utilization | null> {
-  if (!isClaudeAISubscriber() || !hasProfileScope()) {
+  let tokens = getClaudeAIOAuthTokens()
+  if (!tokens || !shouldUseClaudeAIAuth(tokens.scopes) || !hasProfileScope()) {
     return {}
   }
 
-  // Skip API call if OAuth token is expired to avoid 401 errors
-  const tokens = getClaudeAIOAuthTokens()
-  if (tokens && isOAuthTokenExpired(tokens.expiresAt)) {
-    return null
+  if (isOAuthTokenExpired(tokens.expiresAt)) {
+    await checkAndRefreshOAuthTokenIfNeeded()
+    tokens = getClaudeAIOAuthTokens()
+    // Skip the call with an expired token rather than earn a 401.
+    if (!tokens || isOAuthTokenExpired(tokens.expiresAt)) return null
   }
 
-  const authResult = getAuthHeaders()
-  if (authResult.error) {
-    throw new Error(`Auth error: ${authResult.error}`)
+  if (!tokens.accessToken) {
+    throw new Error('Auth error: No OAuth token available')
   }
 
   const headers = {
     'Content-Type': 'application/json',
     'User-Agent': getClaudeCodeUserAgent(),
-    ...authResult.headers,
+    Authorization: `Bearer ${tokens.accessToken}`,
+    'anthropic-beta': OAUTH_BETA_HEADER,
   }
 
   const url = `${getOauthConfig().BASE_API_URL}/api/oauth/usage`

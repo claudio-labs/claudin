@@ -227,6 +227,17 @@ describe('fetchMiniMaxUsage', () => {
       'https://proxy.example/minimax/v1/token_plan/remains',
     )
   })
+
+  test('a MiniMax profile that is not the active one: its own key and base url', async () => {
+    setProfile({ apiKey: undefined, baseUrl: 'https://api.openai.com/v1' })
+    stubFetch([() => Response.json(AVAILABLE_PAYLOAD)])
+
+    await fetchMiniMaxUsage({ apiKey: 'other-key', baseUrl: 'https://api.minimaxi.com/v1' })
+
+    expect(fetchCalls[0]!.url).toBe('https://api.minimaxi.com/v1/token_plan/remains')
+    const headers = fetchCalls[0]!.init?.headers as Record<string, string>
+    expect(headers.Authorization).toBe('Bearer other-key')
+  })
 })
 
 describe('getMiniMaxUsageUrls', () => {

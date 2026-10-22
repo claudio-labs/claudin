@@ -15,6 +15,8 @@
 
 import type { APIError } from '@anthropic-ai/sdk'
 
+import { formatWindowDuration } from 'src/providers/usageWarnings.js'
+
 /**
  * Ceiling on how long anything will WAIT for a limit to clear, so a
  * pathological header — or a genuine weekly window — can't pin the session for
@@ -47,6 +49,7 @@ const COLLAPSE_SPACES_RE = /\s{2,}/g
 /** Where the reset instant came from, or `none` when nothing reported one. */
 export type ResetSource =
   | 'anthropic-unified'
+  | 'codex-usage-limit'
   | 'openai-reset'
   | 'gemini-retry-info'
   | 'retry-after'
@@ -66,6 +69,8 @@ export type RateLimitInfo = {
   source: ResetSource
   /** The provider's own wording, with transport metadata stripped. */
   detail?: string
+  /** Which limit it is, when the provider said (`5h limit`); else a rate limit. */
+  limitName?: string
 }
 
 /**
@@ -214,6 +219,63 @@ type ResetReader = {
   read: (error: unknown, nowMs: number) => number | null
 }
 
+type RecordLike = Record<string, unknown>
+
+function isRecord(value: unknown): value is RecordLike {
+  return typeof value === 'object' && value !== null
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value
+  return typeof n === 'number' && Number.isFinite(n) ? n : undefined
+}
+
+/**
+ * The Codex backend's plan-window 429: `{"error": {"type":
+ * "usage_limit_reached", "resets_at": <unix s>, "resets_in_seconds": n}}` —
+ * the shape the Codex CLI maps to UsageLimitReached (codex-rs `api_bridge.rs`).
+ */
+function codexUsageLimitBody(error: unknown): RecordLike | undefined {
+  const body = (error as { error?: unknown }).error
+  const inner = isRecord(body) && isRecord(body.error) ? body.error : body
+  return isRecord(inner) && inner.type === 'usage_limit_reached' ? inner : undefined
+}
+
+/** The `x-codex-*` window that is used up: `primary` or `secondary`. */
+function exhaustedCodexSlot(error: unknown): 'primary' | 'secondary' | undefined {
+  for (const slot of ['primary', 'secondary'] as const) {
+    const used = finiteNumber(readHeader(error, `x-codex-${slot}-used-percent`))
+    if (used !== undefined && used >= 100) return slot
+  }
+  return undefined
+}
+
+function readCodexUsageLimitReset(error: unknown, nowMs: number): number | null {
+  const body = codexUsageLimitBody(error)
+  if (!body) return null
+  const slot = exhaustedCodexSlot(error)
+  const resetAt =
+    finiteNumber(body.resets_at) ??
+    (slot ? finiteNumber(readHeader(error, `x-codex-${slot}-reset-at`)) : undefined)
+  if (resetAt !== undefined) {
+    const delayMs = resetAt * 1000 - nowMs
+    return delayMs > 0 ? delayMs : null
+  }
+  const inSeconds = finiteNumber(body.resets_in_seconds)
+  return inSeconds !== undefined && inSeconds > 0 ? inSeconds * 1000 : null
+}
+
+/** `5h limit`, `weekly limit` — the Codex window a usage-limit 429 is about. */
+function readCodexLimitName(error: unknown): string | undefined {
+  const body = codexUsageLimitBody(error)
+  if (!body) return undefined
+  const slot = exhaustedCodexSlot(error)
+  const minutes =
+    finiteNumber(body.limit_window_minutes) ??
+    (slot ? finiteNumber(readHeader(error, `x-codex-${slot}-window-minutes`)) : undefined)
+  return minutes ? `${formatWindowDuration(minutes, 'usage')} limit` : 'usage limit'
+}
+
 /**
  * Tried in order. The specific window headers come first on purpose: a
  * multi-hour window limit can still carry a short `retry-after`, and honoring
@@ -230,6 +292,10 @@ const RESET_READERS: ResetReader[] = [
       const delayMs = resetUnixSec * 1000 - nowMs
       return delayMs > 0 ? delayMs : null
     },
+  },
+  {
+    source: 'codex-usage-limit',
+    read: readCodexUsageLimitReset,
   },
   {
     source: 'openai-reset',
@@ -355,10 +421,12 @@ export function extractRateLimitInfo(
       resetsAtMs: nowMs + delayMs,
       source: reader.source,
       detail,
+      ...(reader.source === 'codex-usage-limit' && { limitName: readCodexLimitName(error) }),
     }
   }
 
-  return { kind: 'burst', source: 'none', detail }
+  const limitName = readCodexLimitName(error)
+  return { kind: 'burst', source: 'none', detail, ...(limitName && { limitName }) }
 }
 
 /**

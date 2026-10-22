@@ -378,6 +378,10 @@ describe('provider classification', () => {
     expect(providers.getAPIProvider()).toBe(expected)
     expect(providers.getAPIProviderForStatsig()).toBe(expected)
     expect(providers.usesAnthropicAccountFlow()).toBe(expected === 'firstParty')
+    // The same tag for a profile that is not the active one.
+    mockProviderProfile = null
+    invalidateActiveProviderCache()
+    expect(providers.getAPIProviderForProfile({ transport, baseUrl })).toBe(expected)
   })
 
   test('isFirstPartyAnthropicBaseUrl: no profile counts as first party', () => {

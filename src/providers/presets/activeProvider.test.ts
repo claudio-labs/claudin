@@ -55,6 +55,7 @@ const {
   getActiveProvider,
   invalidateActiveProviderCache,
   ActiveProviderNotConfiguredError,
+  resolveProviderProfile,
 } = await import('src/providers/presets/activeProvider.js')
 const { transportSendsStrictToolSchemas } = await import('src/providers/presets/providerConfig.js')
 
@@ -104,6 +105,7 @@ describe('getActiveProvider — transport mapping', () => {
     expect(r.baseUrl).toBe('https://api.anthropic.com')
     expect(r.model).toBe('claude-sonnet-4-6')
     expect(r.apiKey).toBe('sk-ant')
+    expect(r.profileId).toBe('p1')
   })
 
   test('gemini preset → gemini transport', () => {
@@ -221,6 +223,21 @@ describe('getActiveProvider — transport mapping', () => {
 })
 
 describe('getActiveProvider — fallback', () => {
+  test('resolveProviderProfile resolves a profile that is not the active one', () => {
+    setProfileState([profile({ id: 'p1', provider: 'anthropic', model: 'claude-sonnet-4-6' })])
+    const codex = profile({
+      id: 'p-codex',
+      name: 'Codex OAuth',
+      baseUrl: 'https://chatgpt.com/backend-api/codex',
+      model: 'codexplan',
+    })
+    const r = resolveProviderProfile(codex)
+    expect(r.transport).toBe('codex_responses')
+    expect(r.profileId).toBe('p-codex')
+    expect(r.name).toBe('Codex OAuth')
+    expect(getActiveProvider().profileId).toBe('p1')
+  })
+
   test('throws ActiveProviderNotConfiguredError when no profile', () => {
     setProfileState([])
     expect(() => getActiveProvider()).toThrow(ActiveProviderNotConfiguredError)

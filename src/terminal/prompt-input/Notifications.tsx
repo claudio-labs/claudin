@@ -9,6 +9,7 @@ import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
+import { useLiveLimits } from 'src/providers/liveLimitsHook.js';
 import { calculateTokenWarningState } from 'src/agent/compact/autoCompact.js';
 import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { Message } from 'src/shared/types/message.js';
@@ -245,6 +246,9 @@ function NotificationContent({
   // Gated on configuration — most users never set apiKeyHelper, so the
   // effect is a no-op for them (no interval allocated).
   const [apiKeyHelperSlow, setApiKeyHelperSlow] = useState<string | null>(null);
+  // While a usage window stays above its warning threshold the toast is long
+  // gone; this keeps `Anthropic weekly 92%` on screen until it resets.
+  const { standing: limitStanding } = useLiveLimits();
   useEffect(() => {
     if (!getConfiguredApiKeyHelper()) return;
     const interval = setInterval((setSlow: React.Dispatch<React.SetStateAction<string | null>>) => {
@@ -265,6 +269,11 @@ function NotificationContent({
       {isInOverageMode && !isTeamOrEnterprise && <Box>
           <Text dimColor wrap="truncate">
             Now using extra usage
+          </Text>
+        </Box>}
+      {limitStanding && <Box>
+          <Text dimColor wrap="truncate">
+            {limitStanding}
           </Text>
         </Box>}
       {apiKeyHelperSlow && <Box>

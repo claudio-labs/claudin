@@ -170,6 +170,66 @@ describe('extractRateLimitInfo — reader table', () => {
   })
 })
 
+describe("extractRateLimitInfo — the Codex plan's usage-limit 429", () => {
+  const usageLimit = (fields: Record<string, unknown>) => ({
+    error: { type: 'usage_limit_reached', message: 'The usage limit has been reached', ...fields },
+  })
+
+  test("the body's resets_at wins over a short retry-after, with the window it names", () => {
+    const info = extractRateLimitInfo(
+      makeError({
+        body: usageLimit({ resets_at: NOW / 1000 + 3 * 3600, limit_window_minutes: 10080 }),
+        headers: { 'retry-after': '5' },
+      }),
+      NOW,
+    )
+    expect(info).toMatchObject({ kind: 'window', source: 'codex-usage-limit', limitName: 'weekly limit' })
+    expect(info?.resetsAtMs).toBe(NOW + 3 * 3_600_000)
+  })
+
+  test('resets_in_seconds when there is no resets_at', () => {
+    const info = extractRateLimitInfo(makeError({ body: usageLimit({ resets_in_seconds: 600 }) }), NOW)
+    expect(info?.resetsAtMs).toBe(NOW + 600_000)
+    expect(info?.limitName).toBe('usage limit')
+  })
+
+  test('without either, the spent x-codex-* window supplies the reset and the name', () => {
+    const info = extractRateLimitInfo(
+      makeError({
+        body: usageLimit({}),
+        headers: {
+          'x-codex-primary-used-percent': '40',
+          'x-codex-primary-window-minutes': '300',
+          'x-codex-secondary-used-percent': '100',
+          'x-codex-secondary-window-minutes': '10080',
+          'x-codex-secondary-reset-at': String(NOW / 1000 + 86_400),
+        },
+      }),
+      NOW,
+    )
+    expect(info).toMatchObject({ kind: 'window', source: 'codex-usage-limit', limitName: 'weekly limit' })
+    expect(info?.resetsAtMs).toBe(NOW + 86_400_000)
+  })
+
+  test('the body unwrapped one level, as the SDK keeps it', () => {
+    const info = extractRateLimitInfo(
+      makeError({ body: { type: 'usage_limit_reached', resets_in_seconds: 60 } }),
+      NOW,
+    )
+    expect(info?.source).toBe('codex-usage-limit')
+  })
+
+  test('no reset anywhere is a burst that still names the limit', () => {
+    const info = extractRateLimitInfo(makeError({ body: usageLimit({}) }), NOW)
+    expect(info).toMatchObject({ kind: 'burst', source: 'none', limitName: 'usage limit' })
+  })
+
+  test('any other 429 names no limit', () => {
+    const info = extractRateLimitInfo(makeError({ body: { error: { type: 'rate_limit_error' } } }), NOW)
+    expect(info?.limitName).toBeUndefined()
+  })
+})
+
 describe('extractRateLimitInfo — classification', () => {
   test('returns null for anything that is not a 429', () => {
     expect(extractRateLimitInfo(makeError({ status: 500 }), NOW)).toBeNull()

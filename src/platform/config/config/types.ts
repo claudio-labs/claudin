@@ -11,6 +11,7 @@ import type { BillingType } from 'src/providers/oauth/types.js'
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
 import type { ModelOption } from 'src/providers/model/modelOptions.js'
 import type { ThemeSetting } from 'src/terminal/theme/theme.js'
+import type { CostStateProviderUsage } from 'src/shared/types/logs.js'
 import type {
   EDITOR_MODES,
   NOTIFICATION_CHANNELS,
@@ -93,6 +94,10 @@ export type ProjectConfig = {
       costUSD: number
     }
   >
+  // The same two slots split by provider profile (cost-tracker.ts
+  // providerUsage). Spend from before they existed is per model only.
+  lastProviderUsage?: Record<string, CostStateProviderUsage>
+  cumulativeProviderUsage?: Record<string, CostStateProviderUsage>
   lastSessionMetrics?: Record<string, number>
   exampleFiles?: string[]
   exampleFilesGeneratedAt?: number

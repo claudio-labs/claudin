@@ -38,6 +38,14 @@ import {
   codexSocketEligible,
   requestOverCodexSocket,
 } from 'src/providers/shims/codex/websocket.js'
+import { recordCodexLimits } from 'src/providers/codexLimits.js'
+import {
+  normalizeCodexRateLimitEvent,
+  normalizeCodexRateLimitHeaders,
+} from 'src/providers/usage/codexUsage.js'
+
+/** The socket event carrying the plan's usage windows (codex-rs `responses_websocket.rs`). */
+const CODEX_RATE_LIMITS_EVENT = 'codex.rate_limits'
 
 export interface AnthropicUsage {
   input_tokens: number
@@ -756,6 +764,8 @@ export async function performCodexRequest(options: {
     )
   }
 
+  // Over HTTP the plan's usage windows ride every response's headers.
+  recordCodexLimits(normalizeCodexRateLimitHeaders(response.headers))
   return response
 }
 
@@ -841,6 +851,12 @@ async function* readSseEvents(response: Response, signal?: AbortSignal): AsyncGe
         data = parsed as Record<string, any>
       } catch {
         continue
+      }
+
+      // Over the socket the plan's usage windows arrive as an event of their
+      // own; the in-REPL limit warning reads them (codexLimits.ts).
+      if (event === CODEX_RATE_LIMITS_EVENT) {
+        recordCodexLimits(normalizeCodexRateLimitEvent(data))
       }
 
       yield { event, data }

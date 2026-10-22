@@ -196,6 +196,8 @@ export type KnownKeybindingAction =
   | 'settings:close'
   | 'settings:usageDay'
   | 'settings:usageWeek'
+  | 'settings:usagePrevProvider'
+  | 'settings:usageNextProvider'
   // Scroll + selection, default-only (ScrollKeybindingHandler.tsx)
   | 'scroll:lineUp'
   | 'scroll:lineDown'

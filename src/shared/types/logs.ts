@@ -203,6 +203,17 @@ export type CostStateSourceUsage = {
 }
 
 /**
+ * One provider profile's share of a CostStateEntry, keyed by the profile id
+ * (or `env:<provider>` with no profile). `name` is the profile's name when
+ * the spend was recorded, so a profile deleted since still reads as itself.
+ * Claudin-only, like sourceUsage.
+ */
+export type CostStateProviderUsage = {
+  name: string
+  models: Record<string, CostStateModelUsage>
+}
+
+/**
  * The session's running cost, in Claude Code's `cost-state` shape (2.1.280):
  * stamped at exit and before /clear or /resume switch away, restored by
  * --resume and -c. Last-wins on load, and never a chain participant — `type`
@@ -222,6 +233,7 @@ export type CostStateEntry = {
   modelUsage: Record<string, CostStateModelUsage>
   hasUnknownModelCost?: boolean
   sourceUsage?: Record<string, CostStateSourceUsage>
+  providerUsage?: Record<string, CostStateProviderUsage>
 }
 
 export type FileHistorySnapshotMessage = {
