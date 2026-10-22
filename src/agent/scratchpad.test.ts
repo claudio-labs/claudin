@@ -1,9 +1,11 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
+import { randomUUID } from 'crypto'
 import { existsSync, rmSync, statSync } from 'fs'
 import { join } from 'path'
 
-import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { getSessionId, switchSession } from 'src/platform/bootstrap/state.js'
 import { getProjectTempDir } from 'src/platform/tmpdir.js'
+import type { SessionId } from 'src/shared/types/ids.js'
 import {
   ensureScratchpadDir,
   getScratchpadDir,
@@ -58,5 +60,38 @@ describe('ensureScratchpadDir', () => {
   test('refuses when the killswitch is set', async () => {
     process.env[ENV] = '0'
     await expect(ensureScratchpadDir()).rejects.toThrow('not enabled')
+  })
+})
+
+// init() creates the first session's directory. /clear, /new, /resume and
+// --resume move getScratchpadDir() to a new id, which the system prompt
+// then names: a shell write into it failed on the missing directory.
+describe('a session switch', () => {
+  function switchAndBack(check: (next: string) => void): void {
+    const before = getSessionId()
+    const next = randomUUID() as SessionId
+    trackSessionDir(before)
+    trackSessionDir(next)
+    switchSession(next)
+    try {
+      check(next)
+    } finally {
+      switchSession(before)
+    }
+  }
+
+  test('creates the new session directory', () => {
+    delete process.env[ENV]
+    switchAndBack(() => {
+      expect(existsSync(getScratchpadDir())).toBe(true)
+      expect(statSync(getScratchpadDir()).mode & 0o777).toBe(0o700)
+    })
+  })
+
+  test('creates nothing with the killswitch set', () => {
+    process.env[ENV] = '0'
+    switchAndBack(next => {
+      expect(existsSync(join(getProjectTempDir(), next))).toBe(false)
+    })
   })
 })

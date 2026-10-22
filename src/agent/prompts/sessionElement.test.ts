@@ -1,4 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
+import { randomUUID } from 'crypto'
+import { existsSync, rmSync } from 'fs'
+import { join } from 'path'
 
 // MACRO is replaced at build time by Bun.define but not in test mode.
 ;(globalThis as Record<string, unknown>).MACRO = {
@@ -10,7 +13,10 @@ import { afterEach, expect, test } from 'bun:test'
   NATIVE_PACKAGE_URL: undefined,
 }
 
-import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { getSessionId, switchSession } from 'src/platform/bootstrap/state.js'
+import { getProjectTempDir } from 'src/platform/tmpdir.js'
+import type { SessionId } from 'src/shared/types/ids.js'
+import { getScratchpadDir } from 'src/agent/scratchpad.js'
 import {
   getSystemPrompt,
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
@@ -60,4 +66,26 @@ test('withoutSystemPromptMarkers keeps the text and its order', async () => {
     ),
   )
   expect(text.join('\n')).not.toContain('__SYSTEM_PROMPT_')
+})
+
+// /clear, /new and /resume give the conversation a new session id. The
+// permission check allows writes under the CURRENT id's scratchpad, so a
+// prompt that kept naming the old one sent every write to a permission prompt.
+test('a session switch moves the scratchpad path the prompt names', async () => {
+  delete process.env.CLAUDIN_SCRATCHPAD
+  const before = getSessionId()
+  const next = randomUUID() as SessionId
+  const fresh = [before, next]
+    .map(id => join(getProjectTempDir(), id))
+    .filter(dir => !existsSync(dir))
+  await getSystemPrompt([], 'claude-opus-5-5')
+  switchSession(next)
+  try {
+    const parts = await getSystemPrompt([], 'claude-opus-5-5')
+    expect(parts.at(-1)).toContain(getScratchpadDir())
+    expect(parts.at(-1)).not.toContain(before)
+  } finally {
+    switchSession(before)
+    for (const dir of fresh) rmSync(dir, { recursive: true, force: true })
+  }
 })
