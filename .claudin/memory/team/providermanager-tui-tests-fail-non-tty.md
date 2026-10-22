@@ -47,3 +47,9 @@ reproduces exactly those three. See [[full-suite-in-ci-portability]].
 **So the triage order for a ProviderManager timeout is now:** (1) is bare mode
 leaked in — run the one-liner above; (2) has `PRESET_ORDER` drifted from the
 screen's list; (3) only then look at the environment.
+
+**2026-10-22, not triaged:** "manual model step starts empty from a preset, keeps
+the value when editing" times out in isolation and under `bun run test:provider`,
+on `main` (6f1420ae) as well, while the full `bun test` passes it. The inverse of
+the leak above is the first guess: something an earlier file sets in the full run
+would be what makes it pass.
