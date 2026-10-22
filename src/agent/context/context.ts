@@ -155,14 +155,17 @@ export function getSonnet1mExpTreatmentEnabled(model: string): boolean {
 }
 
 /**
- * Calculate context window usage percentage from token usage data.
- * Returns used and remaining percentages, or null values if no usage data.
+ * Calculate context window usage percentage from token usage data: the last
+ * response's input, cache and output, which the next request reads back. With
+ * nothing sent since, that is the count autocompact fires on
+ * (tokenCountWithEstimation). Returns null values if no usage data.
  */
 export function calculateContextPercentages(
   currentUsage: {
     input_tokens: number
     cache_creation_input_tokens: number
     cache_read_input_tokens: number
+    output_tokens: number
   } | null,
   contextWindowSize: number,
 ): { used: number | null; remaining: number | null } {
@@ -170,14 +173,13 @@ export function calculateContextPercentages(
     return { used: null, remaining: null }
   }
 
-  const totalInputTokens =
+  const usedTokens =
     currentUsage.input_tokens +
     currentUsage.cache_creation_input_tokens +
-    currentUsage.cache_read_input_tokens
+    currentUsage.cache_read_input_tokens +
+    currentUsage.output_tokens
 
-  const usedPercentage = Math.round(
-    (totalInputTokens / contextWindowSize) * 100,
-  )
+  const usedPercentage = Math.round((usedTokens / contextWindowSize) * 100)
   const clampedUsed = Math.min(100, Math.max(0, usedPercentage))
 
   return {

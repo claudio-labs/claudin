@@ -20,7 +20,7 @@ import { formatDuration } from 'src/shared/text/format.js';
 import { setEnvHookNotifier } from 'src/platform/lifecycleHooks/fileChangedWatcher.js';
 import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js';
-import { tokenCountFromLastAPIResponse } from 'src/agent/context/tokens.js';
+import { tokenCountWithEstimation } from 'src/agent/context/tokens.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { IdeStatusIndicator } from 'src/platform/ide/IdeStatusIndicator.js';
 import { SessionTokensIndicator } from 'src/providers/ui/SessionTokensIndicator.js';
@@ -64,7 +64,7 @@ export function Notifications(t0: Props) {
   let t3;
   if ($[0] !== messages) {
     const messagesForTokenCount = getMessagesAfterCompactBoundary(messages);
-    t3 = tokenCountFromLastAPIResponse(messagesForTokenCount);
+    t3 = tokenCountWithEstimation(messagesForTokenCount);
     $[0] = messages;
     $[1] = t3;
   } else {

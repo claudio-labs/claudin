@@ -640,6 +640,7 @@ function getContextUsedPercent(usage: {
   input_tokens: number;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
+  output_tokens: number;
 } | undefined, permissionMode: PermissionMode): number | null {
   if (!usage) return null;
   const runtimeModel = getRuntimeMainLoopModel({
@@ -653,7 +654,8 @@ function getContextUsedPercent(usage: {
   } = calculateContextPercentages({
     input_tokens: usage.input_tokens,
     cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
-    cache_read_input_tokens: usage.cache_read_input_tokens ?? 0
+    cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+    output_tokens: usage.output_tokens
   }, contextWindowSize);
   return used;
 }
