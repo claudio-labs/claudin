@@ -76,6 +76,16 @@ describe('attributeModel', () => {
     expect(attributeModel(model, PROFILES)).toBe(expected)
   })
 
+  test("a model a profile is configured with is that profile's, family or not", () => {
+    // Discovered on a gateway, the family's own backend still wins (above);
+    // configured on it by the user, the gateway does.
+    const gateway = { ...OPENCODE, configuredModels: ['gpt-5.6-luna', 'claude-haiku-5-5'] }
+    const profiles = [gateway, CODEX, ANTHROPIC]
+    expect(attributeModel('gpt-5.6-luna', profiles)).toBe('p-opencode')
+    expect(attributeModel('claude-haiku-5-5', profiles)).toBe('p-opencode')
+    expect(attributeModel('claude-opus-5-5', profiles)).toBe('p-anthropic')
+  })
+
   test('a model nobody lists has no owner', () => {
     expect(attributeModel('minimax-m3', PROFILES)).toBeUndefined()
   })

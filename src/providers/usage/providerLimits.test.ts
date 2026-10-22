@@ -5,6 +5,7 @@ import { emitStatusChange, type ClaudeAILimits } from 'src/providers/claudeAiLim
 import { recordCodexLimits, resetCodexLimitsForTesting } from 'src/providers/codexLimits.js'
 import type { OAuthTokens } from 'src/providers/oauth/types.js'
 import type { ResolvedProvider } from 'src/providers/presets/activeProvider.js'
+import { DEFAULT_CODEX_BASE_URL, DEFAULT_OPENAI_BASE_URL } from 'src/providers/presets/providerConfig.js'
 import * as billing from 'src/providers/usage/billing.js'
 import * as codexUsage from 'src/providers/usage/codexUsage.js'
 import * as minimaxUsage from 'src/providers/usage/minimaxUsage.js'
@@ -139,6 +140,16 @@ describe('getLimitsFetcher', () => {
     expect(limits.rows[0]).toMatchObject({ kind: 'window', usedPercent: 40 })
   })
 
+  test.each([DEFAULT_OPENAI_BASE_URL, `${DEFAULT_OPENAI_BASE_URL}/`, ''])(
+    'Codex: a codexplan profile left on %j asks the Codex backend, where its requests go',
+    async baseUrl => {
+      const fetchSpy = spyOn(codexUsage, 'fetchCodexUsage').mockResolvedValue({ snapshots: [] })
+      spies.push(fetchSpy)
+      await getLimitsFetcher('codex')!(profile({ transport: 'codex_responses', baseUrl, model: 'codexplan' }))
+      expect(fetchSpy.mock.calls[0]?.[0]).toMatchObject({ baseUrl: DEFAULT_CODEX_BASE_URL })
+    },
+  )
+
   test("MiniMax: asks with the profile's own key and base URL; unavailable keeps its message", async () => {
     const fetchSpy = spyOn(minimaxUsage, 'fetchMiniMaxUsage').mockResolvedValue({
       availability: 'unknown',
@@ -192,6 +203,22 @@ describe('getLiveLimits', () => {
 
     // Past its reset the window no longer stands.
     expect(live.read('Anthropic', resetsAt * 1000 + 1).standing).toBeUndefined()
+  })
+
+  test('Claude: a reached limit keeps standing in the footer until it resets', () => {
+    spies.push(spyOn(auth, 'getSubscriptionType').mockReturnValue('max'))
+    const live = getLiveLimits('firstParty')!
+    const resetsAt = NOW / 1000 + 3600
+    emitStatusChange({ ...quiet, status: 'rejected', rateLimitType: 'seven_day', resetsAt })
+    const reading = live.read('Anthropic', NOW)
+    // The limit-reached line is the transcript's; no toast, but the footer stays.
+    expect(reading.announcement).toBeUndefined()
+    expect(reading.standing).toBe('Anthropic weekly 100%')
+    expect(live.read('Anthropic', resetsAt * 1000 + 1).standing).toBeUndefined()
+
+    // Rolled into extra usage: the footer's own "Now using extra usage" says it.
+    emitStatusChange({ ...quiet, status: 'rejected', isUsingOverage: true, overageStatus: 'allowed', rateLimitType: 'seven_day', resetsAt })
+    expect(live.read('Anthropic', NOW).standing).toBeUndefined()
   })
 
   test('Claude: overage is announced, except to non-billing Team/Enterprise', () => {

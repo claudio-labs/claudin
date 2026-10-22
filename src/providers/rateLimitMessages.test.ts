@@ -603,5 +603,18 @@ describe('Claude subscription limit text', () => {
       expect(isRateLimitErrorMessage('Two lines\nAnthropic · weekly limit reached')).toBe(false)
       expect(isRateLimitErrorMessage('Anthropic · weekly limit reached by the team, as planned')).toBe(false)
     })
+
+    test('a profile name is free text: a middle dot or a long name still routes', () => {
+      const burst: RateLimitInfo = { kind: 'burst', source: 'none' }
+      const dotted = formatProviderLimitMessage(burst, 'OpenRouter · work', NOW)
+      expect(dotted).toBe('OpenRouter · work · rate limit reached · no reset time reported')
+      expect(isRateLimitErrorMessage(dotted)).toBe(true)
+      expect(isRateLimitErrorMessage(formatProviderLimitMessage(burst, 'x'.repeat(81), NOW))).toBe(true)
+    })
+
+    test('prose that only looks like one does not', () => {
+      expect(isRateLimitErrorMessage('Step 2 · token limit reached')).toBe(false)
+      expect(isRateLimitErrorMessage("You've used the wrong flag; try --force")).toBe(false)
+    })
   })
 })

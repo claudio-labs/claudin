@@ -389,4 +389,26 @@ describe('<Usage view="global" />', () => {
       await ui.cleanup()
     }
   }, 30_000)
+
+  it('r refreshes limits that loaded fine, too', async () => {
+    setProfiles(PROFILES, 'p-anthropic')
+    let attempts = 0
+    fetcherSpy.mockImplementation(() => async () => {
+      attempts++
+      return { rows: [{ kind: 'text', label: 'Read', value: String(attempts) }] }
+    })
+    const ui = await mount('global')
+    try {
+      await ui.until(f => f.includes('Read · 1'), 'the first read')
+      expect(ui.frame()).toContain('r refresh')
+      ui.press('r')
+      await ui.until(f => f.includes('Read · 2'), 'the refreshed read')
+    } finally {
+      fetcherSpy.mockImplementation(() => async profile => {
+        fetched.push(profile.profileId ?? '?')
+        return { rows: [] }
+      })
+      await ui.cleanup()
+    }
+  }, 30_000)
 })

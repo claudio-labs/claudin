@@ -1,8 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
 import * as React from 'react'
+import { useReducer } from 'react'
 
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { useProviderUsageWarning } from 'src/platform/notifications/useProviderUsageWarning.js'
+import { currentLimits, emitStatusChange, type ClaudeAILimits } from 'src/providers/claudeAiLimits.js'
 import { recordCodexLimits, resetCodexLimitsForTesting } from 'src/providers/codexLimits.js'
 import { useLiveLimits } from 'src/providers/liveLimitsHook.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
@@ -22,6 +25,13 @@ const CODEX_PROFILE = {
   baseUrl: 'https://chatgpt.com/backend-api/codex',
   model: 'codexplan',
 }
+const ANTHROPIC_PROFILE = {
+  id: 'p-anthropic',
+  name: 'Anthropic',
+  provider: 'anthropic' as const,
+  baseUrl: 'https://api.anthropic.com',
+  model: 'claude-sonnet-4-5',
+}
 
 function codex(primary: number): CodexUsageData {
   return {
@@ -38,8 +48,12 @@ function codex(primary: number): CodexUsageData {
   }
 }
 
+let rerender: () => void = () => {}
+
 /** Shows the toast on screen and the footer's standing line under it. */
 function Host(): React.ReactNode {
+  const [, force] = useReducer((x: number) => x + 1, 0)
+  rerender = force
   useProviderUsageWarning()
   const { standing } = useLiveLimits()
   const current = useAppState(s => s.notifications.current)
@@ -54,16 +68,26 @@ function Host(): React.ReactNode {
 
 let savedProfiles: ReturnType<typeof getGlobalConfig>['providerProfiles']
 let savedActiveId: string | undefined
+const savedClaudeLimits: ClaudeAILimits = { ...currentLimits }
+
+function activate(id: string): void {
+  saveGlobalConfig(c => ({ ...c, activeProviderProfileId: id }))
+  invalidateActiveProviderCache()
+}
 
 beforeAll(() => {
   const config = getGlobalConfig()
   savedProfiles = config.providerProfiles
   savedActiveId = config.activeProviderProfileId
-  saveGlobalConfig(c => ({ ...c, providerProfiles: [CODEX_PROFILE], activeProviderProfileId: 'p-codex' }))
-  invalidateActiveProviderCache()
+  saveGlobalConfig(c => ({ ...c, providerProfiles: [CODEX_PROFILE, ANTHROPIC_PROFILE] }))
+  activate('p-codex')
 })
 
-afterEach(resetCodexLimitsForTesting)
+afterEach(() => {
+  resetCodexLimitsForTesting()
+  emitStatusChange(savedClaudeLimits)
+  activate('p-codex')
+})
 
 afterAll(() => {
   saveGlobalConfig(c => ({ ...c, providerProfiles: savedProfiles, activeProviderProfileId: savedActiveId }))
@@ -121,4 +145,43 @@ describe('useProviderUsageWarning (Codex active)', () => {
       await ui.cleanup()
     }
   })
+})
+
+describe('useProviderUsageWarning across a /provider switch', () => {
+  test('switching back to a provider does not re-toast its old crossing', async () => {
+    const ui = await mount()
+    try {
+      recordCodexLimits(codex(80))
+      await ui.until(f => f.includes('Codex OAuth · 5h'), 'the Codex toast')
+
+      activate('p-anthropic')
+      emitStatusChange({
+        status: 'allowed_warning',
+        unifiedRateLimitFallbackAvailable: false,
+        isUsingOverage: false,
+        rateLimitType: 'seven_day',
+        utilization: 0.92,
+        surpassedThreshold: 0.9,
+        resetsAt: Math.floor(Date.now() / 1000) + 2 * 86_400,
+      })
+      rerender()
+      await ui.until(f => f.includes('Anthropic · weekly'), 'the Anthropic toast')
+
+      // Back to Codex: nothing new has crossed, so nothing new is said.
+      activate('p-codex')
+      rerender()
+      await ui.until(f => f.includes('standing: Codex OAuth 5h 80%'), 'the Codex footer')
+      await Bun.sleep(200)
+      expect(ui.frame()).not.toContain('Codex OAuth · 5h')
+    } finally {
+      await ui.cleanup()
+    }
+  })
+})
+
+test('the REPL runs the warning hook, and the footer reads the same live limits', () => {
+  const repl = readFileSync('src/agent/repl/REPL.tsx', 'utf8')
+  const footer = readFileSync('src/terminal/prompt-input/Notifications.tsx', 'utf8')
+  expect(repl).toContain('useProviderUsageWarning();')
+  expect(footer).toContain('useLiveLimits()')
 })

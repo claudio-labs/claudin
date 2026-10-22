@@ -1437,6 +1437,22 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
     resetCodexLimitsForTesting()
   })
 
+  test('a 429 still reports its windows, so the footer reads the limit as reached', async () => {
+    resetCodexLimitsForTesting()
+    reply = () =>
+      new Response(JSON.stringify({ error: { type: 'usage_limit_reached', message: 'limit' } }), {
+        status: 429,
+        headers: {
+          'content-type': 'application/json',
+          'x-codex-primary-used-percent': '100',
+          'x-codex-primary-window-minutes': '300',
+        },
+      })
+    await expect(send()).rejects.toThrow()
+    expect(getCodexLimits()?.snapshots[0]?.primary).toMatchObject({ usedPercent: 100, windowMinutes: 300 })
+    resetCodexLimitsForTesting()
+  })
+
   test('the system prompt becomes instructions, from a string, blocks or anything else', async () => {
     expect((await send({ params: { system: 'be terse' } })).body.instructions).toBe('be terse')
     expect(

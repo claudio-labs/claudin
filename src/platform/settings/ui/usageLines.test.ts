@@ -14,6 +14,7 @@ import {
   type ProviderChip,
 } from 'src/platform/settings/ui/usageLines.js'
 import type { ProviderUsageGroup } from 'src/providers/usage/providerAttribution.js'
+import { formatResetTime } from 'src/shared/text/format.js'
 import type { CostStateModelUsage } from 'src/shared/types/logs.js'
 
 function usage(partial: Partial<CostStateModelUsage>): CostStateModelUsage {
@@ -82,12 +83,15 @@ describe('buildProviderChips', () => {
     }
   })
 
-  test.each([30, 40])('a narrow row windows around the selected chip (%d cols)', width => {
+  // Whole rows, not fragments: a toContain passes on chips that wrapped
+  // or interleaved (ink-tui.md §10).
+  test.each([
+    [30, '‹  OpenCode GO  ›'],
+    [40, '‹  OpenCode GO │ Moonshot AI  ›'],
+  ])('a narrow row windows around the selected chip (%d cols)', (width, row) => {
     const line = stripAnsi(buildProviderChips(chips, 'o', width))
-    expect(line).toContain(' OpenCode GO ')
+    expect(line).toBe(row)
     expect(line.length).toBeLessThanOrEqual(width)
-    expect(line.startsWith('‹ ')).toBe(true)
-    expect(line.endsWith(' ›')).toBe(true)
   })
 
   test('the window grows to the far end before it gives up the near side', () => {
@@ -103,9 +107,10 @@ describe('buildProviderChips', () => {
   })
 })
 
-test('chipLabel marks the active and the removed', () => {
+test('chipLabel marks the active, the removed and spend made with no profile', () => {
   expect(chipLabel(group({ active: true }))).toBe('Anthropic ●')
   expect(chipLabel(group({ kind: 'removed', name: 'Z.ai' }))).toBe('Z.ai (removed)')
+  expect(chipLabel(group({ kind: 'env', name: 'Anthropic' }))).toBe('Anthropic (no profile)')
   expect(chipLabel(group({}))).toBe('Anthropic')
 })
 
@@ -138,6 +143,23 @@ describe('buildAllProvidersLines', () => {
     expect(lines.at(-1)).toContain('Aggregated across all sessions')
   })
 
+  test('a provider whose spend is partly estimated is marked too', () => {
+    const lines = plain(
+      buildAllProvidersLines({
+        totals: TOTALS,
+        unknownCost: false,
+        groups: [
+          group({
+            exact: { 'claude-opus-5-5': usage({ costUSD: 0.01 }) },
+            estimated: { 'claude-opus-5-5': usage({ costUSD: 9567.63 }) },
+          }),
+        ],
+      }),
+    )
+    expect(lines[6]).toStartWith('~ Anthropic')
+    expect(lines[7]).toBe(ESTIMATED_NOTE)
+  })
+
   test('no provider section and no note without spend', () => {
     const lines = plain(buildAllProvidersLines({ totals: TOTALS, unknownCost: true, groups: [group({})] }))
     expect(lines[1]).toContain('(costs may be inaccurate due to usage of unknown models)')
@@ -156,8 +178,9 @@ describe('buildProviderLines', () => {
     estimated: { 'claude-haiku-5-5': usage({ inputTokens: 5, costUSD: 0.25 }) },
     totalCostUSD: 9.75,
   })
-  const render = (limits: LimitsView, g = rich): string[] =>
-    plain(buildProviderLines({ group: g, limits, canonicalName: canonical, bar, error: identity }))
+  const NOW = Date.UTC(2026, 9, 22, 12)
+  const render = (limits: LimitsView, g = rich, nowMs = NOW): string[] =>
+    plain(buildProviderLines({ group: g, limits, canonicalName: canonical, bar, error: identity, nowMs }))
 
   test('header, limits, then the costliest model first; dated ids collapse', () => {
     const lines = render({
@@ -196,6 +219,19 @@ describe('buildProviderLines', () => {
 
   test('an error offers the retry key', () => {
     expect(render({ status: 'error', message: 'x' })[4]).toBe('(usage below is unaffected) · r to retry')
+  })
+
+  test('a reset says how long until it, then when', () => {
+    const resetsAtMs = NOW + 3 * 3_600_000 + 45 * 60_000
+    const at = formatResetTime(resetsAtMs / 1000)
+    const window = (resetsAt: string): LimitsView => ({
+      status: 'ready',
+      limits: { rows: [{ kind: 'window', label: 'Current session', usedPercent: 6, resetsAt }] },
+    })
+    const iso = new Date(resetsAtMs).toISOString()
+    expect(render(window(iso))[5]).toBe(`Resets in 3h 45m (${at})`)
+    // Once it has passed there is no countdown to give.
+    expect(render(window(iso), rich, resetsAtMs + 1)[5]).toBe(`Resets ${at}`)
   })
 
   test('no spend yet says so', () => {
