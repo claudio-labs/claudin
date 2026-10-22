@@ -1,6 +1,6 @@
 ---
 name: thinking-gap-is-patch-shape-2026-10-21
-description: Claudin's ~2x thinking vs Claude Code is Opus-only and follows the Patch edit shape — no gap on Sonnet 5.5; forcing Patch on Sonnet reproduces it; a read×write 2×2 puts it on the write side; on Opus it is planning up to a 5–7-file first edit; CLAUDIN_BASH_FIRST (+ sed -n read credit) passed the Sonnet non-regression stage 10-22, Opus stage pending
+description: Claudin's ~2x thinking vs Claude Code is Opus-only (medium) and follows the Patch edit shape — forcing Patch on Sonnet reproduces it; on Opus it is planning up to a 5–7-file first edit; 10-22 Opus high: fixed CLAUDIN_BASH_FIRST (462a7bd9) edits like CC (0 patches, 1-file first edit), thinking −16% vs placebo (overlap), classifier ×4 in auto; user kept today's flow
 type: project
 ---
 
@@ -92,6 +92,59 @@ The gate was non-regression against claudindev, set before the run:
   ≤ −20%, thinking up to the first edit ≤ 1.3× Claude Code's, and cost ≤ claudindev's max.
 - The `/tmp` run dirs of 10-21 were lost to a reboot. The numbers above are what survives.
 
+**Opus stage, high, auto mode, N=4 (`20261022-032941`, 16/16 passed, no placebo).** Neither arm
+passed the efficacy gates.
+
+| | claude | claudindev | bashfirst | soft |
+|---|---|---|---|---|
+| thinking | 5.2k | 6.5k | 6.5k (0%) | 5.4k (−17%) |
+| cost + classifier | $1.260 + 0 | $1.196 + $0.147 | $1.161 + $0.155 | $1.111 + $0.103 |
+| Patch responses / first-edit files P1, P2 | 0 / 1, 1 | 5 / 6, 8 | 5 / 6, 8 | 7 / 5, 6 |
+| thinking up to the first edit, P1 / P2 | 1.8k / 1.9k | 3.0k / 2.6k | 1.9k / 2.5k | 2.1k / 1.6k |
+
+- At high effort the gap is +25% and overlaps; it is not the 2× seen at medium.
+- **bashfirst's text reached the wire but did not change the edit.** It had 0 read notes and 34
+  credit lines, yet the same Patch count and first-edit size. The likely cause: the Anthropic
+  batched-edits addendum ("land it as ONE Patch…") still stands under `CLAUDIN_BASH_FIRST`.
+- **soft came closest.** Its thinking sits about level with Claude Code's, and it was the
+  cheapest and fastest arm. −17% misses the −20% gate, and with no placebo it is inside noise.
+- The run took 29% of a Max 5x 5-hour window (19→48%) and 2% of the 7-day one.
+
+**Fixed bash-first, Opus high, auto, N=4 (`20261022-035706`, `462a7bd9`, 12/12 passed).** Under the
+flag the batched-Patch clause and the Typical-flow line now stand down, and the bullet carries the
+meaning of Claude Code's default strict steer. The first wording followed its relaxed one.
+
+| | claudindev | bashfirst | placebo |
+|---|---|---|---|
+| thinking | 8.6k | 4.9k (−43% SEPARATED; −16% vs placebo, overlap) | 5.8k |
+| cost + classifier | $1.229 + $0.151 | $1.175 + $0.182 | $1.139 + $0.109 |
+| Patch responses / first-edit files P1, P2 | 4 / 6, 8 | 0 / 1, 1 | 7 / 6, 8 |
+| thinking up to the first edit, P1 / P2 | 3.2k / 2.9k | 1.9k / 1.5k | 2.7k / 1.8k |
+| classifier requests / turns | 3 / 14 | 12 / 23 | 2 / 18 |
+
+- **The mechanism now engages.** There were 0 patches, and the first edit is 1 file in both
+  phases, as in Claude Code. Planning thinking sits at Claude Code's level (1.8k / 1.9k in
+  `-032941`).
+- **The thinking win is real but small against the no-op arm.** It is −16% against placebo. The
+  claudindev arm ran high (placebo was −33% against it), which shows how noisy Opus high is at N=4.
+- **In auto mode the cost is neutral to slightly worse.** Every Bash edit goes through the
+  classifier, while Patch and Edit take the fast path: 12 classifier requests against 3, and
+  classifier cost +20% SEPARATED. Bypass would not pay that.
+- The run took 19% of the 5-hour window (50→69%).
+- **Why bashfirst makes more turns** (transcripts, means per session). It makes 21.8 responses,
+  against 18.5 for placebo and 18.5 for Claude Code.
+  - Its edit responses match Claude Code's: 10.0 against 10.3. Each is a small Bash edit with the
+    tests chained on, where Patch lands a phase in ~2 calls. That is the incremental shape that
+    cut the planning thinking.
+  - The rest is phase 2. Mid-phase `sed -n` reads and manual CLI runs come to about +2.5 against
+    Claude Code. claudindev runs the CLI by hand in phase 2 too, so that part is a Claudin trait,
+    not bash-first.
+  - The `+64%` row in the report compares against claudindev's median of 14, which ran low.
+
+**Decision 2026-10-22:** the user kept today's batched-Patch flow as the more economical one. Every
+lever stays opt-in on the unmerged branch ([[patch-thinking-levers-not-promoted]]).
+
 **How to apply:** to cut thinking or latency, change the edit shape (bash-first text, smaller
 patches), not the prompt prose or the wire. Benchmark thinking questions on Opus, or force Patch on
-Sonnet; plain Sonnet measures nothing here.
+Sonnet; plain Sonnet measures nothing here. In auto mode, price the classifier: a Bash edit pays
+for it and a Patch does not.

@@ -45,6 +45,7 @@
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
+- [Patch-thinking levers NOT promoted (10-22)](decisions/patch-thinking-levers-not-promoted.md) — today's batched Patch is cheaper; bash-first etc. opt-in, unmerged
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — SDK 0.135 imports it; external crashed the binary
 
 ## Bugs
@@ -134,7 +135,7 @@
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
 - [Session cache A/B vs Claude Code (09-23..10-15)](session-cache-ab-bench-2026-09-23.md) — Opus +53% → +7% (#239); Sonnet 5.5 +17% → −18% (10-15)
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal
-- Thinking vs CC: [round 3, effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [2x is Opus-only, follows Patch; bash-first passed Sonnet (10-22)](thinking-gap-is-patch-shape-2026-10-21.md)
+- Thinking vs CC: [round 3, effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [2x is Opus-only, follows Patch; fixed bash-first edits like CC (10-22)](thinking-gap-is-patch-shape-2026-10-21.md)
 - [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
 - Prefix levers 09-23/24: [prefix breakdown, eager tools ≈20k](request-prefix-size-2026-09-23.md) · [dev tools deferred, −3.3k](dev-tools-deferred-advice-ab-2026-09-24.md) · [Build `directory` −7.7%](build-tool-ab-directory-gap.md)
 - Read/request A/Bs 09-24..29: [batch Read ties CC](cat-read-and-batch-read-ab-2026-09-24.md) · [read-files failed](read-files-ab-2026-09-29.md) · [`then` + cap promoted](request-count-levers-2026-09-24.md) · [cuts ~0.3% of requests](cut-results-request-cost-2026-09-25.md)
