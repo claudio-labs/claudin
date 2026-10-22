@@ -3,6 +3,7 @@ import { roughTokenCountEstimationForMessages } from 'src/shared/tokenEstimation
 import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import { SYNTHETIC_MESSAGES, SYNTHETIC_MODEL } from 'src/agent/messages/messages.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
+import { getTokenCountFromUsage } from 'src/agent/context/usageTokens.js'
 
 export function getTokenUsage(message: Message): Usage | undefined {
   if (
@@ -34,30 +35,6 @@ function getAssistantMessageId(message: Message): string | undefined {
     return message.message.id
   }
   return undefined
-}
-
-/**
- * Calculate total context window tokens from an API response's usage data.
- * Includes input_tokens + cache tokens + output_tokens.
- *
- * This represents the full context size at the time of that API call.
- * Use tokenCountWithEstimation() when you need context size from messages.
- */
-export function getTokenCountFromUsage(
-  usage: Pick<
-    Usage,
-    | 'input_tokens'
-    | 'cache_creation_input_tokens'
-    | 'cache_read_input_tokens'
-    | 'output_tokens'
-  >,
-): number {
-  return (
-    usage.input_tokens +
-    (usage.cache_creation_input_tokens ?? 0) +
-    (usage.cache_read_input_tokens ?? 0) +
-    usage.output_tokens
-  )
 }
 
 export function tokenCountFromLastAPIResponse(messages: Message[]): number {

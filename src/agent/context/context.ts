@@ -6,6 +6,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCanonicalName } from 'src/providers/model/model.js'
 import { getModelCapability } from 'src/providers/model/modelCapabilities.js'
 import { getOpenAIContextWindow, getOpenAIMaxOutputTokens } from 'src/providers/model/openaiContextWindows.js'
+import { getTokenCountFromUsage } from 'src/agent/context/usageTokens.js'
 
 function isOpenAIShimTransport(): boolean {
   const transport = tryGetActiveProvider()?.transport
@@ -158,7 +159,8 @@ export function getSonnet1mExpTreatmentEnabled(model: string): boolean {
  * Calculate context window usage percentage from token usage data: the last
  * response's input, cache and output, which the next request reads back. With
  * nothing sent since, that is the count autocompact fires on
- * (tokenCountWithEstimation). Returns null values if no usage data.
+ * (tokenCountWithEstimation), from the same sum. Returns null values if no
+ * usage data.
  */
 export function calculateContextPercentages(
   currentUsage: {
@@ -173,13 +175,9 @@ export function calculateContextPercentages(
     return { used: null, remaining: null }
   }
 
-  const usedTokens =
-    currentUsage.input_tokens +
-    currentUsage.cache_creation_input_tokens +
-    currentUsage.cache_read_input_tokens +
-    currentUsage.output_tokens
-
-  const usedPercentage = Math.round((usedTokens / contextWindowSize) * 100)
+  const usedPercentage = Math.round(
+    (getTokenCountFromUsage(currentUsage) / contextWindowSize) * 100,
+  )
   const clampedUsed = Math.min(100, Math.max(0, usedPercentage))
 
   return {

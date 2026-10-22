@@ -61,10 +61,8 @@ import type { SettingSource } from 'src/platform/settings/constants.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
-import {
-  getCurrentUsage,
-  getTokenCountFromUsage,
-} from 'src/agent/context/tokens.js'
+import { getCurrentUsage } from 'src/agent/context/tokens.js'
+import { getTokenCountFromUsage } from 'src/agent/context/usageTokens.js'
 
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer'
 const MANUAL_COMPACT_BUFFER_NAME = 'Compact buffer'

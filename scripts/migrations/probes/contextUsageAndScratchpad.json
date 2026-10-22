@@ -60,10 +60,16 @@
       "replace": "...(true\n          ? [\n              maybe('output_style'"
     },
     {
-      "name": "the status line leaves out the output tokens",
+      "name": "the usage sum leaves out the output tokens",
+      "source": "src/agent/context/usageTokens.ts",
+      "find": "    (usage.cache_read_input_tokens ?? 0) +\n    usage.output_tokens\n",
+      "replace": "    (usage.cache_read_input_tokens ?? 0)\n"
+    },
+    {
+      "name": "the status line sums usage its own way",
       "source": "src/agent/context/context.ts",
-      "find": "    currentUsage.cache_read_input_tokens +\n    currentUsage.output_tokens\n",
-      "replace": "    currentUsage.cache_read_input_tokens\n"
+      "find": "getTokenCountFromUsage(currentUsage)",
+      "replace": "currentUsage.input_tokens"
     },
     {
       "name": "the footer warning counts the last response only",
@@ -96,10 +102,10 @@
       "replace": "return { used: 0, remaining: 100 }"
     },
     {
-      "name": "context percentages drop cached input",
-      "source": "src/agent/context/context.ts",
-      "find": "    currentUsage.cache_read_input_tokens +\n    currentUsage.output_tokens",
-      "replace": "    currentUsage.output_tokens"
+      "name": "the usage sum drops cached input",
+      "source": "src/agent/context/usageTokens.ts",
+      "find": "    (usage.cache_creation_input_tokens ?? 0) +\n    (usage.cache_read_input_tokens ?? 0) +\n",
+      "replace": ""
     },
     {
       "name": "the away-summary killswitch is ignored",
