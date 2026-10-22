@@ -166,7 +166,7 @@ describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM under CLAUDIN_BASH_READ_CREDIT', () =
 
   const READ_FIRST = 'Read every one of those files first in a single message. One patch'
   const READ_OR_CAT_FIRST =
-    'Read every one of those files first in a single message (files a `cat` already printed whole count as read). One patch'
+    'Read every one of those files first in a single message (files a `cat` already printed whole, or a `sed -n` slice printed part of, count as read). One patch'
 
   test('flag off: byte-identical to the snapshot above', async () => {
     const off = await loadAnthropic(false)
@@ -874,5 +874,38 @@ describe('request-count levers', () => {
         ),
       )
     })
+  })
+})
+
+// The patch-thinking levers of 2026-10-21 (team memory
+// `thinking-gap-is-patch-shape-2026-10-21`): opt-in A/B arms, off by default.
+describe('patch-thinking levers — CLAUDIN_SOFT_BATCH addendum', () => {
+  type Anthropic = typeof import('src/agent/prompts/familyAddendums/anthropic.js')
+
+  // Read once at module load: each arm gets its own instance of the module.
+  async function loadAnthropic(soft: boolean): Promise<Anthropic> {
+    const prior = process.env.CLAUDIN_SOFT_BATCH
+    if (soft) process.env.CLAUDIN_SOFT_BATCH = '1'
+    else delete process.env.CLAUDIN_SOFT_BATCH
+    try {
+      return await import(`src/agent/prompts/familyAddendums/anthropic.js?soft=${soft}-${Date.now()}`)
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_SOFT_BATCH
+      else process.env.CLAUDIN_SOFT_BATCH = prior
+    }
+  }
+
+  test('flag off: byte-identical to the snapshot above', async () => {
+    const off = await loadAnthropic(false)
+    expect(off.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toBe(ANTHROPIC_BATCHED_EDITS_ADDENDUM)
+  })
+
+  test('flag on: still ONE Patch, without the read-everything-first order or the anti-pattern', async () => {
+    const on = await loadAnthropic(true)
+    expect(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toMatchSnapshot()
+    expect(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toBe(
+      'When a change touches several files, land it as ONE Patch call with a section per file.',
+    )
+    expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM.startsWith(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM.slice(0, -1))).toBe(true)
   })
 })

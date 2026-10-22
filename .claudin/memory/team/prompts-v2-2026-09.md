@@ -116,4 +116,5 @@ all five arms simultaneous; all 25 sessions 18/18 + one commit):
 
 **How to apply:** treat the four killswitches as dead weight to delete in the cleanup above, not
 as A/B levers; any prompt edit keeps the coverage test green. Re-opening "why does claudin think
-more than CC" needs a hypothesis for *thinking*, not prompt size.
+more than CC" needs a hypothesis for *thinking*, not prompt size. On 2026-10-21 that hypothesis was
+found and measured: the Patch edit shape ([[thinking-gap-is-patch-shape-2026-10-21]]).

@@ -3,7 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
-- [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, team trust note, `memory audit`, expires:, digest provenance
+- [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, trust note, `memory audit`, expires:
 - [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket default on; prewarm rejected
 - Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
@@ -45,11 +45,12 @@
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
+- [Patch-thinking levers NOT promoted (10-22)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; lean/soft/sed -n ship off, bash-first branch-only
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — SDK 0.135 imports it; external crashed the binary
 
 ## Bugs
 - FIXED 10-15 (#302): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; "mutated at 14" still open
-- FIXED 10-19: [Release smoke ran only --version on the binary](bugs/release-smoke-only-runs-version.md) — now `smoke:binary`, a -p round trip against a mock
+- FIXED 10-19: [Release smoke ran only --version on the binary](bugs/release-smoke-only-runs-version.md) — now `smoke:binary`, a mock -p round trip
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
@@ -62,7 +63,7 @@
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run in isolation first
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
 - [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked
-- [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — link into team or TEAM/ on mac/win gets the private carve-out; not fixed
+- [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
 - FIXED: [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [resume read a refused Write](bugs/resume-restores-refused-write.md) · [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
 
@@ -77,7 +78,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%
-- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided · [bash-first edits in auto+bypass, cost-neutral, 10-21](edit-method-census-2026-10-21.md)
+- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided · [bash-first edits, cost-neutral, 10-21](edit-method-census-2026-10-21.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches go in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — it hides bugs users hit elsewhere; verify from a throwaway cwd
@@ -88,9 +89,7 @@
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — grep generators after a move
 - [Stale paths in team memory — resolution table](memory-cites-pre-reorg-paths.md) — read the sentence first
 - [Stale <new-diagnostics> reminders — FIXED in #245](stale-diagnostics-notifications.md) — mid-build "file modified" is the in-place preprocess
-- [Pin a feature from the BUNDLE before deleting it](characterization-net-before-deletion.md) — feature() is false outside the build
-- [Removal passes take only what the build proves unreachable](removal-pass-only-provably-dead.md) — one commit per phase
-- [Deleting telemetry hollows the tests that observed through it](tests-observing-through-telemetry.md) — no assertion may prove nothing
+- Removal passes: [pin from the BUNDLE first](characterization-net-before-deletion.md) · [only what the build proves dead](removal-pass-only-provably-dead.md) · [telemetry deletions hollow tests](tests-observing-through-telemetry.md)
 - [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md) — `ts.createSourceFile` fails at runtime
 - Worktree agents: [stale base](audit-agent-worktree-sees-committed-head.md) · [edits leak to main](worktree-agent-edits-leak-to-main-checkout.md) — pin the SHA
 - [Public copy: no "fork of Claude Code"](public-docs-product-not-fork-framing.md) — one slim non-affiliation line
@@ -98,24 +97,23 @@
 
 ## Repo health
 - [Attachment producers leaked parent state into sub-agents](attachment-producers-leak-parent-state.md) — #224/#226/#227; agentId is NOT the gate
-- [Betas Claude Code sends and Claudin doesn't (09-22)](claude-code-beta-gap-2026-09-22.md) — a mock base URL fakes safeguards
+- [Betas Claude Code sends and Claudin doesn't (09-22, wire 10-21)](claude-code-beta-gap-2026-09-22.md) — a mock base URL fakes safeguards
 - [De-fingerprinting round (08-15)](defingerprinting-branch-2026-08.md) — env clusters move as units
 - [tsc --noEmit reached ZERO (08-13)](typecheck-backlog-shape.md) — the ratchet and its absolute-path fingerprint trap
 - Removed: [upsell commands 09-15](upsell-commands-missing-login.md) · [growthbook.ts 09-25](growthbook-source-dead-stub-is-real.md) — dead but tested
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
-- Token censuses: [09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) · [09-09..10 — transcripts miss rule injections, ~19%](token-census-2026-09-10-hidden-injections.md)
+- Token censuses: [09-26..28, rewrite fan-out 77%](token-census-2026-09-28.md) · [09-09..10, hidden rule injections ~19%](token-census-2026-09-10-hidden-injections.md)
 - [TTL-expiry check 10-12](ttl-expiry-check-2026-10-12.md) — main is 1h; clip→next-turn floor unexplained
-- [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail is the new leak; sub-agent expiries gone; post-280 clips ~$54
+- [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
 - Weekly censuses: [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) — rewrites 39% of cost
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md) — 4 gaps fixed
-- [NEXT census: check own writes (ON 10-21)](own-writes-next-census-checks.md) — re-Reads/Edit misses after Git, formatter, sub-agent claims
+- [NEXT census: check own writes (ON 10-21)](own-writes-next-census-checks.md) — re-Reads/misses after Git, formatter, Agent
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
-- [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines · rounds [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md)
-- Dead-code seeds (SPENT): [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash](bash-parser-unreachable-behind-tree-sitter-flag.md)
+- [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines · rounds [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md) · spent seeds [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash](bash-parser-unreachable-behind-tree-sitter-flag.md)
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
@@ -124,31 +122,23 @@
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3, D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
-- [Bash-as-file-reader census + redirect reach (08-09/16)](bash-file-read-census-and-redirect-reach.md) — refusal converted 84.7%
-- [Auto-outline pivot's false cap claim (08-09)](auto-outline-pivot-false-cap-claim.md) — 1,809 is an upper bound
-- [Token-bench measurement traps](token-bench-measurement-traps.md) — `--allowedTools` doesn't remove tools; check range overlap
-- Bench traps: [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
+- Read censuses 08-09/16: [Bash as file reader, refusal converted 84.7%](bash-file-read-census-and-redirect-reach.md) · [auto-outline cap claim false](auto-outline-pivot-false-cap-claim.md)
+- Bench traps: [token-bench, `--allowedTools` keeps tools](token-bench-measurement-traps.md) · [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
 - [R3 background agent — IMPLEMENTED 07-17](r3-background-agent-implemented.md) — workflow run|watch, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas
-- [Fork vs fresh A/B 09-09](fork-vs-fresh-ab-2026-09-09.md) — fresh Code agent −44% at equal answers
-- [Delegation A/B 09-23](delegation-steer-ab-2026-09-23.md) — lean Agent text held every gate (N=5)
+- Agent A/Bs: [fork vs fresh 09-09, fresh −44%](fork-vs-fresh-ab-2026-09-09.md) · [delegation 09-23, lean text held](delegation-steer-ab-2026-09-23.md)
 - Typecheck tool: [baseline](typecheck-tool-baseline-design.md) · [phantom errors, fixed](typecheck-baseline-message-fingerprint-fragile.md) · [A/B citation](typecheck-ab-bench-fixture-flaw.md)
-- [React Compiler's t0 param → ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403), not errors
-- [The 107 TS2307 are the fork's shape](missing-subsystems-retired-by-all-any-declarations.md) — all-`any` .d.ts on purpose
+- Typecheck shape: [t0 param → TS7006, count sites (403)](react-compiler-props-param-typing.md) · [107 TS2307, all-`any` .d.ts on purpose](missing-subsystems-retired-by-all-any-declarations.md)
 - [RunTests language coverage](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic tier
 - Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
 - [Session cache A/B vs Claude Code (09-23..10-15)](session-cache-ab-bench-2026-09-23.md) — Opus +53% → +7% (#239); Sonnet 5.5 +17% → −18% (10-15)
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal
-- [Session cost round 3 (09-23)](session-cost-round-3-2026-09-23.md) — effort medium closes it
+- Thinking vs CC: [round 3, effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [2x is Opus-only, follows Patch; fixed bash-first edits like CC (10-22)](thinking-gap-is-patch-shape-2026-10-21.md)
 - [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
-- [Request prefix, broken down](request-prefix-size-2026-09-23.md) — eager tools were ≈20k; deferred schemas unbilled
-- [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — with `directory`: −7.7% cost, −25% output
-- [Dev tools deferred + Bash advice A/B (09-24)](dev-tools-deferred-advice-ab-2026-09-24.md) — no regression, prefix −3.3k
-- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties CC · [read-files 09-29](read-files-ab-2026-09-29.md) failed
-- [Fewer requests per session — 4 rounds (09-25)](request-count-levers-2026-09-24.md) — `then` + path-keeping cap promoted
-- [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — #252 unmeasured
+- Prefix levers 09-23/24: [prefix breakdown, eager tools ≈20k](request-prefix-size-2026-09-23.md) · [dev tools deferred, −3.3k](dev-tools-deferred-advice-ab-2026-09-24.md) · [Build `directory` −7.7%](build-tool-ab-directory-gap.md)
+- Read/request A/Bs 09-24..29: [batch Read ties CC](cat-read-and-batch-read-ab-2026-09-24.md) · [read-files failed](read-files-ab-2026-09-29.md) · [`then` + cap promoted](request-count-levers-2026-09-24.md) · [cuts ~0.3% of requests](cut-results-request-cost-2026-09-25.md)
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
 
 ## Providers & models
@@ -161,9 +151,7 @@
 - [Adding a /provider preset: the skill](../../skills/add-provider-preset/SKILL.md) · [old recipe](openai-compat-preset-recipe.md)
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — mirrors xAI; impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
-- [Codex strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) — `pages:""` looped Read 135×; strip ""/null
-- [Codex OAuth prompt cache — key only](codex-oauth-prompt-cache-params.md) — Codex 400s on prompt_cache_retention
-- [Codex CLI wire parity (10-16/17)](codex-0.162-wire-diff.md) — replay #307 + WebSocket #308, in v1.1.46; free-plan quota ran out
+- Codex: [strict schemas → placeholder args, strip ""/null](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire parity 10-16/17, #307/#308](codex-0.162-wire-diff.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — loopback PKCE, pinned port 56121
 
@@ -172,7 +160,7 @@
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
+- Dependabot audits (08-03/10/17 changed nothing, `*-no-code-changes.md`): [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
 - [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310: undici zstd + SDK 0.135 OTel binary crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
@@ -184,9 +172,7 @@
 - [Inline shrink anchoring: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md) — it stacked @-list ghost rows
 - [Auto-wrap eats a row (side-panel checkerboard)](ink-autowrap-eats-a-row.md) — DECAWM off per paint
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/
-- [collapseRuns + blank-strip is safe since 06-27](bashfilter-collapseruns-blankstrip-footgun.md) — don't reintroduce marker-on-blank
-- [bashfilter fixture edits must keep byte length](bashfilter-fixtures-byte-length-sensitive.md) — ROI tests assert reduction %
-- [Bash filter samples live in ONE dir](bash-filter-sample-corpus-unified.md) — __fixtures__/samples/; 87 of 142 unmapped
+- Bash filter: [collapseRuns+blank-strip safe, no marker-on-blank](bashfilter-collapseruns-blankstrip-footgun.md) · [fixtures keep byte length](bashfilter-fixtures-byte-length-sensitive.md) · [samples in ONE dir](bash-filter-sample-corpus-unified.md)
 - [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only; SGR via send-keys
 - [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted #242)
 - ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25
@@ -197,4 +183,4 @@
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — 4 gaps · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — three CA env vars, set together
-- Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md): [backend](devin-shares-codeium-backend.md) · [quirks](devin-oauth-quirks.md) · [quota](devin-port-works-quota-blocker.md) · [f31](devin-f31-characterization.md) · [A/B](devin-wire-ab-procedure.md)
+- Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md) — five `devin-*.md` memories: backend, quirks, quota, f31, A/B

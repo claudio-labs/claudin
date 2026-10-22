@@ -92,6 +92,11 @@ export const outputSchema = lazySchema(() => z.object({
   persistedOutputLines: z.number().optional().describe('Line count of the persisted output, for its page'),
   readNote: z.string().optional().describe('Model-facing note after stdout on a file read: the files it did not show, and the ones that count as read'),
   creditedFiles: z.array(z.string()).optional().describe('Absolute paths the read credit counted as read (CLAUDIN_BASH_READ_CREDIT); /resume rebuilds them from disk'),
+  creditedRanges: z.array(z.object({
+    path: z.string(),
+    offset: z.number(),
+    limit: z.number()
+  })).optional().describe('Line ranges of a sed -n slice the read credit counted as read; /resume rebuilds them from disk'),
   reducedExitCode: z.number().optional().describe('The command\'s non-zero exit code when a stripped trailing reducer (`| tail -N`) made the verdict 0, as the pipeline would have; read by the response-chain guard')
 }));
 export type OutputSchema = ReturnType<typeof outputSchema>;

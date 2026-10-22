@@ -26,6 +26,13 @@
  * result, not a Read one: Read's `file_unchanged` stub must never point at a
  * Read that did not happen.
  *
+ * A `sed -n 'A,Bp' <file>` (`sedRangeReadsOf`) is a ranged Read the same way:
+ * when lines A..B of the file sit in the text verbatim, under the same gates
+ * as a whole file, they are registered as a Read of that range registers them
+ * (`offset: A`, `limit` the lines printed). Edit and Patch take any read, so
+ * the file counts as read for them; Write still wants it whole. A slice never
+ * replaces an entry that already stands for the whole file.
+ *
  * The result then says so in one line after the output (`readNote`, see
  * shellToolResultMappers.ts), naming the files it printed that do not count
  * and why. Untold, the credit changed nothing the model did: in the
@@ -80,6 +87,8 @@ import {
 import {
   catReadsOf,
   type ReadWord,
+  type SedRangeRead,
+  sedRangeReadsOf,
 } from 'src/tools/shared/outputFilter/Bash/fileReadShape.js'
 import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import { isWholeFileView } from 'src/tools/shared/readBeforeEditMessages.js'
@@ -138,11 +147,20 @@ type ShownBashOutput = ShellToolResultData & {
 
 /** What the credit did for one run. */
 export type ReadCredit = {
-  /** The files it registered as read, in the order the command named them. */
+  /** The files it registered as read whole, in the order the command named them. */
   readonly credited: readonly string[]
+  /**
+   * The `sed -n` slices it registered as ranged reads. Kept apart from
+   * `credited` because `/resume` rebuilds those as whole-file reads. Absent
+   * when there are none.
+   */
+  readonly ranges?: readonly CreditedRange[]
   /** The line the tool result ends with; null when nothing counts as read. */
   readonly note: string | null
 }
+
+/** A slice registered as read: lines `offset`..`offset + limit - 1` of `path`. */
+export type CreditedRange = { readonly path: string; readonly offset: number; readonly limit: number }
 
 const NO_CREDIT: ReadCredit = { credited: [], note: null }
 
@@ -162,7 +180,8 @@ const COUNTED: Verdict = { kind: 'counted' }
 const SILENT: Verdict = { kind: 'silent' }
 const refused = (reason: NotCountedReason): Verdict => ({ kind: 'refused', reason })
 
-type Judged = { readonly path: string; readonly verdict: Verdict }
+/** `range`: the lines a `sed -n` slice printed, inclusive; absent for a whole-file print. */
+type Judged = { readonly path: string; readonly verdict: Verdict; readonly range?: readonly [number, number] }
 
 /**
  * Registers every file `shown` printed whole as read, and returns their paths
@@ -193,7 +212,8 @@ export async function creditShownFiles(
       return NO_CREDIT
     }
     const reads = catReadsOf(shown.command)
-    if (reads.length === 0) return NO_CREDIT
+    const slices = sedRangeReadsOf(shown.command)
+    if (reads.length === 0 && slices.length === 0) return NO_CREDIT
 
     // Stdout alone, as the mapper trims it: a note after it is not output.
     const body = stripOutputMarkers(trimShellStdout(shown.stdout ?? ''))
@@ -204,6 +224,17 @@ export async function creditShownFiles(
         : await judgeOutside(path)
       judged.push({ path, verdict })
     }
+    const printedWhole = new Set(judged.map(({ path }) => path))
+    for (const { path, from, to } of sliceCandidatesOf(slices, cwd)) {
+      // The same file printed whole in this command is judged whole.
+      if (printedWhole.has(path)) continue
+      const verdict = pathInAllowedWorkingPath(path, toolPermissionContext)
+        ? await judgeSlice(path, from, to, body, readFileState, shown.startedAt)
+        : await judgeOutside(path)
+      // A credited slice names the lines it printed: sed stops at the end of the file.
+      const last = verdict.kind === 'credit' ? from + (verdict.entry.limit ?? to - from + 1) - 1 : to
+      judged.push({ path, verdict, range: [from, last] })
+    }
     const note = renderCreditNote(judged, cwd, shown.notShown ?? [])
     if (
       note === null ||
@@ -213,15 +244,19 @@ export async function creditShownFiles(
     }
 
     const credited: string[] = []
-    for (const { path, verdict } of judged) {
+    const ranges: CreditedRange[] = []
+    for (const { path, verdict, range } of judged) {
       if (verdict.kind !== 'credit') continue
       readFileState.set(path, verdict.entry)
-      credited.push(path)
+      if (range) ranges.push({ path, offset: range[0], limit: range[1] - range[0] + 1 })
+      else credited.push(path)
     }
-    if (credited.length > 0) {
-      logForDebugging(`bash read credit: ${credited.join(', ')}`)
+    if (credited.length > 0 || ranges.length > 0) {
+      logForDebugging(
+        `bash read credit: ${[...credited, ...ranges.map(r => `${r.path}:${r.offset}+${r.limit}`)].join(', ')}`,
+      )
     }
-    return { credited, note }
+    return { credited, note, ...(ranges.length > 0 && { ranges }) }
   } catch (e) {
     logError(e)
     return NO_CREDIT
@@ -290,6 +325,16 @@ async function candidatesOf(
  */
 function baseOf(word: ReadWord, cwd: string): string {
   return word.dir === undefined ? cwd : resolve(cwd, word.dir)
+}
+
+/** Each slice's file resolved where it was read, at most MAX_CANDIDATES. */
+function sliceCandidatesOf(
+  slices: readonly SedRangeRead[],
+  cwd: string,
+): { path: string; from: number; to: number }[] {
+  return slices
+    .slice(0, MAX_CANDIDATES)
+    .map(({ word, from, to }) => ({ path: resolve(baseOf(word, cwd), word.text), from, to }))
 }
 
 /**
@@ -390,6 +435,47 @@ function standsForWhole(existing: FileState | undefined, timestamp: number): boo
 }
 
 /**
+ * Whether lines `from`..`to` of `path` count as read after this run: the
+ * gates `judge` applies to a whole file, on the lines the slice printed — up
+ * to the end of the file, where sed stops. Reads the range; writes nothing.
+ */
+async function judgeSlice(
+  path: string,
+  from: number,
+  to: number,
+  body: string,
+  readFileState: FileStateCache,
+  startedAt: number,
+): Promise<Verdict> {
+  const existing = readFileState.get(path)
+  if (existing?.standDownOutline) return SILENT
+  let content: string
+  let lines: number
+  let timestamp: number
+  try {
+    const stats = await stat(path)
+    if (!stats.isFile() || stats.size === 0) return SILENT
+    // The reader a ranged Read uses: offset is 0-based there.
+    const file = await readFileInRange(path, from - 1, to - from + 1)
+    if (file.mtimeMs >= startedAt) return refused('changed since')
+    if (file.lineCount === 0) return SILENT
+    content = file.content
+    lines = file.lineCount
+    timestamp = Math.floor(file.mtimeMs)
+  } catch (e) {
+    if (!isFsInaccessible(e)) logError(e)
+    return SILENT
+  }
+  if (standsForWhole(existing, timestamp)) return COUNTED
+  if (!isDistinctive(content)) return refused('one line')
+  if (wholeLinesEnd(body, fileLinesOf(content).join('\n')) === -1) return refused('cut')
+  return {
+    kind: 'credit',
+    entry: { content, timestamp, offset: from, limit: lines, dedupExempt: true },
+  }
+}
+
+/**
  * A file outside the working directories never counts. Named only when it is
  * a file, which is when the model might go on to edit it.
  */
@@ -412,19 +498,29 @@ function renderCreditNote(
   cwd: string,
   notShown: readonly string[],
 ): string | null {
-  const counted = judged.filter(
-    ({ verdict }) => verdict.kind === 'credit' || verdict.kind === 'counted',
-  ).length
-  if (counted === 0) return null
-  const line =
-    counted === 1
-      ? '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)'
-      : `(${counted} files printed whole — they count as read: Edit, Patch and Write accept them without a Read.)`
+  const counts = ({ verdict }: Judged) => verdict.kind === 'credit' || verdict.kind === 'counted'
+  const counted = judged.filter(j => counts(j) && !j.range).length
+  const slices = judged.filter(j => counts(j) && j.range)
+  if (counted === 0 && slices.length === 0) return null
+  const lines: string[] = []
+  if (counted > 0) {
+    lines.push(
+      counted === 1
+        ? '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)'
+        : `(${counted} files printed whole — they count as read: Edit, Patch and Write accept them without a Read.)`,
+    )
+  }
+  if (slices.length > 0) {
+    const named = slices.map(({ path, range }) => `lines ${range![0]}–${range![1]} of ${displayPath(path, cwd)}`)
+    lines.push(`(${named.join(', ')} count as read: Edit and Patch accept ${slices.length === 1 ? 'that file' : 'those files'} without a Read.)`)
+  }
+  const line = lines.join(' ')
   const alreadyNamed = new Set(notShown)
-  const notCounted = judged.flatMap(({ path, verdict }) => {
+  const notCounted = judged.flatMap(({ path, verdict, range }) => {
     if (verdict.kind !== 'refused') return []
     const name = displayPath(path, cwd)
-    return alreadyNamed.has(name) ? [] : [`${name} (${verdict.reason})`]
+    if (alreadyNamed.has(name)) return []
+    return [range ? `${name} lines ${range[0]}–${range[1]} (${verdict.reason})` : `${name} (${verdict.reason})`]
   })
   return notCounted.length === 0 ? line : `${line} Not counted: ${notCounted.join(', ')}.`
 }

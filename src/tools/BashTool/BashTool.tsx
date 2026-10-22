@@ -486,6 +486,7 @@ export const BashTool = buildTool({
     // The paths let `/resume` rebuild the credit (queryHelpers.ts); the line
     // is how the model learns of it.
     if (credit.credited.length > 0) data.creditedFiles = [...credit.credited];
+    if (credit.ranges) data.creditedRanges = credit.ranges.map(range => ({ ...range }));
     if (credit.note !== null) data.readNote = data.readNote ? `${data.readNote}\n${credit.note}` : credit.note;
     return {
       data

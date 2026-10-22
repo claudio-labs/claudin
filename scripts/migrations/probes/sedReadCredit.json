@@ -1,0 +1,82 @@
+{
+  "test": [
+    "src/tools/BashTool/creditShownFiles.test.ts",
+    "src/tools/shared/outputFilter/Bash/fileReadShape.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/tools/BashTool/redirectLanes.test.ts",
+    "src/agent/tools/toolExecution.advise.test.ts",
+    "src/tools/ApplyPatchTool/prompt.test.ts",
+    "src/tools/FileEditTool/FileEditTool.prompt.test.ts",
+    "src/agent/prompts/prompts.test.ts"
+  ],
+  "_note": "The sed -n read credit of 2026-10-21: a slice a Bash sed -n printed counts as a ranged Read under CLAUDIN_BASH_READ_CREDIT, survives /resume, and drops the ranged-Read advice it made moot. Each probe breaks one wire the tests claim to guard.",
+  "source": "src/tools/BashTool/creditShownFiles.ts",
+  "probes": [
+    {
+      "name": "slices are never looked for",
+      "find": "    const slices = sedRangeReadsOf(shown.command)\n",
+      "replace": "    const slices: ReturnType<typeof sedRangeReadsOf> = []\n"
+    },
+    {
+      "name": "a slice the output does not hold is credited anyway",
+      "find": "  if (wholeLinesEnd(body, fileLinesOf(content).join('\\n')) === -1) return refused('cut')\n  return {\n    kind: 'credit',\n    entry: { content, timestamp, offset: from, limit: lines, dedupExempt: true },",
+      "replace": "  return {\n    kind: 'credit',\n    entry: { content, timestamp, offset: from, limit: lines, dedupExempt: true },"
+    },
+    {
+      "name": "a slice replaces the whole-file entry of an earlier Read",
+      "find": "  if (standsForWhole(existing, timestamp)) return COUNTED\n  if (!isDistinctive(content)) return refused('one line')\n  if (wholeLinesEnd(body, fileLinesOf(content)",
+      "replace": "  if (!isDistinctive(content)) return refused('one line')\n  if (wholeLinesEnd(body, fileLinesOf(content)"
+    },
+    {
+      "name": "a file written since the command started is credited",
+      "find": "    const file = await readFileInRange(path, from - 1, to - from + 1)\n    if (file.mtimeMs >= startedAt) return refused('changed since')\n",
+      "replace": "    const file = await readFileInRange(path, from - 1, to - from + 1)\n"
+    },
+    {
+      "name": "a slice is filed as a whole-file credit",
+      "find": "      if (range) ranges.push({ path, offset: range[0], limit: range[1] - range[0] + 1 })\n      else credited.push(path)",
+      "replace": "      credited.push(path)"
+    },
+    {
+      "name": "the note names the asked range past the end of the file",
+      "find": "      const last = verdict.kind === 'credit' ? from + (verdict.entry.limit ?? to - from + 1) - 1 : to\n",
+      "replace": "      const last = to\n"
+    },
+    {
+      "name": "sedRangeReadsOf takes a sed piped onward or inside a loop",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const range = open.length === 0 && !pipedOnward(index) ? sedRangeOf(args) : null;\n",
+      "replace": "      const range = sedRangeOf(args);\n"
+    },
+    {
+      "name": "/resume never rebuilds a slice",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "            for (const range of creditedRangesOf(message.toolUseResult)) {\n              cacheRangeCreditFromDisk(range, answeredAt)\n            }\n",
+      "replace": ""
+    },
+    {
+      "name": "/resume rebuilds a slice over a file changed since",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "      const timestamp = getFileModificationTime(filePath)\n      if (timestamp > answeredAt) return\n      const existing = cache.get(filePath)\n      // Already read whole at this mtime",
+      "replace": "      const timestamp = getFileModificationTime(filePath)\n      const existing = cache.get(filePath)\n      // Already read whole at this mtime"
+    },
+    {
+      "name": "the ranged-Read advice is never dropped",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  const slices = rangedReadsOf(analysis)\n  if (!slices) return false\n",
+      "replace": "  const slices = rangedReadsOf(analysis)\n  if (slices || !slices) return false\n"
+    },
+    {
+      "name": "a slice outside the credited range drops the advice",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "        call.offset + call.limit <= range.offset + range.limit,\n",
+      "replace": "        true,\n"
+    },
+    {
+      "name": "the Patch contract does not name the sed slice",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "sed -n",
+      "replace": "awk"
+    }
+  ]
+}

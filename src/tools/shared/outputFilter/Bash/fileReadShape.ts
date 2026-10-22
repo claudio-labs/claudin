@@ -122,6 +122,17 @@ const FROM_LINE_RE = /^\+\d+$/;
 /** The directory stack moves the cwd where `cd`'s one argument does not say. */
 const DIRECTORY_STACK: ReadonlySet<string> = new Set(["pushd", "popd"]);
 
+/** One sed command of a range print: `12p` or `12,40p`. */
+const SED_PRINT_RE = /^(\d+)(?:,(\d+))?p$/;
+const SED_SCRIPT_SPLIT_RE = /[;\n]/;
+const SED_QUIET_FLAGS: ReadonlySet<string> = new Set(["-n", "--quiet", "--silent"]);
+/** Flags that change how a script is read, not which lines it prints. */
+const SED_INERT_FLAGS: ReadonlySet<string> = new Set(["-E", "-r", "--regexp-extended"]);
+const SED_SEPARATE_FLAGS: ReadonlySet<string> = new Set(["-s", "--separate"]);
+const SED_EXPRESSION_FLAGS: ReadonlySet<string> = new Set(["-e", "--expression"]);
+/** `-nE`, `-ne`: short flags run together; an `e` at the end takes the next word. */
+const SED_SHORT_FLAGS_RE = /^-[nErs]*e?$/;
+
 /**
  * A segment the walk left as bare shell syntax: a subshell or group paren or
  * brace, `&`, `|&`, `;;`, a redirection it does not drop (`<`, `<(`). Around
@@ -260,6 +271,93 @@ export function printedBy(
 ): ReadWord[] | null {
   if (program === "cat") return parseCat(args, loops);
   return program === "head" || program === "tail" ? parsePartialPrint(program, args, loops) : null;
+}
+
+/**
+ * A `sed -n` whose script holds only numeric `A,Bp` and `Ap` commands,
+ * `;`-joined or in repeated `-e`s: the line ranges it prints, inclusive, and
+ * the files after the script. `40,12p` prints line 40 alone. `-s` restarts
+ * the line count in each file; without it sed reads its files as one stream.
+ */
+export type SedPrint = {
+  readonly ranges: readonly (readonly [from: number, to: number])[];
+  readonly files: readonly ReadWord[];
+  readonly separate: boolean;
+};
+
+/** The ranges one sed script prints, or null when any command in it is not a numeric range print. */
+function sedScriptRanges(script: string): [number, number][] | null {
+  const ranges: [number, number][] = [];
+  for (const part of script.split(SED_SCRIPT_SPLIT_RE)) {
+    const command = part.trim();
+    if (command === "") continue;
+    const match = SED_PRINT_RE.exec(command);
+    if (!match) return null;
+    const from = Number(match[1]);
+    const to = match[2] === undefined ? from : Number(match[2]);
+    ranges.push([from, Math.max(to, from)]);
+  }
+  return ranges.length > 0 ? ranges : null;
+}
+
+/** `sed`'s arguments as a range print (`SedPrint`); null without `-n`, where sed prints every line, or for any other script. */
+export function sedPrintOf(args: readonly ReadWord[]): SedPrint | null {
+  let quiet = false;
+  let separate = false;
+  const scripts: string[] = [];
+  const files: ReadWord[] = [];
+  let afterDoubleDash = false;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    const text = arg.text;
+    if (!afterDoubleDash && text === "--") {
+      afterDoubleDash = true;
+      continue;
+    }
+    if (afterDoubleDash || !text.startsWith("-") || text === "-") {
+      files.push(arg);
+      continue;
+    }
+    if (SED_QUIET_FLAGS.has(text)) quiet = true;
+    else if (SED_SEPARATE_FLAGS.has(text)) separate = true;
+    else if (SED_INERT_FLAGS.has(text)) continue;
+    else if (SED_EXPRESSION_FLAGS.has(text) || (SED_SHORT_FLAGS_RE.test(text) && text.endsWith("e"))) {
+      if (text.includes("n") && !text.startsWith("--")) quiet = true;
+      if (text.includes("s") && !text.startsWith("--")) separate = true;
+      const script = args[++i];
+      if (!script || script.glob) return null;
+      scripts.push(script.text);
+    } else if (SED_SHORT_FLAGS_RE.test(text)) {
+      if (text.includes("n")) quiet = true;
+      if (text.includes("s")) separate = true;
+    } else return null;
+  }
+  if (!quiet) return null;
+  if (scripts.length === 0) {
+    const script = files.shift();
+    if (!script || script.glob) return null;
+    scripts.push(script.text);
+  }
+  const ranges: [number, number][] = [];
+  for (const script of scripts) {
+    const scriptRanges = sedScriptRanges(script);
+    if (scriptRanges === null) return null;
+    ranges.push(...scriptRanges);
+  }
+  return { ranges, files, separate };
+}
+
+/** One `sed -n 'A,Bp' <file>`: the lines of one file it printed. */
+export type SedRangeRead = { readonly word: ReadWord; readonly from: number; readonly to: number };
+
+/** A `sed` segment's single range over a single literal file; null for anything wider or vaguer. */
+function sedRangeOf(args: readonly ReadWord[]): SedRangeRead | null {
+  const print = sedPrintOf(args);
+  if (!print || print.ranges.length !== 1 || print.files.length !== 1) return null;
+  const file = print.files[0]!;
+  if (file.glob || file.text === "-" || EXPANDED_WORD_RE.test(file.text)) return null;
+  const [from, to] = print.ranges[0]!;
+  return { word: file, from, to };
 }
 
 /**
@@ -424,9 +522,26 @@ export function isPureFileRead(command: string): boolean {
  * were not read from.
  */
 export function catReadsOf(command: string): ReadWord[] {
-  if (SUBSTITUTION_RE.test(command)) return [];
+  return walkReads(command).cats;
+}
+
+/**
+ * The `sed -n 'A,Bp' <file>` segments of ANY command, in order: one range over
+ * one literal file each, outside any loop, not piped onward — the slices the
+ * read credit checks the result for, as it checks `catReadsOf`'s files. The
+ * walk and its refusals are `catReadsOf`'s: a command it names no `cat` in
+ * for safety's sake names no slice either.
+ */
+export function sedRangeReadsOf(command: string): SedRangeRead[] {
+  return walkReads(command).seds;
+}
+
+function walkReads(command: string): { cats: ReadWord[]; seds: SedRangeRead[] } {
+  // A fresh pair each time: the callers own the arrays they get back.
+  const nothing = () => ({ cats: [], seds: [] });
+  if (SUBSTITUTION_RE.test(command)) return nothing();
   const walked = walkCommandSegments(command);
-  if (!walked || walked.hasOutputRedirection) return [];
+  if (!walked || walked.hasOutputRedirection) return nothing();
   const { segments } = walked;
   const pipedOnward = (index: number) => segments[index + 1]?.joinedBy === "|";
   /** Runs in this shell whenever the command gets to it: in no pipeline, on neither side of an `||`. */
@@ -437,18 +552,19 @@ export function catReadsOf(command: string): ReadWord[] {
   };
 
   const reads: ReadWord[] = [];
+  const seds: SedRangeRead[] = [];
   /** Where the paths resolve, when a `cd` moved away from where the command started. */
   let dir: string | undefined;
   /** The loops open at this segment, innermost last, each holding the reads inside it until its `done`. */
   const open: { loop: Loop | null; reads: ReadWord[] }[] = [];
   for (const [index, segment] of segments.entries()) {
-    if (SHELL_SYNTAX_RE.test(segment.name)) return [];
+    if (SHELL_SYNTAX_RE.test(segment.name)) return nothing();
     let words = wordsOf(segment.text);
     if (!words) continue;
     if (words[0]!.text === "do") words = words.slice(1);
     const [head, ...args] = words;
     if (!head) continue;
-    if (UNFOLLOWED_KEYWORDS.has(head.text)) return [];
+    if (UNFOLLOWED_KEYWORDS.has(head.text)) return nothing();
     if (LOOP_KEYWORDS.has(head.text)) {
       // Only a `for` binds its variable to words this module can read.
       open.push({ loop: head.text === "for" ? parseLoopHeader(args) : null, reads: [] });
@@ -456,21 +572,26 @@ export function catReadsOf(command: string): ReadWord[] {
     }
     if (head.text === "done") {
       const closed = open.pop();
-      if (!closed) return [];
+      if (!closed) return nothing();
       if (!pipedOnward(index)) (open.at(-1)?.reads ?? reads).push(...closed.reads);
       continue;
     }
     if (head.text === "cd") {
       const target = cdTarget(args);
-      if (target === null || open.length > 0 || !inThisShell(index)) return [];
+      if (target === null || open.length > 0 || !inThisShell(index)) return nothing();
       dir = cdFrom(dir, target);
       continue;
     }
-    if (DIRECTORY_STACK.has(head.text)) return [];
+    if (DIRECTORY_STACK.has(head.text)) return nothing();
+    if (head.text === "sed") {
+      const range = open.length === 0 && !pipedOnward(index) ? sedRangeOf(args) : null;
+      if (range) seds.push({ ...range, word: inDir([range.word], dir)[0]! });
+      continue;
+    }
     if (!PRINTERS.has(head.text) || pipedOnward(index)) continue;
     const loops = open.flatMap(({ loop }) => (loop ? [loop] : []));
     const printed = printedBy(head.text, args, loops);
     if (printed) (open.at(-1)?.reads ?? reads).push(...inDir(printed, dir));
   }
-  return reads;
+  return { cats: reads, seds };
 }

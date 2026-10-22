@@ -1401,6 +1401,23 @@ export function wholeFileReadsOf(analysis: RedirectAnalysis): string[] | null {
 }
 
 /**
+ * The ranged Reads an analysis sends the model to, or null when it asks for
+ * anything else too. What a credited `sed -n` slice can have made moot
+ * (redirectLanes.ts, `isReadAdviceMoot`).
+ */
+export function rangedReadsOf(
+  analysis: RedirectAnalysis,
+): { file_path: string; offset: number; limit: number }[] | null {
+  const calls: { file_path: string; offset: number; limit: number }[] = []
+  for (const call of analysis.units.flatMap(unit => unit.calls)) {
+    if (call.tool !== 'Read' || call.limit === undefined) return null
+    // A range from line 1 is spelled without an offset, as Read defaults it.
+    calls.push({ file_path: call.file_path, offset: call.offset ?? 1, limit: call.limit })
+  }
+  return calls.length > 0 ? calls : null
+}
+
+/**
  * The advise-mode note (BashTool/redirectLanes.ts): the command has already
  * run, so this only names the calls that read or search without the shell.
  */

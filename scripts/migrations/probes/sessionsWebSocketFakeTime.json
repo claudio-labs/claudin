@@ -1,0 +1,39 @@
+{
+  "test": "src/platform/remote/SessionsWebSocket.test.ts",
+  "source": "src/platform/remote/SessionsWebSocket.ts",
+  "probes": [
+    {
+      "name": "a client close() is handled as a server close (reconnects)",
+      "find": "    if (this.state === 'closed') {\n      return\n    }\n",
+      "replace": ""
+    },
+    {
+      "name": "4003 is no longer permanent",
+      "find": "  4003, // unauthorized\n",
+      "replace": ""
+    },
+    {
+      "name": "4001 retries a fourth time (8 s backoff, still inside PAST_RECONNECT_MS)",
+      "find": "const MAX_SESSION_NOT_FOUND_RETRIES = 3",
+      "replace": "const MAX_SESSION_NOT_FOUND_RETRIES = 4"
+    },
+    {
+      "name": "close() leaves a scheduled reconnect armed",
+      "find": "      clearTimeout(this.reconnectTimer)\n      this.reconnectTimer = null\n    }",
+      "replace": "      this.reconnectTimer = null\n    }"
+    },
+    {
+      "name": "the fake-time budget is enforced (budget halved: the 60 s ping tests must fail)",
+      "source": "src/platform/remote/SessionsWebSocket.test.ts",
+      "find": "const FAKE_TIME_BUDGET_MS = 60_000",
+      "replace": "const FAKE_TIME_BUDGET_MS = 30_000"
+    },
+    {
+      "name": "control: a budget above every need changes nothing",
+      "source": "src/platform/remote/SessionsWebSocket.test.ts",
+      "find": "const FAKE_TIME_BUDGET_MS = 60_000",
+      "replace": "const FAKE_TIME_BUDGET_MS = 61_000",
+      "expect": "green"
+    }
+  ]
+}

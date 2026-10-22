@@ -94,6 +94,15 @@
  *      the file is back on disk, and no note follows in p1 or p2
  *  26. own writes off (CLAUDIN_OWN_WRITES=0, the control for 25): the Git result names nothing, and the note comes
  *
+ * Scenarios 27-28 are a `sed -n` slice as a ranged read (creditShownFiles.ts,
+ * under CLAUDIN_BASH_READ_CREDIT), against its control:
+ *
+ *  27. slice credit on — p1: `sed -n 1,6p a.ts && sed -n 1,5p b.ts` ends with the
+ *      range line, and Patch a.ts applies as on a read file; p2 (--resume): Patch
+ *      b.ts applies the same way, the slice rebuilt from `creditedRanges`
+ *  28. slice credit off — the same steps: no range line, and both patches meet
+ *      the read gate as unread files
+ *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
  *
@@ -183,6 +192,12 @@ const BATCH_READ = (ws: string): Step => ({ tool: 'Read', input: { file_paths: [
 const PATCH_A = patchStep('a.ts', A_BEFORE, A_AFTER)
 const PATCH_B = patchStep('b.ts', B_BEFORE, B_AFTER)
 const DONE: Step = { text: 'Done.' }
+/** Scenarios 27-28: one slice of each file, every line of a.ts's but the last, b.ts's whole body. */
+const SED_SLICES: Step = {
+  tool: 'Bash',
+  input: { command: 'sed -n 1,6p a.ts && sed -n 1,5p b.ts', description: 'Print the start of a.ts and b.ts' },
+}
+const UNREAD_PATCH_NOTE = 'had not been read'
 
 // Scenarios 6-10: globs in a batch Read's file_paths (CLAUDIN_READ_GLOBS).
 const ONE_BEFORE = "export const ONE = 'one'"
@@ -814,6 +829,47 @@ const SCENARIOS: Scenario[] = [
     expect: run => [
       onResult(run, 0, 2, 'p1 the Git result names nothing', r => !r.isError && !r.text.includes(OWN_WRITE_LINE)),
       { label: 'p1 or p2 carries the "was modified" note for a.ts', ok: sentInPhase(run, 0, MODIFIED_NOTE) || sentInPhase(run, 1, MODIFIED_NOTE) },
+    ],
+  },
+  {
+    key: '27',
+    title: 'a sed -n slice counts as a ranged read (CLAUDIN_BASH_READ_CREDIT=1)',
+    env: { CLAUDIN_BASH_READ_CREDIT: '1' },
+    script: () => [
+      { prompt: 'Show the start of a.ts and b.ts, then rename NAME in a.ts.', steps: [SED_SLICES, PATCH_A, DONE] },
+      { prompt: 'Now rename NAME in b.ts.', steps: [PATCH_B, DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 Bash result ends with the range line for both slices', r =>
+        !r.isError &&
+        lastLine(r.text) === '(lines 1–6 of a.ts, lines 1–5 of b.ts count as read: Edit and Patch accept those files without a Read.)',
+      ),
+      onResult(run, 0, 1, 'p1 Patch a.ts applies as on a read file (no "had not been read")', r =>
+        isPatchSuccess(r) && !r.text.includes(UNREAD_PATCH_NOTE),
+      ),
+      onDisk(run, 0, 'a.ts', 'p1 a.ts is patched on disk', c => c.includes(A_AFTER)),
+      onResult(run, 1, 0, 'p2 (--resume) Patch b.ts applies as on a read file — the slice was rebuilt from the transcript', r =>
+        isPatchSuccess(r) && !r.text.includes(UNREAD_PATCH_NOTE),
+      ),
+      onDisk(run, 1, 'b.ts', 'p2 b.ts is patched on disk', c => c.includes(B_AFTER)),
+    ],
+  },
+  {
+    key: '28',
+    title: 'slice credit off (the control for 27)',
+    env: {},
+    script: () => [
+      { prompt: 'Show the start of a.ts and b.ts, then rename NAME in a.ts.', steps: [SED_SLICES, PATCH_A, DONE] },
+      { prompt: 'Now rename NAME in b.ts.', steps: [PATCH_B, DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 Bash result carries no credit line', r => !r.isError && !r.text.includes('count as read')),
+      onResult(run, 0, 1, 'p1 Patch a.ts meets the read gate as an unread file', r =>
+        r.text.includes(UNREAD_PATCH_NOTE) || r.text.includes(NOT_READ),
+      ),
+      onResult(run, 1, 0, 'p2 (--resume) Patch b.ts meets the read gate as an unread file', r =>
+        r.text.includes(UNREAD_PATCH_NOTE) || r.text.includes(NOT_READ),
+      ),
     ],
   },
 ]

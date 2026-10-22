@@ -20,8 +20,24 @@ fixing one means changing its test on purpose, in its own `fix(…)` commit.
   accept-then-drop server is redialed every 2 s forever. `reconnect()` races: `close()`
   does not detach the old socket, and a late close from it nulls the new one. A throwing
   constructor leaves the state `connecting` and every later `connect()` is ignored.
-  Its `close and reconnect` tests (3–4, 5 s timeouts) went red in CI's full suite on the
-  #309 and #310 runs (2026-10-19). They pass alone on Node 22.12 and 24. Undiagnosed.
+- **FIXED 2026-10-22 (#314): the CI-only `close and reconnect` timeouts.** Four tests hit the
+  5 s timeout in CI's full suite on some runs from 10-19 on (#309, #310, 10-21, #314 ×4).
+  - **Cause: Bun 1.3.11.** Its fake timers stall the event loop once a test advances fake time
+    past the machine's uptime.
+  - **Why CI only.** A freshly booted runner has ~2 min of uptime when this file runs, and the
+    file's 120 s jumps crossed it. Locally the uptime is hours.
+  - **Signature.** The test before them, `stops pinging after the connection closes`, takes
+    ~105 ms instead of ~7 ms. Then every wait for a socket event hangs, and the runner kills
+    the 4 s watchdog child as "dangling".
+  - **Local reproduction.** Advance fake time past `/proc/uptime`. Just past it, a WebSocket close
+    takes 100 ms; further past it, the test hangs.
+  - **Fix.** The test file advances only as far as each assertion needs (`PAST_RECONNECT_MS`,
+    `PAST_PING_MS`). Its `advance()` helper fails a test that goes past `FAKE_TIME_BUDGET_MS`
+    (60 s). Probes are in `sessionsWebSocketFakeTime.json`. Upgrading Bun is the root fix.
+  - **Ruled out on the way:** CI's file order (replayed locally), the Bun version (1.3.11 in both
+    places), the runner image, and parallel local load.
+  - **Gotcha.** Bun's fake timers also move `Date`, `performance.now`, `process.hrtime` and
+    `Bun.nanoseconds`. Read `/proc/uptime` for real time.
 - **relay**: an upstream that closes cleanly before any data gives the client a bare
   disconnect, no 502; `decodeChunk` reads a truncated varint (`0a 80`) as a keepalive;
   after a 400 the header buffer is not reset, so more data sends 400 again.

@@ -3,8 +3,10 @@ import { resolve } from 'path'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { detectBlockedSleepPattern } from 'src/tools/BashTool/bashCommandClassification.js'
 import { isBackgroundTasksDisabled, type BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
+import type { CreditedRange } from 'src/tools/BashTool/creditShownFiles.js'
 import {
   analyzeCommandForRedirect,
+  rangedReadsOf,
   renderFileToolsAdvice,
   renderToolRedirect,
   shouldRedirectToTools,
@@ -202,16 +204,32 @@ function renderBlockingSleepAdvice(sleepPattern: string, hasWaitFor: boolean): s
  * The note was rendered before the call ran; this runs the lane's analysis
  * again — pure, without its one-shot memo — rather than carry it across. No
  * earlier lane claims a command that analysis maps to Reads alone.
+ *
+ * A note made only of ranged Reads (`sed -n A,Bp f`) is moot when each one
+ * lies inside a slice the credit registered (`creditedRanges`).
  */
 export function isReadAdviceMoot(
   command: string,
   cwd: string,
   creditedFiles: readonly string[] | undefined,
+  creditedRanges: readonly CreditedRange[] = [],
 ): boolean {
-  if (!creditedFiles?.length) return false
+  if (!creditedFiles?.length && creditedRanges.length === 0) return false
   const analysis = analyzeCommandForRedirect(command, cwd)
-  const reads = analysis && wholeFileReadsOf(analysis)
-  if (!reads) return false
-  const credited = new Set(creditedFiles.map(path => resolve(path)))
-  return reads.every(path => credited.has(resolve(path)))
+  if (!analysis) return false
+  const reads = wholeFileReadsOf(analysis)
+  if (reads) {
+    const credited = new Set((creditedFiles ?? []).map(path => resolve(path)))
+    return reads.every(path => credited.has(resolve(path)))
+  }
+  const slices = rangedReadsOf(analysis)
+  if (!slices) return false
+  return slices.every(call =>
+    creditedRanges.some(
+      range =>
+        resolve(range.path) === resolve(call.file_path) &&
+        range.offset <= call.offset &&
+        call.offset + call.limit <= range.offset + range.limit,
+    ),
+  )
 }

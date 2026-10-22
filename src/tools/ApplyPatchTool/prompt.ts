@@ -1,4 +1,5 @@
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isLeanPatchPromptEnabled, isSoftBatchEnabled } from 'src/agent/prompts/steeringToggles.js'
 
 export const APPLY_PATCH_TOOL_NAME = 'Patch'
 /**
@@ -16,18 +17,34 @@ export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
 // change here invalidates the whole downstream prompt cache.
 // See docs/tech/cache/clip-frontier-breakpoint.md + src/agent/tools/toolSchemaCache.ts.
 //
-// The one input is CLAUDIN_BASH_READ_CREDIT (off by default), under which a
+// Three env inputs, all off by default and all read once at module load, so
+// DESCRIPTION stays one static string per process. CLAUDIN_BASH_READ_CREDIT is
+// the first, under which a
 // file a Bash `cat` printed whole counts as read (BashTool/creditShownFiles.ts)
-// and the contract below says so. It is read once at module load, like the
-// credit itself, so DESCRIPTION is still one static string per process.
+// and the contract below says so. CLAUDIN_LEAN_PATCH_PROMPT and
+// CLAUDIN_SOFT_BATCH are the patch-thinking A/B arms (steeringToggles.ts): the
+// first drops the anchor and section rules patchFormat.ts rescues on its own,
+// the second the "Typical flow" line that asks for every file to be Read in
+// one message first. With both off the text is byte-identical.
 //
 // It does not name `then` (CLAUDIN_EDIT_THEN): the parameter's own schema
 // text (editThenShape.ts) says what it runs and when, and repeating it here
 // cost every request a line (lean3 A/B, team memory
 // `claude-code-2.1.284-wire-diff`).
 const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
-  ? ' — a Bash `cat` that printed the whole file counts too'
+  ? ' — a Bash `cat` that printed the whole file, or a `sed -n A,Bp` slice of it, counts too'
   : ''
+const LEAN = isLeanPatchPromptEnabled()
+const ANCHOR_RULES = LEAN
+  ? `  - to point somewhere, copy one line from the file
+  - the cursor only moves forward: each "@@" must sit at or after the previous hunk's`
+  : `  - to point somewhere, copy ONE line from the file verbatim and whole — "@@ export function greet(name: string): string {", not a fragment like "@@ function greet(" — it is matched against an entire line
+  - the hunk body starts at the line AFTER it, so do not restate the anchored line as the hunk's first context line
+  - the cursor only moves forward: each "@@" must sit at or after the previous hunk's, so do not repeat one function signature across several hunks — give each its own nearby anchor, or a bare "@@"`
+const ONE_SECTION_PER_FILE = LEAN ? '' : 'give each file exactly ONE section, and '
+const TYPICAL_FLOW = isSoftBatchEnabled()
+  ? ''
+  : '\n- Typical flow for a multi-file change: map the targets with Grep/Glob, Read every one of them in ONE message (parallel Read calls), then send ONE patch. Reading them one at a time is what turns a single patch into N patches.'
 
 export const DESCRIPTION = `Apply a patch to one or more files in a single call. Use this to create, modify, delete, or rename several files at once.
 
@@ -53,9 +70,7 @@ A hunk may end with "*** End of File" to anchor it to the end of the file.
 
 The "@@" line is a one-line search cursor, not a unified-diff header:
   - a bare "@@" is valid, and is the right default whenever the hunk's own context lines already locate it uniquely
-  - to point somewhere, copy ONE line from the file verbatim and whole — "@@ export function greet(name: string): string {", not a fragment like "@@ function greet(" — it is matched against an entire line
-  - the hunk body starts at the line AFTER it, so do not restate the anchored line as the hunk's first context line
-  - the cursor only moves forward: each "@@" must sit at or after the previous hunk's, so do not repeat one function signature across several hunks — give each its own nearby anchor, or a bare "@@"
+${ANCHOR_RULES}
 
 Example:
 
@@ -71,9 +86,8 @@ Example:
 *** End Patch
 
 Rules:
-- Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one Patch call per file — it is cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.
-- Typical flow for a multi-file change: map the targets with Grep/Glob, Read every one of them in ONE message (parallel Read calls), then send ONE patch. Reading them one at a time is what turns a single patch into N patches.
-- Before you send it, give each file exactly ONE section, and anchor each hunk on lines you copied from the file (not remembered). Every hunk that matches is applied; one that does not is listed in the result as NOT applied, with the reason — then send a patch holding only those hunks, never the whole patch again.
+- Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one Patch call per file — it is cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.${TYPICAL_FLOW}
+- Before you send it, ${ONE_SECTION_PER_FILE}anchor each hunk on lines you copied from the file (not remembered). Every hunk that matches is applied; one that does not is listed in the result as NOT applied, with the reason — then send a patch holding only those hunks, never the whole patch again.
 - Update and Delete need a prior Read of the file, and any Read counts: the whole file, an outline, a symbol, or a range${CAT_COUNTS_AS_READ}. Nothing has to be re-read, or read whole, to be allowed to patch — a hunk applies when its context and "-" lines match the file as it is on disk, so read only the lines you need to write it. Add does not require a prior read.
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - For new lines, always prefix them with "+", including when creating a file.

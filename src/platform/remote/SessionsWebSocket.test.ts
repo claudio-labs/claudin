@@ -105,6 +105,40 @@ function until<T>(read: () => T | undefined | false): Promise<T> {
   })
 }
 
+// ── Fake time ────────────────────────────────────────────────────────────
+
+/**
+ * Bun 1.3.11's fake timers stall the event loop once a test advances fake
+ * time past the machine's uptime. Socket events stop arriving, so do the
+ * watchdog's exit, and the runner kills the test at 5 s. A freshly booted CI
+ * runner has about two minutes of uptime when this file runs, so the 120 s
+ * jumps these tests once made hung the close tests there, on some runs only
+ * (2026-10-19..22). Locally the uptime is hours, and nothing shows. Advancing
+ * just past `/proc/uptime` reproduces it: a close then takes 100 ms, the CI
+ * signature, and further past it the test hangs.
+ *
+ * So each test advances only as far as its assertion needs, and a test that
+ * goes past the budget fails here instead of hanging CI. The longest need is
+ * two ping intervals; a 72 s test in the same CI runs never stalled.
+ */
+const FAKE_TIME_BUDGET_MS = 60_000
+/** Past every reconnect delay: 2 s, and 4001's linear backoff tops out at 6 s. */
+const PAST_RECONNECT_MS = 10_000
+/** One ping interval (30 s) and a tick. */
+const PAST_PING_MS = 30_001
+
+let advanced = 0
+
+function advance(ms: number): void {
+  advanced += ms
+  if (advanced > FAKE_TIME_BUDGET_MS) {
+    throw new Error(
+      `this test advanced fake time by ${advanced} ms, past FAKE_TIME_BUDGET_MS (${FAKE_TIME_BUDGET_MS} ms)`,
+    )
+  }
+  jest.advanceTimersByTime(ms)
+}
+
 // ── Local server ─────────────────────────────────────────────────────────
 
 type ConnData = {
@@ -335,6 +369,7 @@ beforeEach(() => {
   listeners = []
   pendingRejects = new Set()
   pingThrows = false
+  advanced = 0
   globalThis.WebSocket = RedirectingWebSocket as unknown as typeof WebSocket
   armWatchdog()
   jest.useFakeTimers()
@@ -431,7 +466,7 @@ describe('SessionsWebSocket connect', () => {
     expect(conn.headers.get('authorization')).toBe('Bearer token-1')
 
     await serverClose(recorder, conn, 1011)
-    jest.advanceTimersByTime(2000)
+    advance(2000)
     const second = await connAt(server, 1)
     expect(second.headers.get('authorization')).toBe('Bearer token-2')
   })
@@ -590,7 +625,7 @@ describe('SessionsWebSocket errors', () => {
     expect(recorder.counts.connected).toBe(0)
     expect(client.isConnected()).toBe(false)
 
-    jest.advanceTimersByTime(60_000)
+    advance(PAST_RECONNECT_MS)
     expect(dials).toHaveLength(1)
   })
 })
@@ -606,7 +641,7 @@ describe('SessionsWebSocket handleClose', () => {
     expect(recorder.counts.close).toBe(1)
     expect(recorder.counts.reconnecting).toBe(0)
     expect(client.isConnected()).toBe(false)
-    jest.advanceTimersByTime(60_000)
+    advance(PAST_RECONNECT_MS)
     expect(dials).toHaveLength(1)
   })
 
@@ -620,9 +655,9 @@ describe('SessionsWebSocket handleClose', () => {
     expect(recorder.counts.close).toBe(0)
     expect(client.isConnected()).toBe(false)
 
-    jest.advanceTimersByTime(1999)
+    advance(1999)
     expect(dials).toHaveLength(1)
-    jest.advanceTimersByTime(1)
+    advance(1)
     expect(dials).toHaveLength(2)
 
     const second = await connAt(server, 1)
@@ -644,9 +679,9 @@ describe('SessionsWebSocket handleClose', () => {
     for (let i = 1; i <= 5; i++) {
       await serverClose(recorder, current, 4001)
       expect(recorder.counts.reconnecting).toBe(i)
-      jest.advanceTimersByTime(1999)
+      advance(1999)
       expect(dials).toHaveLength(i)
-      jest.advanceTimersByTime(1)
+      advance(1)
       expect(dials).toHaveLength(i + 1)
       current = await connAt(server, i)
       await until(() => recorder.counts.connected === i + 1)
@@ -666,22 +701,22 @@ describe('SessionsWebSocket handleClose', () => {
     // the budget, the redials go to a TCP listener that never answers the
     // handshake, and the 4001 is dispatched on that pending socket.
     useBlackHole()
-    jest.advanceTimersByTime(2000)
+    advance(2000)
     expect(dials).toHaveLength(2)
 
     for (const [i, delay] of [4000, 6000].entries()) {
       clientSockets.at(-1)!.dispatchEvent(new CloseEvent('close', { code: 4001 }))
       expect(recorder.counts.reconnecting).toBe(i + 2)
-      jest.advanceTimersByTime(delay - 1)
+      advance(delay - 1)
       expect(dials).toHaveLength(i + 2)
-      jest.advanceTimersByTime(1)
+      advance(1)
       expect(dials).toHaveLength(i + 3)
     }
 
     clientSockets.at(-1)!.dispatchEvent(new CloseEvent('close', { code: 4001 }))
     expect(recorder.counts.reconnecting).toBe(3)
     expect(recorder.counts.close).toBe(1)
-    jest.advanceTimersByTime(60_000)
+    advance(PAST_RECONNECT_MS)
     expect(dials).toHaveLength(4)
   })
 
@@ -696,7 +731,7 @@ describe('SessionsWebSocket handleClose', () => {
     let current = conn
     for (let i = 1; i <= 6; i++) {
       await serverClose(recorder, current, 1001)
-      jest.advanceTimersByTime(2000)
+      advance(2000)
       current = await connAt(server, i)
       await until(() => recorder.counts.connected === i + 1)
     }
@@ -711,13 +746,13 @@ describe('SessionsWebSocket handleClose', () => {
 
     await serverClose(recorder, conn, 1011)
     server.rejectWith = 503
-    jest.advanceTimersByTime(2000)
+    advance(2000)
     await until(() => recorder.counts.close > 0)
 
     expect(recorder.errors).toHaveLength(1)
     expect(recorder.counts.reconnecting).toBe(1)
     expect(client.isConnected()).toBe(false)
-    jest.advanceTimersByTime(60_000)
+    advance(PAST_RECONNECT_MS)
     expect(dials).toHaveLength(2)
   })
 })
@@ -728,11 +763,11 @@ describe('SessionsWebSocket ping', () => {
     const recorder = makeRecorder()
     const { conn } = await connectedClient(server, recorder)
 
-    jest.advanceTimersByTime(29_999)
+    advance(29_999)
     expect(conn.pings).toBe(0)
-    jest.advanceTimersByTime(1)
+    advance(1)
     await until(() => conn.pings === 1)
-    jest.advanceTimersByTime(30_000)
+    advance(30_000)
     await until(() => conn.pings === 2)
   })
 
@@ -742,11 +777,11 @@ describe('SessionsWebSocket ping', () => {
     const { client, conn } = await connectedClient(server, recorder)
 
     pingThrows = true
-    expect(() => jest.advanceTimersByTime(30_000)).not.toThrow()
+    expect(() => advance(30_000)).not.toThrow()
     expect(client.isConnected()).toBe(true)
 
     pingThrows = false
-    jest.advanceTimersByTime(30_000)
+    advance(30_000)
     await until(() => conn.pings === 1)
   })
 
@@ -756,7 +791,7 @@ describe('SessionsWebSocket ping', () => {
     const { conn } = await connectedClient(server, recorder)
 
     await serverClose(recorder, conn, 4003)
-    jest.advanceTimersByTime(120_000)
+    advance(PAST_PING_MS)
     expect(conn.pings).toBe(0)
   })
 })
@@ -773,7 +808,7 @@ describe('SessionsWebSocket close and reconnect', () => {
 
     expect(recorder.counts.close).toBe(0)
     expect(recorder.counts.reconnecting).toBe(0)
-    jest.advanceTimersByTime(120_000)
+    advance(PAST_PING_MS)
     expect(dials).toHaveLength(1)
     expect(conn.pings).toBe(0)
   })
@@ -785,7 +820,7 @@ describe('SessionsWebSocket close and reconnect', () => {
 
     await serverClose(recorder, conn, 1011)
     client.close()
-    jest.advanceTimersByTime(60_000)
+    advance(PAST_RECONNECT_MS)
     expect(dials).toHaveLength(1)
   })
 
@@ -806,9 +841,9 @@ describe('SessionsWebSocket close and reconnect', () => {
     expect(client.isConnected()).toBe(false)
     await until(() => conn.closedWith !== undefined)
 
-    jest.advanceTimersByTime(499)
+    advance(499)
     expect(dials).toHaveLength(1)
-    jest.advanceTimersByTime(1)
+    advance(1)
     expect(dials).toHaveLength(2)
 
     const second = await connAt(server, 1)
@@ -825,7 +860,7 @@ describe('SessionsWebSocket close and reconnect', () => {
 
     client.reconnect()
     client.close()
-    jest.advanceTimersByTime(10_000)
+    advance(PAST_RECONNECT_MS)
     expect(dials).toHaveLength(1)
   })
 })

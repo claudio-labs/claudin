@@ -1162,3 +1162,76 @@ describe('fitWholeFiles — a read too long to show whole', () => {
     })
   })
 })
+
+// A `sed -n 'A,Bp' <file>` slice counts as a ranged Read: the lines it printed,
+// under the gates a whole file passes, never replacing a whole-file entry.
+describe('a sed -n slice credits the lines it printed as a ranged read', () => {
+  const CART_LINES = CART_TS.replace(/\n$/, '').split('\n')
+  const cartSlice = (from: number, to: number) => CART_LINES.slice(from - 1, to).join('\n')
+
+  test('`sed -n 7,12p src/cart.ts` registers lines 7–12, as a Read with offset and limit would', async () => {
+    const result = await creditWithNote(ran('sed -n 7,12p src/cart.ts'))
+    // Apart from `credited`, which /resume rebuilds as whole-file reads.
+    expect(result.credited).toEqual([])
+    expect(result.ranges).toEqual([{ path: at('src/cart.ts'), offset: 7, limit: 6 }])
+    expect(cache.get(at('src/cart.ts'))).toEqual({
+      content: cartSlice(7, 12),
+      timestamp: getFileModificationTime(at('src/cart.ts')),
+      offset: 7,
+      limit: 6,
+      dedupExempt: true,
+    })
+    expect(result.note).toBe('(lines 7–12 of src/cart.ts count as read: Edit and Patch accept that file without a Read.)')
+  })
+
+  test('a range past the end names the lines sed printed', async () => {
+    const total = CART_LINES.length
+    const result = await creditWithNote(ran(`sed -n ${total - 2},${total + 50}p src/cart.ts`))
+    expect(cache.get(at('src/cart.ts'))?.limit).toBe(3)
+    expect(result.ranges).toEqual([{ path: at('src/cart.ts'), offset: total - 2, limit: 3 }])
+    expect(result.note).toBe(`(lines ${total - 2}–${total} of src/cart.ts count as read: Edit and Patch accept that file without a Read.)`)
+  })
+
+  test('beside a whole-file cat, both lines are said', async () => {
+    const result = await creditWithNote(ran('cat README.md; sed -n 7,12p src/cart.ts'))
+    expect(result.credited).toEqual([at('README.md')])
+    expect(result.ranges).toEqual([{ path: at('src/cart.ts'), offset: 7, limit: 6 }])
+    expect(result.note).toBe(
+      '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) (lines 7–12 of src/cart.ts count as read: Edit and Patch accept that file without a Read.)',
+    )
+  })
+
+  test('a file read whole at this mtime keeps its entry, and the slice counts', async () => {
+    const whole = { content: CART_TS.replace(/\n$/, ''), timestamp: getFileModificationTime(at('src/cart.ts')), offset: 1, limit: undefined }
+    cache.set(at('src/cart.ts'), whole)
+    const result = await creditWithNote(ran('sed -n 7,12p src/cart.ts'))
+    expect(result.credited).toEqual([])
+    expect(result.ranges).toBeUndefined()
+    expect(cache.get(at('src/cart.ts'))).toEqual(whole)
+    expect(result.note).toBe('(lines 7–12 of src/cart.ts count as read: Edit and Patch accept that file without a Read.)')
+  })
+
+  test('a slice the output does not hold is not credited, and the line says so', async () => {
+    const result = await creditWithNote({ command: 'cat README.md; sed -n 7,12p src/cart.ts', startedAt: Date.now(), stdout: run('cat README.md') })
+    expect(result.credited).toEqual([at('README.md')])
+    expect(cache.has(at('src/cart.ts'))).toBe(false)
+    expect(result.note).toEndWith(' Not counted: src/cart.ts lines 7–12 (cut).')
+  })
+
+  test('a one-line slice, a file outside the project, or a file written since are not credited', async () => {
+    expect((await creditWithNote(ran('sed -n 7p src/cart.ts'))).ranges).toBeUndefined()
+    expect((await creditWithNote(ran(`sed -n 1,2p ${join(outside, 'secret.ts')}`))).ranges).toBeUndefined()
+    const shown = ran('sed -n 7,12p src/cart.ts')
+    writeFixture(at('src/cart.ts'), CART_TS)
+    utimesSync(at('src/cart.ts'), new Date(), new Date())
+    try {
+      expect((await creditWithNote(shown)).ranges).toBeUndefined()
+    } finally {
+      writeFixture(at('src/cart.ts'), CART_TS)
+    }
+  })
+
+  test('nothing is credited with the flag off', async () => {
+    expect(await creditWithNote(ran('sed -n 7,12p src/cart.ts'), off)).toEqual({ credited: [], note: null })
+  })
+})

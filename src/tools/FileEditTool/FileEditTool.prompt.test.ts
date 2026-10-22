@@ -78,7 +78,7 @@ describe('buildEditToolDescription under CLAUDIN_BASH_READ_CREDIT', () => {
   const READ_ONLY =
     `You must use your \`Read\` tool at least once in the conversation before editing. ${ANY_READ}`
   const READ_OR_CAT =
-    `You must read the file first — with \`Read\`, or a Bash \`cat\` that printed it whole. ${ANY_READ}`
+    `You must read the file first — with \`Read\`, a Bash \`cat\` that printed it whole, or a \`sed -n\` slice of it. ${ANY_READ}`
 
   it('flag off: both shapes are byte-identical to the snapshots above', async () => {
     const off = await loadEditPrompt(false)
@@ -123,7 +123,7 @@ describe('buildCompactEditToolDescription (v2)', () => {
   it('under CLAUDIN_BASH_READ_CREDIT a whole-file cat counts as the read', async () => {
     const on = await loadEditPrompt(true)
     expect(on.buildCompactEditToolDescription()).toContain(
-      'You must read the file first — with `Read`, or a Bash `cat` that printed it whole; any Read counts, a range or an outline included.',
+      'You must read the file first — with `Read`, a Bash `cat` that printed it whole, or a `sed -n` slice of it; any Read counts, a range or an outline included.',
     )
     const off = await loadEditPrompt(false)
     expect(off.buildCompactEditToolDescription()).toBe(compact)

@@ -4,6 +4,10 @@ description: Round 3 of the claudin-vs-Claude-Code session A/B (proxy-recorded, 
 type: project
 ---
 
+> **Refined 2026-10-21:** the gap is Opus-only and follows the Patch edit shape, not the prompt
+> prose. There is no gap on Sonnet 5.5, and forcing Patch there reproduces it
+> ([[thinking-gap-is-patch-shape-2026-10-21]]). The transplant numbers below still stand.
+
 Three runs of `scripts/bench/ab/session-cache-ab.ts --proxy`, every arm of a rep
 running at the same time, N=5, Opus 5.5 at `--effort high`. All 90 claudin and
 15 Claude Code sessions passed 18/18 hidden tests and made one commit (Claude

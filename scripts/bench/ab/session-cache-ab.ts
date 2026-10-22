@@ -239,6 +239,8 @@ export type Call = {
   text?: string
   /** Bash only: the files the read credit counted as read (`creditedFiles` on the tool result), when it counted any. */
   credited?: string[]
+  /** Patch only: the result listed hunks as NOT applied (applyPatch.ts), the rest having been applied. */
+  partial?: boolean
 }
 
 export type SubagentUsage = { files: number; turns: number; usage: Usage; costUsd: number; models: string[] }
@@ -871,6 +873,7 @@ export function analyzeSession(
         ...(result.isError && SERVED_REFUSAL_RE.test(result.text) ? { served: true } : {}),
         ...(use.name === 'Bash' ? { text: result.text } : {}),
         ...(use.name === 'Bash' && result.credited ? { credited: result.credited } : {}),
+        ...(PATCH_TOOLS.has(use.name) && NOT_APPLIED_RE.test(result.text) ? { partial: true } : {}),
       })
     }
     const usage: Usage = { in: row.in, out: row.out, cR: row.cR, cW: row.cW, cW5m: row.cW5m, cW1h: row.cW1h }
@@ -1508,6 +1511,8 @@ type Metrics = {
   servedRefusals: number
   resubmits: number
   resubmitErrors: number
+  /** Patch calls that failed outright or left hunks NOT applied; a harness refusal (the read gate) is not one. */
+  patchMisses: number
   /** Calls into the workspace's `.claudin/`, and those into memory/, rules/ and the rest of it (a call can be in several). */
   claudinCalls: number
   claudinMemory: number
@@ -1525,6 +1530,8 @@ const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', ...PATCH_TOOLS, 'Noteb
 const SERVED_REFUSAL_RE = /now count as read/
 /** The patch tool's reference to the patch refused one call earlier (patchFormat.ts). */
 const isResubmit = (c: Call) => PATCH_TOOLS.has(c.name) && String(c.input.patchText ?? '').trim() === '*** Resubmit'
+/** The line a patch result opens its list of hunks that did not apply with (applyPatch.ts). */
+const NOT_APPLIED_RE = /^NOT applied — /m
 
 /**
  * `total_cost_usd` means different things after `--resume`: claude reports the
@@ -1752,6 +1759,89 @@ export function turnsBeforeFirstEdit(calls: readonly Call[], phase1Turns: number
   return first ? first.turn - 1 : phase1Turns
 }
 
+// ---------------------------------------------------------------------------
+// Where the thinking goes: each API response by what it did
+// ---------------------------------------------------------------------------
+
+export const RESPONSE_KINDS = ['patch', 'edit tool', 'bash edit', 'test or build', 'read', 'git', 'other tool', 'final answer'] as const
+export type ResponseKind = (typeof RESPONSE_KINDS)[number]
+export type KindThinking = { think: number; turns: number; thinkingTurns: number }
+/** One phase split at its first edit: what the model thought planning it, what it thought after, and that edit's size. */
+export type PhasePlanning = { untilFirstEdit: number; after: number; firstEditFiles: number }
+
+const CHECK_TOOLS: ReadonlySet<string> = new Set(['RunTests', 'Typecheck', 'Build'])
+const SEARCH_TOOLS: ReadonlySet<string> = new Set(['Read', 'Grep', 'Glob'])
+const EDIT_KINDS: ReadonlySet<ResponseKind> = new Set(['patch', 'edit tool', 'bash edit'])
+/** A response under this many thinking tokens counts as one that did not think. */
+const THOUGHT_FLOOR = 50
+
+/**
+ * What one API response did, by the strongest of its calls: the patch tool,
+ * another edit tool, a Bash command that writes a project file (Claude Code's
+ * edits), a test or build run, a read (Read/Grep/Glob or a Bash `cat`), git,
+ * any other call, or no call at all.
+ */
+export function responseKindOf(calls: readonly Call[]): ResponseKind {
+  if (!calls.length) return 'final answer'
+  const bashCommands = calls.filter(c => c.name === 'Bash').map(commandOf)
+  if (calls.some(c => PATCH_TOOLS.has(c.name))) return 'patch'
+  if (calls.some(c => EDIT_TOOLS.has(c.name))) return 'edit tool'
+  if (bashCommands.some(cmd => BASH_EDIT_RE.test(cmd))) return 'bash edit'
+  if (calls.some(c => CHECK_TOOLS.has(c.name)) || bashCommands.some(cmd => TEST_CMD_RE.test(cmd))) return 'test or build'
+  if (calls.some(c => SEARCH_TOOLS.has(c.name)) || bashCommands.some(cmd => catReadsOf(cmd).length > 0)) return 'read'
+  if (calls.some(c => c.name === 'Git') || bashCommands.some(cmd => GIT_CMD_RE.test(cmd))) return 'git'
+  return 'other tool'
+}
+
+function callsByTurnOf(calls: readonly Call[]): Map<number, Call[]> {
+  const byTurn = new Map<number, Call[]>()
+  for (const c of calls) byTurn.set(c.turn, [...(byTurn.get(c.turn) ?? []), c])
+  return byTurn
+}
+
+/** A session's main-thread thinking summed per kind of response, with how many responses of each kind thought at all. */
+export function thinkingByKind(r: Pick<RunResult, 'turns' | 'calls'>): Record<ResponseKind, KindThinking> {
+  const out = Object.fromEntries(RESPONSE_KINDS.map(k => [k, { think: 0, turns: 0, thinkingTurns: 0 }])) as Record<
+    ResponseKind,
+    KindThinking
+  >
+  const callsByTurn = callsByTurnOf(r.calls)
+  for (const t of r.turns) {
+    const kind = out[responseKindOf(callsByTurn.get(t.n) ?? [])]
+    const think = t.think ?? 0
+    kind.think += think
+    kind.turns++
+    if (think > THOUGHT_FLOOR) kind.thinkingTurns++
+  }
+  return out
+}
+
+/**
+ * Each phase split at its first edit response (`EDIT_KINDS`): the thinking up
+ * to and including it is where the model planned the change, the rest is
+ * carrying it out. The first edit's size is the files a patch names (Add,
+ * Update, Delete) or one per other edit call. A phase with no edit is all
+ * planning.
+ */
+export function planningThinking(r: Pick<RunResult, 'turns' | 'calls'>): Record<Phase, PhasePlanning> {
+  const callsByTurn = callsByTurnOf(r.calls)
+  const sum = (turns: readonly Turn[]) => turns.reduce((a, t) => a + (t.think ?? 0), 0)
+  const filesOf = (c: Call): number => {
+    if (PATCH_TOOLS.has(c.name)) {
+      return [...String(c.input.patchText ?? '').matchAll(PATCH_PATH_RE)].filter(m => m[1] !== 'Move to').length
+    }
+    return EDIT_TOOLS.has(c.name) || (c.name === 'Bash' && BASH_EDIT_RE.test(commandOf(c))) ? 1 : 0
+  }
+  const split = (phase: Phase): PhasePlanning => {
+    const turns = r.turns.filter(t => t.phase === phase)
+    const first = turns.findIndex(t => EDIT_KINDS.has(responseKindOf(callsByTurn.get(t.n) ?? [])))
+    if (first < 0) return { untilFirstEdit: sum(turns), after: 0, firstEditFiles: 0 }
+    const files = (callsByTurn.get(turns[first]!.n) ?? []).reduce((a, c) => a + filesOf(c), 0)
+    return { untilFirstEdit: sum(turns.slice(0, first + 1)), after: sum(turns.slice(first + 1)), firstEditFiles: files }
+  }
+  return { 1: split(1), 2: split(2) }
+}
+
 type ClaudinPart = 'memory' | 'rules' | 'other'
 
 /** The paths a call names: a patch's file headers, an edit tool's target, every string of any other input. */
@@ -1880,6 +1970,7 @@ function metricsOf(r: RunResult): Metrics {
     servedRefusals: r.calls.filter(c => EDIT_TOOLS.has(c.name) && c.served).length,
     resubmits: r.calls.filter(isResubmit).length,
     resubmitErrors: r.calls.filter(c => isResubmit(c) && c.isError).length,
+    patchMisses: r.calls.filter(c => PATCH_TOOLS.has(c.name) && !c.refused && (c.isError || c.partial)).length,
     claudinCalls: claudin.filter(parts => parts.size > 0).length,
     claudinMemory: claudin.filter(parts => parts.has('memory')).length,
     claudinRules: claudin.filter(parts => parts.has('rules')).length,
@@ -2009,6 +2100,7 @@ const METRIC_ROWS: MetricRow[] = [
   ['  edits refused with the lines served', 'servedRefusals', fmtInt],
   ['patches resubmitted by reference', 'resubmits', fmtInt],
   ['  of which failed', 'resubmitErrors', fmtInt],
+  ['patches that failed or left hunks NOT applied', 'patchMisses', fmtInt],
   ['calls into the project .claudin/', 'claudinCalls', fmtInt],
   ['  .claudin/memory', 'claudinMemory', fmtInt],
   ['  .claudin/rules', 'claudinRules', fmtInt],
@@ -2068,6 +2160,30 @@ function comparisonTable(runs: RunResult[], arms: Arm[]): string {
 function requestTable(runs: RunResult[], arms: Arm[]): string {
   const byArm = arms.map(a => runs.flatMap(r => (r.arm === a && r.requests ? [r.requests] : [])))
   const rows = CENSUS_ROWS.map(([label, key, fmt]): ArmRow => [label, byArm.map(cs => cs.map(c => c[key])), fmt])
+  return armTable(arms, rows, runs.length > arms.length)
+}
+
+/** Per session: thinking, responses and responses that thought, for each kind; then each phase's first response. */
+function thinkingKindTable(runs: RunResult[], arms: Arm[]): string {
+  const byArm = arms.map(a => runs.filter(r => r.arm === a))
+  const kinds = byArm.map(rs => rs.map(thinkingByKind))
+  const rows: ArmRow[] = RESPONSE_KINDS.flatMap((kind): ArmRow[] => [
+    [`${kind}: thinking`, kinds.map(ks => ks.map(k => k[kind].think)), fmtK],
+    ['  responses', kinds.map(ks => ks.map(k => k[kind].turns)), fmtInt],
+    [`  of which thought (> ${THOUGHT_FLOOR} tokens)`, kinds.map(ks => ks.map(k => k[kind].thinkingTurns)), fmtInt],
+  ])
+  for (const phase of PHASES) {
+    const opener = (r: RunResult) => r.turns.find(t => t.phase === phase)?.think ?? 0
+    rows.push([`phase ${phase} first response: thinking`, byArm.map(rs => rs.map(opener)), fmtK])
+  }
+  const planning = byArm.map(rs => rs.map(planningThinking))
+  for (const phase of PHASES) {
+    rows.push(
+      [`phase ${phase}: thinking up to its first edit (incl.)`, planning.map(ps => ps.map(p => p[phase].untilFirstEdit)), fmtK],
+      [`phase ${phase}: thinking after it`, planning.map(ps => ps.map(p => p[phase].after)), fmtK],
+      [`phase ${phase}: files in the first edit`, planning.map(ps => ps.map(p => p[phase].firstEditFiles)), fmtInt],
+    )
+  }
   return armTable(arms, rows, runs.length > arms.length)
 }
 
@@ -2262,6 +2378,14 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
           '',
         ]
       : []),
+    '## Thinking by response kind',
+    '',
+    thinkingKindTable(runs, arms),
+    '',
+    'Each main-thread response goes to the strongest of its calls (`responseKindOf`): the patch tool, another edit ' +
+      'tool, a Bash command that writes a project file (`BASH_EDIT_RE`, how Claude Code edits), a test or build run, a ' +
+      'read (Read/Grep/Glob or a Bash `cat`), git, any other call, or no call. Thinking is the per-session sum.',
+    '',
   )
   for (const rep of [...new Set(runs.map(r => r.rep))]) {
     const repRuns = arms.map(a => runs.find(r => r.arm === a && r.rep === rep))

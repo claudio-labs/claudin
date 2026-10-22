@@ -148,25 +148,25 @@
     {
       "name": "catReadsOf: an output redirect is followed",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "  if (!walked || walked.hasOutputRedirection) return [];",
-      "replace": "  if (!walked) return [];"
+      "find": "  if (!walked || walked.hasOutputRedirection) return nothing();",
+      "replace": "  if (!walked) return nothing();"
     },
     {
       "name": "catReadsOf: bare shell syntax (subshell, group) is followed",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "    if (SHELL_SYNTAX_RE.test(segment.name)) return [];\n",
+      "find": "    if (SHELL_SYNTAX_RE.test(segment.name)) return nothing();\n",
       "replace": "\n"
     },
     {
       "name": "catReadsOf: an if/case body is followed",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "    if (UNFOLLOWED_KEYWORDS.has(head.text)) return [];\n",
+      "find": "    if (UNFOLLOWED_KEYWORDS.has(head.text)) return nothing();\n",
       "replace": "\n"
     },
     {
       "name": "catReadsOf: a command substitution is followed",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "  if (SUBSTITUTION_RE.test(command)) return [];\n",
+      "find": "  if (SUBSTITUTION_RE.test(command)) return nothing();\n",
       "replace": "\n"
     },
     {
@@ -346,20 +346,20 @@
     {
       "name": "catReadsOf: a cd it cannot name is skipped",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
-      "replace": "      if (target === null) continue;\n      if (open.length > 0 || !inThisShell(index)) return [];"
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return nothing();",
+      "replace": "      if (target === null) continue;\n      if (open.length > 0 || !inThisShell(index)) return nothing();"
     },
     {
       "name": "catReadsOf: a cd in a loop body is followed",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
-      "replace": "      if (target === null || !inThisShell(index)) return [];"
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return nothing();",
+      "replace": "      if (target === null || !inThisShell(index)) return nothing();"
     },
     {
       "name": "catReadsOf: a cd in a pipeline or an or-list is followed",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
-      "replace": "      if (target === null || open.length > 0) return [];"
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return nothing();",
+      "replace": "      if (target === null || open.length > 0) return nothing();"
     },
     {
       "name": "catReadsOf: the cd's own joiner (| or ||) is not checked",
@@ -382,7 +382,7 @@
     {
       "name": "catReadsOf: pushd and popd are not refused",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "    if (DIRECTORY_STACK.has(head.text)) return [];\n",
+      "find": "    if (DIRECTORY_STACK.has(head.text)) return nothing();\n",
       "replace": "\n"
     },
     {
@@ -448,14 +448,14 @@
     {
       "name": "credit: mtime gate — a file written after the command started credits",
       "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "    if (file.mtimeMs >= startedAt) return refused('changed since')\n",
-      "replace": "\n"
+      "find": "    // the read-before-edit gate.\n    if (file.mtimeMs >= startedAt) return refused('changed since')\n",
+      "replace": "    // the read-before-edit gate.\n"
     },
     {
       "name": "credit: a clip-pin stand-down entry is overwritten",
       "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "  if (existing?.standDownOutline) return SILENT\n",
-      "replace": "\n"
+      "find": "  startedAt: number,\n): Promise<Verdict> {\n  const existing = readFileState.get(path)\n  if (existing?.standDownOutline) return SILENT\n\n",
+      "replace": "  startedAt: number,\n): Promise<Verdict> {\n  const existing = readFileState.get(path)\n\n"
     },
     {
       "name": "credit: a one-line file credits",
@@ -502,8 +502,8 @@
     {
       "name": "credit: the note names again a file the result already lists as not shown",
       "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "    return alreadyNamed.has(name) ? [] : [`${name} (${verdict.reason})`]",
-      "replace": "    return [`${name} (${verdict.reason})`]"
+      "find": "    if (alreadyNamed.has(name)) return []\n",
+      "replace": ""
     },
     {
       "name": "credit: a cat -n rendering is not recognised",
@@ -730,7 +730,7 @@
     {
       "name": "advice: adviceNoteAfterCall keeps the note on a fully credited cat",
       "source": "src/agent/tools/toolExecution.ts",
-      "find": "  return isReadAdviceMoot(command, getCwd(), paths) ? null : note",
+      "find": "  return isReadAdviceMoot(command, getCwd(), paths, ranges) ? null : note",
       "replace": "  return note"
     },
     {
@@ -766,7 +766,7 @@
     {
       "name": "contract: Patch drops the cat clause under the credit",
       "source": "src/tools/ApplyPatchTool/prompt.ts",
-      "find": "  ? ' — a Bash `cat` that printed the whole file counts too'\n",
+      "find": "  ? ' — a Bash `cat` that printed the whole file, or a `sed -n A,Bp` slice of it, counts too'\n",
       "replace": "  ? ''\n"
     },
     {
@@ -778,14 +778,14 @@
     {
       "name": "contract: Edit keeps the Read-only line under the credit",
       "source": "src/tools/FileEditTool/prompt.ts",
-      "find": "  const mustRead = READ_CREDIT\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, or a Bash \\`cat\\` that printed it whole.`\n",
-      "replace": "  const mustRead = false\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, or a Bash \\`cat\\` that printed it whole.`\n"
+      "find": "  const mustRead = READ_CREDIT\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, a Bash \\`cat\\` that printed it whole, or a \\`sed -n\\` slice of it.`\n",
+      "replace": "  const mustRead = false\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, a Bash \\`cat\\` that printed it whole, or a \\`sed -n\\` slice of it.`\n"
     },
     {
       "name": "contract: Edit says the cat clause with the credit off",
       "source": "src/tools/FileEditTool/prompt.ts",
-      "find": "  const mustRead = READ_CREDIT\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, or a Bash \\`cat\\` that printed it whole.`\n",
-      "replace": "  const mustRead = true\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, or a Bash \\`cat\\` that printed it whole.`\n"
+      "find": "  const mustRead = READ_CREDIT\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, a Bash \\`cat\\` that printed it whole, or a \\`sed -n\\` slice of it.`\n",
+      "replace": "  const mustRead = true\n    ? `You must read the file first — with \\`${FILE_READ_TOOL_NAME}\\`, a Bash \\`cat\\` that printed it whole, or a \\`sed -n\\` slice of it.`\n"
     },
     {
       "name": "contract: Write drops the cat clause under the credit",
@@ -802,7 +802,7 @@
     {
       "name": "contract: the addendum drops the cat clause under the credit",
       "source": "src/agent/prompts/familyAddendums/anthropic.ts",
-      "find": "  ? ' (files a `cat` already printed whole count as read)'\n",
+      "find": "  ? ' (files a `cat` already printed whole, or a `sed -n` slice printed part of, count as read)'\n",
       "replace": "  ? ''\n"
     },
     {

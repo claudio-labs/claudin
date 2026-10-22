@@ -61,6 +61,7 @@ const ASK_READ_FILE_STATE_CACHE_SIZE = 10
 const NUMBERED_LINE_RE = /^\s*(\d+)[\u2192\t](.*)$/
 
 const SYSTEM_REMINDER_RE = /<system-reminder>[\s\S]*?<\/system-reminder>/g
+const TRAILING_NEWLINE_RE = /\n$/
 
 type NumberedRun = { offset: number; content: string }
 
@@ -668,6 +669,44 @@ export function extractReadFilesFromMessages(
   }
 
   /**
+   * A `sed -n` slice the credit registered as a ranged read: those lines from
+   * disk, as a Read of that range stores them. Only while the file is
+   * unchanged since the result, and never over an entry that already stands
+   * for the whole file at that mtime.
+   */
+  function cacheRangeCreditFromDisk({ path: filePath, offset, limit }: CreditedRange, answeredAt: number): void {
+    try {
+      const timestamp = getFileModificationTime(filePath)
+      if (timestamp > answeredAt) return
+      const existing = cache.get(filePath)
+      // Already read whole at this mtime: a slice adds nothing and would narrow it.
+      const whole =
+        existing !== undefined &&
+        !existing.isPartialView &&
+        existing.timestamp === timestamp &&
+        (existing.offset === undefined || existing.offset === 1) &&
+        existing.limit === undefined
+      if (whole) return
+      const { content: diskContent } = readFileSyncWithMetadata(filePath)
+      const lines = diskContent.replace(TRAILING_NEWLINE_RE, '').split('\n').slice(offset - 1, offset - 1 + limit)
+      if (lines.length === 0) return
+      cache.set(filePath, {
+        content: lines.join('\n'),
+        timestamp,
+        offset,
+        limit: lines.length,
+        dedupExempt: true,
+      })
+      readAuthored.delete(filePath)
+    } catch (e: unknown) {
+      if (!isFsInaccessible(e)) {
+        throw e
+      }
+      // File deleted or inaccessible since the read — skip
+    }
+  }
+
+  /**
    * A read file a call changed and brought up to date
    * (`attachments/ownWrites.ts`): the whole-file entry the Read left takes the
    * disk's bytes, so the resumed prompt does not report the model's own edit
@@ -862,6 +901,9 @@ export function extractReadFilesFromMessages(
             for (const filePath of creditedFilesOf(message.toolUseResult)) {
               cacheCreditFromDisk(filePath, answeredAt)
             }
+            for (const range of creditedRangesOf(message.toolUseResult)) {
+              cacheRangeCreditFromDisk(range, answeredAt)
+            }
           }
         }
       }
@@ -887,6 +929,25 @@ function creditedFilesOf(toolUseResult: unknown): string[] {
   const paths = (toolUseResult as Record<string, unknown>).creditedFiles
   if (!Array.isArray(paths)) return []
   return paths.filter((path): path is string => typeof path === 'string')
+}
+
+type CreditedRange = { path: string; offset: number; limit: number }
+
+/** The `sed -n` slices a Bash result's Out names as credited ranged reads. */
+function creditedRangesOf(toolUseResult: unknown): CreditedRange[] {
+  if (typeof toolUseResult !== 'object' || toolUseResult === null) return []
+  const ranges = (toolUseResult as Record<string, unknown>).creditedRanges
+  if (!Array.isArray(ranges)) return []
+  return ranges.filter(
+    (r): r is CreditedRange =>
+      typeof r === 'object' &&
+      r !== null &&
+      typeof (r as CreditedRange).path === 'string' &&
+      Number.isInteger((r as CreditedRange).offset) &&
+      Number.isInteger((r as CreditedRange).limit) &&
+      (r as CreditedRange).offset >= 1 &&
+      (r as CreditedRange).limit >= 1,
+  )
 }
 
 /**

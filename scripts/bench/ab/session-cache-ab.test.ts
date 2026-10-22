@@ -13,10 +13,13 @@ import {
   isGlobReadCommand,
   parseArgs,
   phaseArgs,
+  planningThinking,
   readsOfShownFiles,
   readTargetsOf,
   requestCensus,
+  responseKindOf,
   shownWholeFiles,
+  thinkingByKind,
   turnsBeforeFirstEdit,
 } from './session-cache-ab.ts'
 import type { KindedRequest } from './wire-proxy.ts'
@@ -266,6 +269,98 @@ describe('analyzeSession — the read credit list rides onto the Bash call', () 
     const stream = [assistant('m3', [['u3', 'cat c.ts']]), result('u3', { creditedFiles: ['/w/c.ts'] }, 'tool_use_result')]
     const { calls } = analyzeSession([stream], new Set(), transcript)
     expect(calls.map(c => c.credited)).toEqual([['/w/a.ts'], undefined, ['/w/c.ts']])
+  })
+})
+
+describe('analyzeSession — a patch that left hunks out', () => {
+  const patch = (id: string, useId: string) => ({
+    type: 'assistant',
+    message: {
+      id,
+      model: 'claude-opus-5-5',
+      usage: { input_tokens: 1, output_tokens: 1 },
+      content: [{ type: 'tool_use', id: useId, name: 'Patch', input: { patchText: '*** Begin Patch' } }],
+    },
+  })
+  const result = (useId: string, content: string) => ({
+    type: 'user',
+    message: { content: [{ type: 'tool_result', tool_use_id: useId, content }] },
+  })
+
+  test('is partial when its result lists hunks NOT applied, and only then', () => {
+    const transcript = [
+      patch('m1', 'u1'),
+      result('u1', 'Success. Applied the patch to the following files:\nM src/a.ts'),
+      patch('m2', 'u2'),
+      result('u2', 'Applied 2 of 3 hunks.\nNOT applied — send a patch with only these hunks:\n- src/b.ts: …'),
+    ]
+    const { calls } = analyzeSession([], new Set(), transcript)
+    expect(calls.map(c => c.partial)).toEqual([undefined, true])
+  })
+})
+
+describe('responseKindOf — what one API response did', () => {
+  test('the patch tool wins over the Bash call beside it, and a heredoc that writes a file is a Bash edit', () => {
+    lastTurn = 0
+    expect(responseKindOf([call('Patch', { patchText: 'x' }, { turn: 1 }), bash('bun test', 'ok', { turn: 1 })])).toBe('patch')
+    expect(responseKindOf([bash("python3 - <<'EOF'\np='src/a.ts'\nopen(p,'w').write('x')\nEOF")])).toBe('bash edit')
+    expect(responseKindOf([call('Edit', { file_path: 'src/a.ts' })])).toBe('edit tool')
+  })
+
+  test('a test run, a read, a git command, anything else, and no call at all', () => {
+    expect(responseKindOf([bash('cd /w && bun test 2>&1 | tail -30')])).toBe('test or build')
+    expect(responseKindOf([call('RunTests', { command: 'bun test' })])).toBe('test or build')
+    expect(responseKindOf([call('Read', { file_path: 'src/a.ts' })])).toBe('read')
+    expect(responseKindOf([bash('git ls-files && cat README.md package.json')])).toBe('read')
+    expect(responseKindOf([call('Git', { commands: ['git status'] })])).toBe('git')
+    expect(responseKindOf([bash('git add -A && git commit -m x')])).toBe('git')
+    expect(responseKindOf([bash('ls -la')])).toBe('other tool')
+    expect(responseKindOf([])).toBe('final answer')
+  })
+})
+
+describe('thinkingByKind — thinking summed per kind of response', () => {
+  const turn = (n: number, think: number | null) => ({ n, think })
+
+  test('sums each response into its kind, counting the ones that thought past the floor', () => {
+    lastTurn = 0
+    const calls = [call('Read', { file_path: 'a' }), call('Patch', { patchText: 'x' }), call('Patch', { patchText: 'y' })]
+    const kinds = thinkingByKind({ turns: [turn(1, 400), turn(2, 30), turn(3, 600), turn(4, null)] as never, calls })
+    expect(kinds.read).toEqual({ think: 400, turns: 1, thinkingTurns: 1 })
+    expect(kinds.patch).toEqual({ think: 630, turns: 2, thinkingTurns: 1 })
+    expect(kinds['final answer']).toEqual({ think: 0, turns: 1, thinkingTurns: 0 })
+    expect(kinds['bash edit']).toEqual({ think: 0, turns: 0, thinkingTurns: 0 })
+  })
+})
+
+describe('planningThinking — each phase split at its first edit', () => {
+  const turn = (n: number, phase: 1 | 2, think: number | null) => ({ n, phase, think })
+  const twoFilePatch = '*** Begin Patch\n*** Update File: src/a.ts\n@@\n-a\n+b\n*** Add File: src/c.ts\n+c\n*** End Patch'
+
+  test('the thinking up to and including the first edit, the rest after it, and the files that edit named', () => {
+    lastTurn = 0
+    const calls = [
+      call('Read', { file_paths: ['src/a.ts', 'src/b.ts'] }),
+      call('Patch', { patchText: twoFilePatch }),
+      bash('bun test'),
+      bash("python3 - <<'EOF'\nopen('src/a.ts','w').write('x')\nEOF", 'ok', { phase: 2 }),
+      call('Edit', { file_path: 'src/b.ts' }, { phase: 2 }),
+    ]
+    const turns = [turn(1, 1, 300), turn(2, 1, 500), turn(3, 1, 100), turn(4, 2, 50), turn(5, 2, null)]
+    expect(planningThinking({ turns: turns as never, calls })).toEqual({
+      1: { untilFirstEdit: 800, after: 100, firstEditFiles: 2 },
+      2: { untilFirstEdit: 50, after: 0, firstEditFiles: 1 },
+    })
+  })
+
+  test('a phase that never edits is all planning', () => {
+    lastTurn = 0
+    const calls = [call('Read', { file_path: 'src/a.ts' }), bash('git status')]
+    const turns = [turn(1, 1, 200), turn(2, 1, 40), turn(3, 2, 70)]
+    expect(planningThinking({ turns: turns as never, calls })).toEqual({
+      1: { untilFirstEdit: 240, after: 0, firstEditFiles: 0 },
+      2: { untilFirstEdit: 70, after: 0, firstEditFiles: 0 },
+    })
   })
 })
 
