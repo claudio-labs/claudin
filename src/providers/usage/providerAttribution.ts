@@ -26,6 +26,8 @@ export type AttributionProfile = {
   baseUrl: string
   /** The profile's configured models plus the ones discovered on its endpoint. */
   models: readonly string[]
+  /** The models the user configured the profile with (not the discovered ones). */
+  configuredModels?: readonly string[]
 }
 
 type ProviderUsageGroupKind = 'profile' | 'removed' | 'env' | 'others'
@@ -70,15 +72,19 @@ function pick(
 
 /**
  * The id of the profile a model's unrecorded spend is credited to, or
- * undefined when no profile can be named for it. In order: a vendor-prefixed
- * id (`openai/gpt-5-mini`) goes to the profile listing it, else to an
- * OpenRouter profile; a model family goes to its own backend; any other id
- * goes to the one profile listing it.
+ * undefined when no profile can be named for it. In order: a model a profile
+ * was configured with goes to that profile; a vendor-prefixed id
+ * (`openai/gpt-5-mini`) goes to the profile listing it, else to an OpenRouter
+ * profile; a model family goes to its own backend; any other id goes to the
+ * one profile listing it.
  */
 export function attributeModel(
   model: string,
   profiles: readonly AttributionProfile[],
 ): string | undefined {
+  const configured = profiles.find(p => p.configuredModels?.includes(model))
+  if (configured) return configured.id
+
   const listing = profiles.filter(p => p.models.includes(model))
 
   if (VENDOR_PREFIXED_RE.test(model)) {

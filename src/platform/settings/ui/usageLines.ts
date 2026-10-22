@@ -17,9 +17,10 @@ import type {
 } from 'src/platform/usageContribution/usageContribution.js'
 import type { CostStateModelUsage } from 'src/shared/types/logs.js'
 import {
+  formatCountdownDuration,
   formatDuration,
   formatNumber,
-  formatResetText,
+  formatResetTime,
   formatTokens,
 } from 'src/shared/text/format.js'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
@@ -122,9 +123,10 @@ function hasEstimate(groups: readonly ProviderUsageGroup[]): boolean {
   return groups.some(g => Object.keys(g.estimated).length > 0)
 }
 
-/** `Anthropic ●`, `Z.ai (removed)`. */
+/** `Anthropic ●`, `Z.ai (removed)`, `Anthropic (no profile)`. */
 export function chipLabel(group: ProviderUsageGroup): string {
   if (group.kind === 'removed') return `${group.name} (removed)`
+  if (group.kind === 'env') return `${group.name} (no profile)`
   return group.active ? `${group.name} ●` : group.name
 }
 
@@ -191,7 +193,9 @@ function providerRows(groups: readonly ProviderUsageGroup[]): UsageRow[] {
   return groups.filter(hasUsage).map(group => {
     const total = groupTotal(group)
     return {
-      marker: Object.keys(group.exact).length === 0 ? '~ ' : '  ',
+      // Any estimate marks the row: an exact cent beside thousands estimated
+      // must not read as exact.
+      marker: Object.keys(group.estimated).length > 0 ? '~ ' : '  ',
       name: chipLabel(group),
       cost: formatCost(total.costUSD),
       tokens: tokenSummary(total),
@@ -215,11 +219,27 @@ export function buildAllProvidersLines(input: {
   return lines
 }
 
+/**
+ * `Resets in 3h 45m (7:20pm)` — how long first, the way the limit is
+ * planned around; just the time once it has passed.
+ */
+function resetLine(resetsAt: string, nowMs: number): string | undefined {
+  const resetsAtMs = Date.parse(resetsAt)
+  if (!Number.isFinite(resetsAtMs)) return undefined
+  const at = formatResetTime(resetsAtMs / 1000)
+  if (!at) return undefined
+  const remainingMs = resetsAtMs - nowMs
+  return remainingMs > 0
+    ? `Resets in ${formatCountdownDuration(remainingMs)} (${at})`
+    : `Resets ${at}`
+}
+
 function limitsLines(
   limits: LimitsView,
   providerName: string,
   bar: (ratio: number) => string,
   error: (s: string) => string,
+  nowMs: number,
 ): string[] {
   const lines = [bold('Limits')]
   switch (limits.status) {
@@ -250,7 +270,8 @@ function limitsLines(
     if (i > 0) lines.push('')
     lines.push(bold(row.label))
     lines.push(`${bar(row.usedPercent / 100)} ${Math.floor(row.usedPercent)}% used`)
-    if (row.resetsAt) lines.push(dim(`Resets ${formatResetText(row.resetsAt, true, true)}`))
+    const reset = row.resetsAt ? resetLine(row.resetsAt, nowMs) : undefined
+    if (reset) lines.push(dim(reset))
     if (row.extraSubtext) lines.push(dim(row.extraSubtext))
   })
   return lines
@@ -263,14 +284,19 @@ export function buildProviderLines(input: {
   canonicalName: (model: string) => string
   bar: (ratio: number) => string
   error: (s: string) => string
+  nowMs?: number
 }): string[] {
   const { group } = input
   let header = bold(group.name)
   if (group.kind === 'removed') header += dim(' · removed from /provider')
+  if (group.kind === 'env') header += dim(' · spent with no provider profile')
   if (group.active) header += dim(' · active')
   const lines = [header]
   if (group.kind === 'profile') {
-    lines.push('', ...limitsLines(input.limits, group.name, input.bar, input.error))
+    lines.push(
+      '',
+      ...limitsLines(input.limits, group.name, input.bar, input.error, input.nowMs ?? Date.now()),
+    )
   }
   lines.push('', bold('Usage in this project (all sessions)'))
   if (!hasUsage(group)) {

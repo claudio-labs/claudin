@@ -88,6 +88,7 @@ function registeredProviders(): RegisteredProvider[] {
       profile.model.split(MODEL_LIST_SEPARATOR_RE).filter(Boolean),
     )
     if (resolved.model) models.add(resolved.model)
+    const configuredModels = [...models]
     for (const option of discovered[profile.id] ?? []) {
       if (option.value) models.add(option.value)
     }
@@ -99,6 +100,7 @@ function registeredProviders(): RegisteredProvider[] {
         kind: getAPIProviderForProfile(resolved),
         baseUrl: profile.baseUrl,
         models: [...models],
+        configuredModels,
       },
     }
   })
@@ -291,7 +293,7 @@ function UsageByProvider(): React.ReactNode {
     () => {
       if (provider && fetchLimits) void loadLimits(selectedKey, fetchLimits, provider.resolved)
     },
-    { context: 'Settings', isActive: selectedState?.status === 'error' },
+    { context: 'Settings', isActive: Boolean(provider && fetchLimits) },
   )
 
   const makeBar = (ratio: number): string => {
@@ -310,6 +312,7 @@ function UsageByProvider(): React.ReactNode {
         canonicalName: getCanonicalName,
         bar: makeBar,
         error: s => colorize(s, theme.error, 'foreground'),
+        nowMs: Date.now(),
       })
     : [
         ...buildAllProvidersLines({ totals, groups, unknownCost: hasUnknownModelCost() }),
@@ -334,7 +337,7 @@ function UsageByProvider(): React.ReactNode {
       <RawAnsi lines={pane.visible} width={width} />
       <Text dimColor>{pane.below > 0 ? `↓ ${pane.below} more below` : ' '}</Text>
       <Text dimColor>
-        {`↑↓ scroll · [ ] provider${selected ? '' : ' · d/w day/week'} · Esc to close`}
+        {`↑↓ scroll · [ ] provider${fetchLimits ? ' · r refresh' : ''}${selected ? '' : ' · d/w day/week'} · Esc to close`}
       </Text>
     </Box>
   )
