@@ -4,7 +4,10 @@
     "src/commands/compact/compact.test.ts",
     "src/agent/awaySummary.test.ts",
     "src/agent/context/context.test.ts",
-    "src/agent/compact/autoCompact.test.ts"
+    "src/agent/compact/autoCompact.test.ts",
+    "src/agent/prompts/sessionElement.test.ts",
+    "src/agent/attachments/outputStyle.pipeline.test.ts",
+    "src/agent/context/contextUsage.test.ts"
   ],
   "source": "src/agent/scratchpad.ts",
   "probes": [
@@ -20,8 +23,59 @@
     },
     {
       "name": "the scratchpad dir is created world-readable",
-      "find": "{ mode: 0o700 }",
-      "replace": "{ mode: 0o755 }"
+      "find": "await fs.mkdir(scratchpadDir, { mode: 0o700 })",
+      "replace": "await fs.mkdir(scratchpadDir, { mode: 0o755 })"
+    },
+    {
+      "name": "a session switch creates no scratchpad dir",
+      "find": "getFsImplementation().mkdirSync(getScratchpadDir(), { mode: 0o700 })",
+      "replace": "void 0"
+    },
+    {
+      "name": "a session switch creates the scratchpad dir world-readable",
+      "find": "getFsImplementation().mkdirSync(getScratchpadDir(), { mode: 0o700 })",
+      "replace": "getFsImplementation().mkdirSync(getScratchpadDir(), { mode: 0o755 })"
+    },
+    {
+      "name": "a session switch ignores the scratchpad killswitch",
+      "find": "  if (!isScratchpadEnabled()) return\n  try {",
+      "replace": "  try {"
+    },
+    {
+      "name": "the scratchpad section is cached across session switches",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "`scratchpad${leanKey}:${getSessionId()}`",
+      "replace": "`scratchpad${leanKey}`"
+    },
+    {
+      "name": "the output-style reminder rides every mid-turn pass",
+      "source": "src/agent/attachments/pipeline.ts",
+      "find": "...(input !== null\n          ? [\n              maybe('output_style'",
+      "replace": "...(true\n          ? [\n              maybe('output_style'"
+    },
+    {
+      "name": "the status line leaves out the output tokens",
+      "source": "src/agent/context/context.ts",
+      "find": "    currentUsage.cache_read_input_tokens +\n    currentUsage.output_tokens\n",
+      "replace": "    currentUsage.cache_read_input_tokens\n"
+    },
+    {
+      "name": "the footer warning counts the last response only",
+      "source": "src/terminal/prompt-input/Notifications.tsx",
+      "find": "t3 = tokenCountWithEstimation(messagesForTokenCount);",
+      "replace": "t3 = tokenCountFromLastAPIResponse(messagesForTokenCount);"
+    },
+    {
+      "name": "/context ignores the autocompact override",
+      "source": "src/agent/context/analyzeContext.ts",
+      "find": "? getAutoCompactThreshold(model)",
+      "replace": "? getEffectiveContextWindowSize(model) - 13_000"
+    },
+    {
+      "name": "/context totals input only",
+      "source": "src/agent/context/analyzeContext.ts",
+      "find": "getTokenCountFromUsage(apiUsage)",
+      "replace": "apiUsage.input_tokens"
     },
     {
       "name": "context percentages are not clamped",
@@ -38,8 +92,8 @@
     {
       "name": "context percentages drop cached input",
       "source": "src/agent/context/context.ts",
-      "find": "    currentUsage.cache_creation_input_tokens +\n    currentUsage.cache_read_input_tokens\n",
-      "replace": "    currentUsage.cache_creation_input_tokens\n"
+      "find": "    currentUsage.cache_read_input_tokens +\n    currentUsage.output_tokens",
+      "replace": "    currentUsage.output_tokens"
     },
     {
       "name": "the away-summary killswitch is ignored",
