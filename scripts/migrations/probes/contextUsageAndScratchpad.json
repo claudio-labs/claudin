@@ -38,8 +38,14 @@
     },
     {
       "name": "a session switch ignores the scratchpad killswitch",
-      "find": "  if (!isScratchpadEnabled()) return\n  try {",
-      "replace": "  try {"
+      "find": "    if (!isScratchpadEnabled()) return\n    try {",
+      "replace": "    try {"
+    },
+    {
+      "name": "init() never subscribes the session-switch directory creation",
+      "source": "src/platform/entrypoints/init.ts",
+      "find": "      createScratchpadDirOnSessionSwitch()\n",
+      "replace": ""
     },
     {
       "name": "the scratchpad section is cached across session switches",

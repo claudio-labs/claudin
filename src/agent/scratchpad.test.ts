@@ -1,12 +1,13 @@
-import { afterAll, afterEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import { randomUUID } from 'crypto'
-import { existsSync, rmSync, statSync } from 'fs'
+import { existsSync, readFileSync, rmSync, statSync } from 'fs'
 import { join } from 'path'
 
 import { getSessionId, switchSession } from 'src/platform/bootstrap/state.js'
 import { getProjectTempDir } from 'src/platform/tmpdir.js'
 import type { SessionId } from 'src/shared/types/ids.js'
 import {
+  createScratchpadDirOnSessionSwitch,
   ensureScratchpadDir,
   getScratchpadDir,
   isScratchpadEnabled,
@@ -67,6 +68,12 @@ describe('ensureScratchpadDir', () => {
 // --resume move getScratchpadDir() to a new id, which the system prompt
 // then names: a shell write into it failed on the missing directory.
 describe('a session switch', () => {
+  let unsubscribe: () => void
+  beforeAll(() => {
+    unsubscribe = createScratchpadDirOnSessionSwitch()
+  })
+  afterAll(() => unsubscribe())
+
   function switchAndBack(check: (next: string) => void): void {
     const before = getSessionId()
     const next = randomUUID() as SessionId
@@ -93,5 +100,16 @@ describe('a session switch', () => {
     switchAndBack(next => {
       expect(existsSync(join(getProjectTempDir(), next))).toBe(false)
     })
+  })
+
+  // init() is the whole boot sequence; the call is pinned on its text.
+  test('init() subscribes it after creating the first directory', () => {
+    const init = readFileSync(
+      new URL('../platform/entrypoints/init.ts', import.meta.url),
+      'utf8',
+    )
+    expect(init).toContain(
+      'await ensureScratchpadDir()\n      createScratchpadDirOnSessionSwitch()',
+    )
   })
 })
