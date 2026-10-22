@@ -1,5 +1,7 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
+  AUTOCOMPACT_BUFFER_TOKENS,
+  autoCompactIfNeeded,
   getEffectiveContextWindowSize,
   getAutoCompactThreshold,
   calculateTokenWarningState,
@@ -11,6 +13,38 @@ import {
 } from 'src/agent/compact/autoCompact.ts'
 import { getContextWindowForModel } from 'src/agent/context/context.ts'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.ts'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.ts'
+import type { ToolUseContext } from 'src/tools/Tool.ts'
+
+/** Sets env vars for one test and puts the prior values back after it. */
+function useEnv(...names: string[]) {
+  const saved = Object.fromEntries(names.map(name => [name, process.env[name]]))
+  afterEach(() => {
+    for (const name of names) {
+      if (saved[name] === undefined) delete process.env[name]
+      else process.env[name] = saved[name]
+    }
+  })
+}
+
+/**
+ * Turns autocompact on for each test. isAutoCompactEnabled reads
+ * DISABLE_COMPACT, DISABLE_AUTO_COMPACT and the global config; a trigger test
+ * that returned early when one of them had it off passed asserting nothing.
+ */
+function useAutoCompactOn() {
+  useEnv('DISABLE_COMPACT', 'DISABLE_AUTO_COMPACT')
+  let prior: boolean
+  beforeEach(() => {
+    delete process.env.DISABLE_COMPACT
+    delete process.env.DISABLE_AUTO_COMPACT
+    prior = getGlobalConfig().autoCompactEnabled
+    saveGlobalConfig(current => ({ ...current, autoCompactEnabled: true }))
+  })
+  afterEach(() => {
+    saveGlobalConfig(current => ({ ...current, autoCompactEnabled: prior }))
+  })
+}
 
 // Compaction starts on the model's context window and on nothing else. The
 // heap-pressure backstop used to fire at 0.7 of the V8 limit by default, which
@@ -19,6 +53,7 @@ import { createAssistantMessage, createUserMessage } from 'src/agent/messages/me
 // applyStableStubs) is what answers memory now, and it drops no messages, so
 // the timeline survives where compaction would have cut it.
 describe('heap pressure is opt-in', () => {
+  useAutoCompactOn()
   const ENV = 'CLAUDIN_HEAP_PRESSURE_RATIO'
   const saved = process.env[ENV]
   const restore = () => {
@@ -57,6 +92,19 @@ describe('heap pressure is opt-in', () => {
     }
   })
 
+  test('once opted in, it starts a compaction under the window', async () => {
+    // Any live heap is above a millionth of its limit.
+    process.env[ENV] = '0.000001'
+    try {
+      const messages = Array.from({ length: LONG_ENOUGH }, (_, i) =>
+        createUserMessage({ content: `message ${i}` }),
+      )
+      expect(await shouldAutoCompact(messages, 'claude-sonnet-4')).toBe(true)
+    } finally {
+      restore()
+    }
+  })
+
   test('an out-of-range ratio leaves it off rather than falling back to 0.7', () => {
     for (const bad of ['0', '1', '1.5', '-0.2', 'nonsense']) {
       process.env[ENV] = bad
@@ -79,6 +127,7 @@ describe('heap pressure is opt-in', () => {
 })
 
 describe('shouldAutoCompact — the window trigger', () => {
+  useAutoCompactOn()
   const model = 'claude-sonnet-4'
 
   // tokenCountWithEstimation anchors on the last response's usage, which is
@@ -99,7 +148,6 @@ describe('shouldAutoCompact — the window trigger', () => {
   }
 
   test('fires at the threshold and not below it', async () => {
-    if (!isAutoCompactEnabled()) return
     const threshold = getAutoCompactThreshold(model)
     expect(await shouldAutoCompact(historyAt(threshold + 1_000), model)).toBe(true)
     expect(await shouldAutoCompact(historyAt(threshold - 20_000), model)).toBe(false)
@@ -115,6 +163,7 @@ describe('shouldAutoCompact — the window trigger', () => {
 // A starved relief lane (microCompact.ts) means no clip can get the session
 // under its target: compaction runs then, not at the threshold far above it.
 describe('shouldAutoCompact — starved relief escalates', () => {
+  useAutoCompactOn()
   const model = 'claude-sonnet-4'
   const ENV = 'CLAUDIN_RELIEF_STARVED_COMPACT'
   const saved = process.env[ENV]
@@ -125,7 +174,6 @@ describe('shouldAutoCompact — starved relief escalates', () => {
   const below = [createUserMessage({ content: 'go' })]
 
   test('compacts below the threshold when relief is starved, and only then', async () => {
-    if (!isAutoCompactEnabled()) return
     delete process.env[ENV]
     try {
       expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, true)).toBe(true)
@@ -162,6 +210,8 @@ describe('shouldAutoCompact — starved relief escalates', () => {
 })
 
 describe('getEffectiveContextWindowSize', () => {
+  useEnv('CLAUDIN_AUTO_COMPACT_WINDOW')
+
   test('returns positive value for known models with large context windows', () => {
     // claude-sonnet-4 has 200k context
     const effective = getEffectiveContextWindowSize('claude-sonnet-4')
@@ -187,9 +237,30 @@ describe('getEffectiveContextWindowSize', () => {
       delete process.env.CLAUDIN_USE_OPENAI
     }
   })
+
+  test('CLAUDIN_AUTO_COMPACT_WINDOW caps the window the reservation comes out of', () => {
+    const model = 'claude-sonnet-4'
+    delete process.env.CLAUDIN_AUTO_COMPACT_WINDOW
+    const reserved = getContextWindowForModel(model) - getEffectiveContextWindowSize(model)
+    process.env.CLAUDIN_AUTO_COMPACT_WINDOW = '100000'
+    expect(getEffectiveContextWindowSize(model)).toBe(100_000 - reserved)
+  })
+
+  test('an unusable CLAUDIN_AUTO_COMPACT_WINDOW leaves the window alone', () => {
+    const model = 'claude-sonnet-4'
+    delete process.env.CLAUDIN_AUTO_COMPACT_WINDOW
+    const full = getEffectiveContextWindowSize(model)
+    for (const bad of ['0', '-5', 'nonsense']) {
+      process.env.CLAUDIN_AUTO_COMPACT_WINDOW = bad
+      expect(getEffectiveContextWindowSize(model)).toBe(full)
+    }
+  })
 })
 
 describe('getAutoCompactThreshold', () => {
+  useEnv('CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE')
+  const model = 'claude-sonnet-4'
+
   test('returns positive threshold for known models', () => {
     const threshold = getAutoCompactThreshold('claude-sonnet-4')
     expect(threshold).toBeGreaterThan(0)
@@ -203,6 +274,62 @@ describe('getAutoCompactThreshold', () => {
     } finally {
       delete process.env.CLAUDIN_USE_OPENAI
     }
+  })
+
+  test('is the effective window minus the buffer by default', () => {
+    delete process.env.CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE
+    expect(getAutoCompactThreshold(model)).toBe(
+      getEffectiveContextWindowSize(model) - AUTOCOMPACT_BUFFER_TOKENS,
+    )
+  })
+
+  test('CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE moves it to a percentage of the effective window', () => {
+    process.env.CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE = '50'
+    expect(getAutoCompactThreshold(model)).toBe(
+      Math.floor(getEffectiveContextWindowSize(model) * 0.5),
+    )
+  })
+
+  test('the override can only move it earlier, never past the buffer', () => {
+    process.env.CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE = '100'
+    expect(getAutoCompactThreshold(model)).toBe(
+      getEffectiveContextWindowSize(model) - AUTOCOMPACT_BUFFER_TOKENS,
+    )
+  })
+
+  test('an override outside (0, 100] is ignored', () => {
+    delete process.env.CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE
+    const byDefault = getAutoCompactThreshold(model)
+    for (const bad of ['0', '-5', '101', 'nonsense']) {
+      process.env.CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE = bad
+      expect(getAutoCompactThreshold(model)).toBe(byDefault)
+    }
+  })
+})
+
+describe('isAutoCompactEnabled', () => {
+  useEnv('DISABLE_COMPACT', 'DISABLE_AUTO_COMPACT')
+
+  test('DISABLE_COMPACT and DISABLE_AUTO_COMPACT each turn it off', () => {
+    delete process.env.DISABLE_AUTO_COMPACT
+    process.env.DISABLE_COMPACT = '1'
+    expect(isAutoCompactEnabled()).toBe(false)
+    delete process.env.DISABLE_COMPACT
+    process.env.DISABLE_AUTO_COMPACT = '1'
+    expect(isAutoCompactEnabled()).toBe(false)
+  })
+})
+
+// Only the paths that return before compacting: past them it calls the model.
+describe('autoCompactIfNeeded — under the threshold', () => {
+  const model = 'claude-sonnet-4'
+  const context = { options: { mainLoopModel: model } } as unknown as ToolUseContext
+
+  test('does nothing under the threshold', async () => {
+    const below = [createUserMessage({ content: 'go' })]
+    expect(await autoCompactIfNeeded(below, context, {} as never)).toEqual({
+      wasCompacted: false,
+    })
   })
 })
 

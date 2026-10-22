@@ -9,8 +9,7 @@ import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { getCommandName } from 'src/commands/commands.js'
 import { getSystemContext } from 'src/agent/context.js'
 import {
-  AUTOCOMPACT_BUFFER_TOKENS,
-  getEffectiveContextWindowSize,
+  getAutoCompactThreshold,
   isAutoCompactEnabled,
   MANUAL_COMPACT_BUFFER_TOKENS,
 } from 'src/agent/compact/autoCompact.js'
@@ -63,6 +62,7 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
 import { getCurrentUsage } from 'src/agent/context/tokens.js'
+import { getTokenCountFromUsage } from 'src/agent/context/usageTokens.js'
 
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer'
 const MANUAL_COMPACT_BUFFER_NAME = 'Compact buffer'
@@ -997,10 +997,11 @@ export async function analyzeContextUsage(
 
   const messageTokens = messageBreakdown.totalTokens
 
-  // Check if autocompact is enabled and calculate threshold
+  // Check if autocompact is enabled and read the threshold it fires at
+  // (CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE included)
   const isAutoCompact = isAutoCompactEnabled()
   const autoCompactThreshold = isAutoCompact
-    ? getEffectiveContextWindowSize(model) - AUTOCOMPACT_BUFFER_TOKENS
+    ? getAutoCompactThreshold(model)
     : undefined
 
   // Create categories
@@ -1134,12 +1135,8 @@ export async function analyzeContextUsage(
   const apiUsage = getCurrentUsage(originalMessages ?? messages)
 
   // When API usage is available, use it for total to match status line calculation
-  // Status line uses: input_tokens + cache_creation_input_tokens + cache_read_input_tokens
-  const totalFromAPI = apiUsage
-    ? apiUsage.input_tokens +
-      apiUsage.cache_creation_input_tokens +
-      apiUsage.cache_read_input_tokens
-    : null
+  // Status line uses: input_tokens + cache_creation_input_tokens + cache_read_input_tokens + output_tokens
+  const totalFromAPI = apiUsage ? getTokenCountFromUsage(apiUsage) : null
 
   // Use API total if available, otherwise fall back to estimated total
   const finalTotalTokens = totalFromAPI ?? totalIncludingReserved

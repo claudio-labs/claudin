@@ -4,7 +4,6 @@ import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
 import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
 import { memoryScopeForPermission } from 'src/memory/memdir/memoryDirs.js'
 import { hasMemoryPathOverride } from 'src/memory/memdir/paths.js'
-import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import { pathInWorkingPath } from 'src/permissions/filePermissions/workingDirs.js'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
@@ -166,13 +165,6 @@ function isSessionPlanFile(absolutePath: string): boolean {
   return basename.length > 0 && !basename.includes(sep)
 }
 
-// Check if file is within the session memory directory
-function isSessionMemoryPath(absolutePath: string): boolean {
-  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
-  const normalizedPath = normalize(absolutePath)
-  return normalizedPath.startsWith(getSessionMemoryDir())
-}
-
 /**
  * Check if file is within the current project's directory.
  * Path format: ~/.claude/projects/{sanitized-cwd}/...
@@ -323,18 +315,6 @@ export function checkReadableInternalPath(
   // SECURITY: Normalize path to prevent traversal bypasses via .. segments
   // This is defense-in-depth; individual helper functions also normalize
   const normalizedPath = normalize(absolutePath)
-
-  // Session memory directory
-  if (isSessionMemoryPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Session memory files are allowed for reading',
-      },
-    }
-  }
 
   // Project directory (for reading past session memories)
   // Path format: ~/.claude/projects/{sanitized-cwd}/...

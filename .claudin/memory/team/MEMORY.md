@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
+- [Context counts share one sum (10-22)](decisions/context-counts-share-one-sum.md) — footer/status line/`/context` read autocompact's count; status line adds output, unlike CC
 - [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, trust note, `memory audit`, expires:
 - [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket default on; prewarm rejected
 - Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
@@ -49,6 +50,7 @@
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — SDK 0.135 imports it; external crashed the binary
 
 ## Bugs
+- [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code; AGENTS.md edits wait for compaction; stale cache-policy row
 - FIXED 10-15 (#302): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; "mutated at 14" still open
 - FIXED 10-19: [Release smoke ran only --version on the binary](bugs/release-smoke-only-runs-version.md) — now `smoke:binary`, a mock -p round trip
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated

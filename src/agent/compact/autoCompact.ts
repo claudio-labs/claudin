@@ -1,6 +1,4 @@
-import { feature } from 'bun:bundle'
 import { getHeapStatistics } from 'v8'
-import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
@@ -14,8 +12,6 @@ import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { logError } from 'src/shared/log.js'
 import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { getMaxOutputTokensForModel } from 'src/providers/shims/claude.js'
-import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
-import { setLastSummarizedMessageId } from 'src/memory/session/sessionMemoryUtils.js'
 import {
   buildPostCompactMessages,
   type CompactionResult,
@@ -24,7 +20,6 @@ import {
 } from 'src/agent/compact/compact.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
 import { isReliefStarvedCompactEnabled } from 'src/agent/compact/reliefPolicy.js'
-import { trySessionMemoryCompaction } from 'src/agent/compact/sessionMemoryCompact.js'
 
 // Reserve this many tokens for output during compaction
 // Based on p99.99 of compact summary output being 17,387 tokens.
@@ -338,30 +333,6 @@ export async function autoCompactIfNeeded(
     return { wasCompacted: false }
   }
 
-  // EXPERIMENT: Try session memory compaction first
-  const sessionMemoryResult = await trySessionMemoryCompaction(
-    messages,
-    toolUseContext.agentId,
-    getAutoCompactThreshold(model),
-  )
-  if (sessionMemoryResult) {
-    // Reset lastSummarizedMessageId since session memory compaction prunes messages
-    // and the old message UUID will no longer exist after the REPL replaces messages
-    setLastSummarizedMessageId(undefined)
-    const postCompact = buildPostCompactMessages(sessionMemoryResult)
-    runPostCompactCleanup(querySource, postCompact)
-    // Reset cache read baseline so the post-compact drop isn't flagged as a
-    // break. compactConversation does this internally; SM-compact doesn't.
-    if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
-      notifyCompaction(querySource ?? 'compact', toolUseContext.agentId)
-    }
-    markPostCompaction()
-    return {
-      wasCompacted: true,
-      compactionResult: sessionMemoryResult,
-    }
-  }
-
   try {
     const compactionResult = await compactConversation(
       messages,
@@ -372,9 +343,6 @@ export async function autoCompactIfNeeded(
       true, // isAutoCompact
     )
 
-    // Reset lastSummarizedMessageId since legacy compaction replaces all messages
-    // and the old message UUID will no longer exist in the new messages array
-    setLastSummarizedMessageId(undefined)
     const postCompact = buildPostCompactMessages(compactionResult)
     runPostCompactCleanup(querySource, postCompact)
 

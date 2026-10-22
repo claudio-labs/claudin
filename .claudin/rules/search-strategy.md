@@ -14,12 +14,12 @@ point to the rule that owns that subsystem.
 
 ```
 src/
-├── agent/ (552)                 ← the agent loop and everything that renders it
+├── agent/ (609)                 ← the agent loop and everything that renders it
 │   ├── QueryEngine.ts           ← model drive, tool dispatch, streaming, compaction
 │   ├── query.ts + query/ (12)   ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
 │   │                              context blocks (git status, dir structure)
-│   ├── context/ (12)            ← token accounting + context-window math. Three things carry
+│   ├── context/ (16)            ← token accounting + context-window math. Three things carry
 │   │                              this name: agent/context.ts (prompt blocks), agent/context/
 │   │                              (accounting), terminal/contexts/ (React providers)
 │   ├── prompts/ (31)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
@@ -167,7 +167,7 @@ src/
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (54)                ← plugin discovery, install, marketplace, dxt/, hooks/ (4)
 ├── memory/ (96)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
-│                                  extract/, autoDream/, session/, ui/, and instructions/ —
+│                                  extract/, autoDream/, ui/, and instructions/ —
 │                                  memdir/pathScopedMemories.ts is the on-demand loader (a
 │                                  memory with `paths:` rides the rules' nested_memory lane),
 │                                  memdir/memoryTypes.ts holds TEAM_CATEGORIES (decisions/

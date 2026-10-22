@@ -5,7 +5,6 @@ import { join } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getScratchpadDir } from 'src/agent/scratchpad.js'
 import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
-import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import {
   getOriginalCwd,
   getProjectRoot,
@@ -282,7 +281,6 @@ describe('auto-memory carve-outs', () => {
     test('each readable internal path is allowed under its own reason', () => {
       const config = getClaudinConfigHomeDir()
       const cases: [string, string][] = [
-        [join(getSessionMemoryDir(), 'summary.md'), 'Session memory files are allowed for reading'],
         [join(getProjectDir(getCwd()), 'session.jsonl'), 'Project directory files are allowed for reading'],
         [join(getScratchpadDir(), 'notes.txt'), 'Scratchpad files for current session are allowed for reading'],
         [join(getProjectTempDir(), 'other-session', 'x.txt'), 'Project temp directory files are allowed for reading'],

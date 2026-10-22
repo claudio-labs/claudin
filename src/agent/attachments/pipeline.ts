@@ -356,9 +356,15 @@ export async function getAttachments(
         maybe('ide_opened_file', async () =>
           getOpenedFileFromIDE(ideSelection, toolUseContext),
         ),
-        maybe('output_style', async () =>
-          Promise.resolve(getOutputStyleAttachment()),
-        ),
+        // Once per prompt, like task_reconcile: the system prompt already
+        // carries the style, and every mid-turn pass would add another copy.
+        ...(input !== null
+          ? [
+              maybe('output_style', async () =>
+                Promise.resolve(getOutputStyleAttachment()),
+              ),
+            ]
+          : []),
         maybe('env_delta', async () =>
           Promise.resolve(getEnvDeltaAttachment(messages, toolUseContext)),
         ),

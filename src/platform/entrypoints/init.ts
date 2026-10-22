@@ -31,6 +31,7 @@ import {
 import { applySafeConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js'
 import { configureGlobalMTLS } from 'src/providers/transport/mtls.js'
 import {
+  createScratchpadDirOnSessionSwitch,
   ensureScratchpadDir,
   isScratchpadEnabled,
 } from 'src/agent/scratchpad.js'
@@ -168,6 +169,7 @@ export const init = memoize(async (): Promise<void> => {
     if (isScratchpadEnabled()) {
       const scratchpadStart = Date.now()
       await ensureScratchpadDir()
+      createScratchpadDirOnSessionSwitch()
       logForDiagnosticsNoPII('info', 'init_scratchpad_created', {
         duration_ms: Date.now() - scratchpadStart,
       })

@@ -116,7 +116,7 @@ behind `feature('ULTRATHINK')`).
 | `remote_backend` | the remote-session backend on resume, which now prints the URL and exits |
 | `review_bughunter_config` | `/ultrareview` |
 | `sage_compass` | `/advisor` and the advisor tool wiring |
-| `session_memory`, `sm_config`, `sm_compact` | session-memory extraction; compaction stays behind `ENABLE_CLAUDE_CODE_SM_COMPACT` |
+| `session_memory`, `sm_config`, `sm_compact` | session-memory extraction, and with it session-memory compaction (`ENABLE_CLAUDE_CODE_SM_COMPACT`), which had nothing left to read |
 | `sessions_elevated_auth_enforcement` | the trusted-device token |
 | `streaming_tool_execution2` | the streaming tool executor |
 | `terminal_panel` | the meta+j terminal panel, with `TERMINAL_PANEL` |

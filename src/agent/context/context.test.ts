@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ProviderProfile } from 'src/platform/config/config.js'
 
 // Mock only `getActiveProviderProfile` and rely on the real config module.
@@ -44,6 +44,7 @@ afterEach(() => {
 
 import { getMaxOutputTokensForModel } from 'src/providers/shims/claude.js'
 import {
+  calculateContextPercentages,
   getContextWindowForModel,
   getModelMaxOutputTokens,
 } from 'src/agent/context/context.js'
@@ -378,4 +379,34 @@ test('DashScope models clamp oversized max output overrides to the provider limi
   expect(getMaxOutputTokensForModel('qwen3-max')).toBe(32_768)
   expect(getMaxOutputTokensForModel('kimi-k2.5')).toBe(32_768)
   expect(getMaxOutputTokensForModel('glm-5')).toBe(16_384)
+})
+
+describe('calculateContextPercentages', () => {
+  const usage = (input: number, cacheRead: number) => ({
+    input_tokens: input,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: cacheRead,
+    output_tokens: 0,
+  })
+
+  test('is null before the first response', () => {
+    expect(calculateContextPercentages(null, 200_000)).toEqual({
+      used: null,
+      remaining: null,
+    })
+  })
+
+  test('counts fresh and cached input against the window, rounded', () => {
+    expect(calculateContextPercentages(usage(1_000, 49_100), 200_000)).toEqual({
+      used: 25,
+      remaining: 75,
+    })
+  })
+
+  test('clamps a request past the window at 100', () => {
+    expect(calculateContextPercentages(usage(0, 250_000), 200_000)).toEqual({
+      used: 100,
+      remaining: 0,
+    })
+  })
 })

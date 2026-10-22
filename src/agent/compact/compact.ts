@@ -85,7 +85,7 @@ import {
 import { POST_COMPACT_MAX_FILES_TO_RESTORE, createAsyncAgentAttachmentsIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import { MAX_PTL_RETRIES, stripImagesFromMessages, stripReinjectedAttachments, truncateHeadForPTLRetry } from 'src/agent/compact/messagePreparation.js'
 
-export { createAsyncAgentAttachmentsIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
+export { createAsyncAgentAttachmentsIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 export { POST_COMPACT_MAX_FILES_TO_RESTORE, POST_COMPACT_MAX_TOKENS_PER_FILE, POST_COMPACT_MAX_TOKENS_PER_SKILL, POST_COMPACT_SKILLS_TOKEN_BUDGET, POST_COMPACT_TOKEN_BUDGET } from 'src/agent/compact/postCompactAttachments.js'
 export { stripImagesFromMessages, stripReinjectedAttachments, truncateHeadForPTLRetry } from 'src/agent/compact/messagePreparation.js'
 
@@ -135,7 +135,7 @@ export function buildPostCompactMessages(result: CompactionResult): Message[] {
  *   - suffix-preserving (reactive/session-memory): last summary message
  *   - prefix-preserving (partial compact): the boundary itself
  */
-export function annotateBoundaryWithPreservedSegment(
+function annotateBoundaryWithPreservedSegment(
   boundary: SystemCompactBoundaryMessage,
   anchorUuid: UUID,
   messagesToKeep: readonly Message[] | undefined,
