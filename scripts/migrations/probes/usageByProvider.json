@@ -1,0 +1,218 @@
+{
+  "test": [
+    "src/agent/cost-tracker.sessionFold.test.ts",
+    "src/providers/usage/usage.test.ts",
+    "src/providers/usage/codexUsage.fetch.test.ts",
+    "src/providers/usage/minimaxUsage.fetch.test.ts",
+    "src/providers/model/providers.test.ts",
+    "src/providers/claudeAiLimits.test.ts",
+    "src/providers/rateLimitMessages.test.ts"
+  ],
+  "source": "src/agent/cost-tracker.ts",
+  "probes": [
+    {
+      "name": "fold condition inverted: same session folds, new session does not",
+      "find": "const isNewSession = current.lastSessionId !== currentSessionId",
+      "replace": "const isNewSession = current.lastSessionId === currentSessionId",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "per-model fold drops webSearchRequests of the closed session",
+      "find": "                prev.webSearchRequests + usage.webSearchRequests,",
+      "replace": "                prev.webSearchRequests,",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "getStoredSessionCosts ignores the session id",
+      "find": "if (projectConfig.lastSessionId !== sessionId) {",
+      "replace": "if (false) {",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "restoreCostStateForSession keeps the previous source map",
+      "find": "  // The slot keeps per-model totals only: no source to put them under.\n  sourceUsage = {}\n",
+      "replace": "",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "saveCostsAndStartNewSession zeroes before the switch",
+      "find": "  startNewSession()\n  resetCostState()\n",
+      "replace": "  resetCostState()\n  startNewSession()\n",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "formatModelUsage stops aggregating by canonical name",
+      "find": "const shortName = getCanonicalName(model)",
+      "replace": "const shortName = model",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "cache read shown even when zero",
+      "find": "if (usage.cacheReadInputTokens > 0) {",
+      "replace": "if (usage.cacheReadInputTokens >= 0) {",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "singular 'line' lost for lines added",
+      "find": "getTotalLinesAdded() === 1 ? 'line' : 'lines'",
+      "replace": "getTotalLinesAdded() === 1 ? 'lines' : 'lines'",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "verbose log no longer treats 'off' as off",
+      "find": "return v !== '0' && v !== 'false' && v !== 'off'",
+      "replace": "return v !== '0' && v !== 'false'",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "advisor cost replaces instead of adding to the total",
+      "find": "totalCost += addToTotalSessionCost(",
+      "replace": "totalCost = addToTotalSessionCost(",
+      "source": "src/agent/cost-tracker.ts"
+    },
+    {
+      "name": "usage: profile-scope gate dropped",
+      "find": "if (!isClaudeAISubscriber() || !hasProfileScope()) {",
+      "replace": "if (!isClaudeAISubscriber()) {",
+      "source": "src/providers/usage/usage.ts"
+    },
+    {
+      "name": "usage: expired-token short-circuit disabled",
+      "find": "if (tokens && isOAuthTokenExpired(tokens.expiresAt)) {",
+      "replace": "if (tokens && false) {",
+      "source": "src/providers/usage/usage.ts"
+    },
+    {
+      "name": "usage: request timeout changed",
+      "find": "timeout: 5000, // 5 second timeout",
+      "replace": "timeout: 50000, // 5 second timeout",
+      "source": "src/providers/usage/usage.ts"
+    },
+    {
+      "name": "codex: refresh failure ignores stored credentials",
+      "source": "src/providers/usage/codexUsage.ts",
+      "find": "credentials: await readCodexCredentialsAsync(),",
+      "replace": "credentials: { accessToken: 'probe', accountId: 'probe' },"
+    },
+    {
+      "name": "codex: originator header changed",
+      "source": "src/providers/usage/codexUsage.ts",
+      "find": "originator: 'claudin',",
+      "replace": "originator: 'codex',"
+    },
+    {
+      "name": "codex: bare mode keeps the /provider hint",
+      "source": "src/providers/usage/codexUsage.ts",
+      "find": "const oauthHint = isBareMode() ? '' : ', choose Codex OAuth in /provider'",
+      "replace": "const oauthHint = false ? '' : ', choose Codex OAuth in /provider'"
+    },
+    {
+      "name": "minimax: 404 becomes fatal",
+      "source": "src/providers/usage/minimaxUsage/fetch.ts",
+      "find": "if ([400, 401, 403, 404].includes(response.status)) {",
+      "replace": "if ([400, 401, 403].includes(response.status)) {"
+    },
+    {
+      "name": "minimax: first ok response returned even when unavailable",
+      "source": "src/providers/usage/minimaxUsage/fetch.ts",
+      "find": "if (normalized.availability === 'available') {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "minimax: non-fatal failures no longer win over fatal",
+      "source": "src/providers/usage/minimaxUsage/fetch.ts",
+      "find": "if (nonFatalFailures.length > 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "providers: minimax base URL no longer detected",
+      "source": "src/providers/model/providers.ts",
+      "find": "if (baseUrl.includes('minimax')) return 'minimax'",
+      "replace": "if (baseUrl.includes('minimax-disabled')) return 'minimax'"
+    },
+    {
+      "name": "providers: base URL match becomes case-sensitive",
+      "source": "src/providers/model/providers.ts",
+      "find": "const baseUrl = profile.baseUrl?.toLowerCase() ?? ''",
+      "replace": "const baseUrl = profile.baseUrl ?? ''"
+    },
+    {
+      "name": "providers: first-party host allowlist widened",
+      "source": "src/providers/model/providers.ts",
+      "find": "const allowedHosts = ['api.anthropic.com']",
+      "replace": "const allowedHosts = ['api.anthropic.com', 'llm-gateway.example.com']"
+    },
+    {
+      "name": "5h time-relative fallback fires at 90% utilization",
+      "find": "thresholds: [{ utilization: 0.9, timePct: 0.72 }]",
+      "replace": "thresholds: [{ utilization: 0.95, timePct: 0.72 }]",
+      "source": "src/providers/claudeAiLimits.ts"
+    },
+    {
+      "name": "overage allowed_warning counts as using overage",
+      "find": "(overageStatus === 'allowed' || overageStatus === 'allowed_warning')",
+      "replace": "(overageStatus === 'allowed')",
+      "source": "src/providers/claudeAiLimits.ts"
+    },
+    {
+      "name": "allowed_warning without a threshold is downgraded to allowed",
+      "find": "finalStatus = 'allowed'",
+      "replace": "finalStatus = status",
+      "source": "src/providers/claudeAiLimits.ts"
+    },
+    {
+      "name": "raw utilization is recorded from response headers",
+      "find": "rawUtilization = extractRawUtilization(headers)",
+      "replace": "rawUtilization = {}",
+      "source": "src/providers/claudeAiLimits.ts"
+    },
+    {
+      "name": "a 429 forces status to rejected",
+      "find": "newLimits.status = 'rejected'",
+      "replace": "newLimits.status = newLimits.status",
+      "source": "src/providers/claudeAiLimits.ts"
+    },
+    {
+      "name": "non-interactive sessions skip the quota probe",
+      "find": "if (getIsNonInteractiveSession()) {",
+      "replace": "if (false) {",
+      "source": "src/providers/claudeAiLimits.ts"
+    },
+    {
+      "name": "warnings below 70% utilization are suppressed",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "const WARNING_THRESHOLD = 0.7",
+      "replace": "const WARNING_THRESHOLD = 0.6"
+    },
+    {
+      "name": "enterprise with extra usage and no billing access gets no warning",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "subscriptionType === 'team' || subscriptionType === 'enterprise'",
+      "replace": "subscriptionType === 'team'"
+    },
+    {
+      "name": "Sonnet limit reads as weekly for pro/enterprise",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "const limit = isProOrEnterprise ? 'weekly limit' : 'Sonnet limit'",
+      "replace": "const limit = isProOrEnterprise ? 'Sonnet limit' : 'weekly limit'"
+    },
+    {
+      "name": "approaching overage reads 'extra usage limit'",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "limitName += ' limit'",
+      "replace": "limitName += ''"
+    },
+    {
+      "name": "both exhausted shows the earliest reset",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "Math.min(resetsAt, limits.overageResetsAt)",
+      "replace": "Math.max(resetsAt, limits.overageResetsAt)"
+    },
+    {
+      "name": "using overage without a limit type is the short form",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "return 'Now using extra usage'",
+      "replace": "return 'Using extra usage'"
+    }
+  ]
+}
