@@ -8,10 +8,11 @@
  */
 import { join } from 'path'
 
-import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { getSessionId, onSessionSwitch } from 'src/platform/bootstrap/state.js'
 import { getProjectTempDir } from 'src/platform/tmpdir.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 
 /**
  * Checks if the scratchpad directory feature is enabled.
@@ -57,3 +58,15 @@ export async function ensureScratchpadDir(): Promise<string> {
 
   return scratchpadDir
 }
+
+// init() creates the first session's directory. /clear, /new, /resume and
+// --resume move getScratchpadDir() to a new id that the system prompt then
+// names, so the switch creates it, before the next request can.
+onSessionSwitch(() => {
+  if (!isScratchpadEnabled()) return
+  try {
+    getFsImplementation().mkdirSync(getScratchpadDir(), { mode: 0o700 })
+  } catch (e) {
+    logError(e)
+  }
+})

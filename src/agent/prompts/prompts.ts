@@ -3,7 +3,10 @@ import { type as osType, version as osVersion, release as osRelease } from 'os'
 import { env } from 'src/shared/env.js'
 import { getIsGit } from 'src/vcs/git/git.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
+import {
+  getIsNonInteractiveSession,
+  getSessionId,
+} from 'src/platform/bootstrap/state.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import { recordPromptEnv } from 'src/agent/prompts/envDelta.js'
 import { getSessionStartDate } from 'src/shared/constants/common.js'
@@ -594,11 +597,13 @@ export async function getSystemPrompt(
   ]
 
   // The per-session element (SYSTEM_PROMPT_SESSION_MARKER): the scratchpad
-  // path embeds the session id. v2 states it in Claude Code's one line.
+  // path embeds the session id. v2 states it in Claude Code's one line. The
+  // id is in the key too: /clear, /new and /resume switch it without clearing
+  // the section cache, and the permission check allows the new id's path.
   const [resolvedDynamicSections, [scratchpadSection]] = await Promise.all([
     resolveSystemPromptSections(dynamicSections),
     resolveSystemPromptSections([
-      systemPromptSection(`scratchpad${leanKey}`, () =>
+      systemPromptSection(`scratchpad${leanKey}:${getSessionId()}`, () =>
         lean ? getScratchpadEnvItem() : getScratchpadInstructions(),
       ),
     ]),
