@@ -53,25 +53,7 @@ const ENV_KEYS = [
 
 // ── Event-driven waiting ─────────────────────────────────────────────────
 
-const WATCHDOG_MS = 2000
-
-// [sws-diag] TEMPORARY CI instrumentation: which wait hangs, and in what state.
-// Bun's fake timers move every in-process clock (Date, performance, hrtime,
-// Bun.nanoseconds), so real time is read from /proc/uptime (10 ms steps).
-function realMs(): number {
-  return Number(require('fs').readFileSync('/proc/uptime', 'utf8').split(' ')[0]) * 1000
-}
-const T0 = realMs()
-function diag(msg: string): void {
-  process.stderr.write(`[sws-diag] +${(realMs() - T0).toFixed(0)}ms ${msg}\n`)
-}
-let lastRecorder: { counts: Record<string, number> } | null = null
-function snapshot(): string {
-  const sockets = clientSockets.map(s => `${s.readyState}/buf${s.bufferedAmount}`).join(',')
-  const conns = (testServer?.conns ?? []).map(c => `closedWith=${c.closedWith} pings=${c.pings}`).join('; ')
-  return `dials=${dials.length} sockets=[${sockets}] conns=[${conns}] recorder=${JSON.stringify(lastRecorder?.counts)} timers=${jest.getTimerCount()} fake=${jest.isFakeTimers()}`
-}
-const pendingLabels = new Set<string>()
+const WATCHDOG_MS = 4000
 
 let listeners: Array<() => void> = []
 let pendingRejects = new Set<(error: Error) => void>()
@@ -85,12 +67,11 @@ function armWatchdog(): void {
   watchdog = proc
   void proc.exited.then(() => {
     if (watchdog !== proc) return
-    diag(`watchdog fired, pending=[${[...pendingLabels].join(', ')}] ${snapshot()}`)
     const rejects = [...pendingRejects]
     pendingRejects.clear()
     listeners = []
     for (const reject of rejects) {
-      reject(new Error(`until() timed out after ${WATCHDOG_MS} ms waiting for [${[...pendingLabels].join(', ')}]: ${snapshot()}`))
+      reject(new Error(`until() timed out after ${WATCHDOG_MS} ms`))
     }
   })
 }
@@ -108,15 +89,13 @@ function notify(): void {
   for (const listener of current) listener()
 }
 
-function until<T>(read: () => T | undefined | false, label = 'until'): Promise<T> {
+function until<T>(read: () => T | undefined | false): Promise<T> {
   return new Promise((resolve, reject) => {
     pendingRejects.add(reject)
-    pendingLabels.add(label)
     const check = (): void => {
       const value = read()
       if (value !== undefined && value !== false) {
         pendingRejects.delete(reject)
-        pendingLabels.delete(label)
         resolve(value)
       } else {
         listeners.push(check)
@@ -209,7 +188,7 @@ function startServer(): TestServer {
 }
 
 function connAt(server: TestServer, index: number): Promise<ServerConn> {
-  return until(() => server.conns[index], `server conn ${index}`)
+  return until(() => server.conns[index])
 }
 
 // ── Redirecting WebSocket ────────────────────────────────────────────────
@@ -295,7 +274,6 @@ function makeRecorder(): Recorder {
       },
     },
   }
-  lastRecorder = recorder
   return recorder
 }
 
@@ -325,7 +303,7 @@ async function connectedClient(
   const connectedBefore = recorder.counts.connected
   await client.connect()
   const conn = await connAt(server, index)
-  await until(() => recorder.counts.connected > connectedBefore, 'client onConnected')
+  await until(() => recorder.counts.connected > connectedBefore)
   return { client, conn }
 }
 
@@ -339,7 +317,6 @@ async function serverClose(
   conn.ws.close(code, 'test')
   await until(
     () => recorder.counts.close + recorder.counts.reconnecting > before,
-    `client sees server close ${code}`,
   )
 }
 
@@ -348,7 +325,6 @@ async function serverClose(
 const savedEnv: Partial<Record<(typeof ENV_KEYS)[number], string>> = {}
 
 beforeEach(() => {
-  pendingLabels.clear()
   for (const key of ENV_KEYS) {
     savedEnv[key] = process.env[key]
     delete process.env[key]
@@ -775,38 +751,29 @@ describe('SessionsWebSocket ping', () => {
   })
 
   test('stops pinging after the connection closes', async () => {
-    diag(`stops pinging: start ${snapshot()}`)
     const server = startServer()
     const recorder = makeRecorder()
     const { conn } = await connectedClient(server, recorder)
-    diag(`stops pinging: connected ${snapshot()}`)
 
     await serverClose(recorder, conn, 4003)
-    diag(`stops pinging: client saw 4003 ${snapshot()}`)
     jest.advanceTimersByTime(120_000)
-    diag(`stops pinging: advanced 120s ${snapshot()}`)
     expect(conn.pings).toBe(0)
   })
 })
 
 describe('SessionsWebSocket close and reconnect', () => {
   test('close() closes the socket without firing onClose or reconnecting', async () => {
-    diag(`close(): start ${snapshot()}`)
     const server = startServer()
     const recorder = makeRecorder()
     const { client, conn } = await connectedClient(server, recorder)
-    diag(`close(): connected ${snapshot()}`)
 
     client.close()
-    diag(`close(): client.close() returned ${snapshot()}`)
     expect(client.isConnected()).toBe(false)
-    await until(() => conn.closedWith !== undefined, 'server sees client close')
-    diag(`close(): server saw close ${snapshot()}`)
+    await until(() => conn.closedWith !== undefined)
 
     expect(recorder.counts.close).toBe(0)
     expect(recorder.counts.reconnecting).toBe(0)
     jest.advanceTimersByTime(120_000)
-    diag(`close(): advanced 120s ${snapshot()}`)
     expect(dials).toHaveLength(1)
     expect(conn.pings).toBe(0)
   })
