@@ -159,7 +159,6 @@
     "exports src/memory/memdir/teamMemoryOps.ts#isTeamMemFile",
     "exports src/memory/memdir/teamMemoryOps.ts#isTeamMemorySearch",
     "exports src/memory/memdir/teamMemoryOps.ts#isTeamMemoryWriteOrEdit",
-    "exports src/memory/session/prompts.ts#DEFAULT_SESSION_MEMORY_TEMPLATE",
     "exports src/memory/ui/MemoryUpdateNotification.tsx#MemoryUpdateNotification",
     "exports src/native-ts/color-diff/index.ts#__test",
     "exports src/native-ts/color-diff/index.ts#getNativeModule",
