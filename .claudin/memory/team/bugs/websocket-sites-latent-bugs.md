@@ -21,7 +21,16 @@ fixing one means changing its test on purpose, in its own `fix(…)` commit.
   does not detach the old socket, and a late close from it nulls the new one. A throwing
   constructor leaves the state `connecting` and every later `connect()` is ignored.
   Its `close and reconnect` tests (3–4, 5 s timeouts) went red in CI's full suite on the
-  #309 and #310 runs (2026-10-19). They pass alone on Node 22.12 and 24. Undiagnosed.
+  #309 and #310 runs (2026-10-19), then on 2026-10-21 (run 39519766259) and 2026-10-22 (#314,
+  run 39782823727). They pass alone on Node 22.12 and 24. Still undiagnosed, but narrowed:
+  - **The signature.** In every red run the test before them, `ping > stops pinging after the
+    connection closes`, took ~105 ms instead of ~7 ms. Then all four time out at 5 s with "killed
+    N dangling processes", meaning the 4 s watchdog child lost to the runner's timeout. Only
+    `close() before connect`, which awaits nothing, passes in between.
+  - **Not the file order.** Replaying CI's exact 189-file order with `CI=1` locally passed.
+  - **Not the Bun version.** CI and local both run 1.3.11 from `.bun-version`.
+  - **No local repro.** 96 runs of the file, 16 in parallel, never failed.
+  - What is left is the GitHub runner itself. Re-running the job has turned it green.
 - **relay**: an upstream that closes cleanly before any data gives the client a bare
   disconnect, no 502; `decodeChunk` reads a truncated varint (`0a 80`) as a keepalive;
   after a 400 the header buffer is not reset, so more data sends 400 again.
