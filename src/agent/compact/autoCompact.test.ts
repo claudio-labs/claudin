@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   AUTOCOMPACT_BUFFER_TOKENS,
   autoCompactIfNeeded,
@@ -13,6 +13,7 @@ import {
 } from 'src/agent/compact/autoCompact.ts'
 import { getContextWindowForModel } from 'src/agent/context/context.ts'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.ts'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.ts'
 import type { ToolUseContext } from 'src/tools/Tool.ts'
 
 /** Sets env vars for one test and puts the prior values back after it. */
@@ -26,6 +27,25 @@ function useEnv(...names: string[]) {
   })
 }
 
+/**
+ * Turns autocompact on for each test. isAutoCompactEnabled reads
+ * DISABLE_COMPACT, DISABLE_AUTO_COMPACT and the global config; a trigger test
+ * that returned early when one of them had it off passed asserting nothing.
+ */
+function useAutoCompactOn() {
+  useEnv('DISABLE_COMPACT', 'DISABLE_AUTO_COMPACT')
+  let prior: boolean
+  beforeEach(() => {
+    delete process.env.DISABLE_COMPACT
+    delete process.env.DISABLE_AUTO_COMPACT
+    prior = getGlobalConfig().autoCompactEnabled
+    saveGlobalConfig(current => ({ ...current, autoCompactEnabled: true }))
+  })
+  afterEach(() => {
+    saveGlobalConfig(current => ({ ...current, autoCompactEnabled: prior }))
+  })
+}
+
 // Compaction starts on the model's context window and on nothing else. The
 // heap-pressure backstop used to fire at 0.7 of the V8 limit by default, which
 // made a long conversation compact for occupying memory rather than for
@@ -33,6 +53,7 @@ function useEnv(...names: string[]) {
 // applyStableStubs) is what answers memory now, and it drops no messages, so
 // the timeline survives where compaction would have cut it.
 describe('heap pressure is opt-in', () => {
+  useAutoCompactOn()
   const ENV = 'CLAUDIN_HEAP_PRESSURE_RATIO'
   const saved = process.env[ENV]
   const restore = () => {
@@ -72,7 +93,6 @@ describe('heap pressure is opt-in', () => {
   })
 
   test('once opted in, it starts a compaction under the window', async () => {
-    if (!isAutoCompactEnabled()) return
     // Any live heap is above a millionth of its limit.
     process.env[ENV] = '0.000001'
     try {
@@ -107,6 +127,7 @@ describe('heap pressure is opt-in', () => {
 })
 
 describe('shouldAutoCompact — the window trigger', () => {
+  useAutoCompactOn()
   const model = 'claude-sonnet-4'
 
   // tokenCountWithEstimation anchors on the last response's usage, which is
@@ -127,7 +148,6 @@ describe('shouldAutoCompact — the window trigger', () => {
   }
 
   test('fires at the threshold and not below it', async () => {
-    if (!isAutoCompactEnabled()) return
     const threshold = getAutoCompactThreshold(model)
     expect(await shouldAutoCompact(historyAt(threshold + 1_000), model)).toBe(true)
     expect(await shouldAutoCompact(historyAt(threshold - 20_000), model)).toBe(false)
@@ -143,6 +163,7 @@ describe('shouldAutoCompact — the window trigger', () => {
 // A starved relief lane (microCompact.ts) means no clip can get the session
 // under its target: compaction runs then, not at the threshold far above it.
 describe('shouldAutoCompact — starved relief escalates', () => {
+  useAutoCompactOn()
   const model = 'claude-sonnet-4'
   const ENV = 'CLAUDIN_RELIEF_STARVED_COMPACT'
   const saved = process.env[ENV]
@@ -153,7 +174,6 @@ describe('shouldAutoCompact — starved relief escalates', () => {
   const below = [createUserMessage({ content: 'go' })]
 
   test('compacts below the threshold when relief is starved, and only then', async () => {
-    if (!isAutoCompactEnabled()) return
     delete process.env[ENV]
     try {
       expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, true)).toBe(true)

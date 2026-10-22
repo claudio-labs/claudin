@@ -1,10 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import { randomUUID } from 'crypto'
-import { existsSync, readFileSync, rmSync, statSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'fs'
+import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { getSessionId, switchSession } from 'src/platform/bootstrap/state.js'
-import { getProjectTempDir } from 'src/platform/tmpdir.js'
+import { getClaudeTempDir, getProjectTempDir } from 'src/platform/tmpdir.js'
 import type { SessionId } from 'src/shared/types/ids.js'
 import {
   createScratchpadDirOnSessionSwitch,
@@ -21,17 +22,23 @@ afterEach(() => {
   else process.env[ENV] = saved
 })
 
-// Session dirs this file created under the real project temp dir; one that
-// already existed belongs to someone else and stays.
-const created = new Set<string>()
+// Everything these tests create goes under a temp root of their own, the
+// per-project dir included: the recursive mkdir creates that one too where it
+// was missing (a fresh CI runner, a new worktree), and the real /tmp keeps it.
+const savedTmpdir = process.env.CLAUDIN_TMPDIR
+let root: string
 
-function trackSessionDir(sessionId: string): void {
-  const dir = join(getProjectTempDir(), sessionId)
-  if (!existsSync(dir)) created.add(dir)
-}
+beforeAll(() => {
+  root = mkdtempSync(join(tmpdir(), 'scratchpad-test-'))
+  process.env.CLAUDIN_TMPDIR = root
+  getClaudeTempDir.cache.clear?.()
+})
 
 afterAll(() => {
-  for (const dir of created) rmSync(dir, { recursive: true, force: true })
+  if (savedTmpdir === undefined) delete process.env.CLAUDIN_TMPDIR
+  else process.env.CLAUDIN_TMPDIR = savedTmpdir
+  getClaudeTempDir.cache.clear?.()
+  rmSync(root, { recursive: true, force: true })
 })
 
 describe('isScratchpadEnabled', () => {
@@ -44,6 +51,7 @@ describe('isScratchpadEnabled', () => {
 })
 
 test('the directory is per session, under the project temp dir', () => {
+  expect(getProjectTempDir().startsWith(root)).toBe(true)
   expect(getScratchpadDir()).toBe(
     join(getProjectTempDir(), getSessionId(), 'scratchpad'),
   )
@@ -52,7 +60,6 @@ test('the directory is per session, under the project temp dir', () => {
 describe('ensureScratchpadDir', () => {
   test('creates the current session directory, owner-only, and returns it', async () => {
     delete process.env[ENV]
-    trackSessionDir(getSessionId())
     const dir = await ensureScratchpadDir()
     expect(dir).toBe(getScratchpadDir())
     expect(statSync(dir).mode & 0o777).toBe(0o700)
@@ -77,8 +84,6 @@ describe('a session switch', () => {
   function switchAndBack(check: (next: string) => void): void {
     const before = getSessionId()
     const next = randomUUID() as SessionId
-    trackSessionDir(before)
-    trackSessionDir(next)
     switchSession(next)
     try {
       check(next)
@@ -108,8 +113,8 @@ describe('a session switch', () => {
       new URL('../platform/entrypoints/init.ts', import.meta.url),
       'utf8',
     )
-    expect(init).toContain(
-      'await ensureScratchpadDir()\n      createScratchpadDirOnSessionSwitch()',
+    expect(init).toMatch(
+      /await ensureScratchpadDir\(\)\s+createScratchpadDirOnSessionSwitch\(\)/,
     )
   })
 })
