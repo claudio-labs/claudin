@@ -1,6 +1,6 @@
 ---
 name: bash-read-lane
-description: Since 2026-10-09 a Bash read the model directed comes back whole (CLAUDIN_BASH_READ_LANE=0 kills it), and one cut replaces the cap + summarizer on Bash (CLAUDIN_BASH_ONE_CUT=0); Sonnet 5.5 session A/B −28%, first edit at call 2; Opus neutral; own-writes refresh built but off
+description: Since 2026-10-09 a Bash read the model directed comes back whole (CLAUDIN_BASH_READ_LANE=0 kills it), and one cut replaces the cap + summarizer on Bash (CLAUDIN_BASH_ONE_CUT=0); Sonnet 5.5 session A/B −28%, first edit at call 2; Opus neutral; own writes ON since 10-21 (CLAUDIN_OWN_WRITES=0)
 type: project
 scope: bash/output-filter
 impact: functional
@@ -44,7 +44,7 @@ paths:
 
 **What changes for a teammate:**
 - A base bench arm now has the lane and the one cut. Pass `=0` to measure the old cutters.
-- Own writes is parked because under the lane the model makes no Read for it to fix. It needs a bench where the model reads with Read and edits via Bash.
+- Own writes was parked on 10-09, because under the lane the model makes no Read for it to fix. The bench it waited for (Read, then a Bash edit) ran on 10-21, and the user turned it on the same day.
 - `turnTaxonomy.ts` now counts a `<tool-result-summary>` Bash result as a cut (refetch-after-filter).
 
 **Rejected:** the sizing rule pre-registered for the cut picked no candidate. No keep covers the median capped read while removing ≥70% of the cap's chars (plan `foamy-twirling-turtle.md`, "Sizing result"). The summarizer's shape was kept, and the A/B priced it.

@@ -50,7 +50,7 @@ extract-claude-code-prompt.ts). The CC variants ran through a dispatch shim pass
 - The one Claudin-specific cost: a file it Read and then changed via Bash comes back as
   `edited_text_file`. That happened in 3 of 5 bashfirst sessions and in none of the other arms;
   one session got 11 notes, ~30k chars, and a 6.4k resume write. Own writes is the fix (`CLAUDIN_OWN_WRITES`, on since 10-21).
-- Claudin arms think about 2× as much as CC arms (4.5k vs 2.4k, SEPARATED). That holds with or without the steer.
+- Claudin arms think about 2× as much as CC arms (4.5k vs 2.4k, SEPARATED). That holds with or without the steer. Why: [[thinking-gap-is-patch-shape-2026-10-21]].
 - The run took about 50% of the Max 5x 5-hour window (4→54%), and the 7-day window went 4→7%.
 
 **Follow-up census — "file modified" notes in real Claudin traffic (Sep–Oct).** There were 2,146

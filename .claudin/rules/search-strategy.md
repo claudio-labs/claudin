@@ -25,7 +25,7 @@ src/
 │   ├── prompts/ (31)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (38)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
 │   ├── ui/ (166)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
-│   ├── tools/ (33)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
+│   ├── tools/ (37)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
 │   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
 │   │                              thresholds, markers, contentShape, and decisionRecord, which is

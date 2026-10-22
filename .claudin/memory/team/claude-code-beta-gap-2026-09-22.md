@@ -69,6 +69,19 @@ returning a 400 in May, with auth unrecorded.
 - **Also measured:** Sonnet 5 `max_tokens` 32k (Claude Code sends 64k), and the
   switch stripping `eager_input_streaming` from every tool.
 
+**Seen on the real wire 2026-10-21** (proxy, `-p` in bypass, Sonnet 5.5; Claudin 1.1.46 vs
+Claude Code 2.1.304). The adopted set is on main. Claudin sends thinking-token-count,
+context-management `keep:"all"`, prompt-caching-scope, cache-diagnosis and
+`diagnostics.previous_message_id`. It also sends `max_tokens` 128000 and
+`block_binding: drop_block`, which is now on Sonnet 5.5 too. Its display is `"omitted"`.
+- Claude Code sends four more betas: per-turn-control and mid-conversation-tool-changes (now
+  on Sonnet 5.5 as well), `inline-tools-2026-09-15` (new) and advisor-tool.
+- Its `-p` stream-json path sends `display: "updates"`.
+- Its role:system messages carry the env, a `USD budget` line after every tool result, MCP
+  `tool_addition` blocks and, on Sonnet (`silent_turn_reminder`), "The user hasn't heard from
+  you in a while — say in a few words what you're doing".
+- None of this moves thinking ([[thinking-gap-is-patch-shape-2026-10-21]]).
+
 Re-measure: `bun run scripts/bench/tokens/wire-matrix.ts capture`, then
 `interactive`, then `report --match=-oauth-`. A fresh `bun run build` comes
 first.
