@@ -1,6 +1,30 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 
-import { sanitizeAwaySummary } from 'src/agent/awaySummary.ts'
+import {
+  generateAwaySummary,
+  isAwaySummaryEnabled,
+  sanitizeAwaySummary,
+} from 'src/agent/awaySummary.ts'
+
+describe('isAwaySummaryEnabled', () => {
+  const ENV = 'CLAUDIN_AWAY_SUMMARY'
+  const saved = process.env[ENV]
+  afterEach(() => {
+    if (saved === undefined) delete process.env[ENV]
+    else process.env[ENV] = saved
+  })
+
+  test('on by default, CLAUDIN_AWAY_SUMMARY=0 turns it off', () => {
+    delete process.env[ENV]
+    expect(isAwaySummaryEnabled()).toBe(true)
+    process.env[ENV] = '0'
+    expect(isAwaySummaryEnabled()).toBe(false)
+  })
+})
+
+test('generateAwaySummary has nothing to recap in an empty transcript', async () => {
+  expect(await generateAwaySummary([], new AbortController().signal)).toBeNull()
+})
 
 describe('sanitizeAwaySummary', () => {
   test('passes a clean recap through untouched', () => {

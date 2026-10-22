@@ -1,0 +1,105 @@
+{
+  "test": [
+    "src/agent/scratchpad.test.ts",
+    "src/commands/compact/compact.test.ts",
+    "src/agent/awaySummary.test.ts",
+    "src/agent/context/context.test.ts",
+    "src/agent/compact/autoCompact.test.ts"
+  ],
+  "source": "src/agent/scratchpad.ts",
+  "probes": [
+    {
+      "name": "the scratchpad killswitch is ignored",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_SCRATCHPAD)",
+      "replace": "return true"
+    },
+    {
+      "name": "the scratchpad dir loses its session id",
+      "find": "join(getProjectTempDir(), getSessionId(), 'scratchpad')",
+      "replace": "join(getProjectTempDir(), 'scratchpad')"
+    },
+    {
+      "name": "the scratchpad dir is created world-readable",
+      "find": "{ mode: 0o700 }",
+      "replace": "{ mode: 0o755 }"
+    },
+    {
+      "name": "context percentages are not clamped",
+      "source": "src/agent/context/context.ts",
+      "find": "Math.min(100, Math.max(0, usedPercentage))",
+      "replace": "Math.max(0, usedPercentage)"
+    },
+    {
+      "name": "context percentages invent a number before the first response",
+      "source": "src/agent/context/context.ts",
+      "find": "return { used: null, remaining: null }",
+      "replace": "return { used: 0, remaining: 100 }"
+    },
+    {
+      "name": "context percentages drop cached input",
+      "source": "src/agent/context/context.ts",
+      "find": "    currentUsage.cache_creation_input_tokens +\n    currentUsage.cache_read_input_tokens\n",
+      "replace": "    currentUsage.cache_creation_input_tokens\n"
+    },
+    {
+      "name": "the away-summary killswitch is ignored",
+      "source": "src/agent/awaySummary.ts",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_AWAY_SUMMARY)",
+      "replace": "return true"
+    },
+    {
+      "name": "an empty transcript gets a recap",
+      "source": "src/agent/awaySummary.ts",
+      "find": "  if (messages.length === 0) {\n    return null\n  }",
+      "replace": "  if (messages.length === 0) {\n    return ''\n  }"
+    },
+    {
+      "name": "/compact accepts an empty conversation",
+      "source": "src/commands/compact/compact.ts",
+      "find": "throw new Error('No messages to compact')",
+      "replace": "throw new Error('compaction failed')"
+    },
+    {
+      "name": "CLAUDIN_AUTO_COMPACT_WINDOW is ignored",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "contextWindow = Math.min(contextWindow, parsed)",
+      "replace": "contextWindow = contextWindow"
+    },
+    {
+      "name": "an unusable CLAUDIN_AUTO_COMPACT_WINDOW is applied",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "parsed > 0) {",
+      "replace": "true) {"
+    },
+    {
+      "name": "the percentage override can move the trigger later",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "Math.min(percentageThreshold, autocompactThreshold)",
+      "replace": "percentageThreshold"
+    },
+    {
+      "name": "the percentage override takes any number",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "!isNaN(parsed) && parsed > 0 && parsed <= 100",
+      "replace": "!isNaN(parsed)"
+    },
+    {
+      "name": "DISABLE_AUTO_COMPACT is ignored",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "if (isEnvTruthy(process.env.DISABLE_AUTO_COMPACT)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the opted-in heap backstop never starts a compaction",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "if (isAboveHeapPressureThreshold(messages.length)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "autoCompactIfNeeded reports a compaction under the threshold",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "  if (!shouldCompact) {\n    return { wasCompacted: false }\n  }",
+      "replace": "  if (!shouldCompact) {\n    return { wasCompacted: true }\n  }"
+    }
+  ]
+}
