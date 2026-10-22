@@ -40,6 +40,7 @@ import {
   buildMiniMaxUsageRows,
   fetchMiniMaxUsage,
 } from 'src/providers/usage/minimaxUsage.js'
+import type { ProviderLimits, UsageLimitRow } from 'src/providers/usage/limitRows.js'
 import { fetchUtilization, type Utilization } from 'src/providers/usage/usage.js'
 import {
   CODEX_WARNING_THRESHOLDS,
@@ -47,29 +48,7 @@ import {
   formatUsageWarning,
   standingWindow,
 } from 'src/providers/usageWarnings.js'
-
-/** One line of a provider's limits, the same shape for every provider. */
-export type UsageLimitRow =
-  | {
-      kind: 'window'
-      label: string
-      usedPercent: number
-      /** ISO 8601. */
-      resetsAt?: string
-      extraSubtext?: string
-    }
-  | {
-      kind: 'text'
-      label: string
-      value: string
-    }
-
-export type ProviderLimits = {
-  plan?: string
-  rows: UsageLimitRow[]
-  /** What to say instead of rows, when the provider explained their absence. */
-  message?: string
-}
+import { capitalize } from 'src/shared/text/stringUtils.js'
 
 export const SUBSCRIPTION_LIMITS_UNAVAILABLE =
   'Limits are only available for Claude subscription logins.'
@@ -99,10 +78,6 @@ export type LiveLimitsSource = {
 type LimitsCapability = {
   fetch: LimitsFetcher
   live?: LiveLimitsSource
-}
-
-function capitalize(value: string): string {
-  return value ? value[0]!.toUpperCase() + value.slice(1) : value
 }
 
 async function fetchClaudeLimits(): Promise<ProviderLimits> {

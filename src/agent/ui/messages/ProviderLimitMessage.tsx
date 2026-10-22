@@ -17,24 +17,6 @@ import { Text } from 'src/terminal/ink.js'
 const COUNTDOWN_TICK_MS = 30_000
 
 /**
- * Routes a rate-limit message to the renderer that owns it.
- *
- * Every one goes through ProviderLimitMessage: a message about the provider
- * limit currently in force gets the live countdown, and anything else — the
- * Anthropic subscription limit, a limit since cleared, a message from before
- * limits named their provider first — is shown as recorded.
- *
- * There used to be a third path here: `RateLimitMessage`, which appended an
- * upsell line (`/upgrade or /extra-usage to finish what you're working on`) and
- * auto-opened the options menu. All three of those commands routed through a
- * Login module this fork never received, so the upsell pointed at a hang. The
- * commands are gone and so is the upsell; the limit text itself is unchanged.
- */
-export function LimitMessage({ text }: { text: string }) {
-  return <ProviderLimitMessage text={text} />
-}
-
-/**
  * The limit message with a live remaining time.
  *
  * `text` is what was recorded in the transcript when the request failed, so it
@@ -42,6 +24,14 @@ export function LimitMessage({ text }: { text: string }) {
  * still the one in force, the line is rebuilt from the live record instead;
  * otherwise — a resumed session, a limit that has since been cleared, an older
  * message further up the scrollback — the recorded text is shown as it was.
+ * Every rate-limit message renders here, the Anthropic subscription limit and
+ * those from before limits named their provider first included.
+ *
+ * There used to be another path: `RateLimitMessage`, which appended an upsell
+ * line (`/upgrade or /extra-usage to finish what you're working on`) and
+ * auto-opened the options menu. All three of those commands routed through a
+ * Login module this fork never received, so the upsell pointed at a hang. The
+ * commands are gone and so is the upsell; the limit text itself is unchanged.
  */
 export function ProviderLimitMessage({ text }: { text: string }) {
   const limit = useProviderRateLimit()

@@ -1,4 +1,4 @@
-import type { UsageLimitRow } from 'src/providers/usage/providerLimits.js'
+import type { UsageLimitRow } from 'src/providers/usage/limitRows.js'
 
 export type MiniMaxUsageWindow = {
   label: string

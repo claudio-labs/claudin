@@ -9,7 +9,7 @@ import { formatCost } from 'src/agent/cost-tracker.js'
 import type {
   ProviderUsageGroup,
 } from 'src/providers/usage/providerAttribution.js'
-import type { ProviderLimits } from 'src/providers/usage/providerLimits.js'
+import type { ProviderLimits } from 'src/providers/usage/limitRows.js'
 import { addModelUsage, emptyModelUsage } from 'src/providers/usage/modelUsage.js'
 import type {
   ContributionResult,

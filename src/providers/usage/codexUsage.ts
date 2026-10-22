@@ -11,7 +11,7 @@ import {
   resolveRuntimeCodexCredentials,
   resolveProviderRequest,
 } from 'src/providers/presets/providerConfig.js'
-import type { UsageLimitRow } from 'src/providers/usage/providerLimits.js'
+import type { UsageLimitRow } from 'src/providers/usage/limitRows.js'
 import { formatWindowDuration } from 'src/providers/usageWarnings.js'
 
 export type CodexUsageWindow = {

@@ -1126,6 +1126,8 @@ describe('performCodexRequest prompt-cache params', () => {
 
   afterEach(() => {
     ;(globalThis as { fetch: typeof fetch }).fetch = realFetch
+    // A recorded window would leak into the next test on a failed expect.
+    resetCodexLimitsForTesting()
   })
 
   async function runRequest(baseUrl: string): Promise<void> {
@@ -1422,7 +1424,6 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
   })
 
   test("a response's x-codex-* headers reach the live limits", async () => {
-    resetCodexLimitsForTesting()
     reply = () =>
       new Response('', {
         status: 200,
@@ -1434,11 +1435,9 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
       })
     await send()
     expect(getCodexLimits()?.snapshots[0]?.primary).toMatchObject({ usedPercent: 76, windowMinutes: 300 })
-    resetCodexLimitsForTesting()
   })
 
   test('a 429 still reports its windows, so the footer reads the limit as reached', async () => {
-    resetCodexLimitsForTesting()
     reply = () =>
       new Response(JSON.stringify({ error: { type: 'usage_limit_reached', message: 'limit' } }), {
         status: 429,
@@ -1450,7 +1449,6 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
       })
     await expect(send()).rejects.toThrow()
     expect(getCodexLimits()?.snapshots[0]?.primary).toMatchObject({ usedPercent: 100, windowMinutes: 300 })
-    resetCodexLimitsForTesting()
   })
 
   test('the system prompt becomes instructions, from a string, blocks or anything else', async () => {
@@ -1637,8 +1635,9 @@ describe('Codex SSE stream reading (characterization)', () => {
 })
 
 describe('collectCodexCompletedResponse (characterization)', () => {
+  afterEach(resetCodexLimitsForTesting)
+
   test('a codex.rate_limits event on the way reaches the live limits', async () => {
-    resetCodexLimitsForTesting()
     const response = responseFromChunks([
       sseEvent('codex.rate_limits', {
         plan_type: 'plus',
@@ -1648,7 +1647,6 @@ describe('collectCodexCompletedResponse (characterization)', () => {
     ])
     expect(await collectCodexCompletedResponse(response)).toEqual({ id: 'resp_rl', output: [] })
     expect(getCodexLimits()?.snapshots[0]?.primary).toMatchObject({ usedPercent: 91, windowMinutes: 10080 })
-    resetCodexLimitsForTesting()
   })
 
   test.each(['response.completed', 'response.incomplete'])('returns the payload of %s', async event => {
