@@ -1,0 +1,100 @@
+{
+  "test": [
+    "src/sessions/sessionRestore.providerUsage.test.ts",
+    "src/providers/usage/providerLimits.test.ts",
+    "src/providers/usage/providerLimits.credentials.test.ts",
+    "src/platform/notifications/useProviderUsageWarning.test.tsx",
+    "src/providers/shims/codexShim.test.ts",
+    "src/providers/rateLimitMessages.test.ts",
+    "src/platform/settings/ui/usageLines.test.ts",
+    "src/providers/usage/providerAttribution.test.ts",
+    "src/platform/settings/ui/Usage.test.tsx"
+  ],
+  "source": "src/providers/usage/providerLimits.ts",
+  "probes": [
+    {
+      "name": "resume: providerUsage undeclared in the cost-state schema again",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "providerUsage: z",
+      "replace": "providerUsageUndeclared: z"
+    },
+    {
+      "name": "codex chip: the raw base URL again, no codexplan fallback",
+      "source": "src/providers/usage/providerLimits.ts",
+      "find": "return !url || url === DEFAULT_OPENAI_BASE_URL ? DEFAULT_CODEX_BASE_URL : url",
+      "replace": "return url"
+    },
+    {
+      "name": "codex chip: the active profile's credentials again",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "  if (profile) return profile\n",
+      "replace": "  if (profile === null) return profile\n"
+    },
+    {
+      "name": "warning: one remembered announcement for every provider",
+      "source": "src/platform/notifications/useProviderUsageWarning.tsx",
+      "find": "announcedRef.current.set(provider, announcementId)",
+      "replace": "announcedRef.current.clear(); announcedRef.current.set(provider, announcementId)"
+    },
+    {
+      "name": "codex 429: windows recorded only on a success again",
+      "source": "src/providers/shims/codexShim.ts",
+      "find": "  recordCodexLimits(normalizeCodexRateLimitHeaders(response.headers))\n\n  if (!response.ok) {",
+      "replace": "  if (response.ok) recordCodexLimits(normalizeCodexRateLimitHeaders(response.headers))\n\n  if (!response.ok) {"
+    },
+    {
+      "name": "footer: a reached Claude limit no longer stands",
+      "source": "src/providers/usage/providerLimits.ts",
+      "find": "getClaudeWarningWindow(limits) ?? getClaudeReachedWindow(limits)",
+      "replace": "getClaudeWarningWindow(limits)"
+    },
+    {
+      "name": "router: the capped label without a middle dot again",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "^[^\\\\n]+? · ",
+      "replace": "^[^·\\\\n]{1,80} · "
+    },
+    {
+      "name": "router: any words before \"limit reached\" again",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "(?:(?:${LIMIT_NAMES}) limit reached|",
+      "replace": "(?:[\\\\w ]*limit reached|"
+    },
+    {
+      "name": "router: the old You've used prefix again",
+      "source": "src/providers/rateLimitMessages.ts",
+      "find": "  \"You've hit your\",\n  \"You're out of extra usage\",",
+      "replace": "  \"You've hit your\",\n  \"You've used\",\n  \"You're out of extra usage\","
+    },
+    {
+      "name": "/usage: the reset line without its countdown",
+      "source": "src/platform/settings/ui/usageLines.ts",
+      "find": "    ? `Resets in ${formatCountdownDuration(remainingMs)} (${at})`",
+      "replace": "    ? `Resets ${at}`"
+    },
+    {
+      "name": "/usage: only a wholly estimated provider marked again",
+      "source": "src/platform/settings/ui/usageLines.ts",
+      "find": "marker: Object.keys(group.estimated).length > 0 ? '~ ' : '  ',",
+      "replace": "marker: Object.keys(group.exact).length === 0 ? '~ ' : '  ',"
+    },
+    {
+      "name": "/usage: spend with no profile unlabelled",
+      "source": "src/platform/settings/ui/usageLines.ts",
+      "find": "  if (group.kind === 'env') return `${group.name} (no profile)`\n",
+      "replace": ""
+    },
+    {
+      "name": "attribution: a configured model no longer beats the family",
+      "source": "src/providers/usage/providerAttribution.ts",
+      "find": "  if (configured) return configured.id",
+      "replace": "  if (configured && false) return configured.id"
+    },
+    {
+      "name": "/usage: r only while the read failed again",
+      "source": "src/platform/settings/ui/Usage.tsx",
+      "find": "isActive: Boolean(provider && fetchLimits) },",
+      "replace": "isActive: selectedState?.status === 'error' },"
+    }
+  ]
+}
