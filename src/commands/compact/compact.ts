@@ -1,10 +1,7 @@
-import { feature } from 'bun:bundle'
 import chalk from 'chalk'
-import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
-import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
 import {
   buildPostCompactMessages,
   compactConversation,
@@ -14,8 +11,6 @@ import {
 import { suppressCompactWarning } from 'src/agent/compact/compactWarningState.js'
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
-import { trySessionMemoryCompaction } from 'src/agent/compact/sessionMemoryCompact.js'
-import { setLastSummarizedMessageId } from 'src/memory/session/sessionMemoryUtils.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { LocalCommandCall } from 'src/shared/types/command.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -43,38 +38,6 @@ export const call: LocalCommandCall = async (args, context) => {
   const customInstructions = args.trim()
 
   try {
-    // Try session memory compaction first if no custom instructions
-    // (session memory compaction doesn't support custom instructions)
-    if (!customInstructions) {
-      const sessionMemoryResult = await trySessionMemoryCompaction(
-        messages,
-        context.agentId,
-      )
-      if (sessionMemoryResult) {
-        getUserContext.cache.clear?.()
-        const postCompact = buildPostCompactMessages(sessionMemoryResult)
-        runPostCompactCleanup(undefined, postCompact)
-        // Reset cache read baseline so the post-compact drop isn't flagged
-        // as a break. compactConversation does this internally; SM-compact doesn't.
-        if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
-          notifyCompaction(
-            context.options.querySource ?? 'compact',
-            context.agentId,
-          )
-        }
-        markPostCompaction()
-        // Suppress warning immediately after successful compaction
-        suppressCompactWarning()
-
-        return {
-          type: 'compact',
-          compactionResult: sessionMemoryResult,
-          displayText: buildDisplayText(context),
-        }
-      }
-    }
-
-    // Fall back to traditional compaction
     // Run microcompact first to reduce tokens before summarization
     const microcompactResult = await microcompactMessages(messages, context)
     const messagesForCompact = microcompactResult.messages
@@ -87,10 +50,6 @@ export const call: LocalCommandCall = async (args, context) => {
       customInstructions,
       false,
     )
-
-    // Reset lastSummarizedMessageId since legacy compaction replaces all messages
-    // and the old message UUID will no longer exist in the new messages array
-    setLastSummarizedMessageId(undefined)
 
     // Suppress the "Context left until auto-compact" warning after successful compaction
     suppressCompactWarning()
