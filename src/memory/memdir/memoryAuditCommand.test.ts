@@ -44,6 +44,7 @@ describe('memoryAuditHandler', () => {
     mkdirSync(join(root, '.git'))
     mkdirSync(join(root, '.claudin', 'memory', 'team', 'bugs'), { recursive: true })
     writeFileSync(join(root, '.claudin', 'memory', 'team', 'bugs', 'x.md'), `token: ghp_${'x'.repeat(36)}\n`)
+    writeFileSync(join(root, '.claudin', 'memory', 'team', 'MEMORY.md'), '- [X](bugs/x.md) — x\n')
     console.log = (line: string) => void logged.push(line)
   })
   afterAll(() => {
@@ -107,6 +108,22 @@ describe('formatMemoryAudit', () => {
       'Memory audit: 2 files, 1 with findings.',
       '.claudin/memory/team/x.md: hidden characters (bidi control)',
       'Hidden characters change what a reviewer of the commit sees, not what the model reads: remove them.',
+    ])
+  })
+
+  test('link findings are listed with what to do, and never fail the audit', () => {
+    const findings = [
+      { kind: 'broken-link' as const, scope: 'team' as const, path: '/repo/.claudin/memory/team/a.md', target: '[[mine]]' },
+      { kind: 'unindexed' as const, scope: 'team' as const, path: '/repo/.claudin/memory/team/lost.md' },
+      { kind: 'duplicate-name' as const, scope: 'private' as const, path: '/repo/.claudin/memory/b.md', name: 'same' },
+    ]
+    const { output, exitCode } = formatMemoryAudit({ files: 5, findings }, CWD)
+    expect(exitCode).toBe(0)
+    expect(output.split('\n')).toEqual([
+      'Memory audit: 5 files, 3 with findings.',
+      '.claudin/memory/team/a.md: link [[mine]] resolves to no memory',
+      '.claudin/memory/team/lost.md: nothing links to it from its MEMORY.md — index it, or link it from a memory that is',
+      '.claudin/memory/b.md: name "same" is shared with another memory in its directory',
     ])
   })
 

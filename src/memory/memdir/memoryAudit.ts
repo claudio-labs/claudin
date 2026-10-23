@@ -5,7 +5,9 @@
  * file tools refuse one (teamMemSecretGuard.ts), but a human, another agent
  * or an editor writes past them — characters there that hide text from the
  * commit's reviewer (hiddenText.ts), and memories past their `expires:` date
- * (memoryExpires.ts), to be re-verified, never deleted.
+ * (memoryExpires.ts), to be re-verified, never deleted — and, in every
+ * scope, links that resolve to nothing, memories nothing reaches from their
+ * index, and shared names (memoryLinks.ts), reported and never failing.
  *
  * One auditor and several readers — `claudin memory audit` (the CI and
  * pre-commit gate of any repo carrying a team dir), `/memory tidy`, the dream
@@ -17,6 +19,7 @@ import { basename, join, relative } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { findHiddenText } from 'src/memory/memdir/hiddenText.js'
 import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+import { findLinkFindings, type LinkFinding } from 'src/memory/memdir/memoryLinks.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { isENOENT } from 'src/shared/errors.js'
@@ -50,7 +53,7 @@ export type ExpiredFinding = {
   expires: string
 }
 
-type MemoryFinding = SecretFinding | HiddenTextFinding | ExpiredFinding
+type MemoryFinding = SecretFinding | HiddenTextFinding | ExpiredFinding | LinkFinding
 
 export type MemoryAudit = {
   /** How many files were read. */
@@ -147,6 +150,11 @@ export async function auditMemoryDirs(
   const files = await readMemoryFiles(dirs, deps)
   return {
     files: files.length,
-    findings: [...findSecretShapedFiles(files), ...findHiddenTextFiles(files), ...findExpiredMemories(files, today)],
+    findings: [
+      ...findSecretShapedFiles(files),
+      ...findHiddenTextFiles(files),
+      ...findExpiredMemories(files, today),
+      ...findLinkFindings(files, dirs),
+    ],
   }
 }

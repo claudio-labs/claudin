@@ -43,6 +43,12 @@ function findingLine(finding: MemoryAudit['findings'][number], cwd: string): str
       return `${path}: hidden characters (${finding.labels.join(', ')})`
     case 'expired':
       return `${path}: expired ${finding.expires} — re-verify it, then move the date or remove the memory`
+    case 'broken-link':
+      return `${path}: link ${finding.target} resolves to no memory`
+    case 'unindexed':
+      return `${path}: nothing links to it from its MEMORY.md — index it, or link it from a memory that is`
+    case 'duplicate-name':
+      return `${path}: name "${finding.name}" is shared with another memory in its directory`
   }
 }
 

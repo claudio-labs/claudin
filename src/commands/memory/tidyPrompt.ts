@@ -17,6 +17,12 @@ function findingLine(f: MemoryAudit['findings'][number]): string {
       return `- Hidden characters (${f.labels.join(', ')}): \`${f.path}\``
     case 'expired':
       return `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
+    case 'broken-link':
+      return `- Link \`${f.target}\` resolves to no memory: \`${f.path}\``
+    case 'unindexed':
+      return `- Nothing links to it from its \`MEMORY.md\`: \`${f.path}\``
+    case 'duplicate-name':
+      return `- Shares \`name: ${f.name}\` with another memory: \`${f.path}\``
   }
 }
 
@@ -31,6 +37,7 @@ function findingsSection(findings: MemoryAudit['findings']): { section: string; 
   const secrets = findings.some(f => f.kind === 'secret')
   const hidden = findings.some(f => f.kind === 'hidden-text')
   const expired = findings.some(f => f.kind === 'expired')
+  const structural = findings.some(f => f.kind === 'broken-link' || f.kind === 'unindexed' || f.kind === 'duplicate-name')
   return {
     section: `
 ## Found before you started
@@ -45,6 +52,7 @@ Do not delete, rewrite or re-date any of them here.${secrets ? ' A secret-shaped
       ...(secrets ? ['- **Secret-shaped (team)**: each file above, first in the report — the user removes the secret and rotates it if it was ever committed'] : []),
       ...(hidden ? ['- **Hidden characters (team)**: each file above — the user removes them, since they change what a reviewer of the commit sees'] : []),
       ...(expired ? ['- **Expired, for review**: each memory past its `expires:` date, untouched — the user re-verifies it, then moves the date or removes it'] : []),
+      ...(structural ? ['- **Links and index, for review**: each file above, untouched — the user fixes the link, indexes the memory or renames it'] : []),
     ].join('\n'),
   }
 }

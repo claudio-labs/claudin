@@ -46,6 +46,19 @@ describe('buildMemoryTidyPrompt — audit findings', () => {
     expect(prompt.slice(prompt.indexOf('## Step 5'))).toContain('- **Hidden characters (team)**')
     expect(prompt).not.toContain('Secret-shaped')
   })
+
+  test('link findings are listed for review under one report heading', () => {
+    const prompt = buildMemoryTidyPrompt(DIRS, [
+      { kind: 'broken-link', scope: 'team', path: `${TEAM_ROOT}/a.md`, target: '[[mine]]' },
+      { kind: 'unindexed', scope: 'team', path: `${TEAM_ROOT}/lost.md` },
+      { kind: 'duplicate-name', scope: 'private', path: `${PRIVATE_ROOT}/b.md`, name: 'same' },
+    ])
+    expect(prompt).toContain(`- Link \`[[mine]]\` resolves to no memory: \`${TEAM_ROOT}/a.md\``)
+    expect(prompt).toContain(`- Nothing links to it from its \`MEMORY.md\`: \`${TEAM_ROOT}/lost.md\``)
+    expect(prompt).toContain(`- Shares \`name: same\` with another memory: \`${PRIVATE_ROOT}/b.md\``)
+    const report = prompt.slice(prompt.indexOf('## Step 5'))
+    expect(report.match(/\*\*Links and index, for review\*\*/g)).toHaveLength(1)
+  })
 })
 
 describe('buildMemoryTidyPrompt', () => {
