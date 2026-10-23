@@ -65,8 +65,8 @@
     {
       "name": "team memory loses its trust note",
       "source": "src/memory/instructions/claudemd/memoryBlock.ts",
-      "find": "      ? `${TEAM_MEMORY_TRUST_NOTE}\\n\\n<team-memory-content source=\"shared\">\\n${content}\\n</team-memory-content>`\n",
-      "replace": "      ? `<team-memory-content source=\"shared\">\\n${content}\\n</team-memory-content>`\n"
+      "find": "      ? `${TEAM_MEMORY_TRUST_NOTE}\\n\\n<team-memory-content source=\"shared\">\\n${content.replace(TEAM_FENCE_CLOSE_RE, '&lt;/$1')}\\n</team-memory-content>`\n",
+      "replace": "      ? `<team-memory-content source=\"shared\">\\n${content.replace(TEAM_FENCE_CLOSE_RE, '&lt;/$1')}\\n</team-memory-content>`\n"
     },
     {
       "name": "control: the note reworded, its contract kept",
