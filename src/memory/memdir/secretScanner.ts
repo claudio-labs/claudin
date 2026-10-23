@@ -227,6 +227,8 @@ const SECRET_RULES: SecretRule[] = [
 // Lazily compiled pattern cache — compile once on first scan.
 let compiledRules: Array<{ id: string; re: RegExp }> | null = null
 
+const FORMAT_CHARACTERS_RE = /\p{Cf}/gu
+
 function getCompiledRules(): Array<{ id: string; re: RegExp }> {
   if (compiledRules === null) {
     compiledRules = SECRET_RULES.map(r => ({
@@ -274,16 +276,21 @@ function ruleIdToLabel(ruleId: string): string {
  * Returns one match per rule that fired (deduplicated by rule ID). The
  * actual matched text is intentionally NOT returned — we never log or
  * display secret values.
+ *
+ * Format characters (`\p{Cf}`: zero-width space and joiner, soft hyphen,
+ * BOM, bidi and tag characters) are read past: one inside a key is
+ * invisible in an editor and a diff, and broke every rule's regex.
  */
 export function scanForSecrets(content: string): SecretMatch[] {
   const matches: SecretMatch[] = []
   const seen = new Set<string>()
+  const visible = content.replace(FORMAT_CHARACTERS_RE, '')
 
   for (const rule of getCompiledRules()) {
     if (seen.has(rule.id)) {
       continue
     }
-    if (rule.re.test(content)) {
+    if (rule.re.test(visible)) {
       seen.add(rule.id)
       matches.push({
         ruleId: rule.id,

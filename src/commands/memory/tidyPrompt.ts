@@ -9,6 +9,17 @@ import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 
 const KB = 1024
 
+function findingLine(f: MemoryAudit['findings'][number]): string {
+  switch (f.kind) {
+    case 'secret':
+      return `- Secret-shaped content (${f.labels.join(', ')}): \`${f.path}\``
+    case 'hidden-text':
+      return `- Hidden characters (${f.labels.join(', ')}): \`${f.path}\``
+    case 'expired':
+      return `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
+  }
+}
+
 /**
  * What the memory audit found, for the model to report: never to fix here,
  * since tidy only merges duplicates. Empty without findings, so the prompt
@@ -16,12 +27,9 @@ const KB = 1024
  */
 function findingsSection(findings: MemoryAudit['findings']): { section: string; report: string } {
   if (findings.length === 0) return { section: '', report: '' }
-  const lines = findings.map(f =>
-    f.kind === 'expired'
-      ? `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
-      : `- Secret-shaped content (${f.labels.join(', ')}): \`${f.path}\``,
-  )
+  const lines = findings.map(findingLine)
   const secrets = findings.some(f => f.kind === 'secret')
+  const hidden = findings.some(f => f.kind === 'hidden-text')
   const expired = findings.some(f => f.kind === 'expired')
   return {
     section: `
@@ -35,6 +43,7 @@ Do not delete, rewrite or re-date any of them here.${secrets ? ' A secret-shaped
 `,
     report: [
       ...(secrets ? ['- **Secret-shaped (team)**: each file above, first in the report — the user removes the secret and rotates it if it was ever committed'] : []),
+      ...(hidden ? ['- **Hidden characters (team)**: each file above — the user removes them, since they change what a reviewer of the commit sees'] : []),
       ...(expired ? ['- **Expired, for review**: each memory past its `expires:` date, untouched — the user re-verifies it, then moves the date or removes it'] : []),
     ].join('\n'),
   }

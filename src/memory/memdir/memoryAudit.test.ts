@@ -60,7 +60,8 @@ describe('invisible characters in team files', () => {
       '/p/c.md': 'a\u202Eb\n',
     }
     const deps = {
-      listMarkdown: async (root: string) => Object.keys(contents).filter(p => p.startsWith(`${root}/`)).map(p => p.slice(root.length + 1)),
+      // Roots carry their trailing separator, as getMemoryDirs() returns them.
+      listMarkdown: async (root: string) => Object.keys(contents).filter(p => p.startsWith(root)).map(p => p.slice(root.length)),
       read: async (path: string) => contents[path]!,
     }
     const audit = await auditMemoryDirs(testMemoryDirs({ private: '/p', team: '/t' }), deps, '2026-10-23')

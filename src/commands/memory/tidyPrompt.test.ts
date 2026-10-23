@@ -38,6 +38,14 @@ describe('buildMemoryTidyPrompt — audit findings', () => {
     expect(prompt).not.toContain('Secret-shaped')
     expect(prompt).not.toContain('never repeat the matched text')
   })
+
+  test('hidden characters are listed with their own report heading', () => {
+    const hidden = { kind: 'hidden-text' as const, path: `${TEAM_ROOT}/x.md`, labels: ['bidi control'] }
+    const prompt = buildMemoryTidyPrompt(DIRS, [hidden])
+    expect(prompt).toContain(`- Hidden characters (bidi control): \`${TEAM_ROOT}/x.md\``)
+    expect(prompt.slice(prompt.indexOf('## Step 5'))).toContain('- **Hidden characters (team)**')
+    expect(prompt).not.toContain('Secret-shaped')
+  })
 })
 
 describe('buildMemoryTidyPrompt', () => {

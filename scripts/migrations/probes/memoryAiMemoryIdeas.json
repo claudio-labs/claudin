@@ -90,13 +90,13 @@
     {
       "name": "the secret scan reaches past the team dir",
       "source": "src/memory/memdir/memoryAudit.ts",
-      "find": "    if (file.scope !== 'team') return []\n",
-      "replace": ""
+      "find": "    if (file.scope !== 'team') return []\n    const labels = [...new Set(scanForSecrets(",
+      "replace": "    const labels = [...new Set(scanForSecrets("
     },
     {
       "name": "an expired memory fails the gate",
       "source": "src/memory/memdir/memoryAudit.ts",
-      "find": "  return audit.findings.some(finding => finding.kind === 'secret')\n",
+      "find": "  return audit.findings.some(finding => finding.kind === 'secret' || finding.kind === 'hidden-text')\n",
       "replace": "  return audit.findings.length > 0\n"
     },
     {

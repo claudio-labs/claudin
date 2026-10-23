@@ -99,6 +99,17 @@ describe('formatMemoryAudit', () => {
     expect(formatMemoryAudit({ files: 2, findings: [secret, expired] }, CWD).exitCode).toBe(1)
   })
 
+  test('hidden characters in team memory: their labels, their own remedy, exit 1', () => {
+    const hidden = { kind: 'hidden-text' as const, path: '/repo/.claudin/memory/team/x.md', labels: ['bidi control'] }
+    const { output, exitCode } = formatMemoryAudit({ files: 2, findings: [hidden] }, CWD)
+    expect(exitCode).toBe(1)
+    expect(output.split('\n')).toEqual([
+      'Memory audit: 2 files, 1 with findings.',
+      '.claudin/memory/team/x.md: hidden characters (bidi control)',
+      'Hidden characters change what a reviewer of the commit sees, not what the model reads: remove them.',
+    ])
+  })
+
   test('--json carries the same findings and the same exit code', () => {
     const { output, exitCode } = formatMemoryAudit({ files: 3, findings: [secret] }, CWD, { json: true })
     expect(exitCode).toBe(1)
