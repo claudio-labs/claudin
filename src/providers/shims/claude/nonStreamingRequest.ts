@@ -6,6 +6,7 @@ import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { SystemAPIErrorMessage } from 'src/shared/types/message.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { parseWholeNumberEnvVar } from 'src/shared/envValidation.js'
 import { isSdkApiUserAbortError } from 'src/shared/errors.js'
 import { isFastModeEnabled } from 'src/providers/fastMode.js'
 import { normalizeModelStringForAPI } from 'src/providers/model/model.js'
@@ -32,9 +33,8 @@ import type { Options } from 'src/providers/shims/claude/types.js'
  * approaching the API's 10-minute non-streaming boundary.
  */
 function getNonstreamingFallbackTimeoutMs(): number {
-  const override = parseInt(process.env.API_TIMEOUT_MS || '', 10)
-  if (override) return override
-  return isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) ? 120_000 : 300_000
+  const fallback = isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) ? 120_000 : 300_000
+  return parseWholeNumberEnvVar('API_TIMEOUT_MS', process.env.API_TIMEOUT_MS, fallback, 1)
 }
 
 /**

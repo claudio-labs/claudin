@@ -11,6 +11,7 @@ import {
   refreshGcpCredentialsIfNeeded,
 } from 'src/providers/auth/auth.js'
 import { getUserAgent } from 'src/shared/http.js'
+import { parseWholeNumberEnvVar } from 'src/shared/envValidation.js'
 import { getSmallFastModel } from 'src/providers/model/model.js'
 import {
   getAPIProvider,
@@ -95,6 +96,10 @@ function createStderrLogger(): ClientOptions['logger'] {
   }
 }
 
+function getApiTimeoutMs(): number {
+  return parseWholeNumberEnvVar('API_TIMEOUT_MS', process.env.API_TIMEOUT_MS, 600 * 1000, 1)
+}
+
 export async function getAnthropicClient({
   apiKey,
   maxRetries,
@@ -157,7 +162,7 @@ export async function getAnthropicClient({
   const ARGS = {
     defaultHeaders,
     maxRetries,
-    timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
+    timeout: getApiTimeoutMs(),
     dangerouslyAllowBrowser: true,
     fetchOptions: getProxyFetchOptions({
       forAnthropicAPI: true,
@@ -212,7 +217,7 @@ export async function getAnthropicClient({
     return createOpenAIShimClient({
       defaultHeaders,
       maxRetries,
-      timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
+      timeout: getApiTimeoutMs(),
     }) as unknown as Anthropic
   }
   if (transport === 'bedrock') {
