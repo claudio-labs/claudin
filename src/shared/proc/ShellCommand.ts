@@ -310,10 +310,16 @@ class ShellCommandImpl implements ShellCommand {
       this.#exitCodeResolver = resolve
     })
 
-    return new Promise<ExecResult>(resolve => {
+    const result = new Promise<ExecResult>(resolve => {
       this.#resultResolver = resolve
       void exitPromise.then(this.#handleExit.bind(this))
     })
+    // The listener above only hears an abort that comes later; one that
+    // landed while the shell was being set up is handled here.
+    if (this.#abortSignal.aborted) {
+      this.#abortHandler()
+    }
+    return result
   }
 
   async #handleExit(code: number): Promise<void> {
