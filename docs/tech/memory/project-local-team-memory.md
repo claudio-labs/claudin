@@ -95,6 +95,15 @@ gitleaks-derived rules in `secretScanner.ts`) and is **blocked**, not warned,
 when it matches — the team dir is committed, so a leaked key would be in the
 history. The private dir is not scanned.
 
+Since 2026-10-23 the scanner reads past format characters (`\p{Cf}`: a
+zero-width space or joiner, a soft hyphen, a BOM), since one inside a key is
+invisible in an editor and a diff and slipped past every rule. The same guard
+refuses what hides text from the commit's reviewer (`hiddenText.ts`): bidi
+embedding, override and isolate controls, which reorder a line on screen
+(Trojan Source), and Unicode tag characters (U+E0000–E007F), which render as
+nothing while the model reads them as ASCII. A zero-width joiner, LRM or RLM
+alone is ordinary text (emoji, Persian, right-to-left prose) and passes.
+
 A shell command carries no content the guard can see, so since 2026-10-16 a
 shell write into the team dir — Bash or PowerShell, `echo … > team/x.md`,
 `touch`, `mkdir` — no longer rides the memory carve-out: it goes through the
@@ -108,14 +117,31 @@ guard on the cell it writes (`NotebookEditTool.ts` `validateInput`).
 What reaches the team dir past all of them — a human, another agent, an
 editor — is what `claudin memory audit` is for (`src/memory/memdir/memoryAudit.ts`,
 the subcommand in `src/platform/main/commands/memory.ts`): it scans every
-regular team file, indexes included, and exits 1 on a secret-shaped one
-(`--json` for a machine), which makes it a CI step or a pre-commit hook for
+regular team file, indexes included, and exits 1 on a secret-shaped one or
+one with hidden characters (`--json` for a machine), which makes it a CI step
+or a pre-commit hook for
 any repo that carries a team dir. It always covers the committed team dir,
 `<gitRoot>/.claudin/memory/team/` (`committedTeamMemPath`), whatever the
 memory settings say — `autoMemoryEnabled: false` in the repo's own settings
 cannot switch the gate off — and an audit that throws exits 2 rather than
 hanging. This repo's own PR checks run it (`verify:team-memory`). Memories
 past their `expires:` date are listed too, and never fail it.
+
+Since 2026-10-23 the audit also reports, in every scope and never failing,
+how memories point at each other (`memoryLinks.ts`) — the index is the only
+part always in context, so a memory is found by following links from it:
+
+- `broken-link`: a `[[name]]` matching only a memory its readers have no copy
+  of — a team memory sees team ones, a global one global ones, a private one
+  all three — or an index line whose file is missing. A `[[name]]` matching
+  nothing is a forward link, which the prompts invite, and is not reported.
+- `unindexed`: a memory no chain of links from its index reaches, with no
+  `paths:` to attach it.
+- `duplicate-name`: two memories of one directory with the same `name`.
+
+Code spans and fences hold no links. `/memory tidy` lists the findings for
+the user and fixes none. The first run found 7 team memories linking private
+`feedback-*` memories and 5 unreachable ones; all were repaired the same day.
 
 Known gap, older than all of this: the team-dir tests (`isTeamMemPath`, and
 the scope `findMemoryDir` gives the shell carve-out) compare the path as
@@ -178,6 +204,14 @@ team only for a project-wide convention; `project` never global; `reference`
 usually team, global only for a personal resource. The type alone does not
 decide it: of this repo's 21 private feedback memories when it shipped, about
 half were about the person and half about Claudin.
+
+A wording that filed the user's taste as `user`, scoped `feedback` by its
+subject and split a mixed correction at write time was measured on
+2026-10-23 and not promoted. The memory-write bench passed 21/21 with and
+without it at equal cost, and no session changed type
+(`scripts/bench/results/memory-write-ab-taste-2026-10-23.md`). The main agent
+already files an explicit taste globally. The taste that sits in a private dir
+here mostly predates the global dir, which is what `/memory sort` is for.
 
 - **Where:** `getGlobalMemPath()` (`src/memory/memdir/paths.ts`). The setting
   `autoMemoryGlobalDirectory` moves it — from policy, flag or user
@@ -399,6 +433,16 @@ URL or data is suspect, and the model says so. The note is outside the
 fence, so it never reads as part of what a teammate wrote, and it asks the
 model to tell the user rather than to hide anything. Nothing of it is in the
 system prompt.
+
+The content cannot leave its envelope either. Every memory rides inside a
+`<system-reminder>`, and past `</system-reminder>` text reads as the user's
+own turn; since 2026-10-23 `renderMemoryFileBlock` escapes a closing
+`</system-reminder` in any memory and a closing `</team-memory-content` in a
+team one (`&lt;/…`, any case). Only closers: a forged opening tag stays
+inside, so prose naming `<system-reminder>` — this repo's own team index has
+one — stays byte for byte. Instruction files are not touched. It is not done
+in `wrapInSystemReminder`, whose lane also carries file diffs and code, where
+an `&lt;` would misreport the file.
 
 ## An index over its caps
 

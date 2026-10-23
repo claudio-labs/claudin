@@ -5,7 +5,7 @@
 ## Decisions
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, limits table, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer/status line/`/context` read autocompact's count; status line adds output, unlike CC
-- [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, trust note, `memory audit`, expires:
+- [ai-memory ideas in memory (10-16, 10-23)](decisions/memory-ai-memory-ideas.md) — trust note, `memory audit` (+ links, hidden text), expires:; "taste is user" NOT promoted
 - [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket default on; prewarm rejected
 - Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
