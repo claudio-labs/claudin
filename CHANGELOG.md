@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.1.47 — 2026-10-23
+
+### 💥 Breaking Changes
+
+- chore(deps)!: bump production deps, raise node floor to 22.19 (#310) (4ab69d98)
+
+### ✨ Features
+
+- feat(usage): group /usage by provider, provider-first limit alerts (#316) (8022db37)
+- feat(tools): opt-in lean patch, soft batching and sed -n read credit (#314) (6f1420ae)
+
+### 🐛 Bug Fixes
+
+- fix(agent): keep the scratchpad path and context counts consistent (#315) (bb3c9045)
+- fix(agent): attribute file changes to the tool call that made them (#313) (65720b0e)
+- fix(agent): close the gaps the 10-19 census found (#312) (9ba263c9)
+- fix(build): bundle @​opentelemetry/api so the compiled binary starts (#311) (4d838391)
+
+### 📦 Dependencies
+
+- chore(deps): bump @​types/bun (#309) (869a2f03)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.46 — 2026-10-17
 
 ### ✨ Features
