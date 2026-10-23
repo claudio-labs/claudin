@@ -285,7 +285,10 @@ function doesSourceMatchHostPattern(
   }
 
   try {
-    const regex = new RegExp(pattern.hostPattern)
+    // Anchored as a whole so the pattern must match the entire host: test()
+    // alone is a substring search, and `github\.corp\.com` would admit
+    // `github.corp.com.evil.io`. The group keeps a top-level `a|b` intact.
+    const regex = new RegExp(`^(?:${pattern.hostPattern})$`)
     return regex.test(host)
   } catch {
     // Invalid regex - log and return false

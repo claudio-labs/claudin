@@ -5,6 +5,7 @@ import {
   getMcpConfigsByScope,
   isMcpServerDisabled,
 } from 'src/mcp/config.js'
+import { getServerByName } from 'src/mcp/serverLookup.js'
 import type {
   ConfigScope,
   ScopedMcpServerConfig,
@@ -239,7 +240,7 @@ function buildScopeDefinitions(
   activeConfig: ScopedMcpServerConfig | undefined,
   deps: McpDoctorDependencies,
 ): McpDoctorDefinition[] {
-  const config = servers[name]
+  const config = getServerByName(servers, name)
   if (!config) {
     return []
   }
@@ -538,7 +539,7 @@ async function buildServerReport(
   }
   const { servers: activeServers } = await deps.getAllMcpConfigs()
   const serverDisabled = deps.isMcpServerDisabled(name)
-  const runtimeConfig = activeServers[name] ?? undefined
+  const runtimeConfig = getServerByName(activeServers, name)
   const activeConfig = serverDisabled ? undefined : runtimeConfig
 
   const definitions = [

@@ -19,6 +19,7 @@ import {
 import { doctorAllServers, doctorServer, type McpDoctorReport, type McpDoctorScopeFilter } from 'src/mcp/doctor.js';
 import { connectToServer, getMcpServerConnectionBatchSize } from 'src/mcp/client.js';
 import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from 'src/mcp/config.js';
+import { getServerByName } from 'src/mcp/serverLookup.js';
 import type { ConfigScope, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/mcp/utils.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
@@ -199,13 +200,13 @@ export async function mcpRemoveHandler(name: string, options: {
     const {
       servers: projectServers
     } = getMcpConfigsByScope('project');
-    const mcpJsonExists = !!projectServers[name];
+    const mcpJsonExists = !!getServerByName(projectServers, name);
 
     // Count how many scopes contain this server
     const scopes: Array<Exclude<ConfigScope, 'dynamic'>> = [];
-    if (projectConfig.mcpServers?.[name]) scopes.push('local');
+    if (getServerByName(projectConfig.mcpServers, name)) scopes.push('local');
     if (mcpJsonExists) scopes.push('project');
-    if (globalConfig.mcpServers?.[name]) scopes.push('user');
+    if (getServerByName(globalConfig.mcpServers, name)) scopes.push('user');
     if (scopes.length === 0) {
       cliError(`No MCP server found with name: "${name}"`);
     } else if (scopes.length === 1) {

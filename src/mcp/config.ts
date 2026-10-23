@@ -38,6 +38,7 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js'
 import { expandEnvVarsInString } from 'src/mcp/envExpansion.js'
 import { isClaudeAIMcpServerName } from 'src/mcp/normalization.js'
+import { getServerByName } from 'src/mcp/serverLookup.js'
 import {
   type ConfigScope,
   type McpHTTPServerConfig,
@@ -664,21 +665,21 @@ export async function addMcpConfig(
   switch (scope) {
     case 'project': {
       const { servers } = getProjectMcpConfigsFromCwd()
-      if (servers[name]) {
+      if (getServerByName(servers, name)) {
         throw new Error(`MCP server ${name} already exists in .mcp.json`)
       }
       break
     }
     case 'user': {
       const globalConfig = getGlobalConfig()
-      if (globalConfig.mcpServers?.[name]) {
+      if (getServerByName(globalConfig.mcpServers, name)) {
         throw new Error(`MCP server ${name} already exists in user config`)
       }
       break
     }
     case 'local': {
       const projectConfig = getCurrentProjectConfig()
-      if (projectConfig.mcpServers?.[name]) {
+      if (getServerByName(projectConfig.mcpServers, name)) {
         throw new Error(`MCP server ${name} already exists in local config`)
       }
       break
@@ -756,7 +757,7 @@ export async function removeMcpConfig(
     case 'project': {
       const { servers: existingServers } = getProjectMcpConfigsFromCwd()
 
-      if (!existingServers[name]) {
+      if (!getServerByName(existingServers, name)) {
         throw new Error(`No MCP server found with name: ${name} in .mcp.json`)
       }
 
@@ -781,7 +782,7 @@ export async function removeMcpConfig(
 
     case 'user': {
       const config = getGlobalConfig()
-      if (!config.mcpServers?.[name]) {
+      if (!getServerByName(config.mcpServers, name)) {
         throw new Error(`No user-scoped MCP server found with name: ${name}`)
       }
       saveGlobalConfig(current => {
@@ -797,7 +798,7 @@ export async function removeMcpConfig(
     case 'local': {
       // Check if server exists before updating
       const config = getCurrentProjectConfig()
-      if (!config.mcpServers?.[name]) {
+      if (!getServerByName(config.mcpServers, name)) {
         throw new Error(`No project-local MCP server found with name: ${name}`)
       }
       saveCurrentProjectConfig(current => {
@@ -1018,27 +1019,20 @@ export function getMcpConfigByName(name: string): ScopedMcpServerConfig | null {
   // When MCP is locked to plugin-only, only enterprise servers are reachable
   // by name. User/project/local servers are blocked — same as getClaudeCodeMcpConfigs().
   if (isRestrictedToPluginOnly('mcp')) {
-    return enterpriseServers[name] ?? null
+    return getServerByName(enterpriseServers, name) ?? null
   }
 
   const { servers: userServers } = getMcpConfigsByScope('user')
   const { servers: projectServers } = getMcpConfigsByScope('project')
   const { servers: localServers } = getMcpConfigsByScope('local')
 
-  if (enterpriseServers[name]) {
-    return enterpriseServers[name]
-  }
-  if (localServers[name]) {
-    return localServers[name]
-  }
-  if (projectServers[name]) {
-    return projectServers[name]
-  }
-  if (userServers[name]) {
-    return userServers[name]
-  }
-
-  return null
+  return (
+    getServerByName(enterpriseServers, name) ??
+    getServerByName(localServers, name) ??
+    getServerByName(projectServers, name) ??
+    getServerByName(userServers, name) ??
+    null
+  )
 }
 
 /**

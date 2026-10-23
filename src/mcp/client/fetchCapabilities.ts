@@ -62,6 +62,7 @@ import {
   getRemoteMcpServerConnectionBatchSize,
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
+import { collectListPages, pageParams } from 'src/mcp/client/listPagination.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
@@ -90,35 +91,37 @@ export const fetchToolsForClient = memoizeWithLRU(
         return []
       }
 
-      // Retry tool list fetch up to 2 times on transient failures.
+      // Retry each page of the tool list up to 2 times on transient failures.
       // Without retry, a single timeout during tools/list makes all MCP tools
       // silently disappear from the model's context until the next reconnect.
-      let result: ListToolsResult | undefined
-      let lastError: unknown
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          result = (await client.client.request(
-            { method: 'tools/list' },
-            ListToolsResultSchema,
-          )) as ListToolsResult
-          break
-        } catch (err) {
-          lastError = err
-          if (attempt < 2) {
-            logMCPDebug(
-              client.name,
-              `tools/list failed (attempt ${attempt + 1}/3): ${errorMessage(err)}. Retrying...`,
-            )
-            await sleep(1000 * (attempt + 1))
+      const listToolsPage = async (cursor: string | undefined): Promise<ListToolsResult> => {
+        let lastError: unknown
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return (await client.client.request(
+              { method: 'tools/list', ...pageParams(cursor) },
+              ListToolsResultSchema,
+            )) as ListToolsResult
+          } catch (err) {
+            lastError = err
+            if (attempt < 2) {
+              logMCPDebug(
+                client.name,
+                `tools/list failed (attempt ${attempt + 1}/3): ${errorMessage(err)}. Retrying...`,
+              )
+              await sleep(1000 * (attempt + 1))
+            }
           }
         }
-      }
-      if (!result) {
         throw lastError ?? new Error('tools/list failed after 3 attempts')
       }
+      const tools = await collectListPages(async cursor => {
+        const page = await listToolsPage(cursor)
+        return { items: page.tools, nextCursor: page.nextCursor }
+      })
 
       // Sanitize tool data from MCP server
-      const toolsToProcess = recursivelySanitizeUnicode(result.tools)
+      const toolsToProcess = recursivelySanitizeUnicode(tools)
 
       // Check if we should skip the mcp__ prefix for SDK MCP servers
       const skipPrefix =
@@ -361,15 +364,16 @@ export const fetchResourcesForClient = memoizeWithLRU(
         return []
       }
 
-      const result = await client.client.request(
-        { method: 'resources/list' },
-        ListResourcesResultSchema,
-      )
-
-      if (!result.resources) return []
+      const resources = await collectListPages(async cursor => {
+        const page = await client.client.request(
+          { method: 'resources/list', ...pageParams(cursor) },
+          ListResourcesResultSchema,
+        )
+        return { items: page.resources, nextCursor: page.nextCursor }
+      })
 
       // Add server name to each resource
-      return result.resources.map(resource => ({
+      return resources.map(resource => ({
         ...resource,
         server: client.name,
       }))
@@ -394,16 +398,17 @@ export const fetchCommandsForClient = memoizeWithLRU(
         return []
       }
 
-      // Request prompts list from client
-      const result = (await client.client.request(
-        { method: 'prompts/list' },
-        ListPromptsResultSchema,
-      )) as ListPromptsResult
-
-      if (!result.prompts) return []
+      // Request every page of the prompts list from client
+      const prompts = await collectListPages(async cursor => {
+        const page = (await client.client.request(
+          { method: 'prompts/list', ...pageParams(cursor) },
+          ListPromptsResultSchema,
+        )) as ListPromptsResult
+        return { items: page.prompts, nextCursor: page.nextCursor }
+      })
 
       // Sanitize prompt data from MCP server
-      const promptsToProcess = recursivelySanitizeUnicode(result.prompts)
+      const promptsToProcess = recursivelySanitizeUnicode(prompts)
 
       // Convert MCP prompts to our Command format
       return promptsToProcess.map(prompt => {

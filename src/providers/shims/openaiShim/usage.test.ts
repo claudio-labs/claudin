@@ -488,3 +488,53 @@ test('fallback estimates input and output tokens when provider omits usage', asy
   // Fallback should estimate non-zero output tokens from streamed chars
   expect(usageEvent?.usage?.output_tokens).toBeGreaterThan(0)
 })
+
+test('keeps the usage of a repeated finish_reason chunk that still carries choices', async () => {
+  globalThis.fetch = (async _input => {
+    const chunks = makeStreamChunks([
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'fake-model',
+        choices: [{ index: 0, delta: { role: 'assistant', content: 'hello world' }, finish_reason: null }],
+      },
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'fake-model',
+        choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+      },
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'fake-model',
+        choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 123, completion_tokens: 45, total_tokens: 168 },
+      },
+    ])
+    return makeSseResponse(chunks)
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  const result = await client.beta.messages
+    .create({
+      model: 'fake-model',
+      system: 'test system',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: true,
+    })
+    .withResponse()
+
+  const usageEvents: Array<{ usage?: { input_tokens?: number; output_tokens?: number } }> = []
+  for await (const event of result.data) {
+    const e = event as Record<string, unknown>
+    if (e.type === 'message_delta' && typeof e.usage === 'object' && e.usage !== null) {
+      usageEvents.push(e as { usage?: { input_tokens?: number; output_tokens?: number } })
+    }
+  }
+
+  expect(usageEvents).toHaveLength(1)
+  expect(usageEvents[0]?.usage?.input_tokens).toBe(123)
+  expect(usageEvents[0]?.usage?.output_tokens).toBe(45)
+})

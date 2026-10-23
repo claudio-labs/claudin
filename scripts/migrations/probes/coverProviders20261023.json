@@ -1,0 +1,95 @@
+{
+  "test": [
+    "src/providers/transport/client.test.ts",
+    "src/providers/shims/claude/nonStreamingRequest.test.ts",
+    "src/providers/oauth/auth-code-listener.test.ts"
+  ],
+  "source": "src/providers/transport/client.ts",
+  "probes": [
+    {
+      "name": "the client request id reaches non-first-party hosts",
+      "find": "getAPIProvider() === 'firstParty' && isFirstPartyAnthropicBaseUrl()",
+      "replace": "true"
+    },
+    {
+      "name": "a claude.ai subscriber is sent the API key",
+      "find": "apiKey: isClaudeAISubscriber() ? null : apiKey || getAnthropicApiKey(),",
+      "replace": "apiKey: apiKey || getAnthropicApiKey(),"
+    },
+    {
+      "name": "the Bedrock API key never becomes a bearer header",
+      "find": "Authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`,",
+      "replace": "'x-bedrock-probe': 'dropped',"
+    },
+    {
+      "name": "Copilot native mode ignores the GitHub token",
+      "find": "activeProvider?.extras?.githubToken ?? activeProvider?.apiKey ?? ''",
+      "replace": "activeProvider?.apiKey ?? ''"
+    },
+    {
+      "name": "the profile region is ignored on Vertex",
+      "find": "!process.env.CLOUD_ML_REGION && helperRegion === 'us-east5' && profileGcpRegion",
+      "replace": "false"
+    },
+    {
+      "name": "remote sessions get the long fallback timeout",
+      "source": "src/providers/shims/claude/nonStreamingRequest.ts",
+      "find": "isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) ? 120_000 : 300_000",
+      "replace": "300_000"
+    },
+    {
+      "name": "the non-streaming max_tokens cap is not applied",
+      "source": "src/providers/shims/claude/nonStreamingRequest.ts",
+      "find": "        MAX_NON_STREAMING_TOKENS,\n",
+      "replace": "        Number.MAX_SAFE_INTEGER,\n"
+    },
+    {
+      "name": "the context-window suffix reaches the API",
+      "source": "src/providers/shims/claude/nonStreamingRequest.ts",
+      "find": "model: normalizeModelStringForAPI(adjustedParams.model),",
+      "replace": "model: adjustedParams.model,"
+    },
+    {
+      "name": "a user abort is logged as a fallback error",
+      "source": "src/providers/shims/claude/nonStreamingRequest.ts",
+      "find": "if (isSdkApiUserAbortError(err)) throw err",
+      "replace": "if (false) throw err"
+    },
+    {
+      "name": "retry notices are swallowed",
+      "source": "src/providers/shims/claude/nonStreamingRequest.ts",
+      "find": "      yield e.value\n",
+      "replace": ""
+    },
+    {
+      "name": "a path other than the callback is answered 200",
+      "source": "src/providers/oauth/auth-code-listener.ts",
+      "find": "res.writeHead(404)",
+      "replace": "res.writeHead(200)"
+    },
+    {
+      "name": "a Claude.ai login lands on the Console success page",
+      "source": "src/providers/oauth/auth-code-listener.ts",
+      "find": "const successUrl = shouldUseClaudeAIAuth(scopes)",
+      "replace": "const successUrl = !shouldUseClaudeAIAuth(scopes)"
+    },
+    {
+      "name": "a throwing success handler is not answered 500",
+      "source": "src/providers/oauth/auth-code-listener.ts",
+      "find": "response.writeHead(500, {",
+      "replace": "response.writeHead(200, {"
+    },
+    {
+      "name": "close leaves the held browser response unanswered",
+      "source": "src/providers/oauth/auth-code-listener.ts",
+      "find": "      this.handleErrorRedirect()\n",
+      "replace": ""
+    },
+    {
+      "name": "close keeps reporting the old port",
+      "source": "src/providers/oauth/auth-code-listener.ts",
+      "find": "    this.port = 0\n",
+      "replace": ""
+    }
+  ]
+}

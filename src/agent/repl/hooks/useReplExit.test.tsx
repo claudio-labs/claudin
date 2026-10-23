@@ -27,6 +27,9 @@ const mocks: Mocks = {
 // `stdout`, which made `bootSnapshot.test.ts` read `String(undefined)` as the
 // output of `bin/claudin --help` and report the entire help text as changed.
 const realChildProcess = { ...(await import('node:child_process')) }
+// The worktree barrel's stub also replaced the getCurrentWorktreeSession that
+// worktree/session.ts exports, so later files read this file's fake session.
+const realWorktree = { ...(await import('src/vcs/git/worktree.js')) }
 
 // `handleExit()` arms a 10s failsafe that runs
 // `process.kill(process.pid, 'SIGKILL')`, and the branches exercised below (the
@@ -85,6 +88,7 @@ beforeAll(() => {
 afterAll(() => {
   mock.restore()
   mock.module('child_process', () => realChildProcess)
+  mock.module('src/vcs/git/worktree.js', () => realWorktree)
   globalThis.setTimeout = realSetTimeout
   for (const handle of armedTimers) clearTimeout(handle)
   armedTimers.clear()

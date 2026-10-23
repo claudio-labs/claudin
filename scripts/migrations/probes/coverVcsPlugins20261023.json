@@ -1,0 +1,126 @@
+{
+  "test": [
+    "src/agent/context/tokens.test.ts",
+    "src/vcs/git/gitDiff.test.ts",
+    "src/vcs/git/worktree/createWorktree.test.ts",
+    "src/plugins/marketplaceHelpers.test.ts"
+  ],
+  "source": "src/agent/context/tokens.ts",
+  "probes": [
+    {
+      "name": "tokens: a synthetic-model message counts as real usage",
+      "find": "message.message.model !== SYNTHETIC_MODEL\n  ) {\n    return message.message.usage",
+      "replace": "true\n  ) {\n    return message.message.usage"
+    },
+    {
+      "name": "tokens: the final window ignores the server tool-loop iterations",
+      "find": "return last.input_tokens + last.output_tokens",
+      "replace": "return usage.input_tokens + usage.output_tokens"
+    },
+    {
+      "name": "tokens: getCurrentUsage drops the cache-read count",
+      "find": "cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,",
+      "replace": "cache_read_input_tokens: 0,"
+    },
+    {
+      "name": "tokens: the estimate anchors at the LAST split of a parallel-tool response",
+      "find": "// Earlier split of the same API response — anchor here instead.\n            i = j",
+      "replace": "// Earlier split of the same API response — anchor here instead.\n            void j"
+    },
+    {
+      "name": "tokens: exactly 200k counts as over 200k",
+      "find": "getTokenCountFromUsage(usage) > THRESHOLD",
+      "replace": "getTokenCountFromUsage(usage) >= THRESHOLD"
+    },
+    {
+      "name": "gitDiff: numstat keeps per-file details past 50 files",
+      "source": "src/vcs/git/gitDiff.ts",
+      "find": "if (perFileStats.size < MAX_FILES) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "gitDiff: the 1 MB cap measures UTF-16 length instead of UTF-8 bytes",
+      "source": "src/vcs/git/gitDiff.ts",
+      "find": "Buffer.byteLength(fileDiff, 'utf8') > MAX_DIFF_SIZE_BYTES",
+      "replace": "fileDiff.length > MAX_DIFF_SIZE_BYTES"
+    },
+    {
+      "name": "gitDiff: a cherry-pick in progress is not a transient state",
+      "source": "src/vcs/git/gitDiff.ts",
+      "find": "'CHERRY_PICK_HEAD',",
+      "replace": "'CHERRY_PICK_HEAD_X',"
+    },
+    {
+      "name": "gitDiff: over 500 files still loads per-file details",
+      "source": "src/vcs/git/gitDiff.ts",
+      "find": "if (quickStats && quickStats.filesCount > MAX_FILES_FOR_DETAILS) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "gitDiff: hunks are fetched without forcing a/ b/ prefixes",
+      "source": "src/vcs/git/gitDiff.ts",
+      "find": "['--no-optional-locks', 'diff', 'HEAD', '--src-prefix=a/', '--dst-prefix=b/']",
+      "replace": "['--no-optional-locks', 'diff', 'HEAD']"
+    },
+    {
+      "name": "createWorktree: the under-lock re-check of an existing worktree is skipped",
+      "source": "src/vcs/git/worktree/createWorktree.ts",
+      "find": "if (lockedExistingHead) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "createWorktree: a failed PR fetch is not reported",
+      "source": "src/vcs/git/worktree/createWorktree.ts",
+      "find": "if (prFetchCode !== 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "createWorktree: a failed origin fetch does not fall back to HEAD",
+      "source": "src/vcs/git/worktree/createWorktree.ts",
+      "find": "baseBranch = fetchCode === 0 ? originRef : 'HEAD'",
+      "replace": "baseBranch = originRef"
+    },
+    {
+      "name": "createWorktree: resuming an agent worktree leaves its mtime stale",
+      "source": "src/vcs/git/worktree/createWorktree.ts",
+      "find": "await utimes(worktreePath, now, now)",
+      "replace": "void now"
+    },
+    {
+      "name": "createWorktree: removing an agent worktree keeps its branch",
+      "source": "src/vcs/git/worktree/createWorktree.ts",
+      "find": "['branch', '-D', worktreeBranch]",
+      "replace": "['branch', '--list', worktreeBranch]"
+    },
+    {
+      "name": "marketplaceHelpers: the blocklist no longer wins over the allowlist",
+      "source": "src/plugins/marketplaceHelpers.ts",
+      "find": "if (isSourceInBlocklist(source)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "marketplaceHelpers: a git URL bypasses a github blocklist entry",
+      "source": "src/plugins/marketplaceHelpers.ts",
+      "find": "if (source.source === 'git' && blocked.source === 'github') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "marketplaceHelpers: a blocklist entry without ref/path stops being a wildcard",
+      "source": "src/plugins/marketplaceHelpers.ts",
+      "find": "if (!blockedValue) {\n    return true",
+      "replace": "if (!blockedValue) {\n    return false"
+    },
+    {
+      "name": "marketplaceHelpers: a pathPattern admits network sources",
+      "source": "src/plugins/marketplaceHelpers.ts",
+      "find": "if (source.source !== 'file' && source.source !== 'directory') {\n    return false",
+      "replace": "if (false) {\n    return false"
+    },
+    {
+      "name": "marketplaceHelpers: an empty allowlist is not reported as blocking everything",
+      "source": "src/plugins/marketplaceHelpers.ts",
+      "find": "if (allowlist.length === 0) {",
+      "replace": "if (false) {"
+    }
+  ]
+}

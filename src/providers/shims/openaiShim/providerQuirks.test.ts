@@ -753,3 +753,50 @@ test('the killswitch removes the field everywhere', async () => {
     delete process.env.CLAUDIN_DISABLE_REASONING_EFFORT_WIRE
   }
 })
+
+async function bodyForModel(model: string): Promise<Record<string, unknown> | undefined> {
+  process.env.OPENAI_BASE_URL = 'https://litellm.example.test/v1'
+  process.env.OPENAI_API_KEY = 'sk-litellm-test'
+
+  let requestBody: Record<string, unknown> | undefined
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model,
+        choices: [
+          { message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await client.beta.messages.create({
+    model,
+    system: 'test',
+    messages: [{ role: 'user', content: 'hi' }],
+    max_tokens: 64,
+    stream: false,
+  })
+  return requestBody
+}
+
+test.each([
+  'claude-sonnet-4-6',
+  'anthropic/claude-sonnet-4.5',
+  'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+  'sonnet-4-6',
+])('an OpenAI-compatible gateway serving %s gets no store field', async model => {
+  const body = await bodyForModel(model)
+  expect(body?.model).toBe(model)
+  expect(body?.store).toBeUndefined()
+})
+
+test('a non-Anthropic model on the same gateway still gets store: false', async () => {
+  const body = await bodyForModel('gpt-4o')
+  expect(body?.store).toBe(false)
+})

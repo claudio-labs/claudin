@@ -1,0 +1,198 @@
+{
+  "test": [
+    "src/providers/transport/client.test.ts",
+    "src/providers/shims/claude/nonStreamingRequest.test.ts",
+    "src/shared/envValidation.test.ts",
+    "src/providers/transport/withRetry.test.ts",
+    "src/providers/shims/openaiShim/providerQuirks.test.ts",
+    "src/providers/shims/openaiShim/usage.test.ts",
+    "src/providers/model/openaiContextWindows.test.ts",
+    "src/providers/oauth/auth-code-listener.test.ts",
+    "src/shared/proc/ShellCommand.test.ts",
+    "src/tools/BashTool/runShellCommand.test.ts",
+    "src/platform/lifecycleHooks/windowsBashCommand.test.ts",
+    "src/tools/FileEditTool/twoFileDiffSnippet.test.ts",
+    "src/shared/frontmatterParser.test.ts",
+    "src/agent/context/tokens.test.ts",
+    "src/platform/status/lastAssistantMessageId.test.ts",
+    "src/agent/attachments/memory.directories.test.ts",
+    "src/terminal/input/coalescedDeletes.test.ts",
+    "src/vcs/git/gitDiff.test.ts",
+    "src/vcs/git/worktree/createWorktree.test.ts",
+    "src/mcp/client/listPagination.test.ts",
+    "src/mcp/client/fetchCapabilities.pagination.test.ts",
+    "src/mcp/serverLookup.test.ts",
+    "src/plugins/marketplaceHelpers.test.ts",
+    "src/sessions/__tests__/hydrateRemoteSession.test.ts"
+  ],
+  "source": "src/providers/transport/client.ts",
+  "probes": [
+    {
+      "name": "P1: API_TIMEOUT_MS goes back to parseInt in the client",
+      "find": "  return parseWholeNumberEnvVar('API_TIMEOUT_MS', process.env.API_TIMEOUT_MS, 600 * 1000, 1)",
+      "replace": "  return parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10)"
+    },
+    {
+      "name": "P1: API_TIMEOUT_MS goes back to parseInt in the non-streaming fallback",
+      "source": "src/providers/shims/claude/nonStreamingRequest.ts",
+      "find": "  return parseWholeNumberEnvVar('API_TIMEOUT_MS', process.env.API_TIMEOUT_MS, fallback, 1)",
+      "replace": "  return parseInt(process.env.API_TIMEOUT_MS || '', 10) || fallback"
+    },
+    {
+      "name": "P1: the whole-number parser ignores its minimum",
+      "source": "src/shared/envValidation.ts",
+      "find": "  if (Number.isSafeInteger(parsed) && parsed >= min) return parsed",
+      "replace": "  if (Number.isSafeInteger(parsed)) return parsed"
+    },
+    {
+      "name": "P2: CLAUDIN_MAX_RETRIES goes back to parseInt",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "  return parseWholeNumberEnvVar('CLAUDIN_MAX_RETRIES', process.env.CLAUDIN_MAX_RETRIES, DEFAULT_MAX_RETRIES)",
+      "replace": "  return process.env.CLAUDIN_MAX_RETRIES ? parseInt(process.env.CLAUDIN_MAX_RETRIES, 10) : DEFAULT_MAX_RETRIES"
+    },
+    {
+      "name": "P3: store is sent for Anthropic models again",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": " || ANTHROPIC_MODEL_RE.test(request.resolvedModel)) {",
+      "replace": ") {"
+    },
+    {
+      "name": "P4: final usage needs empty choices again",
+      "source": "src/providers/shims/openaiShim/streamParser.ts",
+      "find": "      if (!hasEmittedFinalUsage && chunkUsage && lastStopReason !== null) {",
+      "replace": "      if (!hasEmittedFinalUsage && chunkUsage && (chunk.choices?.length ?? 0) === 0 && lastStopReason !== null) {"
+    },
+    {
+      "name": "P5: the context-window pin no longer precedes discovery",
+      "source": "src/providers/model/openaiContextWindows.ts",
+      "find": "  if (pinned !== undefined) return pinned",
+      "replace": ""
+    },
+    {
+      "name": "P6: a wrong OAuth state rejects the pending login again",
+      "source": "src/providers/oauth/auth-code-listener.ts",
+      "find": "      res.end('Invalid state parameter')\n      return",
+      "replace": "      res.end('Invalid state parameter')\n      this.reject(new Error('Invalid state parameter'))\n      return"
+    },
+    {
+      "name": "S1: an abort before the listener is ignored again",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "    if (this.#abortSignal.aborted) {\n      this.#abortHandler()\n    }",
+      "replace": ""
+    },
+    {
+      "name": "S2: the Bash timeout is no longer capped",
+      "source": "src/tools/BashTool/runShellCommand.tsx",
+      "find": "Math.min(timeout || getDefaultTimeoutMs(), getMaxTimeoutMs())",
+      "replace": "timeout || getDefaultTimeoutMs()"
+    },
+    {
+      "name": "S3: bash is prepended to the whole line again",
+      "source": "src/platform/lifecycleHooks/windowsBashCommand.ts",
+      "find": "    if (!match || !word || word.startsWith('#')) return command",
+      "replace": "    if (!match || !word || word.startsWith('#')) return command\n    if (/\\.sh(\\s|$|\")/.test(command.trim())) return `bash ${command}`"
+    },
+    {
+      "name": "S3: bash goes before the VAR= prefixes",
+      "source": "src/platform/lifecycleHooks/windowsBashCommand.ts",
+      "find": "    return SH_SUFFIX_RE.test(word) ? `${command.slice(0, offset)}bash ${rest}` : command",
+      "replace": "    return SH_SUFFIX_RE.test(word) ? `bash ${command}` : command"
+    },
+    {
+      "name": "S3: the .sh suffix is case-sensitive again",
+      "source": "src/platform/lifecycleHooks/windowsBashCommand.ts",
+      "find": "const SH_SUFFIX_RE = /\\.sh[\"']?$/i",
+      "replace": "const SH_SUFFIX_RE = /\\.sh[\"']?$/"
+    },
+    {
+      "name": "A6: snippets are numbered from oldStart again",
+      "source": "src/tools/FileEditTool/utils.ts",
+      "find": "startLine: _.newStart + firstLine - 1",
+      "replace": "startLine: _.oldStart + firstLine - 1"
+    },
+    {
+      "name": "A1: the old frontmatter regex closes at any ---",
+      "source": "src/shared/frontmatterParser.ts",
+      "find": "export const FRONTMATTER_REGEX = /^---\\s*\\n((?:[\\s\\S]*?\\r?\\n)??)---(?=[ \\t]*(?:\\r?\\n|$))\\s*/",
+      "replace": "export const FRONTMATTER_REGEX = /^---\\s*\\n([\\s\\S]*?)---\\s*\\n?/"
+    },
+    {
+      "name": "A2: a space-hash in a value is a YAML comment again",
+      "source": "src/shared/frontmatterParser.ts",
+      "find": "const CUT_IN_PLAIN_VALUE_RE = /\\s#|(?:---|\\.\\.\\.)(?:\\s|$)/",
+      "replace": "const CUT_IN_PLAIN_VALUE_RE = /(?:---|\\.\\.\\.)(?:\\s|$)/"
+    },
+    {
+      "name": "A3: nested brace groups split on every comma",
+      "source": "src/shared/frontmatterParser.ts",
+      "find": "    else if (char === ',' && depth === 1) cuts.push(i)",
+      "replace": "    else if (char === ',') cuts.push(i)"
+    },
+    {
+      "name": "A4: getCurrentUsage reads past the compact boundary again",
+      "source": "src/agent/context/tokens.ts",
+      "find": "  const current = getMessagesAfterCompactBoundary(messages)",
+      "replace": "  const current = messages"
+    },
+    {
+      "name": "A4: the status-line id reads past the compact boundary again",
+      "source": "src/platform/status/StatusLine.tsx",
+      "find": "getLastAssistantMessage(getMessagesAfterCompactBoundary(messages))?.uuid",
+      "replace": "getLastAssistantMessage(messages)?.uuid"
+    },
+    {
+      "name": "A5: nested memory directories match by string prefix again",
+      "source": "src/agent/attachments/memory.ts",
+      "find": "    if (currentDir.startsWith(cwdPrefix)) {",
+      "replace": "    if (currentDir.startsWith(originalCwd)) {"
+    },
+    {
+      "name": "T1: the text in a coalesced DEL read is dropped again",
+      "source": "src/terminal/input/coalescedDeletes.ts",
+      "find": "    if (text) next = next.insert(text)",
+      "replace": ""
+    },
+    {
+      "name": "V1: --- and +++ are skipped inside hunks again",
+      "source": "src/vcs/git/gitDiff.ts",
+      "find": "        (!currentHunk && (line.startsWith('---') || line.startsWith('+++'))) ||",
+      "replace": "        line.startsWith('---') ||\n        line.startsWith('+++') ||"
+    },
+    {
+      "name": "V2: agent worktrees default to fresh again",
+      "source": "src/vcs/git/worktree/createWorktree.ts",
+      "find": "      baseRef: getInitialSettings().worktree?.baseRef ?? 'head',",
+      "replace": "      baseRef: getInitialSettings().worktree?.baseRef ?? 'fresh',"
+    },
+    {
+      "name": "M1: the cursor is never sent back",
+      "source": "src/mcp/client/listPagination.ts",
+      "find": "    cursor = result.nextCursor",
+      "replace": "    cursor = undefined"
+    },
+    {
+      "name": "M1: a repeated cursor is followed again",
+      "source": "src/mcp/client/listPagination.ts",
+      "find": "    if (!result.nextCursor || seen.has(result.nextCursor)) break",
+      "replace": "    if (!result.nextCursor) break"
+    },
+    {
+      "name": "M2: server names resolve through the prototype again",
+      "source": "src/mcp/serverLookup.ts",
+      "find": "  return servers && Object.hasOwn(servers, name) ? servers[name] : undefined",
+      "replace": "  return servers?.[name]"
+    },
+    {
+      "name": "G1: hostPattern is unanchored again",
+      "source": "src/plugins/marketplaceHelpers.ts",
+      "find": "    const regex = new RegExp(`^(?:${pattern.hostPattern})$`)",
+      "replace": "    const regex = new RegExp(pattern.hostPattern)"
+    },
+    {
+      "name": "X1: an empty remote answer overwrites the transcript again",
+      "source": "src/sessions/persistence/project.ts",
+      "find": "    if (!remoteLogs || remoteLogs.length === 0) {",
+      "replace": "    if (!remoteLogs) {"
+    }
+  ]
+}

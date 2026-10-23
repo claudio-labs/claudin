@@ -1,0 +1,61 @@
+{
+  "test": ["src/shared/frontmatterParser.test.ts", "src/shared/proc/ShellCommand.test.ts"],
+  "source": "src/shared/frontmatterParser.ts",
+  "probes": [
+    {
+      "name": "frontmatter: an already-quoted value is quoted again",
+      "find": "        (value.startsWith('\"') && value.endsWith('\"')) ||\n",
+      "replace": "        false ||\n"
+    },
+    {
+      "name": "frontmatter: quotes and backslashes are not escaped when re-quoting",
+      "find": "const escaped = value.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"')",
+      "replace": "const escaped = value"
+    },
+    {
+      "name": "frontmatter: the retry parses the same text instead of the quoted one",
+      "find": "const quotedText = quoteProblematicValues(frontmatterText)",
+      "replace": "const quotedText = frontmatterText"
+    },
+    {
+      "name": "frontmatter: a comma inside braces splits the path list",
+      "find": "} else if (char === ',' && braceDepth === 0) {",
+      "replace": "} else if (char === ',') {"
+    },
+    {
+      "name": "frontmatter: zero is accepted as a positive int",
+      "find": "if (Number.isInteger(parsed) && parsed > 0) {",
+      "replace": "if (Number.isInteger(parsed) && parsed >= 0) {"
+    },
+    {
+      "name": "shell: an 'interrupt' abort kills the command",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "    if (this.#abortSignal.reason === 'interrupt') {\n      return\n    }\n",
+      "replace": ""
+    },
+    {
+      "name": "shell: a shell killed by SIGTERM from outside exits like a timeout",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "          ? 144\n",
+      "replace": "          ? 143\n"
+    },
+    {
+      "name": "shell: the timeout never offers to background",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "if (self.#shouldAutoBackground && self.#onTimeoutCallback) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "shell: backgrounding keeps the timeout and abort listeners armed",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "      this.#status = 'backgrounded'\n      this.#cleanupListeners()\n",
+      "replace": "      this.#status = 'backgrounded'\n"
+    },
+    {
+      "name": "shell: a file-mode output that fit inline is left on disk",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "        void this.taskOutput.deleteOutputFile()\n",
+      "replace": ""
+    }
+  ]
+}

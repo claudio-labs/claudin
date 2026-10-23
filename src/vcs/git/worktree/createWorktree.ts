@@ -70,7 +70,7 @@ type WorktreeCreateResult =
 export async function getOrCreateWorktree(
   repoRoot: string,
   slug: string,
-  options?: { prNumber?: number },
+  options?: { prNumber?: number; baseRef?: 'head' | 'fresh' },
 ): Promise<WorktreeCreateResult> {
   const worktreePath = worktreePathFor(repoRoot, slug)
   const worktreeBranch = worktreeBranchName(slug)
@@ -120,7 +120,7 @@ export async function getOrCreateWorktree(
         )
       }
       baseBranch = 'FETCH_HEAD'
-    } else if ((getInitialSettings().worktree?.baseRef ?? 'fresh') === 'head') {
+    } else if ((options?.baseRef ?? getInitialSettings().worktree?.baseRef ?? 'fresh') === 'head') {
       // baseRef: 'head' — branch from the current local HEAD instead of
       // origin/<default>. The user opted into basing the worktree on their
       // local state (uncommitted commits, a feature branch, etc.). baseSha is
@@ -378,8 +378,12 @@ export async function createAgentWorktree(slug: string): Promise<{
     )
   }
 
+  // An agent isolated in a worktree works on what the session is working on,
+  // so it starts from the local HEAD unless the user asked for 'fresh'.
   const { worktreePath, worktreeBranch, headCommit, existed } =
-    await getOrCreateWorktree(gitRoot, slug)
+    await getOrCreateWorktree(gitRoot, slug, {
+      baseRef: getInitialSettings().worktree?.baseRef ?? 'head',
+    })
 
   if (!existed) {
     logForDebugging(

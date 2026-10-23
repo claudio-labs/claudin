@@ -23,6 +23,7 @@ import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
 import { isModifierPressed, prewarmModifiers } from 'src/terminal/input/modifiers.js'
 import { useDoublePress } from 'src/terminal/hooks/useDoublePress.js'
+import { applyCoalescedDeletes } from 'src/terminal/input/coalescedDeletes.js'
 
 type MaybeCursor = void | Cursor
 type InputHandler = (input: string) => MaybeCursor
@@ -540,15 +541,7 @@ export function useTextInput({
     // Fix Issue #1853: Filter DEL characters that interfere with backspace in SSH/tmux
     // In SSH/tmux environments, backspace generates both key events and raw DEL chars
     if (!key.backspace && !key.delete && input.includes('\x7f')) {
-      const delCount = (input.match(/\x7f/g) || []).length
-
-      // Apply all DEL characters as backspace operations synchronously
-      // Try to delete tokens first, fall back to character backspace
-      let nextCursor = currentCursor
-      for (let i = 0; i < delCount; i++) {
-        nextCursor =
-          nextCursor.deleteTokenBefore() ?? nextCursor.backspace()
-      }
+      const nextCursor = applyCoalescedDeletes(currentCursor, input)
 
       // Update state once with the final result
       if (!currentCursor.equals(nextCursor)) {

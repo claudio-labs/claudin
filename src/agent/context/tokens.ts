@@ -1,7 +1,11 @@
 import type { BetaUsage as Usage } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { roughTokenCountEstimationForMessages } from 'src/shared/tokenEstimation.js'
 import type { AssistantMessage, Message } from 'src/shared/types/message.js'
-import { SYNTHETIC_MESSAGES, SYNTHETIC_MODEL } from 'src/agent/messages/messages.js'
+import {
+  getMessagesAfterCompactBoundary,
+  SYNTHETIC_MESSAGES,
+  SYNTHETIC_MODEL,
+} from 'src/agent/messages/messages.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getTokenCountFromUsage } from 'src/agent/context/usageTokens.js'
 
@@ -126,8 +130,12 @@ export function getCurrentUsage(messages: Message[]): {
   cache_creation_input_tokens: number
   cache_read_input_tokens: number
 } | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i]
+  // The REPL keeps pre-compact messages for scrollback, but the current usage
+  // describes only what the model is sent now: nothing, until the first
+  // response after the boundary.
+  const current = getMessagesAfterCompactBoundary(messages)
+  for (let i = current.length - 1; i >= 0; i--) {
+    const message = current[i]
     const usage = message ? getTokenUsage(message) : undefined
     if (usage) {
       return {

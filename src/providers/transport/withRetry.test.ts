@@ -771,3 +771,28 @@ describe('withRetry - rate-limit bookkeeping', () => {
     expect(getProviderRateLimit()).not.toBeNull()
   })
 })
+
+describe('getDefaultMaxRetries', () => {
+  const saved = process.env.CLAUDIN_MAX_RETRIES
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_MAX_RETRIES
+    else process.env.CLAUDIN_MAX_RETRIES = saved
+  })
+
+  async function retriesFor(value: string | undefined): Promise<number> {
+    if (value === undefined) delete process.env.CLAUDIN_MAX_RETRIES
+    else process.env.CLAUDIN_MAX_RETRIES = value
+    const { getDefaultMaxRetries } = await importFreshWithRetryModule()
+    return getDefaultMaxRetries()
+  }
+
+  test('a whole number is the retry count, zero included', async () => {
+    expect(await retriesFor('3')).toBe(3)
+    expect(await retriesFor('0')).toBe(0)
+  })
+
+  test.each(['abc', '-1', '2.5', '3x'])('an invalid value (%s) falls back to the default', async value => {
+    const fallback = await retriesFor(undefined)
+    expect(await retriesFor(value)).toBe(fallback)
+  })
+})

@@ -22,6 +22,10 @@ import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
 // in the same `bun test` run.
 const realMcpClient = { ...(await import('src/mcp/client.js')) }
 const realMcpConfig = { ...(await import('src/mcp/config.js')) }
+// The same for the session-storage barrel: a mock of it also replaces the
+// exports it re-exports (hydrateRemoteSession in persistence/project.ts),
+// so a later file importing those directly got the stubs.
+const realSessionStorage = { ...(await import('src/sessions/sessionStorage.js')) }
 
 describe('promptBatching', () => {
   test('joinPromptValues: single string passes through unchanged', async () => {
@@ -513,6 +517,7 @@ afterAll(() => {
   // leak into other test files sharing this `bun test` process.
   mock.module('src/mcp/client.js', () => realMcpClient)
   mock.module('src/mcp/config.js', () => realMcpConfig)
+  mock.module('src/sessions/sessionStorage.js', () => realSessionStorage)
   // The headless print flow leaves entries in the shared command queue; drain
   // it so a later <REPL> mount doesn't process an orphaned queued input.
   resetCommandQueue()

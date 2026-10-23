@@ -490,6 +490,8 @@ describe('the current worktree session', () => {
 // below shells out to git or tmux, mutates process.cwd() or writes the project
 // config; under `bun test` they are pinned by name and arity only, and nothing
 // here claims they behave.
+// createWorktreeForSession, createAgentWorktree and removeAgentWorktree left
+// the list: worktree/createWorktree.test.ts drives them against a temp repo.
 // ---------------------------------------------------------------------------
 /** Every value export, exactly. Adding one here is a deliberate act. */
 const EXPECTED_EXPORTS = [
@@ -523,15 +525,12 @@ const NOT_BEHAVIOURALLY_COVERED = [
   'cleanupStaleAgentWorktrees',
   'cleanupWorktree',
   'copyWorktreeIncludeFiles',
-  'createAgentWorktree',
   'createTmuxSessionForWorktree',
-  'createWorktreeForSession',
   'execIntoTmuxWorktree',
   'hasWorktreeChanges',
   'isTmuxAvailable',
   'keepWorktree',
   'killTmuxSession',
-  'removeAgentWorktree',
 ] as const
 
 describe('worktree surface', () => {

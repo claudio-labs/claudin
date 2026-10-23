@@ -90,6 +90,42 @@ const BG_DISABLED_AT_LOAD = isEnvTruthy(
 )
 
 describe('runShellCommand — happy paths', () => {
+  test(
+    'a model-supplied timeout above the maximum is capped to it',
+    async () => {
+      const saved = {
+        def: process.env.BASH_DEFAULT_TIMEOUT_MS,
+        max: process.env.BASH_MAX_TIMEOUT_MS,
+      }
+      process.env.BASH_DEFAULT_TIMEOUT_MS = '300'
+      process.env.BASH_MAX_TIMEOUT_MS = '400'
+      try {
+        const harness = makeStateHarness()
+        // `sleep 3` is auto-backgrounded when its timeout fires, so a timeout
+        // capped at 400ms backgrounds it; the model's 60s would let it finish.
+        const input: BashToolInput = { command: 'sleep 3', timeout: 60_000 }
+        const result = await consume(
+          runShellCommand({
+            input,
+            abortController: new AbortController(),
+            setAppState: harness.setAppState,
+            setToolJSX: () => {},
+            isMainThread: true,
+          }),
+        )
+        expect(result.backgroundTaskId).toBeDefined()
+      } finally {
+        if (saved.def === undefined) delete process.env.BASH_DEFAULT_TIMEOUT_MS
+        else process.env.BASH_DEFAULT_TIMEOUT_MS = saved.def
+        if (saved.max === undefined) delete process.env.BASH_MAX_TIMEOUT_MS
+        else process.env.BASH_MAX_TIMEOUT_MS = saved.max
+        // Let the backgrounded command end so it does not leak into the next test.
+        await sleep(1_500)
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
+
   test.skipIf(BG_DISABLED_AT_LOAD)(
     'run_in_background:true returns a backgroundTaskId immediately and registers a backgrounded task',
     async () => {

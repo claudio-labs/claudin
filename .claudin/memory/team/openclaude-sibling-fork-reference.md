@@ -19,6 +19,31 @@ describe only the code; the `/import` adapter for openclaude users
 
 **How to apply:** Cross-check any candidate against claudin's tree first — several things converged independently (claudin already HAS: `/goal`, reasoned-denial permission prompts, per-agent model routing in `/agents`, bypassPermissions mode, 5xx/HTML-overload retry).
 
+## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; branch `fix/inherited-bugs`)
+
+Next audit starts at openclaude `a838b670`. Of the 17 confirmed below, five
+were already fixed: #1 heredoc, `__proto__`, attribution block,
+`argumentSubstitution` (`e58d3ead`, 09-10) and persist-before-throw
+(`cf78225f`, 10-10). The 10-23 branch fixed 11 of the other 12 plus 11 new
+ports from their v0.31–0.33 fix stream, each with a red test first and a probe
+in `scripts/migrations/probes/inheritedBugs20261023.json`. Still open on purpose:
+**#17 GLM pricing** (a price-data refresh, not a bug). Ported only in part:
+`d834904e` — the guard against an empty remote answer, not its atomic-replace
+and transcript-lock machinery. Not ported: `87d4e3a6` (color-only banner),
+because claudin already draws a plain colored rule when the banner text is empty.
+
+Traps that round hit, worth knowing before the next one:
+- **Bun's YAML splits a value at a mid-line `--- ` or `... `**, treating it as
+  a document marker (`d: a --- b` → `[{d:'a'},'b']`). So anchoring the
+  frontmatter regex alone made `description: a --- b` parse to `{}`.
+- **`sleep N` is auto-backgrounded on timeout** (the pinned latent bug), so a
+  timeout test built on `sleep` sees a background task, not a kill.
+- **`fastMode.test.ts` leaked a partial `src/shared/constants/oauth.js` mock**
+  until c011d5a7. A suite reading a success URL got `undefined` and answered 500.
+- Their fixes are often far bigger than the bug: #2235 (permission forwarding)
+  touched 31 files with 12 follow-up race fixes, and `d834904e` 1.6k lines.
+  Port the guard, not the framework.
+
 ## 2026-09-10 audit (their v0.30.0 vs claudin v1.1.x @ 2365c9f6) — the value is BUGS, not features
 
 The feature backlog below is mostly stale or low-value. What actually pays is

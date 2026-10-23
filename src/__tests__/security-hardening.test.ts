@@ -24,7 +24,7 @@ describe('MCP tool result sanitization', () => {
     const fetchContent = await file(
       'src/mcp/client/fetchCapabilities.ts',
     ).text()
-    expect(fetchContent).toContain('recursivelySanitizeUnicode(result.tools)')
+    expect(fetchContent).toContain('recursivelySanitizeUnicode(tools)')
     // Tool results must also be sanitized in toolResult.ts
     const toolResultContent = await file(
       'src/mcp/client/toolResult.ts',

@@ -20,7 +20,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { createBaseHookInput, executeStatusLineCommand } from 'src/platform/lifecycleHooks/hooks.js';
-import { getLastAssistantMessage } from 'src/agent/messages/messages.js';
+import { getLastAssistantMessage, getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from 'src/providers/model/model.js';
 import { getCurrentSessionTitle } from 'src/sessions/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/agent/context/tokens.js';
@@ -129,7 +129,9 @@ type Props = {
   vimMode?: VimMode;
 };
 export function getLastAssistantMessageId(messages: Message[]): string | null {
-  return getLastAssistantMessage(messages)?.uuid ?? null;
+  // Null at a fresh compact boundary, so the status line refreshes before the
+  // next reply instead of keeping the pre-compact numbers.
+  return getLastAssistantMessage(getMessagesAfterCompactBoundary(messages))?.uuid ?? null;
 }
 function StatusLineInner({
   messagesRef,

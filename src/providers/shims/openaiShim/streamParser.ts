@@ -627,12 +627,11 @@ export async function* openaiStreamToAnthropic(
         }
       }
 
-      if (
-        !hasEmittedFinalUsage &&
-        chunkUsage &&
-        (chunk.choices?.length ?? 0) === 0 &&
-        lastStopReason !== null
-      ) {
+      // The final usage can come on a chunk of its own with empty choices, or
+      // on a repeat of the finish_reason chunk with choices still populated
+      // (OpenRouter). The loop above ignores a repeated finish_reason, so both
+      // shapes land here; hasEmittedFinalUsage keeps either from emitting twice.
+      if (!hasEmittedFinalUsage && chunkUsage && lastStopReason !== null) {
         yield {
           type: 'message_delta',
           delta: { stop_reason: lastStopReason, stop_sequence: null },

@@ -1,5 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: keep grouped by domain
-import { dirname, parse, relative, resolve } from 'path'
+import { dirname, parse, relative, resolve, sep } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   type ToolUseContext,
@@ -29,9 +29,11 @@ export function getDirectoriesToProcess(
   const targetDir = dirname(resolve(targetPath))
   const nestedDirs: string[] = []
   let currentDir = targetDir
+  // A path prefix, not a string prefix: /work/app must not claim /work/app-backend.
+  const cwdPrefix = originalCwd.endsWith(sep) ? originalCwd : originalCwd + sep
 
   while (currentDir !== originalCwd && currentDir !== parse(currentDir).root) {
-    if (currentDir.startsWith(originalCwd)) {
+    if (currentDir.startsWith(cwdPrefix)) {
       nestedDirs.push(currentDir)
     }
     currentDir = dirname(currentDir)

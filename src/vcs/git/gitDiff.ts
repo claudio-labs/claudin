@@ -299,11 +299,12 @@ export function parseGitDiff(
         continue
       }
 
-      // Skip binary file markers and other metadata
+      // Skip binary file markers and other metadata. `---`/`+++` are the file
+      // header only before the first hunk; inside one they are a removed line
+      // starting with `--` or an added line starting with `++`.
       if (
         line.startsWith('index ') ||
-        line.startsWith('---') ||
-        line.startsWith('+++') ||
+        (!currentHunk && (line.startsWith('---') || line.startsWith('+++'))) ||
         line.startsWith('new file') ||
         line.startsWith('deleted file') ||
         line.startsWith('old mode') ||

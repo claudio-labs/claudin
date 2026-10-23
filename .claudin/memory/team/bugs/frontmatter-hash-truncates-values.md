@@ -1,6 +1,6 @@
 ---
 name: frontmatter-hash-truncates-values
-description: A frontmatter value with a space before a hash sign is cut there — YAML reads it as a comment and the quoting fallback runs only when parsing fails; 18 team memory descriptions citing PR numbers are truncated
+description: FIXED 2026-10-23 — a frontmatter value with a space before a hash sign was cut there (YAML comment), and a mid-line triple dash split it (Bun reads a new document); both are now quoted before the first parse
 type: project
 paths:
   - src/shared/frontmatterParser.ts
@@ -21,10 +21,11 @@ memories had a ` #` in their description, all PR numbers.
 **Repro:** a memory whose description is `x after #1 y` parses to `description: 'x after'`.
 Found by reading the parser against YAML's comment rule; not executed.
 
-**Status:** open, 2026-09-29. Since 2026-10-12 `/skill-doctor` reports it for skills
-(`truncated_value` in `src/skills/skillsLint.ts`, which compares the raw line with the parse);
-the parser itself is unchanged. Workaround for writers: "PR 242", or quote the whole value.
-Likely fix: run the quoting pre-pass when a value contains ` #` (or always), not only after a
-failed parse.
-
-**Why not fixed:** found by a memory-maintenance pass, which cannot edit `src/`.
+**Status:** FIXED 2026-10-23 on `fix/inherited-bugs`. `parseFrontmatter` now
+quotes a plain `key: value` line before the first parse when its value holds what the parser
+would cut without an error: a `#` after whitespace, or `---`/`...` followed by whitespace,
+which Bun's YAML reads as a document marker even mid-line (`d: a --- b` parsed to
+`[{d:'a'},'b']`). The same round made the closing `---` a line of its own
+(`FRONTMATTER_REGEX`). Only top-level plain values are touched: a `#` inside an indented or
+list line is still a YAML comment. `/skill-doctor`'s `truncated_value` check stays as a
+guard for those.

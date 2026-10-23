@@ -1136,8 +1136,13 @@ export async function hydrateRemoteSession(
   const project = getProject()
 
   try {
-    const remoteLogs =
-      (await sessionIngress.getSessionLogs(sessionId, ingressUrl)) || []
+    const remoteLogs = await sessionIngress.getSessionLogs(sessionId, ingressUrl)
+    // A failed fetch (null) or an empty answer replaces nothing: overwriting
+    // would leave an empty transcript and lose the local history for good.
+    if (!remoteLogs || remoteLogs.length === 0) {
+      logForDebugging('Remote session returned no entries; keeping the local transcript')
+      return false
+    }
 
     // Ensure the project directory and session file exist
     const projectDir = getProjectDir(getOriginalCwd())
@@ -1146,12 +1151,12 @@ export async function hydrateRemoteSession(
     const sessionFile = getTranscriptPathForSession(sessionId)
 
     // Replace local logs with remote logs. writeFile truncates, so no
-    // unlink is needed; an empty remoteLogs array produces an empty file.
+    // unlink is needed.
     const content = remoteLogs.map(e => jsonStringify(e) + '\n').join('')
     await writeFile(sessionFile, content, { encoding: 'utf8', mode: 0o600 })
 
     logForDebugging(`Hydrated ${remoteLogs.length} entries from remote`)
-    return remoteLogs.length > 0
+    return true
   } catch (error) {
     logForDebugging(`Error hydrating session from remote: ${error}`)
     logForDiagnosticsNoPII('error', 'hydrate_remote_session_fail')

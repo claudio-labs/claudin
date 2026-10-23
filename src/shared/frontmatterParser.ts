@@ -77,18 +77,30 @@ export type ParsedMarkdown = {
 // - % is directive indicator (only at start)
 // - @ ` are reserved
 const YAML_SPECIAL_CHARS = /[{}[\]*&#!|>%@`]|: /
+const KEY_VALUE_LINE_RE = /^([a-zA-Z_-]+):\s+(.+)$/
+// What the YAML parser cuts out of a plain value without an error: a comment
+// (a `#` after whitespace) and, in Bun's parser, a document marker (`---` or
+// `...` followed by whitespace) even in the middle of a line.
+const CUT_IN_PLAIN_VALUE_RE = /\s#|(?:---|\.\.\.)(?:\s|$)/
 
 /**
  * Pre-processes frontmatter text to quote values that contain special YAML characters.
  * This allows glob patterns like **\/*.{ts,tsx} to be parsed correctly.
  */
 function quoteProblematicValues(frontmatterText: string): string {
+  return quoteValuesWhere(frontmatterText, value => YAML_SPECIAL_CHARS.test(value))
+}
+
+function quoteValuesWhere(
+  frontmatterText: string,
+  needsQuotes: (value: string) => boolean,
+): string {
   const lines = frontmatterText.split('\n')
   const result: string[] = []
 
   for (const line of lines) {
     // Match simple key: value lines (not indented, not list items, not block scalars)
-    const match = line.match(/^([a-zA-Z_-]+):\s+(.+)$/)
+    const match = line.match(KEY_VALUE_LINE_RE)
     if (match) {
       const [, key, value] = match
       if (!key || !value) {
@@ -105,8 +117,7 @@ function quoteProblematicValues(frontmatterText: string): string {
         continue
       }
 
-      // Quote if contains special YAML characters
-      if (YAML_SPECIAL_CHARS.test(value)) {
+      if (needsQuotes(value)) {
         // Use double quotes and escape any existing double quotes
         const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
         result.push(`${key}: "${escaped}"`)
@@ -120,7 +131,10 @@ function quoteProblematicValues(frontmatterText: string): string {
   return result.join('\n')
 }
 
-export const FRONTMATTER_REGEX = /^---\s*\n([\s\S]*?)---\s*\n?/
+// The closing `---` must be a line of its own, so a `---` inside a value is
+// content; the group is optional so an empty block (`---\n---`) still closes.
+// The trailing `\s*` eats the blank lines after it, as it always has.
+export const FRONTMATTER_REGEX = /^---\s*\n((?:[\s\S]*?\r?\n)??)---(?=[ \t]*(?:\r?\n|$))\s*/
 
 /**
  * Parses markdown content to extract frontmatter and content
@@ -146,7 +160,12 @@ export function parseFrontmatter(
 
   let frontmatter: FrontmatterData = {}
   try {
-    const parsed = parseYaml(frontmatterText) as FrontmatterData | null
+    // In frontmatter `after #242` or `a --- b` is text, not a comment or a
+    // second document that would silently cut the value, so such a plain value
+    // is quoted first.
+    const parsed = parseYaml(
+      quoteValuesWhere(frontmatterText, value => CUT_IN_PLAIN_VALUE_RE.test(value)),
+    ) as FrontmatterData | null
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       frontmatter = parsed
     }
@@ -236,22 +255,29 @@ export function splitPathInFrontmatter(input: string | string[]): string[] {
  * @example
  * expandBraces("src/*.{ts,tsx}") // returns ["src/*.ts", "src/*.tsx"]
  * expandBraces("{a,b}/{c,d}") // returns ["a/c", "a/d", "b/c", "b/d"]
+ * expandBraces("src/{a,{b,c}}") // returns ["src/a", "src/b", "src/c"]
  */
 function expandBraces(pattern: string): string[] {
-  // Find the first brace group
-  const braceMatch = pattern.match(/^([^{]*)\{([^}]+)\}(.*)$/)
-
-  if (!braceMatch) {
-    // No braces found, return pattern as-is
-    return [pattern]
+  // Find the first brace group by depth, so a nested group stays inside its
+  // parent's alternative, and split it only on its own top-level commas.
+  const open = pattern.indexOf('{')
+  if (open === -1) return [pattern]
+  let depth = 0
+  let close = -1
+  const cuts: number[] = [open]
+  for (let i = open; i < pattern.length && close === -1; i++) {
+    const char = pattern[i]
+    if (char === '{') depth++
+    else if (char === '}' && --depth === 0) close = i
+    else if (char === ',' && depth === 1) cuts.push(i)
   }
+  // Unbalanced or empty braces are not a group; the pattern stays as written.
+  if (close === -1 || close === open + 1) return [pattern]
+  cuts.push(close)
 
-  const prefix = braceMatch[1] || ''
-  const alternatives = braceMatch[2] || ''
-  const suffix = braceMatch[3] || ''
-
-  // Split alternatives by comma and expand each one
-  const parts = alternatives.split(',').map(alt => alt.trim())
+  const prefix = pattern.slice(0, open)
+  const suffix = pattern.slice(close + 1)
+  const parts = cuts.slice(1).map((end, i) => pattern.slice(cuts[i]! + 1, end).trim())
 
   // Recursively expand remaining braces in suffix
   const expanded: string[] = []
