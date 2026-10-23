@@ -18,6 +18,7 @@ import {
   isEnterpriseSubscriber,
 } from 'src/providers/auth/auth.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { parseWholeNumberEnvVar } from 'src/shared/envValidation.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { invalidateClientCache } from 'src/providers/transport/clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from 'src/providers/oauth/githubModelsCredentials.js'
@@ -830,10 +831,7 @@ export function shouldRetry(
 }
 
 export function getDefaultMaxRetries(): number {
-  if (process.env.CLAUDIN_MAX_RETRIES) {
-    return parseInt(process.env.CLAUDIN_MAX_RETRIES, 10)
-  }
-  return DEFAULT_MAX_RETRIES
+  return parseWholeNumberEnvVar('CLAUDIN_MAX_RETRIES', process.env.CLAUDIN_MAX_RETRIES, DEFAULT_MAX_RETRIES)
 }
 function getMaxRetries(options: RetryOptions): number {
   return options.maxRetries ?? getDefaultMaxRetries()
