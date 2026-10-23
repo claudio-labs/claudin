@@ -161,7 +161,7 @@ beforeEach(() => {
     ),
     spyOn(configModule, 'saveCurrentProjectConfig').mockImplementation(updater => {
       savedProjectConfigs.push(
-        (updater as (c: Record<string, unknown>) => Record<string, unknown>)({ kept: 1 }),
+        (updater as unknown as (c: Record<string, unknown>) => Record<string, unknown>)({ kept: 1 }),
       )
     }),
     spyOn(gitModule, 'getDefaultBranch').mockImplementation(async () => 'main'),

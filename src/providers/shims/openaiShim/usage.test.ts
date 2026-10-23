@@ -490,7 +490,7 @@ test('fallback estimates input and output tokens when provider omits usage', asy
 })
 
 test('keeps the usage of a repeated finish_reason chunk that still carries choices', async () => {
-  globalThis.fetch = (async () => {
+  globalThis.fetch = (async _input => {
     const chunks = makeStreamChunks([
       {
         id: 'chatcmpl-1',

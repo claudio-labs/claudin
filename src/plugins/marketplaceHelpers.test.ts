@@ -500,7 +500,9 @@ describe('loadMarketplacesWithGracefulDegradation', () => {
 describe('detectEmptyMarketplaceReason', () => {
   const withGit = (available: boolean) =>
     spies.push(
-      spyOn(gitAvailability, 'checkGitAvailable').mockImplementation(async () => available),
+      spyOn(gitAvailability, 'checkGitAvailable').mockImplementation(
+        (async () => available) as unknown as typeof gitAvailability.checkGitAvailable,
+      ),
     )
 
   test('missing git comes first', async () => {
