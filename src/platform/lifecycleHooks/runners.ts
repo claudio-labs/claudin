@@ -47,6 +47,7 @@ import { emitHookResponse, startHookProgressInterval } from 'src/platform/lifecy
 import { jsonStringify, jsonParse } from 'src/platform/slowOperations.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 import { TOOL_HOOK_EXECUTION_TIMEOUT_MS } from 'src/platform/lifecycleHooks/shared.js'
+import { getWindowsBashHookCommand } from 'src/platform/lifecycleHooks/windowsBashCommand.js'
 
 function executeInBackground({
   processId,
@@ -252,13 +253,8 @@ export async function execCommandHook(
     }
   }
 
-  // On Windows (bash only), auto-prepend `bash` for .sh scripts so they
-  // execute instead of opening in the default file handler. PowerShell
-  // runs .ps1 files natively — no prepend needed.
-  if (isWindows && !isPowerShell && command.trim().match(/\.sh(\s|$|")/)) {
-    if (!command.trim().startsWith('bash ')) {
-      command = `bash ${command}`
-    }
+  if (isWindows && !isPowerShell) {
+    command = getWindowsBashHookCommand(command)
   }
 
   // CLAUDIN_SHELL_PREFIX wraps the command via POSIX quoting
