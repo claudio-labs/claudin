@@ -22,15 +22,6 @@ export const MEMORY_TYPES = [
 export type MemoryType = (typeof MEMORY_TYPES)[number]
 
 /**
- * Bench switch for the taste arm of memory-write-ab.ts (2026-10-23): the
- * user's taste — language, tone, the code and workflow they favor anywhere —
- * filed as `user`, so it lands in the global dir, and a correction carrying
- * both a taste and a project fact split at write time. Read once at load,
- * as the arm's environment is; deleted once the bench decides.
- */
-export const BENCH_USER_TASTE = process.env.CLAUDIN_BENCH_USER_TASTE === '1'
-
-/**
  * Parse a raw frontmatter value into a MemoryType.
  * Invalid or missing values return undefined — legacy files without a
  * `type:` field keep working, files with unknown types degrade gracefully.
@@ -220,16 +211,14 @@ export type TypeScope = {
 
 export const TYPE_SCOPES: Readonly<Record<MemoryType, TypeScope>> = {
   user: {
-    withGlobal: BENCH_USER_TASTE
-      ? "always global, the same person in every project, so written without this project's names; what holds of them only here is a private `project` memory"
-      : 'always global, the same person in every project; what holds of them only in this project is a private `project` memory',
+    withGlobal:
+      'always global, the same person in every project; what holds of them only in this project is a private `project` memory',
     withoutGlobal: 'always private',
     global: 'only',
   },
   feedback: {
-    withGlobal: BENCH_USER_TASTE
-      ? "global when it is about how this user works, private when it is about this codebase, team only for a convention every contributor of the project follows, such as a testing policy; a correction carrying both is two memories, the global one without this project's names"
-      : 'global when it would still hold in an unrelated repo, private when it would not or you are unsure, team only for a convention every contributor of the project follows, such as a testing policy',
+    withGlobal:
+      'global when it would still hold in an unrelated repo, private when it would not or you are unsure, team only for a convention every contributor of the project follows, such as a testing policy',
     withoutGlobal:
       'private by default, team only for a convention every contributor of the project follows, such as a testing policy',
     global: 'allowed',
@@ -284,8 +273,8 @@ export function typesSectionCombined(hasGlobal: boolean): readonly string[] {
     '<type>',
     '    <name>user</name>',
     scopeTag('user', hasGlobal),
-    `    <description>Contain information about the user's role, goals, responsibilities, and knowledge.${BENCH_USER_TASTE ? ' Their taste belongs here too: the language and tone they want, and the code patterns and workflow they favor in any project — a correction phrased as their own ("I can\'t stand X", "I always Y") rather than as this project\'s ("here we…").' : ''} Great user memories help you tailor your future behavior to the user's preferences and perspective. Your goal in reading and writing these memories is to build up an understanding of who the user is and how you can be most helpful to them specifically. For example, you should collaborate with a senior software engineer differently than a student who is coding for the very first time. Keep in mind, that the aim here is to be helpful to the user. Avoid writing memories about the user that could be viewed as a negative judgement or that are not relevant to the work you're trying to accomplish together.</description>`,
-    `    <when_to_save>When you learn any details about the user's role, preferences, ${BENCH_USER_TASTE ? 'taste, ' : ''}responsibilities, or knowledge</when_to_save>`,
+    "    <description>Contain information about the user's role, goals, responsibilities, and knowledge. Great user memories help you tailor your future behavior to the user's preferences and perspective. Your goal in reading and writing these memories is to build up an understanding of who the user is and how you can be most helpful to them specifically. For example, you should collaborate with a senior software engineer differently than a student who is coding for the very first time. Keep in mind, that the aim here is to be helpful to the user. Avoid writing memories about the user that could be viewed as a negative judgement or that are not relevant to the work you're trying to accomplish together.</description>",
+    "    <when_to_save>When you learn any details about the user's role, preferences, responsibilities, or knowledge</when_to_save>",
     "    <how_to_use>When your work should be informed by the user's profile or perspective. For example, if the user is asking you to explain a part of the code, you should answer that question in a way that is tailored to the specific details that they will find most valuable or that helps them build their mental model in relation to domain knowledge they already have.</how_to_use>",
     '    <examples>',
     "    user: I'm a data scientist investigating what logging we have in place",
@@ -296,16 +285,6 @@ export function typesSectionCombined(hasGlobal: boolean): readonly string[] {
       "    assistant: [saves global user memory: deep Go expertise, new to React — frame frontend explanations in terms of backend analogues; and private project memory: first time in this repo's frontend]",
       "    assistant: [saves private user memory: deep Go expertise, new to React and this project's frontend — frame frontend explanations in terms of backend analogues]",
     ),
-    ...(BENCH_USER_TASTE
-      ? [
-          '',
-          '    user: stop returning error strings — I always want typed error classes; in this repo they live in src/errors.ts',
-          g(
-            "    assistant: [saves global user memory: wants typed error classes, never error strings — no project names in it; and private project memory: this repo's error classes live in src/errors.ts, linking [[it]]]",
-            "    assistant: [saves private user memory: wants typed error classes, never error strings; this repo's live in src/errors.ts]",
-          ),
-        ]
-      : []),
     '    </examples>',
     '</type>',
     '<type>',
@@ -369,9 +348,7 @@ export function typesSectionCombined(hasGlobal: boolean): readonly string[] {
 export const WHAT_NOT_TO_SAVE_SECTION: readonly string[] = [
   '## What NOT to save in memory',
   '',
-  BENCH_USER_TASTE
-    ? "- Code patterns, conventions, architecture, file paths, or project structure — these can be derived by reading the current project state. The patterns the user favors in any project are their taste, a `user` memory, not this project's state."
-    : '- Code patterns, conventions, architecture, file paths, or project structure — these can be derived by reading the current project state.',
+  '- Code patterns, conventions, architecture, file paths, or project structure — these can be derived by reading the current project state.',
   '- Git history, recent changes, or who-changed-what — `git log` / `git blame` are authoritative.',
   '- Debugging solutions or fix recipes — the fix is in the code; the commit message has the context.',
   '- Anything already documented in CLAUDE.md files.',
