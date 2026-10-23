@@ -203,17 +203,18 @@ export class AuthCodeListener {
     state: string | undefined,
     res: ServerResponse,
   ): void {
+    if (state !== this.expectedState) {
+      // Not the browser coming back from this login, so it cannot end it:
+      // answer and keep waiting, or any local request could cancel the flow.
+      res.writeHead(400)
+      res.end('Invalid state parameter')
+      return
+    }
+
     if (!authCode) {
       res.writeHead(400)
       res.end('Authorization code not found')
       this.reject(new Error('No authorization code received'))
-      return
-    }
-
-    if (state !== this.expectedState) {
-      res.writeHead(400)
-      res.end('Invalid state parameter')
-      this.reject(new Error('Invalid state parameter'))
       return
     }
 
