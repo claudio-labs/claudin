@@ -236,22 +236,29 @@ export function splitPathInFrontmatter(input: string | string[]): string[] {
  * @example
  * expandBraces("src/*.{ts,tsx}") // returns ["src/*.ts", "src/*.tsx"]
  * expandBraces("{a,b}/{c,d}") // returns ["a/c", "a/d", "b/c", "b/d"]
+ * expandBraces("src/{a,{b,c}}") // returns ["src/a", "src/b", "src/c"]
  */
 function expandBraces(pattern: string): string[] {
-  // Find the first brace group
-  const braceMatch = pattern.match(/^([^{]*)\{([^}]+)\}(.*)$/)
-
-  if (!braceMatch) {
-    // No braces found, return pattern as-is
-    return [pattern]
+  // Find the first brace group by depth, so a nested group stays inside its
+  // parent's alternative, and split it only on its own top-level commas.
+  const open = pattern.indexOf('{')
+  if (open === -1) return [pattern]
+  let depth = 0
+  let close = -1
+  const cuts: number[] = [open]
+  for (let i = open; i < pattern.length && close === -1; i++) {
+    const char = pattern[i]
+    if (char === '{') depth++
+    else if (char === '}' && --depth === 0) close = i
+    else if (char === ',' && depth === 1) cuts.push(i)
   }
+  // Unbalanced or empty braces are not a group; the pattern stays as written.
+  if (close === -1 || close === open + 1) return [pattern]
+  cuts.push(close)
 
-  const prefix = braceMatch[1] || ''
-  const alternatives = braceMatch[2] || ''
-  const suffix = braceMatch[3] || ''
-
-  // Split alternatives by comma and expand each one
-  const parts = alternatives.split(',').map(alt => alt.trim())
+  const prefix = pattern.slice(0, open)
+  const suffix = pattern.slice(close + 1)
+  const parts = cuts.slice(1).map((end, i) => pattern.slice(cuts[i]! + 1, end).trim())
 
   // Recursively expand remaining braces in suffix
   const expanded: string[] = []
