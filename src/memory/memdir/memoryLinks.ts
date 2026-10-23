@@ -30,7 +30,7 @@ import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME, INDEX_LINK_TARGET_RE, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 
-export type BrokenLinkFinding = {
+type BrokenLinkFinding = {
   kind: 'broken-link'
   scope: MemoryScope
   path: string
@@ -38,13 +38,13 @@ export type BrokenLinkFinding = {
   target: string
 }
 
-export type UnindexedFinding = {
+type UnindexedFinding = {
   kind: 'unindexed'
   scope: MemoryScope
   path: string
 }
 
-export type DuplicateNameFinding = {
+type DuplicateNameFinding = {
   kind: 'duplicate-name'
   scope: MemoryScope
   path: string

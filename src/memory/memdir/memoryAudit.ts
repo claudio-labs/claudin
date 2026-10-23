@@ -38,7 +38,7 @@ export type SecretFinding = {
   labels: string[]
 }
 
-export type HiddenTextFinding = {
+type HiddenTextFinding = {
   kind: 'hidden-text'
   path: string
   /** What it hides, once each ("bidi control"). */
@@ -71,7 +71,7 @@ export function findSecretShapedFiles(files: readonly AuditedFile[]): SecretFind
 }
 
 /** The team files holding characters that hide text from whoever reviews the commit. */
-export function findHiddenTextFiles(files: readonly AuditedFile[]): HiddenTextFinding[] {
+function findHiddenTextFiles(files: readonly AuditedFile[]): HiddenTextFinding[] {
   return files.flatMap(file => {
     if (file.scope !== 'team') return []
     const labels = findHiddenText(file.content)
