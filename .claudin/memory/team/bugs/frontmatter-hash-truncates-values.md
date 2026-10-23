@@ -21,7 +21,7 @@ memories had a ` #` in their description, all PR numbers.
 **Repro:** a memory whose description is `x after #1 y` parses to `description: 'x after'`.
 Found by reading the parser against YAML's comment rule; not executed.
 
-**Status:** FIXED 2026-10-23 on `fix/openclaude-inherited-bugs`. `parseFrontmatter` now
+**Status:** FIXED 2026-10-23 on `fix/inherited-bugs`. `parseFrontmatter` now
 quotes a plain `key: value` line before the first parse when its value holds what the parser
 would cut without an error: a `#` after whitespace, or `---`/`...` followed by whitespace,
 which Bun's YAML reads as a document marker even mid-line (`d: a --- b` parsed to

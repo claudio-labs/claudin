@@ -19,7 +19,7 @@ describe only the code; the `/import` adapter for openclaude users
 
 **How to apply:** Cross-check any candidate against claudin's tree first — several things converged independently (claudin already HAS: `/goal`, reasoned-denial permission prompts, per-agent model routing in `/agents`, bypassPermissions mode, 5xx/HTML-overload retry).
 
-## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; branch `fix/openclaude-inherited-bugs`)
+## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; branch `fix/inherited-bugs`)
 
 Next audit starts at openclaude `a838b670`. Of the 17 confirmed below, five
 were already fixed: #1 heredoc, `__proto__`, attribution block,
