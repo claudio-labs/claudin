@@ -104,6 +104,11 @@ import { extractReasoningMessage } from 'src/providers/shims/openaiShim/reasonin
 import { openaiStreamToAnthropic, OpenAIShimStream } from 'src/providers/shims/openaiShim/streamParser.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 
+// An Anthropic model by name, however a gateway spells it: `claude-…`,
+// `anthropic/…`, a Bedrock region prefix (`us.anthropic.claude-…`) or a bare
+// family alias (`sonnet-4-6`).
+const ANTHROPIC_MODEL_RE = /(?:^|[/.:])(?:claude|anthropic)\b|(?:^|[/.:])(?:sonnet|opus|haiku)-\d/i
+
 // api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
 // prompt_cache_retention; everything else gets the params withheld.
 function isOfficialOpenAIUrl(baseUrl: string | undefined): boolean {
@@ -435,8 +440,9 @@ class OpenAIShimMessages {
     // Moonshot direct API, Kimi Code's OpenAI-compatible coding endpoint,
     // and DeepSeek have not published support for the parameter either;
     // strip it preemptively to avoid the same class of error on strict-parse
-    // providers.
-    if (isMistral || isGeminiMode() || isMoonshot || isDeepSeek || isGlm) {
+    // providers. An Anthropic model rejects it on any route: a LiteLLM-style
+    // gateway forwards it and the upstream answers 400.
+    if (isMistral || isGeminiMode() || isMoonshot || isDeepSeek || isGlm || ANTHROPIC_MODEL_RE.test(request.resolvedModel)) {
       delete body.store
     }
 
