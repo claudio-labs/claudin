@@ -43,7 +43,6 @@ the gate, and **add a control arm** asserting the main thread still gets it. See
 [[attachment-producers-leak-parent-state]].
 
 Related: [[characterization-net-before-deletion]],
-[[feedback-pin-the-surviving-surface]] (private),
 [[tier3-file-split-roadmap]] §5 — a break-probe pass also surfaces
 genuinely **unreachable** lines, which are a documentation job, not a test defect.
 

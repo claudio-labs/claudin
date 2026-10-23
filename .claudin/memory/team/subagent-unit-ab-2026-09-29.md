@@ -38,4 +38,4 @@ Shipped as a one-level step-down below a raised parent, not a fixed cap
 it is the same `high` measured here. The relief over-clip was fixed on the same branch
 (real units + the thinking a clip drops): the replayed decision takes 8 clips, not 68.
 
-Links: [[token-census-2026-09-28]] (why), [[feedback-gates-need-a-placebo-arm]].
+Links: [[token-census-2026-09-28]] (why).
