@@ -101,9 +101,10 @@ describe('runShellCommand — happy paths', () => {
       process.env.BASH_MAX_TIMEOUT_MS = '400'
       try {
         const harness = makeStateHarness()
-        const input: BashToolInput = { command: 'sleep 2', timeout: 60_000 }
-        const started = Date.now()
-        await consume(
+        // `sleep 3` is auto-backgrounded when its timeout fires, so a timeout
+        // capped at 400ms backgrounds it; the model's 60s would let it finish.
+        const input: BashToolInput = { command: 'sleep 3', timeout: 60_000 }
+        const result = await consume(
           runShellCommand({
             input,
             abortController: new AbortController(),
@@ -112,14 +113,14 @@ describe('runShellCommand — happy paths', () => {
             isMainThread: true,
           }),
         )
-        expect(Date.now() - started).toBeLessThan(1_500)
+        expect(result.backgroundTaskId).toBeDefined()
       } finally {
         if (saved.def === undefined) delete process.env.BASH_DEFAULT_TIMEOUT_MS
         else process.env.BASH_DEFAULT_TIMEOUT_MS = saved.def
         if (saved.max === undefined) delete process.env.BASH_MAX_TIMEOUT_MS
         else process.env.BASH_MAX_TIMEOUT_MS = saved.max
-        // A timed-out command may have been moved to the background; let it end.
-        await sleep(2_200)
+        // Let the backgrounded command end so it does not leak into the next test.
+        await sleep(1_500)
       }
     },
     TEST_TIMEOUT_MS,

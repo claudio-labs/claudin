@@ -24,7 +24,7 @@ import { getGlobalConfig } from 'src/platform/config/config.js';
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js';
 import { detectBlockedSleepPattern, isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
 import { inputSchema, isBackgroundTasksDisabled, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
-import { getDefaultTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';
+import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 const PROGRESS_THRESHOLD_MS = 2000; // Show progress after 2 seconds
@@ -156,7 +156,7 @@ export async function* runShellCommand({
     timeout,
     run_in_background
   } = input;
-  const timeoutMs = timeout || getDefaultTimeoutMs();
+  const timeoutMs = Math.min(timeout || getDefaultTimeoutMs(), getMaxTimeoutMs());
   let fullOutput = '';
   let lastProgressOutput = '';
   let lastTotalLines = 0;
