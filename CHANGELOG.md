@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.48 — 2026-10-23
+
+### 👷 CI/CD
+
+- ci(release): drop the win32-arm64 binary (#317) (d69e4626)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.47 — 2026-10-23
 
 ### 💥 Breaking Changes
