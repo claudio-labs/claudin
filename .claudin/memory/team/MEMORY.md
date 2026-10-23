@@ -54,7 +54,7 @@
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code; AGENTS.md edits wait for compaction; stale cache-policy row
 - FIXED 10-15 (#302): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; "mutated at 14" still open
 - FIXED 10-19: [Release smoke ran only --version on the binary](bugs/release-smoke-only-runs-version.md) — now `smoke:binary`, a mock -p round trip
-- [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
+- FIXED 10-23: [Frontmatter values were cut at " #" and a mid-line ---](bugs/frontmatter-hash-truncates-values.md) — quoted before the first parse
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source
