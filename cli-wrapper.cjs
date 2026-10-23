@@ -31,10 +31,6 @@ const PLATFORMS = {
     bin: BINARY_NAME,
   },
   'win32-x64': { pkg: PACKAGE_PREFIX + '-win32-x64', bin: BINARY_NAME + '.exe' },
-  'win32-arm64': {
-    pkg: PACKAGE_PREFIX + '-win32-arm64',
-    bin: BINARY_NAME + '.exe',
-  },
 }
 
 function detectMusl() {

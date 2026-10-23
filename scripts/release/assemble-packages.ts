@@ -48,7 +48,6 @@ const PLATFORMS: Record<
   'linux-x64-musl': { os: 'linux', cpu: 'x64', libc: 'musl' },
   'linux-arm64-musl': { os: 'linux', cpu: 'arm64', libc: 'musl' },
   'win32-x64': { os: 'win32', cpu: 'x64', exe: true },
-  'win32-arm64': { os: 'win32', cpu: 'arm64', exe: true },
 }
 
 const binDir = join(root, 'dist', 'bin')

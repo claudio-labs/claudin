@@ -55,9 +55,14 @@ NPM_TOKEN.**
 - **Verify-publish**: a freshly published npm package 404s on `npm view` / the public
   registry API for minutes (read-CDN lag), but `npm access list packages
   @claudiolabs` (authenticated) reflects it immediately — use that to confirm.
-- **`assemble-packages.ts` hard-fails if ANY of the 8 platform binaries is missing**
-  — a flaky `windows-11-arm` / musl-Alpine leg fails the whole release rather than
-  shipping a partial wrapper.
+- **`assemble-packages.ts` hard-fails if ANY of the 7 platform binaries is missing**
+  — a flaky musl-Alpine leg fails the whole release rather than shipping a partial
+  wrapper. (8 until win32-arm64 was dropped 2026-10-23, see
+  [[compile-binary-distribution]].)
+- **A leg that fails after `version` leaves a tag nothing was published for**
+  (v1.1.47, 2026-10-23). Re-running with `bump: none` reuses that tag, and
+  `build`/`publish` check out the TAG, not main — so a fix merged since is not
+  in the rerun. Re-run with `bump: patch` instead.
 - **Publish order is platform-first, wrapper-LAST** — the wrapper's
   `optionalDependencies` pin exact platform versions, so publishing it before its
   legs would point `latest` at a version whose binaries do not exist yet. A bad
