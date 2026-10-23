@@ -27,6 +27,11 @@ describe('applyCoalescedDeletes', () => {
     expect(applyCoalescedDeletes(start, '\x7f\x7f').equals(start)).toBe(true)
   })
 
+  test('keeps the text typed in the same read, in order', () => {
+    expect(applyCoalescedDeletes(at('x'), 'abc\x7f').text).toBe('xab')
+    expect(applyCoalescedDeletes(at(''), 'ab\x7fc').text).toBe('ac')
+  })
+
   test('the text input routes raw DEL reads through it', () => {
     const hook = readFileSync(new URL('../hooks/useTextInput.ts', import.meta.url), 'utf8')
     expect(hook).toContain('const nextCursor = applyCoalescedDeletes(currentCursor, input)')

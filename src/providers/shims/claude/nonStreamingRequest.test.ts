@@ -309,4 +309,12 @@ describe('fallback timeout', () => {
 
     expect(createCalls[0]?.options.timeout).toBe(45_000)
   })
+
+  test.each(['abc', '-5', '600s'])('an invalid API_TIMEOUT_MS (%s) keeps the default', async value => {
+    process.env.API_TIMEOUT_MS = value
+
+    await run()
+
+    expect(createCalls[0]?.options.timeout).toBe(300_000)
+  })
 })

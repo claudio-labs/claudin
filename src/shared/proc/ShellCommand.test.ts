@@ -209,6 +209,17 @@ describe('ShellCommand — kill, abort and timeout', () => {
     expect(command.status).toBe('killed')
   })
 
+  test('an abort that landed before the command was wrapped still kills it', async () => {
+    const child = spawn('bash', ['-c', 'sleep 30'], { detached: true, stdio: 'ignore' })
+    children.push(child)
+    const controller = new AbortController()
+    controller.abort()
+    const command = wrapSpawn(child, controller.signal, 60_000, new TaskOutput(taskId(), null))
+    const result = await Promise.race([command.result, Bun.sleep(3_000).then(() => null)])
+    expect(result?.interrupted).toBe(true)
+    expect(await exited(child, 3_000)).toBe(true)
+  })
+
   test("an abort with reason 'interrupt' leaves the command running", async () => {
     const { controller, command } = startPiped('sleep 0.3; echo done')
     await Bun.sleep(50)

@@ -227,6 +227,33 @@ describe('splitPathInFrontmatter', () => {
     expect(splitPathInFrontmatter(42 as unknown as string)).toEqual([])
     expect(splitPathInFrontmatter([null, 'a'] as unknown as string[])).toEqual(['a'])
   })
+
+  test('a nested brace group expands inside its parent', () => {
+    expect(splitPathInFrontmatter('src/{a,{b,c}}/*.ts')).toEqual(['src/a/*.ts', 'src/b/*.ts', 'src/c/*.ts'])
+    expect(splitPathInFrontmatter('{x,y{1,2}}.md')).toEqual(['x.md', 'y1.md', 'y2.md'])
+  })
+})
+
+describe('parseFrontmatter — values that look like syntax', () => {
+  test('a --- inside a value does not close the frontmatter', () => {
+    const md = '---\nname: review\ndescription: Reviews code --- thoroughly\n---\nbody'
+    expect(parseFrontmatter(md)).toEqual({
+      frontmatter: { name: 'review', description: 'Reviews code --- thoroughly' },
+      content: 'body',
+    })
+  })
+
+  test('a " #" inside a value is part of the value, not a comment', () => {
+    const md = '---\ndescription: lands after #242 and #244, eager tools stay\n---\nbody'
+    expect(parseFrontmatter(md).frontmatter).toEqual({
+      description: 'lands after #242 and #244, eager tools stay',
+    })
+  })
+
+  test('a quoted value with " #" keeps its text', () => {
+    const md = '---\ndescription: "see #12"\n---\n'
+    expect(parseFrontmatter(md).frontmatter).toEqual({ description: 'see #12' })
+  })
 })
 
 describe('parsePositiveIntFromFrontmatter', () => {

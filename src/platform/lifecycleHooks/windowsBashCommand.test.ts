@@ -24,6 +24,23 @@ describe('getWindowsBashHookCommand', () => {
     expect(getWindowsBashHookCommand('./hook.shell')).toBe('./hook.shell')
   })
 
+  test('matches the .sh suffix in any case', () => {
+    expect(getWindowsBashHookCommand('./hook.SH')).toBe('bash ./hook.SH')
+  })
+
+  test('puts bash after leading variable assignments', () => {
+    expect(getWindowsBashHookCommand('FOO=1 ./hook.sh')).toBe('FOO=1 bash ./hook.sh')
+  })
+
+  test.each([
+    `echo '{}' | ./hook.sh`,
+    'cd hooks && ./hook.sh',
+    'node build.js; ./hook.sh',
+    'echo ./hook.sh',
+  ])('leaves %s alone: its command word is not the script', command => {
+    expect(getWindowsBashHookCommand(command)).toBe(command)
+  })
+
   test('the hook runner applies it on the Windows bash path', () => {
     const runners = readFileSync(new URL('./runners.ts', import.meta.url), 'utf8')
     expect(runners).toContain('if (isWindows && !isPowerShell) {\n    command = getWindowsBashHookCommand(command)')

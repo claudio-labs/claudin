@@ -18,6 +18,13 @@ describe('getServerByName', () => {
   test('returns undefined when the scope has no servers at all', () => {
     expect(getServerByName(undefined, 'github')).toBeUndefined()
   })
+
+  test.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(
+    'a name inherited from Object.prototype (%s) is not a server',
+    name => {
+      expect(getServerByName(servers, name)).toBeUndefined()
+    },
+  )
 })
 
 // A by-name read written as `servers[name]` would bypass the helper; writes

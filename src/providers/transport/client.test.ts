@@ -612,6 +612,19 @@ describe('first-party Anthropic lane', () => {
     expect(client.timeout).toBe(120_000)
   })
 
+  test.each(['abc', '-5', '600s', '0'])(
+    'an invalid API_TIMEOUT_MS (%s) keeps the default ten-minute timeout',
+    async value => {
+      process.env.API_TIMEOUT_MS = value
+
+      const client = (await getAnthropicClient({ maxRetries: 0 })) as unknown as {
+        timeout: number
+      }
+
+      expect(client.timeout).toBe(600_000)
+    },
+  )
+
   test('the stderr logger is attached only under --debug-to-stderr', async () => {
     const quiet = (await getAnthropicClient({ maxRetries: 0 })) as unknown as {
       logger: unknown

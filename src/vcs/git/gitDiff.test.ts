@@ -199,6 +199,16 @@ describe('parseGitDiff', () => {
     expect(parsed[1]!.lines).toEqual([' c', '+d', ' e', ''])
   })
 
+  test('a hunk line whose own text starts with -- or ++ stays in the hunk', () => {
+    const hunks = ['@@ -1,2 +1,2 @@', '--- note', ' ctx', '+++ counter'].join('\n')
+    expect(parseGitDiff(fileDiff('d.md', hunks)).get('d.md')![0]!.lines).toEqual([
+      '--- note',
+      ' ctx',
+      '+++ counter',
+      '',
+    ])
+  })
+
   test('keys each file of a multi-file diff by its b/ path', () => {
     const out = fileDiff('one.ts', body) + fileDiff('two.ts', body)
     expect([...parseGitDiff(out).keys()]).toEqual(['one.ts', 'two.ts'])

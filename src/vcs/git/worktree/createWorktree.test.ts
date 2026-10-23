@@ -475,6 +475,25 @@ describe('createWorktreeForSession', () => {
 })
 
 describe('createAgentWorktree', () => {
+  test('with no baseRef setting, starts from the local HEAD, unpushed commits included', async () => {
+    const { repo, localSha } = repoWithOrigin()
+    setCwd(repo)
+
+    const result = await createAgentWorktree('agent-head')
+
+    expect(headOf(result.worktreePath)).toBe(localSha)
+  })
+
+  test('an explicit baseRef "fresh" still starts it from origin/<default>', async () => {
+    const { repo, originSha } = repoWithOrigin()
+    settings = { worktree: { baseRef: 'fresh' } }
+    setCwd(repo)
+
+    const result = await createAgentWorktree('agent-fresh')
+
+    expect(headOf(result.worktreePath)).toBe(originSha)
+  })
+
   test('rejects an invalid slug', async () => {
     await expect(createAgentWorktree('/abs')).rejects.toThrow('must be non-empty')
   })

@@ -367,6 +367,20 @@ describe('isSourceAllowedByPolicy', () => {
     expect(isSourceAllowedByPolicy(gh('o/r'))).toBe(false)
   })
 
+  test('an unanchored hostPattern must still match the whole host', () => {
+    policy = { strictKnownMarketplaces: [hostPattern('ghe\\.corp\\.com')] }
+    expect(isSourceAllowedByPolicy(git('https://ghe.corp.com/o/r.git'))).toBe(true)
+    expect(isSourceAllowedByPolicy(git('https://ghe.corp.com.evil.io/o/r.git'))).toBe(false)
+    expect(isSourceAllowedByPolicy(git('https://evil-ghe.corp.com/o/r.git'))).toBe(false)
+  })
+
+  test('a top-level alternation is anchored as a whole', () => {
+    policy = { strictKnownMarketplaces: [hostPattern('a\\.example|b\\.example')] }
+    expect(isSourceAllowedByPolicy(url('https://a.example/m.json'))).toBe(true)
+    expect(isSourceAllowedByPolicy(url('https://b.example/m.json'))).toBe(true)
+    expect(isSourceAllowedByPolicy(url('https://a.example.evil.io/m.json'))).toBe(false)
+  })
+
   test('a pathPattern admits file and directory paths, as a prefix match', () => {
     policy = { strictKnownMarketplaces: [pathPattern('^/opt/marketplaces/')] }
     expect(isSourceAllowedByPolicy(dir('/opt/marketplaces/acme'))).toBe(true)

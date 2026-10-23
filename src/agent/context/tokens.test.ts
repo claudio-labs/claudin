@@ -18,6 +18,7 @@ import {
 } from 'src/agent/messages/constants.js'
 import {
   createAssistantMessage,
+  createCompactBoundaryMessage,
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import { roughTokenCountEstimationForMessages } from 'src/shared/tokenEstimation.js'
@@ -213,6 +214,21 @@ describe('getCurrentUsage', () => {
     expect(
       getCurrentUsage([user('x'), createAssistantMessage({ content: 'local' })]),
     ).toBeNull()
+  })
+
+  test('a compact boundary hides the usage of the responses before it', () => {
+    const history = [real(USAGE_A), user('x'), createCompactBoundaryMessage('manual', 4_420), user('summary')]
+    expect(getCurrentUsage(history)).toBeNull()
+  })
+
+  test('after a compact boundary, the first new response is the current usage', () => {
+    const history = [real(USAGE_A), createCompactBoundaryMessage('auto', 4_420), user('summary'), real(USAGE_B)]
+    expect(getCurrentUsage(history)).toEqual({
+      input_tokens: 7,
+      output_tokens: 3,
+      cache_creation_input_tokens: 10,
+      cache_read_input_tokens: 80,
+    })
   })
 })
 

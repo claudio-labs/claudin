@@ -171,6 +171,26 @@ describe('redirect handling', () => {
     expect(await res.text()).toBe('Authorization code not found')
     expect(listener.hasPendingResponse()).toBe(false)
   })
+
+  test.each([
+    ['a wrong state', '/callback?code=stray&state=state-bad'],
+    ['no state', '/callback?code=stray'],
+    ['neither code nor state', '/callback'],
+  ])('a callback with %s answers 400 and keeps waiting', async (_, strayPath) => {
+    const { listener, port } = await startListener()
+    let stray: Response | undefined
+
+    const code = await listener.waitForAuthorization('state-ok', async () => {
+      stray = await get(port, strayPath)
+      // Swallowed: with the bug the wait has already rejected and the
+      // listener closes before this request lands.
+      void get(port, '/callback?code=real&state=state-ok').catch(() => {})
+    })
+
+    expect(stray?.status).toBe(400)
+    expect(await stray?.text()).toBe('Invalid state parameter')
+    expect(code).toBe('real')
+  })
 })
 
 describe('handleSuccessRedirect', () => {

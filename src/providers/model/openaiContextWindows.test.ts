@@ -34,3 +34,33 @@ describe('getOpenAIContextWindow — discovery precedence', () => {
     expect(getOpenAIContextWindow('gpt-4o')).toBe(128_000)
   })
 })
+
+describe('getOpenAIContextWindow — an explicit CLAUDIN_OPENAI_CONTEXT_WINDOWS pin', () => {
+  // The pin is read once at module load, so a fresh instance is loaded after
+  // the variable is set; the query string makes Bun evaluate the module anew.
+  async function loadWithPin(pin: Record<string, number>): Promise<typeof getOpenAIContextWindow> {
+    const saved = process.env.CLAUDIN_OPENAI_CONTEXT_WINDOWS
+    process.env.CLAUDIN_OPENAI_CONTEXT_WINDOWS = JSON.stringify(pin)
+    try {
+      const specifier = `./openaiContextWindows.ts?pin=${Object.keys(pin).join(',')}`
+      const fresh = (await import(specifier)) as { getOpenAIContextWindow: typeof getOpenAIContextWindow }
+      return fresh.getOpenAIContextWindow
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_OPENAI_CONTEXT_WINDOWS
+      else process.env.CLAUDIN_OPENAI_CONTEXT_WINDOWS = saved
+    }
+  }
+
+  test('wins over the hardcoded table when the provider reports nothing', async () => {
+    const lookup = await loadWithPin({ 'gpt-4o': 999_999 })
+    mockDiscovered = undefined
+    expect(lookup('gpt-4o')).toBe(999_999)
+  })
+
+  test('wins over the window the provider reports', async () => {
+    const lookup = await loadWithPin({ 'gpt-4o': 999_999 })
+    mockDiscovered = 32_000
+    expect(lookup('gpt-4o')).toBe(999_999)
+    mockDiscovered = undefined
+  })
+})
