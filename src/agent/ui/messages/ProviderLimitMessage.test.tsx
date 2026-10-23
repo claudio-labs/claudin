@@ -53,16 +53,16 @@ describe('ProviderLimitMessage', () => {
       observedAtMs: Date.now() - 89 * 60_000,
     })
 
-    const output = await render('Rate limit reached · OpenAI · resets in 2h 14m')
+    const output = await render('OpenAI · rate limit reached · resets in 2h 14m')
 
-    expectInOrder(output, ['Rate limit reached', '·', 'OpenAI', '·', 'resets in 45m'])
+    expectInOrder(output, ['OpenAI', '·', 'rate limit reached', '·', 'resets in 45m'])
     expect(output).not.toContain('2h 14m')
   })
 
   test('shows the recorded text when no limit is in force', async () => {
-    const output = await render('Rate limit reached · OpenAI · resets in 2h 14m')
+    const output = await render('OpenAI · rate limit reached · resets in 2h 14m')
 
-    expectInOrder(output, ['Rate limit reached', '·', 'OpenAI', '·', 'resets in 2h 14m'])
+    expectInOrder(output, ['OpenAI', '·', 'rate limit reached', '·', 'resets in 2h 14m'])
   })
 
   test('shows the recorded text when the live limit is a different one', async () => {
@@ -77,7 +77,7 @@ describe('ProviderLimitMessage', () => {
       observedAtMs: Date.now(),
     })
 
-    const output = await render('Rate limit reached · OpenAI · resets in 2h 14m')
+    const output = await render('OpenAI · rate limit reached · resets in 2h 14m')
 
     expect(output).toContain('resets in 2h 14m')
     expect(output).not.toContain('45m')
@@ -93,9 +93,9 @@ describe('ProviderLimitMessage', () => {
       observedAtMs: Date.now(),
     })
 
-    const output = await render('Rate limit reached · OpenAI · resets in 45m', 34)
+    const output = await render('OpenAI · rate limit reached · resets in 45m', 34)
 
-    expectInOrder(output, ['Rate limit reached', '·', 'OpenAI', '·', 'resets in 45m'])
+    expectInOrder(output, ['OpenAI', '·', 'rate limit reached', '·', 'resets in 45m'])
   })
 
   test('an exhausted quota renders without a countdown', async () => {
@@ -108,18 +108,33 @@ describe('ProviderLimitMessage', () => {
     })
 
     const output = await render(
-      'Quota exhausted · OpenAI · enable billing for this provider, or switch with /provider',
+      'OpenAI · quota exhausted · enable billing for this provider, or switch with /provider',
     )
 
-    expect(output).toContain('Quota exhausted')
+    expect(output).toContain('quota exhausted')
     expect(output).toContain('/provider')
     expect(output).not.toContain('resets in')
+  })
+
+  test('a message from before the provider came first is shown as recorded', async () => {
+    publishProviderRateLimit({
+      kind: 'window',
+      source: 'openai-reset',
+      resetsAtMs: Date.now() + 45 * 60_000,
+      providerLabel: 'OpenAI',
+      model: 'gpt-5',
+      observedAtMs: Date.now(),
+    })
+
+    const output = await render('Rate limit reached · OpenAI · resets in 2h 14m')
+
+    expectInOrder(output, ['Rate limit reached', '·', 'OpenAI', '·', 'resets in 2h 14m'])
   })
 })
 
 describe('a 429 reaches the countdown through the transcript', () => {
   test('the message errors.ts builds routes to the live renderer', async () => {
-    // The seam this closes: the prefix has to be in RATE_LIMIT_ERROR_PREFIXES
+    // The seam this closes: isRateLimitErrorMessage has to recognize the message
     // for AssistantTextMessage to pick the rate-limit branch at all, and the
     // head has to match the published limit for the clock to be live. Either
     // half being wrong renders plain, stale text and nothing else fails.
@@ -140,7 +155,7 @@ describe('a 429 reaches the countdown through the transcript', () => {
         : ''
 
     // Same limit, but 45 minutes have gone by since the message was recorded.
-    const providerLabel = text.split(' · ')[1] ?? ''
+    const providerLabel = text.split(' · ')[0] ?? ''
     publishProviderRateLimit({
       ...info!,
       resetsAtMs: Date.now() + 89 * 60_000,
@@ -162,7 +177,7 @@ describe('a 429 reaches the countdown through the transcript', () => {
       ),
     )
 
-    expect(output).toContain('Rate limit reached')
+    expect(output).toContain('rate limit reached')
     expect(output).toContain('resets in 1h 29m')
     expect(output).not.toContain('2h 14m')
   })

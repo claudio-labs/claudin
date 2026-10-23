@@ -294,10 +294,10 @@ export function setupReplMocks(): void {
     'src/platform/notifications/usePluginAutoupdateNotification.js',
     () => ({ usePluginAutoupdateNotification: noopHook }),
   )
-  mock.module(
-    'src/platform/notifications/useRateLimitWarningNotification.js',
-    () => ({ useRateLimitWarningNotification: noopHook }),
-  )
+  // useProviderUsageWarning is left real: it reads no settings, only the live
+  // limits nothing records in a REPL test. A mock here would also replace it
+  // for useProviderUsageWarning.test.tsx, since bun applies module mocks to
+  // the whole run.
   mock.module(
     'src/platform/notifications/useDeprecationWarningNotification.js',
     () => ({ useDeprecationWarningNotification: noopHook }),

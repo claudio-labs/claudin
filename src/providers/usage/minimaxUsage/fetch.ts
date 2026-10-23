@@ -71,15 +71,22 @@ export function getMiniMaxUsageUrls(baseUrl?: string): string[] {
   }
 }
 
-export async function fetchMiniMaxUsage(): Promise<MiniMaxUsageData> {
-  const apiKey = tryGetActiveProvider()?.apiKey
+/**
+ * The MiniMax plan's usage windows. `apiKey` and `baseUrl` are a MiniMax
+ * profile's own, so /usage can ask about one that is not active; each falls
+ * back to the active provider's.
+ */
+export async function fetchMiniMaxUsage(
+  options: { apiKey?: string; baseUrl?: string } = {},
+): Promise<MiniMaxUsageData> {
+  const apiKey = options.apiKey ?? tryGetActiveProvider()?.apiKey
   if (!apiKey) {
     throw new Error(
       'MiniMax auth is required. Run /provider and configure a MiniMax profile.',
     )
   }
 
-  const usageUrls = getMiniMaxUsageUrls()
+  const usageUrls = getMiniMaxUsageUrls(options.baseUrl)
   const nonFatalFailures: Array<{ status: number; body: string }> = []
   let lastFatalError: Error | null = null
 

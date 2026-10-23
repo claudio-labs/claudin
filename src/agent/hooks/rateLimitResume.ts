@@ -71,7 +71,7 @@ export function resumeDelayMs(resetsAtMs: number, nowMs: number): number {
 
 /** Toast text for a limit that was just recorded. */
 export function describeLimit(limit: ProviderRateLimit, nowMs: number): string {
-  const head = `Rate limited · ${limit.providerLabel}`
+  const head = `${limit.providerLabel} · rate limited`
   if (limit.resetsAtMs === undefined) return head
   const remainingMs = limit.resetsAtMs - nowMs
   if (remainingMs <= 0) return head

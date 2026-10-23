@@ -1,5 +1,5 @@
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import type { Transport } from 'src/providers/presets/activeProvider.js'
+import type { ResolvedProvider, Transport } from 'src/providers/presets/activeProvider.js'
 
 export type APIProvider =
   | 'firstParty'
@@ -17,7 +17,13 @@ export type APIProvider =
 export function getAPIProvider(): APIProvider {
   const profile = tryGetActiveProvider()
   if (!profile) return 'firstParty'
+  return getAPIProviderForProfile(profile)
+}
 
+/** The provider tag of any resolved profile — the active one or another registered one. */
+export function getAPIProviderForProfile(
+  profile: Pick<ResolvedProvider, 'transport' | 'baseUrl'>,
+): APIProvider {
   switch (profile.transport) {
     case 'anthropic':
       return 'firstParty'

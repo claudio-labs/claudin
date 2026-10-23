@@ -132,6 +132,9 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       // Usage tab: switch the token-usage contribution window
       d: 'settings:usageDay',
       w: 'settings:usageWeek',
+      // Usage tab: step through the registered providers (←/→ belong to the tab row)
+      '[': 'settings:usagePrevProvider',
+      ']': 'settings:usageNextProvider',
     },
   },
   {

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 import type { GlobalConfig, ProviderProfile } from 'src/platform/config/config.js'
 import type { ResolvedProvider } from 'src/providers/presets/activeProvider.js'
 
@@ -39,8 +39,14 @@ afterEach(() => {
   _setCopilotCatalogForTesting(null)
 })
 
-async function importFreshProvidersModule() {
-  return import(`./providers.js?ts=${Date.now()}-${Math.random()}`)
+// The module the rest of the tree imports, not a cache-busted copy: Bun's
+// coverage reports the canonical instance, so a `?ts=` copy per test left every
+// line of providers.ts unreported. Every suite that mocks providers.js restores
+// it in afterAll (checked by running all of them ahead of this file).
+const canonicalProviders = await import('src/providers/model/providers.js')
+
+async function loadProvidersModule() {
+  return canonicalProviders
 }
 
 function setProfile(profile: Partial<ResolvedProvider>): void {
@@ -80,7 +86,7 @@ function setProfile(profile: Partial<ResolvedProvider>): void {
 
 test('first-party provider keeps Anthropic account setup flow enabled', async () => {
   setProfile({ transport: 'anthropic' })
-  const { getAPIProvider, usesAnthropicAccountFlow } = await importFreshProvidersModule()
+  const { getAPIProvider, usesAnthropicAccountFlow } = await loadProvidersModule()
   expect(getAPIProvider()).toBe('firstParty')
   expect(usesAnthropicAccountFlow()).toBe(true)
 })
@@ -97,7 +103,7 @@ test.each([
   async (transport, baseUrl, expected) => {
     setProfile({ transport, baseUrl })
     const { getAPIProvider, usesAnthropicAccountFlow } =
-      await importFreshProvidersModule()
+      await loadProvidersModule()
 
     expect(getAPIProvider()).toBe(expected)
     expect(usesAnthropicAccountFlow()).toBe(false)
@@ -111,7 +117,7 @@ test('explicit local openai-compatible base URLs stay on the openai provider', a
     model: 'gpt-5.4',
   })
 
-  const { getAPIProvider } = await importFreshProvidersModule()
+  const { getAPIProvider } = await loadProvidersModule()
   expect(getAPIProvider()).toBe('openai')
 })
 
@@ -122,7 +128,7 @@ test('codex transport resolves to the codex provider', async () => {
     model: 'codexplan',
   })
 
-  const { getAPIProvider } = await importFreshProvidersModule()
+  const { getAPIProvider } = await loadProvidersModule()
   expect(getAPIProvider()).toBe('codex')
 })
 
@@ -133,13 +139,13 @@ test('official OpenAI base URLs keep provider detection on openai for aliases', 
     model: 'gpt-5.4',
   })
 
-  const { getAPIProvider } = await importFreshProvidersModule()
+  const { getAPIProvider } = await loadProvidersModule()
   expect(getAPIProvider()).toBe('openai')
 })
 
 test('isGithubNativeAnthropicMode: false when transport is not github_copilot', async () => {
   setProfile({ transport: 'anthropic' })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
@@ -149,7 +155,7 @@ test('isGithubNativeAnthropicMode: true for bare claude- model via profile', asy
     baseUrl: 'https://api.githubcopilot.com',
     model: 'claude-sonnet-4-5',
   })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(true)
 })
 
@@ -159,7 +165,7 @@ test('isGithubNativeAnthropicMode: true for github:copilot:claude- compound form
     baseUrl: 'https://api.githubcopilot.com',
     model: 'github:copilot:claude-sonnet-4',
   })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(true)
 })
 
@@ -198,7 +204,7 @@ test('isGithubNativeAnthropicMode: catalog vetoes a claude model served only via
   _setCopilotCatalogForTesting([
     catalogEntry('claude-sonnet-4.6', ['/chat/completions']),
   ])
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
@@ -211,7 +217,7 @@ test('isGithubNativeAnthropicMode: catalog confirming /v1/messages keeps the nat
   _setCopilotCatalogForTesting([
     catalogEntry('claude-sonnet-4.6', ['/chat/completions', '/v1/messages']),
   ])
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(true)
 })
 
@@ -224,7 +230,7 @@ test('isGithubNativeAnthropicMode: false for non-claude model even if catalog li
   _setCopilotCatalogForTesting([
     catalogEntry('gpt-6-preview', ['/v1/messages']),
   ])
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
@@ -234,7 +240,7 @@ test('isGithubNativeAnthropicMode: true when resolvedModel is a claude- model', 
     baseUrl: 'https://api.githubcopilot.com',
     model: 'github:copilot',
   })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode('claude-haiku-4-5')).toBe(true)
 })
 
@@ -244,7 +250,7 @@ test('isGithubNativeAnthropicMode: false for generic github:copilot alias', asyn
     baseUrl: 'https://api.githubcopilot.com',
     model: 'github:copilot',
   })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
@@ -254,7 +260,7 @@ test('isGithubNativeAnthropicMode: false for non-Claude model', async () => {
     baseUrl: 'https://api.githubcopilot.com',
     model: 'gpt-4o',
   })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
@@ -264,7 +270,7 @@ test('isGithubNativeAnthropicMode: false for github:copilot:gpt- model', async (
     baseUrl: 'https://api.githubcopilot.com',
     model: 'github:copilot:gpt-4o',
   })
-  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  const { isGithubNativeAnthropicMode } = await loadProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
@@ -277,7 +283,7 @@ test.each([
   'activeTransportUsesOpenAiShim: %s routes through the shim',
   async (transport, baseUrl, model) => {
     setProfile({ transport, baseUrl, model })
-    const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+    const { activeTransportUsesOpenAiShim } = await loadProvidersModule()
     expect(activeTransportUsesOpenAiShim(model)).toBe(true)
   },
 )
@@ -291,7 +297,7 @@ test.each([
   'activeTransportUsesOpenAiShim: native transport %s does NOT use the shim',
   async (transport, baseUrl, model) => {
     setProfile({ transport, baseUrl, model })
-    const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+    const { activeTransportUsesOpenAiShim } = await loadProvidersModule()
     expect(activeTransportUsesOpenAiShim(model)).toBe(false)
   },
 )
@@ -299,7 +305,7 @@ test.each([
 test('activeTransportUsesOpenAiShim: no configured profile → false (native default)', async () => {
   mockProviderProfile = null
   invalidateActiveProviderCache()
-  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  const { activeTransportUsesOpenAiShim } = await loadProvidersModule()
   expect(activeTransportUsesOpenAiShim()).toBe(false)
 })
 
@@ -309,7 +315,7 @@ test('activeTransportUsesOpenAiShim: github_copilot + non-Claude model uses the 
     baseUrl: 'https://api.githubcopilot.com',
     model: 'gpt-4o',
   })
-  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  const { activeTransportUsesOpenAiShim } = await loadProvidersModule()
   expect(activeTransportUsesOpenAiShim('gpt-4o')).toBe(true)
 })
 
@@ -322,7 +328,7 @@ test('activeTransportUsesOpenAiShim: github_copilot + Claude model is NATIVE (no
     baseUrl: 'https://api.githubcopilot.com',
     model: 'claude-sonnet-4-5',
   })
-  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  const { activeTransportUsesOpenAiShim } = await loadProvidersModule()
   expect(activeTransportUsesOpenAiShim('claude-sonnet-4-5')).toBe(false)
 })
 
@@ -337,6 +343,91 @@ test('activeTransportUsesOpenAiShim: github_copilot + catalog-vetoed Claude mode
   _setCopilotCatalogForTesting([
     catalogEntry('claude-sonnet-4.6', ['/chat/completions']),
   ])
-  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  const { activeTransportUsesOpenAiShim } = await loadProvidersModule()
   expect(activeTransportUsesOpenAiShim('claude-sonnet-4.6')).toBe(true)
+})
+
+describe('provider classification', () => {
+  const providers = canonicalProviders
+
+  test('no configured profile resolves to firstParty', () => {
+    mockProviderProfile = null
+    invalidateActiveProviderCache()
+    expect(providers.getAPIProvider()).toBe('firstParty')
+    expect(providers.usesAnthropicAccountFlow()).toBe(true)
+  })
+
+  test.each([
+    ['anthropic', 'https://api.anthropic.com', 'firstParty'],
+    ['gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini'],
+    ['mistral', 'https://api.mistral.ai/v1', 'mistral'],
+    ['github_copilot', 'https://api.githubcopilot.com', 'github'],
+    ['codex_responses', 'https://chatgpt.com/backend-api/codex', 'codex'],
+    ['bedrock', 'https://bedrock-runtime.us-east-1.amazonaws.com', 'bedrock'],
+    ['vertex', 'https://us-central1-aiplatform.googleapis.com', 'vertex'],
+    ['foundry', 'https://example.services.ai.azure.com', 'foundry'],
+    ['openai_compat', 'https://api.openai.com/v1', 'openai'],
+    ['openai_compat', 'https://Integrate.API.NVIDIA.com/v1', 'nvidia-nim'],
+    ['openai_compat', 'https://api.MiniMax.io/v1', 'minimax'],
+  ] as const)('%s at %s → %s', (transport, baseUrl, expected) => {
+    setProfile({
+      transport,
+      baseUrl,
+      model: transport === 'codex_responses' ? 'codexplan' : 'some-model',
+    })
+    expect(providers.getAPIProvider()).toBe(expected)
+    expect(providers.getAPIProviderForStatsig()).toBe(expected)
+    expect(providers.usesAnthropicAccountFlow()).toBe(expected === 'firstParty')
+    // The same tag for a profile that is not the active one.
+    mockProviderProfile = null
+    invalidateActiveProviderCache()
+    expect(providers.getAPIProviderForProfile({ transport, baseUrl })).toBe(expected)
+  })
+
+  test('isFirstPartyAnthropicBaseUrl: no profile counts as first party', () => {
+    mockProviderProfile = null
+    invalidateActiveProviderCache()
+    expect(providers.isFirstPartyAnthropicBaseUrl()).toBe(true)
+  })
+
+  test.each([
+    ['anthropic', 'https://api.anthropic.com', true],
+    ['anthropic', 'https://api.anthropic.com/v1/', true],
+    ['anthropic', '', true],
+    ['anthropic', 'https://llm-gateway.example.com', false],
+    ['anthropic', 'https://api.anthropic.com.evil.example', false],
+    ['anthropic', 'not a url', false],
+    ['openai_compat', 'https://api.anthropic.com', false],
+    ['bedrock', 'https://bedrock-runtime.us-east-1.amazonaws.com', false],
+  ] as const)(
+    'isFirstPartyAnthropicBaseUrl: %s at "%s" → %p',
+    (transport, baseUrl, expected) => {
+      setProfile({ transport, baseUrl })
+      expect(providers.isFirstPartyAnthropicBaseUrl()).toBe(expected)
+    },
+  )
+
+  test('github_copilot + Claude model is native, so not a shim request', () => {
+    setProfile({
+      transport: 'github_copilot',
+      baseUrl: 'https://api.githubcopilot.com',
+      model: 'claude-sonnet-4-5',
+    })
+    expect(providers.isGithubNativeAnthropicMode()).toBe(true)
+    expect(providers.activeTransportUsesOpenAiShim('claude-sonnet-4-5')).toBe(false)
+    expect(providers.activeTransportUsesOpenAiShim('gpt-4o')).toBe(true)
+  })
+
+  test('the copilot catalog veto flips the native route back to the shim', () => {
+    setProfile({
+      transport: 'github_copilot',
+      baseUrl: 'https://api.githubcopilot.com',
+      model: 'claude-sonnet-4.6',
+    })
+    _setCopilotCatalogForTesting([
+      catalogEntry('claude-sonnet-4.6', ['/chat/completions']),
+    ])
+    expect(providers.isGithubNativeAnthropicMode()).toBe(false)
+    expect(providers.activeTransportUsesOpenAiShim('claude-sonnet-4.6')).toBe(true)
+  })
 })

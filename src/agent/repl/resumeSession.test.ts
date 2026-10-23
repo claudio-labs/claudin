@@ -34,7 +34,7 @@ import type { ClipStateEntry, CostStateEntry, LogOption } from 'src/shared/types
 const calls: string[] = []
 
 // The cost mocks' inputs and records: the project-config slot as the resume
-// reads it, what reached setCostStateForRestore, and each
+// reads it, what reached restoreStoredSessionCosts, and each
 // restoreCostStateForResume call.
 let storedSessionCosts: Record<string, unknown> | null = null
 const restoredFromSlot: unknown[] = []
@@ -176,10 +176,6 @@ mock.module('src/vcs/git/worktree.js', () => ({
 mock.module('src/platform/bootstrap/state.js', () => ({
   getOriginalCwd: () => '/tmp/test',
   getSessionId: () => LEAVING_SESSION_ID,
-  setCostStateForRestore: mock((data: unknown) => {
-    calls.push('setCostStateForRestore')
-    restoredFromSlot.push(data)
-  }),
   switchSession: mock(() => {
     calls.push('switchSession')
   }),
@@ -192,6 +188,10 @@ mock.module('src/agent/cost-tracker.js', () => ({
   }),
   resetCostState: mock(() => {
     calls.push('resetCostState')
+  }),
+  restoreStoredSessionCosts: mock((data: unknown) => {
+    calls.push('restoreStoredSessionCosts')
+    restoredFromSlot.push(data)
   }),
   restoreCostStateForResume: mock(
     (

@@ -32,6 +32,11 @@ export type ResolvedProvider = {
   apiKey?: string
   extras?: ProviderProfileExtras
   name: string
+  /**
+   * The profile's id: what spend and the per-provider views are keyed by.
+   * Always set by resolveProviderProfile; optional for hand-built providers.
+   */
+  profileId?: string
 }
 
 export class ActiveProviderNotConfiguredError extends Error {
@@ -81,7 +86,8 @@ function resolveTransport(profile: ProviderProfile, primaryModel: string): Trans
   }
 }
 
-function resolveFromProfile(profile: ProviderProfile): ResolvedProvider {
+/** Any profile, active or not, in the shape downstream consumers switch on. */
+export function resolveProviderProfile(profile: ProviderProfile): ResolvedProvider {
   const primaryModel = getPrimaryModel(profile.model)
   const transport = resolveTransport(profile, primaryModel)
   return {
@@ -91,6 +97,7 @@ function resolveFromProfile(profile: ProviderProfile): ResolvedProvider {
     apiKey: profile.apiKey,
     extras: profile.extras,
     name: profile.name,
+    profileId: profile.id,
   }
 }
 
@@ -103,7 +110,7 @@ export function getActiveProvider(): ResolvedProvider {
   if (!profile) {
     throw new ActiveProviderNotConfiguredError()
   }
-  cachedResolved = resolveFromProfile(profile)
+  cachedResolved = resolveProviderProfile(profile)
   return cachedResolved
 }
 

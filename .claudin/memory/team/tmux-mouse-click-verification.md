@@ -1,6 +1,6 @@
 ---
 name: Live-verifying TUI mouse click/hover under tmux
-description: How to drive and confirm TUI behavior in claudindev under tmux — fullscreen env + SGR mouse injection, plus a scratchpad CLAUDIN_CONFIG_DIR for seeded state (tasks) with no ~/.claudin writes and no rule-map rewrite
+description: How to drive and confirm TUI behavior in claudindev under tmux — fullscreen env + SGR mouse injection, a scratchpad CLAUDIN_CONFIG_DIR for seeded state (tasks) with no ~/.claudin writes and no rule-map rewrite, and Claude subscription limit alerts through a local ANTHROPIC_BASE_URL mock
 type: reference
 ---
 
@@ -118,3 +118,25 @@ the end of the first turn once [[rule-map-end-of-turn]] lands, so a zero-turn
 UI check is then safe without it. That
 leaves a tracked-file change in the branch diff, and it shows up in `/diff`'s own
 file list during the check.
+
+## Driving the subscription limit alerts with a local mock (2026-10-22)
+
+A real quota warning needs real quota spent. The /usage-by-provider round drove the alerts
+through a local `Bun.serve` mock instead:
+1. Run `env ANTHROPIC_BASE_URL=http://127.0.0.1:<port> NO_PROXY=127.0.0.1,localhost claudindev`
+   in tmux from a throwaway cwd, then accept the trust dialog with Enter. The user's real claude.ai
+   login still applies, so the subscriber gates in `claudeAiLimits.ts` pass.
+2. Have the mock answer `/v1/messages` with a minimal SSE stream and the
+   `anthropic-ratelimit-unified-*` headers that `computeNewLimitsFromHeaders` reads. Status
+   `allowed_warning` plus a crossed 7d threshold drew the weekly toast and the standing footer
+   indicator.
+3. Flip a mode file the mock reads to a 429 with `-unified-reset`. That drew the limit-reached
+   line and the resume notice.
+
+Two short turns, no real spend: the cost shown came from the mock's own usage numbers.
+
+Side effects and limits:
+- It runs on the real `~/.claudin`: `config.json` gained a project entry for the throwaway cwd.
+- A Codex profile cannot be mocked this way (see [[codex-0.162-wire-diff]]).
+- After a live check in the repo cwd, end with `kill -9 <pane pid>` when that session's cost must
+  not be folded into the project totals on exit.

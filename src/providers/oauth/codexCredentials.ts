@@ -1,4 +1,5 @@
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import type { CodexCredentialProfile } from 'src/providers/presets/providerConfig.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { getSecureStorage } from 'src/platform/secureStorage/index.js'
@@ -227,6 +228,8 @@ export function clearCodexCredentials(): {
 
 export async function refreshCodexAccessTokenIfNeeded(options?: {
   force?: boolean
+  /** The profile to refresh for; the active one when unnamed. */
+  profile?: CodexCredentialProfile
 }): Promise<{
   refreshed: boolean
   credentials?: CodexCredentialBlob
@@ -235,15 +238,15 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
     return { refreshed: false }
   }
 
-  const activeProvider = tryGetActiveProvider()
-  // If the active profile already pins a Codex API key, skip the refresh.
-  if (activeProvider?.apiKey?.trim()) {
+  const profile = options?.profile ?? tryGetActiveProvider()
+  // If the profile already pins a Codex API key, skip the refresh.
+  if (profile?.apiKey?.trim()) {
     return { refreshed: false }
   }
 
   // A profile linked to a Codex CLI auth.json is served from that file
   // (resolveRuntimeCodexCredentials), so that file is what gets refreshed.
-  const linkedAuthPath = asTrimmedString(activeProvider?.extras?.codexAuthPath)
+  const linkedAuthPath = asTrimmedString(profile?.extras?.codexAuthPath)
   if (linkedAuthPath) {
     return {
       refreshed: await refreshCodexAuthFileIfNeeded(linkedAuthPath, options),

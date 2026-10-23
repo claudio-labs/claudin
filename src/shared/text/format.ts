@@ -290,15 +290,6 @@ export function formatResetTime(
   )
 }
 
-export function formatResetText(
-  resetsAt: string,
-  showTimezone: boolean = false,
-  showTime: boolean = true,
-): string {
-  const dt = new Date(resetsAt)
-  return `${formatResetTime(Math.floor(dt.getTime() / 1000), showTimezone, showTime)}`
-}
-
 /**
  * "Time remaining" for a reset — "3d 4h", "2h 15m", "45m", "7s". Rounds up, so
  * it never sends anyone back early, and never reads as "0".

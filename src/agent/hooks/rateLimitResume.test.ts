@@ -27,26 +27,26 @@ function limit(overrides: Partial<ProviderRateLimit> = {}): ProviderRateLimit {
 
 describe('describeLimit', () => {
   test('names the provider and how long the wait is', () => {
-    expect(describeLimit(limit(), NOW)).toBe('Rate limited · OpenAI · back in 2h 14m')
+    expect(describeLimit(limit(), NOW)).toBe('OpenAI · rate limited · back in 2h 14m')
   })
 
   test('reports a sub-minute throttle in seconds', () => {
     // Rounded up to "1m" this contradicted the retry notice ticking beside it,
     // which counts the real seconds down.
     expect(describeLimit(limit({ resetsAtMs: NOW + 7_000 }), NOW)).toBe(
-      'Rate limited · OpenAI · back in 7s',
+      'OpenAI · rate limited · back in 7s',
     )
   })
 
   test('omits the wait when no reset was reported', () => {
     expect(describeLimit(limit({ resetsAtMs: undefined }), NOW)).toBe(
-      'Rate limited · OpenAI',
+      'OpenAI · rate limited',
     )
   })
 
   test('omits the wait for a reset already in the past', () => {
     expect(describeLimit(limit({ resetsAtMs: NOW - 1 }), NOW)).toBe(
-      'Rate limited · OpenAI',
+      'OpenAI · rate limited',
     )
   })
 })

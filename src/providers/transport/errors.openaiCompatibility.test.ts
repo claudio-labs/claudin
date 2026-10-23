@@ -3,6 +3,11 @@ import { expect, test } from 'bun:test'
 
 import { getAssistantMessageFromError } from 'src/providers/transport/errors.js'
 
+// `<provider> · rate limit reached · …`: the provider is whatever profile the
+// run resolves, so only the shape around it is pinned.
+const RATE_LIMIT_HEAD_RE = /^[^·\n]+ · rate limit reached · /
+const QUOTA_HEAD_RE = /^[^·\n]+ · quota exhausted · /
+
 function getFirstText(message: ReturnType<typeof getAssistantMessageFromError>): string {
   const first = message.message.content[0]
   if (!first || typeof first !== 'object' || !('text' in first)) {
@@ -57,7 +62,7 @@ test('a 429 gets the unified limit message with its reset, not the flat sentence
 
   const text = getFirstText(getAssistantMessageFromError(error, 'gpt-5'))
 
-  expect(text).toStartWith('Rate limit reached · ')
+  expect(text).toMatch(RATE_LIMIT_HEAD_RE)
   expect(text).toContain('resets in 2h 14m')
   expect(text).not.toContain('Retry in a few seconds')
 })
@@ -72,7 +77,7 @@ test('a 429 with no reset signal says so instead of inventing one', () => {
 
   const text = getFirstText(getAssistantMessageFromError(error, 'gpt-5'))
 
-  expect(text).toStartWith('Rate limit reached · ')
+  expect(text).toMatch(RATE_LIMIT_HEAD_RE)
   expect(text).toContain('no reset time reported')
   // The provider's own reason is what discriminates this from the shim's
   // category fallback, which builds the same head and tail with no detail —
@@ -90,7 +95,7 @@ test('billing exhaustion is reported as exhausted, not as a wait', () => {
 
   const text = getFirstText(getAssistantMessageFromError(error, 'gpt-5'))
 
-  expect(text).toStartWith('Quota exhausted · ')
+  expect(text).toMatch(QUOTA_HEAD_RE)
   expect(text).toContain('/provider')
   expect(text).not.toContain('resets in')
 })
@@ -108,7 +113,7 @@ test('a 1M-context entitlement 429 keeps its own hint instead of a countdown', (
   const text = getFirstText(getAssistantMessageFromError(error, 'claude-opus-5'))
 
   expect(text).toContain('Extra usage is required for 1M context')
-  expect(text).not.toContain('Rate limit reached')
+  expect(text).not.toContain('rate limit reached')
 })
 
 test('a JSON envelope is unwrapped to the inner message', () => {
@@ -122,7 +127,7 @@ test('a JSON envelope is unwrapped to the inner message', () => {
   const message = getAssistantMessageFromError(error, 'gpt-5')
   const text = getFirstText(message)
 
-  expect(text).toStartWith('Rate limit reached · ')
+  expect(text).toMatch(RATE_LIMIT_HEAD_RE)
   expect(text).toContain('concurrent requests exceeded')
   expect(text).not.toContain('{"type"')
   expect(message.errorDetails).toBe('concurrent requests exceeded')
@@ -141,4 +146,26 @@ test('a reset time displaces the provider wording from the line', () => {
 
   expect(getFirstText(message)).not.toContain('rate limit exceeded')
   expect(message.errorDetails).toContain('rate limit exceeded')
+})
+
+test("the Codex plan's usage-limit 429 names the window and counts down to its reset", () => {
+  const resetsAt = Math.floor(Date.now() / 1000) + 72 * 60
+  const body = {
+    error: { type: 'usage_limit_reached', message: 'The usage limit has been reached', plan_type: 'plus', resets_at: resetsAt },
+  }
+  const error = APIError.generate(
+    429,
+    body,
+    `Codex API error 429: ${JSON.stringify(body)}`,
+    new Headers({
+      'x-codex-primary-used-percent': '100',
+      'x-codex-primary-window-minutes': '300',
+      'x-codex-secondary-used-percent': '40',
+      'x-codex-secondary-window-minutes': '10080',
+    }),
+  )
+
+  const text = getFirstText(getAssistantMessageFromError(error, 'gpt-5.5'))
+
+  expect(text).toMatch(/^[^·\n]+ · 5h limit reached · resets in 1h 12m$/)
 })

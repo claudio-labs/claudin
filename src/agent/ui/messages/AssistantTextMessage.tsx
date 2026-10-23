@@ -14,7 +14,7 @@ import { InterruptedByUser } from 'src/agent/ui/InterruptedByUser.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { MessageActionsSelectedContext } from 'src/agent/ui/messageActions.js';
-import { LimitMessage } from 'src/agent/ui/messages/ProviderLimitMessage.js';
+import { ProviderLimitMessage } from 'src/agent/ui/messages/ProviderLimitMessage.js';
 const MAX_API_ERROR_CHARS = 1000;
 type Props = {
   param: TextBlockParam;
@@ -63,7 +63,7 @@ export function AssistantTextMessage(t0: Props) {
     // file, so the slot count in `_c(34)` and every `$[i]` below are its
     // bookkeeping — dropping a comparison is safe, renumbering is not.
     if ($[1] !== text) {
-      t2 = <LimitMessage text={text} />;
+      t2 = <ProviderLimitMessage text={text} />;
       $[1] = text;
       $[2] = t2;
     } else {

@@ -1,6 +1,6 @@
 ---
 name: codex-0.162-wire-diff
-description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay (#307) and WebSocket transport (#308) closed 10-17, both in v1.1.46; captures, gates, the free-plan quota that ran out, the traps the captures caught
+description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay (#307) and WebSocket transport (#308) closed 10-17, both in v1.1.46; captures, gates, the free-plan quota that ran out, the traps the captures caught; the rate-limit wire (x-codex-* headers over HTTP, codex.rate_limits event over the socket) confirmed live 10-22
 type: project
 ---
 
@@ -68,3 +68,32 @@ changes; `scripts/bench/tokens/codex-reasoning-replay-probe.ts` re-asks the back
 replay's design questions. The runner deletes each flow file (the only copy of the token).
 The provider-switch check against a mock is in testing.md (same section). Recipe for other
 Rust CLIs: [[mitmproxy-rust-binary-recipe]].
+
+## Rate-limit wire (confirmed 2026-10-22)
+
+Confirmed with two short real requests on the free plan, which read 0% used beforehand. The
+probe was a temporary `bun test` file (for the bunfig preload, with `globalThis.MACRO` set) that
+called `performCodexRequest` once with `CLAUDIN_CODEX_WEBSOCKET=0` and once with the socket on.
+It printed only the `x-codex-*` headers and the `codex.rate_limits` events, and was deleted
+afterwards.
+- **HTTP:** every response carries `x-codex-primary-{used-percent,window-minutes,reset-at,
+  reset-after-seconds}` (plus `secondary-*` when the plan has a second window),
+  `x-codex-plan-type` and `x-codex-credits-*`.
+- **WebSocket:** the Response carries none of those. The limits arrive as a streamed
+  `codex.rate_limits` event: `{plan_type, rate_limits:{primary:{used_percent, window_minutes,
+  reset_at}, secondary:null}, credits}`. Here `rate_limits` is ONE snapshot, not the collection
+  `normalizeCodexUsagePayload` parses from `/backend-api/wham/usage`.
+- **Free plan:** one 30-day window (`window_minutes` 43200). On 10-22 `wham/usage` said it resets
+  2026-11-21.
+- **Reset drift:** `reset_at` drifts a few seconds between responses within one window. Anything
+  that keys a window on its reset instant needs a tolerance; the branch uses 5 min.
+- **From codex-rs source, never captured:**
+  - Codex CLI warns at used-percent `[50,75,90,95]`, once per threshold per window. The floor is
+    50 for Plus/Team on the ~5h window and 75 otherwise.
+  - A 429 with `error.type: "usage_limit_reached"` carries `plan_type`, `resets_at` (unix
+    seconds) and `limit_window_minutes`.
+  - Claudin's limit-reached reader (`codex-usage-limit` in `rateLimitInfo.ts`, from
+    `feat/usage-by-provider`) is built on that body without ever having seen one live.
+- **No local mock:** a profile pointed at a local base URL resolves to the OpenAI-compatible
+  transport, not `codex_responses`, so the shim's recording never runs against a mock. The live
+  path needs the real backend.

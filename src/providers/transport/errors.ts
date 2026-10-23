@@ -569,7 +569,10 @@ export function getAssistantMessageFromError(
       }
 
       // Use the new message format for all new API rate limits
-      const specificErrorMessage = getRateLimitErrorMessage(limits, model)
+      const specificErrorMessage = getRateLimitErrorMessage(
+        limits,
+        getActiveProviderLabel(),
+      )
       if (specificErrorMessage) {
         return createAssistantAPIErrorMessage({
           content: specificErrorMessage,

@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
 
 ## Decisions
+- [/usage by provider + provider-first alerts (10-22)](decisions/usage-grouped-by-provider.md) — limits table, `~` estimates
 - [Context counts share one sum (10-22)](decisions/context-counts-share-one-sum.md) — footer/status line/`/context` read autocompact's count; status line adds output, unlike CC
 - [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, trust note, `memory audit`, expires:
 - [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket default on; prewarm rejected
@@ -153,7 +154,7 @@
 - [Adding a /provider preset: the skill](../../skills/add-provider-preset/SKILL.md) · [old recipe](openai-compat-preset-recipe.md)
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — mirrors xAI; impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
-- Codex: [strict schemas → placeholder args, strip ""/null](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire parity 10-16/17, #307/#308](codex-0.162-wire-diff.md)
+- Codex: [strict schemas → placeholder args, strip ""/null](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire #307/#308, rate limits 10-22](codex-0.162-wire-diff.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — loopback PKCE, pinned port 56121
 
@@ -175,7 +176,7 @@
 - [Auto-wrap eats a row (side-panel checkerboard)](ink-autowrap-eats-a-row.md) — DECAWM off per paint
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/
 - Bash filter: [collapseRuns+blank-strip safe, no marker-on-blank](bashfilter-collapseruns-blankstrip-footgun.md) · [fixtures keep byte length](bashfilter-fixtures-byte-length-sensitive.md) · [samples in ONE dir](bash-filter-sample-corpus-unified.md)
-- [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only; SGR via send-keys
+- [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen + SGR send-keys; limit alerts via a mock
 - [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted #242)
 - ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25
 

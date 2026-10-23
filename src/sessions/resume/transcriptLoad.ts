@@ -79,6 +79,17 @@ const COST_STATE_MODEL_NAME_RE = /^[^\p{Cc}\p{Cf}]+$/u
  */
 const costStateEntrySchema = lazySchema(() => {
   const amount = z.number().nonnegative()
+  const modelUsage = z.record(
+    z.string().regex(COST_STATE_MODEL_NAME_RE),
+    z.object({
+      inputTokens: amount,
+      outputTokens: amount,
+      cacheReadInputTokens: amount,
+      cacheCreationInputTokens: amount,
+      webSearchRequests: amount,
+      costUSD: amount,
+    }),
+  )
   return z.object({
     type: z.literal('cost-state'),
     sessionId: z.string(),
@@ -90,21 +101,16 @@ const costStateEntrySchema = lazySchema(() => {
     totalLinesRemoved: amount,
     totalDuration: amount,
     startTime: amount,
-    modelUsage: z.record(
-      z.string().regex(COST_STATE_MODEL_NAME_RE),
-      z.object({
-        inputTokens: amount,
-        outputTokens: amount,
-        cacheReadInputTokens: amount,
-        cacheCreationInputTokens: amount,
-        webSearchRequests: amount,
-        costUSD: amount,
-      }),
-    ),
+    modelUsage,
     hasUnknownModelCost: z.boolean().optional(),
     // Claudin's own, absent from Claude Code's entry. Undeclared, the object
-    // dropped it and every resume restored an empty spend by source. A bad one
-    // is dropped alone: it must not cost the entry its totals.
+    // dropped them and every resume restored an empty spend by source and by
+    // provider. A bad one is dropped alone: it must not cost the entry its
+    // totals.
+    providerUsage: z
+      .record(z.string(), z.object({ name: z.string(), models: modelUsage }))
+      .optional()
+      .catch(undefined),
     sourceUsage: z
       .record(
         z.string(),

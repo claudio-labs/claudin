@@ -1,3 +1,5 @@
+import type { UsageLimitRow } from 'src/providers/usage/limitRows.js'
+
 export type MiniMaxUsageWindow = {
   label: string
   usedPercent: number
@@ -11,19 +13,7 @@ export type MiniMaxUsageSnapshot = {
   windows: MiniMaxUsageWindow[]
 }
 
-export type MiniMaxUsageRow =
-  | {
-      kind: 'window'
-      label: string
-      usedPercent: number
-      resetsAt?: string
-      extraSubtext?: string
-    }
-  | {
-      kind: 'text'
-      label: string
-      value: string
-    }
+export type MiniMaxUsageRow = UsageLimitRow
 
 export type MiniMaxUsageData =
   | {

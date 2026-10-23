@@ -27,9 +27,9 @@ const TRANSPORT_LABELS: Record<string, string> = {
 
 /**
  * Pure half, so the mapping is testable without a configured profile.
- * `src/platform/status/status.tsx` and `src/platform/settings/ui/Usage.tsx`
- * keep their own copies of this map on purpose — theirs are worded for the
- * sentences they appear in ("this OpenAI-compatible provider").
+ * `src/platform/status/status.tsx` keeps its own copy of this map on
+ * purpose — it is worded for the sentences it appears in ("this
+ * OpenAI-compatible provider").
  */
 export function resolveProviderLabel(
   profileName: string | undefined,
