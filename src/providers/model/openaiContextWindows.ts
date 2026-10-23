@@ -482,6 +482,10 @@ export function getOpenAIContextWindow(model: string): number | undefined {
   // On the Codex backend a ChatGPT account has its own limits, below the API's.
   const account = codexAccountLimitsFor(model)
   if (account) return account.contextWindow
+  // An explicit CLAUDIN_OPENAI_CONTEXT_WINDOWS pin is the user's word for this
+  // deployment, so it wins over what the provider reports.
+  const pinned = lookupByModel({}, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
+  if (pinned !== undefined) return pinned
   // Prefer the window the provider reported for THIS deployment via its /models
   // API — it's authoritative for routers that serve a truncated- or
   // extended-context variant under a well-known model id (e.g. a 32k "gpt-4o").
