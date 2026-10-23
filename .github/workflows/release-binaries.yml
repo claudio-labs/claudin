@@ -269,7 +269,9 @@ jobs:
           - { platform: darwin-x64, runner: macos-14, target: bun-darwin-x64, cross: true }
           - { platform: darwin-arm64, runner: macos-14, target: bun-darwin-arm64 }
           - { platform: win32-x64, runner: windows-latest, target: bun-windows-x64 }
-          - { platform: win32-arm64, runner: windows-11-arm, target: bun-windows-arm64 }
+          # win32-arm64 is NOT built: on windows-11-arm its binary hangs in
+          # smoke:binary without reaching the mock (run 39890672575). Windows on
+          # ARM installs fall back to the Node bundle (dist/cli.mjs).
     runs-on: ${{ matrix.runner }}
     container: ${{ matrix.container || '' }}
     steps:
