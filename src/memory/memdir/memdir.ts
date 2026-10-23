@@ -23,6 +23,7 @@ import { plural } from 'src/shared/text/stringUtils.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
+  BENCH_USER_TASTE,
   MEMORY_FRONTMATTER_EXAMPLE,
   WHAT_NOT_TO_SAVE_SECTION,
 } from 'src/memory/memdir/memoryTypes.js'
@@ -280,7 +281,7 @@ export function buildMemoryLines(
     '',
     'In the body, link to related memories with `[[name]]`, where `name` is the other memory\'s `name:` slug. Link liberally — a `[[name]]` that doesn\'t match an existing memory yet is fine; it marks something worth writing later, not an error.',
     '',
-    '`user` — who the user is (role, expertise, preferences). `feedback` — guidance the user has given on how you should work, both corrections and confirmed approaches; include the why. `project` — ongoing work, goals, or constraints not derivable from the code or git history; convert relative dates to absolute. `reference` — pointers to external resources (URLs, dashboards, tickets).',
+    `\`user\` — who the user is (role, expertise, ${BENCH_USER_TASTE ? 'taste: language, tone, the code and workflow they favor anywhere' : 'preferences'}). \`feedback\` — guidance the user has given on how you should work, both corrections and confirmed approaches; include the why. \`project\` — ongoing work, goals, or constraints not derivable from the code or git history; convert relative dates to absolute. \`reference\` — pointers to external resources (URLs, dashboards, tickets).`,
     '',
     indexGuidance,
     '',

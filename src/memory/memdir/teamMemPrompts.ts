@@ -11,6 +11,7 @@ import {
   MEMORY_FRONTMATTER_EXAMPLE,
   MEMORY_TYPES,
   type MemoryType,
+  BENCH_USER_TASTE,
   renderTeamCategoriesCompact,
   renderTeamCategoriesLean,
   TEAM_CATEGORIES,
@@ -106,14 +107,16 @@ function leanTeamClause(teamDir: string, gitRoot: string | null): string {
  * TYPE_SCOPES (memoryTypes.ts), rendered beside it by both prompts.
  */
 const LEAN_TYPE_HOLDS: Readonly<Record<MemoryType, string>> = {
-  user: 'role, expertise, preferences',
+  user: BENCH_USER_TASTE ? 'role, expertise, taste: language, tone, the code and workflow they favor anywhere' : 'role, expertise, preferences',
   feedback: 'how to work, from corrections and confirmed approaches',
   project: 'ongoing work, decisions, constraints; absolute dates',
   reference: 'pointers to external systems',
 }
 
 const FULL_TYPE_HOLDS: Readonly<Record<MemoryType, string>> = {
-  user: 'who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',
+  user: BENCH_USER_TASTE
+    ? 'who the user is and what they like: role, expertise, goals, and taste — language, tone, the code patterns and workflow they favor in any project. Tailor how you work with them; no negative judgments.'
+    : 'who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',
   feedback:
     'guidance on how to work, from corrections ("don\'t do X") AND confirmed approaches ("yes, keep doing that"). Lead with the rule, then **Why:** and **How to apply:** lines.',
   project:
@@ -167,7 +170,9 @@ export function buildCombinedMemoryPrompt(
     '',
     // The shared example's body placeholder cues `[[their-name]]`; without
     // this line the team prompt shows the cue and never explains it.
-    'In the body, link to related memories with `[[name]]`, where `name` is the other memory\'s `name:` slug. Link across directories freely — a `[[name]]` that doesn\'t match an existing memory yet is fine; it marks something worth writing later, not an error.',
+    BENCH_USER_TASTE
+      ? 'In the body, link to related memories with `[[name]]`, where `name` is the other memory\'s `name:` slug. Link across directories freely, except from a team memory to a private or global one — teammates have no copy of those. A `[[name]]` that doesn\'t match an existing memory yet is fine; it marks something worth writing later, not an error.'
+      : 'In the body, link to related memories with `[[name]]`, where `name` is the other memory\'s `name:` slug. Link across directories freely — a `[[name]]` that doesn\'t match an existing memory yet is fine; it marks something worth writing later, not an error.',
     '',
     'Pick the `type` (and scope) that fits:',
     ...typeLines,
@@ -207,8 +212,9 @@ export function buildCombinedMemoryPrompt(
  * system prompt (2026-09-29) and live in buildMemoryWriteRules, which
  * memoryFormatGuard.ts hands back when a memory write breaks them.
  */
-const LEAN_LINKS_LINE =
-  "Link related memories with `[[name]]`, the other memory's `name:`; a link to a memory not written yet is fine."
+const LEAN_LINKS_LINE = BENCH_USER_TASTE
+  ? "Link related memories with `[[name]]`, the other memory's `name:`; a link to a memory not written yet is fine, one from a team memory to a private or global one is not — teammates have no copy."
+  : "Link related memories with `[[name]]`, the other memory's `name:`; a link to a memory not written yet is fine."
 
 function leanTeamCategoryLines(teamDir: string): string[] {
   return [
