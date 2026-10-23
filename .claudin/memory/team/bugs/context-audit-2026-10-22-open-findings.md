@@ -9,8 +9,7 @@ paths:
 ---
 
 A seven-item audit of the context subsystem on 2026-10-22. The scratchpad, output-style, count
-and session-memory items were fixed on `fix/context-scratchpad-and-session-memory`
-([[context-counts-share-one-sum]]). These were confirmed by reading the code, not reproduced,
+and session-memory items were fixed in #315 ([[context-counts-share-one-sum]]). These were confirmed by reading the code, not reproduced,
 and left open.
 
 **1. Dead code nobody removed.**
