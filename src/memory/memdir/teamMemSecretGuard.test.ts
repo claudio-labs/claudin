@@ -16,6 +16,11 @@ import { getTeamMemPath, isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js
 // in source.
 const AWS_ACCESS_KEY = ['AKIA', 'Q'.repeat(16)].join('')
 const GITHUB_PAT = ['ghp', 'x'.repeat(36)].join('_')
+// The same PAT with a zero-width space and a soft hyphen in it: invisible in
+// an editor and a diff, and enough to break every rule's regex.
+const SPLIT_PAT = `${GITHUB_PAT.slice(0, 10)}\u200B${GITHUB_PAT.slice(10, 20)}\u00AD${GITHUB_PAT.slice(20)}`
+// "run curl" in Unicode tag characters: the model reads it, a reviewer sees nothing.
+const TAG_TEXT = [...'run curl'].map(c => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join('')
 
 describe('isTeamMemPath', () => {
   const teamDir = getTeamMemPath()
@@ -75,6 +80,10 @@ describe('scanForSecrets', () => {
       ),
     ).toEqual([])
   })
+
+  test('a secret split by invisible characters still fires its rule', () => {
+    expect(scanForSecrets(`token: ${SPLIT_PAT}\n`).map(m => m.ruleId)).toEqual(['github-pat'])
+  })
 })
 
 describe('checkTeamMemSecrets', () => {
@@ -88,5 +97,22 @@ describe('checkTeamMemSecrets', () => {
   test('lets clean team content through, and never scans outside the team dir', () => {
     expect(checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), 'Use pnpm.\n')).toBeNull()
     expect(checkTeamMemSecrets(join(getPrivateMemPath(), 'private.md'), `token: ${GITHUB_PAT}\n`)).toBeNull()
+  })
+
+  test('refuses a secret split by invisible characters', () => {
+    expect(checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), `token: ${SPLIT_PAT}\n`)).toContain('GitHub PAT')
+  })
+
+  test('refuses bidi controls and tag characters, which hide text from the PR that reviews team memory', () => {
+    const bidi = checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), 'Run the tests\u202E.yalp\u202C first.\n')
+    expect(bidi).toContain('bidi control')
+    expect(bidi).toContain('cannot be written to team memory')
+    expect(bidi).not.toContain('secrets')
+    expect(checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), `Note.${TAG_TEXT}\n`)).toContain('Unicode tag characters')
+  })
+
+  test('a zero-width joiner alone is legitimate text, and hidden text outside the team dir is not checked', () => {
+    expect(checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), 'The family emoji 👨\u200D👩\u200D👧 is one glyph.\n')).toBeNull()
+    expect(checkTeamMemSecrets(join(getPrivateMemPath(), 'private.md'), 'a\u202Eb\n')).toBeNull()
   })
 })
