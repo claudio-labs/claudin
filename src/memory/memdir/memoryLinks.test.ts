@@ -29,12 +29,18 @@ describe('findLinkFindings — broken links', () => {
     expect(findLinkFindings(all, DIRS)).toEqual([{ kind: 'broken-link', scope: 'global', path: '/g/g.md', target: '[[p]]' }])
   })
 
-  test('a [[link]] matches a file stem or a frontmatter name', () => {
+  test('a [[link]] matches a file stem or a frontmatter name, and reaches the memory either way', () => {
     const all = files('team', {
       '/r/m/team/MEMORY.md': '- [A](a.md) — a\n',
-      '/r/m/team/a.md': memory('a', 'By stem [[bugs-file]], by name [[Pretty Name]].'),
-      '/r/m/team/bugs/bugs-file.md': memory('Pretty Name'),
+      '/r/m/team/a.md': memory('a', 'By stem [[stem-only]], by name [[Pretty Name]].'),
+      '/r/m/team/bugs/stem-only.md': memory('another-name'),
+      '/r/m/team/bugs/by-name.md': memory('Pretty Name'),
     })
+    expect(findLinkFindings(all, DIRS)).toEqual([])
+  })
+
+  test('a [[link]] to a memory not written yet is a forward link, not a finding', () => {
+    const all = files('team', { '/r/m/team/MEMORY.md': '- [A](a.md) — a\n', '/r/m/team/a.md': memory('a', 'Later: [[worth-writing]].') })
     expect(findLinkFindings(all, DIRS)).toEqual([])
   })
 
@@ -64,9 +70,16 @@ describe('findLinkFindings — broken links', () => {
     expect(findLinkFindings(all, DIRS)).toEqual([])
   })
 
-  test('one finding per file and target, however often it is written', () => {
-    const all = files('team', { '/r/m/team/MEMORY.md': '- [A](a.md) — a\n', '/r/m/team/a.md': memory('a', '[[x]] [[x]] [[ x ]]') })
-    expect(findLinkFindings(all, DIRS)).toHaveLength(1)
+  test('one finding per file and target, however often or however spaced it is written', () => {
+    const all = [
+      ...files('private', { '/r/m/MEMORY.md': '- [M](mine.md) — m\n', '/r/m/mine.md': memory('mine') }),
+      ...files('team', {
+        '/r/m/team/MEMORY.md': '- [A](a.md) — a\n- [B](b.md) — b\n',
+        '/r/m/team/a.md': memory('a', '[[mine]] and again [[mine]]'),
+        '/r/m/team/b.md': memory('b', '[[ mine ]]'),
+      }),
+    ]
+    expect(findLinkFindings(all, DIRS).map(f => f.path)).toEqual(['/r/m/team/a.md', '/r/m/team/b.md'])
   })
 })
 

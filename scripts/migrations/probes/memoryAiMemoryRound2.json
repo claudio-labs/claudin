@@ -123,6 +123,11 @@
       "replace": ""
     },
     {
+      "name": "links: a forward link is a finding",
+      "find": "        else if (!visibleKeys.has(key) && anyKeys.has(key)) broken.add(`[[${key}]]`)\n",
+      "replace": "        else if (!visibleKeys.has(key)) broken.add(`[[${key}]]`)\n"
+    },
+    {
       "name": "links: a [[ spaced ]] key is not trimmed",
       "find": "        const key = match[1]!.trim()\n",
       "replace": "        const key = match[1]!\n"

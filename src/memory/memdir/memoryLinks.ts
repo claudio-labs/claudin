@@ -5,12 +5,16 @@
  * index line `](file.md)`, or a `[[name]]` inside a memory — and three things
  * go wrong silently:
  *
- * - `broken-link`: a link that resolves to nothing. A `[[name]]` matches a
+ * - `broken-link`: a link its reader cannot follow. A `[[name]]` matches a
  *   file's stem or its frontmatter `name`, among the memories its reader can
  *   see: a team memory only team ones (a teammate has no copy of yours), a
  *   global one only global ones (another project has no copy of this one's),
- *   a private one all three. A `](file.md)` is checked inside its own
- *   directory only; a target outside it (`../../skills/…`) is not a memory.
+ *   a private one all three — so it is broken when it matches only a memory
+ *   outside those. One matching no memory at all is a forward link, which the
+ *   memory prompts invite ("a link to a memory not written yet is fine"), and
+ *   not a finding. A `](file.md)` is broken when the file is missing; it is
+ *   checked inside its own directory only, as a target outside it
+ *   (`../../skills/…`) is not a memory.
  * - `unindexed`: a memory no chain of links from its index reaches, and with
  *   no `paths:` to attach it — nothing will ever bring it into context.
  * - `duplicate-name`: two memories of one directory sharing a `name`, which
@@ -120,6 +124,7 @@ export function findLinkFindings(files: readonly AuditedFile[], dirs: readonly M
         .filter(other => VISIBLE_SCOPES[dir.scope].includes(other.scope))
         .flatMap(other => memoriesOf(other, memories)),
     )
+    const anyKeys = keyMap(dirs.flatMap(other => memoriesOf(other, memories)))
 
     // Every link of every file, resolved once: what it reaches in this directory, and what resolves nowhere.
     const edges = new Map<string, string[]>()
@@ -130,7 +135,7 @@ export function findLinkFindings(files: readonly AuditedFile[], dirs: readonly M
         const key = match[1]!.trim()
         const hit = ownKeys.get(key)
         if (hit !== undefined) reached.push(hit.path)
-        else if (!visibleKeys.has(key)) broken.add(`[[${key}]]`)
+        else if (!visibleKeys.has(key) && anyKeys.has(key)) broken.add(`[[${key}]]`)
       }
       for (const match of memory.links.matchAll(INDEX_LINK_TARGET_RE)) {
         const abs = markdownTarget(dir, memory.path, match[1]!)

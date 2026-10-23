@@ -53,7 +53,7 @@ describe('buildMemoryTidyPrompt — audit findings', () => {
       { kind: 'unindexed', scope: 'team', path: `${TEAM_ROOT}/lost.md` },
       { kind: 'duplicate-name', scope: 'private', path: `${PRIVATE_ROOT}/b.md`, name: 'same' },
     ])
-    expect(prompt).toContain(`- Link \`[[mine]]\` resolves to no memory: \`${TEAM_ROOT}/a.md\``)
+    expect(prompt).toContain(`- Link \`[[mine]]\` reaches no memory its readers have: \`${TEAM_ROOT}/a.md\``)
     expect(prompt).toContain(`- Nothing links to it from its \`MEMORY.md\`: \`${TEAM_ROOT}/lost.md\``)
     expect(prompt).toContain(`- Shares \`name: same\` with another memory: \`${PRIVATE_ROOT}/b.md\``)
     const report = prompt.slice(prompt.indexOf('## Step 5'))

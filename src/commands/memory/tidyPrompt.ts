@@ -18,7 +18,7 @@ function findingLine(f: MemoryAudit['findings'][number]): string {
     case 'expired':
       return `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
     case 'broken-link':
-      return `- Link \`${f.target}\` resolves to no memory: \`${f.path}\``
+      return `- Link \`${f.target}\` reaches no memory its readers have: \`${f.path}\``
     case 'unindexed':
       return `- Nothing links to it from its \`MEMORY.md\`: \`${f.path}\``
     case 'duplicate-name':

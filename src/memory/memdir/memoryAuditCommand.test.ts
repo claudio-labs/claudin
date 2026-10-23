@@ -121,7 +121,7 @@ describe('formatMemoryAudit', () => {
     expect(exitCode).toBe(0)
     expect(output.split('\n')).toEqual([
       'Memory audit: 5 files, 3 with findings.',
-      '.claudin/memory/team/a.md: link [[mine]] resolves to no memory',
+      '.claudin/memory/team/a.md: link [[mine]] reaches no memory its readers have',
       '.claudin/memory/team/lost.md: nothing links to it from its MEMORY.md — index it, or link it from a memory that is',
       '.claudin/memory/b.md: name "same" is shared with another memory in its directory',
     ])

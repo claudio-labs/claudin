@@ -74,8 +74,8 @@ describe('invisible characters in team files', () => {
 
   test('the audit carries the link findings of the directories it read, and they never fail it', async () => {
     const contents: Record<string, string> = {
-      '/t/MEMORY.md': '- [A](a.md) — a\n',
-      '/t/a.md': 'See [[nowhere]].\n',
+      '/t/MEMORY.md': '- [A](a.md) — a\n- [Gone](gone.md) — g\n',
+      '/t/a.md': 'Fine.\n',
       '/t/lost.md': 'Nothing links here.\n',
     }
     const deps = {
@@ -84,7 +84,7 @@ describe('invisible characters in team files', () => {
     }
     const audit = await auditMemoryDirs(testMemoryDirs({ private: '/p', team: '/t' }), deps, '2026-10-23')
     expect(audit.findings.map(f => [f.kind, f.path])).toEqual([
-      ['broken-link', '/t/a.md'],
+      ['broken-link', '/t/MEMORY.md'],
       ['unindexed', '/t/lost.md'],
     ])
     expect(auditFails(audit)).toBe(false)
