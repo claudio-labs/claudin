@@ -40,6 +40,13 @@ of that was cache writes at the 1h price.
   - Total ≈$51.7 → $18.2 over the window (transcript part only).
 - Break-probe `classifierStableCut.json`: 10 red plus a control.
   `classifierTranscript.json` pins the old fill: 8 red.
+- Live, Sonnet 5.5 (`scripts/bench/results/classifier-stable-cut-live-2026-10-24.md`):
+  four 46-turn auto-mode sessions, 2 per arm, each past the budget for 12 calls.
+  - Classifier cache writes fell from 1.13M to 0.34M per session (−70%), and classifier
+    spend from $5.13 to $2.10 (−59%).
+  - The main thread was unchanged, and rejects were 12 against 14.
+  - Every reject in both arms was the classifier declining to assess (~14% of calls).
+    That is a separate finding.
 
 **Rejected, measured in the 10-24 scratchpad replay (`sim2.ts`):**
 - Merging each frozen chunk into one block: $18 against $9. The growing tail
