@@ -133,7 +133,7 @@ For each confirmed duplicate group:
 1. Pick the survivor: prefer the file with the more complete frontmatter and richer content; on a tie prefer the older file (check mtime with \`ls -l\` — its name is more likely already referenced elsewhere).
 2. Fold the redundant file's content into the survivor. When the two files **conflict factually**, keep BOTH facts (union) and note the contradiction in your report — never silently pick one side.
 3. Keep the survivor's frontmatter \`type\`; refresh its \`description\` only if the merged content demands it. If a file's frontmatter is malformed, skip that file entirely and note it in the report.
-4. Delete the redundant file with \`rm\`. The user will see a permission prompt for each deletion — that is intentional, it is their chance to veto a merge.
+4. Delete the redundant file with \`rm\`. Outside auto and accept-edits mode the user sees a permission prompt for each deletion — that is intentional, it is their chance to veto a merge; in those modes the deletion runs without one, so list every one in the report.
 
 Hard rules:
 - Never merge across the private ↔ team boundary.

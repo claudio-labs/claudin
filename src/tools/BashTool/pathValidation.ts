@@ -591,12 +591,22 @@ export const COMMAND_OPERATION_TYPE: Record<PathCommand, FileOperationType> = {
  * Command-specific validators that run before path validation.
  * Returns true if the command is valid, false if it should be rejected.
  * Used to block commands with flags that could bypass path validation.
+ *
+ * `-n`/`--no-clobber` passes: it names no path and only narrows what gets
+ * written, and it is how /memory sort moves a memory into the global dir
+ * without replacing another project's file of the same name. Every other flag
+ * is still refused, since `-t DIR`, `-S SUFFIX` and `--target-directory=`
+ * carry a path the extractor cannot see.
  */
+const NO_CLOBBER_FLAGS: ReadonlySet<string> = new Set(['-n', '--no-clobber'])
+const onlyNoClobberFlags = (args: string[]): boolean =>
+  !args.some(arg => arg?.startsWith('-') && !NO_CLOBBER_FLAGS.has(arg))
+
 const COMMAND_VALIDATOR: Partial<
   Record<PathCommand, (args: string[]) => boolean>
 > = {
-  mv: (args: string[]) => !args.some(arg => arg?.startsWith('-')),
-  cp: (args: string[]) => !args.some(arg => arg?.startsWith('-')),
+  mv: onlyNoClobberFlags,
+  cp: onlyNoClobberFlags,
 }
 
 function validateCommandPaths(

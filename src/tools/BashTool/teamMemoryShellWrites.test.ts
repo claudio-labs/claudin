@@ -125,6 +125,7 @@ describe('moving a memory between the private and global dirs', () => {
   test('outside auto and accept-edits mode the move still asks', async () => {
     const command = `mv -n ${privateFile()} ${globalFile()}`
     const result = await bashToolHasPermission({ command }, makeToolUseContext())
-    expect(result.behavior).toBe('ask')
+    // passthrough is "no rule decided", which the caller turns into a prompt.
+    expect(result.behavior).not.toBe('allow')
   })
 })

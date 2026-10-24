@@ -6,7 +6,8 @@
     "src/memory/memdir/memoryAudit.test.ts",
     "src/memory/memdir/memoryLinks.test.ts",
     "src/memory/memdir/memoryAuditCommand.test.ts",
-    "src/commands/memory/tidyPrompt.test.ts"
+    "src/commands/memory/tidyPrompt.test.ts",
+    "src/tools/BashTool/teamMemoryShellWrites.test.ts"
   ],
   "source": "src/memory/memdir/memoryLinks.ts",
   "probes": [
@@ -184,6 +185,18 @@
       "source": "src/commands/memory/tidyPrompt.ts",
       "find": "      ...(structural ? ['- **Links and index, for review**: each file above, untouched — the user fixes the link, indexes the memory or renames it'] : []),\n",
       "replace": ""
+    },
+    {
+      "name": "mv: -n is refused again",
+      "source": "src/tools/BashTool/pathValidation.ts",
+      "find": "  mv: onlyNoClobberFlags,\n",
+      "replace": "  mv: (args: string[]) => !args.some(arg => arg?.startsWith('-')),\n"
+    },
+    {
+      "name": "mv: a flag that carries a path passes",
+      "source": "src/tools/BashTool/pathValidation.ts",
+      "find": "const NO_CLOBBER_FLAGS: ReadonlySet<string> = new Set(['-n', '--no-clobber'])\n",
+      "replace": "const NO_CLOBBER_FLAGS: ReadonlySet<string> = new Set(['-n', '--no-clobber', '-t', '-S'])\n"
     }
   ]
 }
