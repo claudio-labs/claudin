@@ -67,6 +67,7 @@
 - [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
+- [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - FIXED: [release smoke: --version only](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [resume read a refused Write](bugs/resume-restores-refused-write.md) · [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
 
 ## Docs
@@ -144,7 +145,6 @@
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
 
 ## Providers & models
-- [/models discovery only parses `context_length`](context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [OpenAI-compat reasoning effort was inert — FIXED](opencode-gateway-effort-dead-on-arrival.md) — levels from models.dev
 - [provider !== 'anthropic' includes bedrock/vertex/foundry](provider-tag-not-anthropic-includes-cloud.md) — gate with an explicit set
 - [Native-1M models need a getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M alone doesn't set it

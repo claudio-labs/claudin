@@ -2,6 +2,9 @@
 name: Runtime /models discovery only parses `context_length`
 description: openaiModelDiscovery consumes only OpenRouter-style context_length; Groq/vLLM/etc. field names are a mapped, unshipped follow-up
 type: project
+paths:
+  - "src/providers/model/openaiModelDiscovery.ts"
+  - "src/providers/presets/providerDiscovery.ts"
 ---
 
 Runtime model discovery (`src/providers/model/openaiModelDiscovery.ts`, startup prefetch for provider tag `openai`) feeds `discoveredContextWindows`, which `getOpenAIContextWindow` consults before the 128k fallback — but the parser only reads the **`context_length`** field (OpenRouter style). The map is in-memory per session (re-prefetched each startup, 5s timeout; a failed `/models` silently reverts that session to the table/128k fallback).
