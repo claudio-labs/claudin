@@ -3,8 +3,11 @@
  * judge. It finds secret-shaped content in the team dir — git-tracked, so a
  * credential there reaches every teammate's next pull, whoever wrote it: the
  * file tools refuse one (teamMemSecretGuard.ts), but a human, another agent
- * or an editor writes past them — and memories past their `expires:` date
- * (memoryExpires.ts), to be re-verified, never deleted.
+ * or an editor writes past them — characters there that hide text from the
+ * commit's reviewer (hiddenText.ts), and memories past their `expires:` date
+ * (memoryExpires.ts), to be re-verified, never deleted — and, in every
+ * scope, links that resolve to nothing, memories nothing reaches from their
+ * index, and shared names (memoryLinks.ts), reported and never failing.
  *
  * One auditor and several readers — `claudin memory audit` (the CI and
  * pre-commit gate of any repo carrying a team dir), `/memory tidy`, the dream
@@ -14,7 +17,9 @@
 import { readdir, readFile } from 'fs/promises'
 import { basename, join, relative } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
+import { findHiddenText } from 'src/memory/memdir/hiddenText.js'
 import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+import { findLinkFindings, type LinkFinding } from 'src/memory/memdir/memoryLinks.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { isENOENT } from 'src/shared/errors.js'
@@ -33,6 +38,13 @@ export type SecretFinding = {
   labels: string[]
 }
 
+type HiddenTextFinding = {
+  kind: 'hidden-text'
+  path: string
+  /** What it hides, once each ("bidi control"). */
+  labels: string[]
+}
+
 export type ExpiredFinding = {
   kind: 'expired'
   scope: MemoryScope
@@ -41,7 +53,7 @@ export type ExpiredFinding = {
   expires: string
 }
 
-type MemoryFinding = SecretFinding | ExpiredFinding
+type MemoryFinding = SecretFinding | HiddenTextFinding | ExpiredFinding | LinkFinding
 
 export type MemoryAudit = {
   /** How many files were read. */
@@ -58,6 +70,15 @@ export function findSecretShapedFiles(files: readonly AuditedFile[]): SecretFind
   })
 }
 
+/** The team files holding characters that hide text from whoever reviews the commit. */
+function findHiddenTextFiles(files: readonly AuditedFile[]): HiddenTextFinding[] {
+  return files.flatMap(file => {
+    if (file.scope !== 'team') return []
+    const labels = findHiddenText(file.content)
+    return labels.length > 0 ? [{ kind: 'hidden-text' as const, path: file.path, labels }] : []
+  })
+}
+
 /** The memory files whose `expires:` date is before `today`; indexes have none. */
 export function findExpiredMemories(files: readonly AuditedFile[], today: string): ExpiredFinding[] {
   return files.flatMap(file => {
@@ -69,9 +90,9 @@ export function findExpiredMemories(files: readonly AuditedFile[], today: string
   })
 }
 
-/** Whether an audit should fail a gate: a secret anywhere it found one. An expired memory never does — a gate that goes red on a calendar day, with no change, is a gate nobody keeps. */
+/** Whether an audit should fail a gate: a secret or hidden text anywhere it found one. An expired memory never does — a gate that goes red on a calendar day, with no change, is a gate nobody keeps. */
 export function auditFails(audit: MemoryAudit): boolean {
-  return audit.findings.some(finding => finding.kind === 'secret')
+  return audit.findings.some(finding => finding.kind === 'secret' || finding.kind === 'hidden-text')
 }
 
 export type MemoryAuditDeps = {
@@ -127,5 +148,13 @@ export async function auditMemoryDirs(
   today: string = localDay(),
 ): Promise<MemoryAudit> {
   const files = await readMemoryFiles(dirs, deps)
-  return { files: files.length, findings: [...findSecretShapedFiles(files), ...findExpiredMemories(files, today)] }
+  return {
+    files: files.length,
+    findings: [
+      ...findSecretShapedFiles(files),
+      ...findHiddenTextFiles(files),
+      ...findExpiredMemories(files, today),
+      ...findLinkFindings(files, dirs),
+    ],
+  }
 }

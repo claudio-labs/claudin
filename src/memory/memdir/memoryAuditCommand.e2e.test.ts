@@ -45,6 +45,7 @@ describe.skipIf(!existsSync(CLI))('claudin memory audit, as a CI step', () => {
     mkdirSync(join(team, 'odd.md'))
     symlinkSync(join(team, 'nowhere.md'), join(team, 'bugs', 'gone.md'))
     writeFileSync(join(team, 'bugs', 'real.md'), `${MEMORY}clean\n`)
+    writeFileSync(join(team, 'MEMORY.md'), '- [Real](bugs/real.md) — clean\n')
     const result = audit(repo, home)
     expect([result.signal, result.status]).toEqual([null, 0])
     expect(result.stdout).toContain('no findings')

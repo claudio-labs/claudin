@@ -1,6 +1,6 @@
 ---
 name: thinking-gap-is-patch-shape-2026-10-21
-description: Claudin's ~2x thinking vs Claude Code is Opus-only (medium) and follows the Patch edit shape — forcing Patch on Sonnet reproduces it; on Opus it is planning up to a 5–7-file first edit; 10-22 Opus high: fixed CLAUDIN_BASH_FIRST (462a7bd9) edits like CC (0 patches, 1-file first edit), thinking −16% vs placebo (overlap), classifier ×4 in auto; user kept today's flow
+description: Claudin's ~2x thinking vs Claude Code is Opus-only (medium) and follows the Patch edit shape (forced Patch on Sonnet reproduces it); the 10-21/22 bench tables for the lean, soft and bash-first levers — bash-first edits like CC but only −16% vs placebo, classifier ×4 in auto; none promoted
 type: project
 ---
 
@@ -142,7 +142,7 @@ meaning of Claude Code's default strict steer. The first wording followed its re
   - The `+64%` row in the report compares against claudindev's median of 14, which ran low.
 
 **Decision 2026-10-22:** the user kept today's batched-Patch flow as the more economical one. Every
-lever stays opt-in. Lean, soft and the `sed -n` credit ship off by default, and bash-first stays
+lever stays opt-in. Lean, soft and the `sed -n` credit ship off by default (#314), and bash-first stays
 on the local branch `perf/patch-thinking` ([[patch-thinking-levers-not-promoted]]).
 
 **How to apply:** to cut thinking or latency, change the edit shape (bash-first text, smaller

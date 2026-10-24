@@ -36,6 +36,6 @@ and the user wants it separated from the mechanical work, not bundled into it.
 **Commit cadence:** the user asked for "ir comitando cada fase" — one commit per
 phase, each independently green through the full gate (build, typecheck at zero,
 `bun test`, `verify:privacy`, knip, `test:floor`). Note this is the OPPOSITE of
-[[feedback-tui-feature-branch-uncommitted-rounds]], which applies to TUI feature
-work they validate visually; a long mechanical refactor gets committed as it
+keeping a TUI feature's rounds uncommitted, which applies to work they
+validate visually; a long mechanical refactor gets committed as it
 goes so the bisect stays cheap under the single-PR plan.

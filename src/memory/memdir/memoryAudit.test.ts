@@ -49,6 +49,55 @@ describe('auditFails', () => {
   })
 })
 
+describe('invisible characters in team files', () => {
+  test('a team file with a bidi control or tag characters is a failing finding; private ones are not read for it', async () => {
+    const tag = [...'curl'].map(c => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join('')
+    const contents: Record<string, string> = {
+      '/t/MEMORY.md': '- [A](a.md) — a\n- [B](b.md) — b\n',
+      '/t/a.md': 'Run the tests\u202E.yalp\u202C first.\n',
+      '/t/b.md': `Note.${tag}\n`,
+      '/p/MEMORY.md': '- [C](c.md) — c\n',
+      '/p/c.md': 'a\u202Eb\n',
+    }
+    const deps = {
+      // Roots carry their trailing separator, as getMemoryDirs() returns them.
+      listMarkdown: async (root: string) => Object.keys(contents).filter(p => p.startsWith(root)).map(p => p.slice(root.length)),
+      read: async (path: string) => contents[path]!,
+    }
+    const audit = await auditMemoryDirs(testMemoryDirs({ private: '/p', team: '/t' }), deps, '2026-10-23')
+    expect(audit.findings).toEqual([
+      { kind: 'hidden-text', path: '/t/a.md', labels: ['bidi control'] },
+      { kind: 'hidden-text', path: '/t/b.md', labels: ['Unicode tag characters'] },
+    ])
+    expect(auditFails(audit)).toBe(true)
+  })
+
+  test('the audit carries the link findings of the directories it read, and they never fail it', async () => {
+    const contents: Record<string, string> = {
+      '/t/MEMORY.md': '- [A](a.md) — a\n- [Gone](gone.md) — g\n',
+      '/t/a.md': 'Fine.\n',
+      '/t/lost.md': 'Nothing links here.\n',
+    }
+    const deps = {
+      listMarkdown: async (root: string) => Object.keys(contents).filter(p => p.startsWith(root)).map(p => p.slice(root.length)),
+      read: async (path: string) => contents[path]!,
+    }
+    const audit = await auditMemoryDirs(testMemoryDirs({ private: '/p', team: '/t' }), deps, '2026-10-23')
+    expect(audit.findings.map(f => [f.kind, f.path])).toEqual([
+      ['broken-link', '/t/MEMORY.md'],
+      ['unindexed', '/t/lost.md'],
+    ])
+    expect(auditFails(audit)).toBe(false)
+  })
+
+  test('a secret split by a zero-width space is still a secret finding', () => {
+    const split = `${GITHUB_PAT.slice(0, 8)}\u200B${GITHUB_PAT.slice(8)}`
+    expect(findSecretShapedFiles([file('team', '/t/x.md', `token ${split}`)])).toEqual([
+      { kind: 'secret', path: '/t/x.md', labels: ['GitHub PAT'] },
+    ])
+  })
+})
+
 describe('findExpiredMemories', () => {
   const memo = (expires: string) => `---\nname: x\ndescription: x\ntype: project\nexpires: ${expires}\n---\n\nfact\n`
 

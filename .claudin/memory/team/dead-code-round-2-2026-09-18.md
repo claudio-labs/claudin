@@ -109,4 +109,4 @@ orphaned a file (`deadcode:ci`), and the missing-import baseline had 26 stale
 entries after the deletions — `CLAUDIN_STRICT_IMPORTS=capture` shrank it 30 → 4
 with **no new basename**, which is the shape that says nothing broke. Note the
 capture needs `env VAR=… bun run build`; the inline `VAR=… cmd` form gets
-refused by the permission classifier ([[feedback-compound-bash-denied-by-classifier]]).
+refused by the permission classifier.

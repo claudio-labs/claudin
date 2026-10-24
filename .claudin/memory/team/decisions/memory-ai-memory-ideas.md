@@ -1,12 +1,15 @@
 ---
 name: memory-ai-memory-ideas
-description: Since 2026-10-16 memory takes six ideas from ai-memory — coverage-first index fit, one renderer with a teammate note for team memory, shell writes into team memory ask, claudin memory audit, an optional expires: date that is surfaced and never deleted, and session provenance derived in the dream digest
+description: Since 2026-10-16 memory takes six ideas from ai-memory (index fit, team trust note, shell writes ask, memory audit, expires:, dream provenance); round 2 on 10-23 escapes envelope closers, reads secrets past invisible characters, refuses bidi/tag characters in team memory, lints links and reachability — and did NOT promote a "taste is user" wording
 type: project
 scope: memory (memdir, instructions, autoDream, permissions)
 impact: functional
 paths:
   - "src/memory/memdir/memdir.ts"
   - "src/memory/memdir/memoryAudit.ts"
+  - "src/memory/memdir/memoryLinks.ts"
+  - "src/memory/memdir/hiddenText.ts"
+  - "src/memory/memdir/secretScanner.ts"
   - "src/memory/memdir/memoryExpires.ts"
   - "src/memory/instructions/claudemd/memoryBlock.ts"
   - "src/memory/autoDream/memoryWrites.ts"
@@ -49,3 +52,27 @@ paths:
 - `scripts/migrations/probes/memoryAiMemoryIdeas.json`: 23 breaks red, 2 controls green.
 - Review on 2026-10-16 (two agents, before merge) found and fixed in the same PR: the audit hung on a non-file `.md`, a committed `autoMemoryEnabled: false` turned the gate into a silent exit 0, NotebookEdit skipped the guard, the digest missed writes on Windows, and the shortened count overcounted. The symlink/case gap it also found predates the PR: [[team-path-symlink-case-gap]].
 - Design doc: `docs/tech/memory/project-local-team-memory.md` (see [[memory-subsystem-design-doc]]).
+
+## Round 2 — 2026-10-23 (ai-memory 3.1.1 → 3.2.2)
+
+**Decision:** three more ideas, deterministic, branch `feat/memory-ai-memory-round-2`:
+1. `renderMemoryFileBlock` escapes the CLOSING tags a memory could use to leave its envelope: `</system-reminder` in any memory, `</team-memory-content` in a team one (ai-memory ff57e210). Only closers, so prose naming `<system-reminder>` (this repo's team index has one) stays byte for byte.
+2. `scanForSecrets` reads past `\p{Cf}`. A zero-width space inside a key passed every rule (ai-memory 642d8d6e). The team write guard refuses, and the audit fails on, bidi controls and Unicode tag characters (`hiddenText.ts`), which hide text from the PR that reviews team memory.
+3. `claudin memory audit` reports `broken-link`, `unindexed` and `duplicate-name` (`memoryLinks.ts`) in every scope. They are report-only, like `expires:`.
+
+**What changes for a teammate:**
+- A team memory with a bidi or tag character is refused, and CI's `verify:team-memory` fails on one.
+- A `[[name]]` from a team memory to a private memory shows up in the audit; teammates have no copy of it. A `[[name]]` matching nothing is a forward link, which the prompts invite, and is not reported.
+- A memory reachable from no index line or memory, and without `paths:`, is reported.
+
+**Rejected:**
+- Escaping in `wrapInSystemReminder`: that lane carries diffs and code, where `&lt;` would misreport a file.
+- Escaping opening tags: a forged opener stays inside the envelope, and escaping one changes legitimate bytes.
+- An emoji-flag exemption for tag characters.
+- Failing the gate on structural findings.
+- **"Taste is `user`" wording** (taste filed as `user`, feedback scoped by subject, write-time split): memory-write-ab N=3 passed 21/21 in base, placebo and arm, at $0.127/$0.128/$0.129. No session changed type: every taste landed as global `feedback`. Reverted in the same PR. The private taste memories here mostly predate the global dir (10-09); `/memory sort` lifts them.
+
+**Evidence:**
+- The first audit run found 7 team→private links and 5 unreachable team memories, all repaired in the PR.
+- `scripts/migrations/probes/memoryAiMemoryRound2.json`: 28 breaks red, 3 controls green.
+- `scripts/bench/results/memory-write-ab-taste-2026-10-23.md`.

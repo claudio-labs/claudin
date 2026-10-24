@@ -18,7 +18,9 @@ the `autoMemoryProjectLocal` opt-out; the three team categories and the bar
 each one has to clear (`TEAM_CATEGORIES` in `memoryTypes.ts` is the one
 source every prompt renders); the secret guard (`teamMemSecretGuard.ts`,
 blocks, team dir only) and, since 2026-10-16, shell writes into the team dir
-asking plus `claudin memory audit` (`memoryAudit.ts`); `paths:` on-demand
+asking plus `claudin memory audit` (`memoryAudit.ts`; since 10-23 also hidden
+characters, `hiddenText.ts`, and links/reachability, `memoryLinks.ts`); how a
+memory's content is kept inside its envelope (closing tags escaped); `paths:` on-demand
 loading and how it differs from a rule (`pathScopedMemories.ts`, memoized on
 directory mtimes); the one renderer a memory gets in every lane, with the team
 trust note (`claudemd/memoryBlock.ts`); how an index over its caps is fit

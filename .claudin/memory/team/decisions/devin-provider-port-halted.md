@@ -23,4 +23,4 @@ Estimated cost to crack remaining: 4–8h Ghidra + rust-symbol-recovery script, 
 - The wire-format commits on `feat/devin-provider` are reusable if Cognition ever publishes a tier-gate alternative (e.g., a proper REST API key for Devin chat).
 - Plan B if someone insists: sidecar `devin` headless and lift f31 from its outbound request per call. Functional, no RE, but Cognition can kill headless mode in any release.
 - See `docs/tech/devin-provider/README.md` for the full writeup committed to main (the old `docs/tech/devin-provider-blocker.md` path this line carried until 2026-09-21 no longer exists).
-- The existing `team/devin-shares-codeium-backend.md` is now historically interesting but operationally stale — the "planned /provider devin preset" is shelved.
+- The research notes stay as history: [[devin-shares-codeium-backend]] (operationally stale — the "planned /provider devin preset" is shelved), [[devin-oauth-quirks]], [[devin-port-works-quota-blocker]], [[devin-wire-ab-procedure]] and [[devin-f31-characterization]].

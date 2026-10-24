@@ -9,6 +9,23 @@ import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 
 const KB = 1024
 
+function findingLine(f: MemoryAudit['findings'][number]): string {
+  switch (f.kind) {
+    case 'secret':
+      return `- Secret-shaped content (${f.labels.join(', ')}): \`${f.path}\``
+    case 'hidden-text':
+      return `- Hidden characters (${f.labels.join(', ')}): \`${f.path}\``
+    case 'expired':
+      return `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
+    case 'broken-link':
+      return `- Link \`${f.target}\` reaches no memory its readers have: \`${f.path}\``
+    case 'unindexed':
+      return `- Nothing links to it from its \`MEMORY.md\`: \`${f.path}\``
+    case 'duplicate-name':
+      return `- Shares \`name: ${f.name}\` with another memory: \`${f.path}\``
+  }
+}
+
 /**
  * What the memory audit found, for the model to report: never to fix here,
  * since tidy only merges duplicates. Empty without findings, so the prompt
@@ -16,13 +33,11 @@ const KB = 1024
  */
 function findingsSection(findings: MemoryAudit['findings']): { section: string; report: string } {
   if (findings.length === 0) return { section: '', report: '' }
-  const lines = findings.map(f =>
-    f.kind === 'expired'
-      ? `- Past its \`expires:\` date (${f.expires}): \`${f.path}\``
-      : `- Secret-shaped content (${f.labels.join(', ')}): \`${f.path}\``,
-  )
+  const lines = findings.map(findingLine)
   const secrets = findings.some(f => f.kind === 'secret')
+  const hidden = findings.some(f => f.kind === 'hidden-text')
   const expired = findings.some(f => f.kind === 'expired')
+  const structural = findings.some(f => f.kind === 'broken-link' || f.kind === 'unindexed' || f.kind === 'duplicate-name')
   return {
     section: `
 ## Found before you started
@@ -35,7 +50,9 @@ Do not delete, rewrite or re-date any of them here.${secrets ? ' A secret-shaped
 `,
     report: [
       ...(secrets ? ['- **Secret-shaped (team)**: each file above, first in the report — the user removes the secret and rotates it if it was ever committed'] : []),
+      ...(hidden ? ['- **Hidden characters (team)**: each file above — the user removes them, since they change what a reviewer of the commit sees'] : []),
       ...(expired ? ['- **Expired, for review**: each memory past its `expires:` date, untouched — the user re-verifies it, then moves the date or removes it'] : []),
+      ...(structural ? ['- **Links and index, for review**: each file above, untouched — the user fixes the link, indexes the memory or renames it'] : []),
     ].join('\n'),
   }
 }
@@ -116,7 +133,7 @@ For each confirmed duplicate group:
 1. Pick the survivor: prefer the file with the more complete frontmatter and richer content; on a tie prefer the older file (check mtime with \`ls -l\` — its name is more likely already referenced elsewhere).
 2. Fold the redundant file's content into the survivor. When the two files **conflict factually**, keep BOTH facts (union) and note the contradiction in your report — never silently pick one side.
 3. Keep the survivor's frontmatter \`type\`; refresh its \`description\` only if the merged content demands it. If a file's frontmatter is malformed, skip that file entirely and note it in the report.
-4. Delete the redundant file with \`rm\`. The user will see a permission prompt for each deletion — that is intentional, it is their chance to veto a merge.
+4. Delete the redundant file with \`rm\`. Outside auto and accept-edits mode the user sees a permission prompt for each deletion — that is intentional, it is their chance to veto a merge; in those modes the deletion runs without one, so list every one in the report.
 
 Hard rules:
 - Never merge across the private ↔ team boundary.

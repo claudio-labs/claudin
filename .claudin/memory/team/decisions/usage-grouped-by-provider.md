@@ -46,5 +46,6 @@ was one flat model list across every provider, and only the active provider's li
 - `scripts/migrations/probes/usageByProvider.json` (coverage net) and
   `usageByProviderReviewFixes.json` (one mutation per review fix) prove the tests.
 
-**Evidence:** branch `feat/usage-by-provider`. The wire facts are in [[codex-0.162-wire-diff]].
+**Evidence:** PR #316 (branch `feat/usage-by-provider`, plan `squishy-whistling-milner.md`). The
+wire facts are in [[codex-0.162-wire-diff]].
 The live-check recipe is in [[tmux-mouse-click-verification]].

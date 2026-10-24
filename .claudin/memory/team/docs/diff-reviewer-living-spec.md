@@ -22,7 +22,7 @@ the doc to match. That convention has held across every round so far, and the do
 
 Branch `feat/diff-fullscreen-takeover`, ~37 files in one commit. It sat uncommitted across
 several sessions first while the user validated each round by hand
-(see [[feedback-tui-feature-branch-uncommitted-rounds]]) — so the *reasoning* is in the spec
+— so the *reasoning* is in the spec
 doc, not in the commit history, which squashes to a single subject.
 
 What the round turned `/diff` into, in fullscreen:

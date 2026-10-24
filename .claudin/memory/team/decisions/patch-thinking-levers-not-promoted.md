@@ -10,7 +10,7 @@ impact: rejected
 land a multi-file change as ONE Patch. None of the levers built to cut the thinking around that
 flow becomes a default.
 - Three are in the code and off by default, the way the `cat` read credit already was. Unset,
-  every prompt is byte-identical (branch `perf/patch-thinking-opt-in`):
+  every prompt is byte-identical (#314):
   - `CLAUDIN_SOFT_BATCH`: ONE Patch, without "Read every file first";
   - `CLAUDIN_LEAN_PATCH_PROMPT`: the Patch description without the rules the parser rescues;
   - the `sed -n` slice read credit, which rides the same `CLAUDIN_BASH_READ_CREDIT` as the `cat`.

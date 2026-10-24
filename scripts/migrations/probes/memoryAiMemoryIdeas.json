@@ -65,8 +65,8 @@
     {
       "name": "team memory loses its trust note",
       "source": "src/memory/instructions/claudemd/memoryBlock.ts",
-      "find": "      ? `${TEAM_MEMORY_TRUST_NOTE}\\n\\n<team-memory-content source=\"shared\">\\n${content}\\n</team-memory-content>`\n",
-      "replace": "      ? `<team-memory-content source=\"shared\">\\n${content}\\n</team-memory-content>`\n"
+      "find": "      ? `${TEAM_MEMORY_TRUST_NOTE}\\n\\n<team-memory-content source=\"shared\">\\n${content.replace(TEAM_FENCE_CLOSE_RE, '&lt;/$1')}\\n</team-memory-content>`\n",
+      "replace": "      ? `<team-memory-content source=\"shared\">\\n${content.replace(TEAM_FENCE_CLOSE_RE, '&lt;/$1')}\\n</team-memory-content>`\n"
     },
     {
       "name": "control: the note reworded, its contract kept",
@@ -90,13 +90,13 @@
     {
       "name": "the secret scan reaches past the team dir",
       "source": "src/memory/memdir/memoryAudit.ts",
-      "find": "    if (file.scope !== 'team') return []\n",
-      "replace": ""
+      "find": "    if (file.scope !== 'team') return []\n    const labels = [...new Set(scanForSecrets(",
+      "replace": "    const labels = [...new Set(scanForSecrets("
     },
     {
       "name": "an expired memory fails the gate",
       "source": "src/memory/memdir/memoryAudit.ts",
-      "find": "  return audit.findings.some(finding => finding.kind === 'secret')\n",
+      "find": "  return audit.findings.some(finding => finding.kind === 'secret' || finding.kind === 'hidden-text')\n",
       "replace": "  return audit.findings.length > 0\n"
     },
     {

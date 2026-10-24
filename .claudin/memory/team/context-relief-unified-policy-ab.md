@@ -19,7 +19,7 @@ peak context 105k → 87k, prefix breaks equal (2), edit-phase lookups equal
 
 Merged: `src/agent/compact/reliefPolicy.ts` is on main (verified 2026-09-20).
 Whether the adversarial break-and-restore audit of its tests
-([[feedback-audit-empirical-test-verification]]) ever ran is not recorded.
+ever ran is not recorded.
 
 **Measured on a 1M window, 2026-09-20 — the retain profile cannot relieve
 it.** Trigger 0.75×window ≈ 750k, band 60k → target 690k. In session 88f03ef5

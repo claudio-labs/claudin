@@ -37,3 +37,5 @@ header-precedence line is the durable answer.
 installed versions against `package.json` and run plain `bun install` first
 (see [[incremental-bun-install-misses-nested-deps]]), otherwise every green
 check is measuring the old tree.
+
+Previous batch: [[dependabot-bumps-2026-08-10-no-code-changes]].

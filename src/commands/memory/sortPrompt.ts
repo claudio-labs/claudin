@@ -106,7 +106,8 @@ Hard rules:
 
 /**
  * The private → global pass. A move is a `mv -n` — the permission prompt is
- * the veto, and `-n` keeps it from replacing a global memory of the same name
+ * the veto outside auto and accept-edits mode, which allow a move between two
+ * memory dirs without one — and `-n` keeps it from replacing a global memory of the same name
  * that another project saved; a name collision is compared first, then merged
  * or moved under a new name. A merge is an edit of the global file plus an
  * `rm` of the private one; a split is a new global file plus an edit of the
@@ -138,14 +139,14 @@ Anything you are not sure about stays and goes in the report — the private dir
 
 ## Step 3 — Move, merge or split
 
-- **Move**: when no global memory records the same fact, \`mv -n ${own}/<file>.md ${global}/<file>.md\`. Always \`-n\`: the global dir is shared by every project, and a file of that name there is another project's memory, never something to replace. The user sees a permission prompt for each move; that is their veto. Then drop a \`paths:\` key from the moved file if it has one — a global memory is not tied to a project's files.
+- **Move**: when no global memory records the same fact, \`mv -n ${own}/<file>.md ${global}/<file>.md\`. Always \`-n\`: the global dir is shared by every project, and a file of that name there is another project's memory, never something to replace. Outside auto and accept-edits mode the user sees a permission prompt for each move; that is their veto. In those modes the move runs without one, and the report is where they review it. Then drop a \`paths:\` key from the moved file if it has one — a global memory is not tied to a project's files.
 - **Name collision**: when \`${global}/<file>.md\` already exists — check before the move, and check again if \`mv -n\` left the private file where it was — read both. If they hold the same fact, it is a merge (next item). If they do not, move the private file under a new name that says what sets it apart: \`mv -n ${own}/<file>.md ${global}/<new-name>.md\`, and point its index line at the new name.
-- **Merge**: when a global memory already records the same fact, fold the private file into it — when the two differ, keep both facts and say so in the report — then delete the private file with \`rm\` (another permission prompt).
+- **Merge**: when a global memory already records the same fact, fold the private file into it — when the two differ, keep both facts and say so in the report — then delete the private file with \`rm\` (another permission prompt, outside auto and accept-edits mode).
 - **Split**: write the part that holds anywhere as a new file in \`${global}\` with its own frontmatter (\`type: user\` or \`feedback\`) — under a name no global file has — then edit the private file down to what stays, changing its \`type\` if the old one no longer fits.
 
 Never touch the team dir, never change what a memory says, never invent a fact.
 
-**What the user approves, and what they do not.** Each \`mv\` and each \`rm\` goes through a Bash permission prompt — that is the user's veto, file by file. Writes into the memory directories do not: a split's new global file, the edit that folds a merge into a global memory, the edit that cuts a split's private file down, the dropped \`paths:\` key and the index edits of Step 4 are all written without a prompt. Keep them to exactly what this step describes, and list every one in the report so the user can review it afterwards.
+**What the user approves, and what they do not.** Each \`mv\` and each \`rm\` goes through a Bash permission prompt outside auto and accept-edits mode — that is the user's veto, file by file; in those modes they run without one. Writes into the memory directories never ask: a split's new global file, the edit that folds a merge into a global memory, the edit that cuts a split's private file down, the dropped \`paths:\` key and the index edits of Step 4 are all written without a prompt. Keep them to exactly what this step describes, and list every one in the report so the user can review it afterwards.
 
 ## Step 4 — Update both indexes (surgical)
 

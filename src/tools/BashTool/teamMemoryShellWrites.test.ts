@@ -9,7 +9,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
+import { getGlobalMemPath, getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { isPathAllowed } from 'src/permissions/pathValidation.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -89,5 +89,43 @@ describe('a shell write into private memory', () => {
     expect((result.decisionReason as { reason?: string } | undefined)?.reason).toBe(
       'private memory files are allowed for writing',
     )
+  })
+})
+
+// Auto mode skips the classifier for what acceptEdits would allow
+// (permissions.ts), so these run under acceptEdits: the check auto mode asks.
+describe('moving a memory between the private and global dirs', () => {
+  const globalFile = () => join(getGlobalMemPath(), 'probe.md')
+  const acceptEdits = () => makeToolUseContext(makePermissionContext({}, { mode: 'acceptEdits' }))
+
+  test('`mv -n`, as /memory sort writes it, is allowed both ways', async () => {
+    for (const command of [
+      `mv ${privateFile()} ${globalFile()}`,
+      `mv -n ${privateFile()} ${globalFile()}`,
+      `mv --no-clobber ${globalFile()} ${privateFile()}`,
+      `cp -n ${privateFile()} ${globalFile()}`,
+    ]) {
+      const result = await bashToolHasPermission({ command }, acceptEdits())
+      expect([command, result.behavior]).toEqual([command, 'allow'])
+    }
+  })
+
+  test('the team dir still asks, and so does a flag that takes a path of its own', async () => {
+    for (const command of [
+      `mv -n ${privateFile()} ${teamFile()}`,
+      `mv -t ${getGlobalMemPath()} ${privateFile()}`,
+      `mv --target-directory=/etc ${privateFile()}`,
+      `mv -S .bak ${privateFile()} ${globalFile()}`,
+    ]) {
+      const result = await bashToolHasPermission({ command }, acceptEdits())
+      expect([command, result.behavior]).toEqual([command, 'ask'])
+    }
+  })
+
+  test('outside auto and accept-edits mode the move still asks', async () => {
+    const command = `mv -n ${privateFile()} ${globalFile()}`
+    const result = await bashToolHasPermission({ command }, makeToolUseContext())
+    // passthrough is "no rule decided", which the caller turns into a prompt.
+    expect(result.behavior).not.toBe('allow')
   })
 })

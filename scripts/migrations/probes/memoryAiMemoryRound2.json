@@ -1,0 +1,202 @@
+{
+  "test": [
+    "src/memory/instructions/claudemd/memoryBlock.test.ts",
+    "src/memory/memdir/teamMemSecretGuard.test.ts",
+    "src/memory/memdir/hiddenText.test.ts",
+    "src/memory/memdir/memoryAudit.test.ts",
+    "src/memory/memdir/memoryLinks.test.ts",
+    "src/memory/memdir/memoryAuditCommand.test.ts",
+    "src/commands/memory/tidyPrompt.test.ts",
+    "src/tools/BashTool/teamMemoryShellWrites.test.ts"
+  ],
+  "source": "src/memory/memdir/memoryLinks.ts",
+  "probes": [
+    {
+      "name": "fence: team content goes in raw again",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "${content.replace(TEAM_FENCE_CLOSE_RE, '&lt;/$1')}",
+      "replace": "${content}"
+    },
+    {
+      "name": "fence: team content may close the reminder",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "const TEAM_FENCE_CLOSE_RE = /<\\/(system-reminder|team-memory-content)\\b/gi\n",
+      "replace": "const TEAM_FENCE_CLOSE_RE = /<\\/(team-memory-content)\\b/gi\n"
+    },
+    {
+      "name": "fence: an upper-case closer passes",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "const TEAM_FENCE_CLOSE_RE = /<\\/(system-reminder|team-memory-content)\\b/gi\n",
+      "replace": "const TEAM_FENCE_CLOSE_RE = /<\\/(system-reminder|team-memory-content)\\b/g\n"
+    },
+    {
+      "name": "fence: private and global memories go in raw",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "        ? content.replace(REMINDER_CLOSE_RE, '&lt;/$1')\n",
+      "replace": "        ? content\n"
+    },
+    {
+      "name": "fence: opening tags are escaped too, rewriting prose",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "const TEAM_FENCE_CLOSE_RE = /<\\/(system-reminder|team-memory-content)\\b/gi\n",
+      "replace": "const TEAM_FENCE_CLOSE_RE = /<\\/?(system-reminder|team-memory-content)\\b/gi\n"
+    },
+    {
+      "name": "fence: instruction files get escaped like memories",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "      : isMemoryFileType(file.type)\n",
+      "replace": "      : true\n"
+    },
+    {
+      "name": "control: the fence comment reworded",
+      "source": "src/memory/instructions/claudemd/memoryBlock.ts",
+      "find": "as well — past `</system-reminder>`, text reads as the user's own turn.",
+      "replace": "as well — after `</system-reminder>`, text reads as the user's own turn.",
+      "expect": "green"
+    },
+    {
+      "name": "secrets: format characters are no longer read past",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "  const visible = content.replace(FORMAT_CHARACTERS_RE, '')\n",
+      "replace": "  const visible = content\n"
+    },
+    {
+      "name": "hidden: isolate controls dropped",
+      "source": "src/memory/memdir/hiddenText.ts",
+      "find": "const BIDI_CONTROL_RE = /[\\u202A-\\u202E\\u2066-\\u2069]/u\n",
+      "replace": "const BIDI_CONTROL_RE = /[\\u202A-\\u202E]/u\n"
+    },
+    {
+      "name": "hidden: the tag block's ends dropped",
+      "source": "src/memory/memdir/hiddenText.ts",
+      "find": "const TAG_CHARACTER_RE = /[\\u{E0000}-\\u{E007F}]/u\n",
+      "replace": "const TAG_CHARACTER_RE = /[\\u{E0001}-\\u{E007E}]/u\n"
+    },
+    {
+      "name": "hidden: the guard no longer checks",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "  const hidden = findHiddenText(content)\n",
+      "replace": "  const hidden: string[] = []\n"
+    },
+    {
+      "name": "control: the guard's hidden-text remedy reworded",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "'Remove them and try again.'",
+      "replace": "'Delete them, then retry.'",
+      "expect": "green"
+    },
+    {
+      "name": "hidden: the audit reads private files for it",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": "    if (file.scope !== 'team') return []\n    const labels = findHiddenText(",
+      "replace": "    const labels = findHiddenText("
+    },
+    {
+      "name": "hidden: it no longer fails the gate",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": "finding.kind === 'secret' || finding.kind === 'hidden-text'",
+      "replace": "finding.kind === 'secret'"
+    },
+    {
+      "name": "links: the audit drops the link findings",
+      "source": "src/memory/memdir/memoryAudit.ts",
+      "find": "      ...findLinkFindings(files, dirs),\n",
+      "replace": ""
+    },
+    {
+      "name": "links: a team memory sees private names",
+      "find": "  team: ['team'],\n",
+      "replace": "  team: ['team', 'private'],\n"
+    },
+    {
+      "name": "links: a global memory sees private names",
+      "find": "  global: ['global'],\n",
+      "replace": "  global: ['global', 'private'],\n"
+    },
+    {
+      "name": "links: code spans count as links",
+      "find": "    links: file.content.replace(FENCED_CODE_RE, '').replace(INLINE_CODE_RE, ''),\n",
+      "replace": "    links: file.content,\n"
+    },
+    {
+      "name": "links: a frontmatter name is not a key",
+      "find": "    if (memory.name !== null) keys.set(memory.name, memory)\n",
+      "replace": ""
+    },
+    {
+      "name": "links: a forward link is a finding",
+      "find": "        else if (!visibleKeys.has(key) && anyKeys.has(key)) broken.add(`[[${key}]]`)\n",
+      "replace": "        else if (!visibleKeys.has(key)) broken.add(`[[${key}]]`)\n"
+    },
+    {
+      "name": "links: a [[ spaced ]] key is not trimmed",
+      "find": "        const key = match[1]!.trim()\n",
+      "replace": "        const key = match[1]!\n"
+    },
+    {
+      "name": "links: the anchor stays on the target",
+      "find": "  const target = raw.split('#')[0]!\n",
+      "replace": "  const target = raw\n"
+    },
+    {
+      "name": "links: a URL is checked as a file",
+      "find": "  if (!target.endsWith('.md') || URL_SCHEME_RE.test(target)) return null\n",
+      "replace": "  if (!target.endsWith('.md')) return null\n"
+    },
+    {
+      "name": "links: a target outside the directory is checked",
+      "find": "  if (!abs.startsWith(dir.root)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "links: a private index link into team/ is checked as private",
+      "find": "  if (dir.scope !== 'team' && relative(dir.root, abs).includes(sep)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "unindexed: links are not followed past the index",
+      "find": "      queue.push(...(edges.get(path) ?? []))\n",
+      "replace": ""
+    },
+    {
+      "name": "unindexed: a paths: memory needs an index line",
+      "find": " && !memory.hasPaths) {\n",
+      "replace": ") {\n"
+    },
+    {
+      "name": "duplicate: every name is a duplicate",
+      "find": "      if (same.length < 2) continue\n",
+      "replace": "      if (same.length < 1) continue\n"
+    },
+    {
+      "name": "control: the module header reworded",
+      "find": " * The structural pass of the memory audit: how memories point at each other,\n * judged without a model.",
+      "replace": " * The structural pass of the memory audit: how memories point at each other,\n * judged with no model.",
+      "expect": "green"
+    },
+    {
+      "name": "readers: the CLI line for an unreachable memory",
+      "source": "src/memory/memdir/memoryAuditCommand.ts",
+      "find": "nothing links to it from its MEMORY.md — index it, or link it from a memory that is",
+      "replace": "unindexed"
+    },
+    {
+      "name": "readers: tidy loses the link heading",
+      "source": "src/commands/memory/tidyPrompt.ts",
+      "find": "      ...(structural ? ['- **Links and index, for review**: each file above, untouched — the user fixes the link, indexes the memory or renames it'] : []),\n",
+      "replace": ""
+    },
+    {
+      "name": "mv: -n is refused again",
+      "source": "src/tools/BashTool/pathValidation.ts",
+      "find": "  mv: onlyNoClobberFlags,\n",
+      "replace": "  mv: (args: string[]) => !args.some(arg => arg?.startsWith('-')),\n"
+    },
+    {
+      "name": "mv: a flag that carries a path passes",
+      "source": "src/tools/BashTool/pathValidation.ts",
+      "find": "const NO_CLOBBER_FLAGS: ReadonlySet<string> = new Set(['-n', '--no-clobber'])\n",
+      "replace": "const NO_CLOBBER_FLAGS: ReadonlySet<string> = new Set(['-n', '--no-clobber', '-t', '-S'])\n"
+    }
+  ]
+}

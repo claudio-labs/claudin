@@ -1,10 +1,10 @@
 /**
  * `claudin memory audit` — memoryAudit.ts for a CI step or a pre-commit hook,
  * in any repo that carries a team memory dir. Exit 1 when the team dir holds
- * secret-shaped content, 0 otherwise — memories past their `expires:` date
- * are listed for review and never fail it — and 2 when the audit itself
- * fails, so a CI step goes red rather than hanging. Imported only when the
- * subcommand runs (src/platform/main/commands/memory.ts).
+ * secret-shaped content or hidden characters, 0 otherwise — memories past
+ * their `expires:` date are listed for review and never fail it — and 2 when
+ * the audit itself fails, so a CI step goes red rather than hanging.
+ * Imported only when the subcommand runs (src/platform/main/commands/memory.ts).
  */
 import { existsSync } from 'fs'
 import { join } from 'path'
@@ -34,6 +34,24 @@ export function auditDirsFor(
   return [...sessionDirs, { scope: 'team', root: committedTeamDir, index: join(committedTeamDir, ENTRYPOINT_NAME) }]
 }
 
+function findingLine(finding: MemoryAudit['findings'][number], cwd: string): string {
+  const path = relativeIfInside(finding.path, cwd)
+  switch (finding.kind) {
+    case 'secret':
+      return `${path}: secret-shaped content (${finding.labels.join(', ')})`
+    case 'hidden-text':
+      return `${path}: hidden characters (${finding.labels.join(', ')})`
+    case 'expired':
+      return `${path}: expired ${finding.expires} — re-verify it, then move the date or remove the memory`
+    case 'broken-link':
+      return `${path}: link ${finding.target} reaches no memory its readers have`
+    case 'unindexed':
+      return `${path}: nothing links to it from its MEMORY.md — index it, or link it from a memory that is`
+    case 'duplicate-name':
+      return `${path}: name "${finding.name}" is shared with another memory in its directory`
+  }
+}
+
 /** What the subcommand prints and the code it exits with. Pure. */
 export function formatMemoryAudit(
   audit: MemoryAudit | null,
@@ -56,16 +74,13 @@ export function formatMemoryAudit(
   if (audit.findings.length === 0) {
     return { output: `Memory audit: ${audit.files} files, no findings.`, exitCode }
   }
-  const lines = audit.findings.map(f =>
-    f.kind === 'secret'
-      ? `${relativeIfInside(f.path, cwd)}: secret-shaped content (${f.labels.join(', ')})`
-      : `${relativeIfInside(f.path, cwd)}: expired ${f.expires} — re-verify it, then move the date or remove the memory`,
-  )
+  const found = (kind: MemoryAudit['findings'][number]['kind']) => audit.findings.some(f => f.kind === kind)
   return {
     output: [
       `Memory audit: ${audit.files} files, ${audit.findings.length} with findings.`,
-      ...lines,
-      ...(exitCode === 1 ? ['Team memory is git-tracked: remove the secret, and rotate it if it was ever committed.'] : []),
+      ...audit.findings.map(f => findingLine(f, cwd)),
+      ...(found('secret') ? ['Team memory is git-tracked: remove the secret, and rotate it if it was ever committed.'] : []),
+      ...(found('hidden-text') ? ['Hidden characters change what a reviewer of the commit sees, not what the model reads: remove them.'] : []),
     ].join('\n'),
     exitCode,
   }

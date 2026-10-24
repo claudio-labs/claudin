@@ -206,3 +206,11 @@ Gates green: build, smoke, typecheck zero, `verify:privacy`, `deadcode:ci`,
 `src/platform/bridge/` (37 files) and `src/platform/teleport/` (10) stay:
 BRIDGE_MODE ships true behind a claude.ai credential and both have 40+ live
 importers. They only lose their `logEvent` calls.
+
+## Follow-up rounds
+
+[[dead-code-round-2-2026-09-18]] (PR #211) → [[dead-code-round-3-2026-09-18]] →
+[[dead-code-round-4-2026-09-18]] → [[dead-code-round-5-2026-09-19]] (PR #214). The seeds
+they consumed are spent: [[unreachable-clusters-inventory-2026-09-18]],
+[[dead-code-round-3-plan-seed]], [[dead-code-round-4-seed]] and
+[[bash-parser-unreachable-behind-tree-sitter-flag]].

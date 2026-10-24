@@ -40,8 +40,7 @@ land in the tracked team dir and show up in `git status`, ready to be committed.
 superseded — delete them, don't commit them (none is linked from the index).
 Why the private dir was empty is unknown: it was intact at 2026-09-27 22:08 and
 empty before 09-28 18:30. The 14 private memories written after June were lost
-with it and restored from session transcripts
-([[feedback-memory-maintenance-restricted-tools]] has the recipe).
+with it and restored from session transcripts.
 
 **Why not fixed:** found by a memory-maintenance pass, which cannot edit `src/`.
 Likely fix: count an existing `team/` (or a marker file) as "already migrated",

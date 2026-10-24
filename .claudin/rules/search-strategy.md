@@ -58,7 +58,7 @@ src/
 │   │                              getPrimaryModel is presets/providerModels.ts and
 │   │                              getContextWindowForModel is agent/context/context.ts
 │   ├── effort/ (7)              ← reasoning-effort levels + cycling (project-scoped)
-│   ├── usage/ (15)              ← cost, billing, quota, per-provider usage endpoints
+│   ├── usage/ (25)              ← cost, billing, quota, per-provider usage endpoints
 │   ├── cache/ (10)              ← cache METRICS: hit stats, break detection. The cache policy
 │   │                              itself is agent/cache/ (→ cache.md)
 │   ├── ui/ (38)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
@@ -147,7 +147,7 @@ src/
 │   │                              groups read it through there, none repeats the feature() block
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
 │   └── ui/                      ← one request component per tool + rules/ editor
-├── mcp/ (72)                    ← client/ (10: connection, transport, callTool, authCache),
+├── mcp/ (80)                    ← client/ (10: connection, transport, callTool, authCache),
 │                                  mcpServerApproval trust dialog, ui/. auth.ts is a BARREL over
 │                                  auth/ (serverKey, oauthErrors, authFetch, callbackParams,
 │                                  tokenRevocation, oauthFlow, claudeAuthProvider,

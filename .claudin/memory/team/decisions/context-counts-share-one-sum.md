@@ -42,5 +42,5 @@ each other and with when compaction actually fired.
 - The scratchpad section is keyed by session id, and `init()` subscribes a mkdir on session
   switch. Before, `/clear`, `/new` and `/resume` kept announcing the previous session's path.
 
-**Evidence:** branch `fix/context-scratchpad-and-session-memory`. Open findings from the same
+**Evidence:** PR #315 (branch `fix/context-scratchpad-and-session-memory`). Open findings from the same
 audit are in [[context-audit-2026-10-22-open-findings]].

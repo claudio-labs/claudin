@@ -58,14 +58,12 @@ describe('turn-by-turn memory bench', () => {
     // process-wide GC reclamation inside the shared `bun test` worker
     // produces — makes `first.slope * 5` a *lower* bound rather than a
     // ceiling, so the assertion would demand the second half shrink five
-    // times faster than the first. Require the absolute bound instead.
-    if (first.slope < 100 * 1024) {
-      // Absolute ceiling: 1 MB/turn RSS growth in second half is the
-      // invariant we do NOT want to breach.
-      expect(second.slope).toBeLessThan(1024 * 1024)
-    } else {
-      expect(second.slope).toBeLessThan(first.slope * 5)
-    }
+    // times faster than the first. The absolute ceiling — 1 MB/turn RSS
+    // growth in the second half, the invariant we do NOT want to breach —
+    // is the floor of the bound, so a steeper first half can only raise it:
+    // a cut-over at 100 KB/turn made the ceiling drop from 1 MB to 500 KB
+    // just past it, and CI failed a 677 KB second half after a 134 KB first.
+    expect(second.slope).toBeLessThan(Math.max(1024 * 1024, first.slope * 5))
   }, 30_000)
 
   test('contentReplacementState drops to 0 after /clear', async () => {

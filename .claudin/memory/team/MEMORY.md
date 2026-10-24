@@ -1,11 +1,11 @@
 # Team Memory
 
-> Coding gotchas live in `.claudin/rules/` (loaded by path; git-conventions.md always-on). This index holds state, decisions, refs.
+> Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
-- [/usage by provider + provider-first alerts (10-22)](decisions/usage-grouped-by-provider.md) — limits table, `~` estimates
-- [Context counts share one sum (10-22)](decisions/context-counts-share-one-sum.md) — footer/status line/`/context` read autocompact's count; status line adds output, unlike CC
-- [Six ai-memory ideas in memory (10-16)](decisions/memory-ai-memory-ideas.md) — fit-not-cut index, trust note, `memory audit`, expires:
+- [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, limits table, `~` estimates
+- [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer/status line/`/context` read autocompact's count; status line adds output, unlike CC
+- [ai-memory ideas in memory (10-16, 10-23)](decisions/memory-ai-memory-ideas.md) — trust note, `memory audit` (+ links, hidden text), expires:; "taste is user" NOT promoted
 - [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket default on; prewarm rejected
 - Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
@@ -47,13 +47,12 @@
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
-- [Patch-thinking levers NOT promoted (10-22)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; lean/soft/sed -n ship off, bash-first branch-only
+- [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; lean/soft/sed -n ship off, bash-first branch-only
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — SDK 0.135 imports it; external crashed the binary
 
 ## Bugs
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code; AGENTS.md edits wait for compaction; stale cache-policy row
 - FIXED 10-15 (#302): [Image blocks pinned the clip frontier → uncached tail](bugs/clip-frontier-stalls-on-image-blocks.md) — $243/wk; "mutated at 14" still open
-- FIXED 10-19: [Release smoke ran only --version on the binary](bugs/release-smoke-only-runs-version.md) — now `smoke:binary`, a mock -p round trip
 - FIXED 10-23: [Frontmatter values were cut at " #" and a mid-line ---](bugs/frontmatter-hash-truncates-values.md) — quoted before the first parse
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
@@ -63,12 +62,13 @@
 - [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — a Cloudflare edge block
 - [/diff canonicalizes worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — echo the real input
-- [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run in isolation first
+- [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — 2 gate shapes fixed (10-24: one monotonic bound); re-run in isolation first
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
 - [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
-- FIXED: [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [resume read a refused Write](bugs/resume-restores-refused-write.md) · [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
+- [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
+- FIXED: [release smoke: --version only](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [resume read a refused Write](bugs/resume-restores-refused-write.md) · [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md)
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
@@ -81,7 +81,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%
-- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided · [bash-first edits, cost-neutral, 10-21](edit-method-census-2026-10-21.md)
+- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches go in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — it hides bugs users hit elsewhere; verify from a throwaway cwd
@@ -111,12 +111,12 @@
 - Weekly censuses: [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) — rewrites 39% of cost
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
-- Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md) — 4 gaps fixed
+- Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md)
 - [NEXT census: check own writes (ON 10-21)](own-writes-next-census-checks.md) — re-Reads/misses after Git, formatter, Agent
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
-- [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines · rounds [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md) · spent seeds [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash](bash-parser-unreachable-behind-tree-sitter-flag.md)
+- [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines; rounds r2–r5 (#211…#214) and their spent seeds linked inside
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
@@ -138,14 +138,13 @@
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
 - [Session cache A/B vs Claude Code (09-23..10-15)](session-cache-ab-bench-2026-09-23.md) — Opus +53% → +7% (#239); Sonnet 5.5 +17% → −18% (10-15)
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal
-- Thinking vs CC: [round 3, effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [2x is Opus-only, follows Patch; fixed bash-first edits like CC (10-22)](thinking-gap-is-patch-shape-2026-10-21.md)
+- Thinking vs CC: [round 3, effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [bash-first edits cost-neutral 10-21](edit-method-census-2026-10-21.md) · [2x is Opus-only, follows the Patch shape (10-22)](thinking-gap-is-patch-shape-2026-10-21.md)
 - [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
 - Prefix levers 09-23/24: [prefix breakdown, eager tools ≈20k](request-prefix-size-2026-09-23.md) · [dev tools deferred, −3.3k](dev-tools-deferred-advice-ab-2026-09-24.md) · [Build `directory` −7.7%](build-tool-ab-directory-gap.md)
 - Read/request A/Bs 09-24..29: [batch Read ties CC](cat-read-and-batch-read-ab-2026-09-24.md) · [read-files failed](read-files-ab-2026-09-29.md) · [`then` + cap promoted](request-count-levers-2026-09-24.md) · [cuts ~0.3% of requests](cut-results-request-cost-2026-09-25.md)
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
 
 ## Providers & models
-- [/models discovery only parses `context_length`](context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [OpenAI-compat reasoning effort was inert — FIXED](opencode-gateway-effort-dead-on-arrival.md) — levels from models.dev
 - [provider !== 'anthropic' includes bedrock/vertex/foundry](provider-tag-not-anthropic-includes-cloud.md) — gate with an explicit set
 - [Native-1M models need a getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M alone doesn't set it
@@ -163,7 +162,7 @@
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits (08-03/10/17 changed nothing, `*-no-code-changes.md`): [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
+- Dependabot audits (3 no-ops: `*-no-code-changes.md`): [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
 - [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310: undici zstd + SDK 0.135 OTel binary crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
@@ -186,4 +185,4 @@
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — 4 gaps · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — three CA env vars, set together
-- Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md) — five `devin-*.md` memories: backend, quirks, quota, f31, A/B
+- Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md) — five `devin-*.md` memories

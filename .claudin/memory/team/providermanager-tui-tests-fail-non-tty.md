@@ -1,6 +1,6 @@
 ---
-name: ProviderManager.test.tsx PRESET_ORDER must mirror the .tsx preset list exactly
-description: The 2 long-"known non-TTY" ProviderManager failures (Ollama/Vertex) were actually stale PRESET_ORDER navigation drift; FIXED 2026-07-08
+name: providermanager-tui-tests-fail-non-tty
+description: ProviderManager.test.tsx timeouts are never non-TTY — four causes so far (PRESET_ORDER drift 07-08, leaked CLAUDIN_SIMPLE 09-02, an Enter sent before a just-mounted Select listens 10-22, then env); the triage order is at the end
 type: feedback
 ---
 

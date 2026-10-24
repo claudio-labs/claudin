@@ -1,9 +1,11 @@
+import { findHiddenText } from 'src/memory/memdir/hiddenText.js'
 import { isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 
 /**
- * Check if a file write/edit to a team memory path contains secrets.
- * Returns an error message if secrets are detected, or null if safe.
+ * Check if a file write/edit to a team memory path contains secrets, or
+ * characters that hide text from whoever reviews the commit (hiddenText.ts).
+ * Returns an error message if either is detected, or null if safe.
  *
  * This is called from FileWriteTool and FileEditTool validateInput to
  * prevent the model from writing secrets into team memory files: the team
@@ -23,14 +25,22 @@ export function checkTeamMemSecrets(
   }
 
   const matches = scanForSecrets(content)
-  if (matches.length === 0) {
-    return null
+  if (matches.length > 0) {
+    const labels = matches.map(m => m.label).join(', ')
+    return (
+      `Content contains potential secrets (${labels}) and cannot be written to team memory. ` +
+      'Team memory is shared with all repository collaborators. ' +
+      'Remove the sensitive content and try again.'
+    )
   }
 
-  const labels = matches.map(m => m.label).join(', ')
-  return (
-    `Content contains potential secrets (${labels}) and cannot be written to team memory. ` +
-    'Team memory is shared with all repository collaborators. ' +
-    'Remove the sensitive content and try again.'
-  )
+  const hidden = findHiddenText(content)
+  if (hidden.length > 0) {
+    return (
+      `Content contains hidden characters (${hidden.join(', ')}) and cannot be written to team memory. ` +
+      'They change what a reviewer of the commit sees, not what the model reads. ' +
+      'Remove them and try again.'
+    )
+  }
+  return null
 }

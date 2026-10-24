@@ -24,6 +24,14 @@
  *               should land in the global memory dir (paths.ts
  *               getGlobalMemPath), or the private one in an arm that turns it
  *               off with CLAUDIN_GLOBAL_MEMORY=0
+ *   taste       the `correction` request's fact said as the user's own
+ *               taste ("eu detesto…") instead of the project's ("aqui a
+ *               gente…") — global, like `preference`, where `correction`
+ *               must never be
+ *   taste-split a correction carrying both: the user's taste (inject the
+ *               clock) goes global, the project's own part (its fake clock)
+ *               stays private or team — and neither copies the other's
+ *               project name
  *
  * Each session gets a fresh workspace under /tmp/memory-write-ab/<stamp>/: a
  * git repo with one pinned commit and an empty `.claudin/memory/team/`, so the
@@ -41,6 +49,9 @@
  *   index        its directory's MEMORY.md links to it
  *   single       the fact lives in exactly one file (one fact per file, no
  *                duplicate across the directories)
+ *   also         for a split, the project part lives in exactly one file, in
+ *                a directory its kind allows, indexed — never in the global
+ *                dir; the taste is then looked for outside that file
  * A session passes when all four hold. Cost is the CLI's own `total_cost_usd`
  * from the stream-json result; the stream is also searched for the guard's
  * refusals and index notes, so the arm's mechanism can be seen to fire.
@@ -76,7 +87,7 @@ export const GLOBAL = '@global/'
 // Requests
 // ---------------------------------------------------------------------------
 
-type RequestId = 'pnpm' | 'staging' | 'correction' | 'decision' | 'preference'
+type RequestId = 'pnpm' | 'staging' | 'correction' | 'decision' | 'preference' | 'taste' | 'taste-split'
 
 type Request = {
   id: RequestId
@@ -93,6 +104,8 @@ type Request = {
   fact: RegExp
   /** The `type` the memory must have, when the request decides it. */
   type?: (typeof MEMORY_TYPES)[number]
+  /** The project's own part of a split: a second memory, in one of `dirs`. */
+  also?: { dirs: readonly string[]; fact: RegExp }
 }
 
 const REQUESTS: readonly Request[] = [
@@ -132,6 +145,27 @@ const REQUESTS: readonly Request[] = [
     dirs: [''],
     dirsWithGlobal: [GLOBAL],
     fact: /elaborad|elaborat|detalhad|detailed|thorough|passo a passo|step[- ]by[- ]step/i,
+  },
+  {
+    id: 'taste',
+    turns: [
+      'cria src/greet.ts com um export default de uma função greet(name: string) que retorna `Olá, ${name}!`',
+      'não, eu detesto default exports — sempre named exports',
+    ],
+    dirs: [''],
+    dirsWithGlobal: [GLOBAL],
+    fact: /default export|named export|export default/i,
+  },
+  {
+    id: 'taste-split',
+    turns: [
+      'cria src/salute.ts com uma função salute(name: string) que usa `new Date().getHours()` direto pra escolher entre "Bom dia" e "Boa tarde"',
+      'não lê o relógio direto — eu sempre prefiro injetar o relógio como parâmetro, é como eu escrevo código; e neste repo o relógio fake dos testes vai ser o `FixedClock` de test/clock.ts',
+    ],
+    dirs: [''],
+    dirsWithGlobal: [GLOBAL],
+    fact: /inje[ct]|inject/i,
+    also: { dirs: ['', 'team/'], fact: /FixedClock/ },
   },
 ]
 
@@ -289,6 +323,8 @@ type Grade = {
   frontmatter: boolean
   index: boolean
   single: boolean
+  /** The project part of a split where the request has one; true otherwise. */
+  also: boolean
   pass: boolean
   /** Every memory file the session left. */
   files: number
@@ -299,13 +335,26 @@ function gradeMemory(roots: MemoryRoots, request: Request): Grade {
   const globalOn = roots.globalRoot !== null
   const dirs = allowedDirs(request, globalOn)
   const all = allMemoryFiles(roots)
-  const carrying = all.filter(rel => request.fact.test(readFileSync(absOf(roots, rel), 'utf8')))
+  const textOf = (rel: string): string => readFileSync(absOf(roots, rel), 'utf8')
+  // A split's project part may restate the taste it applies; the taste is the other memory.
+  const projectPart = request.also ? all.filter(rel => request.also!.fact.test(textOf(rel))) : []
+  const carrying = all.filter(rel => request.fact.test(textOf(rel)) && !projectPart.includes(rel))
   // The one in an allowed directory, when there is one, is the one graded.
   const file = carrying.find(rel => dirs.includes(dirOf(rel))) ?? carrying[0] ?? null
+  const alsoProblems = !request.also
+    ? []
+    : projectPart.length === 0
+      ? ['no memory carries the project part']
+      : [
+          ...(projectPart.length > 1 ? [`the project part is in ${projectPart.length} files`] : []),
+          ...(request.also.dirs.includes(dirOf(projectPart[0]!)) ? [] : [`the project part is in "${dirOf(projectPart[0]!) || '(private root)'}"`]),
+          ...(isIndexed(roots, projectPart[0]!) ? [] : ['the project part is not in its index']),
+        ]
+  const also = alsoProblems.length === 0
   if (!file) {
-    return { file, where: false, frontmatter: false, index: false, single: false, pass: false, files: all.length, problems: ['no memory carries the fact'] }
+    return { file, where: false, frontmatter: false, index: false, single: false, also, pass: false, files: all.length, problems: ['no memory carries the fact', ...alsoProblems] }
   }
-  const text = readFileSync(absOf(roots, file), 'utf8')
+  const text = textOf(file)
   const type = frontmatterOf(text)?.type
   const formatProblems = frontmatterProblems(file, text, globalOn)
   const typeOk = !request.type || type === request.type
@@ -318,7 +367,8 @@ function gradeMemory(roots: MemoryRoots, request: Request): Grade {
   if (!where) problems.push(`in "${dirOf(file) || '(private root)'}"`)
   if (!index) problems.push('not in its index')
   if (!single) problems.push(`the fact is in ${carrying.length} files`)
-  return { file, where, frontmatter, index, single, pass: where && frontmatter && index && single, files: all.length, problems }
+  problems.push(...alsoProblems)
+  return { file, where, frontmatter, index, single, also, pass: where && frontmatter && index && single && also, files: all.length, problems }
 }
 
 // ---------------------------------------------------------------------------
@@ -441,7 +491,7 @@ async function runSession(args: Args, runDir: string, arm: Arm, request: Request
 // Report
 // ---------------------------------------------------------------------------
 
-const CHECKS = ['pass', 'where', 'frontmatter', 'index', 'single'] as const
+const CHECKS = ['pass', 'where', 'frontmatter', 'index', 'single', 'also'] as const
 
 function report(sessions: Session[], arms: Arm[]): string {
   const of = (arm: Arm, request?: RequestId) =>
@@ -449,6 +499,7 @@ function report(sessions: Session[], arms: Arm[]): string {
   const rows: string[][] = []
   for (const request of REQUESTS) {
     for (const check of CHECKS) {
+      if (check === 'also' && !request.also) continue
       rows.push([
         check === 'pass' ? request.id : '',
         check,
@@ -521,6 +572,25 @@ const GOOD: Record<RequestId, Fixture> = {
       'Give elaborate answers, reasoning explained step by step.\n\n**Why:** the user asked for it.\n**How to apply:** every answer, in any project.',
     ),
     [`${GLOBAL}MEMORY.md`]: '- [Detailed answers](prefers-detailed-answers.md) — reasoning step by step\n',
+  },
+  taste: {
+    [`${GLOBAL}named-exports.md`]: fm(
+      ['name: named-exports', 'description: the user dislikes default exports and always writes named exports', 'type: user'],
+      'Prefers named exports; dislikes default exports.',
+    ),
+    [`${GLOBAL}MEMORY.md`]: '- [Named exports](named-exports.md) — no default exports\n',
+  },
+  'taste-split': {
+    [`${GLOBAL}inject-the-clock.md`]: fm(
+      ['name: inject-the-clock', 'description: the user injects time as a parameter instead of reading the clock directly', 'type: user'],
+      'Inject the clock as a parameter; never read the time directly in logic.',
+    ),
+    [`${GLOBAL}MEMORY.md`]: '- [Inject the clock](inject-the-clock.md) — time is a parameter\n',
+    'test-clock.md': fm(
+      ['name: test-clock', 'description: the fake clock of this repo is FixedClock in test/clock.ts', 'type: project'],
+      'Tests inject `FixedClock` from test/clock.ts. Applies [[inject-the-clock]].',
+    ),
+    'MEMORY.md': '- [Test clock](test-clock.md) — FixedClock in test/clock.ts\n',
   },
 }
 
@@ -599,6 +669,33 @@ const BAD: Array<{ request: RequestId; name: string; fails: (typeof CHECKS)[numb
     files: {
       [`${GLOBAL}detailed.md`]: fm(['name: detailed', 'description: detailed answers', 'type: feedback', 'paths:', '  - "src/**"'], 'Elaborate answers.'),
       [`${GLOBAL}MEMORY.md`]: '- [Detailed](detailed.md) — x\n',
+    },
+  },
+  {
+    request: 'taste',
+    name: 'a taste kept private as feedback',
+    fails: 'where',
+    files: {
+      'named-exports.md': fm(['name: named-exports', 'description: named exports', 'type: feedback'], 'No default exports.'),
+      'MEMORY.md': '- [Named](named-exports.md) — x\n',
+    },
+  },
+  {
+    request: 'taste-split',
+    name: 'the taste saved with the project part in it',
+    fails: 'also',
+    files: {
+      [`${GLOBAL}inject-the-clock.md`]: fm(['name: inject-the-clock', 'description: inject the clock', 'type: user'], 'Inject the clock, e.g. FixedClock.'),
+      [`${GLOBAL}MEMORY.md`]: '- [Clock](inject-the-clock.md) — x\n',
+    },
+  },
+  {
+    request: 'taste-split',
+    name: 'only the project part saved',
+    fails: 'where',
+    files: {
+      'test-clock.md': fm(['name: test-clock', 'description: FixedClock', 'type: project'], 'Inject FixedClock from test/clock.ts.'),
+      'MEMORY.md': '- [Clock](test-clock.md) — x\n',
     },
   },
 ]
