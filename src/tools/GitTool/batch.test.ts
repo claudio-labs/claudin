@@ -314,6 +314,64 @@ describe('a pull or switch refused only over the navigation map the sync healed'
     expect(git(session, ['status', '--porcelain'])).toContain(' M .claudin/rules/search-strategy.md')
   }, 60_000)
 
+  /** A local repo with a committed map that the sync has healed since. */
+  async function healedRepo(): Promise<string> {
+    const root = scratch()
+    git(root, ['init', '-q', '-b', 'main'])
+    identity(root)
+    files(root, 'core', 8)
+    await syncProjectRuleMap(root)
+    git(root, ['add', '-A'])
+    git(root, ['commit', '-qm', 'map'])
+    return root
+  }
+
+  test('a cherry-pick that applied one commit before the refusal is not run again', async () => {
+    // Review finding: commit A lands, B is refused over the healed map. Running
+    // it again only says "cherry-pick is already in progress" and hides A.
+    const root = await healedRepo()
+    git(root, ['switch', '-q', '-c', 'side'])
+    writeFileSync(join(root, 'README.md'), 'A\n')
+    git(root, ['add', 'README.md'])
+    git(root, ['commit', '-qm', 'A'])
+    writeFileSync(join(root, '.claudin', 'rules', 'search-strategy.md'), 'another map\n')
+    git(root, ['commit', '-qam', 'B'])
+    git(root, ['switch', '-q', 'main'])
+    files(root, 'grown', 40)
+    expect((await syncProjectRuleMap(root)).status).toBe('healed')
+
+    const result = await runIn(root, ['git cherry-pick side~1 side'], root)
+
+    expect(git(root, ['log', '--format=%s', '-1']).trim()).toBe('A')
+    expect(result.outcomes[0]?.output).not.toContain(RULE_MAP_SET_ASIDE_NOTE)
+    expect(result.outcomes[0]?.output).not.toContain('cherry-pick is already in progress')
+  }, 60_000)
+
+  test('a command git -C points at another repo never sets the session map aside', async () => {
+    const session = await healedRepo()
+    files(session, 'grown', 40)
+    expect((await syncProjectRuleMap(session)).status).toBe('healed')
+    const other = scratch()
+    git(other, ['init', '-q', '-b', 'main'])
+    identity(other)
+    writeFileSync(join(other, 'f'), 'a\n')
+    git(other, ['add', 'f'])
+    git(other, ['commit', '-qm', 'base'])
+    git(other, ['switch', '-q', '-c', 'b'])
+    writeFileSync(join(other, 'f'), 'b\n')
+    git(other, ['commit', '-qam', 'b'])
+    git(other, ['switch', '-q', 'main'])
+    writeFileSync(join(other, 'f'), 'dirty\n')
+
+    const result = await runIn(session, [`git -C ${other} switch b`], session)
+
+    expect(result.outcomes[0]?.exitCode).not.toBe(0)
+    expect(result.outcomes[0]?.output).not.toContain(RULE_MAP_SET_ASIDE_NOTE)
+    expect(git(session, ['status', '--porcelain', '--untracked-files=no'])).toContain(
+      ' M .claudin/rules/search-strategy.md',
+    )
+  }, 60_000)
+
   test('GitTool passes the project root only for a batch in the session checkout', () => {
     const src = readFileSync(new URL('./GitTool.ts', import.meta.url), 'utf8')
     expect(src).toContain('ruleMapRoot: input.cwd === undefined ? getProjectRoot() : undefined')

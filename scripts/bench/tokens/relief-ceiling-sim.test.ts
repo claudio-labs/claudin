@@ -115,4 +115,24 @@ describe('simulate', () => {
     // Faster regrowth can only bring the next event sooner.
     expect(regrown.events).toBeGreaterThanOrEqual(base.events)
   })
+
+  test('--thinking-drop applies again to the first clip after a compaction', () => {
+    // Review finding: in the app the drop is gated on the view holding no
+    // clipped result (`microCompact.ts`), which a compacted view does not.
+    const thread: Thread = {
+      name: 'r',
+      ctx: [10, 20, 30, 40, 68, 68.5, 69, 75, 90, 100, 110, 120, 130, 140, 150, 160].map(k => k * 1000),
+      blocks: [
+        { call: 4, tokens: 9_000 },
+        { call: 11, tokens: 9_000 },
+      ],
+    }
+    const args = { ...parseArgs(['--main', '--clip-all', '--starved-compact']), postCompact: 20_000 }
+    const plain = simulate(thread, 70_000, args)
+    const drop = simulate(thread, 70_000, { ...args, thinkingDrop: 0.34 })
+
+    expect(plain.events).toBe(2)
+    expect(plain.compactions).toBeGreaterThanOrEqual(1)
+    expect(drop.saved).toBeGreaterThan(plain.saved)
+  })
 })

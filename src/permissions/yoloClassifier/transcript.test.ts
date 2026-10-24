@@ -321,6 +321,21 @@ describe('serializeTranscriptForClassifier, stable cut (default)', () => {
       truncated: false,
     })
   })
+
+  test('an entry as large as a chunk opens its own, so the cut can land before it', () => {
+    // Review finding: a 10k prompt, one turn of six ~30k parallel calls, then
+    // 12k. With the big turn merged into the first chunk, the only boundary
+    // that fit came after it and the cut kept 12k of a 200k budget.
+    const messages = [
+      user('i'.repeat(10_000)),
+      bash(...Array.from({ length: 6 }, () => 'x'.repeat(30_000))),
+      user('u'.repeat(6_000)),
+      bash('y'.repeat(6_000)),
+    ]
+    const kept = texts(messages, MAX_CLASSIFIER_TRANSCRIPT_CHARS).reduce((n, b) => n + b.length, 0)
+
+    expect(kept).toBeGreaterThan(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 25_000)
+  })
 })
 
 describe('classifierTranscriptBudget', () => {
