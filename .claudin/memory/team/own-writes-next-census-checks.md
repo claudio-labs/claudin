@@ -1,6 +1,6 @@
 ---
 name: own-writes-next-census-checks
-description: Own writes is ON by default since 10-21 (branch fix/own-writes-every-tool) — the next tool census must check what names-only lost; re-Reads and Edit misses after a claim from Git, formatter, build or sub-agent, claims on long calls, and that edited_text_file notes fell
+description: Own writes is ON by default since 10-21 (branch fix/own-writes-every-tool); the 10-24 census ran checks 1-4 and names-only passed (notes −77%, 2 re-Reads in 59 claims, 0 Edit misses); check 5 (absorbed user edits on long calls) is still unsampled
 type: project
 ---
 
@@ -48,6 +48,17 @@ this, and compare with the Sep–Oct numbers in the census note.
 **If check 3 or 4 is high for one source,** keep the diff for that source only (for example
 Git or Agent) rather than switching the whole thing off. Names-only for every tool was the
 user's call on 10-21.
+
+**Result (2026-10-24, B = 10-23..24):**
+1. Notes fell from 32.9 to 7.6 per 1k calls.
+2. 59 claims. In Bash they came from a formatter, a script edit, git, break-probe, the
+   build and tests. In the Git tool they came from fetch, stash, `gh pr`, checkout,
+   switch and revert. Patch and Build also made claims.
+3. A claimed path was Read again within 3 calls twice: once after `cargo fmt` and once
+   after another Bash command. Git stash/checkout touched 93+31 files with no re-Read.
+4. No Edit or Patch missed on a claimed path.
+
+B had no Agent claims. Check 5 was not sampled. See [[census-2026-10-24-classifier-cost]].
 
 **Method.**
 - Pair tool_use with tool_result by id and dedupe by uuid ([[session-corpus-census-inflation]]).

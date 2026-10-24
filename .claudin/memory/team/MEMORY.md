@@ -3,6 +3,8 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
+- [Classifier transcript cut at stable chunks (10-24)](decisions/classifier-transcript-stable-cut.md) — −75% classifier cache writes; `CLAUDIN_CLASSIFIER_STABLE_CUT=0`
+- [1M compaction at half the window — NOT PROMOTED 10-24](decisions/large-window-compaction.md) — −6% vs −15% gate; clipping earlier loses at Opus 5.5 prices
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, limits table, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer/status line/`/context` read autocompact's count; status line adds output, unlike CC
 - [ai-memory ideas in memory (10-16, 10-23)](decisions/memory-ai-memory-ideas.md) — trust note, `memory audit` (+ links, hidden text), expires:; "taste is user" NOT promoted
@@ -10,7 +12,7 @@
 - Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline; routing its report rejected
-- [Navigation map syncs at the end of a turn, /map (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; LLM auto-annotate rejected
+- [Navigation map syncs at the end of a turn, /map (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate; Git sets a lone heal aside (10-24)
 - [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut (10-10)](decisions/summarizer-lossless.md)
 - [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
@@ -112,7 +114,8 @@
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md)
-- [NEXT census: check own writes (ON 10-21)](own-writes-next-census-checks.md) — re-Reads/misses after Git, formatter, Agent
+- [Census 10-24: classifier ~24% of spend, census prices 2x](census-2026-10-24-classifier-cost.md) — both fixed on perf/census-2026-10-24; harness-dirty git pulls
+- [Own writes names-only (ON 10-21) — PASSED 10-24](own-writes-next-census-checks.md) — notes −77%, 2 re-Reads in 59 claims, 0 misses
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features

@@ -140,6 +140,24 @@ One decision, one source of truth, no message ever dropped from the API view:
     way. `relief-ceiling-sim.ts --since=2026-10-12 --main --clip-all
     --min-event=band --starved-compact --input-keep=2|10` moves net savings
     by under 1.3% at every trigger from 300k to 700k.
+- **A lower ceiling for 1M main threads was measured and NOT promoted
+  (2026-10-24).** In 10-20..24 no main thread reached the 735k trigger, though
+  cache reads were $92 of the main thread's $147 (p50 360k). Two questions:
+  - *Clip earlier?* No. At Opus 5.5 prices a 1h write costs 40 reads. After the
+    first clip a later one frees little: the stub heads, inputs and rules stay.
+    `relief-ceiling-sim.ts` with the thinking drop and the measured regrowth
+    (1.55×) puts clipping at 600k at +6% of main reads and at 400k at −6%. The
+    replay had said the opposite until it was repriced from Opus 5's 20 reads
+    per write.
+  - *Compact earlier?* `--compact-at` puts compaction at 490k at +28% (an upper
+    bound). The A/B (`scripts/bench/results/context-relief-ab-compact50-2026-10-24.md`,
+    Sonnet 5.5, window 140k, N=5, with a placebo) had compaction at 50% with no clip
+    lane at **−6% SEPARATED**. Edit-turn lookups fell 13 → 8 and edits stayed
+    10/10, but the cost missed the pre-registered −15%. The arm with only
+    `CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE=50` never compacted: that override also caps
+    the clip trigger under the threshold, so the clip fires first.
+  - Also measured: thinking is ~34% of a large main context, and a clip-all event
+    on the 5.5 models frees 49–65% at once, through the server's thinking drop.
 
 Tests: `reliefPolicy.test.ts` (the decision table), `microCompact.test.ts`
 (the shell: clip-all by default, the oldest-first band under `=0`, the rss
