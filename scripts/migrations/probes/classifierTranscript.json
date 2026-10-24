@@ -21,7 +21,7 @@
     },
     {
       "name": "a tool that encodes to '' adds no block",
-      "find": "      if (serialized === '') continue\n",
+      "find": "    if (serialized === '') continue\n",
       "replace": "\n"
     },
     {

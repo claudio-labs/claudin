@@ -1,8 +1,20 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 
 import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
-import { serializeTranscriptForClassifier } from 'src/permissions/yoloClassifier/transcript.js'
+import {
+  classifierTranscriptBudget,
+  MAX_CLASSIFIER_TRANSCRIPT_CHARS,
+  serializeTranscriptForClassifier,
+} from 'src/permissions/yoloClassifier/transcript.js'
+
+const KILLSWITCH = 'CLAUDIN_CLASSIFIER_STABLE_CUT'
+const savedKillswitch = process.env[KILLSWITCH]
+
+function restoreKillswitch(): void {
+  if (savedKillswitch === undefined) delete process.env[KILLSWITCH]
+  else process.env[KILLSWITCH] = savedKillswitch
+}
 
 const tools = [
   {
@@ -49,7 +61,14 @@ function texts(messages: Message[], maxChars: number): string[] {
   )
 }
 
-describe('serializeTranscriptForClassifier', () => {
+// The newest-first fill: what `CLAUDIN_CLASSIFIER_STABLE_CUT=0` restores, and
+// what the stable cut falls back to when not even its newest chunk fits.
+describe('serializeTranscriptForClassifier, newest-first fill (=0)', () => {
+  beforeAll(() => {
+    process.env[KILLSWITCH] = '0'
+  })
+  afterAll(restoreKillswitch)
+
   test('under the budget every entry is kept, oldest first, one block per entry block', () => {
     const messages = [user('first'), bash('ls'), user('second'), bash('pwd', 'git status')]
     const result = serializeTranscriptForClassifier(messages, tools, 10_000)
@@ -215,5 +234,107 @@ describe('serializeTranscriptForClassifier', () => {
     ]
 
     expect(texts(messages, 10_000)).toEqual(['User: line one\nline two\n'])
+  })
+})
+
+// Entries of exactly 10,000 chars: the 25k chunk closes after every third
+// entry, so the chunk starts are 0, 3, 6, … and a 100k budget keeps 8-10.
+const ENTRY_CHARS = 10_000
+const BUDGET = 100_000
+
+function entry(i: number): Message {
+  return bash(`e${i}:`.padEnd(ENTRY_CHARS - 'Bash \n'.length, 'x'))
+}
+
+function history(n: number): Message[] {
+  return Array.from({ length: n }, (_, i) => entry(i))
+}
+
+function firstKeptIndex(blocks: string[]): number {
+  return Number(/^Bash e(\d+):/.exec(blocks[0] ?? '')?.[1] ?? -1)
+}
+
+describe('serializeTranscriptForClassifier, stable cut (default)', () => {
+  afterEach(restoreKillswitch)
+
+  test('past the budget the cut sits on a chunk boundary counted from the first entry', () => {
+    for (let n = 11; n <= 40; n++) {
+      const result = serializeTranscriptForClassifier(history(n), tools, BUDGET)
+      const blocks = result.userContentBlocks.map(b => b.text)
+      const kept = blocks.reduce((sum, b) => sum + b.length, 0)
+
+      expect(firstKeptIndex(blocks) % 3).toBe(0)
+      expect(kept).toBeLessThanOrEqual(BUDGET)
+      expect(kept).toBeGreaterThan(BUDGET - 3 * ENTRY_CHARS)
+      expect(blocks.at(-1)).toStartWith(`Bash e${n - 1}:`)
+      expect(result.truncated).toBe(true)
+    }
+  })
+
+  test('appending keeps every kept block byte-identical until the cut moves, once per chunk', () => {
+    let moves = 0
+    for (let n = 12; n < 40; n++) {
+      const before = texts(history(n), BUDGET)
+      const after = texts(history(n + 1), BUDGET)
+      if (firstKeptIndex(before) === firstKeptIndex(after)) {
+        expect(after.slice(0, before.length)).toEqual(before)
+      } else {
+        moves++
+      }
+    }
+    // 28 appends, one move per three entries: the newest-first fill moves 28 times.
+    expect(moves).toBeLessThanOrEqual(10)
+    expect(moves).toBeGreaterThanOrEqual(9)
+  })
+
+  test('=0 brings back the window that slides on every append', () => {
+    expect(firstKeptIndex(texts(history(13), BUDGET))).toBe(firstKeptIndex(texts(history(12), BUDGET)))
+
+    process.env[KILLSWITCH] = '0'
+
+    expect(firstKeptIndex(texts(history(12), BUDGET))).toBe(2)
+    expect(firstKeptIndex(texts(history(13), BUDGET))).toBe(3)
+  })
+
+  test('under the budget both modes give the same transcript', () => {
+    const messages = [user('do the thing'), ...history(5), user('and this')]
+    const stable = serializeTranscriptForClassifier(messages, tools, BUDGET)
+    process.env[KILLSWITCH] = '0'
+
+    expect(serializeTranscriptForClassifier(messages, tools, BUDGET)).toEqual(stable)
+    expect(stable.truncated).toBe(false)
+  })
+
+  test('a lone entry over the budget falls back to its newest blocks that fit', () => {
+    const big = 'y'.repeat(30_000)
+    const messages = [user('start'), bash(`a${big}`, `b${big}`, `c${big}`, `d${big}`)]
+    const blocks = texts(messages, BUDGET)
+
+    expect(blocks.map(b => b.slice(5, 6))).toEqual(['b', 'c', 'd'])
+  })
+
+  test('an empty history is an empty transcript', () => {
+    expect(serializeTranscriptForClassifier([], tools, BUDGET)).toEqual({
+      userContentBlocks: [],
+      promptLengths: { toolCalls: 0, userPrompts: 0 },
+      transcriptEntries: 0,
+      truncated: false,
+    })
+  })
+})
+
+describe('classifierTranscriptBudget', () => {
+  afterEach(restoreKillswitch)
+
+  test('the stable cut gives the transcript the whole budget, whatever the action', () => {
+    expect(classifierTranscriptBudget(0)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+    expect(classifierTranscriptBudget(31_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+  })
+
+  test('=0 takes the action out of the budget, never below zero', () => {
+    process.env[KILLSWITCH] = '0'
+
+    expect(classifierTranscriptBudget(31_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 31_000)
+    expect(classifierTranscriptBudget(MAX_CLASSIFIER_TRANSCRIPT_CHARS + 1)).toBe(0)
   })
 })

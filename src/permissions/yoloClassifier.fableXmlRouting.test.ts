@@ -157,6 +157,41 @@ describe('fable-class XML classifier routing', () => {
   })
 })
 
+describe('the transcript budget the request is built with', () => {
+  // Six 30k entries (180k) and a 30k action: inside the whole budget, over the
+  // budget minus the action.
+  const history = Array.from({ length: 6 }, (_, i) => ({
+    type: 'assistant',
+    message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: `e${i}:`.padEnd(30_000, 'x') } }] },
+  })) as any
+  const action = formatActionForClassifier('Bash', { command: 'a'.padEnd(30_000, 'y') })
+  const sentTranscript = () =>
+    JSON.stringify((capturedOpts[0]!.messages as Array<{ content: unknown }>).at(-1)!.content)
+  const saved = process.env.CLAUDIN_CLASSIFIER_STABLE_CUT
+
+  afterAll(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_CLASSIFIER_STABLE_CUT
+    else process.env.CLAUDIN_CLASSIFIER_STABLE_CUT = saved
+  })
+
+  test('the stable cut keeps the whole budget for the transcript', async () => {
+    mainLoopModel = 'claude-fable-5'
+    delete process.env.CLAUDIN_CLASSIFIER_STABLE_CUT
+    await classifyYoloAction(history, action, tools, ctx, new AbortController().signal)
+
+    expect(sentTranscript()).toContain('Bash e0:')
+  })
+
+  test('=0 takes the action out of it, dropping the oldest entry', async () => {
+    mainLoopModel = 'claude-fable-5'
+    process.env.CLAUDIN_CLASSIFIER_STABLE_CUT = '0'
+    await classifyYoloAction(history, action, tools, ctx, new AbortController().signal)
+
+    expect(sentTranscript()).not.toContain('Bash e0:')
+    expect(sentTranscript()).toContain('Bash e1:')
+  })
+})
+
 // The API's own safety stop on the classifier request: no text, 0 tokens.
 const REFUSAL = {
   id: 'msg_refused',

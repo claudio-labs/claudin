@@ -1,0 +1,67 @@
+{
+  "test": [
+    "src/permissions/yoloClassifier/transcript.test.ts",
+    "src/permissions/yoloClassifier.fableXmlRouting.test.ts"
+  ],
+  "source": "src/permissions/yoloClassifier/transcript.ts",
+  "probes": [
+    {
+      "name": "the stable cut is the default",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_STABLE_CUT)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "=0 turns the stable cut off",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_STABLE_CUT)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the cut only lands on a chunk start",
+      "find": "    if (chunkChars === 0 && remaining <= maxChars) {\n",
+      "replace": "    if (remaining <= maxChars) {\n"
+    },
+    {
+      "name": "a chunk closes once it reaches the chunk size",
+      "find": "    if (chunkChars >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0\n",
+      "replace": "    if (chunkChars >= 1) chunkChars = 0\n"
+    },
+    {
+      "name": "chunks are counted from the first entry",
+      "find": "  let chunkChars = 0\n  for (let i = 0; i < entries.length; i++) {\n",
+      "replace": "  let chunkChars = (messages.length * 7_919) % CLASSIFIER_TRANSCRIPT_CHUNK_CHARS\n  for (let i = 0; i < entries.length; i++) {\n"
+    },
+    {
+      "name": "no fitting chunk falls back to the newest-first fill",
+      "find": "  return entries.length === 0 ? { kept: [], truncated: false } : null\n",
+      "replace": "  return { kept: [], truncated: entries.length > 0 }\n"
+    },
+    {
+      "name": "the newest-first fill comes back oldest first",
+      "find": "  return { kept: keptEntries.reverse(), truncated }\n",
+      "replace": "  return { kept: keptEntries, truncated }\n"
+    },
+    {
+      "name": "the stable cut gives the transcript the whole budget",
+      "find": "    ? MAX_CLASSIFIER_TRANSCRIPT_CHARS\n    : Math.max(0, MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars)\n",
+      "replace": "    ? MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars\n    : Math.max(0, MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars)\n"
+    },
+    {
+      "name": "=0 never gives a negative budget",
+      "find": "    : Math.max(0, MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars)\n",
+      "replace": "    : MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars\n"
+    },
+    {
+      "name": "classify asks transcript.ts for the budget",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "    classifierTranscriptBudget(actionCompact.length),\n",
+      "replace": "    200_000 - actionCompact.length,\n"
+    },
+    {
+      "name": "control: an equivalent budget expression changes nothing",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "expect": "green",
+      "find": "    classifierTranscriptBudget(actionCompact.length),\n",
+      "replace": "    classifierTranscriptBudget(actionCompact.length + 0),\n"
+    }
+  ]
+}
