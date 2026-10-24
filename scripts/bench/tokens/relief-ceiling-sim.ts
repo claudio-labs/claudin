@@ -44,11 +44,31 @@
  *                      API calls, so with parallel calls the replay protects a
  *                      little more than the app does
  *
+ * Three for the 1M main-thread question of 2026-10-24 ("compact earlier, or
+ * clip earlier?"), each off by default so older runs replay unchanged:
+ *   --compact-at       crossing the trigger compacts at once, with no clip
+ *                      lane: the shape of CLAUDIN_DISABLE_RELIEF_POLICY=1
+ *                      with the autocompact threshold at the trigger
+ *   --thinking-drop=S  a thread's FIRST clip also frees S of the prompt after
+ *                      the first clipped block: on Opus/Sonnet/Haiku 5.5 the
+ *                      server drops every thinking block after it
+ *                      (`microCompact.ts`, `thinkingTokensAfter`). 0.34 is the
+ *                      thinking share measured in 9 main threads over 300k
+ *   --regrowth=X       after a thread's first event, the recorded growth per
+ *                      call is multiplied by X: what is re-read. 1.55 is the
+ *                      mean over the 6 real clip events of 10-20..24 (growth
+ *                      over the 40 calls after each, against the 40 before)
+ *
+ * With the last two the replay is no longer only an upper bound on re-reads;
+ * it is still one on how much a compaction costs in lost working context,
+ * which no token count sees.
+ *
  * Run:
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26 --session=501d7261 --triggers=250000,300000,400000
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-10-02 --main --session=ed9c2e1c --triggers=735000 --min-event=band --starved-compact
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-17 --main --triggers=735000 --min-event=band --starved-compact --clip-all
+ *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-10-20 --main --triggers=735000,490000 --compact-at --regrowth=1.55 --post-compact=60000
  *
  * Transcripts are DATA: only aggregates are printed.
  */
@@ -103,6 +123,9 @@ export type Args = {
   clipAll: boolean
   band: number | null
   inputKeep: number
+  compactAt: boolean
+  thinkingDrop: number
+  regrowth: number
 }
 
 export function parseArgs(argv: readonly string[]): Args {
@@ -114,6 +137,10 @@ export function parseArgs(argv: readonly string[]): Args {
   if (band !== null && !(band > 0)) throw new Error('--band=<tokens>')
   const inputKeep = Number(get('input-keep') ?? KEEP_RECENT_INPUT_RESULTS)
   if (!Number.isInteger(inputKeep) || inputKeep < 0) throw new Error('--input-keep=<calls>')
+  const thinkingDrop = Number(get('thinking-drop') ?? 0)
+  if (!(thinkingDrop >= 0 && thinkingDrop < 1)) throw new Error('--thinking-drop=<share in [0, 1)>')
+  const regrowth = Number(get('regrowth') ?? 1)
+  if (!(regrowth >= 1)) throw new Error('--regrowth=<factor ≥ 1>')
   return {
     since,
     session: get('session') ?? null,
@@ -125,6 +152,9 @@ export function parseArgs(argv: readonly string[]): Args {
     clipAll: argv.includes('--clip-all'),
     band,
     inputKeep,
+    compactAt: argv.includes('--compact-at'),
+    thinkingDrop,
+    regrowth,
   }
 }
 
@@ -204,11 +234,27 @@ export function simulate(t: Thread, trigger: number, args: Args): Outcome {
   // What compactions removed, and the last call they swallowed.
   let compactedAway = 0
   let compactedThrough = -1
+  // Tokens the model added on top of the recorded growth after its first
+  // event (`--regrowth`): what it re-read.
+  let regrown = 0
+  let hadEvent = false
   const out: Outcome = { events: 0, starved: 0, compactions: 0, rewrite: 0, compact: 0, saved: 0, reads: 0 }
+  const compactNow = (ctx: number, k: number, used: number): void => {
+    out.compactions++
+    out.compact += (used * READ + SUMMARY_OUTPUT_TOKENS * OUTPUT + args.postCompact * write) / 1e6
+    compactedAway = ctx - args.postCompact
+    compactedThrough = k
+    freed = 0
+    regrown = 0
+    hadEvent = true
+  }
   t.ctx.forEach((ctx, k) => {
     out.reads += (ctx * READ) / 1e6
-    let used = ctx - compactedAway - freed
-    if (used > trigger) {
+    if (hadEvent && k > 0) regrown += (args.regrowth - 1) * Math.max(0, ctx - (t.ctx[k - 1] ?? ctx))
+    let used = ctx - compactedAway - freed + regrown
+    if (used > trigger && args.compactAt) {
+      compactNow(ctx, k, used)
+    } else if (used > trigger) {
       let got = 0
       const picked: number[] = []
       t.blocks.forEach((b, i) => {
@@ -218,28 +264,24 @@ export function simulate(t: Thread, trigger: number, args: Args): Outcome {
       })
       if (got < minEvent) {
         out.starved++
-        if (args.starvedCompact) {
-          out.compactions++
-          out.compact += (used * READ + SUMMARY_OUTPUT_TOKENS * OUTPUT + args.postCompact * write) / 1e6
-          compactedAway = ctx - args.postCompact
-          compactedThrough = k
-          freed = 0
-          used = args.postCompact
-        }
+        if (args.starvedCompact) compactNow(ctx, k, used)
       } else {
         // The prefix up to the oldest newly clipped block still reads from
         // cache: clips go oldest-first, so everything freed before now sits
         // behind it. Only the rest of the prompt is written again.
         const firstCall = t.blocks[picked[0]!]!.call
         const cachedPrefix = Math.max(0, (t.ctx[firstCall] ?? 0) - compactedAway - freed)
+        // The first clip of a thread also takes the thinking after it.
+        if (clipped.size === 0) got += args.thinkingDrop * Math.max(0, used - got - cachedPrefix)
         for (const i of picked) clipped.add(i)
         freed += got
         used -= got
         out.events++
+        hadEvent = true
         out.rewrite += (Math.max(0, used - cachedPrefix) * (write - READ)) / 1e6
       }
     }
-    out.saved += ((compactedAway + freed) * READ) / 1e6
+    out.saved += ((compactedAway + freed - regrown) * READ) / 1e6
   })
   return out
 }
@@ -263,8 +305,11 @@ function main(): void {
   })
   console.log(
     `${args.main ? 'main' : 'sub-agent'} threads=${threads.length}  max ctx p50=${Math.round(median(threads.map(reach)) / 1000)}k  clearable share of the final context p50=${(100 * median(share)).toFixed(0)}%` +
-      `  min-event=${args.bandFloor ? 'band' : '4k'}${args.starvedCompact ? ` starved→compact@${args.postCompact / 1000}k` : ''}` +
-      `${args.clipAll ? '  clip-all' : ''}${args.band !== null ? `  band=${args.band / 1000}k` : ''}  input-keep=${args.inputKeep}`,
+      (args.compactAt
+        ? `  compact-at the trigger→${args.postCompact / 1000}k`
+        : `  min-event=${args.bandFloor ? 'band' : '4k'}${args.starvedCompact ? ` starved→compact@${args.postCompact / 1000}k` : ''}` +
+          `${args.clipAll ? '  clip-all' : ''}${args.band !== null ? `  band=${args.band / 1000}k` : ''}  input-keep=${args.inputKeep}`) +
+      `${args.thinkingDrop > 0 ? `  thinking-drop=${args.thinkingDrop}` : ''}${args.regrowth > 1 ? `  regrowth=${args.regrowth}` : ''}`,
   )
   console.log('trigger  threads-reached  events  starved  compactions  rewrite$  compact$   saved$    net$   net/reads')
   for (const trigger of args.triggers) {

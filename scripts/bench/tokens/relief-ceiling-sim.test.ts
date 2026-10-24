@@ -42,6 +42,18 @@ describe('parseArgs', () => {
       output: app.outputTokens,
     })
   })
+
+  test('the 10-24 switches default off and reject what makes no sense', () => {
+    expect(BASE).toMatchObject({ compactAt: false, thinkingDrop: 0, regrowth: 1 })
+    expect(parseArgs(['--compact-at', '--thinking-drop=0.34', '--regrowth=1.55'])).toMatchObject({
+      compactAt: true,
+      thinkingDrop: 0.34,
+      regrowth: 1.55,
+    })
+    expect(() => parseArgs(['--thinking-drop=1'])).toThrow('--thinking-drop')
+    expect(() => parseArgs(['--thinking-drop=x'])).toThrow('--thinking-drop')
+    expect(() => parseArgs(['--regrowth=0.5'])).toThrow('--regrowth')
+  })
 })
 
 describe('simulate', () => {
@@ -75,5 +87,32 @@ describe('simulate', () => {
     const inputs: Thread = { ...THREAD, blocks: [4, 5, 6, 7].map(call => ({ call, tokens: 30_000, input: true })) }
     expect(simulate(inputs, 70_000, { ...BASE, clipAll: true }).events).toBe(0)
     expect(simulate(inputs, 70_000, { ...BASE, clipAll: true, inputKeep: 2 }).events).toBeGreaterThan(0)
+  })
+
+  test('--compact-at compacts on crossing the trigger, without clipping', () => {
+    const o = simulate(THREAD, 70_000, { ...BASE, compactAt: true, postCompact: 20_000 })
+    expect(o.events).toBe(0)
+    expect(o.compactions).toBe(1)
+    expect(o.compact).toBeGreaterThan(0)
+    // Calls 8 and 9 read 20k + growth instead of 80k and 90k.
+    expect(o.saved).toBeGreaterThan(simulate(THREAD, 70_000, BASE).saved)
+  })
+
+  test('--thinking-drop frees more on the first clip only', () => {
+    const plain = simulate(THREAD, 70_000, { ...BASE, clipAll: true })
+    const drop = simulate(THREAD, 70_000, { ...BASE, clipAll: true, thinkingDrop: 0.34 })
+    expect(drop.events).toBe(plain.events)
+    expect(drop.saved).toBeGreaterThan(plain.saved)
+    expect(drop.rewrite).toBeLessThan(plain.rewrite)
+  })
+
+  test('--regrowth charges the re-reads after the first event, and is a no-op at 1', () => {
+    const base = simulate(THREAD, 70_000, BASE)
+    const same = simulate(THREAD, 70_000, { ...BASE, regrowth: 1 })
+    const regrown = simulate(THREAD, 70_000, { ...BASE, regrowth: 2 })
+    expect(same).toEqual(base)
+    expect(regrown.saved).toBeLessThan(base.saved)
+    // Faster regrowth can only bring the next event sooner.
+    expect(regrown.events).toBeGreaterThanOrEqual(base.events)
   })
 })
