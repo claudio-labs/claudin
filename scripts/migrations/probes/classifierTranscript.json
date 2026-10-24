@@ -1,0 +1,48 @@
+{
+  "test": [
+    "src/permissions/yoloClassifier/transcript.test.ts"
+  ],
+  "source": "src/permissions/yoloClassifier/transcript.ts",
+  "probes": [
+    {
+      "name": "the budget drops the oldest entries",
+      "find": "    if (totalChars + entryChars > maxChars) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a lone oversized entry keeps only the blocks that fit",
+      "find": "          if (partialChars + serialized.text.length > maxChars) continue\n",
+      "replace": "          if (false) continue\n"
+    },
+    {
+      "name": "filling the budget with nothing older is not a truncation",
+      "find": "      truncated = i > 0\n",
+      "replace": "      truncated = true\n"
+    },
+    {
+      "name": "a tool that encodes to '' adds no block",
+      "find": "      if (serialized === '') continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a throwing projection falls back to the raw input",
+      "find": "      encoded = input\n",
+      "replace": "      encoded = {}\n"
+    },
+    {
+      "name": "only user text blocks enter, never tool results",
+      "find": "        if (block.type === 'text') {\n",
+      "replace": "        if (block.type !== 'image') {\n"
+    },
+    {
+      "name": "a queued command joins its text blocks with newlines",
+      "find": "          .join('\\n') || null\n",
+      "replace": "          .join(' ') || null\n"
+    },
+    {
+      "name": "user prompt length is counted",
+      "find": "        userPromptsLength += block.text.length\n",
+      "replace": "        userPromptsLength += 0\n"
+    }
+  ]
+}
