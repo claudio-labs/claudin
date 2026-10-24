@@ -102,9 +102,9 @@ describe('GitTool.validateInput — refusals land before anything runs', () => {
 describe('GitTool — the rest of the tool surface', () => {
   test('always enabled, never concurrent, one description for both slots', async () => {
     expect(GitTool.isEnabled()).toBe(true)
-    expect(GitTool.isConcurrencySafe({ commands: ['git status'] })).toBe(false)
-    expect(await GitTool.description({ commands: ['git status'] }, {} as never)).toBe(DESCRIPTION)
-    expect(await GitTool.prompt({} as never)).toBe(DESCRIPTION)
+    expect(GitTool.isConcurrencySafe()).toBe(false)
+    expect(await GitTool.description()).toBe(DESCRIPTION)
+    expect(await GitTool.prompt()).toBe(DESCRIPTION)
   })
 
   test('the classifier sees the commands, one per line', () => {
