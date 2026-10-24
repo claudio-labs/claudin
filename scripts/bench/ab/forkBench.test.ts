@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { getModelCosts } from 'src/providers/usage/modelCost.js'
 import { callAfter, cost, ctx, fixture, loadSession, priceFor, spawnCall } from './forkBench.ts'
 
 const dirs: string[] = []
@@ -80,6 +81,20 @@ describe('cost', () => {
   test('priceFor falls back to Sonnet 5 and says so', () => {
     expect(priceFor(undefined).label).toContain('default')
     expect(priceFor('claude-fable-5-1').price.read).toBe(0.25)
+  })
+
+  test('the 5.x rows match modelCost.ts', () => {
+    for (const model of ['claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1']) {
+      const app = getModelCosts(model, { input_tokens: 1, output_tokens: 1 } as never)
+      expect({ model, ...priceFor(model).price }).toEqual({
+        model,
+        input: app.inputTokens,
+        write5m: app.promptCacheWriteTokens,
+        write1h: app.promptCacheWrite1hTokens,
+        read: app.promptCacheReadTokens,
+        output: app.outputTokens,
+      })
+    }
   })
 })
 

@@ -45,8 +45,7 @@
 // Traps stepped around, as delegation-steer-ab does: the host session's
 // CLAUDECODE / CLAUDE_CODE_* / CLAUDIN_* are removed before an arm starts
 // (runHeadless spreads process.env, and a host CLAUDIN_SUBAGENT_BATCHING=1
-// would turn base into batching); Opus 5.5 is priced at its 4/20 tier, where
-// forkBench.priceFor bills it as Opus 5; workspace paths stay within
+// would turn base into batching); workspace paths stay within
 // [A-Za-z0-9/-], all that loadSession maps to a project dir. Two of this
 // bench's own: the workspaces sit under a neutral /tmp/ws-<stamp>/, because
 // the child's env section prints its cwd and a path saying "batching" would
@@ -118,14 +117,6 @@ const BENCH_ROOT = join(tmpdir(), 'subagent-batching-ab')
 const SAFE_PATH_RE = /^[A-Za-z0-9/-]+$/
 const WS_RE = /\s+/g
 const STAMP_RE = /[-:]/g
-
-/** forkBench.priceFor matches `/opus-5/` first and bills Opus 5.5 at 5/25; it is COST_TIER_4_20 (src/providers/usage/modelCost.ts). */
-const OPUS_5_5_RE = /opus-5-5/
-const OPUS_5_5: Price = { input: 4, write5m: 5, write1h: 8, read: 0.2, output: 20 }
-
-function priceOf(model: string): { label: string; price: Price } {
-  return OPUS_5_5_RE.test(model) ? { label: 'opus-5-5 (4/20, cache read 0.2, write 5/8)', price: OPUS_5_5 } : priceFor(model)
-}
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -455,7 +446,7 @@ export function renderReport(rows: readonly Row[], meta: Meta): string {
   return [
     `=== SUB-AGENT BATCHING A/B  model=${meta.model} effort=${meta.effort} reps=${meta.reps} ===`,
     `${meta.bin}: ${meta.version}; the bundle reads ${FLAG}: ${bundle}`,
-    `host variables removed: ${meta.hostEnvRemoved.join(', ') || 'none'}; prices: ${priceOf(meta.model).label}`,
+    `host variables removed: ${meta.hostEnvRemoved.join(', ') || 'none'}; prices: ${priceFor(meta.model).label}`,
     '',
     table(COLUMNS, ARMS.map(arm => armCells(arm, rows))),
     '',
@@ -621,7 +612,7 @@ async function run(args: Args): Promise<void> {
     bundleReadsFlag: bundle,
     hostEnvRemoved,
   }
-  const { price } = priceOf(args.model)
+  const { price } = priceFor(args.model)
   console.log(`subagent-batching-ab → ${runDir}\n  workspaces ${workspaces}\n  ${args.bin}: ${meta.version}`)
   const runs: RunRecord[] = []
   for (let rep = 1; rep <= args.reps; rep++) {
@@ -681,7 +672,7 @@ function dryRun(args: Args): number {
       ...spec.map(f => `  ${f.path}  ${f.count}  ${f.names.join(', ')}`),
       '',
       `the bundle ${args.bin} runs reads ${FLAG}: ${bundle === null ? 'unknown' : bundle ? 'yes' : 'no — `bun run build` before a paid run, or batching is a second placebo'}`,
-      `prices (${args.model}): ${priceOf(args.model).label}`,
+      `prices (${args.model}): ${priceFor(args.model).label}`,
       `parent prompt: ${PARENT_PROMPT}`,
     ].join('\n'),
   )
@@ -706,7 +697,7 @@ async function main(): Promise<void> {
   if (args.dryRun) process.exit(dryRun(args))
   if (args.replay) {
     const saved = JSON.parse(readFileSync(args.replay, 'utf8')) as Saved
-    const { price } = priceOf(saved.meta.model)
+    const { price } = priceFor(saved.meta.model)
     console.log(renderReport(saved.runs.map(r => rowOf(r, price)), saved.meta))
     return
   }

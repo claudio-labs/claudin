@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import { KEEP_RECENT_INPUT_RESULTS } from 'src/agent/compact/stableStubState/clipFrontier.js'
-import { parseArgs, simulate, type Args, type Thread } from './relief-ceiling-sim'
+import { getModelCosts } from 'src/providers/usage/modelCost.js'
+import { parseArgs, PRICE, simulate, type Args, type Thread } from './relief-ceiling-sim'
 
 const BASE: Args = parseArgs(['--main'])
 
@@ -30,6 +31,16 @@ describe('parseArgs', () => {
     expect(parseArgs(['--input-keep=2']).inputKeep).toBe(2)
     expect(() => parseArgs(['--input-keep=x'])).toThrow('--input-keep')
     expect(() => parseArgs(['--input-keep=-1'])).toThrow('--input-keep')
+  })
+
+  test('prices are Opus 5.5 as modelCost.ts has them', () => {
+    const app = getModelCosts('claude-opus-5-5', { input_tokens: 1, output_tokens: 1 } as never)
+    expect(PRICE).toEqual({
+      read: app.promptCacheReadTokens,
+      write5m: app.promptCacheWriteTokens,
+      write1h: app.promptCacheWrite1hTokens,
+      output: app.outputTokens,
+    })
   })
 })
 

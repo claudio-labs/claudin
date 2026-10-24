@@ -32,12 +32,15 @@
  * a user prompt — only aggregates and command HEADS (the first token).
  *
  * Pricing is a LOCAL mirror of `src/providers/usage/modelCost.ts` (same
- * per-Mtok numbers, same 5m/1h cache-write split). It was written when
- * importing that module pulled in the flag resolver, whose dependency only
- * the build stubbed, so `bun scripts/…` could not load it. The resolver is
- * gone and the import now loads, so the mirror could be replaced; until it is,
- * update `PRICES` when the table there changes. A model missing here is priced
- * at the Opus 4.5 tier and named in the output.
+ * per-Mtok numbers, same 5m/1h cache-write split, the same long-prompt tier).
+ * A bare `bun scripts/…` run still cannot use that module: on 2026-10-24
+ * `getModelCosts('claude-opus-5-5')` reached the config through the fast-mode
+ * check and threw `Config accessed before allowed`. So the mirror stays, and
+ * `session-census.test.ts` compares its Claude rows with `getModelCosts`
+ * under `bun test`, where the config is allowed. Until 2026-10-24 there was no
+ * Opus 5.5 or Haiku 5.5 row: both fell to an older tier, and every census
+ * since Opus 5.5 became the default reported about twice the spend. A model
+ * missing here is priced at the Opus 4.5 tier and named in the output.
  *
  * Run:
  *   bun scripts/bench/tokens/session-census.ts --since=2026-09-04
@@ -60,15 +63,30 @@ import {
 // Pricing (mirror of modelCost.ts — $/Mtok)
 // ---------------------------------------------------------------------------
 
-type Price = { input: number; write5m: number; write1h: number; read: number; output: number }
+type Rates = { input: number; write5m: number; write1h: number; read: number; output: number }
+/** `longPrompt`: a request whose prompt is over `above` tokens bills entirely at those rates. */
+type Price = Rates & { longPrompt?: Rates & { above: number } }
 
 const PRICES: ReadonlyArray<{ pattern: RegExp; price: Price }> = [
   { pattern: /fable-5-1/, price: { input: 10, write5m: 12.5, write1h: 20, read: 0.25, output: 50 } },
   { pattern: /fable-5\b/, price: { input: 10, write5m: 12.5, write1h: 20, read: 1, output: 50 } },
   { pattern: /opus-4(-1)?(-\d{8})?$/, price: { input: 15, write5m: 18.75, write1h: 30, read: 1.5, output: 75 } },
+  // Opus 5.5's cache read is 0.05x its input, not the standard 0.1x.
+  { pattern: /opus-5-5/, price: { input: 4, write5m: 5, write1h: 8, read: 0.2, output: 20 } },
   { pattern: /opus-(4-[5-8]|5)/, price: { input: 5, write5m: 6.25, write1h: 10, read: 0.5, output: 25 } },
   { pattern: /sonnet-5/, price: { input: 2, write5m: 2.5, write1h: 4, read: 0.2, output: 10 } },
   { pattern: /sonnet/, price: { input: 3, write5m: 3.75, write1h: 6, read: 0.3, output: 15 } },
+  {
+    pattern: /haiku-5-5/,
+    price: {
+      input: 0.1,
+      write5m: 0.125,
+      write1h: 0.2,
+      read: 0.01,
+      output: 0.5,
+      longPrompt: { above: 100_000, input: 0.5, write5m: 0.625, write1h: 1, read: 0.05, output: 2.5 },
+    },
+  },
   { pattern: /haiku-4-5/, price: { input: 1, write5m: 1.25, write1h: 2, read: 0.1, output: 5 } },
   { pattern: /haiku/, price: { input: 0.8, write5m: 1, write1h: 1.6, read: 0.08, output: 4 } },
   // Non-Anthropic lanes, mirrored from modelCost.ts's family rows (one write
@@ -85,10 +103,21 @@ const PRICES: ReadonlyArray<{ pattern: RegExp; price: Price }> = [
 const DEFAULT_PRICE: Price = { input: 5, write5m: 6.25, write1h: 10, read: 0.5, output: 25 }
 const unpricedModels = new Set<string>()
 
-function priceFor(model: string): Price {
-  for (const { pattern, price } of PRICES) if (pattern.test(model)) return price
+/** The rates one request bills at; `promptTokens` picks a long-prompt tier. */
+export function priceFor(model: string, promptTokens = 0): Rates {
+  for (const { pattern, price } of PRICES) {
+    if (!pattern.test(model)) continue
+    const { longPrompt, ...base } = price
+    if (!longPrompt || promptTokens <= longPrompt.above) return base
+    const { above: _above, ...long } = longPrompt
+    return long
+  }
   unpricedModels.add(model)
   return DEFAULT_PRICE
+}
+
+function promptTokensOf(u: Usage): number {
+  return u.input_tokens + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0)
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +323,7 @@ function split(u: Usage): { w5: number; w1h: number } {
 
 function costParts(c: Call): { input: number; write: number; read: number; output: number } {
   const u = c.usage
-  const p = priceFor(c.model)
+  const p = priceFor(c.model, promptTokensOf(u))
   const s = split(u)
   return {
     input: (u.input_tokens / 1e6) * p.input,
@@ -467,7 +496,7 @@ function buildReport(w: Walk) {
       const c = cs[i]!
       const created = c.usage.cache_creation_input_tokens ?? 0
       const read = c.usage.cache_read_input_tokens ?? 0
-      const price = priceFor(c.model)
+      const price = priceFor(c.model, promptTokensOf(c.usage))
       // 1h premium: what the same write would have cost at the 5m tier.
       premium1h += (split(c.usage).w1h / 1e6) * (price.write1h - price.write5m)
       if (i === 0) continue
@@ -730,4 +759,4 @@ function main(): void {
   }
 }
 
-main()
+if (import.meta.main) main()

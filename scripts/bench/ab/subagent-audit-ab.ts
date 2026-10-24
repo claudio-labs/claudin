@@ -93,12 +93,6 @@ const BENCH_ROOT = join(tmpdir(), 'subagent-audit-ab')
 const SAFE_PATH_RE = /^[A-Za-z0-9/-]+$/
 const STAMP_RE = /[-:]/g
 
-const OPUS_5_5_RE = /opus-5-5/
-const OPUS_5_5: Price = { input: 4, write5m: 5, write1h: 8, read: 0.2, output: 20 }
-function priceOf(model: string): { label: string; price: Price } {
-  return OPUS_5_5_RE.test(model) ? { label: 'opus-5-5 (4/20, cache read 0.2, write 5/8)', price: OPUS_5_5 } : priceFor(model)
-}
-
 // ---------------------------------------------------------------------------
 // Fixture on disk
 // ---------------------------------------------------------------------------
@@ -326,7 +320,7 @@ export function renderReport(rows: readonly Row[], meta: Meta): string {
   return [
     `=== SUB-AGENT AUDIT A/B  model=${meta.model} effort=${meta.effort} reps=${meta.reps} arms=${meta.arms.join(',')} ===`,
     `${meta.bin}: ${meta.version}`,
-    `host variables removed: ${meta.hostEnvRemoved.join(', ') || 'none'}; prices: ${priceOf(meta.model).label}`,
+    `host variables removed: ${meta.hostEnvRemoved.join(', ') || 'none'}; prices: ${priceFor(meta.model).label}`,
     '',
     table(COLUMNS, meta.arms.map(arm => armCells(arm, rows))),
     '',
@@ -458,7 +452,7 @@ async function run(args: Args): Promise<void> {
     version: version(args.bin),
     hostEnvRemoved,
   }
-  const { price } = priceOf(args.model)
+  const { price } = priceFor(args.model)
   console.log(`subagent-audit-ab → ${runDir}\n  workspaces ${workspaces}\n  ${args.bin}: ${meta.version}`)
   const runs: RunRecord[] = []
   for (let rep = 1; rep <= args.reps; rep++) {
@@ -555,7 +549,7 @@ async function main(): Promise<void> {
   if (args.dryRun) process.exit(dryRun())
   if (args.replay) {
     const saved = JSON.parse(readFileSync(args.replay, 'utf8')) as Saved
-    const { price } = priceOf(saved.meta.model)
+    const { price } = priceFor(saved.meta.model)
     console.log(renderReport(saved.runs.map(r => rowOf(r, price)), saved.meta))
     return
   }

@@ -67,11 +67,15 @@ const BAND_MIN = 60_000
 const BAND_TRIGGER_FRACTION = 0.15
 const BAND_MAX_FRACTION = 0.3
 const MIN_EVENT_TOKENS = 4_000
-// Opus 5.x, $/Mtok (mirror of modelCost.ts).
-const READ = 0.5
-const WRITE_5M = 6.25
-const WRITE_1H = 10
-const OUTPUT = 25
+// Opus 5.5, $/Mtok (mirror of modelCost.ts; relief-ceiling-sim.test.ts compares
+// it with getModelCosts). Until 2026-10-24 these were Opus 5's 0.5 read and
+// 10 write: a write cost 20 reads instead of 40, so every replay made a
+// rewrite look half as expensive as it is and overstated what a clip saves.
+export const PRICE = { read: 0.2, write5m: 5, write1h: 8, output: 20 } as const
+const READ = PRICE.read
+const WRITE_5M = PRICE.write5m
+const WRITE_1H = PRICE.write1h
+const OUTPUT = PRICE.output
 const SUMMARY_OUTPUT_TOKENS = 15_000
 
 // Mirrors the tools' own declarations: `clearableResult: true` and
