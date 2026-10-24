@@ -76,6 +76,11 @@ const WOULD_OVERWRITE_RE =
 const UNSTAGED_BLOCKS_RE =
   /^error: cannot (pull with rebase|\w+): (?:You have unstaged changes|Your index contains uncommitted changes)/m
 
+/** Git refused because the working tree or the index is dirty. */
+export function blockedByUncommittedChanges(output: string): boolean {
+  return WOULD_OVERWRITE_RE.test(output) || UNSTAGED_BLOCKS_RE.test(output)
+}
+
 // --- branch / remote ---------------------------------------------------------
 
 const DETACHED_HEAD_RE = /You are not currently on a branch/

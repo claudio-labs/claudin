@@ -216,6 +216,51 @@ export async function syncProjectRuleMap(
 }
 
 /**
+ * Puts the committed map back when this module's own heal is the ONLY change
+ * in the working tree, so a `git pull` or `git switch` that a dirty tree
+ * refused can run. The heal leaves the map `M` on purpose (see the decision in
+ * `hasUncommittedEdits`), and on a branch nobody commits to, like `main`, that
+ * was enough to refuse the next pull: 5 of the 8 Git errors of the
+ * 2026-10-23..24 census, in two repos. Nothing is lost by it — the heal is
+ * derived, and the scheduler redraws it at the end of the turn.
+ *
+ * Only an unstaged change whose diff is numbers this module manages
+ * (`isHealerOnlyDiff`), and only when no other tracked file is dirty: a
+ * staged map, an edited map or a second dirty file leave the tree alone. And
+ * only in the tree the refused command ran in (`commandCwd`): a session's cwd
+ * can sit in a linked worktree under the project root, whose refusal says
+ * nothing about the main checkout's map — and a worktree is never healed, so
+ * its map is never set aside either. Returns whether the map was put back.
+ */
+export async function setAsideHealerOnlyRuleMap(root: string, commandCwd: string): Promise<boolean> {
+  if (isEnvTruthy(process.env[RULE_MAP_KILLSWITCH])) return false
+  const top = await git(root, ['rev-parse', '--show-toplevel'])
+  const gitDir = await git(root, ['rev-parse', '--git-dir'])
+  if (top === null || gitDir === null || gitDir.includes('/worktrees/')) return false
+  if ((await git(commandCwd, ['rev-parse', '--show-toplevel'])) !== top) return false
+  const dirty = await gitRaw(root, ['status', '--porcelain', '--untracked-files=no'])
+  const map = await gitRaw(root, ['status', '--porcelain', '--untracked-files=no', '--', RULE_MAP_GIT_PATH])
+  if (dirty === null || map === null) return false
+  const lines = dirty.split('\n').filter(Boolean)
+  if (lines.length !== 1 || dirty !== map || !lines[0]!.startsWith(' M ')) return false
+
+  const committed = await gitRaw(root, ['show', `HEAD:./${RULE_MAP_GIT_PATH}`])
+  const trackedFiles = await listTrackedFiles(root)
+  if (committed === null || trackedFiles === null) return false
+  let working: string
+  try {
+    working = await getFsImplementation().readFile(join(root, RULE_MAP_RELATIVE_PATH), {
+      encoding: 'utf8',
+    })
+  } catch (e: unknown) {
+    logForDebugging(`[ruleMapAutoSync] set-aside could not read the map in ${root}: ${String(e)}`)
+    return false
+  }
+  if (!isHealerOnlyDiff(committed, working, trackedFiles)) return false
+  return (await gitRaw(root, ['checkout', '--', RULE_MAP_GIT_PATH])) !== null
+}
+
+/**
  * The one line a write announces:
  * `Navigation map · <path> · updated · src/tools/ 682→751`.
  *

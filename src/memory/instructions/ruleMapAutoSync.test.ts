@@ -7,11 +7,16 @@ import {
   RULE_MAP_KILLSWITCH,
   RULE_MAP_RELATIVE_PATH,
   describeRuleMapNotice,
+  setAsideHealerOnlyRuleMap,
   syncProjectRuleMap,
 } from 'src/memory/instructions/ruleMapAutoSync.js'
 
 function run(cwd: string, args: string[]): void {
   execFileSync('git', args, { cwd, stdio: 'ignore' })
+}
+
+function gitOut(cwd: string, args: string[]): string {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' })
 }
 
 const roots: string[] = []
@@ -458,6 +463,83 @@ describe('syncProjectRuleMap', () => {
     const written = readFileSync(mapPath(root), 'utf8')
     expect(written).toContain('- "**/*.py"')
     expect(written).not.toContain('.ts')
+  })
+})
+
+/** A committed map that the sync has since healed: the tree's only change is ` M <map>`. */
+async function healedRepo(): Promise<string> {
+  const root = makeRepo()
+  await syncProjectRuleMap(root)
+  run(root, ['add', '-A'])
+  run(root, ['commit', '-qm', 'map'])
+  grow(root, 'grown')
+  expect((await syncProjectRuleMap(root)).status).toBe('healed')
+  return root
+}
+
+describe('setAsideHealerOnlyRuleMap', () => {
+  test("puts the committed map back when the sync's heal is the only change", async () => {
+    const root = await healedRepo()
+    const committed = gitOut(root, ['show', 'HEAD:.claudin/rules/search-strategy.md'])
+
+    expect(await setAsideHealerOnlyRuleMap(root, root)).toBe(true)
+    expect(gitOut(root, ['status', '--porcelain'])).toBe('')
+    expect(readFileSync(mapPath(root), 'utf8')).toBe(committed)
+  })
+
+  test('runs for a command in a subdirectory of the same checkout', async () => {
+    const root = await healedRepo()
+
+    expect(await setAsideHealerOnlyRuleMap(root, join(root, 'src', 'core'))).toBe(true)
+  })
+
+  test('leaves a map the user edited alone', async () => {
+    const root = await healedRepo()
+    writeFileSync(mapPath(root), `${readFileSync(mapPath(root), 'utf8')}\nA note of mine.\n`)
+    const before = readFileSync(mapPath(root), 'utf8')
+
+    expect(await setAsideHealerOnlyRuleMap(root, root)).toBe(false)
+    expect(readFileSync(mapPath(root), 'utf8')).toBe(before)
+  })
+
+  test('leaves a staged map alone', async () => {
+    const root = await healedRepo()
+    run(root, ['add', RULE_MAP_RELATIVE_PATH])
+
+    expect(await setAsideHealerOnlyRuleMap(root, root)).toBe(false)
+    expect(gitOut(root, ['status', '--porcelain'])).toContain('M  .claudin/rules/search-strategy.md')
+  })
+
+  test('does nothing while another tracked file is dirty too', async () => {
+    const root = await healedRepo()
+    writeFileSync(join(root, 'src', 'core', 'f0.ts'), 'edited\n')
+    const before = readFileSync(mapPath(root), 'utf8')
+
+    expect(await setAsideHealerOnlyRuleMap(root, root)).toBe(false)
+    expect(readFileSync(mapPath(root), 'utf8')).toBe(before)
+  })
+
+  test('does nothing when the command ran in another tree', async () => {
+    const root = await healedRepo()
+    const elsewhere = tempDir('mapsync-wt-')
+    rmSync(elsewhere, { recursive: true, force: true })
+    run(root, ['worktree', 'add', '-q', elsewhere])
+
+    expect(await setAsideHealerOnlyRuleMap(root, elsewhere)).toBe(false)
+    expect(gitOut(root, ['status', '--porcelain', '--untracked-files=no'])).toContain(
+      ' M .claudin/rules/search-strategy.md',
+    )
+  })
+
+  test('does nothing in a clean tree, outside a repo, or under the killswitch', async () => {
+    const clean = makeRepo()
+    expect(await setAsideHealerOnlyRuleMap(clean, clean)).toBe(false)
+    const notRepo = tempDir('mapsync-plain-')
+    expect(await setAsideHealerOnlyRuleMap(notRepo, notRepo)).toBe(false)
+
+    const root = await healedRepo()
+    process.env[RULE_MAP_KILLSWITCH] = '1'
+    expect(await setAsideHealerOnlyRuleMap(root, root)).toBe(false)
   })
 })
 

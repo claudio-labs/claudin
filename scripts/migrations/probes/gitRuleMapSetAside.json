@@ -1,0 +1,69 @@
+{
+  "test": [
+    "src/memory/instructions/ruleMapAutoSync.test.ts",
+    "src/tools/GitTool/batch.test.ts"
+  ],
+  "source": "src/memory/instructions/ruleMapAutoSync.ts",
+  "probes": [
+    {
+      "name": "a second dirty file stops the set-aside",
+      "find": "  if (lines.length !== 1 || dirty !== map || !lines[0]!.startsWith(' M ')) return false\n",
+      "replace": "  if (map === '' || !map.startsWith(' M ')) return false\n"
+    },
+    {
+      "name": "a staged map stops the set-aside",
+      "find": "  if (lines.length !== 1 || dirty !== map || !lines[0]!.startsWith(' M ')) return false\n",
+      "replace": "  if (lines.length !== 1 || dirty !== map) return false\n"
+    },
+    {
+      "name": "an edited map stops the set-aside",
+      "find": "  if (!isHealerOnlyDiff(committed, working, trackedFiles)) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a command in another tree stops the set-aside",
+      "find": "  if ((await git(commandCwd, ['rev-parse', '--show-toplevel'])) !== top) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the killswitch stops the set-aside",
+      "find": "export async function setAsideHealerOnlyRuleMap(root: string, commandCwd: string): Promise<boolean> {\n  if (isEnvTruthy(process.env[RULE_MAP_KILLSWITCH])) return false\n",
+      "replace": "export async function setAsideHealerOnlyRuleMap(root: string, commandCwd: string): Promise<boolean> {\n"
+    },
+    {
+      "name": "the set-aside puts the committed map back",
+      "find": "  return (await gitRaw(root, ['checkout', '--', RULE_MAP_GIT_PATH])) !== null\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "a pull refused for a dirty tree is recognised",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  return WOULD_OVERWRITE_RE.test(output) || UNSTAGED_BLOCKS_RE.test(output)\n",
+      "replace": "  return WOULD_OVERWRITE_RE.test(output)\n"
+    },
+    {
+      "name": "a switch refused for a dirty tree is recognised",
+      "source": "src/tools/GitTool/errors.ts",
+      "find": "  return WOULD_OVERWRITE_RE.test(output) || UNSTAGED_BLOCKS_RE.test(output)\n",
+      "replace": "  return UNSTAGED_BLOCKS_RE.test(output)\n"
+    },
+    {
+      "name": "the command runs again after the set-aside",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "  return { run: await runOneCommand(params), setAside: true }\n",
+      "replace": "  return { run, setAside: true }\n"
+    },
+    {
+      "name": "the result says the map was set aside",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "        output: ruleMapSetAside ? `${RULE_MAP_SET_ASIDE_NOTE}\\n\\n${rendered}` : rendered,\n",
+      "replace": "        output: rendered,\n"
+    },
+    {
+      "name": "the Git tool hands over the project root",
+      "source": "src/tools/GitTool/GitTool.ts",
+      "find": "      ruleMapRoot: input.cwd === undefined ? getProjectRoot() : undefined,\n",
+      "replace": "      ruleMapRoot: undefined,\n"
+    }
+  ]
+}
