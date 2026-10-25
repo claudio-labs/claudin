@@ -22,11 +22,17 @@ import { oneLineCommand } from 'src/tools/GitTool/display.js'
 import {
   blockedByUncommittedChanges,
   diagnoseGitFailure,
+  filesGitWouldOverwrite,
   isEnvironmentalFailure,
   readOnlyAnswer,
   reportsNoChecksYet,
 } from 'src/tools/GitTool/errors.js'
-import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
+import {
+  ghCommandPair,
+  inPlaceGitSubcommandOf,
+  isReadOnlyGitCommand,
+  isWatchGitCommand,
+} from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
   GitCommandOutcome,
@@ -86,6 +92,13 @@ const NO_CHECKS_RETRY_MS = 10_000
 /** Prepended to a command's output when `runSettingAsideRuleMap` put the map back. */
 export const RULE_MAP_SET_ASIDE_NOTE =
   'The navigation-map sync had refreshed only the counts in `.claudin/rules/search-strategy.md`, which is what git refused over. That refresh was put back and the command ran again; the map is redrawn at the end of the turn.'
+
+/**
+ * The commands a dirty-tree refusal stops before they change anything, so a
+ * second run repeats nothing. A cherry-pick, revert or am of several commits
+ * can apply one and be refused on the next, and is left alone.
+ */
+const SET_ASIDE_SUBCOMMANDS = new Set(['pull', 'switch', 'checkout', 'merge', 'rebase'])
 
 export type RunGitBatchOptions = {
   commands: readonly string[]
@@ -314,18 +327,23 @@ async function runWaitingForChecks(
  * Run a command, and when git refuses it only because the navigation map's
  * own heal left the tree dirty, put the heal back and run it once more
  * (`setAsideHealerOnlyRuleMap` decides; anything else dirty leaves the
- * refusal as it was). The first run made no change — a refusal for a dirty
- * tree never does — so running again is the command the model asked for.
+ * refusal as it was). Only for a command in `SET_ASIDE_SUBCOMMANDS` that acts
+ * on the cwd's repository, and only when the files git names, if it names
+ * any, are the map: then the first run changed nothing, and running again is
+ * the command the model asked for.
  */
 async function runSettingAsideRuleMap(
   params: Parameters<typeof runOneCommand>[0],
+  command: string,
   ruleMapRoot: string,
 ): Promise<{ run: CommandRun; setAside: boolean }> {
   const run = await runOneCommand(params)
   if (run.code === 0 || run.interrupted || run.stall || !blockedByUncommittedChanges(run.text)) {
     return { run, setAside: false }
   }
-  if (!(await setAsideHealerOnlyRuleMap(ruleMapRoot, getCwd()))) return { run, setAside: false }
+  if (!SET_ASIDE_SUBCOMMANDS.has(inPlaceGitSubcommandOf(command) ?? '')) return { run, setAside: false }
+  const setAside = await setAsideHealerOnlyRuleMap(ruleMapRoot, getCwd(), filesGitWouldOverwrite(run.text))
+  if (!setAside) return { run, setAside: false }
   return { run: await runOneCommand(params), setAside: true }
 }
 
@@ -405,7 +423,7 @@ export async function runGitBatch(
       } else if (opts.ruleMapRoot === undefined) {
         run = await runOneCommand(params)
       } else {
-        ;({ run, setAside: ruleMapSetAside } = await runSettingAsideRuleMap(params, opts.ruleMapRoot))
+        ;({ run, setAside: ruleMapSetAside } = await runSettingAsideRuleMap(params, command, opts.ruleMapRoot))
       }
       const rawStdout = run.text
       const stall = run.stall ?? pendingChecksStall(command, run.code, run.ranMs)

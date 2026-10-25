@@ -347,6 +347,23 @@ describe('a pull or switch refused only over the navigation map the sync healed'
     expect(result.outcomes[0]?.output).not.toContain('cherry-pick is already in progress')
   }, 60_000)
 
+  test('a cherry-pick refused over the map before it started is still not run again', async () => {
+    // Nothing is in progress and git names only the map, so only the command
+    // list keeps a cherry-pick out of the set-aside.
+    const root = await healedRepo()
+    git(root, ['switch', '-q', '-c', 'side'])
+    writeFileSync(join(root, '.claudin', 'rules', 'search-strategy.md'), 'another map\n')
+    git(root, ['commit', '-qam', 'B'])
+    git(root, ['switch', '-q', 'main'])
+    files(root, 'grown', 40)
+    expect((await syncProjectRuleMap(root)).status).toBe('healed')
+
+    const result = await runIn(root, ['git cherry-pick side'], root)
+
+    expect(result.outcomes[0]?.exitCode).not.toBe(0)
+    expect(result.outcomes[0]?.output).not.toContain(RULE_MAP_SET_ASIDE_NOTE)
+  }, 60_000)
+
   test('a command git -C points at another repo never sets the session map aside', async () => {
     const session = await healedRepo()
     files(session, 'grown', 40)

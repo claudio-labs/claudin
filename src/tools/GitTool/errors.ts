@@ -81,6 +81,22 @@ export function blockedByUncommittedChanges(output: string): boolean {
   return WOULD_OVERWRITE_RE.test(output) || UNSTAGED_BLOCKS_RE.test(output)
 }
 
+/**
+ * The paths a "would be overwritten" refusal lists, as git names them (from
+ * the top of the repository); null for a refusal that lists none, like
+ * "cannot pull with rebase: You have unstaged changes".
+ */
+export function filesGitWouldOverwrite(output: string): string[] | null {
+  const head = WOULD_OVERWRITE_RE.exec(output)
+  if (!head) return null
+  const files: string[] = []
+  for (const line of output.slice(head.index + head[0].length).split('\n').slice(1)) {
+    if (!line.startsWith('\t')) break
+    files.push(line.slice(1))
+  }
+  return files
+}
+
 // --- branch / remote ---------------------------------------------------------
 
 const DETACHED_HEAD_RE = /You are not currently on a branch/

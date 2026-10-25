@@ -493,6 +493,19 @@ describe('setAsideHealerOnlyRuleMap', () => {
     expect(await setAsideHealerOnlyRuleMap(root, join(root, 'src', 'core'))).toBe(true)
   })
 
+  test('runs when the refusal names the map, and not when it names another file', async () => {
+    const root = await healedRepo()
+    expect(await setAsideHealerOnlyRuleMap(root, root, ['src/core/f0.ts'])).toBe(false)
+    expect(await setAsideHealerOnlyRuleMap(root, root, ['.claudin/rules/search-strategy.md'])).toBe(true)
+  })
+
+  test('leaves a repository with an operation in progress alone', async () => {
+    const root = await healedRepo()
+    writeFileSync(join(root, '.git', 'MERGE_HEAD'), `${gitOut(root, ['rev-parse', 'HEAD'])}\n`)
+
+    expect(await setAsideHealerOnlyRuleMap(root, root)).toBe(false)
+  })
+
   test('leaves a map the user edited alone', async () => {
     const root = await healedRepo()
     writeFileSync(mapPath(root), `${readFileSync(mapPath(root), 'utf8')}\nA note of mine.\n`)

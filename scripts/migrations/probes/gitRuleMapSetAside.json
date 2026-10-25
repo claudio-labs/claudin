@@ -1,7 +1,9 @@
 {
   "test": [
     "src/memory/instructions/ruleMapAutoSync.test.ts",
-    "src/tools/GitTool/batch.test.ts"
+    "src/tools/GitTool/batch.test.ts",
+    "src/tools/GitTool/errors.test.ts",
+    "src/tools/GitTool/grammar.test.ts"
   ],
   "source": "src/memory/instructions/ruleMapAutoSync.ts",
   "probes": [
@@ -27,8 +29,8 @@
     },
     {
       "name": "the killswitch stops the set-aside",
-      "find": "export async function setAsideHealerOnlyRuleMap(root: string, commandCwd: string): Promise<boolean> {\n  if (isEnvTruthy(process.env[RULE_MAP_KILLSWITCH])) return false\n",
-      "replace": "export async function setAsideHealerOnlyRuleMap(root: string, commandCwd: string): Promise<boolean> {\n"
+      "find": "): Promise<boolean> {\n  if (isEnvTruthy(process.env[RULE_MAP_KILLSWITCH])) return false\n  // Status first",
+      "replace": "): Promise<boolean> {\n  // Status first"
     },
     {
       "name": "the set-aside puts the committed map back",
@@ -64,6 +66,28 @@
       "source": "src/tools/GitTool/GitTool.ts",
       "find": "      ruleMapRoot: input.cwd === undefined ? getProjectRoot() : undefined,\n",
       "replace": "      ruleMapRoot: undefined,\n"
+    },
+    {
+      "name": "the refusal's named files must be the map",
+      "find": "  if (namedFiles !== null && (namedFiles.length !== 1 || namedFiles[0] !== lines[0]!.slice(3))) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "an operation in progress stops the set-aside",
+      "find": "  if (OPERATION_IN_PROGRESS.some(name => fs.existsSync(join(gitDir, name)))) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "only commands a refusal stops before any change",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "  if (!SET_ASIDE_SUBCOMMANDS.has(inPlaceGitSubcommandOf(command) ?? '')) return { run, setAside: false }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a repointed command has no in-place subcommand",
+      "source": "src/tools/GitTool/grammar.ts",
+      "find": "  return repointed ? null : subcommand\n",
+      "replace": "  return subcommand\n"
     }
   ]
 }

@@ -806,6 +806,18 @@ export function gitSubcommandOf(raw: string): string | null {
 }
 
 /**
+ * The subcommand of a `git` command that acts on the repository it runs in:
+ * null for anything but `git`, and when a `-C`, `--git-dir` or `-c` global
+ * points it somewhere else.
+ */
+export function inPlaceGitSubcommandOf(raw: string): string | null {
+  const tokens = raw.trim().split(WHITESPACE_RE)
+  if (tokens[0] !== 'git') return null
+  const { subcommand, repointed } = resolveGitSubcommand(tokens.slice(1))
+  return repointed ? null : subcommand
+}
+
+/**
  * A batch is read-only only when EVERY element is, so a mixed batch is refused
  * in plan mode rather than half-executed. An empty list is not read-only —
  * there is nothing to vouch for.

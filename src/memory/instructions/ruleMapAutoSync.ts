@@ -45,6 +45,16 @@ const RULE_MAP_GIT_PATH = posix.join('.claudin', 'rules', 'search-strategy.md')
 
 export const RULE_MAP_KILLSWITCH = 'CLAUDIN_DISABLE_RULE_MAP_SYNC'
 
+/** Under the git dir while a merge, rebase, cherry-pick or revert is unfinished. */
+const OPERATION_IN_PROGRESS = [
+  'MERGE_HEAD',
+  'CHERRY_PICK_HEAD',
+  'REVERT_HEAD',
+  'sequencer',
+  'rebase-merge',
+  'rebase-apply',
+] as const
+
 const GIT_TIMEOUT_MS = 10_000
 
 /**
@@ -230,26 +240,40 @@ export async function syncProjectRuleMap(
  * only in the tree the refused command ran in (`commandCwd`): a session's cwd
  * can sit in a linked worktree under the project root, whose refusal says
  * nothing about the main checkout's map — and a worktree is never healed, so
- * its map is never set aside either. Returns whether the map was put back.
+ * its map is never set aside either. `namedFiles` are the paths git's refusal
+ * listed, when it listed any: they must be the map and nothing else. A
+ * repository with an operation in progress (a merge, rebase, cherry-pick or
+ * revert) is left alone too. Returns whether the map was put back.
  */
-export async function setAsideHealerOnlyRuleMap(root: string, commandCwd: string): Promise<boolean> {
+export async function setAsideHealerOnlyRuleMap(
+  root: string,
+  commandCwd: string,
+  namedFiles: readonly string[] | null = null,
+): Promise<boolean> {
   if (isEnvTruthy(process.env[RULE_MAP_KILLSWITCH])) return false
-  const top = await git(root, ['rev-parse', '--show-toplevel'])
-  const gitDir = await git(root, ['rev-parse', '--git-dir'])
-  if (top === null || gitDir === null || gitDir.includes('/worktrees/')) return false
-  if ((await git(commandCwd, ['rev-parse', '--show-toplevel'])) !== top) return false
+  // Status first: a tree with anything else dirty, the common refusal, costs
+  // two spawns and nothing more.
   const dirty = await gitRaw(root, ['status', '--porcelain', '--untracked-files=no'])
   const map = await gitRaw(root, ['status', '--porcelain', '--untracked-files=no', '--', RULE_MAP_GIT_PATH])
   if (dirty === null || map === null) return false
   const lines = dirty.split('\n').filter(Boolean)
   if (lines.length !== 1 || dirty !== map || !lines[0]!.startsWith(' M ')) return false
+  // Porcelain paths, like the ones a refusal lists, are from the top of the repository.
+  if (namedFiles !== null && (namedFiles.length !== 1 || namedFiles[0] !== lines[0]!.slice(3))) return false
+
+  const top = await git(root, ['rev-parse', '--show-toplevel'])
+  const gitDir = await git(root, ['rev-parse', '--absolute-git-dir'])
+  if (top === null || gitDir === null || gitDir.includes('/worktrees/')) return false
+  if ((await git(commandCwd, ['rev-parse', '--show-toplevel'])) !== top) return false
+  const fs = getFsImplementation()
+  if (OPERATION_IN_PROGRESS.some(name => fs.existsSync(join(gitDir, name)))) return false
 
   const committed = await gitRaw(root, ['show', `HEAD:./${RULE_MAP_GIT_PATH}`])
   const trackedFiles = await listTrackedFiles(root)
   if (committed === null || trackedFiles === null) return false
   let working: string
   try {
-    working = await getFsImplementation().readFile(join(root, RULE_MAP_RELATIVE_PATH), {
+    working = await fs.readFile(join(root, RULE_MAP_RELATIVE_PATH), {
       encoding: 'utf8',
     })
   } catch (e: unknown) {

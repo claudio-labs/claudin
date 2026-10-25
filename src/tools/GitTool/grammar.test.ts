@@ -3,11 +3,25 @@ import { execFileSync } from 'node:child_process'
 import {
   acceptsGitCommand,
   ghCommandPair,
+  inPlaceGitSubcommandOf,
   isReadOnlyGitBatch,
   isReadOnlyGitCommand,
   isWatchGitCommand,
   parseGitCommand,
 } from 'src/tools/GitTool/grammar.js'
+
+describe('inPlaceGitSubcommandOf', () => {
+  test('names the subcommand past valueless globals', () => {
+    expect(inPlaceGitSubcommandOf('git pull --rebase')).toBe('pull')
+    expect(inPlaceGitSubcommandOf('git --no-pager switch main')).toBe('switch')
+  })
+
+  test('is null for a command pointed at another repository, and for gh', () => {
+    expect(inPlaceGitSubcommandOf('git -C ../other checkout main')).toBeNull()
+    expect(inPlaceGitSubcommandOf('git --git-dir=/x/.git pull')).toBeNull()
+    expect(inPlaceGitSubcommandOf('gh pr checks')).toBeNull()
+  })
+})
 
 describe('accept / refuse', () => {
   test('accepts a plain git or gh command', () => {
