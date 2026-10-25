@@ -14,16 +14,25 @@ import { readFullShellOutput } from 'src/platform/shell/fullOutput.js'
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
 import { trimShellStdout } from 'src/tools/shellToolResultMappers.js'
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
+import { setAsideHealerOnlyRuleMap } from 'src/memory/instructions/ruleMapAutoSync.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
 import { applyGitDelta } from 'src/tools/GitTool/delta.js'
 import { oneLineCommand } from 'src/tools/GitTool/display.js'
 import {
+  blockedByUncommittedChanges,
   diagnoseGitFailure,
+  filesGitWouldOverwrite,
   isEnvironmentalFailure,
   readOnlyAnswer,
   reportsNoChecksYet,
 } from 'src/tools/GitTool/errors.js'
-import { ghCommandPair, isReadOnlyGitCommand, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
+import {
+  ghCommandPair,
+  inPlaceGitSubcommandOf,
+  isReadOnlyGitCommand,
+  isWatchGitCommand,
+} from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
   GitCommandOutcome,
@@ -80,6 +89,17 @@ const GH_CHECKS_PENDING_EXIT = 8
 const NO_CHECKS_GRACE_MS = 90_000
 const NO_CHECKS_RETRY_MS = 10_000
 
+/** Prepended to a command's output when `runSettingAsideRuleMap` put the map back. */
+export const RULE_MAP_SET_ASIDE_NOTE =
+  'The navigation-map sync had refreshed only the counts in `.claudin/rules/search-strategy.md`, which is what git refused over. That refresh was put back and the command ran again; the map is redrawn at the end of the turn.'
+
+/**
+ * The commands a dirty-tree refusal stops before they change anything, so a
+ * second run repeats nothing. A cherry-pick, revert or am of several commits
+ * can apply one and be refused on the next, and is left alone.
+ */
+const SET_ASIDE_SUBCOMMANDS = new Set(['pull', 'switch', 'checkout', 'merge', 'rebase'])
+
 export type RunGitBatchOptions = {
   commands: readonly string[]
   /**
@@ -120,6 +140,13 @@ export type RunGitBatchOptions = {
   /** Override `NO_CHECKS_GRACE_MS` / `NO_CHECKS_RETRY_MS`, for the same reason. */
   noChecksGraceMs?: number
   noChecksRetryMs?: number
+  /**
+   * The project root whose navigation map may be set aside when it alone
+   * blocks a command (`runSettingAsideRuleMap`). `GitTool.ts` passes the
+   * session's project root when the batch runs in the session's own
+   * checkout; absent, nothing is set aside.
+   */
+  ruleMapRoot?: string
 }
 
 /**
@@ -297,6 +324,30 @@ async function runWaitingForChecks(
 }
 
 /**
+ * Run a command, and when git refuses it only because the navigation map's
+ * own heal left the tree dirty, put the heal back and run it once more
+ * (`setAsideHealerOnlyRuleMap` decides; anything else dirty leaves the
+ * refusal as it was). Only for a command in `SET_ASIDE_SUBCOMMANDS` that acts
+ * on the cwd's repository, and only when the files git names, if it names
+ * any, are the map: then the first run changed nothing, and running again is
+ * the command the model asked for.
+ */
+async function runSettingAsideRuleMap(
+  params: Parameters<typeof runOneCommand>[0],
+  command: string,
+  ruleMapRoot: string,
+): Promise<{ run: CommandRun; setAside: boolean }> {
+  const run = await runOneCommand(params)
+  if (run.code === 0 || run.interrupted || run.stall || !blockedByUncommittedChanges(run.text)) {
+    return { run, setAside: false }
+  }
+  if (!SET_ASIDE_SUBCOMMANDS.has(inPlaceGitSubcommandOf(command) ?? '')) return { run, setAside: false }
+  const setAside = await setAsideHealerOnlyRuleMap(ruleMapRoot, getCwd(), filesGitWouldOverwrite(run.text))
+  if (!setAside) return { run, setAside: false }
+  return { run: await runOneCommand(params), setAside: true }
+}
+
+/**
  * Whether a failed command stops the rest of its batch. `&&` semantics are what
  * the model meant by a burst — running `git commit` after `git add` failed is
  * worse than stopping — but when the failed command and everything after it
@@ -361,14 +412,19 @@ export async function runGitBatch(
               })
           : undefined,
       }
-      const run =
-        watch && ghCommandPair(command) === 'pr checks'
-          ? await runWaitingForChecks(
-              params,
-              opts.noChecksGraceMs ?? NO_CHECKS_GRACE_MS,
-              opts.noChecksRetryMs ?? NO_CHECKS_RETRY_MS,
-            )
-          : await runOneCommand(params)
+      let run: CommandRun
+      let ruleMapSetAside = false
+      if (watch && ghCommandPair(command) === 'pr checks') {
+        run = await runWaitingForChecks(
+          params,
+          opts.noChecksGraceMs ?? NO_CHECKS_GRACE_MS,
+          opts.noChecksRetryMs ?? NO_CHECKS_RETRY_MS,
+        )
+      } else if (opts.ruleMapRoot === undefined) {
+        run = await runOneCommand(params)
+      } else {
+        ;({ run, setAside: ruleMapSetAside } = await runSettingAsideRuleMap(params, command, opts.ruleMapRoot))
+      }
       const rawStdout = run.text
       const stall = run.stall ?? pendingChecksStall(command, run.code, run.ranMs)
 
@@ -410,7 +466,7 @@ export async function runGitBatch(
         command,
         effectiveCommand,
         exitCode: effectiveCode,
-        output: rendered,
+        output: ruleMapSetAside ? `${RULE_MAP_SET_ASIDE_NOTE}\n\n${rendered}` : rendered,
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),
         ...(answer !== null ? { answer: answer.text } : {}),

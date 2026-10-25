@@ -145,6 +145,15 @@ bun test src/__tests__/upstreamCodename.test.ts              # upstream codename
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 ```
 
+### A bench script cannot import `modelCost.ts`
+
+A bare `bun scripts/…` run has no config loaded, and `getModelCosts` reads it
+(the Opus 5.5 fast-mode check), so it throws `Config accessed before allowed`.
+Bench price tables are local mirrors on purpose; each one's test compares its
+Claude rows with `getModelCosts` under `bun test`, where the config loads
+(`session-census.test.ts`, `forkBench.test.ts`, `relief-ceiling-sim.test.ts`).
+A new mirror gets the same test.
+
 ### A fake binary on PATH needs `CLAUDIN_ENV_FILE`, not `process.env.PATH`
 
 Setting `process.env.PATH` does NOT put a stand-in `gh`/`git` in front of the

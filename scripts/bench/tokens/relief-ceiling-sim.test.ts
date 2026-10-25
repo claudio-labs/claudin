@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import { KEEP_RECENT_INPUT_RESULTS } from 'src/agent/compact/stableStubState/clipFrontier.js'
-import { parseArgs, simulate, type Args, type Thread } from './relief-ceiling-sim'
+import { getModelCosts } from 'src/providers/usage/modelCost.js'
+import { parseArgs, PRICE, simulate, type Args, type Thread } from './relief-ceiling-sim'
 
 const BASE: Args = parseArgs(['--main'])
 
@@ -30,6 +31,28 @@ describe('parseArgs', () => {
     expect(parseArgs(['--input-keep=2']).inputKeep).toBe(2)
     expect(() => parseArgs(['--input-keep=x'])).toThrow('--input-keep')
     expect(() => parseArgs(['--input-keep=-1'])).toThrow('--input-keep')
+  })
+
+  test('prices are Opus 5.5 as modelCost.ts has them', () => {
+    const app = getModelCosts('claude-opus-5-5', { input_tokens: 1, output_tokens: 1 } as never)
+    expect(PRICE).toEqual({
+      read: app.promptCacheReadTokens,
+      write5m: app.promptCacheWriteTokens,
+      write1h: app.promptCacheWrite1hTokens,
+      output: app.outputTokens,
+    })
+  })
+
+  test('--compact-at, --thinking-drop and --regrowth default off and reject what makes no sense', () => {
+    expect(BASE).toMatchObject({ compactAt: false, thinkingDrop: 0, regrowth: 1 })
+    expect(parseArgs(['--compact-at', '--thinking-drop=0.34', '--regrowth=1.55'])).toMatchObject({
+      compactAt: true,
+      thinkingDrop: 0.34,
+      regrowth: 1.55,
+    })
+    expect(() => parseArgs(['--thinking-drop=1'])).toThrow('--thinking-drop')
+    expect(() => parseArgs(['--thinking-drop=x'])).toThrow('--thinking-drop')
+    expect(() => parseArgs(['--regrowth=0.5'])).toThrow('--regrowth')
   })
 })
 
@@ -64,5 +87,52 @@ describe('simulate', () => {
     const inputs: Thread = { ...THREAD, blocks: [4, 5, 6, 7].map(call => ({ call, tokens: 30_000, input: true })) }
     expect(simulate(inputs, 70_000, { ...BASE, clipAll: true }).events).toBe(0)
     expect(simulate(inputs, 70_000, { ...BASE, clipAll: true, inputKeep: 2 }).events).toBeGreaterThan(0)
+  })
+
+  test('--compact-at compacts on crossing the trigger, without clipping', () => {
+    const o = simulate(THREAD, 70_000, { ...BASE, compactAt: true, postCompact: 20_000 })
+    expect(o.events).toBe(0)
+    expect(o.compactions).toBe(1)
+    expect(o.compact).toBeGreaterThan(0)
+    // Calls 8 and 9 read 20k + growth instead of 80k and 90k.
+    expect(o.saved).toBeGreaterThan(simulate(THREAD, 70_000, BASE).saved)
+  })
+
+  test('--thinking-drop frees more on the first clip only', () => {
+    const plain = simulate(THREAD, 70_000, { ...BASE, clipAll: true })
+    const drop = simulate(THREAD, 70_000, { ...BASE, clipAll: true, thinkingDrop: 0.34 })
+    expect(drop.events).toBe(plain.events)
+    expect(drop.saved).toBeGreaterThan(plain.saved)
+    expect(drop.rewrite).toBeLessThan(plain.rewrite)
+  })
+
+  test('--regrowth charges the re-reads after the first event, and is a no-op at 1', () => {
+    const base = simulate(THREAD, 70_000, BASE)
+    const same = simulate(THREAD, 70_000, { ...BASE, regrowth: 1 })
+    const regrown = simulate(THREAD, 70_000, { ...BASE, regrowth: 2 })
+    expect(same).toEqual(base)
+    expect(regrown.saved).toBeLessThan(base.saved)
+    // Faster regrowth can only bring the next event sooner.
+    expect(regrown.events).toBeGreaterThanOrEqual(base.events)
+  })
+
+  test('--thinking-drop applies again to the first clip after a compaction', () => {
+    // Review finding: in the app the drop is gated on the view holding no
+    // clipped result (`microCompact.ts`), which a compacted view does not.
+    const thread: Thread = {
+      name: 'r',
+      ctx: [10, 20, 30, 40, 68, 68.5, 69, 75, 90, 100, 110, 120, 130, 140, 150, 160].map(k => k * 1000),
+      blocks: [
+        { call: 4, tokens: 9_000 },
+        { call: 11, tokens: 9_000 },
+      ],
+    }
+    const args = { ...parseArgs(['--main', '--clip-all', '--starved-compact']), postCompact: 20_000 }
+    const plain = simulate(thread, 70_000, args)
+    const drop = simulate(thread, 70_000, { ...args, thinkingDrop: 0.34 })
+
+    expect(plain.events).toBe(2)
+    expect(plain.compactions).toBeGreaterThanOrEqual(1)
+    expect(drop.saved).toBeGreaterThan(plain.saved)
   })
 })

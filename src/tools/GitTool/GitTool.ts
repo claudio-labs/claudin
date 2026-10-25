@@ -4,6 +4,7 @@ import { isAbsolute } from 'path'
 import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { isReadOnlyGitBatch, parseGitCommand } from 'src/tools/GitTool/grammar.js'
 import { checkGitBatchPermission } from 'src/tools/GitTool/permissions.js'
 import { DESCRIPTION, GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
@@ -223,6 +224,9 @@ export const GitTool = buildTool({
       // Rule 1 of the delta lane: without this id it cannot tell whether the
       // body it would elide is still visible to the model, and it declines.
       toolUseId: context.toolUseId,
+      // Only the session's own checkout carries the map the sync heals; a
+      // batch pointed elsewhere never has it set aside.
+      ruleMapRoot: input.cwd === undefined ? getProjectRoot() : undefined,
       // Purely a TUI signal: every `progress` message is dropped before the
       // request is serialized (`utils/messages/normalize.ts:965`), so this
       // cannot add a token to what the model reads.

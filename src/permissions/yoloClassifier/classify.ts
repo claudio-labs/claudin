@@ -29,8 +29,8 @@ import {
 } from 'src/permissions/yoloClassifier/prompts.js'
 import type { TranscriptEntry } from 'src/permissions/yoloClassifier/transcript.js'
 import {
-  MAX_CLASSIFIER_TRANSCRIPT_CHARS,
   buildToolLookup,
+  classifierTranscriptBudget,
   serializeTranscriptForClassifier,
   toCompact,
 } from 'src/permissions/yoloClassifier/transcript.js'
@@ -498,14 +498,10 @@ async function classifyYoloActionUnbounded(
   }
 
   const systemPrompt = await buildYoloSystemPrompt(context)
-  const transcriptBudget = Math.max(
-    0,
-    MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionCompact.length,
-  )
   const serializedTranscript = serializeTranscriptForClassifier(
     messages,
     tools,
-    transcriptBudget,
+    classifierTranscriptBudget(actionCompact.length),
   )
   const claudeMdMessage = buildClaudeMdMessage()
   const prefixMessages: Anthropic.MessageParam[] = claudeMdMessage

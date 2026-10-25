@@ -33,7 +33,7 @@ import {
   repoWithUnreachableOrigin,
   writeRepoFile,
 } from 'src/tools/GitTool/__fixtures__/repo.js'
-import { diagnose, diagnoseGitFailure, readOnlyAnswer } from 'src/tools/GitTool/errors.js'
+import { diagnose, diagnoseGitFailure, filesGitWouldOverwrite, readOnlyAnswer } from 'src/tools/GitTool/errors.js'
 
 afterAll(() => {
   cleanupAllRepos()
@@ -147,6 +147,13 @@ describe('working tree in the way', () => {
     const line = diagnoseReal(repo.path, ['checkout', repo.feature])
     expect(line).toContain('would be overwritten by checkout')
     expect(line).toContain('git stash')
+  })
+
+  test('filesGitWouldOverwrite lists the paths git names, and nothing for a refusal that names none', () => {
+    const repo = conflictingBranches()
+    writeRepoFile(repo.path, repo.conflictPath, 'dirty local\n')
+    expect(filesGitWouldOverwrite(fail(repo.path, ['checkout', repo.feature]).output)).toEqual([repo.conflictPath])
+    expect(filesGitWouldOverwrite(fail(repo.path, ['rebase', repo.feature]).output)).toBeNull()
   })
 
   test('rebase with a dirty tree', () => {

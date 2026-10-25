@@ -76,7 +76,7 @@ import {
 import { dirname, join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { REPO_ROOT } from '../../repoRoot'
-import { cost, loadSession, priceFor, range, rangesOverlap, type Price } from './forkBench.ts'
+import { cost, loadSession, priceFor, range, rangesOverlap } from './forkBench.ts'
 import { runHeadless, transcriptPath, type HeadlessRun } from './headlessProbe.ts'
 
 /** 'baseline', or the label of a --variant. */
@@ -427,22 +427,6 @@ function cliFlags(a: Args): string[] {
 const slug = (arm: Arm): string => arm.replace(/[^A-Za-z0-9]/g, '-')
 
 // ---------------------------------------------------------------------------
-// Pricing — forkBench's table, corrected for Opus 5.5
-// ---------------------------------------------------------------------------
-
-/**
- * `forkBench.priceFor` matches `/opus-5/` first, which bills Opus 5.5 at Opus
- * 5's 5/25 with a 0.5 cache read. Opus 5.5 is COST_TIER_4_20
- * (src/providers/usage/modelCost.ts), the row session-cache-ab uses.
- */
-const OPUS_5_5_RE = /opus-5-5/
-const OPUS_5_5: Price = { input: 4, write5m: 5, write1h: 8, read: 0.2, output: 20 }
-
-function priceOf(model: string): Price {
-  return OPUS_5_5_RE.test(model) ? OPUS_5_5 : priceFor(model).price
-}
-
-// ---------------------------------------------------------------------------
 // Session analysis
 // ---------------------------------------------------------------------------
 
@@ -590,12 +574,12 @@ function analyze(x: SessionInput): SessionResult {
       description: c.description,
       calls: c.calls.length,
       model: childModel,
-      costUsd: cost(c.calls, priceOf(childModel)).total,
+      costUsd: cost(c.calls, priceFor(childModel).price).total,
     }
   })
   const tools: Record<string, number> = {}
   for (const u of scan.uses) tools[u.name] = (tools[u.name] ?? 0) + 1
-  const parentCostUsd = cost(session.parent, priceOf(model)).total
+  const parentCostUsd = cost(session.parent, priceFor(model).price).total
   const subagentCostUsd = children.reduce((a, c) => a + c.costUsd, 0)
   return {
     arm: x.arm,

@@ -1,0 +1,33 @@
+{
+  "test": [
+    "src/tools/GitTool/GitTool.test.ts"
+  ],
+  "source": "src/tools/GitTool/GitTool.ts",
+  "probes": [
+    {
+      "name": "the classifier sees one command per line",
+      "find": "    return input.commands.join('\\n')\n",
+      "replace": "    return input.commands.join(' ')\n"
+    },
+    {
+      "name": "a cwd that is a file is declined",
+      "find": "        if (!stats.isDirectory()) {\n",
+      "replace": "        if (false) {\n"
+    },
+    {
+      "name": "call hands the batch's result back as data",
+      "find": "    return { data: result }\n",
+      "replace": "    return { data: { ...result, outcomes: [] } }\n"
+    },
+    {
+      "name": "a failed batch is an error result",
+      "find": "      is_error: batchFailed(output),\n",
+      "replace": "      is_error: false,\n"
+    },
+    {
+      "name": "the tool is never concurrency-safe",
+      "find": "    // git serialises on .git/index anyway, and a batch may mutate.\n    return false\n",
+      "replace": "    // git serialises on .git/index anyway, and a batch may mutate.\n    return true\n"
+    }
+  ]
+}

@@ -49,6 +49,15 @@ an `edited_text_file` diff appended to the next turn (it does NOT stay as sent).
 - **The map can change mid-session.** Expect `M .claudin/rules/search-strategy.md`
   in `git status` after a turn that staged or committed files. Stage it by name if
   it belongs in your commit.
+- **The Git tool sets that heal aside when it is all that blocks a command
+  (2026-10-24).** That `M` refused the next `git pull`/`git switch` on `main`: 5
+  of the 8 Git errors in the 10-23..24 census. When git refuses for a dirty tree
+  and the only change is an unstaged, numbers-only heal in the command's own
+  tree, `setAsideHealerOnlyRuleMap` puts the committed map back and the Git tool
+  runs the command once more, saying so. The sync redraws the map at the end of
+  the turn. Any other dirty file, an edited or staged map, a worktree, or a
+  batch with its own `cwd` leaves the refusal alone. Bash `git pull` is not
+  covered.
 - **A test that drives stop hooks is safe.** The scheduler is a no-op until
   `initRuleMapSync()` (backgroundHousekeeping), so it cannot write the real checkout.
   A test that calls `/init` or `/map sync` must set `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`,

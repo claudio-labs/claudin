@@ -1,13 +1,61 @@
+/**
+ * The auto-mode classifier's view of the conversation: user text and
+ * tool_use inputs, serialized one block per entry, under a char budget.
+ *
+ * On by default: once a session outgrows the budget, the transcript is cut at
+ * stable chunk boundaries (see `CLASSIFIER_TRANSCRIPT_CHUNK_CHARS`), so the
+ * classifier's prompt cache survives from one call to the next.
+ * Killswitch: `CLAUDIN_CLASSIFIER_STABLE_CUT=0` restores the newest-first fill
+ * and the budget that shrinks with the action (`classifierTranscriptBudget`).
+ */
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Tool, Tools } from 'src/tools/Tool.js'
 import type { Message, MessageOrigin } from 'src/shared/types/message.js'
 import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
 export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
 const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
+
+/**
+ * Where the transcript is cut once a session outgrows the budget.
+ *
+ * The classifier caches its prompt up to the action, so a call reads back the
+ * previous call's transcript only if that transcript is still its prefix. A
+ * newest-first fill breaks that on every call past the budget: each new entry
+ * pushes the oldest kept one out, everything after the CLAUDE.md block shifts,
+ * and the whole transcript is written again at the 1h price. The 2026-10-23..24
+ * census measured 15.7k written per call in a long session against 1.2k in a
+ * short one, about 90% of the classifier's spend.
+ *
+ * So the cut lands on chunk boundaries counted from the FIRST entry: a boundary
+ * follows the entry that brings a chunk to `CLASSIFIER_TRANSCRIPT_CHUNK_CHARS`,
+ * and one comes before any entry that large on its own, so a turn of many
+ * parallel calls is a chunk by itself rather than the tail of a small one. The
+ * transcript starts at the first boundary whose suffix fits. Appending never
+ * moves a boundary, so the cut moves once per chunk of growth and the blocks it
+ * keeps are byte-identical from one call to the next.
+ */
+export const CLASSIFIER_TRANSCRIPT_CHUNK_CHARS = 25_000
+
+function isStableCutEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_STABLE_CUT)
+}
+
+/**
+ * The transcript's share of `MAX_CLASSIFIER_TRANSCRIPT_CHARS`. With the stable
+ * cut it is the whole budget: subtracting the action would move the cut on any
+ * call whose action is longer than usual. The action is capped on its own
+ * (`MAX_CLASSIFIER_BLOCK_VALUE_CHARS` per value).
+ */
+export function classifierTranscriptBudget(actionChars: number): number {
+  return isStableCutEnabled()
+    ? MAX_CLASSIFIER_TRANSCRIPT_CHARS
+    : Math.max(0, MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars)
+}
 
 type TranscriptBlock =
   /**
@@ -165,46 +213,49 @@ export function toCompact(entry: TranscriptEntry, lookup: ToolLookup): string {
   return entry.content.map(b => toCompactBlock(b, entry.role, lookup)).join('')
 }
 
-export function serializeTranscriptForClassifier(
-  messages: Message[],
-  tools: Tools,
-  maxChars: number,
-): {
-  userContentBlocks: Anthropic.TextBlockParam[]
-  promptLengths: {
-    toolCalls: number
-    userPrompts: number
+type SerializedBlock = { role: TranscriptEntry['role']; text: string }
+
+/** A message's blocks as the classifier reads them; null when none survives. */
+function serializeMessage(
+  msg: Message,
+  lookup: ToolLookup,
+): { blocks: SerializedBlock[]; chars: number } | null {
+  const entry = messageToTranscriptEntry(msg)
+  if (!entry) return null
+  const blocks: SerializedBlock[] = []
+  let chars = 0
+  for (const block of entry.content) {
+    const serialized = toCompactBlock(block, entry.role, lookup)
+    if (serialized === '') continue
+    blocks.push({ role: entry.role, text: serialized })
+    chars += serialized.length
   }
-  transcriptEntries: number
-  truncated: boolean
-} {
-  const lookup = buildToolLookup(tools)
-  const keptEntries: Array<Array<{ role: TranscriptEntry['role']; text: string }>> =
-    []
+  return blocks.length > 0 ? { blocks, chars } : null
+}
+
+type KeptEntries = { kept: SerializedBlock[][]; truncated: boolean }
+
+/**
+ * The newest entries that fit, oldest first. When the newest entry alone is
+ * over the budget, its newest blocks that fit.
+ */
+function newestEntriesWithin(
+  messages: Message[],
+  lookup: ToolLookup,
+  maxChars: number,
+): KeptEntries {
+  const keptEntries: SerializedBlock[][] = []
   let totalChars = 0
   let truncated = false
 
   for (let i = messages.length - 1; i >= 0; i--) {
-    const entry = messageToTranscriptEntry(messages[i]!)
+    const entry = serializeMessage(messages[i]!, lookup)
     if (!entry) continue
-
-    const serializedBlocks: Array<{
-      role: TranscriptEntry['role']
-      text: string
-    }> = []
-    let entryChars = 0
-
-    for (const block of entry.content) {
-      const serialized = toCompactBlock(block, entry.role, lookup)
-      if (serialized === '') continue
-      serializedBlocks.push({ role: entry.role, text: serialized })
-      entryChars += serialized.length
-    }
-    if (serializedBlocks.length === 0) continue
+    const { blocks: serializedBlocks, chars: entryChars } = entry
 
     if (totalChars + entryChars > maxChars) {
       if (totalChars === 0) {
-        const partialEntry: typeof serializedBlocks = []
+        const partialEntry: SerializedBlock[] = []
         let partialChars = 0
         for (let j = serializedBlocks.length - 1; j >= 0; j--) {
           const serialized = serializedBlocks[j]!
@@ -229,12 +280,69 @@ export function serializeTranscriptForClassifier(
     }
   }
 
+  return { kept: keptEntries.reverse(), truncated }
+}
+
+/**
+ * Every entry from the first chunk boundary whose suffix fits, oldest first.
+ * Null when not even the newest chunk fits — one entry about as large as the
+ * budget — and the caller falls back to the newest-first fill for that call.
+ */
+function stableCutEntries(
+  messages: Message[],
+  lookup: ToolLookup,
+  maxChars: number,
+): KeptEntries | null {
+  const entries: SerializedBlock[][] = []
+  const sizes: number[] = []
+  let remaining = 0
+  for (const msg of messages) {
+    const entry = serializeMessage(msg, lookup)
+    if (!entry) continue
+    entries.push(entry.blocks)
+    sizes.push(entry.chars)
+    remaining += entry.chars
+  }
+
+  let chunkChars = 0
+  for (let i = 0; i < entries.length; i++) {
+    // An entry as large as a chunk opens its own: merged into the chunk before
+    // it, the cut could only land after it, keeping little of the budget.
+    if (sizes[i]! >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0
+    if (chunkChars === 0 && remaining <= maxChars) {
+      return { kept: entries.slice(i), truncated: i > 0 }
+    }
+    chunkChars += sizes[i]!
+    remaining -= sizes[i]!
+    if (chunkChars >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0
+  }
+  return entries.length === 0 ? { kept: [], truncated: false } : null
+}
+
+export function serializeTranscriptForClassifier(
+  messages: Message[],
+  tools: Tools,
+  maxChars: number,
+): {
+  userContentBlocks: Anthropic.TextBlockParam[]
+  promptLengths: {
+    toolCalls: number
+    userPrompts: number
+  }
+  transcriptEntries: number
+  truncated: boolean
+} {
+  const lookup = buildToolLookup(tools)
+  const { kept: keptEntries, truncated } =
+    (isStableCutEnabled() ? stableCutEntries(messages, lookup, maxChars) : null) ??
+    newestEntriesWithin(messages, lookup, maxChars)
+
   const userContentBlocks: Anthropic.TextBlockParam[] = []
   let userPromptsLength = 0
   let toolCallsLength = 0
 
-  for (let i = keptEntries.length - 1; i >= 0; i--) {
-    for (const block of keptEntries[i]!) {
+  for (const entry of keptEntries) {
+    for (const block of entry) {
       userContentBlocks.push({ type: 'text' as const, text: block.text })
       if (block.role === 'user') {
         userPromptsLength += block.text.length

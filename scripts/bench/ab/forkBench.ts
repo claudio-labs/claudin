@@ -16,18 +16,24 @@ import { join } from 'node:path'
 import { configDir, transcriptPath } from './headlessProbe.ts'
 
 // $ per Mtok, from src/providers/usage/modelCost.ts. Kept local so the bench
-// does not import the model catalog; `priceFor` matches on the model id.
+// does not import the model catalog; `priceFor` matches on the model id, and
+// forkBench.test.ts compares the 5.x rows with `getModelCosts`. Haiku 5.5's
+// long-prompt tier (over 100k) is not mirrored: no fork bench runs on it.
 export type Price = { input: number; write5m: number; write1h: number; read: number; output: number }
+const SONNET_5_PRICE: Price = { input: 2, write5m: 2.5, write1h: 4, read: 0.2, output: 10 }
+const SONNET_5: [RegExp, string, Price] = [/sonnet-5/, 'sonnet-5 (2/10)', SONNET_5_PRICE]
 const PRICES: Array<[RegExp, string, Price]> = [
   [/fable-5-1/, 'fable-5-1 (10/50, read 0.25)', { input: 10, write5m: 12.5, write1h: 20, read: 0.25, output: 50 }],
+  [/opus-5-5/, 'opus-5-5 (4/20, cache read 0.2, write 5/8)', { input: 4, write5m: 5, write1h: 8, read: 0.2, output: 20 }],
   [/opus-5/, 'opus-5 (5/25)', { input: 5, write5m: 6.25, write1h: 10, read: 0.5, output: 25 }],
-  [/sonnet-5/, 'sonnet-5 (2/10)', { input: 2, write5m: 2.5, write1h: 4, read: 0.2, output: 10 }],
+  SONNET_5,
+  [/haiku-5-5/, 'haiku-5-5 (0.1/0.5)', { input: 0.1, write5m: 0.125, write1h: 0.2, read: 0.01, output: 0.5 }],
   [/sonnet-4|opus-4/, 'claude-4.x (3/15)', { input: 3, write5m: 3.75, write1h: 6, read: 0.3, output: 15 }],
 ]
 
 export function priceFor(model: string | undefined): { label: string; price: Price } {
   for (const [re, label, price] of PRICES) if (model && re.test(model)) return { label, price }
-  const [, label, price] = PRICES[2]!
+  const [, label, price] = SONNET_5
   return { label: `${label} (default — pass --model to price another tier)`, price }
 }
 
