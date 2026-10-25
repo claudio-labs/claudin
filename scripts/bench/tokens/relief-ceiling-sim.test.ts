@@ -43,7 +43,7 @@ describe('parseArgs', () => {
     })
   })
 
-  test('the 10-24 switches default off and reject what makes no sense', () => {
+  test('--compact-at, --thinking-drop and --regrowth default off and reject what makes no sense', () => {
     expect(BASE).toMatchObject({ compactAt: false, thinkingDrop: 0, regrowth: 1 })
     expect(parseArgs(['--compact-at', '--thinking-drop=0.34', '--regrowth=1.55'])).toMatchObject({
       compactAt: true,

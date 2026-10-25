@@ -238,6 +238,9 @@ export function simulate(t: Thread, trigger: number, args: Args): Outcome {
   // event (`--regrowth`): what it re-read.
   let regrown = 0
   let hadEvent = false
+  // Whether the view holds a clipped result: a compaction leaves none, so the
+  // next clip takes the thinking after it again (`holdsClippedResult`).
+  let holdsClip = false
   const out: Outcome = { events: 0, starved: 0, compactions: 0, rewrite: 0, compact: 0, saved: 0, reads: 0 }
   const compactNow = (ctx: number, k: number, used: number): void => {
     out.compactions++
@@ -247,6 +250,7 @@ export function simulate(t: Thread, trigger: number, args: Args): Outcome {
     freed = 0
     regrown = 0
     hadEvent = true
+    holdsClip = false
   }
   t.ctx.forEach((ctx, k) => {
     out.reads += (ctx * READ) / 1e6
@@ -271,8 +275,9 @@ export function simulate(t: Thread, trigger: number, args: Args): Outcome {
         // behind it. Only the rest of the prompt is written again.
         const firstCall = t.blocks[picked[0]!]!.call
         const cachedPrefix = Math.max(0, (t.ctx[firstCall] ?? 0) - compactedAway - freed)
-        // The first clip of a thread also takes the thinking after it.
-        if (clipped.size === 0) got += args.thinkingDrop * Math.max(0, used - got - cachedPrefix)
+        // The first clip of a view also takes the thinking after it.
+        if (!holdsClip) got += args.thinkingDrop * Math.max(0, used - got - cachedPrefix)
+        holdsClip = true
         for (const i of picked) clipped.add(i)
         freed += got
         used -= got
