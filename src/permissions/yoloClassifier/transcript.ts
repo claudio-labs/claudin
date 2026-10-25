@@ -1,3 +1,13 @@
+/**
+ * The auto-mode classifier's view of the conversation: user text and
+ * tool_use inputs, serialized one block per entry, under a char budget.
+ *
+ * On by default: once a session outgrows the budget, the transcript is cut at
+ * stable chunk boundaries (see `CLASSIFIER_TRANSCRIPT_CHUNK_CHARS`), so the
+ * classifier's prompt cache survives from one call to the next.
+ * Killswitch: `CLAUDIN_CLASSIFIER_STABLE_CUT=0` restores the newest-first fill
+ * and the budget that shrinks with the action (`classifierTranscriptBudget`).
+ */
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Tool, Tools } from 'src/tools/Tool.js'
 import type { Message, MessageOrigin } from 'src/shared/types/message.js'
@@ -23,15 +33,13 @@ const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
  *
  * So the cut lands on chunk boundaries counted from the FIRST entry: a boundary
  * follows the entry that brings a chunk to `CLASSIFIER_TRANSCRIPT_CHUNK_CHARS`,
- * and the transcript starts at the first boundary whose suffix fits. Appending
- * never moves a boundary, so the cut moves once per chunk of growth and the
- * blocks it keeps are byte-identical from one call to the next. Past the budget
- * the transcript holds between the budget minus one chunk and the budget.
- *
- * `CLAUDIN_CLASSIFIER_STABLE_CUT=0` restores the newest-first fill, and the
- * budget that shrinks with the action (`classifierTranscriptBudget`).
+ * and one comes before any entry that large on its own, so a turn of many
+ * parallel calls is a chunk by itself rather than the tail of a small one. The
+ * transcript starts at the first boundary whose suffix fits. Appending never
+ * moves a boundary, so the cut moves once per chunk of growth and the blocks it
+ * keeps are byte-identical from one call to the next.
  */
-const CLASSIFIER_TRANSCRIPT_CHUNK_CHARS = 25_000
+export const CLASSIFIER_TRANSCRIPT_CHUNK_CHARS = 25_000
 
 function isStableCutEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_STABLE_CUT)
@@ -298,6 +306,9 @@ function stableCutEntries(
 
   let chunkChars = 0
   for (let i = 0; i < entries.length; i++) {
+    // An entry as large as a chunk opens its own: merged into the chunk before
+    // it, the cut could only land after it, keeping little of the budget.
+    if (sizes[i]! >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0
     if (chunkChars === 0 && remaining <= maxChars) {
       return { kept: entries.slice(i), truncated: i > 0 }
     }

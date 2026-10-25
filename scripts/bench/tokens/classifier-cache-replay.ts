@@ -23,9 +23,9 @@
  * Tools are an identity stub (each projects its raw input), the same in both
  * arms: the real `toAutoClassifierInput` projections need the tool registry,
  * which a bare `bun scripts/…` run cannot load. Absolute sizes are therefore
- * approximate; the comparison between arms is what it is for. The 10-24
- * scratchpad model of the same data put the old arm at 15.5k written per call
- * in session 4c2d912b, where the app's cost-state recorded 15.7k.
+ * approximate; the comparison between arms is what it is for. In session
+ * 4c2d912b the old arm comes to ~15.5k written per call, where the app's
+ * cost-state recorded 15.7k.
  *
  * Gate (pre-registered for the stable cut, printed as PASS/FAIL):
  *   1. threads that pass the budget with ≥30 decisions: writes per call fall
@@ -33,7 +33,8 @@
  *   2. threads whose history stays ≤150k chars: the two arms send identical
  *      blocks on every call;
  *   3. past the budget, a stable-cut transcript keeps at least the budget
- *      minus one chunk minus the largest entry (the chunk that was dropped);
+ *      minus the chunk that was dropped: under two chunks for a run of small
+ *      entries, or the one entry that was a chunk of its own;
  *   4. serializing the largest decision takes under 50 ms.
  *
  * Run:
@@ -48,6 +49,7 @@ import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
 import {
   buildToolLookup,
+  CLASSIFIER_TRANSCRIPT_CHUNK_CHARS,
   classifierTranscriptBudget,
   MAX_CLASSIFIER_TRANSCRIPT_CHARS,
   serializeTranscriptForClassifier,
@@ -59,7 +61,6 @@ const KILLSWITCH = 'CLAUDIN_CLASSIFIER_STABLE_CUT'
 const CHARS_PER_TOKEN = 4
 const LOOKBACK_BLOCKS = 20
 const TTL_MS = 60 * 60 * 1000
-const CHUNK_CHARS = 25_000
 const GATE_MIN_DECISIONS = 30
 const GATE_WRITE_DROP = 0.6
 const GATE_IDENTICAL_BELOW_CHARS = 150_000
@@ -143,6 +144,7 @@ type Rec = {
 }
 
 /** One transcript's classifier decisions, each with the history before it. */
+let tornLines = 0
 function readThread(path: string, since: number, seen: Set<string>): Thread {
   const records: Rec[] = []
   for (const line of readFileSync(path, 'utf8').split('\n')) {
@@ -150,7 +152,8 @@ function readThread(path: string, since: number, seen: Set<string>): Thread {
     try {
       records.push(JSON.parse(line) as Rec)
     } catch {
-      // A torn last line from a session still being written.
+      // A torn last line from a session still being written; reported at the end.
+      tornLines++
     }
   }
   const useAt = new Map<string, number>()
@@ -255,6 +258,7 @@ function main(): void {
   let maxSerializeMs = 0
   const total = { old: { writes: 0, reads: 0, calls: 0 }, stable: { writes: 0, reads: 0, calls: 0 } }
 
+  try {
   for (const f of files) {
     if (args.session && !f.path.includes(args.session)) continue
     const thread = readThread(f.path, args.since, seen)
@@ -277,7 +281,8 @@ function main(): void {
         minKeptPast = Math.min(minKeptPast, newArm.keptChars[i]!)
       })
       // The largest entry as the classifier serializes it: a chunk closes on
-      // the entry that crosses CHUNK_CHARS, so one chunk can be that much over.
+      // the entry that crosses the chunk size, so a run of small entries stays
+      // under two chunks, and a larger entry is a chunk of its own.
       for (const m of thread.decisions.at(-1)!.history) {
         const one = serializeTranscriptForClassifier([m], tools, Number.MAX_SAFE_INTEGER)
         maxEntryPast = Math.max(maxEntryPast, one.promptLengths.toolCalls + one.promptLengths.userPrompts)
@@ -302,10 +307,13 @@ function main(): void {
         `stable ${padLeft(perCall(n), 5)}k/call miss ${padLeft(String(n.fullMisses), 3)}`,
     )
   }
-  if (saved === undefined) delete process.env[KILLSWITCH]
-  else process.env[KILLSWITCH] = saved
+  } finally {
+    if (saved === undefined) delete process.env[KILLSWITCH]
+    else process.env[KILLSWITCH] = saved
+  }
 
   console.log(`=== CLASSIFIER CACHE REPLAY since ${new Date(args.since).toISOString().slice(0, 10)} ===`)
+  if (tornLines > 0) console.log(`(${tornLines} unparsable transcript lines skipped)`)
   console.log(`${pad('thread', 18)} ${padLeft('calls', 5)} ${padLeft('history', 7)}  writes per call (tokens) and full misses`)
   for (const r of rows) console.log(r)
   const usd = (t: { writes: number; reads: number }) => (t.writes * 8 + t.reads * 0.2) / 1e6
@@ -316,7 +324,7 @@ function main(): void {
   )
 
   const drop = pastOld > 0 ? 1 - pastNew / pastOld : NaN
-  const keptFloor = MAX_CLASSIFIER_TRANSCRIPT_CHARS - CHUNK_CHARS - maxEntryPast
+  const keptFloor = MAX_CLASSIFIER_TRANSCRIPT_CHARS - Math.max(2 * CLASSIFIER_TRANSCRIPT_CHUNK_CHARS, maxEntryPast)
   const gates: Array<[string, boolean, string]> = [
     [
       `writes per call −${GATE_WRITE_DROP * 100}% in threads past the budget (≥${GATE_MIN_DECISIONS} decisions)`,
@@ -329,7 +337,7 @@ function main(): void {
       `${belowDiffering} of ${belowCalls} calls differ`,
     ],
     [
-      'past the budget, kept ≥ budget − one chunk − the largest entry',
+      'past the budget, kept ≥ budget − max(two chunks, the largest entry)',
       minKeptPast === Infinity || minKeptPast >= keptFloor,
       minKeptPast === Infinity ? 'no call past the budget' : `min kept ${(minKeptPast / 1000).toFixed(1)}k, floor ${(keptFloor / 1000).toFixed(1)}k`,
     ],

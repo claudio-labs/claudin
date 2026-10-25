@@ -62,6 +62,11 @@
       "expect": "green",
       "find": "    classifierTranscriptBudget(actionCompact.length),\n",
       "replace": "    classifierTranscriptBudget(actionCompact.length + 0),\n"
+    },
+    {
+      "name": "a chunk-sized entry opens its own chunk",
+      "find": "    if (sizes[i]! >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0\n",
+      "replace": "\n"
     }
   ]
 }
