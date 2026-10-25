@@ -32,6 +32,10 @@ rewrite instead of adding to it.
 - `relief-ceiling-sim.ts --clip-all` over the real 1M main threads since 09-17:
   net $65.47 → $96.24. That is an upper bound, about 0.5% of main-thread
   spend; 1M sessions rarely reach the trigger.
+  - Correction 2026-10-24: those dollars do not reproduce. The sim priced Opus
+    5.5 at Opus 5's rates until then; re-run with the fixed prices it gives
+    clip-all net $13.08 against band-only $5.59 (1,333 threads). The direction
+    holds; do not cite the old figures.
 
 **What changes for a teammate:** long sessions over the trigger drop to about
 half their context after a clip, and re-fetch a little more. The design doc

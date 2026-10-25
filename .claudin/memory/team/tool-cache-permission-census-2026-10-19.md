@@ -86,6 +86,10 @@ crash.
   (11-29, each a lost working context), not clips. These are upper bounds with
   no re-reads simulated, and no default changed. An input window of 10 instead
   of 2 moves every row by under 1.3%.
+  - Correction 2026-10-24: these were priced at Opus 5's rates, a 1h write of
+    20 reads; at Opus 5.5's 40 the clip-only re-run since 10-12 gives 2.3% →
+    7.7% (431 threads), and with the thinking drop and regrowth calibrated,
+    clips below 400k lose money ([[large-window-compaction]]).
 - `api_error` retries: 5 in B, 9 in A. All recovered on attempt 1. The record's
   `error.type: null` is the SDK's (`type ?? null` when the body has no
   `error.type`).

@@ -13,8 +13,9 @@ their own timestamps. The B dollar figures use the app's prices (`modelCost.ts`)
 `opus-5-5` matches the Opus 4.5/5 row ($5/$25, read $0.50) where the app charges
 $4/$20, read $0.20. `haiku-5-5` falls to the generic `/haiku/` row ($0.8/$4) where the
 app charges $0.1/$0.5. For B it reported $327; the app-priced transcript total is $159.
-Every census since Opus 5.5 became the default carries the same inflation. Its ratios
-still hold. The file's header said importing `modelCost.ts` now loads; it does not. The
+Every census since Opus 5.5 became the default carries the same inflation. Shares
+within one price row still hold; the write:read mix does not (a 1h write went from 20
+reads to 40). The file's header said importing `modelCost.ts` now loads; it does not. The
 Opus 5.5 fast-mode check reads the config and throws in a bare script. Fixed on branch
 `perf/census-2026-10-24`: the rows are added, a test compares them with
 `getModelCosts`, and the header is corrected. `forkBench.ts` and `relief-ceiling-sim.ts`
@@ -44,7 +45,7 @@ cost $30.35, which is 62% of that session's main thread ($49.25).
   `cd <project root>`, and about 87 are plain read-only pipelines. **Corrected:**
   resolving literal `VAR=` assignments and dropping `cd <root>` would make only ~22 of the
   595 provably read-only. Not worth touching `bashPermissions/`.
-- **Fixed** by the stable cut ([[classifier-transcript-stable-cut]]): −75% writes per call
+- **Fixed** by the stable cut ([[classifier-transcript-stable-cut]]): −72% writes per call
   in the replay.
 
 **Own-writes names-only (10-21) passed** ([[own-writes-next-census-checks]]):

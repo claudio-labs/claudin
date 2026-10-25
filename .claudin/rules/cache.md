@@ -383,13 +383,12 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   thread; >5min pauses would force full rewrites).
 - **A growing prefix stays cacheable only while the front stays put.** A
   budget filled newest-first drops its oldest entry on every call once the
-  budget is full, so every call writes everything after the cut again. The
-  auto-mode classifier did that past 200k chars: 15.7k written per call, about
-  90% of a classifier that was ~24% of spend (2026-10-24). Cut at boundaries
-  counted from the FIRST entry instead, so they never move on an append
-  (`stableCutEntries` in `yoloClassifier/transcript.ts`). Then
-  `scripts/bench/tokens/classifier-cache-replay.ts` replays the effect against
-  recorded sessions.
+  budget is full, so every call writes everything after the cut again — the
+  auto-mode classifier did that past 200k chars
+  ([[classifier-transcript-stable-cut]]). Cut at boundaries counted from the
+  FIRST entry instead, so they never move on an append
+  (`stableCutEntries` in `yoloClassifier/transcript.ts`), and replay a change
+  against recorded sessions with `scripts/bench/tokens/classifier-cache-replay.ts`.
 - **How to apply:** a new one-shot utility querySource must be added to
   `SHORT_LIVED_QUERY_SOURCES` or it silently pays the 1h tier; anything that
   re-sends the main thread's prefix must NOT be added.
