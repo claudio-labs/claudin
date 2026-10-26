@@ -6,7 +6,7 @@
       "name": "@claudiolabs/claudio",
       "dependencies": {
         "@alcalzone/ansi-tokenize": "0.3.1",
-        "@anthropic-ai/bedrock-sdk": "^0.35.0",
+        "@anthropic-ai/bedrock-sdk": "^1.1.0",
         "@anthropic-ai/foundry-sdk": "0.6.0",
         "@anthropic-ai/sdk": "^0.135.0",
         "@anthropic-ai/vertex-sdk": "^0.21.0",
@@ -93,7 +93,7 @@
   "packages": {
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.3.1", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-cUD0PT0YX+rImRhfn7BfMRduP/tX/Zqt/N0dHlAyn2RlcJssCb5KsCJkhln61eh9vuJDkH8wKn3L8zJzzWXPFg=="],
 
-    "@anthropic-ai/bedrock-sdk": ["@anthropic-ai/bedrock-sdk@0.35.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=0.115.1 <1", "@aws-crypto/sha256-js": "^4.0.0", "@aws-sdk/client-bedrock-runtime": "^3.797.0", "@aws-sdk/credential-providers": "^3.796.0", "@opentelemetry/api": "^1.4.1", "@smithy/eventstream-serde-node": "^2.0.10", "@smithy/fetch-http-handler": "^5.0.4", "@smithy/protocol-http": "^3.0.6", "@smithy/signature-v4": "^3.1.1", "@smithy/smithy-client": "^2.1.9", "@smithy/types": "^2.3.4", "@smithy/util-base64": "^2.0.0" } }, "sha512-FZi3OOZagQWUWYd2vzqJEw3nPFJn1VyTxoCy608jjUEWWATubOrT9OSf2mWrGauu/j1kLMZlk+MPuAxp74k+8w=="],
+    "@anthropic-ai/bedrock-sdk": ["@anthropic-ai/bedrock-sdk@1.1.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=1.0.0 <2", "@aws-crypto/sha256-js": "^4.0.0", "@aws-sdk/client-bedrock-runtime": "^3.797.0", "@aws-sdk/credential-providers": "^3.796.0", "@opentelemetry/api": "^1.4.1", "@smithy/eventstream-serde-node": "^2.0.10", "@smithy/fetch-http-handler": "^5.0.4", "@smithy/protocol-http": "^3.0.6", "@smithy/signature-v4": "^3.1.1", "@smithy/smithy-client": "^2.1.9", "@smithy/types": "^2.3.4", "@smithy/util-base64": "^2.0.0" } }, "sha512-20WmisbL9GT3n4ikK2Ml7GVQrkz6Go+aitM5RAPRBQGY54fv52/KKr4K36PwZmLoG4O7RagRIdNLJHqgAv2OlA=="],
 
     "@anthropic-ai/foundry-sdk": ["@anthropic-ai/foundry-sdk@0.6.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=0.115.1 <1", "@opentelemetry/api": "^1.4.1" } }, "sha512-6f3kUuZT9aAaAkdJq4wZRKd2KgVaOcWkbY6KwK0Z86mfn3LWJI86ZVWZhh5CQZyg9VC3T+8jJk4vpXIth6bqUg=="],
 
