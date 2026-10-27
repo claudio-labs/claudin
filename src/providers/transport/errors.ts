@@ -830,7 +830,10 @@ export function getAssistantMessageFromError(
 
   if (
     error instanceof Error &&
-    error.message.toLowerCase().includes('x-api-key') &&
+    // The server rejecting the key, or the SDK finding no credential before
+    // sending: 0.x named X-Api-Key in that message, 1.x does not.
+    (error.message.toLowerCase().includes('x-api-key') ||
+      error.message.includes('Could not resolve authentication method')) &&
     getAPIProvider() === 'firstParty'
   ) {
     // In CCR mode, auth is via JWTs - this is likely a transient network issue

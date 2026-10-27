@@ -100,6 +100,27 @@ function getApiTimeoutMs(): number {
   return parseWholeNumberEnvVar('API_TIMEOUT_MS', process.env.API_TIMEOUT_MS, 600 * 1000, 1)
 }
 
+// `@anthropic-ai/sdk` 1.x sends `anthropic-version: 2026-10-21` and the API
+// key as `Authorization: Bearer`. Every lane keeps what 0.x sent, as Claude
+// Code 2.1.311 still does: Bedrock takes 2026-10-21 only from Claude 4.7 on, and
+// bedrock-sdk and vertex-sdk 1.x copy this header into the body's
+// `anthropic_version`, where 0.x wrote the platform's own version.
+const ANTHROPIC_VERSION = '2023-06-01'
+const BEDROCK_ANTHROPIC_VERSION = 'bedrock-2023-05-31'
+const VERTEX_ANTHROPIC_VERSION = 'vertex-2023-10-16'
+
+/** Sends the API key as `X-Api-Key`, which gateways that speak the Messages API read. */
+class AnthropicWithApiKeyHeader extends Anthropic {
+  protected override async apiKeyAuth(...args: Parameters<Anthropic['apiKeyAuth']>) {
+    const headers = await super.apiKeyAuth(...args)
+    if (headers && this.apiKey != null) {
+      headers.values.delete('authorization')
+      headers.values.set('x-api-key', this.apiKey)
+    }
+    return headers
+  }
+}
+
 export async function getAnthropicClient({
   apiKey,
   maxRetries,
@@ -118,6 +139,7 @@ export async function getAnthropicClient({
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP
   const customHeaders = getCustomHeaders()
   const defaultHeaders: { [key: string]: string } = {
+    'anthropic-version': ANTHROPIC_VERSION,
     // Who we tell the endpoint we are. Upstream's identity only on the
     // first-party lane — this object also reaches the OpenAI-compat shim,
     // Copilot and bedrock/vertex/foundry. See identityHeaders.ts.
@@ -237,6 +259,7 @@ export async function getAnthropicClient({
     // declares all three aws* fields as plain optional string|null.
     const bedrockArgs: BedrockClientOptions = {
       ...ARGS,
+      defaultHeaders: { ...defaultHeaders, 'anthropic-version': BEDROCK_ANTHROPIC_VERSION },
       awsRegion,
       ...(isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH) && {
         skipAuth: true,
@@ -397,6 +420,7 @@ export async function getAnthropicClient({
         : helperRegion
     const vertexArgs = {
       ...ARGS,
+      defaultHeaders: { ...defaultHeaders, 'anthropic-version': VERTEX_ANTHROPIC_VERSION },
       region,
       googleAuth,
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
@@ -415,7 +439,7 @@ export async function getAnthropicClient({
     ...(isDebugToStdErr() && { logger: createStderrLogger() }),
   }
 
-  return new Anthropic(clientConfig)
+  return new AnthropicWithApiKeyHeader(clientConfig)
 }
 
 async function configureApiKeyHeaders(

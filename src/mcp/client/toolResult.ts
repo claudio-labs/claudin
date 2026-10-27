@@ -1,7 +1,6 @@
 import type {
   Base64ImageSource,
   ContentBlockParam,
-  MessageParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import type {
   PromptMessage,
@@ -112,7 +111,7 @@ export async function transformResultContent(
             imageBuffer.length,
             ext,
           )
-          const content: MessageParam['content'] = []
+          const content: ContentBlockParam[] = []
           if (prefix) {
             content.push({
               type: 'text',
