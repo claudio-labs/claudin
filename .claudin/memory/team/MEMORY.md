@@ -165,6 +165,7 @@
 - Dependabot audits (3 no-ops: `*-no-code-changes.md`): [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
 - [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310: undici zstd + SDK 0.135 OTel binary crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
+- [#326: SDK 1.x changes the wire — version, Bearer key, platform body version; pinned to 0.x's](dependabot-bumps-2026-10-26-anthropic-sdk-1x.md) — #325 broke Bedrock's body version
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md) — it broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — the Gitea + tea flow is gone

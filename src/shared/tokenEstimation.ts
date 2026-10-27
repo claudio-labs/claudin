@@ -85,7 +85,7 @@ function stripToolSearchFieldsFromMessages(
   messages: Anthropic.Beta.Messages.BetaMessageParam[],
 ): Anthropic.Beta.Messages.BetaMessageParam[] {
   return messages.map(message => {
-    if (!Array.isArray(message.content)) {
+    if (message.role === 'system' || !Array.isArray(message.content)) {
       return message
     }
 

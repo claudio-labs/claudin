@@ -197,7 +197,7 @@ export function requestClipFrontier(
 
 /** The message carrying the last message-level cache_control marker, or -1. */
 export function messageMarkerIndex(
-  rendered: ReadonlyArray<{ content: unknown }>,
+  rendered: ReadonlyArray<{ content?: unknown }>,
 ): number {
   return rendered.findLastIndex(
     m =>
@@ -215,7 +215,7 @@ export function messageMarkerIndex(
  * Null when nothing was held.
  */
 export function heldMarker(
-  rendered: ReadonlyArray<{ content: unknown }>,
+  rendered: ReadonlyArray<{ content?: unknown }>,
   frontier: ClipFrontier | undefined,
 ): MarkerCap | null {
   if (!frontier?.reason) return null

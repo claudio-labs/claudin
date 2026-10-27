@@ -7,9 +7,9 @@
       "dependencies": {
         "@alcalzone/ansi-tokenize": "0.3.1",
         "@anthropic-ai/bedrock-sdk": "^1.1.0",
-        "@anthropic-ai/foundry-sdk": "0.6.0",
-        "@anthropic-ai/sdk": "^0.135.0",
-        "@anthropic-ai/vertex-sdk": "^0.21.0",
+        "@anthropic-ai/foundry-sdk": "1.1.0",
+        "@anthropic-ai/sdk": "^1.2.0",
+        "@anthropic-ai/vertex-sdk": "^1.1.0",
         "@commander-js/extra-typings": "15",
         "@mendable/firecrawl-js": "^4.29.1",
         "@modelcontextprotocol/sdk": "1.32.1",
@@ -86,7 +86,7 @@
     },
   },
   "overrides": {
-    "@anthropic-ai/sdk": "^0.135.0",
+    "@anthropic-ai/sdk": "^1.2.0",
     "google-auth-library": "^11.0.0",
     "lodash-es": "4.18.1",
   },
@@ -95,11 +95,11 @@
 
     "@anthropic-ai/bedrock-sdk": ["@anthropic-ai/bedrock-sdk@1.1.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=1.0.0 <2", "@aws-crypto/sha256-js": "^4.0.0", "@aws-sdk/client-bedrock-runtime": "^3.797.0", "@aws-sdk/credential-providers": "^3.796.0", "@opentelemetry/api": "^1.4.1", "@smithy/eventstream-serde-node": "^2.0.10", "@smithy/fetch-http-handler": "^5.0.4", "@smithy/protocol-http": "^3.0.6", "@smithy/signature-v4": "^3.1.1", "@smithy/smithy-client": "^2.1.9", "@smithy/types": "^2.3.4", "@smithy/util-base64": "^2.0.0" } }, "sha512-20WmisbL9GT3n4ikK2Ml7GVQrkz6Go+aitM5RAPRBQGY54fv52/KKr4K36PwZmLoG4O7RagRIdNLJHqgAv2OlA=="],
 
-    "@anthropic-ai/foundry-sdk": ["@anthropic-ai/foundry-sdk@0.6.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=0.115.1 <1", "@opentelemetry/api": "^1.4.1" } }, "sha512-6f3kUuZT9aAaAkdJq4wZRKd2KgVaOcWkbY6KwK0Z86mfn3LWJI86ZVWZhh5CQZyg9VC3T+8jJk4vpXIth6bqUg=="],
+    "@anthropic-ai/foundry-sdk": ["@anthropic-ai/foundry-sdk@1.1.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=1.0.0 <2", "@opentelemetry/api": "^1.4.1" } }, "sha512-wle+8L/JvPNF3MBinSbgglV1Vt5fkPaOZJm0XS2SmFKKHkErZf1DXAWHjXKRKgf+ml8VM60Bp1sTrZ5sl3GK0Q=="],
 
-    "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.135.0", "", { "dependencies": { "@opentelemetry/api": "^1.4.1", "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-WWrdL57JhU5KoynpTjt9GXK6k7ud9nPw2uw/Trn+oBXh6s0KpjhAccWZm2Qxw08ARYG1UDQj5iC+JO42j1rt/g=="],
+    "@anthropic-ai/sdk": ["@anthropic-ai/sdk@1.2.0", "", { "dependencies": { "@opentelemetry/api": "^1.4.1", "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-3MAqqeOOfLJQ5PkwhvZJLFq0HzcHbyMmX5qsmKXiJT5fHHYp0uFY83yPYqEC4tgaUBSVimZGTdkptie/oLogBA=="],
 
-    "@anthropic-ai/vertex-sdk": ["@anthropic-ai/vertex-sdk@0.21.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=0.115.1 <1", "@opentelemetry/api": "^1.4.1", "google-auth-library": "^10.2.0" } }, "sha512-+l+I2QGfkROJMsK8fU3C8b+cwBYebDYBMLytpHkkWo4a9XhF2uRbWHpz9nm9UpSU0UB6lIrXyvcTTsD/MH2dPQ=="],
+    "@anthropic-ai/vertex-sdk": ["@anthropic-ai/vertex-sdk@1.1.0", "", { "dependencies": { "@anthropic-ai/sdk": ">=1.0.0 <2", "@opentelemetry/api": "^1.4.1", "google-auth-library": "^10.2.0" } }, "sha512-Mcb8LgXbBpNix4Hxt7YlHRmpjDBuu5phuWYQsb8D5TTSMgr2JVyoOCXTcECFIMlBDyis2PPnaKXNcG+UFBj4MA=="],
 
     "@aws-crypto/crc32": ["@aws-crypto/crc32@5.2.0", "", { "dependencies": { "@aws-crypto/util": "^5.2.0", "@aws-sdk/types": "^3.222.0", "tslib": "^2.6.2" } }, "sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg=="],
 

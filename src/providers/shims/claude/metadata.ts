@@ -74,7 +74,6 @@ export async function verifyApiKey(
             model,
             max_tokens: 1,
             messages,
-            temperature: 1,
             ...(betas.length > 0 && { betas }),
             metadata: getAPIMetadata(),
             ...getExtraBodyParams(),
