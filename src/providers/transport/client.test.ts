@@ -571,6 +571,12 @@ describe('first-party Anthropic lane', () => {
     expect(request.headers.get('x-anthropic-additional-protection')).toBeNull()
   })
 
+  test('sends the API version Claude Code sends, not the SDK 1.x default', async () => {
+    const request = await sendOne()
+
+    expect(request.headers.get('anthropic-version')).toBe('2023-06-01')
+  })
+
   test('fetchOverride receives the request instead of the global fetch', async () => {
     const requests: CapturedRequest[] = []
     globalThis.fetch = (async () => {
@@ -673,6 +679,7 @@ describe('GitHub Copilot native Anthropic mode', () => {
     expect(request.headers.get('x-api-key')).toBeNull()
     expect(request.headers.get('copilot-integration-id')).toBe('vscode-chat')
     expect(request.headers.get('x-initiator')).toBe('user')
+    expect(request.headers.get('anthropic-version')).toBe('2023-06-01')
   })
 
   test('falls back to the profile API key and the public Copilot host', async () => {
@@ -740,6 +747,19 @@ describe('Bedrock lane', () => {
     expect(request.headers.get('authorization')).toBeNull()
     expect(awsRefreshes).toBe(0)
   })
+
+  test('sends the Bedrock API version in the body, not the SDK 1.x default', async () => {
+    process.env.CLAUDIN_SKIP_BEDROCK_AUTH = '1'
+    resolvedOverride = {
+      transport: 'bedrock',
+      model: 'claude-sonnet-4-6',
+    } as unknown as ResolvedProvider
+
+    const request = await sendOne({ maxRetries: 0, model: 'claude-sonnet-4-6' })
+
+    expect(JSON.parse(request.body).anthropic_version).toBe('bedrock-2023-05-31')
+    expect(request.headers.get('anthropic-version')).toBeNull()
+  })
 })
 
 describe('Foundry lane', () => {
@@ -756,6 +776,7 @@ describe('Foundry lane', () => {
     expect(request.url).toBe('https://foundry.example/anthropic/v1/messages')
     expect(request.headers.get('x-api-key')).toBe('foundry-key')
     expect(request.headers.get('authorization')).toBeNull()
+    expect(request.headers.get('anthropic-version')).toBe('2023-06-01')
   })
 
   test('CLAUDIN_SKIP_FOUNDRY_AUTH builds a client without an API key', async () => {
@@ -805,5 +826,18 @@ describe('Vertex lane', () => {
     const request = await sendOne({ maxRetries: 0, model: 'claude-sonnet-4-6' })
 
     expect(request.url).toContain('/locations/asia-east1/')
+  })
+
+  test('sends the Vertex API version in the body, not the SDK 1.x default', async () => {
+    process.env.CLAUDIN_SKIP_VERTEX_AUTH = '1'
+    process.env.ANTHROPIC_VERTEX_PROJECT_ID = 'test-project'
+    resolvedOverride = {
+      transport: 'vertex',
+      model: 'claude-sonnet-4-6',
+    } as unknown as ResolvedProvider
+
+    const request = await sendOne({ maxRetries: 0, model: 'claude-sonnet-4-6' })
+
+    expect(JSON.parse(request.body).anthropic_version).toBe('vertex-2023-10-16')
   })
 })
