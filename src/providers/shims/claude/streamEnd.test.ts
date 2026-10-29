@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 import {
   classifyStreamEnd,
+  endsWithStructuredOutputCall,
   type StreamEndFacts,
 } from 'src/providers/shims/claude/streamEnd.js'
 
@@ -8,7 +10,38 @@ const facts = (over: Partial<StreamEndFacts>): StreamEndFacts => ({
   sawMessageStart: true,
   blockTypes: ['text'],
   stopReason: 'end_turn',
+  answersStructuredOutput: false,
   ...over,
+})
+
+describe('endsWithStructuredOutputCall', () => {
+  const call = (name: string) =>
+    createAssistantMessage({
+      content: [{ type: 'tool_use', id: 'call_1', name, input: {} }] as never,
+    })
+  const result = createUserMessage({
+    content: [{ type: 'tool_result', tool_use_id: 'call_1', content: 'ok' }] as never,
+  })
+
+  test('the last assistant turn called StructuredOutput: true', () => {
+    expect(
+      endsWithStructuredOutputCall([createUserMessage({ content: 'go' }), call('StructuredOutput'), result]),
+    ).toBe(true)
+  })
+
+  test('any other last call, or none: false', () => {
+    expect(endsWithStructuredOutputCall([createUserMessage({ content: 'go' }), call('Read'), result])).toBe(false)
+    expect(endsWithStructuredOutputCall([createUserMessage({ content: 'go' })])).toBe(false)
+    expect(
+      endsWithStructuredOutputCall([
+        createUserMessage({ content: 'go' }),
+        call('StructuredOutput'),
+        result,
+        call('Read'),
+        result,
+      ]),
+    ).toBe(false)
+  })
 })
 
 describe('classifyStreamEnd', () => {
@@ -85,6 +118,14 @@ describe('classifyStreamEnd: a thinking-only reply', () => {
         facts({ blockTypes: ['thinking', 'redacted_thinking'], stopReason: 'end_turn' }),
       ),
     ).toEqual({ kind: 'incomplete', reason: 'thinking-only' })
+  })
+
+  test('after a StructuredOutput call the model is done: complete', () => {
+    expect(
+      classifyStreamEnd(
+        facts({ blockTypes: ['thinking'], stopReason: 'end_turn', answersStructuredOutput: true }),
+      ),
+    ).toEqual({ kind: 'complete' })
   })
 
   test('CLAUDIN_THINKING_ONLY_RETRY=0 keeps it complete', () => {

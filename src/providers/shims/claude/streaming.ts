@@ -228,7 +228,10 @@ import {
   requestClipFrontier,
 } from "src/providers/shims/claude/renderMessages.js";
 import { executeNonStreamingRequest } from "src/providers/shims/claude/nonStreamingRequest.js";
-import { classifyStreamEnd } from "src/providers/shims/claude/streamEnd.js";
+import {
+  classifyStreamEnd,
+  endsWithStructuredOutputCall,
+} from "src/providers/shims/claude/streamEnd.js";
 import type { Options, TaskBudgetParam } from "src/providers/shims/claude/types.js";
 
 export async function* queryModelWithStreaming({
@@ -1503,15 +1506,22 @@ export async function* queryModel(
           m.message.content.map((block) => block.type),
         ),
         stopReason,
+        answersStructuredOutput: endsWithStructuredOutputCall(messages),
       });
       if (streamEnd.kind === "incomplete") {
         logForDebugging(
           streamEnd.reason === "no-message-start"
             ? "Stream completed without receiving message_start event - triggering non-streaming fallback"
-            : "Stream completed with message_start but no content blocks completed - triggering non-streaming fallback",
+            : streamEnd.reason === "no-content"
+              ? "Stream completed with message_start but no content blocks completed - triggering non-streaming fallback"
+              : "Stream completed with only thinking blocks and end_turn - retrying",
           { level: "error" },
         );
-        throw new Error("Stream ended without receiving any events");
+        throw new Error(
+          streamEnd.reason === "thinking-only"
+            ? "Stream ended with only thinking blocks"
+            : "Stream ended without receiving any events",
+        );
       }
 
       // Log summary if any stalls occurred during streaming

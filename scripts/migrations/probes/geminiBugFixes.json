@@ -1,0 +1,84 @@
+{
+  "test": [
+    "src/providers/shims/claude/renderMessages.test.ts",
+    "src/agent/messages/normalize.characterization.test.ts",
+    "src/providers/shims/gemini/blockState.test.ts",
+    "src/providers/shims/openaiShim/requestShaping.test.ts",
+    "src/providers/usage/modelCost.test.ts",
+    "src/providers/shims/claude/streamEnd.test.ts"
+  ],
+  "_note": "Bug fixes on feat/gemini-native (2026-10-28). B1: the Gemini thought signature through normalizeMessagesForAPI; B2: the compat converter keeps the call's own thought_signature; B4: Gemini 3 list prices; B5: a thinking-only end_turn is an incomplete stream. Each probe undoes one line of a fix and must turn its test red. B3 (cache profile) joins once the A/B decides it.",
+  "source": "src/agent/messages/normalize.ts",
+  "probes": [
+    {
+      "name": "B1: tool search off drops the Gemini signature again",
+      "find": "\n                    ...geminiStateToKeep(block),\n                    ...codexStateToKeep(block),",
+      "replace": "\n                    ...({}),\n                    ...codexStateToKeep(block),"
+    },
+    {
+      "name": "B1b: tool search on sends the Gemini signature to every provider",
+      "find": "const { extra_content: _extraContent, signature: _signature, ...restBlock } = block as any",
+      "replace": "const { extra_content: _extraContent, ...restBlock } = block as any"
+    },
+    {
+      "name": "B1: geminiStateToKeep keeps the state under every provider",
+      "source": "src/providers/shims/gemini/blockState.ts",
+      "find": "if (getAPIProvider() !== 'gemini') return {}",
+      "replace": "if (getAPIProvider() === 'vertex') return {}"
+    },
+    {
+      "name": "B1: geminiStateToKeep forgets the signature",
+      "source": "src/providers/shims/gemini/blockState.ts",
+      "find": "...(typeof signature === 'string' && signature ? { signature } : {}),",
+      "replace": "...({}),"
+    },
+    {
+      "name": "B2: the converter skips the signature already in extra_content",
+      "source": "src/providers/shims/openaiShim/messageConverter.ts",
+      "find": "tu.signature ??\n                    existingSignature ??",
+      "replace": "tu.signature ??"
+    },
+    {
+      "name": "B4: Gemini 3 Flash falls back to the 2.0 Flash row",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "{ pattern: /gemini-3-flash/i,",
+      "replace": "{ pattern: /gemini-3-flash-removed/i,"
+    },
+    {
+      "name": "B4: Gemini 3.x Pro falls back to the generic Pro row",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "{ pattern: /gemini-3(?:\\.\\d+)?-pro/i,",
+      "replace": "{ pattern: /gemini-3(?:\\.\\d+)?-pro-removed/i,"
+    },
+    {
+      "name": "B4: 2.5 Flash-Lite falls back to the 2.5 Flash row",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "{ pattern: /gemini.*2\\.5.*flash.*lite/i,",
+      "replace": "{ pattern: /gemini.*2\\.5.*flash.*lite-removed/i,"
+    },
+    {
+      "name": "B5: a thinking-only end_turn is complete again",
+      "source": "src/providers/shims/claude/streamEnd.ts",
+      "find": "facts.blockTypes.every(type => THINKING_BLOCK_TYPES.has(type)) &&",
+      "replace": "false &&"
+    },
+    {
+      "name": "B5: the StructuredOutput exception is gone",
+      "source": "src/providers/shims/claude/streamEnd.ts",
+      "find": "!facts.answersStructuredOutput &&",
+      "replace": "true &&"
+    },
+    {
+      "name": "B5: CLAUDIN_THINKING_ONLY_RETRY=0 is ignored",
+      "source": "src/providers/shims/claude/streamEnd.ts",
+      "find": "!isEnvDefinedFalsy(process.env.CLAUDIN_THINKING_ONLY_RETRY)",
+      "replace": "true"
+    },
+    {
+      "name": "B5: any last tool call counts as StructuredOutput",
+      "source": "src/providers/shims/claude/streamEnd.ts",
+      "find": "block.name === SYNTHETIC_OUTPUT_TOOL_NAME,",
+      "replace": "block.name !== '',"
+    }
+  ]
+}
