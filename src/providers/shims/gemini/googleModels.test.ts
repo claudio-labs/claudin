@@ -25,7 +25,10 @@ import { getModelOptions } from 'src/providers/model/modelOptions.js'
 import { getOpenAIMaxOutputTokens } from 'src/providers/model/openaiContextWindows.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import { DEFAULT_GEMINI_MODEL } from 'src/providers/presets/providerProfile.js'
-import { setActiveOpenAIModelOptionsCache } from 'src/providers/presets/providerProfiles.js'
+import {
+  clearActiveOpenAIModelOptionsCache,
+  setActiveOpenAIModelOptionsCache,
+} from 'src/providers/presets/providerProfiles.js'
 
 /** "Shut down" on Google's models page, 2026-10-22. */
 const SHUT_DOWN = new Set([
@@ -55,6 +58,8 @@ function useProfile(profile: ProviderProfile): void {
 }
 
 afterEach(() => {
+  // resetGlobalConfigForTests keeps the legacy picker cache (see models.test.ts).
+  clearActiveOpenAIModelOptionsCache()
   resetGlobalConfigForTests()
   invalidateActiveProviderCache()
   resetModelStringsForTestingOnly()

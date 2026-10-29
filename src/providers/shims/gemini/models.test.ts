@@ -6,7 +6,10 @@ import {
   type ProviderProfile,
 } from 'src/platform/config/config.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
-import { getActiveOpenAIModelOptionsCache } from 'src/providers/presets/providerProfiles.js'
+import {
+  clearActiveOpenAIModelOptionsCache,
+  getActiveOpenAIModelOptionsCache,
+} from 'src/providers/presets/providerProfiles.js'
 import {
   geminiModelOptions,
   listGeminiModelsDetailed,
@@ -20,6 +23,10 @@ const originalFetch = globalThis.fetch
 
 afterEach(() => {
   globalThis.fetch = originalFetch
+  // resetGlobalConfigForTests keeps keys DEFAULT_GLOBAL_CONFIG lacks, and the
+  // legacy openaiAdditionalModelOptionsCache is one: left set, it fills the
+  // /model picker of every later file's profile.
+  clearActiveOpenAIModelOptionsCache()
   resetGlobalConfigForTests()
   invalidateActiveProviderCache()
 })
