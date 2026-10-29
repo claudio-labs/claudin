@@ -19,12 +19,12 @@ describe only the code; the `/import` adapter for openclaude users
 
 **How to apply:** Cross-check any candidate against claudin's tree first — several things converged independently (claudin already HAS: `/goal`, reasoned-denial permission prompts, per-agent model routing in `/agents`, bypassPermissions mode, 5xx/HTML-overload retry).
 
-## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; branch `fix/inherited-bugs`)
+## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; #319, v1.1.49)
 
 Next audit starts at openclaude `a838b670`. Of the 17 confirmed below, five
 were already fixed: #1 heredoc, `__proto__`, attribution block,
 `argumentSubstitution` (`e58d3ead`, 09-10) and persist-before-throw
-(`cf78225f`, 10-10). The 10-23 branch fixed 11 of the other 12 plus 11 new
+(`cf78225f`, 10-10). #319 fixed 11 of the other 12 plus 11 new
 ports from their v0.31–0.33 fix stream, each with a red test first and a probe
 in `scripts/migrations/probes/inheritedBugs20261023.json`. Still open on purpose:
 **#17 GLM pricing** (a price-data refresh, not a bug). Ported only in part:

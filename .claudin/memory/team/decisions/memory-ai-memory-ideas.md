@@ -55,7 +55,7 @@ paths:
 
 ## Round 2 — 2026-10-23 (ai-memory 3.1.1 → 3.2.2)
 
-**Decision:** three more ideas, deterministic, branch `feat/memory-ai-memory-round-2`:
+**Decision:** three more ideas, deterministic, shipped in #320 (v1.1.49):
 1. `renderMemoryFileBlock` escapes the CLOSING tags a memory could use to leave its envelope: `</system-reminder` in any memory, `</team-memory-content` in a team one (ai-memory ff57e210). Only closers, so prose naming `<system-reminder>` (this repo's team index has one) stays byte for byte.
 2. `scanForSecrets` reads past `\p{Cf}`. A zero-width space inside a key passed every rule (ai-memory 642d8d6e). The team write guard refuses, and the audit fails on, bidi controls and Unicode tag characters (`hiddenText.ts`), which hide text from the PR that reviews team memory.
 3. `claudin memory audit` reports `broken-link`, `unindexed` and `duplicate-name` (`memoryLinks.ts`) in every scope. They are report-only, like `expires:`.

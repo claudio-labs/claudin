@@ -1,6 +1,6 @@
 ---
 name: classifier-transcript-stable-cut
-description: Since 2026-10-24 the auto-mode classifier's transcript is cut at 25k-char chunk boundaries counted from the first entry and gets the whole 200k budget, so a long session stops rewriting its classifier cache every call (−72% writes per call in the replay, −59% classifier spend live on Sonnet 5.5); killswitch CLAUDIN_CLASSIFIER_STABLE_CUT=0
+description: Since #321 (2026-10-24, v1.1.49) the auto-mode classifier's transcript is cut at 25k-char chunk boundaries counted from the first entry and gets the whole 200k budget, so a long session stops rewriting its classifier cache every call (−72% writes per call in the replay, −59% classifier spend live on Sonnet 5.5); killswitch CLAUDIN_CLASSIFIER_STABLE_CUT=0
 type: project
 scope: src/permissions/yoloClassifier/transcript.ts, src/permissions/yoloClassifier/classify.ts
 impact: functional

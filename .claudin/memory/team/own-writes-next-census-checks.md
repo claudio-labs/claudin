@@ -1,6 +1,6 @@
 ---
 name: own-writes-next-census-checks
-description: Own writes is ON by default since 10-21 (branch fix/own-writes-every-tool); the 10-24 census ran checks 1-4 and names-only passed (notes −77%, 2 re-Reads in 59 claims, 0 Edit misses); check 5 (absorbed user edits on long calls) is still unsampled
+description: Own writes is ON by default since 10-21 (#313); the 10-24 census ran checks 1-4 and names-only passed (notes −77%, 2 re-Reads in 59 claims, 0 Edit misses); check 5 (absorbed user edits on long calls) is still unsampled
 type: project
 ---
 
