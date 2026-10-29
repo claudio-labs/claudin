@@ -20,8 +20,8 @@
     },
     {
       "name": "stripCallerField drops the Gemini extra_content",
-      "find": "\n          ...(getAPIProvider() === 'gemini' && (block as any).extra_content",
-      "replace": "\n          ...(getAPIProvider() === 'vertex' && (block as any).extra_content"
+      "find": "\n          ...geminiStateToKeep(block),",
+      "replace": "\n          ...({}),"
     },
     {
       "name": "an empty string tool_use input from the API becomes null instead of {}",
