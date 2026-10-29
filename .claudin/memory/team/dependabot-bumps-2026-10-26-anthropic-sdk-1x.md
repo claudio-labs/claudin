@@ -27,7 +27,7 @@ type: project
 - foundry-sdk 0.6 / vertex-sdk 0.21 declare `sdk <1`; the `overrides` forced 1.x
   under them. Both have a 1.1.0 (`sdk >=1 <2`), bumped with it.
 
-**Fix (on the Dependabot branch):** `client.ts` pins `anthropic-version` per lane
+**Fix (landed with #326 on main, d82ac0ac; unreleased as of 2026-10-27):** `client.ts` pins `anthropic-version` per lane
 (2023-06-01; `bedrock-2023-05-31` and `vertex-2023-10-16` for those two) and
 builds the first-party client as a subclass whose `apiKeyAuth` sends
 `X-Api-Key`; `errors.ts` also matches "Could not resolve authentication method".

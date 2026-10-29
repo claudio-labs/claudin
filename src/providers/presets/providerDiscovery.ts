@@ -1,6 +1,8 @@
 import type { OllamaModelDescriptor } from 'src/providers/presets/providerRecommendation.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { DEFAULT_OPENAI_BASE_URL } from 'src/providers/presets/providerConfig.js'
+import { isGeminiNativeApiBaseUrl } from 'src/providers/shims/gemini/endpoints.js'
+import { listGeminiModelsDetailed } from 'src/providers/shims/gemini/models.js'
 
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434'
 export const DEFAULT_ATOMIC_CHAT_BASE_URL = 'http://127.0.0.1:1337'
@@ -253,6 +255,10 @@ export async function listOpenAICompatibleModelsDetailed(options?: {
   apiKey?: string
 }): Promise<OpenAIModelDiscoveryResult> {
   const baseUrl = getOpenAICompatibleModelsBaseUrl(options?.baseUrl)
+  // The native Gemini API lists models in its own shape and auth.
+  if (isGeminiNativeApiBaseUrl(baseUrl)) {
+    return listGeminiModelsDetailed({ baseUrl, apiKey: options?.apiKey })
+  }
   const isBankr = baseUrl.toLowerCase().includes('bankr')
   const headers: Record<string, string> | undefined = options?.apiKey
     ? isBankr

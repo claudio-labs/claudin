@@ -89,6 +89,7 @@ import {
   XAI_OAUTH_PROVIDER_MODEL,
   XAI_OAUTH_PROVIDER_NAME,
 } from 'src/providers/ui/providerManagerConstants.js'
+import { isVertexGeminiBaseUrl } from 'src/providers/shims/gemini/endpoints.js'
 import {
   buildExtrasFromDrafts,
   customHeadersToText,
@@ -109,6 +110,7 @@ import {
   AnthropicAuthChoiceScreen,
   AnthropicOAuthScreen,
   KimiAuthChoiceScreen,
+  GoogleAuthChoiceScreen,
 } from 'src/providers/ui/screens/AuthChoice.js'
 import {
   CloudExtrasScreen,
@@ -830,7 +832,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       return
     }
 
-    if (preset === 'bedrock' || preset === 'vertex' || preset === 'foundry') {
+    if (
+      preset === 'bedrock' ||
+      preset === 'vertex' ||
+      preset === 'gemini-vertex' ||
+      preset === 'foundry'
+    ) {
       setScreen('cloud-extras')
       return
     }
@@ -1013,6 +1020,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       if (
         nextKey === 'model' &&
         !MODEL_DISCOVERY_EXCLUDED_PROVIDERS.has(draftProvider) &&
+        // Vertex lists no models the way the Gemini API does.
+        !(draftProvider === 'gemini' && isVertexGeminiBaseUrl(nextDraft.baseUrl)) &&
         nextDraft.baseUrl.trim().length > 0
       ) {
         setScreen('select-openai-model')
@@ -1085,7 +1094,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     isActive:
       screen === 'anthropic-auth-choice' ||
       screen === 'anthropic-oauth' ||
-      screen === 'kimi-auth-choice',
+      screen === 'kimi-auth-choice' ||
+      screen === 'google-auth-choice',
   })
 
   useKeybinding('confirm:no', () => setScreen('kimi-auth-choice'), {
@@ -1503,6 +1513,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     case 'kimi-auth-choice':
       content = (
         <KimiAuthChoiceScreen
+          setScreen={setScreen}
+          startCreateFromPreset={startCreateFromPreset}
+        />
+      )
+      break
+    case 'google-auth-choice':
+      content = (
+        <GoogleAuthChoiceScreen
           setScreen={setScreen}
           startCreateFromPreset={startCreateFromPreset}
         />

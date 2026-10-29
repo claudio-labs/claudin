@@ -1,0 +1,88 @@
+{
+  "test": [
+    "src/providers/shims/gemini/googleModels.test.ts",
+    "src/providers/shims/gemini/models.test.ts",
+    "src/providers/shims/gemini/thinking.test.ts",
+    "src/providers/usage/modelCost.test.ts"
+  ],
+  "_note": "Gemini model data against Google's model page (updated 2026-10-22), on feat/gemini-native: the 1M window of the family for ids no table lists (the preset default got 128k), no tier or fallback on a shut-down model, the /model picker on Google's own list, refreshed from the API, gemini-4-argon priced with its 2026-12-01 change, and low/medium/high for a Gemini newer than the effort catalog. Each probe undoes one line of a fix and must turn its test red.",
+  "source": "src/providers/model/openaiContextWindows.ts",
+  "probes": [
+    {
+      "name": "an unlisted Gemini falls back to 128k again",
+      "find": "if (gemini) return gemini.contextWindow",
+      "replace": "if (gemini) void 0"
+    },
+    {
+      "name": "an unlisted Gemini loses the family's output limit",
+      "find": "if (gemini) return gemini.maxOutputTokens",
+      "replace": "if (gemini) void 0"
+    },
+    {
+      "name": "the family rule stops at Gemini 3",
+      "source": "src/providers/shims/gemini/endpoints.ts",
+      "find": "return version !== undefined && version >= 2.5\n    ? { contextWindow",
+      "replace": "return version !== undefined && version >= 2.5 && version < 3\n    ? { contextWindow"
+    },
+    {
+      "name": "the Sonnet tier maps to the shut-down 2.0 Flash",
+      "source": "src/providers/model/configs.ts",
+      "find": "export const GEMINI_FLASH_MODEL = 'gemini-3.8-flash'",
+      "replace": "export const GEMINI_FLASH_MODEL = 'gemini-2.0-flash'"
+    },
+    {
+      "name": "the Haiku tier and the side-query fallback map to the shut-down 2.0 Flash-Lite",
+      "source": "src/providers/model/configs.ts",
+      "find": "export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.1-flash-lite'",
+      "replace": "export const GEMINI_FLASH_LITE_MODEL = 'gemini-2.0-flash-lite'"
+    },
+    {
+      "name": "the legacy env default is the shut-down 2.0 Flash",
+      "source": "src/providers/presets/providerProfile.ts",
+      "find": "export const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview'",
+      "replace": "export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'"
+    },
+    {
+      "name": "the Gemini picker shows Claude tiers again",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "if (getAPIProvider() === 'gemini') {\n    const activeProfile",
+      "replace": "if (getAPIProvider() === ('none' as string)) {\n    const activeProfile"
+    },
+    {
+      "name": "the refresh never writes the list it read",
+      "source": "src/providers/shims/gemini/models.ts",
+      "find": "      setActiveOpenAIModelOptionsCache(options)\n",
+      "replace": "      void options\n"
+    },
+    {
+      "name": "the picker list keeps TTS and image models",
+      "source": "src/providers/shims/gemini/models.ts",
+      "find": ".filter(model => !NOT_FOR_CHAT_RE.test(model.id))",
+      "replace": ".filter(model => model.id.length > 0)"
+    },
+    {
+      "name": "gemini-4-argon's October price ends before the date Google announced",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "label: 'gemini-4-argon',        until: Date.UTC(2026, 11, 1),",
+      "replace": "label: 'gemini-4-argon',        until: Date.UTC(2026, 9, 1),"
+    },
+    {
+      "name": "gemini-4-argon falls to the generic Gemini row",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "  { pattern: /gemini-4-argon/i,           label: 'gemini-4-argon',        cost:",
+      "replace": "  { pattern: /gemini-4-argon-removed/i,   label: 'gemini-4-argon',        cost:"
+    },
+    {
+      "name": "the 3.1 Pro long-prompt tier is gone",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "longPrompt: { abovePromptTokens: 200_000, inputTokens: 4, outputTokens: 18,",
+      "replace": "longPrompt: { abovePromptTokens: 2_000_000, inputTokens: 4, outputTokens: 18,"
+    },
+    {
+      "name": "a Gemini newer than the effort catalog gets no levels",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "return version !== undefined && version >= 2.5 ? GEMINI_FALLBACK_LEVELS : undefined",
+      "replace": "return version === 2.5 ? GEMINI_FALLBACK_LEVELS : undefined"
+    }
+  ]
+}

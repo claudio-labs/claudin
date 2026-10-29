@@ -17,6 +17,23 @@ export function getDiscoveredContextWindow(model: string): number | undefined {
   return discoveredContextWindows.get(model)
 }
 
+/** For a list read elsewhere (the native Gemini one, shims/gemini/models.ts). */
+export function recordDiscoveredContextWindow(model: string, tokens: number): void {
+  discoveredContextWindows.set(model, tokens)
+}
+
+// Model id → max output tokens, for the providers whose list reports it (the
+// native Gemini one). Consulted by getOpenAIMaxOutputTokens().
+const discoveredMaxOutputTokens = new Map<string, number>()
+
+export function getDiscoveredMaxOutputTokens(model: string): number | undefined {
+  return discoveredMaxOutputTokens.get(model)
+}
+
+export function recordDiscoveredMaxOutputTokens(model: string, tokens: number): void {
+  discoveredMaxOutputTokens.set(model, tokens)
+}
+
 type OpenAIModelsResponse = {
   data?: Array<{
     id?: string | null

@@ -15,6 +15,7 @@ import { MODEL_ALIASES } from 'src/providers/model/aliases.js';
 import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/providers/model/check1mAccess.js';
 import type { ModelOption } from 'src/providers/model/modelOptions.js';
 import { discoverOpenAICompatibleModelOptions } from 'src/providers/model/openaiModelDiscovery.js';
+import { refreshGeminiModelOptions } from 'src/providers/shims/gemini/models.js';
 import { getAPIProvider } from 'src/providers/model/providers.js';
 import { getActiveOpenAIModelOptionsCache, getActiveProviderProfile, setActiveOpenAIModelOptionsCache } from 'src/providers/presets/providerProfiles.js';
 import { getDefaultMainLoopModelSetting, isOpus1mMergeEnabled, renderDefaultModelSetting } from 'src/providers/model/model.js';
@@ -329,6 +330,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
   if (getAdditionalModelOptionsCacheScope()?.startsWith('openai:')) {
     void refreshOpenAIModelOptionsCache();
   }
+  void refreshGeminiModelOptions();
   return <ModelPickerWrapper onDone={onDone} />;
 };
 function renderModelLabel(model: string | null): string {

@@ -25,6 +25,7 @@ export type Screen =
   | 'xai-oauth'
   | 'kimi-oauth'
   | 'kimi-auth-choice'
+  | 'google-auth-choice'
   | 'github-onboard'
   | 'anthropic-auth-choice'
   | 'anthropic-oauth'

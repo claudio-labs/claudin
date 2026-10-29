@@ -17,6 +17,7 @@ import {
   getCodexAccountLimits,
 } from 'src/providers/model/codexModelCatalog.js'
 import { activeSessionOnCodexBackend } from 'src/providers/shims/codex/backend.js'
+import { geminiFamilyLimits } from 'src/providers/shims/gemini/endpoints.js'
 
 // Exported for copilotModels.consistency.test.ts. Production code should
 // prefer getOpenAIContextWindow() / getOpenAIMaxOutputTokens() — those handle
@@ -501,6 +502,8 @@ export function getOpenAIContextWindow(model: string): number | undefined {
   }
   const known = lookupByModel(OPENAI_CONTEXT_WINDOWS, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
   if (known !== undefined) return known
+  const gemini = geminiFamilyLimits(model)
+  if (gemini) return gemini.contextWindow
   // Copilot models missing from the hardcoded table (new releases) resolve
   // from the live account catalog. Lazy for the same cycle reason as above.
   try {
@@ -516,8 +519,21 @@ export function getOpenAIContextWindow(model: string): number | undefined {
  * Returns undefined if the model is not in the table.
  */
 export function getOpenAIMaxOutputTokens(model: string): number | undefined {
+  const pinned = lookupByModel({}, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
+  if (pinned !== undefined) return pinned
+  // What the provider's model list reported (the native Gemini one), lazily
+  // for the same module-init cycle as in getOpenAIContextWindow.
+  try {
+    const { getDiscoveredMaxOutputTokens } = require('src/providers/model/openaiModelDiscovery.js') as typeof import('src/providers/model/openaiModelDiscovery.js')
+    const discovered = getDiscoveredMaxOutputTokens(model)
+    if (discovered !== undefined) return discovered
+  } catch {
+    // fall through to the hardcoded table
+  }
   const known = lookupByModel(OPENAI_MAX_OUTPUT_TOKENS, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
   if (known !== undefined) return known
+  const gemini = geminiFamilyLimits(model)
+  if (gemini) return gemini.maxOutputTokens
   try {
     const { getCatalogCopilotMaxOutputTokens } = require('src/providers/model/copilotModelCatalog.js') as typeof import('src/providers/model/copilotModelCatalog.js')
     return getCatalogCopilotMaxOutputTokens(model)

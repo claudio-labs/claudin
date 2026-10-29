@@ -31,3 +31,6 @@ transcript cannot tell "never retried" from "retries ran out".
 **Status 2026-10-06:** still unfixed (`withRetry.ts` still lists the exact
 string). The fix is a prefix match; mind the set's warning that every retry
 during a capacity cascade is 3-10× gateway amplification.
+
+**Re-checked 2026-10-27:** still the exact string (`withRetry.ts:101`, tested
+with `.has()` in `shouldRetry529` at `:117`).

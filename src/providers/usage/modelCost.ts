@@ -210,11 +210,16 @@ const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
  *
  * Pattern matching is order-sensitive (more specific first). Refresh manually
  * when providers re-price; sources noted inline.
+ *
+ * A row with `until` (epoch ms) is the price up to that instant; the next row
+ * matching the same model takes over after it. For prices announced with a
+ * date, so the table does not go stale on its own.
  */
 export const NON_CLAUDE_MODEL_COSTS: ReadonlyArray<{
   pattern: RegExp
   cost: ModelCosts
   label: string
+  until?: number
 }> = [
   // OpenAI GPT-5 family — 90% cache discount
   { pattern: /gpt-5-nano/i,     label: 'gpt-5-nano',     cost: { inputTokens: 0.05, outputTokens: 0.40, promptCacheWriteTokens: 0.05, promptCacheReadTokens: 0.005, webSearchRequests: 0 } },
@@ -228,8 +233,20 @@ export const NON_CLAUDE_MODEL_COSTS: ReadonlyArray<{
   { pattern: /o4-mini/i,        label: 'o4-mini',        cost: { inputTokens: 0.55, outputTokens: 2.20, promptCacheWriteTokens: 0.55, promptCacheReadTokens: 0.275, webSearchRequests: 0 } },
   { pattern: /\bo3\b/i,         label: 'o3',             cost: { inputTokens: 15,   outputTokens: 60,   promptCacheWriteTokens: 15,   promptCacheReadTokens: 7.50,  webSearchRequests: 0 } },
   { pattern: /\bo1\b/i,         label: 'o1',             cost: { inputTokens: 15,   outputTokens: 60,   promptCacheWriteTokens: 15,   promptCacheReadTokens: 7.50,  webSearchRequests: 0 } },
-  // Google Gemini — ~10% cache discount
-  { pattern: /gemini.*2\.5.*pro/i,   label: 'gemini-2.5-pro',   cost: { inputTokens: 1.25, outputTokens: 10,   promptCacheWriteTokens: 1.25, promptCacheReadTokens: 0.125, webSearchRequests: 0 } },
+  // Google Gemini — ~10% cache discount. Gemini 4/3.x and 2.5 Flash-Lite:
+  // Standard list prices (ai.google.dev/gemini-api/docs/pricing, 2026-10-28),
+  // with the >200k-prompt tier of the Pro models and the announced re-pricing
+  // of 4 Argon (2026-12-01) and 3.6/3.8 Flash (2027-01-01).
+  { pattern: /gemini-4-argon/i,           label: 'gemini-4-argon',        until: Date.UTC(2026, 11, 1), cost: { inputTokens: 2,    outputTokens: 10,   promptCacheWriteTokens: 2,    promptCacheReadTokens: 0.10,  webSearchRequests: 0 } },
+  { pattern: /gemini-4-argon/i,           label: 'gemini-4-argon',        cost: { inputTokens: 4,    outputTokens: 20,   promptCacheWriteTokens: 4,    promptCacheReadTokens: 0.20,  webSearchRequests: 0 } },
+  { pattern: /gemini-3(?:\.\d+)?-pro/i,   label: 'gemini-3-pro',          cost: { inputTokens: 2,    outputTokens: 12,   promptCacheWriteTokens: 2,    promptCacheReadTokens: 0.20,  webSearchRequests: 0, longPrompt: { abovePromptTokens: 200_000, inputTokens: 4, outputTokens: 18, promptCacheWriteTokens: 4, promptCacheReadTokens: 0.40 } } },
+  { pattern: /gemini-3\.1-flash-lite/i,   label: 'gemini-3.1-flash-lite', cost: { inputTokens: 0.25, outputTokens: 1.50, promptCacheWriteTokens: 0.25, promptCacheReadTokens: 0.025, webSearchRequests: 0 } },
+  { pattern: /gemini-3\.5-flash-lite/i,   label: 'gemini-3.5-flash-lite', cost: { inputTokens: 0.30, outputTokens: 2.50, promptCacheWriteTokens: 0.30, promptCacheReadTokens: 0.03,  webSearchRequests: 0 } },
+  { pattern: /gemini-3\.[68]-flash/i,     label: 'gemini-3.8-flash',      until: Date.UTC(2027, 0, 1), cost: { inputTokens: 0.75, outputTokens: 3.75, promptCacheWriteTokens: 0.75, promptCacheReadTokens: 0.075, webSearchRequests: 0 } },
+  { pattern: /gemini-3\.[68]-flash/i,     label: 'gemini-3.8-flash',      cost: { inputTokens: 1.50, outputTokens: 7.50, promptCacheWriteTokens: 1.50, promptCacheReadTokens: 0.15,  webSearchRequests: 0 } },
+  { pattern: /gemini-3-flash/i,           label: 'gemini-3-flash',        cost: { inputTokens: 0.50, outputTokens: 3,    promptCacheWriteTokens: 0.50, promptCacheReadTokens: 0.05,  webSearchRequests: 0 } },
+  { pattern: /gemini.*2\.5.*pro/i,   label: 'gemini-2.5-pro',   cost: { inputTokens: 1.25, outputTokens: 10,   promptCacheWriteTokens: 1.25, promptCacheReadTokens: 0.125, webSearchRequests: 0, longPrompt: { abovePromptTokens: 200_000, inputTokens: 2.50, outputTokens: 15, promptCacheWriteTokens: 2.50, promptCacheReadTokens: 0.25 } } },
+  { pattern: /gemini.*2\.5.*flash.*lite/i, label: 'gemini-2.5-flash-lite', cost: { inputTokens: 0.10, outputTokens: 0.40, promptCacheWriteTokens: 0.10, promptCacheReadTokens: 0.01, webSearchRequests: 0 } },
   { pattern: /gemini.*2\.5.*flash/i, label: 'gemini-2.5-flash', cost: { inputTokens: 0.30, outputTokens: 2.50, promptCacheWriteTokens: 0.30, promptCacheReadTokens: 0.030, webSearchRequests: 0 } },
   { pattern: /gemini.*flash/i,       label: 'gemini-flash',     cost: { inputTokens: 0.10, outputTokens: 0.40, promptCacheWriteTokens: 0.10, promptCacheReadTokens: 0.025, webSearchRequests: 0 } },
   { pattern: /gemini.*pro/i,         label: 'gemini-pro',       cost: { inputTokens: 1.25, outputTokens: 5,    promptCacheWriteTokens: 1.25, promptCacheReadTokens: 0.125, webSearchRequests: 0 } },
@@ -276,8 +293,13 @@ export const NON_CLAUDE_MODEL_COSTS: ReadonlyArray<{
   { pattern: /\bphi\b/i,             label: 'phi',              cost: { inputTokens: 0.13, outputTokens: 0.50, promptCacheWriteTokens: 0.13, promptCacheReadTokens: 0.13, webSearchRequests: 0 } },
 ]
 
-function lookupNonClaudeCost(model: string): ModelCosts | undefined {
+/** `now` is a parameter so the dated rows can be tested on both sides. */
+export function lookupNonClaudeCost(
+  model: string,
+  now: number = Date.now(),
+): ModelCosts | undefined {
   for (const entry of NON_CLAUDE_MODEL_COSTS) {
+    if (entry.until !== undefined && now >= entry.until) continue
     if (entry.pattern.test(model)) return entry.cost
   }
   return undefined

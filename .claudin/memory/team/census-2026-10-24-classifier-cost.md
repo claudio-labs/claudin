@@ -1,6 +1,6 @@
 ---
 name: census-2026-10-24-classifier-cost
-description: Census A=10-20..23 vs B=10-23..24 — the auto-mode classifier is ~24% of all spend ($53 of ~$220 in B), 90% of it cache writes from a transcript window that slides every call (fixed on perf/census-2026-10-24); session-census.ts priced Opus 5.5 and Haiku 5.5 ~2x too high (fixed); own-writes names-only passed every check; cache healthy
+description: Census A=10-20..23 vs B=10-23..24 — the auto-mode classifier is ~24% of all spend ($53 of ~$220 in B), 90% of it cache writes from a transcript window that slides every call (fixed in #321); session-census.ts priced Opus 5.5 and Haiku 5.5 ~2x too high (fixed); own-writes names-only passed every check; cache healthy
 type: project
 ---
 
@@ -16,8 +16,8 @@ app charges $0.1/$0.5. For B it reported $327; the app-priced transcript total i
 Every census since Opus 5.5 became the default carries the same inflation. Shares
 within one price row still hold; the write:read mix does not (a 1h write went from 20
 reads to 40). The file's header said importing `modelCost.ts` now loads; it does not. The
-Opus 5.5 fast-mode check reads the config and throws in a bare script. Fixed on branch
-`perf/census-2026-10-24`: the rows are added, a test compares them with
+Opus 5.5 fast-mode check reads the config and throws in a bare script. Fixed with #321
+(v1.1.49): the rows are added, a test compares them with
 `getModelCosts`, and the header is corrected. `forkBench.ts` and `relief-ceiling-sim.ts`
 had the same gap.
 

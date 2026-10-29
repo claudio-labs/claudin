@@ -1,0 +1,72 @@
+{
+  "test": ["src/agent/messages/normalize.characterization.test.ts"],
+  "_note": "Characterization of src/agent/messages/normalize.ts before the Gemini-native branch changes it (2026-10-28, 61% -> 98% lines). One probe per function the new suite covers; each must turn it red.",
+  "source": "src/agent/messages/normalize.ts",
+  "probes": [
+    {
+      "name": "reorderMessagesInUI drops the pre hooks of a tool call",
+      "find": "result.push(...group.preHooks)",
+      "replace": "void group.preHooks"
+    },
+    {
+      "name": "tool search on keeps references to tools that are gone",
+      "find": "return isAvailable",
+      "replace": "return true"
+    },
+    {
+      "name": "tool search off keeps tool_reference blocks",
+      "find": "c => !isToolReferenceBlock(c),",
+      "replace": "c => c !== null,"
+    },
+    {
+      "name": "stripCallerField drops the Gemini extra_content",
+      "find": "\n          ...geminiStateToKeep(block),",
+      "replace": "\n          ...({}),"
+    },
+    {
+      "name": "an empty string tool_use input from the API becomes null instead of {}",
+      "find": "normalizedInput = parsed ?? {}",
+      "replace": "normalizedInput = parsed ?? null"
+    },
+    {
+      "name": "filterUnresolvedToolUses drops a partly resolved assistant",
+      "find": "return !toolUseBlockIds.every(id => unresolvedIds.has(id))",
+      "replace": "return !toolUseBlockIds.some(id => unresolvedIds.has(id))"
+    },
+    {
+      "name": "the final assistant keeps its trailing thinking",
+      "find": "    if (!block || !isThinkingBlock(block)) {",
+      "replace": "    if (!block || block) {"
+    },
+    {
+      "name": "the empty-content placeholder lands on the final assistant",
+      "find": "if (index === messages.length - 1) {",
+      "replace": "if (index === messages.length - 2) {"
+    },
+    {
+      "name": "ensureToolResultPairing keeps a duplicated tool_result",
+      "find": "if (seenTrIds.has(trId)) return false",
+      "replace": "if (seenTrIds.size < 0) return false"
+    },
+    {
+      "name": "ensureToolResultPairing repairs in strict mode",
+      "find": "if (getStrictToolResultPairing()) {",
+      "replace": "if (getStrictToolResultPairing() && false) {"
+    },
+    {
+      "name": "stripAdvisorBlocks treats blank text as content",
+      "find": "(b.type === 'text' && (!b.text || !b.text.trim())),",
+      "replace": "(b.type === 'text' && false),"
+    },
+    {
+      "name": "an is_error tool_result joins its texts with one newline",
+      "find": "texts.join('\\n\\n')",
+      "replace": "texts.join('\\n')"
+    },
+    {
+      "name": "the media strip stops at an earlier synthetic error instead of walking past it",
+      "find": "      if (isSyntheticApiErrorMessage(candidate)) {\n        continue",
+      "replace": "      if (isSyntheticApiErrorMessage(candidate)) {\n        break"
+    }
+  ]
+}

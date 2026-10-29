@@ -55,6 +55,15 @@ import {
   type ShimCreateParams,
 } from 'src/providers/shims/codexShim.js'
 import { codexReplayActive } from 'src/providers/shims/codex/backend.js'
+import {
+  isGeminiNativeRequest,
+  performGeminiRequest,
+} from 'src/providers/shims/gemini/backend.js'
+import { geminiCompatBaseUrl } from 'src/providers/shims/gemini/endpoints.js'
+import {
+  convertGeminiResponseToAnthropicMessage,
+  geminiStreamToAnthropic,
+} from 'src/providers/shims/gemini/stream.js'
 import { fetchWithProxyRetry } from 'src/providers/transport/fetchWithProxyRetry.js'
 import {
   buildOpenAICompatibilityErrorMessage,
@@ -163,6 +172,7 @@ class OpenAIShimMessages {
         model: params.model,
         reasoningEffortOverride: reasoningEffort,
       })
+      const geminiNative = isGeminiNativeRequest(request.baseUrl)
       const response = await self._doRequest(request, params, options)
       httpResponse = response
 
@@ -174,6 +184,12 @@ class OpenAIShimMessages {
           .map(t => (t as { name?: unknown }).name)
           .filter((n): n is string => typeof n === 'string'),
       )
+
+      if (geminiNative) {
+        return params.stream
+          ? new OpenAIShimStream(geminiStreamToAnthropic(response, request.resolvedModel))
+          : convertGeminiResponseToAnthropicMessage(await response.json(), request.resolvedModel)
+      }
 
       if (params.stream) {
         const isResponsesStream = response.url?.includes('/responses')
@@ -274,6 +290,18 @@ class OpenAIShimMessages {
     const githubEndpointType = getGithubEndpointType(request.baseUrl)
     const isGithubMode = isGithubModelsMode()
     const isGithubWithCodexTransport = isGithubMode && request.transport === 'codex_responses'
+
+    if (isGeminiNativeRequest(request.baseUrl)) {
+      return performGeminiRequest({
+        request,
+        params,
+        defaultHeaders: {
+          ...this.defaultHeaders,
+          ...filterAnthropicHeaders(options?.headers),
+        },
+        signal: options?.signal,
+      })
+    }
 
     if (isGithubWithCodexTransport) {
       const profile = tryGetActiveProvider()
@@ -684,7 +712,7 @@ class OpenAIShimMessages {
       ? getLocalProviderRetryBaseUrls(request.baseUrl)
       : []
 
-    let activeBaseUrl = request.baseUrl
+    let activeBaseUrl = isGemini ? geminiCompatBaseUrl(request.baseUrl) : request.baseUrl
     let chatCompletionsUrl = buildChatCompletionsUrl(activeBaseUrl)
     const attemptedLocalBaseUrls = new Set<string>([activeBaseUrl])
     let didRetryWithoutTools = false

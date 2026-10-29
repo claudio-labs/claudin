@@ -50,8 +50,8 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { validateImagesForAPI } from 'src/terminal/image/imageValidation.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProvider } from 'src/providers/model/providers.js'
 import { codexStateToKeep } from 'src/providers/shims/codex/backend.js'
+import { geminiStateToKeep } from 'src/providers/shims/gemini/blockState.js'
 import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
 import { getStrictToolResultPairing } from 'src/platform/bootstrap/state.js'
 import {
@@ -597,7 +597,7 @@ export function stripCallerFieldFromAssistantMessage(
           id: block.id,
           name: block.name,
           input: block.input,
-          ...(getAPIProvider() === 'gemini' && (block as any).extra_content ? { extra_content: (block as any).extra_content } : {}),
+          ...geminiStateToKeep(block),
           ...codexStateToKeep(block),
         }
       }),
@@ -874,12 +874,13 @@ export function normalizeMessagesForAPI(
 
                   // When tool search is enabled, preserve all fields including 'caller'
                   if (toolSearchEnabled) {
-                    const { extra_content, ...restBlock } = block as any
+                    // The Gemini fields go back only through geminiStateToKeep.
+                    const { extra_content: _extraContent, signature: _signature, ...restBlock } = block as any
                     return {
                       ...restBlock,
                       name: canonicalName,
                       input: normalizedInput,
-                      ...(getAPIProvider() === 'gemini' && extra_content ? { extra_content } : {})
+                      ...geminiStateToKeep(block),
                     }
                   }
 
@@ -891,7 +892,7 @@ export function normalizeMessagesForAPI(
                     id: block.id,
                     name: canonicalName,
                     input: normalizedInput,
-                    ...(getAPIProvider() === 'gemini' && (block as any).extra_content ? { extra_content: (block as any).extra_content } : {}),
+                    ...geminiStateToKeep(block),
                     ...codexStateToKeep(block),
                   }
                 }

@@ -9,6 +9,7 @@ import {
 } from 'src/platform/config/config.js'
 import type { ModelOption } from 'src/providers/model/modelOptions.js'
 import { parseModelList } from 'src/providers/presets/providerModels.js'
+import { DEFAULT_GEMINI_BASE_URL } from 'src/providers/presets/providerProfile.js'
 
 export type ProviderPreset =
   | 'anthropic'
@@ -17,6 +18,8 @@ export type ProviderPreset =
   | 'moonshotai'
   | 'deepseek'
   | 'gemini'
+  | 'gemini-adc'
+  | 'gemini-vertex'
   | 'mistral'
   | 'together'
   | 'groq'
@@ -257,10 +260,28 @@ export function getProviderPresetDefaults(
       return {
         provider: 'gemini',
         name: 'Google Gemini',
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        baseUrl: DEFAULT_GEMINI_BASE_URL,
         model: 'gemini-3-flash-preview',
         apiKey: '',
         requiresApiKey: true,
+      }
+    case 'gemini-adc':
+      return {
+        provider: 'gemini',
+        name: 'Google Gemini (gcloud)',
+        baseUrl: DEFAULT_GEMINI_BASE_URL,
+        model: 'gemini-3-flash-preview',
+        apiKey: '',
+        requiresApiKey: false,
+      }
+    case 'gemini-vertex':
+      return {
+        provider: 'gemini',
+        name: 'Google Gemini (Vertex AI)',
+        baseUrl: 'https://aiplatform.googleapis.com',
+        model: 'gemini-3-flash-preview',
+        apiKey: '',
+        requiresApiKey: false,
       }
     case 'mistral':
       return {

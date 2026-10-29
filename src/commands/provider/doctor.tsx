@@ -25,9 +25,15 @@ import {
 import { parseModelList } from 'src/providers/presets/providerModels.js'
 import {
   type OllamaGenerationReadiness,
+  describeDiscoveryFailure,
+  listOpenAICompatibleModelsDetailed,
   probeOllamaGenerationReadiness,
 } from 'src/providers/presets/providerDiscovery.js'
 import { resolveGeminiCredential } from 'src/providers/oauth/geminiAuth.js'
+import {
+  isGeminiNativeRequest,
+  isVertexGeminiBaseUrl,
+} from 'src/providers/shims/gemini/endpoints.js'
 import {
   getActiveProviderProfile,
   getGlobalActiveProviderProfileId,
@@ -383,7 +389,32 @@ export async function runProviderDoctor(): Promise<string> {
           ? fail('Gemini auth', 'No API key, access token, or ADC credentials available.')
           : pass('Gemini auth', `kind=${credential.kind}`),
       )
-      results.push(...(await checkOpenAICompat(profile.baseUrl, profile.apiKey)))
+      if (!isGeminiNativeRequest(profile.baseUrl)) {
+        results.push(pass('Gemini wire', 'OpenAI-compatible endpoint (chat/completions)'))
+        results.push(...(await checkOpenAICompat(profile.baseUrl, profile.apiKey)))
+        break
+      }
+      results.push(pass('Gemini wire', 'native API (generateContent)'))
+      if (isVertexGeminiBaseUrl(profile.baseUrl)) {
+        results.push(
+          pass(
+            'Vertex AI',
+            `project ${profile.extras?.gcpProject ?? '(from ADC)'}, region ${profile.extras?.gcpRegion ?? 'global'}`,
+          ),
+        )
+        break
+      }
+      {
+        const listed = await listOpenAICompatibleModelsDetailed({
+          baseUrl: profile.baseUrl,
+          apiKey: profile.apiKey,
+        })
+        results.push(
+          listed.ok
+            ? pass('Models endpoint', `${listed.ids.length} models listed.`)
+            : fail('Models endpoint', describeDiscoveryFailure(listed)),
+        )
+      }
       break
     }
     case 'mistral': {

@@ -23,9 +23,14 @@ export {
 
 const PROFILE_FILE_NAME = '.claudin-profile.json'
 
+// The native Gemini API (shims/gemini). Profiles stored with the earlier
+// default, the OpenAI-compatible endpoint, are moved by the startup heal in
+// claudinStartupMigrations.ts.
 export const DEFAULT_GEMINI_BASE_URL =
+  'https://generativelanguage.googleapis.com/v1beta'
+export const LEGACY_GEMINI_COMPAT_BASE_URL =
   'https://generativelanguage.googleapis.com/v1beta/openai'
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+export const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview'
 export const DEFAULT_MISTRAL_BASE_URL = 'https://api.mistral.ai/v1'
 export const DEFAULT_MISTRAL_MODEL = 'devstral-latest'
 

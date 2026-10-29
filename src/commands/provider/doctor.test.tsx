@@ -227,6 +227,42 @@ describe('runProviderDoctor — transport branches', () => {
     expect(out).toContain('Models endpoint')
   })
 
+  test('native gemini: names the wire and lists models with the API key header', async () => {
+    state.activeProvider = profile({
+      transport: 'gemini',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      model: 'gemini-3-flash-preview',
+      apiKey: 'AIza-k',
+    })
+    state.geminiKind = 'api-key'
+    const seen: Array<Record<string, string>> = []
+    installFetchMock(async (...args: unknown[]) => {
+      seen.push(((args[1] as RequestInit | undefined)?.headers ?? {}) as Record<string, string>)
+      return Response.json({
+        models: [{ name: 'models/gemini-3-flash-preview', supportedGenerationMethods: ['generateContent'] }],
+      })
+    })
+    const out = await runProviderDoctor()
+    expect(out).toContain('Gemini wire')
+    expect(out).toContain('native API (generateContent)')
+    expect(out).toContain('[OK] Models endpoint')
+    expect(seen[0]?.['x-goog-api-key']).toBe('AIza-k')
+  })
+
+  test('gemini on Vertex: names the project and region, no model probe', async () => {
+    state.activeProvider = profile({
+      transport: 'gemini',
+      baseUrl: 'https://aiplatform.googleapis.com',
+      model: 'gemini-3-flash-preview',
+      extras: { gcpProject: 'my-proj', gcpRegion: 'global' },
+    })
+    state.geminiKind = 'adc'
+    const out = await runProviderDoctor()
+    expect(out).toContain('native API (generateContent)')
+    expect(out).toContain('project my-proj, region global')
+    expect(out).not.toContain('Models endpoint')
+  })
+
   test('gemini transport with no credentials surfaces FAIL', async () => {
     state.activeProvider = profile({
       transport: 'gemini',

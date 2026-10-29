@@ -15,6 +15,7 @@ import {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_MISTRAL_BASE_URL,
   DEFAULT_MISTRAL_MODEL,
+  LEGACY_GEMINI_COMPAT_BASE_URL,
   deleteProfileFile,
   loadProfileFile,
   type ProfileFile,
@@ -543,6 +544,38 @@ function pruneOrphanedModelOptionsCache(): string | undefined {
   }`
 }
 
+function storedOnOldGeminiDefault(profile: { provider?: unknown; baseUrl?: unknown }): boolean {
+  return (
+    profile.provider === 'gemini' &&
+    typeof profile.baseUrl === 'string' &&
+    profile.baseUrl.trim().replace(/\/+$/, '') === LEGACY_GEMINI_COMPAT_BASE_URL
+  )
+}
+
+/**
+ * Move Gemini profiles stored with the earlier default base URL — the
+ * OpenAI-compatible endpoint — to the native API, the default since the
+ * native transport (src/providers/shims/gemini). Only that exact URL: a
+ * profile pointed anywhere else, a proxy included, keeps it. With
+ * CLAUDIN_GEMINI_NATIVE=0 a moved profile still reaches the compat endpoint.
+ * Idempotent.
+ */
+function healGeminiCompatDefaultBaseUrl(): string | undefined {
+  const count = (getGlobalConfig().providerProfiles ?? []).filter(storedOnOldGeminiDefault).length
+  if (count === 0) return undefined
+
+  saveGlobalConfig(current => ({
+    ...current,
+    providerProfiles: (current.providerProfiles ?? []).map(profile =>
+      storedOnOldGeminiDefault(profile)
+        ? { ...profile, baseUrl: DEFAULT_GEMINI_BASE_URL }
+        : profile,
+    ),
+  }))
+
+  return `moved ${count} Gemini ${count === 1 ? 'profile' : 'profiles'} to the native Gemini API (CLAUDIN_GEMINI_NATIVE=0 goes back)`
+}
+
 export function runClaudinStartupMigrations(options?: {
   processEnv?: NodeJS.ProcessEnv
   homeDir?: string
@@ -625,6 +658,12 @@ export function runClaudinStartupMigrations(options?: {
   if (cacheGcNotice) {
     result.notices.push(cacheGcNotice)
     log(cacheGcNotice)
+  }
+
+  const geminiNotice = healGeminiCompatDefaultBaseUrl()
+  if (geminiNotice) {
+    result.notices.push(geminiNotice)
+    log(geminiNotice)
   }
 
   return result
