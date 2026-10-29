@@ -11,6 +11,7 @@ import type { ProviderPreset } from 'src/providers/presets/providerProfiles.js'
 import {
   AnthropicAuthChoiceScreen,
   AnthropicOAuthScreen,
+  GoogleAuthChoiceScreen,
   KimiAuthChoiceScreen,
 } from 'src/providers/ui/screens/AuthChoice.js'
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
@@ -172,6 +173,51 @@ describe('KimiAuthChoiceScreen', () => {
 
     expect(deps.setScreen.mock.calls).toEqual([['select-preset']])
     expect(deps.startCreateFromPreset).not.toHaveBeenCalled()
+  })
+})
+
+describe('GoogleAuthChoiceScreen', () => {
+  test('each row seeds its own preset, Claude on Vertex included; back returns to the list', async () => {
+    const presets: Array<ProviderPreset | null> = ['gemini', 'gemini-adc', 'gemini-vertex', 'vertex', null]
+
+    for (let row = 0; row < presets.length; row++) {
+      const deps = makeKimiChoiceDeps()
+      const ui = await mountScreen(<GoogleAuthChoiceScreen {...deps} />)
+      try {
+        for (let i = 0; i < row; i++) await ui.press(DOWN)
+        await ui.press(ENTER)
+      } finally {
+        await ui.cleanup()
+      }
+
+      const preset = presets[row]
+      if (preset) {
+        expect(deps.startCreateFromPreset.mock.calls).toEqual([[preset]])
+        expect(deps.setScreen).not.toHaveBeenCalled()
+      } else {
+        expect(deps.setScreen.mock.calls).toEqual([['select-preset']])
+        expect(deps.startCreateFromPreset).not.toHaveBeenCalled()
+      }
+    }
+  })
+
+  test('shows every way in, in order', async () => {
+    const ui = await mountScreen(<GoogleAuthChoiceScreen {...makeKimiChoiceDeps()} />)
+    try {
+      const frame = ui.frame()
+      const order = [
+        'Google — choose authentication',
+        'Use API key',
+        'Sign in with gcloud',
+        'Vertex AI · Gemini',
+        'Vertex AI · Claude',
+        'Back',
+      ].map(text => frame.indexOf(text))
+      expect(order.every(index => index >= 0)).toBe(true)
+      expect(order).toEqual([...order].sort((a, b) => a - b))
+    } finally {
+      await ui.cleanup()
+    }
   })
 })
 

@@ -4,6 +4,7 @@ import { Box, Text } from 'src/terminal/ink.js'
 import TextInput from 'src/terminal/text-input/TextInput.js'
 import type { ProviderProfile } from 'src/platform/config/config.js'
 import type { ProviderPreset } from 'src/providers/presets/providerProfiles.js'
+import { isGeminiCompatBaseUrl } from 'src/providers/shims/gemini/endpoints.js'
 import {
   CLOUD_EXTRAS_STEPS,
   FORM_STEPS,
@@ -59,7 +60,9 @@ const currentValue = draft[currentStepKey]
         Provider type:{' '}
         {draftProvider === 'anthropic'
           ? 'Anthropic native API'
-          : 'OpenAI-compatible API'}
+          : draftProvider === 'gemini' && !isGeminiCompatBaseUrl(draft.baseUrl)
+            ? 'Gemini native API'
+            : 'OpenAI-compatible API'}
       </Text>
       <Text dimColor>
         Step {formStepIndex + 1} of {FORM_STEPS.length}: {currentStep.label}
@@ -118,7 +121,12 @@ export function CloudExtrasScreen({
   setScreen,
 }: CloudExtrasScreenProps): React.ReactNode {
   const preset = pendingPreset
-  if (preset !== 'bedrock' && preset !== 'vertex' && preset !== 'foundry') {
+  if (
+    preset !== 'bedrock' &&
+    preset !== 'vertex' &&
+    preset !== 'gemini-vertex' &&
+    preset !== 'foundry'
+  ) {
     return null
   }
   const steps = CLOUD_EXTRAS_STEPS[preset]
@@ -147,7 +155,15 @@ export function CloudExtrasScreen({
   return (
     <Box flexDirection="column" gap={1}>
       <Text color="remember" bold>
-        {`${preset === 'bedrock' ? 'AWS Bedrock' : preset === 'vertex' ? 'Google Vertex AI' : 'Azure AI Foundry'} setup`}
+        {`${
+          preset === 'bedrock'
+            ? 'AWS Bedrock'
+            : preset === 'vertex'
+              ? 'Claude on Vertex AI'
+              : preset === 'gemini-vertex'
+                ? 'Gemini on Vertex AI'
+                : 'Azure AI Foundry'
+        } setup`}
       </Text>
       <Text dimColor>{step.helpText}</Text>
       <Text dimColor>

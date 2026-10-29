@@ -144,13 +144,8 @@ export function PresetSelectionScreen({
     },
     {
       value: 'gemini',
-      label: 'Google Gemini',
-      description: 'Gemini OpenAI-compatible endpoint',
-    },
-    {
-      value: 'vertex',
-      label: 'Google Vertex AI',
-      description: 'Anthropic models on Vertex AI (project + region, ADC)',
+      label: 'Google',
+      description: 'Gemini API (API key or gcloud), or Vertex AI for Gemini and Claude',
     },
     {
       value: 'groq',
@@ -259,6 +254,10 @@ export function PresetSelectionScreen({
           }
           if (value === 'moonshotai') {
             setScreen('kimi-auth-choice')
+            return
+          }
+          if (value === 'gemini') {
+            setScreen('google-auth-choice')
             return
           }
           if (value === 'github-onboard') {

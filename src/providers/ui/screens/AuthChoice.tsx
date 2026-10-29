@@ -16,11 +16,12 @@ import type {
   Screen,
 } from 'src/providers/ui/ProviderManager.types.js'
 
-// The two "how do you want to sign in" pickers `/provider` shows for the two
-// presets that offer both OAuth and an API key, plus the Anthropic OAuth
-// screen the first of them hands off to. ProviderManager keeps the screen
-// state and every piece of profile state; these three only decide what to
-// render and which callback a selection fires.
+// The "how do you want to sign in" pickers `/provider` shows for the presets
+// that offer more than one way in (Anthropic and Moonshot: OAuth or an API
+// key; Google: the Gemini API with a key or gcloud, or Vertex AI for Gemini
+// or Claude), plus the Anthropic OAuth screen the first of them hands off to.
+// ProviderManager keeps the screen state and every piece of profile state;
+// these only decide what to render and which callback a selection fires.
 
 export type AnthropicAuthChoiceScreenProps = {
   setScreen: (screen: Screen) => void
@@ -137,6 +138,78 @@ export type AnthropicOAuthScreenProps = {
   setStatusMessage: (message: string | undefined) => void
   refreshProfiles: () => void
   returnToMenu: () => void
+}
+
+export type GoogleAuthChoiceScreenProps = {
+  setScreen: (screen: Screen) => void
+  startCreateFromPreset: (preset: ProviderPreset) => void
+}
+
+/** One `/provider` row for everything Google serves: Gemini and Claude on Vertex. */
+export function GoogleAuthChoiceScreen({
+  setScreen,
+  startCreateFromPreset,
+}: GoogleAuthChoiceScreenProps): React.ReactNode {
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color="remember" bold>
+        Google — choose authentication
+      </Text>
+      <Text dimColor>
+        Use the Gemini API with an API key or your gcloud login, or Vertex AI in your GCP project.
+      </Text>
+      <Select
+        options={[
+          {
+            value: 'apiKey',
+            label: 'Use API key',
+            description: 'Gemini API: paste a key (AIza…) from Google AI Studio',
+          },
+          {
+            value: 'adc',
+            label: 'Sign in with gcloud',
+            description: 'Gemini API with gcloud auth application-default login',
+          },
+          {
+            value: 'vertexGemini',
+            label: 'Vertex AI · Gemini',
+            description: 'Gemini models in your GCP project (project + region, ADC)',
+          },
+          {
+            value: 'vertexClaude',
+            label: 'Vertex AI · Claude',
+            description: 'Claude models in your GCP project (project + region, ADC)',
+          },
+          {
+            value: 'back',
+            label: 'Back',
+            description: 'Choose a different provider',
+          },
+        ]}
+        onChange={(value: string) => {
+          if (value === 'apiKey') {
+            startCreateFromPreset('gemini')
+            return
+          }
+          if (value === 'adc') {
+            startCreateFromPreset('gemini-adc')
+            return
+          }
+          if (value === 'vertexGemini') {
+            startCreateFromPreset('gemini-vertex')
+            return
+          }
+          if (value === 'vertexClaude') {
+            startCreateFromPreset('vertex')
+            return
+          }
+          setScreen('select-preset')
+        }}
+        onCancel={() => setScreen('select-preset')}
+        visibleOptionCount={5}
+      />
+    </Box>
+  )
 }
 
 export function AnthropicOAuthScreen({

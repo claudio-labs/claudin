@@ -79,7 +79,7 @@ export const PROFILE_FAVORITES = makeFavoritesAdapter<string>(
 )
 
 export const CLOUD_EXTRAS_STEPS: Record<
-  'bedrock' | 'vertex' | 'foundry',
+  'bedrock' | 'vertex' | 'gemini-vertex' | 'foundry',
   ReadonlyArray<{
     key: CloudExtrasField
     label: string
@@ -109,6 +109,21 @@ export const CLOUD_EXTRAS_STEPS: Record<
       label: 'GCP region',
       placeholder: 'e.g. us-central1',
       helpText: 'Vertex AI region for the model.',
+    },
+  ],
+  'gemini-vertex': [
+    {
+      key: 'gcpProject',
+      label: 'GCP project ID',
+      placeholder: 'e.g. my-project-123456',
+      helpText:
+        'Google Cloud project where Vertex AI is enabled. Credentials are picked up from ADC.',
+    },
+    {
+      key: 'gcpRegion',
+      label: 'GCP region',
+      placeholder: 'e.g. global',
+      helpText: 'Vertex AI region for the model; `global` serves the Gemini 3 models.',
     },
   ],
   foundry: [

@@ -269,7 +269,8 @@ describe('CloudExtrasScreen', () => {
   test('each cloud preset gets its own title and its own first step', async () => {
     const cases: Array<[ProviderPreset, string, string]> = [
       ['bedrock' as ProviderPreset, 'AWS Bedrock setup', 'Step 1 of 1: AWS region'],
-      ['vertex' as ProviderPreset, 'Google Vertex AI setup', 'Step 1 of 2: GCP project ID'],
+      ['vertex' as ProviderPreset, 'Claude on Vertex AI setup', 'Step 1 of 2: GCP project ID'],
+      ['gemini-vertex' as ProviderPreset, 'Gemini on Vertex AI setup', 'Step 1 of 2: GCP project ID'],
       ['foundry' as ProviderPreset, 'Azure AI Foundry setup', 'Step 1 of 1: Azure resource'],
     ]
 

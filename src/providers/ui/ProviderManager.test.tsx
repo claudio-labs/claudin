@@ -146,8 +146,7 @@ const PRESET_ORDER = [
   'xAI / Grok (OAuth)',
   'GitHub Copilot',
   'DeepSeek',
-  'Google Gemini',
-  'Google Vertex AI',
+  'Google',
   'Groq',
   'LM Studio',
   'MiniMax',
@@ -249,6 +248,9 @@ function mockProviderProfilesModule(options?: {
           model: 'claude-sonnet-4-6',
           apiKey: '',
         }
+      }
+      if (preset === 'gemini' || preset === 'gemini-adc' || preset === 'gemini-vertex') {
+        return realProviderProfilesForPm.getProviderPresetDefaults(preset)
       }
       return {
         provider: 'openai',
@@ -1817,12 +1819,23 @@ test('ProviderManager Vertex preset collects gcpProject and gcpRegion', async ()
     frame => frame.includes('Set up provider'),
   )
 
-  await navigateToPreset(mounted.stdin, 'Google Vertex AI')
+  // Claude on Vertex lives under the one Google row: its fourth way in.
+  await navigateToPreset(mounted.stdin, 'Google')
   mounted.stdin.write('\r')
 
   await waitForFrameOutput(
     mounted.getOutput,
-    frame => frame.includes('Google Vertex AI setup'),
+    frame => frame.includes('Google — choose authentication'),
+  )
+  for (let i = 0; i < 3; i++) {
+    mounted.stdin.write('j')
+    await Bun.sleep(20)
+  }
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Claude on Vertex AI setup'),
   )
   mounted.stdin.write('my-proj\r')
   await waitForFrameOutput(
@@ -1853,6 +1866,89 @@ test('ProviderManager Vertex preset collects gcpProject and gcpRegion', async ()
   expect(payload.provider).toBe('vertex')
   expect(payload.extras?.gcpProject).toBe('my-proj')
   expect(payload.extras?.gcpRegion).toBe('us-central1')
+
+  await mounted.dispose()
+})
+
+test('ProviderManager Google → Vertex AI · Gemini collects the project and region, and asks for the model by hand', async () => {
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  const onDone = mock(() => {})
+  const addProviderProfile = mock((payload: {
+    provider: string
+    extras?: Record<string, unknown>
+  }) => ({ id: 'provider_gemini_vertex', ...payload }))
+
+  mockProviderManagerDependencies({
+    addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown,
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {
+    mode: 'first-run',
+    onDone,
+  })
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Set up provider'),
+  )
+
+  await navigateToPreset(mounted.stdin, 'Google')
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Google — choose authentication'),
+  )
+  mounted.stdin.write('j')
+  await Bun.sleep(20)
+  mounted.stdin.write('j')
+  await Bun.sleep(20)
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Gemini on Vertex AI setup'),
+  )
+  mounted.stdin.write('my-proj\r')
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('GCP region'),
+  )
+  mounted.stdin.write('global\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Create provider profile'),
+  )
+  // Accept all prefilled values; Vertex skips the model list and keeps the
+  // preset's model in the plain text step.
+  mounted.stdin.write('\r')
+  await Bun.sleep(20)
+  mounted.stdin.write('\r')
+  await Bun.sleep(20)
+  mounted.stdin.write('\r')
+  await Bun.sleep(20)
+  mounted.stdin.write('\r')
+
+  await waitForCondition(() => onDone.mock.calls.length > 0)
+  expect(mounted.getOutput()).not.toContain('Fetching models')
+
+  const payload = addProviderProfile.mock.calls[0]?.[0] as {
+    provider: string
+    baseUrl: string
+    model: string
+    extras?: { gcpProject?: string; gcpRegion?: string }
+  }
+  expect(payload.provider).toBe('gemini')
+  expect(payload.baseUrl).toBe('https://aiplatform.googleapis.com')
+  expect(payload.model).toBe('gemini-3-flash-preview')
+  expect(payload.extras?.gcpProject).toBe('my-proj')
+  expect(payload.extras?.gcpRegion).toBe('global')
 
   await mounted.dispose()
 })
