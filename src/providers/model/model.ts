@@ -32,6 +32,11 @@ import { isModelAllowed } from 'src/providers/model/modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from 'src/providers/model/aliases.js'
 import { COPILOT_DISPLAY_NAMES } from 'src/providers/model/copilotModels.js'
 import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
+import {
+  GEMINI_FLAGSHIP_MODEL,
+  GEMINI_FLASH_LITE_MODEL,
+  GEMINI_FLASH_MODEL,
+} from 'src/providers/model/configs.js'
 
 export type ModelShortName = string
 export type ModelName = string
@@ -54,7 +59,7 @@ export function getSmallFastModel(): ModelName {
   const profileModel = getActiveProfileModel()
   // For Gemini provider, use a fast model
   if (getAPIProvider() === 'gemini') {
-    return profileModel || 'gemini-2.0-flash-lite'
+    return profileModel || GEMINI_FLASH_LITE_MODEL
   }
   if (getAPIProvider() === 'mistral') {
     return profileModel || 'ministral-3b-latest'
@@ -210,7 +215,7 @@ export function getDefaultOpusModel(): ModelName {
   const profileModel = getActiveProfileModel()
   // Gemini provider
   if (getAPIProvider() === 'gemini') {
-    return profileModel || 'gemini-2.5-pro'
+    return profileModel || GEMINI_FLAGSHIP_MODEL
   }
   // Mistral provider
   if (getAPIProvider() === 'mistral') {
@@ -255,7 +260,7 @@ export function getDefaultSonnetModel(): ModelName {
   const profileModel = getActiveProfileModel()
   // Gemini provider
   if (getAPIProvider() === 'gemini') {
-    return profileModel || 'gemini-2.0-flash'
+    return profileModel || GEMINI_FLASH_MODEL
   }
   // Mistral provider
   if (getAPIProvider() === 'mistral') {
@@ -314,7 +319,7 @@ export function getDefaultHaikuModel(): ModelName {
   }
   // Gemini provider
   if (getAPIProvider() === 'gemini') {
-    return profileModel || 'gemini-2.0-flash-lite'
+    return profileModel || GEMINI_FLASH_LITE_MODEL
   }
   // NVIDIA NIM
   if (getAPIProvider() === 'nvidia-nim') {
@@ -385,7 +390,7 @@ export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
   }
   // Gemini provider: always use the configured Gemini model
   if (getAPIProvider() === 'gemini') {
-    return profileModel || 'gemini-2.0-flash'
+    return profileModel || GEMINI_FLASH_MODEL
   }
   if (getAPIProvider() === 'mistral') {
     return profileModel || 'devstral-latest'

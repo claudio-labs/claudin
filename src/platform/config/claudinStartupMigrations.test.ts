@@ -430,6 +430,7 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].provider).toBe('gemini')
     expect(store.profiles[0].name).toBe('Google Gemini (env)')
     expect(store.profiles[0].apiKey).toBe('aistudio-xxx')
+    expect(store.profiles[0].baseUrl).toBe('https://generativelanguage.googleapis.com/v1beta')
   })
 
   test('CLAUDIN_USE_MISTRAL → creates mistral profile', () => {
@@ -1029,5 +1030,49 @@ describe('runClaudinStartupMigrations — orphaned model-options cache GC', () =
     expect(
       result.notices.some(n => n.includes('orphaned model-options cache')),
     ).toBe(false)
+  })
+})
+
+describe('runClaudinStartupMigrations — Gemini profiles on the old default URL', () => {
+  const cfg = () => mockConfigState
+  const gemini = (id: string, baseUrl: string) => ({
+    id,
+    name: 'Google Gemini',
+    provider: 'gemini' as const,
+    baseUrl,
+    model: 'gemini-3-flash-preview',
+  })
+
+  test('the exact old default (trailing slash too) moves to the native API', () => {
+    cfg().providerProfiles = [
+      gemini('g1', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+      gemini('g2', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
+    ]
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles?.map(p => p.baseUrl)).toEqual([
+      'https://generativelanguage.googleapis.com/v1beta',
+      'https://generativelanguage.googleapis.com/v1beta',
+    ])
+    expect(result.notices).toContain(
+      'moved 2 Gemini profiles to the native Gemini API (CLAUDIN_GEMINI_NATIVE=0 goes back)',
+    )
+  })
+
+  test('a proxy, another provider on that URL, and a second run are left alone', () => {
+    const proxy = gemini('g-proxy', 'https://litellm.example/v1beta/openai')
+    const openai = { ...gemini('o', 'https://generativelanguage.googleapis.com/v1beta/openai'), provider: 'openai' as const }
+    cfg().providerProfiles = [proxy, openai]
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles).toEqual([proxy, openai])
+    expect(result.notices.some(n => n.includes('native Gemini API'))).toBe(false)
+
+    cfg().providerProfiles = [gemini('g1', 'https://generativelanguage.googleapis.com/v1beta/openai')]
+    callRun({ processEnv: {}, log: silentLog })
+    const second = callRun({ processEnv: {}, log: silentLog })
+    expect(second.notices.some(n => n.includes('native Gemini API'))).toBe(false)
   })
 })

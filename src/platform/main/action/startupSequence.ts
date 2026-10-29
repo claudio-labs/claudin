@@ -45,6 +45,7 @@ import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js';
 import { prefetchOllamaModels } from 'src/providers/model/ollamaModels.js';
 import { prefetchOpenAICompatibleModels } from 'src/providers/model/openaiModelDiscovery.js';
+import { refreshGeminiModelOptions } from 'src/providers/shims/gemini/models.js';
 import { getAutoModeConfigWithNotes, getInitialSettings, getRelativeSettingsFilePathForSource, getSettingsWithErrors } from 'src/platform/settings/settings.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { computeInitialTeamContext } from 'src/agent/coordinator/swarm/reconnection.js';
@@ -129,6 +130,8 @@ export async function runPostHeadlessGuards(
   prefetchOllamaModels();
   // Prefetch models for remote OpenAI-compat providers (OpenRouter, Groq, NovitaAI, etc.)
   void prefetchOpenAICompatibleModels();
+  // Google's model list and limits for a native Gemini profile (no-op otherwise)
+  void refreshGeminiModelOptions();
   // Prefetch the live Copilot model catalog (no-op unless github_copilot is active)
   prefetchCopilotModelCatalog();
 

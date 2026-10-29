@@ -9,6 +9,8 @@ import {
   resolveActiveShimEffortValues,
 } from 'src/providers/model/reasoningCatalog.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { geminiVersion, isGeminiNativeRequest } from 'src/providers/shims/gemini/endpoints.js'
 import type { EffortLevel } from 'src/platform/entrypoints/sdk/runtimeTypes.js'
 import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
@@ -678,6 +680,15 @@ export function getDefaultEffortForModel(
   // Kimi Code K3 defaults to Max thinking effort (matches the official CLI).
   if (isKimiEffortModel(model)) {
     return 'max'
+  }
+
+  // Native Gemini starts where gemini-cli does: HIGH on 3.x and 8192 thinking
+  // tokens on 2.5, which is `medium` (shims/gemini/thinking.ts). The
+  // OpenAI-compatible endpoint keeps sending nothing, as before.
+  if (isGeminiNativeRequest(tryGetActiveProvider()?.baseUrl)) {
+    const version = geminiVersion(model)
+    if (version !== undefined && version >= 3) return 'high'
+    if (version === 2.5) return 'medium'
   }
 
   // Opt-in: coding/high-autonomy loops on Opus 4.8 default to xhigh. The 4.8

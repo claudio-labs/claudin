@@ -556,6 +556,18 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     ]
   }
 
+  // Gemini: the profile's models, then Google's own list — refreshed at
+  // startup and on /model, cached per profile (shims/gemini/models.ts). The
+  // Claude tiers below would show Gemini ids under Claude names.
+  if (getAPIProvider() === 'gemini') {
+    const activeProfile = getActiveProviderProfile()
+    return [
+      getDefaultOptionForUser(fastMode),
+      ...(activeProfile ? getProfileModelOptions(activeProfile) : []),
+      ...getActiveOpenAIModelOptionsCache(),
+    ]
+  }
+
   // For OpenAI-compat aggregators (OpenRouter, NovitaAI, Groq, etc.) with a
   // profile that defines models: show only those. The generic PAYG 3P list maps
   // Claude aliases to gpt-4o fallbacks which is wrong for these providers.

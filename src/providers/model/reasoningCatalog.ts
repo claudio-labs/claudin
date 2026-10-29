@@ -44,6 +44,11 @@ import {
   supportsCodexReasoningEffort,
   type ReasoningEffort,
 } from 'src/providers/presets/providerConfig.js'
+import {
+  geminiVersion,
+  isGeminiCompatBaseUrl,
+  isVertexGeminiBaseUrl,
+} from 'src/providers/shims/gemini/endpoints.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 export type { CatalogEffortValue }
@@ -237,10 +242,38 @@ const OPENAI_FAMILY_LEVELS: readonly CatalogEffortValue[] = [
 ]
 
 /**
+ * Levels for a Gemini model on the native transport (shims/gemini), which the
+ * catalog lookup misses twice: on Vertex the endpoint resolves to
+ * `google-vertex`, whose rows are Claude's, so a Gemini id is looked up in the
+ * `google` rows instead; and a model with no usable row — 2.5, whose option is
+ * a `budget_tokens` the catalog does not implement, or one newer than the
+ * snapshot, like gemini-4-argon — gets these three, which every current text
+ * model takes (ai.google.dev/gemini-api/docs/thinking, 2026-10-28) and which
+ * gemini/thinking.ts turns into a level, or a budget on 2.5. The
+ * OpenAI-compatible endpoint keeps the catalog alone.
+ */
+export const GEMINI_FALLBACK_LEVELS: readonly CatalogEffortValue[] = ['low', 'medium', 'high']
+
+function geminiNativeEffortValues(
+  baseUrl: string | undefined,
+  model: string,
+): readonly CatalogEffortValue[] | undefined {
+  if (!baseUrl || isGeminiCompatBaseUrl(baseUrl)) return undefined
+  const providerId = resolveCatalogProviderId(baseUrl)
+  if (providerId !== 'google' && !isVertexGeminiBaseUrl(baseUrl)) return undefined
+  const id = baseModelId(model)
+  const google = effortsFor('google')
+  const values = google?.[id] ?? (google && lowercaseIndexFor(google).get(id.toLowerCase()))
+  if (values) return values
+  const version = geminiVersion(id)
+  return version !== undefined && version >= 2.5 ? GEMINI_FALLBACK_LEVELS : undefined
+}
+
+/**
  * THE resolver for a request that goes out through the OpenAI shim — the one
  * function the picker and the wire both call, which is what keeps them from
  * disagreeing. Precedence: the catalog, then what a ChatGPT account offers on
- * the Codex backend, then the GPT-5 family fallback.
+ * the Codex backend, then the GPT-5 family fallback, then native Gemini.
  *
  * Returns undefined when nothing offers a level Claudin can show. A row whose
  * only level is `none`/`minimal`/`default` counts as nothing: those mean "think
@@ -259,7 +292,8 @@ export function resolveShimEffortValues(
   const values =
     lookupReasoningEffortValues(baseUrl, model) ??
     (isCodexBaseUrl(baseUrl) ? getCodexAccountLimits(getCodexAliasModel(model))?.effortLevels : undefined) ??
-    (supportsCodexReasoningEffort(model) ? OPENAI_FAMILY_LEVELS : undefined)
+    (supportsCodexReasoningEffort(model) ? OPENAI_FAMILY_LEVELS : undefined) ??
+    geminiNativeEffortValues(baseUrl, model)
 
   if (!values || pickerEffortLevels(values).length === 0) return undefined
   return values
