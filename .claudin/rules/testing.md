@@ -609,6 +609,15 @@ Two of these went red on main in 2026-09 (#153) after #152 added one file:
   one `afterAll` and hands the tool-result cache back to the other seven, which
   then short-circuit `call()` on identical inputs and silently stop exercising
   the dedup paths they exist to test.
+- **A config key `DEFAULT_GLOBAL_CONFIG` lacks.** Under `bun test`,
+  `saveGlobalConfig` merges into one in-memory object, and
+  `resetGlobalConfigForTests()` re-assigns only the default keys, so an
+  optional key survives it. The Gemini picker tests (#327) left the legacy
+  `openaiAdditionalModelOptionsCache` set; the reset empties the by-profile
+  map, `getActiveOpenAIModelOptionsCache` falls back to the legacy key, and
+  `providerNeutrality.invariant.test.ts` found Gemini models in the OpenAI
+  picker. Clear such a key yourself before the reset
+  (`clearActiveOpenAIModelOptionsCache()`).
 
 **How to apply:** snapshot in `beforeAll` (or at module load, beside the
 assignment) and restore in `afterAll`, restoring *before* any `rmSync` of a dir
@@ -617,9 +626,12 @@ the state points at. Never `process.env.X = saved` when `saved` may be
 instead. A suite whose subject reads one of these globals should also clear it
 in `beforeEach` rather than trusting the order, the way
 `oauthProviderAuth.test.ts` and `geminiCredentials.test.ts` already do.
-To reproduce an order-dependent failure locally, feed bun the CI file list in
-CI's order (`gh run view --log` prints it) — the local discovery order differs,
-so a plain `bun test` will not show it.
+To reproduce an order-dependent failure locally, take CI's file order from
+`gh run view --log` — the local discovery order differs, so a plain `bun test`
+will not show it. Passing the files as arguments in that order is not enough:
+bun 1.3 runs them in its own order whatever the argument order (#327 stayed
+green both ways). Copy the victim to a path that sorts after the leaker
+(`src/…/zz/victim.test.ts`) and run the pair.
 
 That comparison has to be **in the same directory**, and it has to be the full
 suite, because a third class of failure hides between the two: a test that reads
