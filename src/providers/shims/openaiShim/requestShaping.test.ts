@@ -193,6 +193,64 @@ test('preserves Gemini tool call extra_content in follow-up requests', async () 
   })
 })
 
+// Under the Gemini transport the converter wrote the synthetic
+// skip_thought_signature_validator over the signature the call already carried
+// in extra_content whenever the tool_use had no top-level `signature`, which
+// is every call normalizeMessagesForAPI rebuilds with tool search off.
+test('gemini keeps the extra_content thought_signature when the tool_use has none', async () => {
+  process.env.CLAUDIN_USE_GEMINI = '1'
+  process.env.GEMINI_API_KEY = 'gemini-test-key'
+  let requestBody: Record<string, unknown> | undefined
+
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'gemini-3-flash-preview',
+        choices: [{ message: { role: 'assistant', content: 'done' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 12, completion_tokens: 4, total_tokens: 16 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+
+  await client.beta.messages.create({
+    model: 'gemini-3-flash-preview',
+    messages: [
+      { role: 'user', content: 'Use Bash' },
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'pwd' },
+            extra_content: { google: { thought_signature: 'sig-real' } },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'call_1', content: '/repo' }],
+      },
+    ],
+    max_tokens: 64,
+    stream: false,
+  })
+
+  const assistantWithToolCall = (requestBody?.messages as Array<Record<string, unknown>>).find(
+    message => Array.isArray(message.tool_calls),
+  ) as { tool_calls?: Array<Record<string, unknown>> } | undefined
+
+  expect(assistantWithToolCall?.tool_calls?.[0]?.extra_content).toEqual({
+    google: { thought_signature: 'sig-real' },
+  })
+})
+
 test('preserves Grep tool pattern field in OpenAI-compatible schemas', async () => {
   let requestBody: Record<string, unknown> | undefined
 

@@ -24,6 +24,13 @@ const ANTHROPIC: ProviderProfile = {
   baseUrl: 'https://api.anthropic.com',
   model: 'claude-opus-5-5',
 }
+const GEMINI: ProviderProfile = {
+  id: 'render-gemini',
+  name: 'Google Gemini',
+  provider: 'gemini',
+  baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  model: 'gemini-3-flash-preview',
+}
 const originalSwitch = process.env.CLAUDIN_CODEX_REASONING_REPLAY
 
 function useProfile(profile: ProviderProfile): void {
@@ -110,12 +117,20 @@ describe('historyRedactions decides it by the backend the session talks to', () 
 // the backend's id on the call; under any other provider it is gone, as before.
 describe('a tool call through the whole render', () => {
   const CALL = { type: 'tool_use', id: 'call_abc', name: 'Read', input: { file_path: '/x' }, codex: { id: 'fc_real' } }
+  const GEMINI_CALL = {
+    type: 'tool_use',
+    id: 'call_g',
+    name: 'Read',
+    input: { file_path: '/x' },
+    signature: 'sig-real',
+    extra_content: { google: { thought_signature: 'sig-real' } },
+  }
 
-  function renderedCall(redactCodexItems: boolean): unknown {
+  function renderedCall(redactCodexItems: boolean, call: { id: string } = CALL): unknown {
     const history: Message[] = [
       createUserMessage({ content: 'read it' }),
-      createAssistantMessage({ content: [TEXT, CALL] as never }),
-      createUserMessage({ content: [{ type: 'tool_result', tool_use_id: 'call_abc', content: '14 17' }] as never }),
+      createAssistantMessage({ content: [TEXT, call] as never }),
+      createUserMessage({ content: [{ type: 'tool_result', tool_use_id: call.id, content: '14 17' }] as never }),
     ]
     const { messages } = renderMessagesForAPI(history, [], {
       useToolSearch: false,
@@ -138,6 +153,25 @@ describe('a tool call through the whole render', () => {
     expect(renderedCall(historyRedactions().redactCodexItems)).toEqual({
       type: 'tool_use',
       id: 'call_abc',
+      name: 'Read',
+      input: { file_path: '/x' },
+    })
+  })
+
+  // Tool search is off for every provider but first-party Anthropic
+  // (CLAUDIN_DISABLE_EXPERIMENTAL_BETAS forces 'standard'), so this rebuild is
+  // the path every Gemini session takes. It kept extra_content and dropped the
+  // `signature` the Gemini stream parser writes from the thought signature.
+  test('under Gemini the call keeps its thought signature', () => {
+    useProfile(GEMINI)
+    expect(renderedCall(historyRedactions().redactCodexItems, GEMINI_CALL)).toEqual(GEMINI_CALL)
+  })
+
+  test('under Anthropic a Gemini call goes out as the standard block', () => {
+    useProfile(ANTHROPIC)
+    expect(renderedCall(historyRedactions().redactCodexItems, GEMINI_CALL)).toEqual({
+      type: 'tool_use',
+      id: 'call_g',
       name: 'Read',
       input: { file_path: '/x' },
     })

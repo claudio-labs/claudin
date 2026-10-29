@@ -306,7 +306,9 @@ describe('normalizeMessagesForAPI rebuilds tool_use blocks', () => {
     ])
   })
 
-  test('tool search on: every stored field but extra_content is kept', () => {
+  // The Gemini fields (extra_content, signature) go out only under Gemini; a
+  // session that switched from Gemini sent `signature` to the Anthropic API.
+  test('tool search on: every stored field but the Gemini ones is kept', () => {
     useToolSearch(true)
     const out = normalizeMessagesForAPI([user('q'), assistant([stored])], exitPlan)
     expect(contentOf(out[1]!)).toEqual([
@@ -316,7 +318,6 @@ describe('normalizeMessagesForAPI rebuilds tool_use blocks', () => {
         name: 'ExitPlanMode',
         input: { keep: 1 },
         caller: { type: 'direct' },
-        signature: 'sig-block',
       },
     ])
   })
@@ -478,7 +479,7 @@ describe('stripCallerFieldFromAssistantMessage', () => {
     expect(content[1]).toEqual({ type: 'tool_use', id: 't1', name: 'Read', input: { file_path: '/x' } })
   })
 
-  test('under Gemini the extra_content survives the rebuild, the block signature does not', () => {
+  test('under Gemini the extra_content and the block signature survive the rebuild', () => {
     useProfile(GEMINI)
     expect(getAPIProvider()).toBe('gemini')
     const out = stripCallerFieldFromAssistantMessage(assistant([callerBlock]))
@@ -489,6 +490,7 @@ describe('stripCallerFieldFromAssistantMessage', () => {
         name: 'Read',
         input: { file_path: '/x' },
         extra_content: { google: { thought_signature: 'sig' } },
+        signature: 'block-sig',
       },
     ])
   })

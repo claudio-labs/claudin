@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import {
   classifyStreamEnd,
   type StreamEndFacts,
@@ -59,6 +59,39 @@ describe('classifyStreamEnd', () => {
     expect(
       classifyStreamEnd(
         facts({ blockTypes: ['thinking'], stopReason: 'max_tokens' }),
+      ),
+    ).toEqual({ kind: 'complete' })
+  })
+})
+
+// A reply that thinks and then ends the turn without a word or a tool call
+// left the user with nothing to read; gemini-cli retries it
+// (THINKING_ONLY_RESPONSE, geminiChat.ts) and so does every provider here.
+describe('classifyStreamEnd: a thinking-only reply', () => {
+  const originalSwitch = process.env.CLAUDIN_THINKING_ONLY_RETRY
+  afterEach(() => {
+    if (originalSwitch === undefined) delete process.env.CLAUDIN_THINKING_ONLY_RETRY
+    else process.env.CLAUDIN_THINKING_ONLY_RETRY = originalSwitch
+  })
+
+  test('thinking blocks then end_turn: incomplete', () => {
+    expect(
+      classifyStreamEnd(
+        facts({ blockTypes: ['thinking'], stopReason: 'end_turn' }),
+      ),
+    ).toEqual({ kind: 'incomplete', reason: 'thinking-only' })
+    expect(
+      classifyStreamEnd(
+        facts({ blockTypes: ['thinking', 'redacted_thinking'], stopReason: 'end_turn' }),
+      ),
+    ).toEqual({ kind: 'incomplete', reason: 'thinking-only' })
+  })
+
+  test('CLAUDIN_THINKING_ONLY_RETRY=0 keeps it complete', () => {
+    process.env.CLAUDIN_THINKING_ONLY_RETRY = '0'
+    expect(
+      classifyStreamEnd(
+        facts({ blockTypes: ['thinking'], stopReason: 'end_turn' }),
       ),
     ).toEqual({ kind: 'complete' })
   })
