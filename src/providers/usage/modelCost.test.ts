@@ -7,6 +7,7 @@ import {
   calculateUSDCost,
   getModelCosts,
   getModelPricingString,
+  lookupNonClaudeCost,
 } from 'src/providers/usage/modelCost.js'
 
 const usageOneM: Usage = {
@@ -43,6 +44,8 @@ describe('getModelCosts — non-Claude families', () => {
 
   // ai.google.dev/gemini-api/docs/pricing, Standard, prompts ≤200k (2026-10-28).
   // The 3.x ids fell through to the 2.0 Flash row and the generic Pro row.
+  // Read at that date: some rows change price on a date of their own.
+  const PRICED_ON = Date.UTC(2026, 9, 28)
   it.each([
     ['gemini-3-flash-preview', 0.50, 3.00, 0.05],
     ['gemini-3.1-pro-preview', 2.00, 12.00, 0.20],
@@ -53,10 +56,20 @@ describe('getModelCosts — non-Claude families', () => {
     ['gemini-2.5-flash-lite', 0.10, 0.40, 0.01],
     ['gemini-4-argon', 2.00, 10.00, 0.10],
   ])('returns %s list pricing', (model, input, output, cacheRead) => {
-    const cost = getModelCosts(model, usageOneM)
+    const cost = lookupNonClaudeCost(model, PRICED_ON)!
     expect(cost.inputTokens).toBe(input)
     expect(cost.outputTokens).toBe(output)
     expect(cost.promptCacheReadTokens).toBe(cacheRead)
+  })
+
+  it('gemini-4-argon doubles on 2026-12-01, 3.6/3.8 Flash on 2027-01-01', () => {
+    const lastArgonDay = lookupNonClaudeCost('gemini-4-argon', Date.UTC(2026, 10, 30, 23, 59))!
+    const argon = lookupNonClaudeCost('gemini-4-argon', Date.UTC(2026, 11, 1))!
+    expect([lastArgonDay.inputTokens, argon.inputTokens, argon.outputTokens, argon.promptCacheReadTokens]).toEqual([
+      2, 4, 20, 0.20,
+    ])
+    const flash = lookupNonClaudeCost('gemini-3.8-flash', Date.UTC(2027, 0, 1))!
+    expect([flash.inputTokens, flash.outputTokens, flash.promptCacheReadTokens]).toEqual([1.50, 7.50, 0.15])
   })
 
   it('the Pro models bill a request over 200k prompt tokens at the long tier', () => {
@@ -65,6 +78,10 @@ describe('getModelCosts — non-Claude families', () => {
     expect(calculateUSDCost('gemini-3.1-pro-preview', longPrompt)).toBeCloseTo(0.3 * 4, 6)
     expect(calculateUSDCost('gemini-3.1-pro-preview', shortPrompt)).toBeCloseTo(0.1 * 2, 6)
     expect(calculateUSDCost('gemini-2.5-pro', longPrompt)).toBeCloseTo(0.3 * 2.5, 6)
+  })
+
+  it('getModelCosts reads the row in force today', () => {
+    expect(getModelCosts('gemini-4-argon', usageOneM)).toBe(lookupNonClaudeCost('gemini-4-argon')!)
   })
 
   it('prices a vendor-prefixed Gemini 3 id the same', () => {
