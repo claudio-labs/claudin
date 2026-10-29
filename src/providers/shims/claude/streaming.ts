@@ -228,6 +228,7 @@ import {
   requestClipFrontier,
 } from "src/providers/shims/claude/renderMessages.js";
 import { executeNonStreamingRequest } from "src/providers/shims/claude/nonStreamingRequest.js";
+import { classifyStreamEnd } from "src/providers/shims/claude/streamEnd.js";
 import type { Options, TaskBudgetParam } from "src/providers/shims/claude/types.js";
 
 export async function* queryModelWithStreaming({
@@ -1491,22 +1492,21 @@ export async function* queryModel(
         throw new Error("Stream idle timeout - no chunks received");
       }
 
-      // Detect when the stream completed without producing any assistant messages.
-      // This covers two proxy failure modes:
-      // 1. No events at all (!partialMessage): proxy returned 200 with non-SSE body
-      // 2. Partial events (partialMessage set but no content blocks completed AND
-      //    no stop_reason received): proxy returned message_start but stream ended
-      //    before content_block_stop and before message_delta with stop_reason
-      // BetaMessageStream had the first check in _endRequest() but the raw Stream
-      // does not - without it the generator silently returns no assistant messages,
-      // causing "Execution error" in -p mode.
-      // Note: We must check stopReason to avoid false positives. For example, with
-      // structured output (--json-schema), the model calls a StructuredOutput tool
-      // on turn 1, then on turn 2 responds with end_turn and no content blocks.
-      // That's a legitimate empty response, not an incomplete stream.
-      if (!partialMessage || (newMessages.length === 0 && !stopReason)) {
+      // Detect when the stream completed without producing a reply (rules and
+      // why in streamEnd.ts). BetaMessageStream had the first check in
+      // _endRequest() but the raw Stream does not - without it the generator
+      // silently returns no assistant messages, causing "Execution error" in
+      // -p mode.
+      const streamEnd = classifyStreamEnd({
+        sawMessageStart: partialMessage !== undefined,
+        blockTypes: newMessages.flatMap((m) =>
+          m.message.content.map((block) => block.type),
+        ),
+        stopReason,
+      });
+      if (streamEnd.kind === "incomplete") {
         logForDebugging(
-          !partialMessage
+          streamEnd.reason === "no-message-start"
             ? "Stream completed without receiving message_start event - triggering non-streaming fallback"
             : "Stream completed with message_start but no content blocks completed - triggering non-streaming fallback",
           { level: "error" },
