@@ -17,8 +17,9 @@
  * Arms run side by side, each rep in its own workspace with its own port:
  *
  *   main     the build of the branch point (`--bin=main:<path>`), flags unset
- *   base     this checkout, flags off
- *   placebo  this checkout, flags off plus a variable nothing reads
+ *   base     this checkout, every lever off — pinned to the state the 10-30
+ *            runs measured, since two of them became defaults afterwards
+ *   placebo  base plus a variable nothing reads
  *   combo    this checkout, every lever on
  *
  * Plan approval: `-p` cannot show the ExitPlanMode dialog, so every arm runs
@@ -61,10 +62,13 @@ const APPROVER = join(import.meta.dir, 'approver.ts')
 const DIFF_MIN_CHARS = 6000
 const PORT_BASE = 46100
 
+/** The defaults before 2026-10-30's promotion: task ids off, the file-tools note on. */
+const LEVERS_OFF = { CLAUDIN_PLAN_TASK_IDS: '0', CLAUDIN_FILE_TOOLS_NOTE: '1' }
+
 export const ARM_ENV: Record<string, Record<string, string>> = {
   main: {},
-  base: {},
-  placebo: { CLAUDIN_BENCH_PLACEBO: '1' },
+  base: { ...LEVERS_OFF },
+  placebo: { ...LEVERS_OFF, CLAUDIN_BENCH_PLACEBO: '1' },
   combo: {
     CLAUDIN_PLAN_TASK_IDS: '1',
     CLAUDIN_OUTLINE_PROSE_BY_LINES: '1',

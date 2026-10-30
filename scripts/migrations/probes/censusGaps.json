@@ -16,7 +16,8 @@
     "src/agent/tasks/LocalShellTask/leftovers.test.ts",
     "src/tools/BashTool/runShellCommand.test.ts",
     "src/tools/shellToolResultMappers.test.ts",
-    "src/agent/tasks/types.test.ts"
+    "src/agent/tasks/types.test.ts",
+    "src/tools/BashTool/redirectLanes.test.ts"
   ],
   "source": "src/agent/tasks/tasks.ts",
   "probes": [
@@ -197,6 +198,24 @@
       "source": "src/agent/tasks/LocalShellTask/leftovers.ts",
       "find": "    adopted: true,\n",
       "replace": ""
+    },
+    {
+      "name": "plan ids: off by default again",
+      "source": "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_PLAN_TASK_IDS)\n",
+      "replace": "  return process.env.CLAUDIN_PLAN_TASK_IDS === '1'\n"
+    },
+    {
+      "name": "note: the file-tools note is on by default again",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_FILE_TOOLS_NOTE)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "note: refuse mode loses its file-reads refusal",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "(!advise || isFileToolsNoteEnabled())",
+      "replace": "isFileToolsNoteEnabled()"
     }
   ]
 }

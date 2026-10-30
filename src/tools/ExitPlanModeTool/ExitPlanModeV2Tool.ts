@@ -34,7 +34,7 @@ import {
 } from 'src/agent/plans/plans.js'
 import { seedTasksFromPlan } from 'src/agent/tasks/planTasks.js'
 import { isUnloadedDeferredTool } from 'src/agent/tools/toolSearch.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getAgentName,
@@ -64,18 +64,24 @@ const permissionSetupModule = feature('TRANSCRIPT_CLASSIFIER')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /**
- * `CLAUDIN_PLAN_TASK_IDS=1`: the approval names each seeded task by id and,
- * while TaskUpdate is still deferred, the exact call to update one — which
- * runs without a ToolSearch, since its input is two strings. Off by default
- * until the A/B; read per call so a test can set it.
+ * The approval names each seeded task by id and, while TaskUpdate is still
+ * deferred, the exact call to update one — which runs without a ToolSearch,
+ * since its input is two strings. On by default since 2026-10-30;
+ * `CLAUDIN_PLAN_TASK_IDS=0` goes back to the count alone. Read per call so a
+ * test can set it.
  *
  * Without it, every approval in 10-25..30 was followed by
  * `ToolSearch(select:TaskUpdate,TaskList)` and a `TaskList` before the first
  * update: two requests a plan, spent learning ids this tool had just created
  * (team memory `tasklist-unordered-exitplan-seeds-without-ids`).
+ *
+ * Measured (team memory `census-10-30-tool-levers`): on Opus 5.5
+ * the pair after the approval went from 3/5 sessions to 0/5, and the direct
+ * call succeeded 5/5. Sonnet 5.5 loaded TaskUpdate anyway in 3/5, at no cost
+ * to the mechanism.
  */
 function isPlanTaskIdsEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_PLAN_TASK_IDS)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_PLAN_TASK_IDS)
 }
 
 /** How many seeded tasks the approval lists by name; past it, a count. */

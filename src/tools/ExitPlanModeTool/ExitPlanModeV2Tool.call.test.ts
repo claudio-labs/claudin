@@ -294,7 +294,8 @@ describe('CLAUDIN_PLAN_TASK_IDS: the seeded tasks by id, and how to update them'
     })
   }
 
-  test('off: the result carries the count only, as before', async () => {
+  test('CLAUDIN_PLAN_TASK_IDS=0: the result carries the count only, as before', async () => {
+    process.env.CLAUDIN_PLAN_TASK_IDS = '0'
     process.env.ENABLE_TOOL_SEARCH = 'true'
     const data = await approve()
     expect(data.tasksSeeded).toBe(2)
@@ -302,8 +303,7 @@ describe('CLAUDIN_PLAN_TASK_IDS: the seeded tasks by id, and how to update them'
     expect(data.taskUpdateUnloaded).toBeUndefined()
   })
 
-  test('on: the result names each seeded task and whether TaskUpdate still needs loading', async () => {
-    process.env.CLAUDIN_PLAN_TASK_IDS = '1'
+  test('by default the result names each seeded task and whether TaskUpdate still needs loading', async () => {
     process.env.ENABLE_TOOL_SEARCH = 'true'
     const data = await approve()
     expect(data.tasksSeeded).toBe(2)
