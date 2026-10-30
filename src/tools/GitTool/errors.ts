@@ -418,11 +418,9 @@ export function diagnose(
 
   const overwrite = WOULD_OVERWRITE_RE.exec(output)
   if (overwrite) {
-    // A merging pull has the same one-step way through as a rebasing one
-    // below; checkout and switch have no `--autostash`.
-    if (subcommandOf(command) === 'pull') {
-      return `Uncommitted changes would be overwritten by ${overwrite[1] ?? 'the merge'}. \`git pull --autostash\` stashes them, pulls and puts them back in one step — nothing was changed.`
-    }
+    // No `--autostash` here, even for a pull: this refusal means the incoming
+    // commits touch the dirty files, so the stash re-applies onto what the
+    // pull just changed, and a conflict there still exits 0.
     return `Uncommitted changes would be overwritten by ${overwrite[1] ?? 'this command'}. Commit them, \`git stash\` them, or discard them first — nothing was changed.`
   }
   const unstaged = UNSTAGED_BLOCKS_RE.exec(output)
