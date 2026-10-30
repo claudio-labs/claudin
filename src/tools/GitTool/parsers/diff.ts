@@ -50,10 +50,10 @@ export const DIFF_FILE_LINE_BUDGET = 60
 /**
  * Who gets the rendering, which decides the way out it names. The Git tool has
  * `full: true` and is the tool to ask for one file. Bash has neither, and the
- * caller may have no Git tool at all (the Explore agent does not): it gets the
- * shell's way, `-- <path>` for one file and `| cat`, which the output filter
- * passes through, for the raw diff. An Explore agent given the Git tool's
- * wording in 10-25..30 re-ran its diff `| cat` on its own.
+ * caller may have no Git tool at all (a read-only search sub-agent does not): it
+ * gets the shell's way, `-- <path>` for one file and `| cat`, which the output
+ * filter passes through, for the raw diff. A search sub-agent given the Git
+ * tool's wording in 10-25..30 re-ran its diff `| cat` on its own.
  */
 export type DiffReader = 'git-tool' | 'shell'
 
