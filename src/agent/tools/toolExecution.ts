@@ -25,10 +25,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
 import { settleOwnWrites } from 'src/agent/attachments/ownWrites.js'
-import {
-  isDeferredTool,
-  TOOL_SEARCH_TOOL_NAME,
-} from 'src/tools/ToolSearchTool/prompt.js'
+import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
 import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
@@ -93,11 +90,7 @@ import {
   processPreMappedToolResultBlock,
   processToolResultBlock,
 } from 'src/agent/tools/toolResultStorage.js'
-import {
-  extractDiscoveredToolNames,
-  isToolSearchEnabledOptimistic,
-  isToolSearchToolAvailable,
-} from 'src/agent/tools/toolSearch.js'
+import { isUnloadedDeferredTool } from 'src/agent/tools/toolSearch.js'
 import {
   McpAuthError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -617,25 +610,6 @@ export function buildSchemaNotSentHint(
     `Without the schema in your prompt, typed parameters (arrays, numbers, booleans) get emitted as strings and the client-side parser rejects them. ` +
     `Load the tool first: call ${TOOL_SEARCH_TOOL_NAME} with query "select:${tool.name}", then retry this call.`
   )
-}
-
-/**
- * A deferred tool whose schema this conversation has not loaded yet.
- *
- * Optimistic gating — reconstructing claude.ts's full useToolSearch
- * computation is fragile. The first two gates prevent pointing at a ToolSearch
- * that isn't callable; occasional misfires (Haiku, tst-auto below threshold)
- * cost one extra round-trip.
- */
-function isUnloadedDeferredTool(
-  tool: Tool,
-  tools: readonly { name: string }[],
-  messages: Message[],
-): boolean {
-  if (!isToolSearchEnabledOptimistic()) return false
-  if (!isToolSearchToolAvailable(tools)) return false
-  if (!isDeferredTool(tool)) return false
-  return !extractDiscoveredToolNames(messages).has(tool.name)
 }
 
 export function getSchemaValidationErrorOverride(

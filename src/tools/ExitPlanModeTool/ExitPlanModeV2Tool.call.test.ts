@@ -314,6 +314,8 @@ describe('CLAUDIN_PLAN_TASK_IDS: the seeded tasks by id, and how to update them'
     process.env.CLAUDIN_PLAN_TASK_IDS = '1'
     process.env.ENABLE_TOOL_SEARCH = 'true'
     expect((await approve({ messages: [loadedTaskUpdate] })).taskUpdateUnloaded).toBe(false)
+    // A fresh list, or the same plan dedups to nothing seeded.
+    process.env.CLAUDIN_TASK_LIST_ID = `${TASK_LIST_ID}-no-search`
     process.env.ENABLE_TOOL_SEARCH = 'false'
     expect((await approve()).taskUpdateUnloaded).toBe(false)
   })

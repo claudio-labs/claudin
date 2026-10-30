@@ -84,8 +84,10 @@ export function parsePlanTasks(planMarkdown: string): ParsedPlanTask[] {
 /**
  * Seed the TodoV2 task list from a plan's `## Tasks` section. Skips items whose
  * subject is already live in the list, so re-approving a refined plan doesn't
- * duplicate entries. Fail-soft: any error is logged and swallowed (returns 0)
- * so it never blocks plan exit. Returns the number of tasks created.
+ * duplicate entries. Fail-soft: any error is logged and swallowed so it never
+ * blocks plan exit. Returns the tasks it created, in plan order —
+ * what ExitPlanMode names, so the model can update them without a TaskList
+ * first; on an error, the ones created before it.
  *
  * "Live" means *not archived*, which is a different line than "not completed".
  * `archiveCompletedTasks` is what closes a batch; until it runs, finished tasks
@@ -95,11 +97,14 @@ export function parsePlanTasks(planMarkdown: string): ParsedPlanTask[] {
  * subject gets silently swallowed ("Run the tests" is the same three words
  * every time).
  */
-export async function seedTasksFromPlan(plan: string): Promise<number> {
+export async function seedTasksFromPlan(
+  plan: string,
+): Promise<{ id: string; subject: string }[]> {
+  const created: { id: string; subject: string }[] = []
   try {
-    if (!isTodoV2Enabled()) return 0
+    if (!isTodoV2Enabled()) return created
     const parsed = parsePlanTasks(plan)
-    if (parsed.length === 0) return 0
+    if (parsed.length === 0) return created
 
     const taskListId = getTaskListId()
     const existingSubjects = new Set(
@@ -108,10 +113,9 @@ export async function seedTasksFromPlan(plan: string): Promise<number> {
         .map(t => t.subject),
     )
 
-    let created = 0
     for (const { subject, description } of parsed) {
       if (existingSubjects.has(subject)) continue
-      await createTask(taskListId, {
+      const id = await createTask(taskListId, {
         subject,
         description,
         status: 'pending',
@@ -121,11 +125,11 @@ export async function seedTasksFromPlan(plan: string): Promise<number> {
         metadata: { source: 'plan' },
       })
       existingSubjects.add(subject)
-      created++
+      created.push({ id, subject })
     }
     return created
   } catch (e) {
     logError(e)
-    return 0
+    return created
   }
 }

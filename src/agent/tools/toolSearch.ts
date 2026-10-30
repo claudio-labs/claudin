@@ -579,6 +579,25 @@ export function extractDiscoveredToolNames(messages: Message[]): Set<string> {
   return discoveredTools
 }
 
+/**
+ * A deferred tool whose schema this conversation has not loaded yet.
+ *
+ * Optimistic gating — reconstructing claude.ts's full useToolSearch
+ * computation is fragile. The first two gates prevent pointing at a ToolSearch
+ * that isn't callable; occasional misfires (Haiku, tst-auto below threshold)
+ * cost one extra round-trip.
+ */
+export function isUnloadedDeferredTool(
+  tool: Tool,
+  tools: readonly { name: string }[],
+  messages: Message[],
+): boolean {
+  if (!isToolSearchEnabledOptimistic()) return false
+  if (!isToolSearchToolAvailable(tools)) return false
+  if (!isDeferredTool(tool)) return false
+  return !extractDiscoveredToolNames(messages).has(tool.name)
+}
+
 export type DeferredToolsDelta = {
   addedNames: string[]
   /** Rendered lines for addedNames; the scan reconstructs from names. */
