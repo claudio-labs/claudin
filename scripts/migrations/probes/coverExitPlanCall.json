@@ -1,0 +1,69 @@
+{
+  "test": [
+    "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.call.test.ts",
+    "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.test.ts"
+  ],
+  "source": "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts",
+  "probes": [
+    {
+      "name": "exit: the pre-plan mode is not restored",
+      "find": "          mode: restoreMode,\n",
+      "replace": "          mode: 'default',\n"
+    },
+    {
+      "name": "exit: seeded tasks do not open the task view",
+      "find": "          : { ...prev, expandedView: 'tasks' as const },\n",
+      "replace": "          : prev,\n"
+    },
+    {
+      "name": "exit: a sub-agent seeds the shared list",
+      "find": "    const tasksSeeded = plan && !isAgent ? await seedTasksFromPlan(plan) : 0\n",
+      "replace": "    const tasksSeeded = plan ? await seedTasksFromPlan(plan) : 0\n"
+    },
+    {
+      "name": "exit: an edited plan is not written to disk",
+      "find": "    if (inputPlan !== undefined && filePath) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "exit: the state changes outside plan mode",
+      "find": "      if (prev.toolPermissionContext.mode !== 'plan') return prev\n",
+      "replace": "\n"
+    },
+    {
+      "name": "exit: the session is not marked as having left plan mode",
+      "find": "      setHasExitedPlanMode(true)\n",
+      "replace": "      setHasExitedPlanMode(false)\n"
+    },
+    {
+      "name": "exit: no dossier is written",
+      "find": "        await serializeDossier(dossier)\n",
+      "replace": "        void dossier\n"
+    },
+    {
+      "name": "exit: the team hint ignores the swarm switch",
+      "find": "      isAgentSwarmsEnabled() &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "teammate: the lead gets an empty plan",
+      "find": "        planContent: plan,\n",
+      "replace": "        planContent: '',\n"
+    },
+    {
+      "name": "teammate: a missing plan is sent anyway",
+      "find": "      if (!plan) {\n        throw new Error(\n          `No plan file found",
+      "replace": "      if (false) {\n        throw new Error(\n          `No plan file found"
+    },
+    {
+      "name": "teammate: the task is not marked as awaiting approval",
+      "find": "        setAwaitingPlanApproval(agentTaskId, context.setAppState, true)\n",
+      "replace": "        setAwaitingPlanApproval(agentTaskId, context.setAppState, false)\n"
+    },
+    {
+      "name": "teammate: the local dialog opens",
+      "find": "    if (isTeammate()) {\n      return false\n    }\n",
+      "replace": "    if (isTeammate()) {\n      return true\n    }\n"
+    }
+  ]
+}
