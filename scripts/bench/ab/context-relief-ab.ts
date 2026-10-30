@@ -129,7 +129,7 @@ function corpusFrom(root: string): Corpus {
   return { files, large, symbols }
 }
 
-type Turn = { text: string; kind: 'grep' | 'read' | 'edit' }
+type Turn = { text: string; kind: 'grep' | 'read' | 'edit'; path?: string }
 
 function turnScript(c: Corpus, perPhase: number): Turn[] {
   const turns: Turn[] = []
@@ -139,7 +139,7 @@ function turnScript(c: Corpus, perPhase: number): Turn[] {
   }
   for (let i = 0; i < perPhase; i++) {
     const big = c.large[i % c.large.length]!
-    turns.push({ kind: 'read', text: `Read ${big} in full (pass view: 'full') and reply with a one-line summary.` })
+    turns.push({ kind: 'read', path: big, text: `Read ${big} in full (pass view: 'full') and reply with a one-line summary.` })
   }
   for (let i = 0; i < perPhase; i++) {
     const target = c.large[i % c.large.length]!
@@ -163,12 +163,16 @@ function verify(root: string, expected: number): { landed: number; expected: num
       }
       if (!name.endsWith('.ts')) continue
       const lines = readFileSync(p, 'utf8').split('\n')
+      const markerRe = new RegExp(`^\\s*//\\s*${MARKER}:(\\d+)\\s*$`)
       lines.forEach((line, i) => {
-        const m = line.match(new RegExp(`^\\s*//\\s*${MARKER}:(\\d+)\\s*$`))
+        const m = line.match(markerRe)
         if (!m) return
         const n = Number(m[1])
-        const next = lines[i + 1] ?? ''
-        if (!/^export (function|const)\b/.test(next)) return
+        // Past 12 edits a file is edited twice, and both markers go above
+        // the same export: skip the other markers stacked below this one.
+        let j = i + 1
+        while (markerRe.test(lines[j] ?? '')) j++
+        if (!/^export (function|const)\b/.test(lines[j] ?? '')) return
         seen.set(n, (seen.get(n) ?? 0) + 1)
       })
     }
@@ -223,6 +227,8 @@ export type ArmResult = {
   rereads: number
   editLookups: number
   clippedIds: number
+  /** compact_boundary events the session streamed. */
+  compactions: number
   verdict: { landed: number; expected: number; duplicated: number }
   timeline: UsageRow[]
   workspace: string
@@ -240,12 +246,87 @@ type Args = {
   json: boolean
   dryRun: boolean
   parallel: boolean
+  /** `base,placebo,candidate`: print the compaction gate for those labels. */
+  gate: [string, string, string] | null
 }
 
 function parseBin(spec: string): ArmSpec {
   const i = spec.indexOf(':')
   if (i <= 0) throw new Error(`--bin-x expects <label>:<path>, got ${spec}`)
   return { label: spec.slice(0, i), path: resolve(spec.slice(i + 1)), env: {} }
+}
+
+/**
+ * Re-reads the script did not ask for. With `--per-phase` over 12 the read
+ * phase asks for the 12 largest files again (`large[i % 12]`), and counting
+ * those as the model recovering lost content inflated the column by the
+ * repeats. A read past the number of times the script asked for that path is
+ * the model's own.
+ */
+export function rereadsOutsideScript(reads: readonly string[], asked: readonly string[]): number {
+  const allowed = new Map<string, number>()
+  for (const path of asked) allowed.set(path, (allowed.get(path) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  let extra = 0
+  for (const path of reads) {
+    const n = (seen.get(path) ?? 0) + 1
+    seen.set(path, n)
+    if (n > Math.max(allowed.get(path) ?? 0, 1)) extra++
+  }
+  return extra
+}
+
+/** compact_boundary events in a stream, once per uuid (the stream may repeat one). */
+export function compactionsIn(events: readonly Record<string, unknown>[]): number {
+  const seen = new Set<unknown>()
+  for (const v of events) if (v.type === 'system' && v.subtype === 'compact_boundary') seen.add(v.uuid ?? seen.size)
+  return seen.size
+}
+
+/** The family a model id names (opus, sonnet, haiku), or the id itself. */
+function family(model: string): string {
+  return /opus|sonnet|haiku/.exec(model)?.[0] ?? model
+}
+
+/** Null when the served model is of the requested family; the warning otherwise. */
+export function modelWarning(served: string, requested: string): string | null {
+  return family(served) === family(requested) ? null : `served model ${served} ≠ ${requested}: do not compare cost across tiers`
+}
+
+/**
+ * The compaction run's gate, pre-registered 10-30 in
+ * `.claudin/plans/peaceful-foraging-kahn.md`: the candidate arm compacted at
+ * least once in every rep; its priced cost is at least 15% below the median of
+ * both baselines, with ranges SEPARATED from each; every edit landed; and its
+ * re-reads outside the script are no more than the base's.
+ */
+export function compactionGate(
+  runs: readonly ArmResult[],
+  base: string,
+  placebo: string,
+  candidate: string,
+): { verdict: 'PASS' | 'FAIL' | 'NOT EXERCISED'; detail: string } {
+  const of = (l: string) => runs.filter(r => r.label === l)
+  const [b, p, c] = [of(base), of(placebo), of(candidate)]
+  const med = (rs: ArmResult[], f: (r: ArmResult) => number) => {
+    const s = rs.map(f).sort((x, y) => x - y)
+    return s.length === 0 ? Number.NaN : s.length % 2 ? s[s.length >> 1]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2
+  }
+  const cost = (r: ArmResult) => r.pricedUsd
+  if (c.length === 0 || c.some(r => r.compactions === 0)) {
+    return { verdict: 'NOT EXERCISED', detail: `${candidate} compactions per rep: ${c.map(r => r.compactions).join(',')}` }
+  }
+  const max = (rs: ArmResult[]) => Math.max(...rs.map(cost))
+  const min = (rs: ArmResult[]) => Math.min(...rs.map(cost))
+  const ceiling = Math.min(med(b, cost), med(p, cost))
+  const cheaper = med(c, cost) <= ceiling * 0.85
+  const separated = max(c) < min(b) && max(c) < min(p)
+  const edits = c.every(r => r.verdict.landed === r.verdict.expected)
+  const rereads = med(c, r => r.rereads) <= med(b, r => r.rereads)
+  return {
+    verdict: cheaper && separated && edits && rereads ? 'PASS' : 'FAIL',
+    detail: `median $ ${candidate} ${med(c, cost).toFixed(3)} vs ${base} ${med(b, cost).toFixed(3)}, ${placebo} ${med(p, cost).toFixed(3)} (${((100 * med(c, cost)) / ceiling - 100).toFixed(1)}%); separated ${separated}; edits ${edits}; re-reads ${med(c, r => r.rereads)} vs ${med(b, r => r.rereads)}`,
+  }
 }
 
 /** `<label>:K=V,K2=V2` → an arm on `--bin-a`'s binary with those variables. */
@@ -274,6 +355,7 @@ export function parseArgs(argv: string[]): Args {
     json: false,
     dryRun: false,
     parallel: false,
+    gate: null,
   }
   let binA: ArmSpec | null = null
   let binB: ArmSpec | null = null
@@ -291,6 +373,11 @@ export function parseArgs(argv: string[]): Args {
     else if (x.startsWith('--bin-a=')) binA = parseBin(x.slice('--bin-a='.length))
     else if (x.startsWith('--bin-b=')) binB = parseBin(x.slice('--bin-b='.length))
     else if (x.startsWith('--variant=')) variants.push(x.slice('--variant='.length))
+    else if (x.startsWith('--gate=')) {
+      const labels = x.slice('--gate='.length).split(',')
+      if (labels.length !== 3) throw new Error(`--gate expects base,placebo,candidate, got ${x}`)
+      a.gate = labels as [string, string, string]
+    }
     else throw new Error(`unknown arg ${x}`)
   }
   // After the loop, so a --bin-a given after its variants still applies.
@@ -486,7 +573,8 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
   // had lost — the leak the old evictions caused.
   const seenPaths = new Set<string>()
   const seenReadIds = new Set<string>()
-  let reads = 0, rereads = 0
+  const readPaths: string[] = []
+  let reads = 0
   for (const v of events) {
     if (v.type !== 'assistant') continue
     const content = ((v.message ?? {}) as Record<string, unknown>).content
@@ -501,10 +589,11 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
       if (!fp) continue
       const rel = relative(cwd, fp)
       reads++
-      if (seenPaths.has(rel)) rereads++
+      readPaths.push(rel)
       seenPaths.add(rel)
     }
   }
+  const rereads = rereadsOutsideScript(readPaths, turns.filter(t => t.kind === 'read').map(t => t.path!))
 
   // Lookups inside edit turns: every tool call that is not the Edit itself.
   // The script asks for edits in files read one phase earlier, so each of
@@ -557,6 +646,7 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
     rereads,
     editLookups,
     clippedIds,
+    compactions: compactionsIn(events),
     verdict,
     timeline,
     workspace: args.keep ? cwd : '(removed)',
@@ -600,6 +690,7 @@ export function summaryTable(runs: readonly ArmResult[], labels: readonly string
     ['peak context', of(r => r.peakContext), fmt],
     ['end context', of(r => r.endContext), fmt],
     ['clipped ids', of(r => r.clippedIds), int],
+    ['compactions', of(r => r.compactions ?? 0), int],
     ['re-reads', of(r => r.rereads), int],
     ['edit-turn lookups', of(r => r.editLookups), int],
     ['edits landed', of(r => r.verdict.landed), int],
@@ -658,7 +749,8 @@ async function main(): Promise<void> {
     for (const r of results) {
       runs.push(r)
       printArm(r)
-      if (r.model && !r.model.includes('sonnet-5')) console.log(`    ⚠ served model ${r.model} ≠ ${args.model}: do not compare cost across tiers`)
+      const warning = r.model ? modelWarning(r.model, args.model) : null
+      if (warning) console.log(`    ⚠ ${warning}`)
     }
   }
 
@@ -666,9 +758,15 @@ async function main(): Promise<void> {
   console.log(`\n=== ${labels.join(' vs ')}  (${args.reps} rep(s)${args.parallel ? ', parallel' : ''}, model ${args.model}, ${args.perPhase} turns per phase, window ${args.window ?? 'native'}) ===\n`)
   console.log(summaryTable(runs, labels))
   if (args.reps < 3) console.log(`  ↑ ${args.reps} rep(s): directional only. Re-run with --reps=3 and compare RANGES, not medians.`)
+  if (args.gate) {
+    const g = compactionGate(runs, ...args.gate)
+    console.log(`\ncompaction gate: ${g.verdict} — ${g.detail}`)
+  }
 
   if (args.json) {
-    const out = join(REPO_ROOT, 'scripts', 'bench', 'ab', 'context-relief-ab.json')
+    // Under /tmp, one file per run: a fixed path in the repo was overwritten by
+    // every run, which is why the 10-24 data is gone.
+    const out = join(tmpdir(), `context-relief-ab-${new Date().toISOString().replace(/[:.]/g, '-')}.json`)
     writeFileSync(out, JSON.stringify(runs, null, 2))
     console.log(`\njson → ${out}`)
   }

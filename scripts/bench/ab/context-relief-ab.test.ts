@@ -4,8 +4,12 @@ import {
   armOrder,
   armProcessEnv,
   clippedIdsFrom,
+  compactionGate,
+  compactionsIn,
+  modelWarning,
   parseArgs,
   pricedUsd,
+  rereadsOutsideScript,
   summaryTable,
   type ArmResult,
   type UsageRow,
@@ -154,5 +158,80 @@ describe('summaryTable', () => {
     const out = summaryTable([run('dev', 1.3, 7), run('clip', 1.1, 20)], ['dev', 'clip'])
     expect(out).not.toContain('SEPARATED')
     expect(out).not.toContain('overlap')
+  })
+})
+
+// The 1M compaction run (plan of 10-30): 20 turns per phase repeat the 12
+// largest files, Opus is the model, and the gate is pre-registered.
+describe('rereadsOutsideScript', () => {
+  test('a Read the script asked for twice is not a re-read; one it never asked for again is', () => {
+    const asked = ['a.ts', 'b.ts', 'a.ts']
+    const reads = ['a.ts', 'b.ts', 'a.ts', 'b.ts', 'a.ts']
+    // a.ts was asked twice and read three times: one re-read; b.ts asked once, read twice: one.
+    expect(rereadsOutsideScript(reads, asked)).toBe(2)
+  })
+
+  test('no extra reads is zero', () => {
+    expect(rereadsOutsideScript(['a.ts', 'a.ts'], ['a.ts', 'a.ts'])).toBe(0)
+  })
+})
+
+describe('compactionsIn', () => {
+  test('counts compact_boundary system events, once each', () => {
+    const events = [
+      { type: 'system', subtype: 'init' },
+      { type: 'system', subtype: 'compact_boundary', uuid: 'u1' },
+      { type: 'system', subtype: 'compact_boundary', uuid: 'u1' },
+      { type: 'system', subtype: 'compact_boundary', uuid: 'u2' },
+    ]
+    expect(compactionsIn(events)).toBe(2)
+  })
+})
+
+describe('modelWarning', () => {
+  test('a served model of the requested family is fine, whatever the family', () => {
+    expect(modelWarning('claude-opus-5-5', 'claude-opus-5-5')).toBeNull()
+    expect(modelWarning('claude-sonnet-5', 'claude-sonnet-5-5')).toBeNull()
+  })
+
+  test('another family is flagged', () => {
+    expect(modelWarning('claude-opus-5-5', 'claude-sonnet-5-5')).toContain('claude-sonnet-5-5')
+  })
+})
+
+describe('compactionGate', () => {
+  function arm(label: string, priced: number[], landed = 20, rereads = 0, compactions = 0): ArmResult[] {
+    return priced.map((p, i) => ({
+      label, bin: '/x', rep: i + 1, exitCode: 0, wallMs: 0, turnsDone: 60, turnsPlanned: 60, apiCalls: 70,
+      input: 0, output: 0, cacheRead: 0, cacheCreation: 0, rw: 0, prefixBreaks: 0, breakTokens: 0,
+      peakContext: 0, endContext: 0, costUsd: null, pricedUsd: p, model: null, toolCalls: 0, toolMix: {},
+      reads: 0, rereads, editLookups: 0, clippedIds: 0, compactions,
+      verdict: { landed, expected: 20, duplicated: 0 }, timeline: [], workspace: '', stderrHead: '',
+    }) as ArmResult)
+  }
+
+  test('separated by at least 15% below both, every edit landed, no more re-reads: pass', () => {
+    const runs = [...arm('base', [2, 2.1, 2.05]), ...arm('placebo', [2.02, 2.08, 2.1]), ...arm('compact', [1.6, 1.65, 1.7], 20, 0, 2)]
+    expect(compactionGate(runs, 'base', 'placebo', 'compact').verdict).toBe('PASS')
+  })
+
+  test('cheaper but overlapping the placebo range fails', () => {
+    const runs = [...arm('base', [2, 2.1, 2.05]), ...arm('placebo', [1.6, 2.08, 2.1]), ...arm('compact', [1.6, 1.65, 1.7], 20, 0, 2)]
+    expect(compactionGate(runs, 'base', 'placebo', 'compact').verdict).toBe('FAIL')
+  })
+
+  test('a lost edit fails it', () => {
+    const runs = [...arm('base', [2, 2.1, 2.05]), ...arm('placebo', [2.02, 2.08, 2.1]), ...arm('compact', [1.6, 1.65, 1.7], 19, 0, 2)]
+    expect(compactionGate(runs, 'base', 'placebo', 'compact').verdict).toBe('FAIL')
+  })
+
+  test('more re-reads than the base fails it', () => {
+    const runs = [...arm('base', [2, 2.1, 2.05], 20, 1), ...arm('placebo', [2.02, 2.08, 2.1], 20, 1), ...arm('compact', [1.6, 1.65, 1.7], 20, 3, 2)]
+    expect(compactionGate(runs, 'base', 'placebo', 'compact').verdict).toBe('FAIL')
+  })
+
+  test('an arm that never compacted is no test of compaction', () => {
+    const runs = [...arm('base', [2, 2.1, 2.05]), ...arm('placebo', [2.02, 2.08, 2.1]), ...arm('compact', [1.6, 1.65, 1.7])]
+    expect(compactionGate(runs, 'base', 'placebo', 'compact').verdict).toBe('NOT EXERCISED')
   })
 })
