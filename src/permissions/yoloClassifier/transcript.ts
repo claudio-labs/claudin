@@ -226,10 +226,9 @@ type SerializedBlock = { role: TranscriptEntry['role']; text: string }
 
 /** An entry's blocks as the classifier reads them; null when none survives. */
 function serializeEntry(
-  entry: TranscriptEntry | null,
+  entry: TranscriptEntry,
   lookup: ToolLookup,
 ): { blocks: SerializedBlock[]; chars: number } | null {
-  if (!entry) return null
   const blocks: SerializedBlock[] = []
   let chars = 0
   for (const block of entry.content) {
@@ -248,7 +247,7 @@ type KeptEntries = { kept: SerializedBlock[][]; truncated: boolean }
  * over the budget, its newest blocks that fit.
  */
 function newestEntriesWithin(
-  entries: readonly (TranscriptEntry | null)[],
+  entries: readonly TranscriptEntry[],
   lookup: ToolLookup,
   maxChars: number,
 ): KeptEntries {
@@ -257,7 +256,7 @@ function newestEntriesWithin(
   let truncated = false
 
   for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = serializeEntry(entries[i] ?? null, lookup)
+    const entry = serializeEntry(entries[i]!, lookup)
     if (!entry) continue
     const { blocks: serializedBlocks, chars: entryChars } = entry
 
@@ -297,7 +296,7 @@ function newestEntriesWithin(
  * budget — and the caller falls back to the newest-first fill for that call.
  */
 function stableCutEntries(
-  transcript: readonly (TranscriptEntry | null)[],
+  transcript: readonly TranscriptEntry[],
   lookup: ToolLookup,
   maxChars: number,
 ): KeptEntries | null {
@@ -342,21 +341,18 @@ export function earlierCallsOfResponse(
   if (!isResponseCallsEnabled() || !responseToolUses) return []
   const at = responseToolUses.findIndex(use => use.id === toolUseID)
   if (at <= 0) return []
-  return responseToolUses.slice(0, at).map(use => ({
-    role: 'assistant' as const,
-    content: [{ type: 'tool_use' as const, name: use.name, input: use.input }],
-  }))
+  return responseToolUses.slice(0, at).map(use => formatActionForClassifier(use.name, use.input))
 }
 
 /**
- * `pending` follows the history as its newest entries — the calls of the
- * response being classified (`earlierCallsOfResponse`) — and is cut with it.
+ * `earlierCalls` follow the history as its newest entries — the calls of the
+ * response being classified (`earlierCallsOfResponse`) — and are cut with it.
  */
 export function serializeTranscriptForClassifier(
   messages: Message[],
   tools: Tools,
   maxChars: number,
-  pending: readonly TranscriptEntry[] = [],
+  earlierCalls: readonly TranscriptEntry[] = [],
 ): {
   userContentBlocks: Anthropic.TextBlockParam[]
   promptLengths: {
@@ -367,7 +363,10 @@ export function serializeTranscriptForClassifier(
   truncated: boolean
 } {
   const lookup = buildToolLookup(tools)
-  const entries = [...messages.map(messageToTranscriptEntry), ...pending]
+  const entries = [
+    ...messages.map(messageToTranscriptEntry).filter(entry => entry !== null),
+    ...earlierCalls,
+  ]
   const { kept: keptEntries, truncated } =
     (isStableCutEnabled() ? stableCutEntries(entries, lookup, maxChars) : null) ??
     newestEntriesWithin(entries, lookup, maxChars)

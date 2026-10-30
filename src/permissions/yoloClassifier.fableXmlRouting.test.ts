@@ -190,23 +190,28 @@ describe('the transcript budget the request is built with', () => {
     expect(sentTranscript()).not.toContain('Bash e0:')
     expect(sentTranscript()).toContain('Bash e1:')
   })
+})
 
-  test('the calls the response made before the action sit between the history and the action', async () => {
+describe('the calls the response made before the action', () => {
+  test('sit between the history and the action', async () => {
     mainLoopModel = 'claude-fable-5'
-    delete process.env.CLAUDIN_CLASSIFIER_STABLE_CUT
-    const earlier = [formatActionForClassifier('Bash', { command: 'cat > post.py' })]
+    const history = [
+      { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'git status' } }] } },
+    ] as any
     await classifyYoloAction(
-      [],
+      history,
       formatActionForClassifier('Bash', { command: 'python3 post.py' }),
       tools,
       ctx,
       new AbortController().signal,
-      earlier,
+      [formatActionForClassifier('Bash', { command: 'cat > post.py' })],
     )
-    const sent = sentTranscript()
+    const sent = JSON.stringify((capturedOpts[0]!.messages as Array<{ content: unknown }>).at(-1)!.content)
+    const at = (text: string) => sent.indexOf(text)
 
-    expect(sent).toContain('Bash cat > post.py')
-    expect(sent.indexOf('Bash cat > post.py')).toBeLessThan(sent.indexOf('Bash python3 post.py'))
+    expect(at('Bash git status')).toBeGreaterThan(-1)
+    expect(at('Bash git status')).toBeLessThan(at('Bash cat > post.py'))
+    expect(at('Bash cat > post.py')).toBeLessThan(at('Bash python3 post.py'))
   })
 })
 

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
 import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -54,6 +54,13 @@ function bash(...commands: string[]): Message {
       role: 'assistant',
       content: commands.map(command => ({ type: 'tool_use', name: 'Bash', input: { command } })),
     },
+  } as unknown as Message
+}
+
+function write(file_path: string): Message {
+  return {
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path } }] },
   } as unknown as Message
 }
 
@@ -343,20 +350,14 @@ describe('serializeTranscriptForClassifier, stable cut (default)', () => {
 // 4ab77f00, 2026-10-27: one response wrote post.py and ran it, and the run was
 // denied because the script "never appears in the transcript" — the Write sat
 // in the same response, which tools never see in `context.messages`.
-describe('serializeTranscriptForClassifier, calls of the response being classified', () => {
-  afterEach(restoreKillswitch)
-
-  const pendingWrite: TranscriptEntry = {
+describe('serializeTranscriptForClassifier, earlier calls of the response being classified', () => {
+  const earlierWrite: TranscriptEntry = {
     role: 'assistant',
     content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'post.py' } }],
   }
-  const writeMessage = {
-    type: 'assistant',
-    message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'post.py' } }] },
-  } as unknown as Message
 
   test('they follow the history', () => {
-    const blocks = serializeTranscriptForClassifier([user('write it and run it')], tools, BUDGET, [pendingWrite])
+    const blocks = serializeTranscriptForClassifier([user('write it and run it')], tools, BUDGET, [earlierWrite])
       .userContentBlocks.map(b => b.text)
 
     expect(blocks).toEqual(['User: write it and run it\n', 'Write {"file_path":"post.py"}\n'])
@@ -364,8 +365,8 @@ describe('serializeTranscriptForClassifier, calls of the response being classifi
 
   test('past the budget they cut where the next turn, holding them as history, cuts', () => {
     for (let n = 11; n <= 20; n++) {
-      const now = serializeTranscriptForClassifier(history(n), tools, BUDGET, [pendingWrite])
-      const nextTurn = serializeTranscriptForClassifier([...history(n), writeMessage], tools, BUDGET)
+      const now = serializeTranscriptForClassifier(history(n), tools, BUDGET, [earlierWrite])
+      const nextTurn = serializeTranscriptForClassifier([...history(n), write('post.py')], tools, BUDGET)
 
       expect(now).toEqual(nextTurn)
     }
@@ -373,41 +374,35 @@ describe('serializeTranscriptForClassifier, calls of the response being classifi
 })
 
 describe('earlierCallsOfResponse', () => {
-  const savedResponseCalls = process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS
-  afterEach(() => {
-    if (savedResponseCalls === undefined) delete process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS
-    else process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS = savedResponseCalls
+  const RESPONSE_CALLS = 'CLAUDIN_CLASSIFIER_RESPONSE_CALLS'
+  const savedResponseCalls = process.env[RESPONSE_CALLS]
+  beforeEach(() => {
+    delete process.env[RESPONSE_CALLS]
+  })
+  afterAll(() => {
+    if (savedResponseCalls === undefined) delete process.env[RESPONSE_CALLS]
+    else process.env[RESPONSE_CALLS] = savedResponseCalls
   })
 
-  const write = { id: 'toolu_a', name: 'Write', input: { file_path: 'post.py' } }
+  const writeUse = { id: 'toolu_a', name: 'Write', input: { file_path: 'post.py' } }
   const run = { id: 'toolu_b', name: 'Bash', input: { command: 'python3 post.py' } }
 
   test('a call gets the calls before it, one entry each, and none after it', () => {
-    expect(earlierCallsOfResponse([write, run], 'toolu_b')).toEqual([
+    expect(earlierCallsOfResponse([writeUse, run], 'toolu_b')).toEqual([
       { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'post.py' } }] },
     ])
-    expect(earlierCallsOfResponse([write, run], 'toolu_a')).toEqual([])
+    expect(earlierCallsOfResponse([writeUse, run], 'toolu_a')).toEqual([])
   })
 
   test('an id the response does not hold, or no response, adds none', () => {
-    expect(earlierCallsOfResponse([write, run], 'toolu_x')).toEqual([])
+    expect(earlierCallsOfResponse([writeUse, run], 'toolu_x')).toEqual([])
     expect(earlierCallsOfResponse(undefined, 'toolu_b')).toEqual([])
   })
 
-  test('the entries serialize as the next turn holds the same calls', () => {
-    const asHistory = {
-      type: 'assistant',
-      message: { role: 'assistant', content: [{ type: 'tool_use', ...write }] },
-    } as unknown as Message
-    const now = serializeTranscriptForClassifier([], tools, BUDGET, earlierCallsOfResponse([write, run], 'toolu_b'))
-
-    expect(now).toEqual(serializeTranscriptForClassifier([asHistory], tools, BUDGET))
-  })
-
   test('=0 leaves them out', () => {
-    process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS = '0'
+    process.env[RESPONSE_CALLS] = '0'
 
-    expect(earlierCallsOfResponse([write, run], 'toolu_b')).toEqual([])
+    expect(earlierCallsOfResponse([writeUse, run], 'toolu_b')).toEqual([])
   })
 })
 
