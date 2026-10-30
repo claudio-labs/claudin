@@ -101,7 +101,7 @@ describe('resolveClientType — interactivity', () => {
 
 describe('applyClientType', () => {
   test('writes the resolved values to the session state', () => {
-    applyClientType({ clientType: 'sdk-cli', previewFormat: 'html', sessionSource: 'remote-control', isInteractive: false })
+    applyClientType({ clientType: 'sdk-cli', previewFormat: 'html', sessionSource: 'remote-control', isInteractive: false, isOneShotPrint: false })
     expect(getClientType()).toBe('sdk-cli')
     expect(getQuestionPreviewFormat()).toBe('html')
     expect(getSessionSource()).toBe('remote-control')
@@ -109,8 +109,8 @@ describe('applyClientType', () => {
   })
 
   test('an undefined preview format or session source leaves the current one', () => {
-    applyClientType({ clientType: 'cli', previewFormat: 'markdown', sessionSource: 'remote-control', isInteractive: true })
-    applyClientType({ clientType: 'cli', previewFormat: undefined, sessionSource: undefined, isInteractive: true })
+    applyClientType({ clientType: 'cli', previewFormat: 'markdown', sessionSource: 'remote-control', isInteractive: true, isOneShotPrint: false })
+    applyClientType({ clientType: 'cli', previewFormat: undefined, sessionSource: undefined, isInteractive: true, isOneShotPrint: false })
     expect(getQuestionPreviewFormat()).toBe('markdown')
     expect(getSessionSource()).toBe('remote-control')
   })
