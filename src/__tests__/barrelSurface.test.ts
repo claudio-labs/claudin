@@ -105,6 +105,7 @@ const SURFACES: ReadonlyArray<{
       'buildTranscriptForClassifier',
       'buildYoloSystemPrompt',
       'classifyYoloAction',
+      'earlierCallsOfResponse',
       'formatActionForClassifier',
       'getAutoModeClassifierErrorDumpPath',
       'getDefaultExternalAutoModeRules',

@@ -15,6 +15,7 @@ import type {
   SessionFacets,
   SessionMeta,
 } from 'src/commands/insights/types.js'
+import { getDisplayVersion } from 'src/platform/buildVersion.js'
 
 /**
  * Detects multi-clauding (using multiple Claude sessions concurrently).
@@ -297,7 +298,7 @@ export function buildExportData(
   insights: InsightResults,
   facets: Map<string, SessionFacets>,
 ): InsightsExport {
-  const version = typeof MACRO !== 'undefined' ? MACRO.VERSION : 'unknown'
+  const version = getDisplayVersion() ?? 'unknown'
 
   const facets_summary = {
     total: facets.size,

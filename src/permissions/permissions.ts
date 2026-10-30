@@ -46,6 +46,7 @@ import {
 } from 'src/permissions/denialTracking.js'
 import {
   classifyYoloAction,
+  earlierCallsOfResponse,
   formatActionForClassifier,
 } from 'src/permissions/yoloClassifier.js'
 import {
@@ -299,6 +300,7 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
           context.options.tools,
           appState.toolPermissionContext,
           context.abortController.signal,
+          earlierCallsOfResponse(context.responseToolUses, toolUseID),
         )
       } finally {
         clearClassifierChecking(toolUseID)

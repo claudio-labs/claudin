@@ -181,6 +181,32 @@ describe('working tree in the way', () => {
     git(path, ['add', 'src/app.ts'])
     expect(diagnoseReal(path, ['pull'])).toContain('git pull --autostash')
   })
+
+  test('a pull that would overwrite local changes names no --autostash', () => {
+    // A would-overwrite refusal means the incoming commits touch the dirty
+    // files, so `--autostash` would leave the tree conflicted with exit 0 and
+    // the stash kept (review of fix/census-2026-10-30).
+    const { path } = repoBehindOrigin()
+    git(path, ['reset', '-q', '--hard', 'HEAD~1'])
+    git(path, ['config', 'pull.rebase', 'false'])
+    writeRepoFile(path, 'src/app.ts', 'dirty\n')
+    const line = diagnoseReal(path, ['pull', '--ff-only'])
+    expect(line).toContain('would be overwritten by merge')
+    expect(line).toContain('git stash')
+    expect(line).not.toContain('--autostash')
+  })
+
+  test('a rebase over a dirty tree names --autostash', () => {
+    const repo = conflictingBranches()
+    writeRepoFile(repo.path, repo.conflictPath, 'dirty\n')
+    expect(diagnoseReal(repo.path, ['rebase', repo.feature])).toContain('git rebase --autostash')
+  })
+
+  test('a checkout that would overwrite names no --autostash it does not have', () => {
+    const repo = conflictingBranches()
+    writeRepoFile(repo.path, repo.conflictPath, 'dirty local\n')
+    expect(diagnoseReal(repo.path, ['checkout', repo.feature])).not.toContain('--autostash')
+  })
 })
 
 describe('remote failures', () => {

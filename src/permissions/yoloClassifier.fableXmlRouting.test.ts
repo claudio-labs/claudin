@@ -192,6 +192,29 @@ describe('the transcript budget the request is built with', () => {
   })
 })
 
+describe('the calls the response made before the action', () => {
+  test('sit between the history and the action', async () => {
+    mainLoopModel = 'claude-fable-5'
+    const history = [
+      { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'git status' } }] } },
+    ] as any
+    await classifyYoloAction(
+      history,
+      formatActionForClassifier('Bash', { command: 'python3 post.py' }),
+      tools,
+      ctx,
+      new AbortController().signal,
+      [formatActionForClassifier('Bash', { command: 'cat > post.py' })],
+    )
+    const sent = JSON.stringify((capturedOpts[0]!.messages as Array<{ content: unknown }>).at(-1)!.content)
+    const at = (text: string) => sent.indexOf(text)
+
+    expect(at('Bash git status')).toBeGreaterThan(-1)
+    expect(at('Bash git status')).toBeLessThan(at('Bash cat > post.py'))
+    expect(at('Bash cat > post.py')).toBeLessThan(at('Bash python3 post.py'))
+  })
+})
+
 // The API's own safety stop on the classifier request: no text, 0 tokens.
 const REFUSAL = {
   id: 'msg_refused',

@@ -6,6 +6,11 @@
 // Keep this in sync with the `MACRO.*` keys in `scripts/build/build.ts` — a member
 // declared here but missing from `define` survives into the bundle verbatim and
 // throws `ReferenceError: MACRO is not defined` when that line runs.
+//
+// Only the members are defined, never `MACRO` itself, so a `typeof MACRO` guard is
+// false in the bundle and always takes its fallback. Where `bun test` can reach the
+// read, use `getDisplayVersion()` (`src/platform/buildVersion.ts`);
+// `src/__tests__/macroGuard.test.ts` fails on the guard.
 declare const MACRO: {
   /** Internal compatibility version, pinned to `99.0.0`. Never use for real version logic. */
   readonly VERSION: string

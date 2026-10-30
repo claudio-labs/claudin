@@ -7,9 +7,14 @@
  * classifier's prompt cache survives from one call to the next.
  * Killswitch: `CLAUDIN_CLASSIFIER_STABLE_CUT=0` restores the newest-first fill
  * and the budget that shrinks with the action (`classifierTranscriptBudget`).
+ *
+ * Also on by default: the calls the response made before the one being judged
+ * follow the history (`earlierCallsOfResponse`), so running a script the same
+ * response wrote is judged with the script in view.
+ * Killswitch: `CLAUDIN_CLASSIFIER_RESPONSE_CALLS=0` leaves them out.
  */
 import type Anthropic from '@anthropic-ai/sdk'
-import type { Tool, Tools } from 'src/tools/Tool.js'
+import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
 import type { Message, MessageOrigin } from 'src/shared/types/message.js'
 import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -43,6 +48,10 @@ export const CLASSIFIER_TRANSCRIPT_CHUNK_CHARS = 25_000
 
 function isStableCutEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_STABLE_CUT)
+}
+
+function isResponseCallsEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS)
 }
 
 /**
@@ -215,13 +224,11 @@ export function toCompact(entry: TranscriptEntry, lookup: ToolLookup): string {
 
 type SerializedBlock = { role: TranscriptEntry['role']; text: string }
 
-/** A message's blocks as the classifier reads them; null when none survives. */
-function serializeMessage(
-  msg: Message,
+/** An entry's blocks as the classifier reads them; null when none survives. */
+function serializeEntry(
+  entry: TranscriptEntry,
   lookup: ToolLookup,
 ): { blocks: SerializedBlock[]; chars: number } | null {
-  const entry = messageToTranscriptEntry(msg)
-  if (!entry) return null
   const blocks: SerializedBlock[] = []
   let chars = 0
   for (const block of entry.content) {
@@ -240,7 +247,7 @@ type KeptEntries = { kept: SerializedBlock[][]; truncated: boolean }
  * over the budget, its newest blocks that fit.
  */
 function newestEntriesWithin(
-  messages: Message[],
+  entries: readonly TranscriptEntry[],
   lookup: ToolLookup,
   maxChars: number,
 ): KeptEntries {
@@ -248,8 +255,8 @@ function newestEntriesWithin(
   let totalChars = 0
   let truncated = false
 
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const entry = serializeMessage(messages[i]!, lookup)
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = serializeEntry(entries[i]!, lookup)
     if (!entry) continue
     const { blocks: serializedBlocks, chars: entryChars } = entry
 
@@ -289,15 +296,15 @@ function newestEntriesWithin(
  * budget — and the caller falls back to the newest-first fill for that call.
  */
 function stableCutEntries(
-  messages: Message[],
+  transcript: readonly TranscriptEntry[],
   lookup: ToolLookup,
   maxChars: number,
 ): KeptEntries | null {
   const entries: SerializedBlock[][] = []
   const sizes: number[] = []
   let remaining = 0
-  for (const msg of messages) {
-    const entry = serializeMessage(msg, lookup)
+  for (const item of transcript) {
+    const entry = serializeEntry(item, lookup)
     if (!entry) continue
     entries.push(entry.blocks)
     sizes.push(entry.chars)
@@ -319,10 +326,33 @@ function stableCutEntries(
   return entries.length === 0 ? { kept: [], truncated: false } : null
 }
 
+/**
+ * The calls the response made before `toolUseID`, one entry each: tools run
+ * with the history from before the response (`query.ts`), so a call that runs
+ * a script the same response wrote was judged without the script. The stream
+ * writes one assistant message per content block (`streaming.ts`), so one entry
+ * per call is how the next turn's history holds them, byte for byte. An id the
+ * response does not hold (a `then` follow-up, no response at all) adds none.
+ */
+export function earlierCallsOfResponse(
+  responseToolUses: ToolUseContext['responseToolUses'],
+  toolUseID: string,
+): TranscriptEntry[] {
+  if (!isResponseCallsEnabled() || !responseToolUses) return []
+  const at = responseToolUses.findIndex(use => use.id === toolUseID)
+  if (at <= 0) return []
+  return responseToolUses.slice(0, at).map(use => formatActionForClassifier(use.name, use.input))
+}
+
+/**
+ * `earlierCalls` follow the history as its newest entries — the calls of the
+ * response being classified (`earlierCallsOfResponse`) — and are cut with it.
+ */
 export function serializeTranscriptForClassifier(
   messages: Message[],
   tools: Tools,
   maxChars: number,
+  earlierCalls: readonly TranscriptEntry[] = [],
 ): {
   userContentBlocks: Anthropic.TextBlockParam[]
   promptLengths: {
@@ -333,9 +363,13 @@ export function serializeTranscriptForClassifier(
   truncated: boolean
 } {
   const lookup = buildToolLookup(tools)
+  const entries = [
+    ...messages.map(messageToTranscriptEntry).filter(entry => entry !== null),
+    ...earlierCalls,
+  ]
   const { kept: keptEntries, truncated } =
-    (isStableCutEnabled() ? stableCutEntries(messages, lookup, maxChars) : null) ??
-    newestEntriesWithin(messages, lookup, maxChars)
+    (isStableCutEnabled() ? stableCutEntries(entries, lookup, maxChars) : null) ??
+    newestEntriesWithin(entries, lookup, maxChars)
 
   const userContentBlocks: Anthropic.TextBlockParam[] = []
   let userPromptsLength = 0

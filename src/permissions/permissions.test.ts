@@ -347,3 +347,16 @@ describe('plan mode → classifier lane (planModeDefersToClassifier)', () => {
     })
   })
 })
+
+describe('auto-mode wiring (text)', () => {
+  // The auto-mode branch is feature('TRANSCRIPT_CLASSIFIER'), false under bun
+  // test, so the call is pinned on the source; what the helper returns is
+  // pinned in yoloClassifier/transcript.test.ts.
+  const src = readFileSync(new URL('./permissions.ts', import.meta.url), 'utf8')
+
+  test('the classifier hears the calls the response made before this one', () => {
+    expect(src).toContain(
+      'context.abortController.signal,\n          earlierCallsOfResponse(context.responseToolUses, toolUseID),\n        )',
+    )
+  })
+})

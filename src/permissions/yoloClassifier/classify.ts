@@ -387,10 +387,11 @@ export async function classifyYoloAction(
   tools: Tools,
   context: ToolPermissionContext,
   signal: AbortSignal,
+  earlierCalls: readonly TranscriptEntry[] = [],
 ): Promise<YoloClassifierResult> {
   const timeoutMs = getClassifierTimeoutMs()
   if (timeoutMs === 0) {
-    return classifyYoloActionUnbounded(messages, action, tools, context, signal)
+    return classifyYoloActionUnbounded(messages, action, tools, context, signal, earlierCalls)
   }
 
   const budget = new AbortController()
@@ -420,6 +421,7 @@ export async function classifyYoloAction(
         tools,
         context,
         budget.signal,
+        earlierCalls,
       ).catch((error: unknown) => {
         // The budget already answered — swallow whatever the aborted request
         // settles with rather than raising an unhandled rejection.
@@ -463,6 +465,7 @@ export async function classifyYoloAction(
  * @param tools - Tool registry for encoding tool inputs via toAutoClassifierInput
  * @param context - Tool permission context for extracting Bash(prompt:) rules
  * @param signal - Abort signal
+ * @param earlierCalls - The calls the response made before this one (`earlierCallsOfResponse`)
  */
 async function classifyYoloActionUnbounded(
   messages: Message[],
@@ -470,6 +473,7 @@ async function classifyYoloActionUnbounded(
   tools: Tools,
   context: ToolPermissionContext,
   signal: AbortSignal,
+  earlierCalls: readonly TranscriptEntry[],
 ): Promise<YoloClassifierResult> {
   // Classifier prompts not bundled (open-source fork without the .txt
   // templates). Skip the API call — it would 400 on the empty system block —
@@ -502,6 +506,7 @@ async function classifyYoloActionUnbounded(
     messages,
     tools,
     classifierTranscriptBudget(actionCompact.length),
+    earlierCalls,
   )
   const claudeMdMessage = buildClaudeMdMessage()
   const prefixMessages: Anthropic.MessageParam[] = claudeMdMessage
@@ -538,6 +543,7 @@ async function classifyYoloActionUnbounded(
         `tools=${promptLengths.toolCalls} ` +
         `user=${promptLengths.userPrompts}) ` +
         `transcriptEntries=${serializedTranscript.transcriptEntries} ` +
+        `earlierCalls=${earlierCalls.length} ` +
         `truncated=${serializedTranscript.truncated} ` +
         `messages=${messages.length}`,
     )

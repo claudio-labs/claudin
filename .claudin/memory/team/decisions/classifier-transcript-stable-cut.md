@@ -39,6 +39,10 @@ prompt leaves at a chunk move, unmarked.
   reused, about twice the cost.
 - A breakpoint at the last chunk boundary: ~6% more saving for the 4th
   `cache_control`, which the request already uses.
+  **Correction 10-30:** the request carries 3 breakpoints: system
+  (`classify.ts`), CLAUDE.md (`prompts.ts`) and the action. So the 4th is free.
+  In the 63f9fd14 replay, lookback misses were 39% of the classifier's writes;
+  see [[census-2026-10-30-cache-tools-context]].
 - A classifier model per sub-agent: Explore's calls write ~0.2k each, ~$1-2 over
   two days.
 - Approving `S=<literal>; … $S` and `cd <root>` locally: ~22 of 595 classifier
@@ -59,6 +63,9 @@ prompt leaves at a chunk move, unmarked.
   Classifier writes 1.13M → 0.34M per session (−70%), classifier spend $5.13 →
   $2.10 (−59%), main thread unchanged, rejects 12 vs 14 — every one the
   classifier declining to assess (~14% of calls in both arms), a separate finding.
+- In use, 10-25..30, against the merge time (every transcript said
+  `"version":"unknown"`): 14.2k → 4.6k writes per call (−67%), $0.124 → $0.048 per
+  call, and the classifier's share of spend 31% → 19%.
 - Break-probes: `classifierStableCut.json` 11 red plus a control;
   `classifierTranscript.json` pins the old fill, 8 red.
 - The review round found the chunk-sized-entry case (one turn of six parallel

@@ -418,6 +418,9 @@ export function diagnose(
 
   const overwrite = WOULD_OVERWRITE_RE.exec(output)
   if (overwrite) {
+    // No `--autostash` here, even for a pull: this refusal means the incoming
+    // commits touch the dirty files, so the stash re-applies onto what the
+    // pull just changed, and a conflict there still exits 0.
     return `Uncommitted changes would be overwritten by ${overwrite[1] ?? 'this command'}. Commit them, \`git stash\` them, or discard them first — nothing was changed.`
   }
   const unstaged = UNSTAGED_BLOCKS_RE.exec(output)
@@ -427,6 +430,9 @@ export function diagnose(
     // of its own.
     if (unstaged[1] === 'pull with rebase') {
       return '`git pull` is rebasing, and a rebase needs a clean tree. `git pull --autostash` stashes your changes, pulls and puts them back in one step — nothing was changed.'
+    }
+    if (unstaged[1] === 'rebase') {
+      return '`git rebase` needs a clean tree. `git rebase --autostash` stashes your changes, rebases and puts them back in one step — nothing was changed.'
     }
     return `\`git ${unstaged[1] ?? 'rebase'}\` needs a clean tree. Commit or \`git stash\` your changes first — nothing was changed.`
   }
