@@ -1,0 +1,124 @@
+{
+  "test": [
+    "src/tools/ToolSearchTool/callForms.test.ts",
+    "src/agent/messages/attachments.deferredHeader.test.ts",
+    "src/providers/cache/cache1hTtl.test.ts",
+    "src/platform/main/clientType.test.ts",
+    "scripts/bench/ab/session-cache-ab.test.ts",
+    "scripts/bench/ab/context-relief-ab.test.ts",
+    "scripts/bench/ab/tool-gaps-ab.test.ts",
+    "scripts/bench/ab/toolGapsMechanisms.test.ts"
+  ],
+  "source": "src/tools/ToolSearchTool/prompt.ts",
+  "probes": [
+    {
+      "name": "call forms: the line drops the form",
+      "find": "    return `${tool.name}${CALL_FORM_SEPARATOR}${tool.callForm}`\n",
+      "replace": "    return tool.name\n"
+    },
+    {
+      "name": "call forms: an MCP tool gets one",
+      "find": "  if (isDeferredCallFormsEnabled() && tool.callForm && tool.isMcp !== true) {\n",
+      "replace": "  if (isDeferredCallFormsEnabled() && tool.callForm) {\n"
+    },
+    {
+      "name": "call forms: on by default",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "call forms: the header follows the flag, not the lines",
+      "find": "  return lines.some(line => line.includes(CALL_FORM_SEPARATOR)) ? DEFERRED_HEADER_WITH_FORMS : DEFERRED_HEADER\n",
+      "replace": "  return isDeferredCallFormsEnabled() ? DEFERRED_HEADER_WITH_FORMS : DEFERRED_HEADER\n"
+    },
+    {
+      "name": "call forms: the prompt never names the exception",
+      "find": "    (isDeferredCallFormsEnabled() ? UNTIL_FETCHED_WITH_FORMS : UNTIL_FETCHED) +\n",
+      "replace": "    UNTIL_FETCHED +\n"
+    },
+    {
+      "name": "call forms: the renderer keeps its own header",
+      "source": "src/agent/messages/attachments.ts",
+      "find": "          `${deferredToolsHeader(attachment.addedLines)}\\n${attachment.addedLines.join('\\n')}`,\n",
+      "replace": "          `The following deferred tools are now available via ToolSearch. Their schemas are NOT loaded — calling them directly will fail with InputValidationError. Use ToolSearch with query \"select:<name>[,<name>...]\" to load tool schemas before calling them:\\n${attachment.addedLines.join('\\n')}`,\n"
+    },
+    {
+      "name": "call forms: TaskGet's form names the wrong field",
+      "source": "src/tools/TaskGetTool/TaskGetTool.ts",
+      "find": "  callForm: `${TASK_GET_TOOL_NAME}({\"taskId\": \"<id>\"})`,\n",
+      "replace": "  callForm: `${TASK_GET_TOOL_NAME}({\"task_id\": \"<id>\"})`,\n"
+    },
+    {
+      "name": "ttl: auto ignores one-shot print",
+      "source": "src/providers/shims/claude/cacheControl.ts",
+      "find": "  if (tier === \"auto\") return !getIsOneShotPrint();\n",
+      "replace": "  if (tier === \"auto\") return true;\n"
+    },
+    {
+      "name": "ttl: 5m stops pinning",
+      "source": "src/providers/shims/claude/cacheControl.ts",
+      "find": "  if (tier === \"5m\") return false;\n",
+      "replace": ""
+    },
+    {
+      "name": "ttl: the fork keeps 1h under auto",
+      "source": "src/providers/shims/claude/cacheControl.ts",
+      "find": "  if (querySource === FORK_QUERY_SOURCE) return mainThread1hTtl();\n",
+      "replace": "  if (querySource === FORK_QUERY_SOURCE) return true;\n"
+    },
+    {
+      "name": "ttl: a stream-json -p counts as one-shot",
+      "source": "src/platform/main/clientType.ts",
+      "find": "  return !streamed && !cliArgs.includes('--input-format=stream-json');\n",
+      "replace": "  return true;\n"
+    },
+    {
+      "name": "ttl: --sdk-url counts as one-shot",
+      "source": "src/platform/main/clientType.ts",
+      "find": "  if (cliArgs.some(arg => arg.startsWith('--sdk-url'))) return false;\n",
+      "replace": ""
+    },
+    {
+      "name": "ttl: applyClientType drops one-shot",
+      "source": "src/platform/main/clientType.ts",
+      "find": "  setIsOneShotPrint(resolved.isOneShotPrint);\n",
+      "replace": ""
+    },
+    {
+      "name": "bench: armEnv stops pinning 1h",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "    CLAUDIN_MAIN_CACHE_TTL: '1h',\n",
+      "replace": ""
+    },
+    {
+      "name": "bench: re-reads count the script's repeats",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "    if (n > Math.max(allowed.get(path) ?? 0, 1)) extra++\n",
+      "replace": "    if (n > 1) extra++\n"
+    },
+    {
+      "name": "bench: the gate ignores the placebo range",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "  const separated = max(c) < min(b) && max(c) < min(p)\n",
+      "replace": "  const separated = max(c) < min(b)\n"
+    },
+    {
+      "name": "bench: an arm that never compacted is graded",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "  if (c.length === 0 || c.some(r => r.compactions === 0)) {\n",
+      "replace": "  if (c.length === 0) {\n"
+    },
+    {
+      "name": "bench: a direct deferred call after a load counts",
+      "source": "scripts/bench/ab/toolGapsMechanisms.ts",
+      "find": "    if (!CALL_FORM_TOOLS.has(call.name) || loaded.has(call.name)) continue\n",
+      "replace": "    if (!CALL_FORM_TOOLS.has(call.name)) continue\n"
+    },
+    {
+      "name": "bench: meta gates tolerate a failed direct call",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',\n",
+      "replace": "    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) ? 'PASS' : 'FAIL',\n"
+    }
+  ]
+}
