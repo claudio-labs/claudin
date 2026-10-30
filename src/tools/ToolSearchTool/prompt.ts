@@ -67,7 +67,11 @@ function getToolLocationHint(): string {
 
 // The select example names tools that are deferred: Read, Edit and Grep never
 // are, so an example loading them taught a call that loads nothing.
-const PROMPT_TAIL = ` Until fetched, only the name is known — there is no parameter schema, so the tool cannot be invoked. This tool takes a query, matches it against the deferred tool list, and returns the matched tools' complete JSONSchema definitions inside a <functions> block. Once a tool's schema appears in that result, it is callable exactly like any tool defined at the top of the prompt.
+const UNTIL_FETCHED =
+  ' Until fetched, only the name is known — there is no parameter schema, so the tool cannot be invoked.'
+const UNTIL_FETCHED_WITH_FORMS =
+  ' Until fetched, only the name is known, and the tool cannot be invoked — except one listed with a call form ("— call directly: X({…})"), whose whole input is that line: call it directly, no fetch needed.'
+const PROMPT_TAIL = ` This tool takes a query, matches it against the deferred tool list, and returns the matched tools' complete JSONSchema definitions inside a <functions> block. Once a tool's schema appears in that result, it is callable exactly like any tool defined at the top of the prompt.
 
 Query forms:
 - "select:WebFetch,WebSearch" — fetch these exact tools by name
@@ -116,14 +120,59 @@ export function isDeferredTool(tool: Tool): boolean {
 }
 
 /**
- * Format one deferred-tool line for the <available-deferred-tools> user
- * message. Search hints (tool.searchHint) are not rendered — the
- * hints A/B (exp_xenhnnmn0smrx4, stopped Mar 21) showed no benefit.
+ * `CLAUDIN_DEFERRED_CALL_FORMS=1`: a built-in deferred tool with a `callForm`
+ * is listed with it, and the ToolSearch prompt and the listing's header say a
+ * listed form is called directly. Off until the A/B decides; read per call so
+ * a test can set it.
+ *
+ * In 10-25..30, 25 of 2,281 main requests were a ToolSearch alone, and every
+ * session of the 10-30 A/B opened with `select:EnterPlanMode,ExitPlanMode`.
+ * The API takes a tool_use for a deferred tool that was never loaded, and
+ * the input is validated here, so a tool whose whole input fits on the line
+ * needs no load: TaskUpdate called from the plan approval's text validated
+ * 5 of 5 times on Opus 5.5.
+ */
+export function isDeferredCallFormsEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)
+}
+
+/** What separates a deferred tool's name from its call form in the listing. */
+const CALL_FORM_SEPARATOR = ' — call directly: '
+
+/**
+ * Format one deferred-tool line for the listing (the deferred_tools_delta
+ * attachment, or the legacy <available-deferred-tools> message). Search hints
+ * (tool.searchHint) are not rendered — the hints A/B (exp_xenhnnmn0smrx4,
+ * stopped Mar 21) showed no benefit. MCP tools never get a call form: their
+ * input comes from a server, not from this repository.
  */
 export function formatDeferredToolLine(tool: Tool): string {
+  if (isDeferredCallFormsEnabled() && tool.callForm && tool.isMcp !== true) {
+    return `${tool.name}${CALL_FORM_SEPARATOR}${tool.callForm}`
+  }
   return tool.name
 }
 
+const DEFERRED_HEADER =
+  'The following deferred tools are now available via ToolSearch. Their schemas are NOT loaded — calling them directly will fail with InputValidationError. Use ToolSearch with query "select:<name>[,<name>...]" to load tool schemas before calling them:'
+const DEFERRED_HEADER_WITH_FORMS =
+  'The following deferred tools are now available. One listed with a call form is called directly with that input, no ToolSearch needed. The others\' schemas are NOT loaded: use ToolSearch with query "select:<name>[,<name>...]" to load them before calling them:'
+
+/**
+ * The header of a deferred-tool listing, chosen from the listed lines alone:
+ * the delta attachment persists its lines and is re-rendered on every
+ * request, so a transcript written without call forms keeps its bytes, and
+ * with them its cached prefix, whatever the flag says when it resumes.
+ */
+export function deferredToolsHeader(lines: readonly string[]): string {
+  return lines.some(line => line.includes(CALL_FORM_SEPARATOR)) ? DEFERRED_HEADER_WITH_FORMS : DEFERRED_HEADER
+}
+
 export function getPrompt(): string {
-  return PROMPT_HEAD + getToolLocationHint() + PROMPT_TAIL
+  return (
+    PROMPT_HEAD +
+    getToolLocationHint() +
+    (isDeferredCallFormsEnabled() ? UNTIL_FETCHED_WITH_FORMS : UNTIL_FETCHED) +
+    PROMPT_TAIL
+  )
 }

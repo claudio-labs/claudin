@@ -51,6 +51,7 @@ export const TaskStopTool = buildTool({
     return outputSchema()
   },
   shouldDefer: true,
+  callForm: `${TASK_STOP_TOOL_NAME}({"task_id": "<id>"})`,
   isConcurrencySafe() {
     return true
   },

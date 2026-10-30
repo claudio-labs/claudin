@@ -51,6 +51,7 @@ export const EnterPlanModeTool: Tool<InputSchema, Output> = buildTool({
     return ''
   },
   shouldDefer: true,
+  callForm: `${ENTER_PLAN_MODE_TOOL_NAME}({})`,
   isEnabled() {
     return true
   },

@@ -196,6 +196,7 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
     return ''
   },
   shouldDefer: true,
+  callForm: `${EXIT_PLAN_MODE_V2_TOOL_NAME}({})`,
   isEnabled() {
     return true
   },
