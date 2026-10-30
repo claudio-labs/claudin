@@ -1,6 +1,6 @@
 ---
 name: census-2026-10-30-cache-tools-context
-description: Census 10-25..30 (claudin + ferrous-dns, Opus/Haiku 5.5 only) — cache clean (11 rewrites, all idle/clip/5m TTL, tail 0); #321 classifier writes/call −67% live (14.2k→4.6k); tools 1.1%; zero compactions; map set-aside skips a multi-file dirty tree
+description: Census 10-25..30 (claudin + ferrous-dns, Opus/Haiku 5.5 only) — cache clean (11 rewrites, all idle/clip/5m TTL, tail 0); #321 classifier writes/call −67% live (14.2k→4.6k); tools 1.1%; zero compactions; map set-aside skips a multi-file dirty tree; Bash-filter cuts cause no excess re-reads, outlines do (40/44 followed by a body Read)
 type: project
 ---
 
@@ -86,6 +86,27 @@ then found 3 bugs in it, which got their own red commit and fixes):
   `platform/install/installer.ts:467,482` compares versions against it, against the build
   rule: the `maxVersion` cap always skips the update, and the same-version early exit never
   matches.
+
+**Re-reads and the Bash filter (same window, measured 10-30 afternoon).** The filter causes
+almost no re-reading:
+- 126 of 1,635 Bash results were cut. The read lane accepted none of them (`cut-refetch-census.ts
+  --lane`: 0 of 75 caps), so every cut was a log, test run or listing. 564 lane reads came back
+  whole.
+- Pure recovery within 3 requests was 14.7% after a cap and 13–15% after uncut Bash of the same
+  size, so a cap adds nothing.
+- 19 file re-reads followed a cut, all in sub-agents, out of 2,653 reads. The lane missed them
+  for two reasons: `cd ~/…` (`~` refused, 5 cuts) and
+  `for r in A,B …; do sed -n "${r}p" f; done` (1 cut, then half the ranges were run again).
+  Separately, Explore got a Bash `git diff` stat pivot that names `Git(…)`/`full: true`, tools it
+  does not have, and re-ran the diff with `| cat`.
+- The biggest re-read cause is the outline. 40 of 44 outlines (auto, batch or `view`) were
+  followed by a body Read of the same file, and 14 of those read ≥50% of it. Several were
+  sub-250-line `.md`/`.diff` files that crossed the 10k-char trigger.
+- True duplicates were 37 on main, and 20 of them came after a >1h idle (clip).
+- The scratch scripts became `scripts/bench/tokens/reread-census.ts` and the `/census` skill.
+  The committed census splits outlines the model asked for (52, mostly sub-agents) from Read's
+  auto pivot (34). The scratch script had missed the asked ones.
+- The fixes and the A/B of their levers: [[census-10-30-tool-levers-not-promoted]].
 
 **How to apply:** use this as the baseline for the next census. Expect the transcript `version`
 to be filled in, and a refused `git rebase` to be told about `--autostash`.
