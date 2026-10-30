@@ -12,7 +12,9 @@ export function getDisplayVersion(): string | undefined {
   try {
     return MACRO.DISPLAY_VERSION
   } catch (e) {
-    if (e instanceof ReferenceError) return undefined
+    // ReferenceError: nothing defines MACRO. TypeError: a suite left it holding
+    // undefined (`globalThis.MACRO = original` with no original to put back).
+    if (e instanceof ReferenceError || e instanceof TypeError) return undefined
     throw e
   }
 }

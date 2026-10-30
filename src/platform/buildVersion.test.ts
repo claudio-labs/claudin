@@ -38,11 +38,11 @@ describe('getDisplayVersion', () => {
   test('lets any other failure through', () => {
     setMacro({
       get() {
-        throw new TypeError('not a reference error')
+        throw new RangeError('neither a reference nor a type error')
       },
       configurable: true,
     })
 
-    expect(() => getDisplayVersion()).toThrow(TypeError)
+    expect(() => getDisplayVersion()).toThrow(RangeError)
   })
 })
