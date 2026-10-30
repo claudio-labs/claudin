@@ -18,6 +18,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { getDisplayVersion } from 'src/platform/buildVersion.js'
 import {
   getDetectedLocalInstallDir,
   getShellType,
@@ -599,8 +600,7 @@ export function detectLinuxGlobPatternWarnings(): Array<{
 
 export async function getDoctorDiagnostic(): Promise<DiagnosticInfo> {
   const installationType = await getCurrentInstallationType()
-  const version =
-    typeof MACRO !== 'undefined' && MACRO.VERSION ? MACRO.VERSION : 'unknown'
+  const version = getDisplayVersion() ?? 'unknown'
   const installationPath = await getInstallationPath()
   const invokedBinary = getInvokedBinary()
   const multipleInstallations = await detectMultipleInstallations()

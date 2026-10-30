@@ -101,13 +101,11 @@ import {
   appendEntryToFile,
   readFileTailSync,
 } from 'src/sessions/persistence/_helpers.js'
+import { getDisplayVersion } from 'src/platform/buildVersion.js'
 
-// Cache MACRO.VERSION at module level to work around bun --define bug in
+// Cache the version at module level to work around bun --define bug in
 // async contexts. See: https://github.com/oven-sh/bun/issues/26168
-// IMPORTANT: keep the `typeof MACRO !== 'undefined'` guard literal — the
-// build preprocessor only substitutes when the literal compares against
-// 'undefined'.
-const VERSION = typeof MACRO !== 'undefined' ? MACRO.VERSION : 'unknown'
+const VERSION = getDisplayVersion() ?? 'unknown'
 
 // 50MB — prevents OOM in the tombstone slow path which reads + rewrites the
 // entire session file. Session files can grow to multiple GB (inc-3930).
