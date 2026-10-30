@@ -345,5 +345,12 @@ describe('plan mode → classifier lane (planModeDefersToClassifier)', () => {
         "tool.name !== AGENT_TOOL_NAME &&\n        appState.toolPermissionContext.mode !== 'plan'",
       )
     })
+
+    test('the classifier hears the calls the response made before this one', () => {
+      // The auto-mode branch is feature('TRANSCRIPT_CLASSIFIER'), false under
+      // bun test, so the argument is pinned on the source; what the helper
+      // returns is pinned in yoloClassifier/transcript.test.ts.
+      expect(src).toContain('earlierCallsOfResponse(context.responseToolUses, toolUseID)')
+    })
   })
 })

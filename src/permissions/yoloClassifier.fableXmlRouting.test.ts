@@ -190,6 +190,24 @@ describe('the transcript budget the request is built with', () => {
     expect(sentTranscript()).not.toContain('Bash e0:')
     expect(sentTranscript()).toContain('Bash e1:')
   })
+
+  test('the calls the response made before the action sit between the history and the action', async () => {
+    mainLoopModel = 'claude-fable-5'
+    delete process.env.CLAUDIN_CLASSIFIER_STABLE_CUT
+    const earlier = [formatActionForClassifier('Bash', { command: 'cat > post.py' })]
+    await classifyYoloAction(
+      [],
+      formatActionForClassifier('Bash', { command: 'python3 post.py' }),
+      tools,
+      ctx,
+      new AbortController().signal,
+      earlier,
+    )
+    const sent = sentTranscript()
+
+    expect(sent).toContain('Bash cat > post.py')
+    expect(sent.indexOf('Bash cat > post.py')).toBeLessThan(sent.indexOf('Bash python3 post.py'))
+  })
 })
 
 // The API's own safety stop on the classifier request: no text, 0 tokens.

@@ -6,6 +6,7 @@ import {
   classifierTranscriptBudget,
   MAX_CLASSIFIER_TRANSCRIPT_CHARS,
   serializeTranscriptForClassifier,
+  type TranscriptEntry,
 } from 'src/permissions/yoloClassifier/transcript.js'
 
 const KILLSWITCH = 'CLAUDIN_CLASSIFIER_STABLE_CUT'
@@ -335,6 +336,38 @@ describe('serializeTranscriptForClassifier, stable cut (default)', () => {
     const kept = texts(messages, MAX_CLASSIFIER_TRANSCRIPT_CHARS).reduce((n, b) => n + b.length, 0)
 
     expect(kept).toBeGreaterThan(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 25_000)
+  })
+})
+
+// 4ab77f00, 2026-10-27: one response wrote post.py and ran it, and the run was
+// denied because the script "never appears in the transcript" — the Write sat
+// in the same response, which tools never see in `context.messages`.
+describe('serializeTranscriptForClassifier, calls of the response being classified', () => {
+  afterEach(restoreKillswitch)
+
+  const pendingWrite: TranscriptEntry = {
+    role: 'assistant',
+    content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'post.py' } }],
+  }
+  const writeMessage = {
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'post.py' } }] },
+  } as unknown as Message
+
+  test('they follow the history', () => {
+    const blocks = serializeTranscriptForClassifier([user('write it and run it')], tools, BUDGET, [pendingWrite])
+      .userContentBlocks.map(b => b.text)
+
+    expect(blocks).toEqual(['User: write it and run it\n', 'Write {"file_path":"post.py"}\n'])
+  })
+
+  test('past the budget they cut where the next turn, holding them as history, cuts', () => {
+    for (let n = 11; n <= 20; n++) {
+      const now = serializeTranscriptForClassifier(history(n), tools, BUDGET, [pendingWrite])
+      const nextTurn = serializeTranscriptForClassifier([...history(n), writeMessage], tools, BUDGET)
+
+      expect(now).toEqual(nextTurn)
+    }
   })
 })
 
