@@ -1,0 +1,62 @@
+{
+  "test": [
+    "src/agent/tasks/LocalShellTask/killShellTasks.test.ts",
+    "src/agent/tasks/stopTask.test.ts"
+  ],
+  "source": "src/agent/tasks/LocalShellTask/killShellTasks.ts",
+  "probes": [
+    {
+      "name": "kill: a finished task is killed again",
+      "find": "    if (task.status !== 'running' || !isLocalShellTask(task)) {\n",
+      "replace": "    if (!isLocalShellTask(task)) {\n"
+    },
+    {
+      "name": "kill: the shell command is not killed",
+      "find": "      task.shellCommand?.kill()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "kill: the exit cleanup stays registered",
+      "find": "    task.unregisterCleanup?.()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "kill: the task is not marked notified",
+      "find": "      notified: true,\n",
+      "replace": "      notified: false,\n"
+    },
+    {
+      "name": "kill: a kill that throws aborts the update",
+      "find": "    } catch (error) {\n      logError(error)\n    }\n",
+      "replace": "    } catch (error) {\n      throw error\n    }\n"
+    },
+    {
+      "name": "agent: another agent's tasks are killed",
+      "find": "      task.agentId === agentId &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "agent: queued notifications of the agent stay",
+      "find": "  dequeueAllMatching(cmd => cmd.agentId === agentId)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "stop: a finished task is stopped",
+      "source": "src/agent/tasks/stopTask.ts",
+      "find": "  if (task.status !== 'running') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "stop: an unknown type is stopped",
+      "source": "src/agent/tasks/stopTask.ts",
+      "find": "  if (!taskImpl) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "stop: the shell command is not reported",
+      "source": "src/agent/tasks/stopTask.ts",
+      "find": "  const command = isLocalShellTask(task) ? task.command : task.description\n",
+      "replace": "  const command = task.description\n"
+    }
+  ]
+}
