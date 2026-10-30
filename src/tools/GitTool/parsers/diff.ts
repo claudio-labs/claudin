@@ -47,6 +47,16 @@ export const DIFF_PIVOT_FILES = 6
  */
 export const DIFF_FILE_LINE_BUDGET = 60
 
+/**
+ * Who gets the rendering, which decides the way out it names. The Git tool has
+ * `full: true` and is the tool to ask for one file. Bash has neither, and the
+ * caller may have no Git tool at all (the Explore agent does not): it gets the
+ * shell's way, `-- <path>` for one file and `| cat`, which the output filter
+ * passes through, for the raw diff. An Explore agent given the Git tool's
+ * wording in 10-25..30 re-ran its diff `| cat` on its own.
+ */
+export type DiffReader = 'git-tool' | 'shell'
+
 const FILE_SPLIT_RE = /^diff --git /m
 const HEADER_PATH_RE = /^.\/(.+?) .\/(.+)$/
 /**
@@ -186,25 +196,37 @@ function hunkText(hunk: StructuredPatchHunk): string {
 export function renderDiffStat(
   files: readonly DiffFileSummary[],
   reason: string,
+  reader: DiffReader = 'git-tool',
 ): string {
   const added = files.reduce((n, f) => n + f.added, 0)
   const removed = files.reduce((n, f) => n + f.removed, 0)
   const noun = files.length === 1 ? 'file' : 'files'
+  // With one file, asking for that file's hunks pivots to this same table.
+  const wayOut =
+    reader === 'shell'
+      ? files.length === 1
+        ? 'For the raw diff add `| cat`.'
+        : "For one file's hunks run `git diff -- <path>` with the same revisions; for the raw diff add `| cat`."
+      : files.length === 1
+        ? 'Re-send this command with full: true for its hunks.'
+        : `Ask for one file's hunks with Git({commands:["git diff -- <path>"]}), or for all of them at once by re-sending this command with full: true.`
   return [
     `${files.length} ${noun} changed, +${added}/-${removed} (${reason} — hunks omitted)`,
     ...files.map(statLine),
-    `Ask for one file's hunks with Git({commands:["git diff -- <path>"]}), or for all of them at once by re-sending this command with full: true.`,
+    wayOut,
   ].join('\n')
 }
 
 /**
  * Keep whole hunks until the per-file budget is spent, then name what is left.
- * Returns null when nothing was dropped, so the caller can tell a real saving
- * from a no-op.
+ * The rest is named by the only way that returns it: asking for the same file
+ * again comes back under the same budget, so the hint used to send the model
+ * round in a circle.
  */
 function renderFileBudgeted(
   file: DiffFileSummary,
   hunks: readonly StructuredPatchHunk[],
+  reader: DiffReader,
 ): { text: string; elided: boolean } {
   const kept: string[] = []
   let lines = 0
@@ -224,11 +246,12 @@ function renderFileBudgeted(
   const head = `${file.path}  +${file.added}/-${file.removed}${tag(file)}`
   if (dropped === 0) return { text: [head, ...kept].join('\n'), elided: false }
   const noun = dropped === 1 ? 'hunk' : 'hunks'
+  const rest = reader === 'shell' ? 'add `| cat` to the command for the rest' : 'full: true for the rest'
   return {
     text: [
       head,
       ...kept,
-      `  … ${dropped} more ${noun} (${droppedLines} lines) — Git({commands:["git diff -- ${file.path}"]}), or full: true, for the rest.`,
+      `  … ${dropped} more ${noun} (${droppedLines} lines) — ${rest}.`,
     ].join('\n'),
     elided: true,
   }
@@ -236,9 +259,10 @@ function renderFileBudgeted(
 
 /**
  * @returns a budgeted rendering, or null when this body is not a unified diff
- * or has nothing worth eliding.
+ * or has nothing worth eliding. `reader` picks the way out it names
+ * (`DiffReader`).
  */
-export function renderDiff(text: string): string | null {
+export function renderDiff(text: string, reader: DiffReader = 'git-tool'): string | null {
   if (!isUnifiedDiff(text)) return null
   const files = summarizeDiffFiles(text)
   if (files.length === 0) return null
@@ -248,7 +272,7 @@ export function renderDiff(text: string): string | null {
       files.length >= DIFF_PIVOT_FILES
         ? `${files.length} files`
         : `${Math.round(text.length / 1000)}k of diff`
-    return renderDiffStat(files, reason)
+    return renderDiffStat(files, reason, reader)
   }
 
   const hunksByPath = parseGitDiff(text)
@@ -260,7 +284,7 @@ export function renderDiff(text: string): string | null {
       sections.push(`${file.path}  +${file.added}/-${file.removed}${tag(file)}`)
       continue
     }
-    const rendered = renderFileBudgeted(file, hunks)
+    const rendered = renderFileBudgeted(file, hunks, reader)
     if (rendered.elided) anyElided = true
     sections.push(rendered.text)
   }

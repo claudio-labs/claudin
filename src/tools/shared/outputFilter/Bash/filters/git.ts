@@ -199,7 +199,8 @@ function renderDiffTail(body: string): string | null {
   const lines = body.slice(start.index).split('\n')
   let end = lines.length
   while (end > 0 && !DIFF_LINE_RE.test(lines[end - 1] ?? '')) end--
-  const rendered = renderDiff(lines.slice(0, end).join('\n'))
+  // Through Bash: the caller may have no Git tool, and has no `full: true`.
+  const rendered = renderDiff(lines.slice(0, end).join('\n'), 'shell')
   // `renderDiff` declines when the body is not a unified diff, or when nothing
   // would be elided and re-rendering would only strip context the model wants.
   if (rendered === null) return null

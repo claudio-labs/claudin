@@ -222,6 +222,16 @@ describe('diff rendering', () => {
     expect(out).toContain('full: true for the rest')
   })
 
+  test('a one-file diff past the pivot names only full: true, not the same file again', () => {
+    // Asking for that one file would pivot to the same table.
+    const diff = makeDiff('src/huge.ts', 40, 8)
+    expect(diff.length).toBeGreaterThan(DIFF_PIVOT_CHARS)
+    const out = summarizeGitOutput('git diff -- src/huge.ts', diff)
+    expect(out).toContain('hunks omitted')
+    expect(out).toContain('full: true')
+    expect(out).not.toContain('git diff -- <path>')
+  })
+
   test('git show routes through the same renderer', () => {
     const diff = makeDiff('src/a.ts', 40, 8)
     expect(summarizeGitOutput('git show HEAD', diff)).toBe(
