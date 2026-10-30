@@ -24,16 +24,10 @@
  * `.tsx` cannot be tested.
  */
 
-import type { Task } from 'src/agent/tasks/tasks.js'
+import { compareTaskIds, type Task } from 'src/agent/tasks/tasks.js'
 
-/** Numeric where possible so #10 sorts after #9, lexicographic otherwise. */
 function byIdAsc(a: Task, b: Task): number {
-  const aNum = parseInt(a.id, 10)
-  const bNum = parseInt(b.id, 10)
-  if (!isNaN(aNum) && !isNaN(bNum)) {
-    return aNum - bNum
-  }
-  return a.id.localeCompare(b.id)
+  return compareTaskIds(a.id, b.id)
 }
 
 /**

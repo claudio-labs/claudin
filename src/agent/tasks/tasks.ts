@@ -454,6 +454,22 @@ export async function deleteTask(
   }
 }
 
+/** Numeric where possible so #10 sorts after #9, lexicographic otherwise. */
+export function compareTaskIds(a: string, b: string): number {
+  const aNum = parseInt(a, 10)
+  const bNum = parseInt(b, 10)
+  if (!isNaN(aNum) && !isNaN(bNum)) {
+    return aNum - bNum
+  }
+  return a.localeCompare(b)
+}
+
+/**
+ * Every task of the list, in id order. `readdir` returns whatever order the
+ * filesystem keeps — hash order on ext4, newest first on tmpfs — and the
+ * TaskList tool passed it straight to the model: a 26-step plan came back as
+ * #13, #7, #8, #2… (team memory `tasklist-unordered-exitplan-seeds-without-ids`).
+ */
 export async function listTasks(taskListId: string): Promise<Task[]> {
   const dir = getTasksDir(taskListId)
   let files: string[]
@@ -466,7 +482,9 @@ export async function listTasks(taskListId: string): Promise<Task[]> {
     .filter(f => f.endsWith('.json'))
     .map(f => f.replace('.json', ''))
   const results = await Promise.all(taskIds.map(id => getTask(taskListId, id)))
-  return results.filter((t): t is Task => t !== null)
+  return results
+    .filter((t): t is Task => t !== null)
+    .sort((a, b) => compareTaskIds(a.id, b.id))
 }
 
 export async function blockTask(

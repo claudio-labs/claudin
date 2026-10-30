@@ -103,18 +103,24 @@ describe('TaskListTool', () => {
 
   test('call() lists tasks in id order, 10 after 9', async () => {
     const lid = getTaskListId()
+    // Ids keep climbing across the earlier tests' resets (the high water
+    // mark), so compare against the ids this test was handed, in creation order.
+    const created: string[] = []
     for (let i = 1; i <= 12; i++) {
-      await createTask(lid, {
-        subject: `step ${i}`,
-        description: 'd',
-        status: 'pending',
-        owner: undefined,
-        blocks: [],
-        blockedBy: [],
-      })
+      created.push(
+        await createTask(lid, {
+          subject: `step ${i}`,
+          description: 'd',
+          status: 'pending',
+          owner: undefined,
+          blocks: [],
+          blockedBy: [],
+        }),
+      )
     }
+    expect(created.some(id => id.length > 1)).toBe(true)
     const { data } = await TaskListTool.call()
-    expect(data.tasks.map(t => t.id)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+    expect(data.tasks.map(t => t.id)).toEqual(created)
   })
 
   test('mapToolResultToToolResultBlockParam handles empty and populated cases', () => {
