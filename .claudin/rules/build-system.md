@@ -50,6 +50,12 @@ not source.
    `MACRO.BUILD_TIME`, …) are inlined via `define`. `MACRO.VERSION` is pinned to
    `99.0.0` to pass first-party minimum-version guards; the **real** version is
    `MACRO.DISPLAY_VERSION`. Never compare against `MACRO.VERSION` for version logic.
+   Only the members are defined, never `MACRO` itself, so `typeof MACRO` is
+   `'undefined'` in the bundle and a guard on it always takes its fallback: until
+   2026-10-30 every transcript said `"version":"unknown"` and xAI got `claudin/dev`.
+   Read the version through `getDisplayVersion()` (`src/platform/buildVersion.ts`)
+   wherever `bun test` can reach it; `src/__tests__/macroGuard.test.ts` fails on
+   the guard.
 4. **Stub modules.** Native addons, missing internal Anthropic packages
    (`@ant/computer-use-mcp`, `daemon/*`, `cli/bg`, `self-hosted-runner`, …),
    `.md`/`.txt` imports, and `react/compiler-runtime` are redirected to inline
