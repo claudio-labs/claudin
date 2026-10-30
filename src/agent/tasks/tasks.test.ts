@@ -66,6 +66,11 @@ describe('task store', () => {
     expect(await listTasks('never-written')).toEqual([])
   })
 
+  test('lists tasks in id order whatever order the directory returns them in', async () => {
+    for (let i = 1; i <= 12; i++) await createTask(LIST, { ...base, subject: `t${i}` })
+    expect((await listTasks(LIST)).map(t => t.id)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+  })
+
   test('a file that fails the schema or does not parse reads as missing', async () => {
     await createTask(LIST, { ...base, subject: 'ok' })
     writeFileSync(getTaskPath(LIST, '2'), JSON.stringify({ id: '2', subject: 'no status' }))

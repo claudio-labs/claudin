@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { spawn, type ChildProcess } from 'child_process'
-import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, rmSync } from 'fs'
+import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
@@ -389,5 +389,83 @@ describe('createAbortedCommand / createFailedCommand', () => {
       interrupted: false,
       preSpawnError: 'cwd was deleted',
     })
+  })
+})
+
+describe('ShellCommand — the process group', () => {
+  const strays: number[] = []
+  const savedAdopt = process.env.CLAUDIN_ADOPT_LEFTOVERS
+  afterEach(() => {
+    for (const pid of strays.splice(0)) {
+      try {
+        process.kill(pid, 'SIGKILL')
+      } catch {
+        // already gone
+      }
+    }
+    if (savedAdopt === undefined) delete process.env.CLAUDIN_ADOPT_LEFTOVERS
+    else process.env.CLAUDIN_ADOPT_LEFTOVERS = savedAdopt
+  })
+
+  const alive = (pid: number): boolean => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /** The pid a script wrote to its PIDFILE, once it is there. */
+  async function pidFrom(file: string): Promise<number> {
+    const written = await waitFor(() => existsSync(file) && readFileSync(file, 'utf8').trim() !== '', 3_000)
+    expect(written).toBe(true)
+    const pid = Number(readFileSync(file, 'utf8').trim())
+    strays.push(pid)
+    return pid
+  }
+
+  function pidFile(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'shellcommand-group-'))
+    dirs.push(dir)
+    return join(dir, 'pid')
+  }
+
+  test("kill() reaches a process that left the shell's tree but stayed in its group", async () => {
+    // The subshell forks the sleep and exits, so the sleep is re-parented away
+    // from bash: a walk of bash's children no longer finds it, its group does.
+    const file = pidFile()
+    const { command } = start(`(sleep 300 & echo $! > "$PIDFILE"); sleep 300`, { PIDFILE: file })
+    const orphan = await pidFrom(file)
+    command.kill()
+    await command.result
+    expect(await waitFor(() => !alive(orphan), 3_000)).toBe(true)
+  })
+
+  test('CLAUDIN_ADOPT_LEFTOVERS: a command that leaves a process running reports it with the result', async () => {
+    process.env.CLAUDIN_ADOPT_LEFTOVERS = '1'
+    const file = pidFile()
+    const { child, command } = start(`sleep 300 & echo $! > "$PIDFILE"; exit 0`, { PIDFILE: file })
+    const result = await command.result
+    const pid = await pidFrom(file)
+    expect(result.code).toBe(0)
+    expect(result.leftovers?.pgid).toBe(child.pid)
+    const member = result.leftovers?.members.find(m => m.pid === pid)
+    expect(member?.command).toContain('sleep 300')
+  })
+
+  test('without the switch the result says nothing about what was left running', async () => {
+    delete process.env.CLAUDIN_ADOPT_LEFTOVERS
+    const file = pidFile()
+    const { command } = start(`sleep 300 & echo $! > "$PIDFILE"; exit 0`, { PIDFILE: file })
+    const result = await command.result
+    await pidFrom(file)
+    expect(result.leftovers).toBeUndefined()
+  })
+
+  test('a command that leaves nothing behind reports no leftovers', async () => {
+    process.env.CLAUDIN_ADOPT_LEFTOVERS = '1'
+    const { command } = start('echo done')
+    expect((await command.result).leftovers).toBeUndefined()
   })
 })

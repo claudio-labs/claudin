@@ -164,9 +164,12 @@ describe('seedTasksFromPlan', () => {
     rmSync(tmp, { recursive: true, force: true })
   })
 
-  test('seeds one pending task per item with source metadata', async () => {
-    const n = await seedTasksFromPlan(PLAN)
-    expect(n).toBe(2)
+  test('seeds one pending task per item with source metadata, and names what it created', async () => {
+    const seeded = await seedTasksFromPlan(PLAN)
+    expect(seeded).toEqual([
+      { id: '1', subject: 'First task' },
+      { id: '2', subject: 'Second task' },
+    ])
 
     const tasks = await listTasks(TASK_LIST_ID)
     expect(tasks.map(t => t.subject).sort()).toEqual([
@@ -178,18 +181,18 @@ describe('seedTasksFromPlan', () => {
   })
 
   test('dedups by subject on re-approval, adding only new items', async () => {
-    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+    expect(await seedTasksFromPlan(PLAN)).toHaveLength(2)
     // Re-approving the same plan creates nothing new.
-    expect(await seedTasksFromPlan(PLAN)).toBe(0)
+    expect(await seedTasksFromPlan(PLAN)).toEqual([])
     expect((await listTasks(TASK_LIST_ID)).length).toBe(2)
 
     // A refined plan only adds the genuinely new item.
-    expect(await seedTasksFromPlan(`${PLAN}\n- [ ] Third task`)).toBe(1)
+    expect(await seedTasksFromPlan(`${PLAN}\n- [ ] Third task`)).toEqual([{ id: '3', subject: 'Third task' }])
     expect((await listTasks(TASK_LIST_ID)).length).toBe(3)
   })
 
   test('does not duplicate tasks completed but not yet archived', async () => {
-    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+    expect(await seedTasksFromPlan(PLAN)).toHaveLength(2)
     for (const t of await listTasks(TASK_LIST_ID)) {
       await updateTask(TASK_LIST_ID, t.id, { status: 'completed' })
     }
@@ -197,22 +200,22 @@ describe('seedTasksFromPlan', () => {
     // The hide timer hasn't fired yet, so these are still on screen. Dedup has
     // to count them or re-approving a refined plan mid-batch recreates every
     // item the user already ticked off as a pending twin.
-    expect(await seedTasksFromPlan(PLAN)).toBe(0)
+    expect(await seedTasksFromPlan(PLAN)).toEqual([])
     expect((await listTasks(TASK_LIST_ID)).length).toBe(2)
   })
 
   test('does not duplicate a partially finished batch on re-approval', async () => {
-    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+    expect(await seedTasksFromPlan(PLAN)).toHaveLength(2)
     const [first] = await listTasks(TASK_LIST_ID)
     await updateTask(TASK_LIST_ID, first!.id, { status: 'completed' })
 
     // Refine the plan and re-approve: only the genuinely new item is created.
-    expect(await seedTasksFromPlan(`${PLAN}\n- [ ] Third task`)).toBe(1)
+    expect(await seedTasksFromPlan(`${PLAN}\n- [ ] Third task`)).toHaveLength(1)
     expect((await listTasks(TASK_LIST_ID)).length).toBe(3)
   })
 
   test('re-seeds a subject once the previous batch is archived', async () => {
-    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+    expect(await seedTasksFromPlan(PLAN)).toHaveLength(2)
 
     // Finish the batch and archive it, exactly like the hide timer does.
     for (const t of await listTasks(TASK_LIST_ID)) {
@@ -222,7 +225,7 @@ describe('seedTasksFromPlan', () => {
 
     // A later plan reusing the same subjects must not be swallowed by the
     // archived copies still on disk.
-    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+    expect(await seedTasksFromPlan(PLAN)).toHaveLength(2)
     const open = (await listTasks(TASK_LIST_ID)).filter(
       t => !t.metadata?._internal,
     )
@@ -232,14 +235,14 @@ describe('seedTasksFromPlan', () => {
     ])
   })
 
-  test('returns 0 when the plan has no Tasks section', async () => {
-    expect(await seedTasksFromPlan('# Plan\n\nno tasks here')).toBe(0)
+  test('creates nothing when the plan has no Tasks section', async () => {
+    expect(await seedTasksFromPlan('# Plan\n\nno tasks here')).toEqual([])
     expect(await listTasks(TASK_LIST_ID)).toEqual([])
   })
 
-  test('returns 0 (no-op) when TodoV2 is disabled', async () => {
+  test('creates nothing when TodoV2 is disabled', async () => {
     process.env.CLAUDIN_ENABLE_TASKS = '0'
     // Non-interactive test session + disabled env → isTodoV2Enabled() false.
-    expect(await seedTasksFromPlan(PLAN)).toBe(0)
+    expect(await seedTasksFromPlan(PLAN)).toEqual([])
   })
 })

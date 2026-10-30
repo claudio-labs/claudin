@@ -101,6 +101,22 @@ describe('TaskListTool', () => {
     expect(dep?.blockedBy).toEqual([])
   })
 
+  test('call() lists tasks in id order, 10 after 9', async () => {
+    const lid = getTaskListId()
+    for (let i = 1; i <= 12; i++) {
+      await createTask(lid, {
+        subject: `step ${i}`,
+        description: 'd',
+        status: 'pending',
+        owner: undefined,
+        blocks: [],
+        blockedBy: [],
+      })
+    }
+    const { data } = await TaskListTool.call()
+    expect(data.tasks.map(t => t.id)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+  })
+
   test('mapToolResultToToolResultBlockParam handles empty and populated cases', () => {
     const map = TaskListTool.mapToolResultToToolResultBlockParam
     expect(map).toBeDefined()

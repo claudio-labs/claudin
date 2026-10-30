@@ -20,6 +20,7 @@ import {
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
+import { TaskUpdateTool } from 'src/tools/TaskUpdateTool/TaskUpdateTool.js'
 
 const TASK_LIST_ID = 'exitplan-call-test'
 const PLAN = `# Plan
@@ -57,6 +58,8 @@ const ENV_KEYS = [
   'CLAUDIN_ENABLE_TASKS',
   'CLAUDIN_TASK_LIST_ID',
   'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
+  'CLAUDIN_PLAN_TASK_IDS',
+  'ENABLE_TOOL_SEARCH',
 ]
 
 beforeEach(() => {
@@ -67,6 +70,7 @@ beforeEach(() => {
   process.env.CLAUDIN_ENABLE_TASKS = '1'
   process.env.CLAUDIN_TASK_LIST_ID = TASK_LIST_ID
   delete process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
+  delete process.env.CLAUDIN_PLAN_TASK_IDS
   mkdirSync(project, { recursive: true })
 })
 
@@ -263,5 +267,88 @@ describe('ExitPlanModeV2Tool result text', () => {
     expect(await ExitPlanModeV2Tool.prompt({} as never)).toContain('plan')
     expect(ExitPlanModeV2Tool.userFacingName({} as never)).toBe('')
     expect(ExitPlanModeV2Tool.outputSchema?.safeParse({ plan: null, isAgent: false }).success).toBe(true)
+  })
+})
+
+describe('CLAUDIN_PLAN_TASK_IDS: the seeded tasks by id, and how to update them', () => {
+  const toolSearch = { name: 'ToolSearch' }
+  const loadedTaskUpdate = {
+    type: 'user',
+    message: {
+      content: [
+        { type: 'tool_result', tool_use_id: 't0', content: [{ type: 'tool_reference', tool_name: 'TaskUpdate' }] },
+      ],
+    },
+  }
+
+  async function approve(extra: Partial<Record<string, unknown>> = {}) {
+    const state = { current: { toolPermissionContext: { mode: 'plan' } } as State }
+    return inProject(async () => {
+      writeFileSync(getPlanFilePath(), PLAN)
+      const ctx = makeCtx(state, { options: { tools: [toolSearch, TaskUpdateTool] }, ...extra })
+      return (await ExitPlanModeV2Tool.call({} as never, ctx)).data
+    })
+  }
+
+  test('off: the result carries the count only, as before', async () => {
+    process.env.ENABLE_TOOL_SEARCH = 'true'
+    const data = await approve()
+    expect(data.tasksSeeded).toBe(2)
+    expect(data.seededTasks).toBeUndefined()
+    expect(data.taskUpdateUnloaded).toBeUndefined()
+  })
+
+  test('on: the result names each seeded task and whether TaskUpdate still needs loading', async () => {
+    process.env.CLAUDIN_PLAN_TASK_IDS = '1'
+    process.env.ENABLE_TOOL_SEARCH = 'true'
+    const data = await approve()
+    expect(data.tasksSeeded).toBe(2)
+    expect(data.seededTasks).toEqual([
+      { id: '1', subject: 'First step' },
+      { id: '2', subject: 'Second step' },
+    ])
+    expect(data.taskUpdateUnloaded).toBe(true)
+  })
+
+  test('on: a TaskUpdate already loaded, or no tool search at all, needs no direct-call line', async () => {
+    process.env.CLAUDIN_PLAN_TASK_IDS = '1'
+    process.env.ENABLE_TOOL_SEARCH = 'true'
+    expect((await approve({ messages: [loadedTaskUpdate] })).taskUpdateUnloaded).toBe(false)
+    process.env.ENABLE_TOOL_SEARCH = 'false'
+    expect((await approve()).taskUpdateUnloaded).toBe(false)
+  })
+
+  test('the text lists the tasks and gives the exact TaskUpdate call when it is not loaded', () => {
+    const map = ExitPlanModeV2Tool.mapToolResultToToolResultBlockParam
+    const seededTasks = [
+      { id: '1', subject: 'First step' },
+      { id: '2', subject: 'Second step' },
+    ]
+    const unloaded = map(
+      { plan: PLAN, isAgent: false, filePath: '/p.md', tasksSeeded: 2, seededTasks, taskUpdateUnloaded: true },
+      'u',
+    ).content as string
+    expect(unloaded).toContain('#1 First step\n#2 Second step')
+    expect(unloaded).toContain('TaskUpdate({"taskId": "1", "status": "in_progress"})')
+    expect(unloaded).toContain('no ToolSearch')
+
+    const loaded = map(
+      { plan: PLAN, isAgent: false, filePath: '/p.md', tasksSeeded: 2, seededTasks, taskUpdateUnloaded: false },
+      'u',
+    ).content as string
+    expect(loaded).toContain('#2 Second step')
+    expect(loaded).not.toContain('TaskUpdate({')
+  })
+
+  test('a long plan lists its first 30 tasks and counts the rest', () => {
+    const map = ExitPlanModeV2Tool.mapToolResultToToolResultBlockParam
+    const seededTasks = Array.from({ length: 35 }, (_, i) => ({ id: String(i + 1), subject: `s${i + 1}` }))
+    const text = map(
+      { plan: PLAN, isAgent: false, filePath: '/p.md', tasksSeeded: 35, seededTasks },
+      'u',
+    ).content as string
+    expect(text).toContain('#30 s30')
+    expect(text).not.toContain('#31 s31')
+    expect(text).toContain('and 5 more')
   })
 })

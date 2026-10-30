@@ -633,3 +633,97 @@ describe('FileReadTool — plain-text preview pivot', () => {
     expect(one.data.file.content).not.toContain('src/two.ts')
   })
 })
+
+// ---------------------------------------------------------------------------
+// CLAUDIN_OUTLINE_PROSE_BY_LINES: short markdown and diffs come back whole.
+//
+// The 10-25..30 census saw 40 of 44 outlines followed by a Read of the same
+// file, and several were markdown notes or scratchpad diffs under 250 lines
+// that crossed the 10k-char trigger only by having long lines. For prose the
+// headings rarely answer what the model opened the file for.
+// ---------------------------------------------------------------------------
+
+/** A markdown file of `lines` lines, ~`width` chars each, a heading every ten. */
+function markdown(lines: number, width: number): string {
+  const out: string[] = []
+  for (let i = 0; i < lines; i++) {
+    out.push(i % 10 === 0 ? `## Section ${i / 10}` : `Line ${i} ${'w'.repeat(Math.max(width - 10, 1))}`)
+  }
+  return `${out.join('\n')}\n`
+}
+
+/** A unified diff of `files` files, `per` added lines each, ~70 chars a line. */
+function unifiedDiff(files: number, per: number): string {
+  const out: string[] = []
+  for (let f = 0; f < files; f++) {
+    out.push(`diff --git a/src/f${f}.ts b/src/f${f}.ts`, `--- a/src/f${f}.ts`, `+++ b/src/f${f}.ts`, `@@ -1,1 +1,${per + 1} @@`, ' keep')
+    for (let i = 0; i < per; i++) out.push(`+const added${i} = '${'y'.repeat(50)}'`)
+  }
+  return `${out.join('\n')}\n`
+}
+
+describe('CLAUDIN_OUTLINE_PROSE_BY_LINES', () => {
+  async function withFlag<T>(value: string | undefined, fn: () => Promise<T>): Promise<T> {
+    const prior = process.env.CLAUDIN_OUTLINE_PROSE_BY_LINES
+    restoreEnv('CLAUDIN_OUTLINE_PROSE_BY_LINES', value)
+    try {
+      return await fn()
+    } finally {
+      restoreEnv('CLAUDIN_OUTLINE_PROSE_BY_LINES', prior)
+    }
+  }
+
+  const NOTE = markdown(200, 70)
+  test('fixtures sit where the rule draws its lines', () => {
+    expect(NOTE.length).toBeGreaterThan(10_000)
+    expect(NOTE.split('\n').length - 1).toBe(200)
+  })
+
+  test('off: a 200-line markdown note past 10k chars pivots to its outline, as today', async () => {
+    const p = writeFixture('note-off.md', NOTE)
+    const { data } = await withFlag(undefined, () => read(p))
+    expect(data.type).toBe('outline')
+  })
+
+  test('on: the same note comes back whole', async () => {
+    const p = writeFixture('note-on.md', NOTE)
+    const { data } = await withFlag('1', () => read(p))
+    expect(data.type).toBe('text')
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.numLines).toBe(200)
+  })
+
+  test('on: a short diff past 10k chars comes back whole', async () => {
+    const diff = unifiedDiff(3, 60)
+    expect(diff.length).toBeGreaterThan(10_000)
+    expect(diff.split('\n').length - 1).toBeLessThan(250)
+    const p = writeFixture('short.diff', diff)
+    const { data } = await withFlag('1', () => read(p))
+    expect(data.type).toBe('text')
+  })
+
+  test('on: a note of 250 lines or more still pivots', async () => {
+    const p = writeFixture('long-note.md', markdown(300, 50))
+    const { data } = await withFlag('1', () => read(p))
+    expect(data.type).toBe('outline')
+  })
+
+  test('on: a short note past the 25k-char ceiling still pivots', async () => {
+    const wide = markdown(200, 150)
+    expect(wide.length).toBeGreaterThan(25_000)
+    const p = writeFixture('wide-note.md', wide)
+    const { data } = await withFlag('1', () => read(p))
+    expect(data.type).toBe('outline')
+  })
+
+  test('on: code is untouched — a short wide source file still pivots', async () => {
+    const fn = (n: number) =>
+      [`export function wide${n}(): string {`, `  return '${'z'.repeat(600)}'`, '}', ''].join('\n')
+    const source = Array.from({ length: 24 }, (_, i) => fn(i)).join('\n')
+    expect(source.length).toBeGreaterThan(10_000)
+    expect(source.split('\n').length).toBeLessThan(250)
+    const p = writeFixture('wide.ts', source)
+    const { data } = await withFlag('1', () => read(p))
+    expect(data.type).toBe('outline')
+  })
+})
