@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
+import type { SetAppState } from 'src/agent/Task.js'
 import { enqueue, getCommandQueue, resetCommandQueue } from 'src/agent/messageQueueManager.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { killShellTasksForAgent, killTask } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
 
 type Tasks = Record<string, Record<string, unknown>>
@@ -8,13 +10,10 @@ type State = { tasks: Tasks }
 
 function store(tasks: Tasks) {
   const state = { current: { tasks } as State }
-  return {
-    state,
-    getAppState: () => state.current as never,
-    setAppState: (f: (prev: never) => never) => {
-      state.current = f(state.current as never) as State
-    },
+  const setAppState: SetAppState = f => {
+    state.current = f(state.current as unknown as AppState) as unknown as State
   }
+  return { state, getAppState: () => state.current as unknown as AppState, setAppState }
 }
 
 function shellTask(over: Record<string, unknown> = {}) {

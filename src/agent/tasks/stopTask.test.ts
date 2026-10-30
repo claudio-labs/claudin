@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
+import type { SetAppState } from 'src/agent/Task.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { stopTask, StopTaskError } from 'src/agent/tasks/stopTask.js'
 import { getIsNonInteractiveSession, setIsInteractive } from 'src/platform/bootstrap/state.js'
 
@@ -8,15 +10,10 @@ type State = { tasks: Record<string, Record<string, unknown>> }
 
 function ctx(tasks: State['tasks']) {
   const state = { current: { tasks } as State }
-  return {
-    state,
-    context: {
-      getAppState: () => state.current as never,
-      setAppState: (f: (prev: never) => never) => {
-        state.current = f(state.current as never) as State
-      },
-    },
+  const setAppState: SetAppState = f => {
+    state.current = f(state.current as unknown as AppState) as unknown as State
   }
+  return { state, context: { getAppState: () => state.current as unknown as AppState, setAppState } }
 }
 
 const wasInteractive = !getIsNonInteractiveSession()

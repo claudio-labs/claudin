@@ -84,6 +84,10 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true })
 })
 
+function callTool(input: unknown, ctx: ToolUseContext) {
+  return ExitPlanModeV2Tool.call(input as never, ctx, undefined as never, undefined as never)
+}
+
 /** Runs `fn` with the session root at the temp project, where the plans dir resolves. */
 function inProject<T>(fn: () => T): T {
   return runWithCwdOverride(project, fn)
@@ -95,7 +99,7 @@ describe('ExitPlanModeV2Tool.call', () => {
     const { data, planPath } = await inProject(async () => {
       const planPath = getPlanFilePath()
       writeFileSync(planPath, PLAN)
-      const result = await ExitPlanModeV2Tool.call({} as never, makeCtx(state))
+      const result = await callTool({} as never, makeCtx(state))
       return { data: result.data, planPath }
     })
 
@@ -119,7 +123,7 @@ describe('ExitPlanModeV2Tool.call', () => {
     const edited = '# Edited\n\nno tasks'
     const { data, onDisk } = await inProject(async () => {
       writeFileSync(getPlanFilePath(), PLAN)
-      const result = await ExitPlanModeV2Tool.call({ plan: edited } as never, makeCtx(state))
+      const result = await callTool({ plan: edited } as never, makeCtx(state))
       return { data: result.data, onDisk: readFileSync(getPlanFilePath(), 'utf8') }
     })
     expect(onDisk).toBe(edited)
@@ -135,7 +139,7 @@ describe('ExitPlanModeV2Tool.call', () => {
     const state = { current: { toolPermissionContext: { mode: 'plan' } } as State }
     const data = await inProject(async () => {
       writeFileSync(getPlanFilePath('agent-1' as never), PLAN)
-      return (await ExitPlanModeV2Tool.call({} as never, makeCtx(state, { agentId: 'agent-1' }))).data
+      return (await callTool({} as never, makeCtx(state, { agentId: 'agent-1' }))).data
     })
     expect(data.isAgent).toBe(true)
     expect(data.filePath).toEndWith('-agent-agent-1.md')
@@ -149,7 +153,7 @@ describe('ExitPlanModeV2Tool.call', () => {
     const state = { current: before }
     await inProject(async () => {
       writeFileSync(getPlanFilePath(), '# no tasks')
-      await ExitPlanModeV2Tool.call({} as never, makeCtx(state))
+      await callTool({} as never, makeCtx(state))
     })
     expect(state.current).toBe(before)
     expect(hasExitedPlanModeInSession()).toBe(false)
@@ -160,7 +164,7 @@ describe('ExitPlanModeV2Tool.call', () => {
     const state = { current: { toolPermissionContext: { mode: 'plan', prePlanMode: 'default', strippedDangerousRules: stripped } } as State }
     await inProject(async () => {
       writeFileSync(getPlanFilePath(), '# no tasks')
-      await ExitPlanModeV2Tool.call({} as never, makeCtx(state))
+      await callTool({} as never, makeCtx(state))
     })
     // Under bun test the auto-mode module is folded away, so the context is kept as is.
     expect(state.current.toolPermissionContext.mode).toBe('default')
@@ -169,7 +173,7 @@ describe('ExitPlanModeV2Tool.call', () => {
 
   test('with no plan at all it approves and seeds nothing', async () => {
     const state = { current: { toolPermissionContext: { mode: 'plan' } } as State }
-    const data = await inProject(async () => (await ExitPlanModeV2Tool.call({} as never, makeCtx(state))).data)
+    const data = await inProject(async () => (await callTool({} as never, makeCtx(state))).data)
     expect(data.plan).toBeNull()
     expect(data.tasksSeeded).toBeUndefined()
     expect(state.current.toolPermissionContext.mode).toBe('default')
@@ -180,7 +184,7 @@ describe('ExitPlanModeV2Tool.call', () => {
       inProject(async () => {
         writeFileSync(getPlanFilePath(), '# no tasks')
         const state = { current: { toolPermissionContext: { mode: 'plan' } } as State }
-        return (await ExitPlanModeV2Tool.call({} as never, makeCtx(state, { options: { tools } }))).data
+        return (await callTool({} as never, makeCtx(state, { options: { tools } }))).data
       })
     expect((await approve([{ name: 'Agent' }])).hasTaskTool).toBeUndefined()
     process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1'
@@ -219,7 +223,7 @@ describe('ExitPlanModeV2Tool.call', () => {
       const data = await inProject(() =>
         runWithTeammateContext(teammate(true), async () => {
           writeFileSync(getPlanFilePath('researcher@crew' as never), PLAN)
-          return (await ExitPlanModeV2Tool.call({} as never, makeCtx(state, { agentId: 'researcher@crew' }))).data
+          return (await callTool({} as never, makeCtx(state, { agentId: 'researcher@crew' }))).data
         }),
       )
       expect(data.awaitingLeaderApproval).toBe(true)
@@ -242,7 +246,7 @@ describe('ExitPlanModeV2Tool.call', () => {
       await expect(
         inProject(() =>
           runWithTeammateContext(teammate(true), () =>
-            ExitPlanModeV2Tool.call({} as never, makeCtx(state, { agentId: 'researcher@crew' })),
+            callTool({} as never, makeCtx(state, { agentId: 'researcher@crew' })),
           ),
         ),
       ).rejects.toThrow('No plan file found')
@@ -286,7 +290,7 @@ describe('CLAUDIN_PLAN_TASK_IDS: the seeded tasks by id, and how to update them'
     return inProject(async () => {
       writeFileSync(getPlanFilePath(), PLAN)
       const ctx = makeCtx(state, { options: { tools: [toolSearch, TaskUpdateTool] }, ...extra })
-      return (await ExitPlanModeV2Tool.call({} as never, ctx)).data
+      return (await callTool({}, ctx)).data
     })
   }
 
