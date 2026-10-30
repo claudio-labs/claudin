@@ -32,7 +32,9 @@ response-chain skip cascades. One classifier denial (4ab77f00 10-27T01:21Z,
 transcript") for a file written in the same response.
 - Dirty-tree refusals: 2 (6e300fb6 10-28). The map set-aside did nothing because it only acts
   when `search-strategy.md` is the single dirty file (`ruleMapAutoSync.ts`), and team memory
-  notes were dirty too. The model recovered with `--autostash`.
+  notes were dirty too. They were a `git pull --ff-only` that rebased ("cannot pull with
+  rebase", whose diagnosis already named `--autostash`, which the model used) and a plain
+  `git rebase`, whose diagnosis did not.
 
 **Context: zero compactions** (auto, `/compact`, starved), no overflow, no `max_tokens`, no
 complaints after a clip. 7 idle-gap clips. Main p50 332k, p90 628k, peak 732k; 57% of calls
@@ -44,22 +46,30 @@ the idle-gap clip, so later calls read the pre-clip context. The extra reads cos
 leaves +$0.59 net over 5 days. It only pays where the idle clip frees little (the three
 6e300fb6 gaps, +$9.7).
 
-**Fixed on `fix/census-2026-10-30`** (one red commit, then a fix per cause):
+**Fixed on `fix/census-2026-10-30`** (one red commit, then a fix per cause; a 3-agent review
+then found 3 bugs in it, which got their own red commit and fixes):
 - **`"version":"unknown"`.** Four sites guarded with `typeof MACRO`, and the build defines only
   the dotted `MACRO.*` keys, so the guard is false in every binary. The sites were the
   transcript, the doctor, the insights export and the xAI UA (`claudin/dev`). They now go
   through `getDisplayVersion()` (`platform/buildVersion.ts`), which reads
   `MACRO.DISPLAY_VERSION`, and `src/__tests__/macroGuard.test.ts` bans the guard. Checked live:
   a new transcript says `"1.1.49"`, and the doctor says `development (1.1.49)`. A dev build
-  records the last release's number.
+  records the last release's number. Review: the helper must also fall back on a
+  `TypeError`, because a suite that restores `globalThis.MACRO = original` with no original
+  leaves it holding `undefined`.
 - **Classifier blind spot.** Tools run with `context.messages = messagesForQuery`
   (`agent/query.ts:406`). The calls the response made before the one being judged now follow
   the history (`earlierCallsOfResponse`), one entry each, matching the bytes of the next
   turn's history. `CLAUDIN_CLASSIFIER_RESPONSE_CALLS=0` turns this off. Checked live: the debug
-  line says `pending=1` for a Write followed by a Bash in one response, and `pending=0` with
-  the killswitch on.
-- **Dirty tree.** The Git diagnosis names `git pull --autostash` for a merging pull that would
-  overwrite, and `git rebase --autostash` for a rebase.
+  line said `pending=1` for a Write followed by a Bash in one response, and `pending=0` with
+  the killswitch on. After the review the field is named `earlierCalls`.
+  - Accepted: inside one response, an earlier call is serialized from the raw input, while its
+    own action block uses the backfilled one. So a Write with a relative or `~` path does not
+    reuse the earlier call's classifier cache. The next turn matches the raw input.
+- **Dirty tree.** The diagnosis names `git rebase --autostash` for a rebase.
+  - A `git pull --autostash` hint for a pull that would overwrite was added and then reverted
+    in review. That refusal means the incoming commits touch the dirty files, so following the
+    hint ended in a conflicted tree with exit 0 and the stash kept.
 
 **Follow-ups, each for its own branch:**
 - **Retry reasons.** `withRetry.ts:377-397` sleeps without yielding, and `:531` yields only SDK
@@ -71,7 +81,11 @@ leaves +$0.59 net over 5 days. It only pays where the idle clip frees little (th
   2.2x, and that gap is still unexplained.
 - **The `[Cache:]` "<5min" label.** The gap clock is start-to-start of real requests, and pings
   never touch it, so a 5m45s gap cannot produce that label. Not reproduced.
+- **Other `MACRO.VERSION` readers report `99.0.0`:** the statusline JSON, the Help title,
+  Feedback and `lastOnboardingVersion`. The SDK init's `claude_code_version` is deliberate.
+  `platform/install/installer.ts:467,482` compares versions against it, against the build
+  rule: the `maxVersion` cap always skips the update, and the same-version early exit never
+  matches.
 
 **How to apply:** use this as the baseline for the next census. Expect the transcript `version`
-to be filled in, and no dirty-tree refusal that the model has to solve with an `--autostash`
-of its own.
+to be filled in, and a refused `git rebase` to be told about `--autostash`.
