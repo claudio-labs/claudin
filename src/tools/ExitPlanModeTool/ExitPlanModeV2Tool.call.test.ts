@@ -93,6 +93,32 @@ function inProject<T>(fn: () => T): T {
   return runWithCwdOverride(project, fn)
 }
 
+// A `-p` session without CLAUDIN_ENABLE_TASKS has no Task tools in its pool
+// (`isTodoV2Enabled`), so seeded tasks were tasks nothing could update, and the
+// approval pointed at a TaskUpdate the session did not have.
+describe('ExitPlanModeV2Tool.call — a session without Task tools', () => {
+  test('seeds nothing and falls back to the generic hint', async () => {
+    const { getIsInteractive, setIsInteractive } = await import('src/platform/bootstrap/state.js')
+    const wasInteractive = getIsInteractive()
+    delete process.env.CLAUDIN_ENABLE_TASKS
+    setIsInteractive(false)
+    try {
+      const state = { current: { toolPermissionContext: { mode: 'plan' } } as State }
+      const data = await inProject(async () => {
+        writeFileSync(getPlanFilePath(), PLAN)
+        return (await callTool({}, makeCtx(state))).data
+      })
+      expect(data.tasksSeeded).toBeUndefined()
+      expect(await listTasks(TASK_LIST_ID)).toEqual([])
+      const text = ExitPlanModeV2Tool.mapToolResultToToolResultBlockParam(data, 'u').content as string
+      expect(text).toContain('Start with updating your todo list if applicable')
+      expect(text).not.toContain('TaskUpdate')
+    } finally {
+      setIsInteractive(wasInteractive)
+    }
+  })
+})
+
 describe('ExitPlanModeV2Tool.call', () => {
   test('approves the plan on disk: restores the pre-plan mode, seeds the tasks, opens the task view', async () => {
     const state = { current: { toolPermissionContext: { mode: 'plan', prePlanMode: 'acceptEdits' }, expandedView: 'none' } as State }
