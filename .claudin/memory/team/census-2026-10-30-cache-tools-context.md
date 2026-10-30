@@ -46,7 +46,7 @@ the idle-gap clip, so later calls read the pre-clip context. The extra reads cos
 leaves +$0.59 net over 5 days. It only pays where the idle clip frees little (the three
 6e300fb6 gaps, +$9.7).
 
-**Fixed on `fix/census-2026-10-30`** (one red commit, then a fix per cause; a 3-agent review
+**Fixed in #328** (one red commit, then a fix per cause; a 3-agent review
 then found 3 bugs in it, which got their own red commit and fixes):
 - **`"version":"unknown"`.** Four sites guarded with `typeof MACRO`, and the build defines only
   the dotted `MACRO.*` keys, so the guard is false in every binary. The sites were the
