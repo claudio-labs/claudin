@@ -114,7 +114,9 @@ export async function runHeadless(opts: RunOptions): Promise<HeadlessRun> {
   const child = spawn(opts.bin, cli, {
     cwd: opts.cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, ...(opts.env ?? {}) },
+    // The 1h tier interactive sessions keep, unless the caller is about the
+    // tier (`armEnv` in session-cache-ab.ts says why).
+    env: { ...process.env, CLAUDIN_MAIN_CACHE_TTL: '1h', ...(opts.env ?? {}) },
   })
   const calls = new Map<string, Call>()
   const order: string[] = []
