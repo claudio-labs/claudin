@@ -91,24 +91,6 @@
       "replace": ""
     },
     {
-      "name": "bench: re-reads count the script's repeats",
-      "source": "scripts/bench/ab/context-relief-ab.ts",
-      "find": "    if (n > Math.max(allowed.get(path) ?? 0, 1)) extra++\n",
-      "replace": "    if (n > 1) extra++\n"
-    },
-    {
-      "name": "bench: the gate ignores the placebo range",
-      "source": "scripts/bench/ab/context-relief-ab.ts",
-      "find": "  const separated = max(c) < min(b) && max(c) < min(p)\n",
-      "replace": "  const separated = max(c) < min(b)\n"
-    },
-    {
-      "name": "bench: an arm that never compacted is graded",
-      "source": "scripts/bench/ab/context-relief-ab.ts",
-      "find": "  if (c.length === 0 || c.some(r => r.compactions === 0)) {\n",
-      "replace": "  if (c.length === 0) {\n"
-    },
-    {
       "name": "bench: a direct deferred call after a load counts",
       "source": "scripts/bench/ab/toolGapsMechanisms.ts",
       "find": "    if (!CALL_FORM_TOOLS.has(call.name) || loaded.has(call.name)) continue\n",
@@ -119,6 +101,48 @@
       "source": "scripts/bench/ab/tool-gaps-ab.ts",
       "find": "    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',\n",
       "replace": "    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) ? 'PASS' : 'FAIL',\n"
+    },
+    {
+      "name": "bench: re-reads count the script's repeats",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "    if (n > Math.max(allowed.get(path) ?? 0, 1)) extra.push(i)\n",
+      "replace": "    if (n > 1) extra.push(i)\n"
+    },
+    {
+      "name": "bench: one compaction is enough",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "c.every(r => r.compactionTurns.length >= 2)",
+      "replace": "c.every(r => r.compactionTurns.length >= 1)"
+    },
+    {
+      "name": "bench: a clipping base still counts",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "r.compactionTurns.length === 0 && r.clippedIds === 0)",
+      "replace": "r.compactionTurns.length === 0)"
+    },
+    {
+      "name": "bench: lookups are not gated",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "  const lookups = med(c, r => r.editLookups) <= 2 * med(b, r => r.editLookups)\n",
+      "replace": "  const lookups = true\n"
+    },
+    {
+      "name": "bench: re-reads before compacting count",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "    return { cand: r.rereadTurns.filter(t => t >= from).length, base: twin ? twin.rereadTurns.filter(t => t >= from).length : 0 }\n",
+      "replace": "    return { cand: r.rereadTurns.filter(t => t >= from).length, base: twin ? twin.rereadTurns.length : 0 }\n"
+    },
+    {
+      "name": "bench: the placebo is not checked",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "  const placeboOverlaps = p.length === 0 || (min(p) <= max(b) && max(p) >= min(b))\n",
+      "replace": "  const placeboOverlaps = true\n"
+    },
+    {
+      "name": "bench: overlapping ranges pass the cost gate",
+      "source": "scripts/bench/ab/context-relief-ab.ts",
+      "find": "  const cheaper = med(c, cost) <= med(b, cost) * 0.85 && max(c) < min(b)\n",
+      "replace": "  const cheaper = med(c, cost) <= med(b, cost) * 0.85\n"
     }
   ]
 }
