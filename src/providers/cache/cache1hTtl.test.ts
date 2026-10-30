@@ -272,3 +272,57 @@ describe('buildSystemPromptBlocks integration — large prompt → cache_control
     expect(has1hBlock).toBe(false)
   })
 })
+
+// CLAUDIN_MAIN_CACHE_TTL: `1h` and `5m` pin the main thread's tier, `auto`
+// gives 5m to a one-shot print run only. Today's 40 `-p` A/B sessions would
+// have cost 13-16% less at 5m, and their longest gap between requests was
+// 74s; interactive and SDK sessions pause, and stay at 1h.
+describe('getCacheControl — CLAUDIN_MAIN_CACHE_TTL', () => {
+  async function main(env: string | undefined, oneShot: boolean) {
+    setProvider('firstParty')
+    if (env === undefined) delete process.env.CLAUDIN_MAIN_CACHE_TTL
+    else process.env.CLAUDIN_MAIN_CACHE_TTL = env
+    const { claude, state } = await importFresh()
+    state.setIsOneShotPrint(oneShot)
+    try {
+      return claude.getCacheControl({ querySource: 'sdk' })
+    } finally {
+      state.setIsOneShotPrint(false)
+    }
+  }
+
+  test('unset: 1h everywhere, a one-shot print included, until auto is promoted', async () => {
+    expect(await main(undefined, true)).toEqual({ type: 'ephemeral', ttl: '1h' })
+  })
+
+  test('auto: 5m for a one-shot print run', async () => {
+    expect(await main('auto', true)).toEqual({ type: 'ephemeral' })
+  })
+
+  test('auto: 1h for anything else (interactive, an SDK stream)', async () => {
+    expect(await main('auto', false)).toEqual({ type: 'ephemeral', ttl: '1h' })
+  })
+
+  test('1h pins the tier even for a one-shot print run under auto-like conditions', async () => {
+    expect(await main('1h', true)).toEqual({ type: 'ephemeral', ttl: '1h' })
+  })
+
+  test('5m pins the main thread everywhere, as before', async () => {
+    expect(await main('5m', false)).toEqual({ type: 'ephemeral' })
+  })
+
+  test('auto: a fork follows the main thread it shares a prefix with; sub-agents stay at 5m', async () => {
+    setProvider('firstParty')
+    process.env.CLAUDIN_MAIN_CACHE_TTL = 'auto'
+    const { claude, state } = await importFresh()
+    try {
+      state.setIsOneShotPrint(false)
+      expect(claude.getCacheControl({ querySource: 'agent:builtin:fork' })).toEqual({ type: 'ephemeral', ttl: '1h' })
+      state.setIsOneShotPrint(true)
+      expect(claude.getCacheControl({ querySource: 'agent:builtin:fork' })).toEqual({ type: 'ephemeral' })
+      expect(claude.getCacheControl({ querySource: 'agent:custom' })).toEqual({ type: 'ephemeral' })
+    } finally {
+      state.setIsOneShotPrint(false)
+    }
+  })
+})

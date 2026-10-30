@@ -115,3 +115,33 @@ describe('applyClientType', () => {
     expect(getSessionSource()).toBe('remote-control')
   })
 })
+
+// The -p cache tier (`CLAUDIN_MAIN_CACHE_TTL=auto`, cacheControl.ts) keys on
+// this: a print run with one prompt, as opposed to an SDK session that streams
+// turns in with a person behind them.
+describe('resolveClientType — one-shot print', () => {
+  test.each([
+    [['-p', 'hi'], true],
+    [['--print', 'hi'], true],
+    [['-p', 'hi', '--resume', 'abc'], true],
+    [['-p', '--input-format', 'text', 'hi'], true],
+    [['-p', '--input-format', 'stream-json', '--output-format', 'stream-json'], false],
+    [['-p', '--input-format=stream-json', '--output-format=stream-json'], false],
+    [['-p', 'hi', '--sdk-url', 'wss://x'], false],
+    [[], false],
+  ] as const)('%o → %s', (args, expected) => {
+    expect(run([...args]).isOneShotPrint).toBe(expected)
+  })
+
+  test('a pipe without a print flag is not one', () => {
+    expect(run([], false).isOneShotPrint).toBe(false)
+  })
+
+  test('applyClientType writes it', async () => {
+    const { getIsOneShotPrint } = await import('src/platform/bootstrap/state.js')
+    applyClientType({ clientType: 'cli', previewFormat: undefined, sessionSource: undefined, isInteractive: false, isOneShotPrint: true } as never)
+    expect(getIsOneShotPrint()).toBe(true)
+    applyClientType({ clientType: 'cli', previewFormat: undefined, sessionSource: undefined, isInteractive: true, isOneShotPrint: false } as never)
+    expect(getIsOneShotPrint()).toBe(false)
+  })
+})
