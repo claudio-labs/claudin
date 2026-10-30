@@ -4,6 +4,7 @@ import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
 import {
   classifierTranscriptBudget,
+  earlierCallsOfResponse,
   MAX_CLASSIFIER_TRANSCRIPT_CHARS,
   serializeTranscriptForClassifier,
   type TranscriptEntry,
@@ -368,6 +369,45 @@ describe('serializeTranscriptForClassifier, calls of the response being classifi
 
       expect(now).toEqual(nextTurn)
     }
+  })
+})
+
+describe('earlierCallsOfResponse', () => {
+  const savedResponseCalls = process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS
+  afterEach(() => {
+    if (savedResponseCalls === undefined) delete process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS
+    else process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS = savedResponseCalls
+  })
+
+  const write = { id: 'toolu_a', name: 'Write', input: { file_path: 'post.py' } }
+  const run = { id: 'toolu_b', name: 'Bash', input: { command: 'python3 post.py' } }
+
+  test('a call gets the calls before it, one entry each, and none after it', () => {
+    expect(earlierCallsOfResponse([write, run], 'toolu_b')).toEqual([
+      { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'post.py' } }] },
+    ])
+    expect(earlierCallsOfResponse([write, run], 'toolu_a')).toEqual([])
+  })
+
+  test('an id the response does not hold, or no response, adds none', () => {
+    expect(earlierCallsOfResponse([write, run], 'toolu_x')).toEqual([])
+    expect(earlierCallsOfResponse(undefined, 'toolu_b')).toEqual([])
+  })
+
+  test('the entries serialize as the next turn holds the same calls', () => {
+    const asHistory = {
+      type: 'assistant',
+      message: { role: 'assistant', content: [{ type: 'tool_use', ...write }] },
+    } as unknown as Message
+    const now = serializeTranscriptForClassifier([], tools, BUDGET, earlierCallsOfResponse([write, run], 'toolu_b'))
+
+    expect(now).toEqual(serializeTranscriptForClassifier([asHistory], tools, BUDGET))
+  })
+
+  test('=0 leaves them out', () => {
+    process.env.CLAUDIN_CLASSIFIER_RESPONSE_CALLS = '0'
+
+    expect(earlierCallsOfResponse([write, run], 'toolu_b')).toEqual([])
   })
 })
 

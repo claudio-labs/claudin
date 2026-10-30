@@ -9,6 +9,7 @@ export {
 export type { TranscriptEntry } from 'src/permissions/yoloClassifier/transcript.js'
 export {
   buildTranscriptForClassifier,
+  earlierCallsOfResponse,
   formatActionForClassifier,
 } from 'src/permissions/yoloClassifier/transcript.js'
 export { getAutoModeClassifierErrorDumpPath } from 'src/permissions/yoloClassifier/autoModeDumps.js'
