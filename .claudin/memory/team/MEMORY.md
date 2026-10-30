@@ -49,7 +49,7 @@
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
-- [10-30 census levers NOT promoted (Sonnet A/B)](decisions/census-10-30-tool-levers-not-promoted.md) — task ids, prose whole, adopt leftovers ship off; 6 bug fixes shipped
+- [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md) — Opus+Sonnet A/B; adopt leftovers + prose whole stay opt-in
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
 ## Bugs
@@ -70,7 +70,7 @@
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
 - [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
-- [TaskList order FIXED; plan task ids lever off](bugs/tasklist-unordered-exitplan-seeds-without-ids.md) — -p still seeds tasks with TaskUpdate absent
+- [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md) — -p still seeds tasks with TaskUpdate absent
 - FIXED: [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [refused Write resumed](bugs/resume-restores-refused-write.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md) · [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 
 ## Docs

@@ -106,7 +106,7 @@ almost no re-reading:
 - The scratch scripts became `scripts/bench/tokens/reread-census.ts` and the `/census` skill.
   The committed census splits outlines the model asked for (52, mostly sub-agents) from Read's
   auto pivot (34). The scratch script had missed the asked ones.
-- The fixes and the A/B of their levers: [[census-10-30-tool-levers-not-promoted]].
+- The fixes and the A/B of their levers: [[census-10-30-tool-levers]].
 
 **How to apply:** use this as the baseline for the next census. Expect the transcript `version`
 to be filled in, and a refused `git rebase` to be told about `--autostash`.

@@ -1,6 +1,6 @@
 ---
 name: tasklist-unordered-exitplan-seeds-without-ids
-description: TaskList printed tasks in readdir order (#13, #7, #8, #2…) — FIXED (sorted); ExitPlanMode names no task ids while TaskUpdate is deferred — the fix is CLAUDIN_PLAN_TASK_IDS, off after the Sonnet A/B; -p seeds tasks with TaskUpdate absent, open
+description: TaskList printed tasks in readdir order (#13, #7, #8, #2…) and ExitPlanMode named no task ids while TaskUpdate is deferred — both FIXED in #329 (sorted; ids + direct call by default); -p seeding tasks with TaskUpdate absent is still open
 type: project
 paths:
   - "src/agent/tasks/tasks.ts"
@@ -24,10 +24,11 @@ paths:
 **Repro:** approve a plan whose Tasks section has 10+ steps, then call TaskList. The order
 depends on the filesystem; it was scrambled on this machine.
 
-**Status:** the order is FIXED on branch `fix/census-10-30-tool-gaps`: `listTasks` sorts with
-`compareTaskIds`. Naming the ids is `CLAUDIN_PLAN_TASK_IDS`, off: on Sonnet 5.5 the model
-loaded TaskUpdate anyway in 3/5 sessions ([[census-10-30-tool-levers-not-promoted]]). The
-census found it ([[census-2026-10-30-cache-tools-context]]).
+**Status:** FIXED in #329. `listTasks` sorts with `compareTaskIds`. The approval names each
+seeded task and the direct TaskUpdate call by default (`CLAUDIN_PLAN_TASK_IDS=0` reverts).
+On Opus 5.5 that took the ToolSearch + TaskList pair after an approval from 3/5 sessions to
+0/5 ([[census-10-30-tool-levers]]). The census found it
+([[census-2026-10-30-cache-tools-context]]).
 
 **Still open:** a tool_reference cannot load TaskUpdate from the approval, because text beside
 one inside a tool_result is a server error. Seeding also ignores `isTodoV2Enabled`: in `-p`

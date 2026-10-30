@@ -1,51 +1,60 @@
 ---
-name: census-10-30-tool-levers-not-promoted
-description: The three levers from the 10-30 census (plan task ids, short prose read whole, adopting leftover processes) and the file-tools note off were A/B'd on Sonnet 5.5 (4 arms × 5) and none became a default — cost +5.6% combo vs base, tasks and processes gates failed, outline had no headroom; the six bug fixes of the same branch shipped
+name: census-10-30-tool-levers
+description: Since 2026-10-30 (#329) the plan approval names the seeded task ids and the direct TaskUpdate call (CLAUDIN_PLAN_TASK_IDS=0 reverts), and Bash's "only reads or searches files" note is off in advise mode (CLAUDIN_FILE_TOOLS_NOTE=1 restores); adopting leftover processes and reading short prose whole stay off — 4-arm A/Bs on Sonnet 5.5 and Opus 5.5
 type: project
-scope: src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts
-impact: rejected
+scope: src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts, src/tools/BashTool/redirectLanes.ts
+impact: functional
 ---
 
-**Decision (pre-registered gates, 2026-10-30):** none of the levers became a default. They are
-in the code, off, and every prompt is byte-identical when they are unset:
-- `CLAUDIN_PLAN_TASK_IDS`: the plan approval lists `#id subject` and a direct TaskUpdate call;
-- `CLAUDIN_OUTLINE_PROSE_BY_LINES`: markdown and diffs under 250 lines and 25k chars are read
-  whole instead of outlined;
-- `CLAUDIN_ADOPT_LEFTOVERS`: what a command leaves in its process group becomes a task that
-  TaskStop and the session's end stop.
+**Decision (user, 2026-10-30, after both A/Bs, for every model):**
+- **On by default:** the plan approval lists the seeded tasks as `#id subject`, and while
+  TaskUpdate is deferred it spells out the direct call. `CLAUDIN_PLAN_TASK_IDS=0` goes back to
+  the count alone.
+- **Off by default:** Bash's file-reads note in advise mode ("This command only reads or
+  searches files…"). `CLAUDIN_FILE_TOOLS_NOTE=1` brings it back. Refuse mode still refuses.
+- **Still off, opt-in:** `CLAUDIN_ADOPT_LEFTOVERS` (what a command leaves in its process group
+  becomes a task that TaskStop and the session's end stop) and `CLAUDIN_OUTLINE_PROSE_BY_LINES`
+  (markdown and diffs under 250 lines and 25k chars are read whole).
 
-The Bash file-tools note stays on.
+**Why:** both runs used `scripts/bench/ab/tool-gaps-ab.ts`, 4 arms × 5, effort medium. All 40
+sessions per model passed every hidden test.
+- **Opus 5.5, Claudin's default:**
+  - ToolSearch + TaskList followed the approval in 3/5 base sessions and 0/5 combo. The direct
+    TaskUpdate call succeeded 5/5.
+  - Combo mean $1.350 against base $1.412 and placebo $1.385; calls 43.4 against 47.6 and 48.8.
+    The base–placebo spread is 2%, so the cost is near the noise and the calls are not.
+- **Sonnet 5.5:**
+  - The tasks gate failed: the model loaded TaskUpdate anyway in 3/5. The mechanism did not
+    get worse.
+  - Combo cost was +5.6%, which no single lever explains.
+  - The user chose one default for every model.
+- **The note:** taken 0 times in 17 firings across both models. Without it, the Read/Grep/Glob
+  share held (Sonnet 50% vs 44%, Opus 100% vs 86%). The 10-25..30 census had it at 23% of 88.
+- **Adoption:** the gate failed on both models; TaskStop ran in 1/5 and 2/5. On Opus,
+  process-Bash calls halved (median 4 → 2), and no arm leaked a server. It also changes what a
+  user sees: a server a command started dies with the session.
+- **Prose:** no headroom on either model. The fixture's docs were outlined in at most 1/5 base
+  sessions, because both models read them in ranges.
 
-**Why:** in `scripts/bench/ab/tool-gaps-ab.ts` on Sonnet 5.5 at medium effort, all 20
-sessions per arm passed every hidden test (23/23).
-- **Cost and calls:** the combo median was $0.682 against base $0.646 and placebo $0.637; calls
-  37 against 36.
-- **Tasks:** Sonnet ignored the direct-call line and loaded TaskUpdate anyway in 3/5 sessions.
-  The TaskList the lever removes appeared in only 1/5 base sessions.
-- **Outline:** no headroom. The docs were outlined in 1/5 base sessions, because Sonnet reads
-  with offset/limit.
-- **Processes:** the base leaked no server either, because the prompt asked to stop it.
-  Process-Bash calls were a median of 2 in both arms, and TaskStop ran in 1/5. With the lever,
-  the model killed the pid the note named, in one call.
-- **The file-tools note:** turning it off kept the Read/Grep/Glob share (50% vs 44%). It was
-  followed 0 times in 15 firings.
-
-**What shipped instead (unconditional, same branch):**
+**Shipped unconditionally on the same branch:**
 - TaskList lists tasks in id order.
 - The read lane takes `~` and a loop over literal ranges into `sed`.
-- A pivoted diff read through Bash names `| cat` and `-- <path>`, not the Git tool. Main arm: 6
-  wrong hints; branch arms: 0.
+- A pivoted diff read through Bash names `| cat` and `-- <path>`, never the Git tool. The main
+  arm gave 6 such hints on Sonnet and 3 on Opus; the branch gave 0.
 - Stopping a command signals its whole process group.
-- Commands run without job control (`set +m`). The shell snapshot was replaying
-  `set -o monitor`, which gave every `&` a group of its own.
-- `-p` no longer waits for an adopted task (`holdsHeadlessExit`).
+- Commands run with job control off (`set +m`). The shell snapshot was replaying
+  `set -o monitor`.
+- `-p` does not wait for an adopted task (`holdsHeadlessExit`).
 
-**Reopen it when:** an Opus 5.5 run shows the headroom Sonnet lacked. The census's ToolSearch
-+ TaskList pattern after approvals and its outline re-reads came from Opus sessions. An arm is
-`--only=base,placebo,combo --model=claude-opus-5-5`; ask before running it.
+**Reopen it when:** a fixture shows the headroom the prose lever lacked (auto-outlined notes,
+sub-agents asking for outlines), or a session needs a server stopped without the prompt saying
+so. Run with `--only=base,placebo,combo`. The base arm pins the pre-10-30 defaults
+(`LEVERS_OFF`).
 
-**Evidence:** `/tmp/tool-gaps-ab/20261030-172617/report.md` and its transcripts. Its gates
-section prints the literal verdicts, with a diagnostics section beside them, because two
-literal gates miscounted. The tasks gate counted a TaskStop load that took TaskUpdate along.
-The diff gate counted the `| cat` the new wording asks for. The probes are in
-`scripts/migrations/probes/censusGaps.json`; all 30 turn a test red.
+**Evidence:**
+- Reports: `/tmp/tool-gaps-ab/20261030-172617/report.md` (Sonnet) and
+  `/tmp/tool-gaps-ab/20261030-182253/report.md` (Opus). `/tmp` does not survive a reboot.
+- Two pre-registered gates count the wrong thing. The tasks gate counts a TaskStop load that
+  takes TaskUpdate along. The diff gate counts the `| cat` the new wording asks for. The report
+  prints a diagnostics section beside the gates.
+- Probes: `scripts/migrations/probes/censusGaps.json`, 33, all red.
