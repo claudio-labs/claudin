@@ -47,6 +47,7 @@ import {
   makeTextPreviewData,
   makeUnfoldData,
   outlineIsWorthThePivot,
+  proseReadsWhole,
   READ_AUTO_OUTLINE_MIN_SYMBOLS,
   READ_AUTO_OUTLINE_THRESHOLD_CHARS,
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
@@ -421,7 +422,8 @@ export async function callInner(
     symbol === undefined &&
     view === undefined &&
     offset === 1 &&
-    limit === undefined
+    limit === undefined &&
+    !proseReadsWhole(outlineLang, content.length, totalLines)
   ) {
     const charTrigger = content.length >= READ_AUTO_OUTLINE_THRESHOLD_CHARS
     const lineTrigger = totalLines >= READ_AUTO_OUTLINE_THRESHOLD_LINES
