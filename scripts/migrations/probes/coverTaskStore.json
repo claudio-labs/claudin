@@ -1,0 +1,61 @@
+{
+  "test": "src/agent/tasks/tasks.test.ts",
+  "source": "src/agent/tasks/tasks.ts",
+  "probes": [
+    {
+      "name": "store: ids skip one",
+      "find": "    const id = String(highestId + 1)\n",
+      "replace": "    const id = String(highestId + 2)\n"
+    },
+    {
+      "name": "store: an update can rename the task",
+      "find": "  const updated: Task = { ...existing, ...updates, id: taskId }\n",
+      "replace": "  const updated: Task = { ...existing, ...updates }\n"
+    },
+    {
+      "name": "store: a deleted id is reused",
+      "find": "      if (numericId > currentMark) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "store: a deleted task stays in blockedBy",
+      "find": "      const newBlockedBy = task.blockedBy.filter(id => id !== taskId)\n",
+      "replace": "      const newBlockedBy = task.blockedBy\n"
+    },
+    {
+      "name": "store: a reset forgets the highest id",
+      "find": "      if (currentHighest > existingMark) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "store: a schema failure is returned as data",
+      "find": "    if (!parsed.success) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "store: blocking twice records twice",
+      "find": "  if (!fromTask.blocks.includes(toTaskId)) {\n",
+      "replace": "  if (true) {\n"
+    },
+    {
+      "name": "claim: a blocked task is claimed",
+      "find": "    if (blockedByTasks.length > 0) {\n      return { success: false, reason: 'blocked', task, blockedByTasks }\n    }\n\n    // Claim the task (already holding",
+      "replace": "    if (false) {\n      return { success: false, reason: 'blocked', task, blockedByTasks }\n    }\n\n    // Claim the task (already holding"
+    },
+    {
+      "name": "claim: a busy agent claims another task",
+      "find": "    if (agentOpenTasks.length > 0) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "claim: a leaving teammate keeps its tasks",
+      "find": "    await updateTask(teamName, task.id, { owner: undefined, status: 'pending' })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "identity: setting the same team notifies again",
+      "find": "  if (leaderTeamName === teamName) return\n",
+      "replace": "\n"
+    }
+  ]
+}

@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { homedir } from "os";
+import { join } from "path";
 import {
   catReadsOf,
   isPureFileRead,
@@ -333,12 +335,27 @@ describe("parsePureFileRead — a cd before the read", () => {
     ]);
   });
 
+  // The shell expands a leading `~` before cd or cat sees it, so the walk can
+  // name it as well as an absolute path. `~bob` is another user's home, which
+  // it cannot.
+  test("a tilde is home: in a cd, and at the head of a path", () => {
+    expect(parsePureFileRead("cd ~/src && cat x")?.reads).toEqual([
+      { text: "x", glob: false, dir: join(homedir(), "src") },
+    ]);
+    expect(parsePureFileRead("cd ~ && cat x")?.reads).toEqual([
+      { text: "x", glob: false, dir: homedir() },
+    ]);
+    expect(parsePureFileRead("cat ~/notes/a.md")?.reads).toEqual([
+      { text: join(homedir(), "notes/a.md"), glob: false },
+    ]);
+  });
+
   // Each of these leaves the paths after it somewhere the walk cannot name.
   const REFUSED: Record<string, string> = {
     "a cd with no argument (home)": "cd; cat x",
     "a cd to the last directory": "cd - && cat x",
-    "a cd home by tilde": "cd ~ && cat x",
-    "a cd under home by tilde": "cd ~/src && cat x",
+    "a cd to another user's home": "cd ~bob && cat x",
+    "a print under another user's home": "cat ~bob/x",
     "a cd to a variable": "cd $D && cat x",
     "a cd with a flag": "cd -P src && cat x",
     "a cd with two arguments": "cd a b && cat x",

@@ -50,6 +50,28 @@ function getDisableExtglobCommand(shellPath: string): string | null {
   return null
 }
 
+/**
+ * Returns a shell command that turns job control off. A snapshot taken from an
+ * interactive shell replays `set -o monitor` (ShellSnapshot.ts copies every
+ * option that is on), and with job control on every `&` and every pipeline
+ * gets a process group of its own. The shell is spawned detached and leads its
+ * group; only with job control off does that group hold everything the
+ * command starts, so stopping the command (ShellCommand's group signal) and
+ * finding what it left running (processGroup.ts) reach all of it. A plain
+ * `bash -c` runs without job control anyway; this restores that.
+ */
+function getDisableJobControlCommand(shellPath: string): string | null {
+  if (process.env.CLAUDIN_SHELL_PREFIX) {
+    return '{ set +m || unsetopt MONITOR; } >/dev/null 2>&1 || true'
+  }
+  if (shellPath.includes('bash')) {
+    return 'set +m 2>/dev/null || true'
+  } else if (shellPath.includes('zsh')) {
+    return 'unsetopt MONITOR 2>/dev/null || true'
+  }
+  return null
+}
+
 export async function createBashShellProvider(
   shellPath: string,
   options?: { skipSnapshot?: boolean },
@@ -157,6 +179,11 @@ export async function createBashShellProvider(
       const disableExtglobCmd = getDisableExtglobCommand(shellPath)
       if (disableExtglobCmd) {
         commandParts.push(disableExtglobCmd)
+      }
+
+      const disableJobControlCmd = getDisableJobControlCommand(shellPath)
+      if (disableJobControlCmd) {
+        commandParts.push(disableJobControlCmd)
       }
 
       // When sourcing a file with aliases, they won't be expanded in the same command line

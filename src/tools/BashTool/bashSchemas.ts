@@ -91,6 +91,7 @@ export const outputSchema = lazySchema(() => z.object({
   persistedOutputSavedBytes: z.number().optional().describe('Bytes of the output kept on disk, fewer than its size past 64 MB'),
   persistedOutputLines: z.number().optional().describe('Line count of the persisted output, for its page'),
   readNote: z.string().optional().describe('Model-facing note after stdout on a file read: the files it did not show, and the ones that count as read'),
+  leftoverNote: z.string().optional().describe('Model-facing note: processes the command left running, adopted as a task (CLAUDIN_ADOPT_LEFTOVERS)'),
   creditedFiles: z.array(z.string()).optional().describe('Absolute paths the read credit counted as read (CLAUDIN_BASH_READ_CREDIT); /resume rebuilds them from disk'),
   creditedRanges: z.array(z.object({
     path: z.string(),

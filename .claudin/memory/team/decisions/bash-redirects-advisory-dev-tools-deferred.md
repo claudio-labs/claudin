@@ -33,6 +33,10 @@ measured no cost regression for either, 3 fewer turns than refusing, and
   RunTests usage in a census as a regression of something else.
 - A census counting "redirect refusals" sees ~zero after 2026-09-24: count
   notes (`has a dedicated tool` / `only reads or searches files`) instead.
+- Since 2026-10-30 (#329) the file-reads note is off in advise mode.
+  `CLAUDIN_FILE_TOOLS_NOTE=1` brings it back, and its refusal in refuse mode is unchanged
+  ([[census-10-30-tool-levers]]). In a census, `only reads or searches files` falls to zero
+  from then on.
 
 **Rejected:** a generic "Prefer the dedicated tools over shell commands" line
 in the system prompt instead of the notes (measured, no different from the

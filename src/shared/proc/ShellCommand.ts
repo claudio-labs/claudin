@@ -5,6 +5,12 @@ import treeKill from 'tree-kill'
 import { generateTaskId } from 'src/agent/Task.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import {
+  findProcessGroup,
+  isAdoptLeftoversEnabled,
+  type ProcessGroup,
+  signalProcessGroup,
+} from 'src/shared/proc/processGroup.js'
+import {
   MAX_TASK_OUTPUT_BYTES,
   MAX_TASK_OUTPUT_BYTES_DISPLAY,
 } from 'src/agent/tasks/diskOutput.js'
@@ -27,6 +33,14 @@ export type ExecResult = {
   outputTaskId?: string
   /** Error message when the command failed before spawning (e.g., deleted cwd). */
   preSpawnError?: string
+  /**
+   * What the shell left running in its process group when it exited on its
+   * own, under `CLAUDIN_ADOPT_LEFTOVERS` (processGroup.ts). The caller adopts
+   * it as a task.
+   */
+  leftovers?: ProcessGroup
+  /** The line about `leftovers` once the caller adopted them, for the model. */
+  leftoverNote?: string
 }
 
 export type ShellCommand = {
@@ -337,6 +351,14 @@ class ShellCommandImpl implements ShellCommand {
       backgroundTaskId: this.#backgroundTaskId,
     }
 
+    // Only a shell that exited on its own: a killed one had its group signalled.
+    // cleanup() may already have dropped the child.
+    const pid = this.#status === 'completed' ? this.#childProcess?.pid : undefined
+    if (pid && isAdoptLeftoversEnabled()) {
+      const leftovers = findProcessGroup(pid)
+      if (leftovers) result.leftovers = leftovers
+    }
+
     if (this.taskOutput.stdoutToFile && !this.#backgroundTaskId) {
       if (this.taskOutput.outputFileRedundant) {
         // Small file — full content is in result.stdout, delete the file
@@ -372,17 +394,21 @@ class ShellCommandImpl implements ShellCommand {
     this.#status = 'killed'
     const child = this.#childProcess
     const pid = child.pid
+    const shellRunning = () => child.exitCode === null && child.signalCode === null
     if (pid && !graceful) {
       treeKill(pid, 'SIGKILL')
+      if (shellRunning()) signalProcessGroup(pid, 'SIGKILL')
     } else if (pid) {
       treeKill(pid, 'SIGTERM')
+      if (shellRunning()) signalProcessGroup(pid, 'SIGTERM')
       // Escalate only while the shell itself is still running: its pid is
       // still ours and the tree walk starts from it. Once it has exited, every
       // descendant already got the same SIGTERM, and a pid looked up later may
       // belong to an unrelated process.
       const escalate = setTimeout(() => {
-        if (child.exitCode === null && child.signalCode === null) {
+        if (shellRunning()) {
           treeKill(pid, 'SIGKILL')
+          signalProcessGroup(pid, 'SIGKILL')
         }
       }, killGraceMs)
       escalate.unref()

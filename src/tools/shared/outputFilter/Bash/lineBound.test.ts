@@ -95,6 +95,11 @@ describe("commandLineBound — each bounded shape", () => {
     ["sed -n 1,5p a.ts 2>/dev/null || true", 5],
     ["for f in a.ts b.ts; do head -5 $f; done", 10],
     ['for f in a.ts b.ts; do echo "== $f"; for n in 1 2 3; do sed -n 1,2p "$f"; done; done', 2 * (1 + 3 * 2)],
+    // a loop over literal ranges into one sed script: every pass bounded by the widest range
+    ['for r in 1,3 10,20; do sed -n "${r}p" a.ts; done', 2 * 11],
+    ['for r in 486,512 572,582; do echo "=== $r"; sed -n "${r}p" docs/api.md; done', 2 * (1 + 27)],
+    // a cd under home by tilde
+    ["cd ~/src && sed -n 1,10p a.ts", 10],
   ] as const)("%s → %d", (command, lines) => {
     expect(commandLineBound(command)).toBe(lines);
   });

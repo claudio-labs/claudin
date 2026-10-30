@@ -263,6 +263,29 @@ describe('batch Read — several files', () => {
     }
   })
 
+  test('CLAUDIN_OUTLINE_PROSE_BY_LINES: a short markdown note in a batch comes back whole', async () => {
+    const priorForce = process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION
+    const priorProse = process.env.CLAUDIN_OUTLINE_PROSE_BY_LINES
+    process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
+    process.env.CLAUDIN_OUTLINE_PROSE_BY_LINES = '1'
+    try {
+      const lines = Array.from({ length: 180 }, (_, i) =>
+        i % 10 === 0 ? `## Part ${i / 10}` : `Line ${i} ${'w'.repeat(70)}`,
+      )
+      const note = writeFixture('prose-note.md', `${lines.join('\n')}\n`)
+      const small = writeFixture('prose-small.ts', OTHER_TS)
+      const ctx = context()
+      const result = await inFixtureDir(() => call(ReadOn, { file_paths: [note, small] }, ctx))
+      const text = textOf(result.data)
+      expect(text).not.toContain('returned outline instead of full body')
+      expect(text).toContain('Line 179')
+      expect(ctx.readFileState.get(note)?.isPartialView).toBeUndefined()
+    } finally {
+      restoreEnv('CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION', priorForce)
+      restoreEnv('CLAUDIN_OUTLINE_PROSE_BY_LINES', priorProse)
+    }
+  })
+
   test('a file that fails reads its error under its header; the rest still read', async () => {
     const a = writeFixture('fail-a.ts', OTHER_TS)
     const missing = join(fixtureDir(), 'fail-missing.ts')

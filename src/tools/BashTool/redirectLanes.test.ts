@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { resolve } from 'path'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
-import { getBashRedirectMode, isReadAdviceMoot, pickBashRedirect } from 'src/tools/BashTool/redirectLanes.js'
+import {
+  getBashRedirectMode,
+  isFileToolsNoteEnabled,
+  isReadAdviceMoot,
+  pickBashRedirect,
+} from 'src/tools/BashTool/redirectLanes.js'
 import { resetToolRedirectMemoForTesting } from 'src/tools/BashTool/toolRedirect.js'
 import { resetBuildRedirectMemoForTesting } from 'src/tools/BuildTool/redirect.js'
 import { renderGitRedirect, resetGitRedirectMemoForTesting } from 'src/tools/GitTool/redirect.js'
@@ -22,6 +27,7 @@ const ENV_KEYS = [
   'CLAUDIN_DISABLE_TOOL_REDIRECT',
   'CLAUDIN_ENABLE_WAITFOR_REDIRECT',
   'CLAUDIN_DISABLE_WAITFOR_REDIRECT',
+  'CLAUDIN_FILE_TOOLS_NOTE',
 ] as const
 const saved = Object.fromEntries(ENV_KEYS.map(key => [key, process.env[key]]))
 
@@ -93,14 +99,22 @@ describe('advise mode: each lane names its tool and the call to make', () => {
     )
   })
 
-  test('file reads → Read, with no tool to load', () => {
+  test('file reads get no note by default since 10-30', () => {
+    expect(isFileToolsNoteEnabled()).toBe(false)
+    expect(advise('cat package.json')).toBeNull()
+    expect(advise('grep -n name package.json')).toBeNull()
+  })
+
+  test('CLAUDIN_FILE_TOOLS_NOTE=1: file reads → Read, with no tool to load', () => {
+    process.env.CLAUDIN_FILE_TOOLS_NOTE = '1'
     const r = advise('cat package.json')
     expect(r?.suggests).toBeUndefined()
     expect(r?.message).toContain('only reads or searches files')
     expect(r?.message).toContain('Read(file_path:')
   })
 
-  test('a cat of three files → one whole Read each, the note as it reads today', () => {
+  test('CLAUDIN_FILE_TOOLS_NOTE=1: a cat of three files → one whole Read each, the note as it read', () => {
+    process.env.CLAUDIN_FILE_TOOLS_NOTE = '1'
     const files = ['package.json', 'tsconfig.json', 'AGENTS.md']
     expect(advise(`cat ${files.join(' ')}`)?.message).toBe(
       [
@@ -139,6 +153,10 @@ describe('refuse mode: the refusals from before, byte for byte', () => {
     expect(refuse('git status')?.message).toBe(renderGitRedirect('git status'))
   })
 
+  test('file reads are still refused: the default that dropped the note is advise-only', () => {
+    expect(refuse('cat package.json')?.message).toContain('Read(')
+  })
+
   test('the sleep-poll lane stays opt-in', () => {
     expect(refuse(POLL)).toBeNull()
     resetWaitForRedirectMemoForTesting()
@@ -155,6 +173,7 @@ describe('gates, in both modes', () => {
   })
 
   test.each(['advise', 'refuse'] as const)('%s: only for a tool in this toolset', mode => {
+    process.env.CLAUDIN_FILE_TOOLS_NOTE = '1'
     expect(pickBashRedirect({ command: 'bun test' }, NONE, CWD, mode)).toBeNull()
     expect(pickBashRedirect({ command: 'cat package.json' }, NONE, CWD, mode)).toBeNull()
   })
@@ -166,6 +185,7 @@ describe('gates, in both modes', () => {
     ['CLAUDIN_DISABLE_GIT_REDIRECT', 'git status'],
     ['CLAUDIN_DISABLE_TOOL_REDIRECT', 'cat package.json'],
   ])('%s switches its lane off', (key, command) => {
+    process.env.CLAUDIN_FILE_TOOLS_NOTE = '1'
     process.env[key] = '1'
     expect(advise(command)).toBeNull()
     expect(refuse(command)).toBeNull()

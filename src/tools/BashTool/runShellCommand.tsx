@@ -10,6 +10,7 @@ import type { AppState } from 'src/terminal/state/AppState.js';
 import { logError } from 'src/shared/log.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
+import { adoptLeftoversNote } from 'src/agent/tasks/LocalShellTask/leftovers.js';
 import type { AgentId } from 'src/shared/types/ids.js';
 import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
@@ -223,6 +224,22 @@ export async function* runShellCommand({
   // Start the command execution
   const resultPromise = shellCommand.result;
 
+  // A foreground run that left processes in its group hands them to a task
+  // (`CLAUDIN_ADOPT_LEFTOVERS`, LocalShellTask/leftovers.ts); a backgrounded
+  // one does it in LocalShellTask when it ends.
+  function withAdoptedLeftovers(result: ExecResult): ExecResult {
+    if (!result.leftovers) return result;
+    return {
+      ...result,
+      leftoverNote: adoptLeftoversNote(result.leftovers, {
+        command,
+        description: description || command,
+        toolUseId,
+        agentId
+      }, setAppState)
+    };
+  }
+
   // Helper to spawn a background task and return its ID
   async function spawnBackgroundTask(): Promise<string> {
     const handle = await spawnShellTask({
@@ -353,7 +370,7 @@ export async function* runShellCommand({
     }), initialAbortPromise]);
     if (initialResult !== null) {
       shellCommand.cleanup();
-      return initialResult;
+      return withAdoptedLeftovers(initialResult);
     }
     if (backgroundShellId) {
       return {
@@ -447,7 +464,7 @@ export async function* runShellCommand({
         // Clean up stream resources for foreground commands
         // (backgrounded commands are cleaned up by LocalShellTask)
         shellCommand.cleanup();
-        return result;
+        return withAdoptedLeftovers(result);
       }
 
       // Check if command was backgrounded (either via old mechanism or new backgroundAll)

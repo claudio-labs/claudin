@@ -62,6 +62,10 @@ import {
  * (`CLAUDIN_DISABLE_WAITFOR_REDIRECT=1` turns it off). The blocking-sleep lane
  * has no memo, in either mode, as before.
  *
+ * The file-reads lane is off in advise mode since 2026-10-30 and back with
+ * `CLAUDIN_FILE_TOOLS_NOTE=1` (`isFileToolsNoteEnabled`); its refusal in
+ * refuse mode is unchanged.
+ *
  * One note is taken back after the call: the file-reads note on a `cat` whose
  * every file the read credit counted as read (`isReadAdviceMoot`).
  */
@@ -71,6 +75,21 @@ export type BashRedirectMode = 'advise' | 'refuse' | 'off'
 export function getBashRedirectMode(): BashRedirectMode {
   const mode = process.env.CLAUDIN_BASH_REDIRECT
   return mode === 'refuse' || mode === 'off' ? mode : 'advise'
+}
+
+/**
+ * Whether advise mode appends the "only reads or searches files" note.
+ * `CLAUDIN_FILE_TOOLS_NOTE=1` turns it back on; read per call so a test can
+ * set it.
+ *
+ * In 10-25..30 the model took the tool it named after 23% of 88 notes. In the
+ * two A/Bs that followed (Sonnet 5.5 and Opus 5.5, 4 arms × 5 each, team
+ * memory `census-10-30-tool-levers`) it took it 0 times in 17,
+ * and without the note the Read/Grep/Glob share did not drop. The refusal in
+ * refuse mode is another matter: it converted 84.7%, so it stays.
+ */
+export function isFileToolsNoteEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_FILE_TOOLS_NOTE)
 }
 
 export type BashRedirect = {
@@ -174,8 +193,9 @@ export function pickBashRedirect(
     }
   }
   // A command that only reads or searches files; all-or-nothing across a
-  // compound command, and every target tool must be in this toolset.
-  if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REDIRECT)) {
+  // compound command, and every target tool must be in this toolset. Advise
+  // mode leaves the note out unless asked (`isFileToolsNoteEnabled`).
+  if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REDIRECT) && (!advise || isFileToolsNoteEnabled())) {
     const analysis = shouldRedirectToTools(command, cwd, hasTool)
     if (analysis) {
       return {

@@ -19,7 +19,10 @@ import { utimes, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const realPlans = await import('src/agent/plans/plans.js')
+// A plain-object copy: the live namespace would hand afterAll this file's own
+// stub back, and every later file would resolve plan paths into a deleted
+// temp dir (testing.md, "Cross-file mock leaks").
+const realPlans = { ...(await import('src/agent/plans/plans.js')) }
 
 let testTempDir: string
 let testPlansDir: string

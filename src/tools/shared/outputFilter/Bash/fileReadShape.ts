@@ -66,6 +66,7 @@
  * (`walkCommandSegments`), the same one the Bash→tool redirect uses, so the
  * two can never disagree about where a segment ends.
  */
+import { homedir } from "os";
 import { isAbsolute, join, normalize } from "path";
 import { walkCommandSegments } from "src/platform/bash/segments.js";
 import { tryParseShellCommand } from "src/platform/bash/shellQuote.js";
@@ -106,6 +107,12 @@ const LOOP_VARIABLE_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
  * tokens, which is what tells a glob from a quoted literal.
  */
 const EXPANDED_WORD_RE = /[$`{}]|^~/;
+/**
+ * `~` or `~/…`: the user's home, which the shell writes in before any program
+ * sees the word — as nameable as an absolute path. `~bob` is another user's
+ * home, which is not.
+ */
+const HOME_TILDE_RE = /^~(?=\/|$)/;
 /** `cat -n` numbers the lines, which the read credit accounts for; no other flag prints the file as it is. */
 const CAT_FLAGS: ReadonlySet<string> = new Set(["-n", "--number"]);
 /** The counts `wc` may print; any other flag, or `-` for stdin, is not a listing of files. */
@@ -186,11 +193,27 @@ export function wordsOf(segment: string): ReadWord[] | null {
 
 export type Loop = { readonly variable: string; readonly words: readonly ReadWord[] };
 
+/**
+ * A word with its leading `~` or `~/` written out as the shell would, any other
+ * word as it is. The 10-25..30 census found sub-agents reading under
+ * `cd ~/.cache/…`, which the lane refused, so the cap cut them and the files
+ * were read again (team memory `census-2026-10-30-cache-tools-context`).
+ */
+export function expandHomeTilde(text: string): string {
+  return HOME_TILDE_RE.test(text) ? join(homedir(), text.slice(1)) : text;
+}
+
+function withHomeTilde(word: ReadWord): ReadWord {
+  const text = expandHomeTilde(word.text);
+  return text === word.text ? word : { ...word, text };
+}
+
 /** `V in w1 w2 …` after the `for`. */
 export function parseLoopHeader(args: readonly ReadWord[]): Loop | null {
-  const [variable, keyword, ...words] = args;
+  const [variable, keyword, ...written] = args;
   if (!variable || !LOOP_VARIABLE_RE.test(variable.text)) return null;
   if (keyword?.text !== "in") return null;
+  const words = written.map(withHomeTilde);
   if (words.some((word) => EXPANDED_WORD_RE.test(word.text))) return null;
   return { variable: variable.text, words };
 }
@@ -202,7 +225,8 @@ export function parseLoopHeader(args: readonly ReadWord[]): Loop | null {
 function pathWords(arg: ReadWord, loops: readonly Loop[]): readonly ReadWord[] | null {
   const loop = loops.findLast((open) => arg.text === `$${open.variable}`);
   if (loop) return loop.words;
-  return EXPANDED_WORD_RE.test(arg.text) ? null : [arg];
+  const word = withHomeTilde(arg);
+  return EXPANDED_WORD_RE.test(word.text) ? null : [word];
 }
 
 /** What one `cat` reads, or null when it is not a plain print of files. */
@@ -300,8 +324,46 @@ function sedScriptRanges(script: string): [number, number][] | null {
   return ranges.length > 0 ? ranges : null;
 }
 
-/** `sed`'s arguments as a range print (`SedPrint`); null without `-n`, where sed prints every line, or for any other script. */
-export function sedPrintOf(args: readonly ReadWord[]): SedPrint | null {
+/**
+ * A script written around a loop's variable, `sed -n "${r}p" f` in
+ * `for r in 486,512 572,582`: a range print when the script is one on every
+ * pass. The ranges are the widest pass's, since a caller counting lines counts
+ * the loop body once per pass. Null when no loop variable is in the script, or
+ * when any pass would not be a numeric range print.
+ */
+function loopScriptRanges(
+  script: string,
+  loopWords: ReadonlyMap<string, readonly string[]> | undefined,
+): [number, number][] | null {
+  if (!loopWords || !script.includes("$")) return null;
+  for (const [variable, words] of [...loopWords].reverse()) {
+    const name = `$${variable}`;
+    if (!script.includes(name)) continue;
+    let widest: [number, number][] | null = null;
+    let widestLines = -1;
+    for (const word of words) {
+      const ranges = sedScriptRanges(script.split(name).join(word));
+      if (ranges === null) return null;
+      const lines = ranges.reduce((n, [from, to]) => n + to - from + 1, 0);
+      if (lines > widestLines) {
+        widest = ranges;
+        widestLines = lines;
+      }
+    }
+    return widest;
+  }
+  return null;
+}
+
+/**
+ * `sed`'s arguments as a range print (`SedPrint`); null without `-n`, where sed
+ * prints every line, or for any other script. `loopWords` maps the variables of
+ * the `for` loops around the segment to their words (`loopScriptRanges`).
+ */
+export function sedPrintOf(
+  args: readonly ReadWord[],
+  loopWords?: ReadonlyMap<string, readonly string[]>,
+): SedPrint | null {
   let quiet = false;
   let separate = false;
   const scripts: string[] = [];
@@ -340,7 +402,7 @@ export function sedPrintOf(args: readonly ReadWord[]): SedPrint | null {
   }
   const ranges: [number, number][] = [];
   for (const script of scripts) {
-    const scriptRanges = sedScriptRanges(script);
+    const scriptRanges = sedScriptRanges(script) ?? loopScriptRanges(script, loopWords);
     if (scriptRanges === null) return null;
     ranges.push(...scriptRanges);
   }
@@ -354,7 +416,7 @@ export type SedRangeRead = { readonly word: ReadWord; readonly from: number; rea
 function sedRangeOf(args: readonly ReadWord[]): SedRangeRead | null {
   const print = sedPrintOf(args);
   if (!print || print.ranges.length !== 1 || print.files.length !== 1) return null;
-  const file = print.files[0]!;
+  const file = withHomeTilde(print.files[0]!);
   if (file.glob || file.text === "-" || EXPANDED_WORD_RE.test(file.text)) return null;
   const [from, to] = print.ranges[0]!;
   return { word: file, from, to };
@@ -363,12 +425,14 @@ function sedRangeOf(args: readonly ReadWord[]): SedRangeRead | null {
 /**
  * Where a `cd` goes, as written, or null when the walk cannot name it: no
  * argument (home), `-` (the last directory) or any other flag, more than one
- * argument, an empty one, a glob, a word the shell would rewrite (`~`, `$D`).
+ * argument, an empty one, a glob, a word the shell would rewrite (`$D`,
+ * `~bob`). A leading `~` or `~/` is the home directory, written out.
  */
 export function cdTarget(args: readonly ReadWord[]): string | null {
   const target = args.length === 1 ? args[0]! : null;
   if (!target || target.glob || target.text === "" || target.text.startsWith("-")) return null;
-  return EXPANDED_WORD_RE.test(target.text) ? null : target.text;
+  const text = expandHomeTilde(target.text);
+  return EXPANDED_WORD_RE.test(text) ? null : text;
 }
 
 /**
@@ -390,7 +454,7 @@ function inDir(words: readonly ReadWord[], dir: string | undefined): readonly Re
  * literal paths or globs. Its output names files; none of it is a file's bytes.
  */
 export function isListing(head: string, args: readonly ReadWord[]): boolean {
-  if (args.some((arg) => EXPANDED_WORD_RE.test(arg.text))) return false;
+  if (args.some((arg) => EXPANDED_WORD_RE.test(expandHomeTilde(arg.text)))) return false;
   switch (head) {
     case "ls":
       return true;

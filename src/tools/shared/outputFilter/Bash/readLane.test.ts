@@ -28,6 +28,35 @@ describe("isModelDirectedRead — what the model asked to read", () => {
     expect(isModelDirectedRead(command)).toBe(true);
   });
 
+  // The two shapes the lane refused in 10-25..30, each cut and then read again
+  // (team memory `census-2026-10-30-cache-tools-context`).
+  test.each([
+    [
+      "a cd under home by tilde, then named-file searches",
+      'cd ~/.cache/ferrous-review/wt-e && grep -n "fn sql_now" -A12 crates/infrastructure/src/repositories/mod.rs; grep -n "fn hours_ago_cutoff" -A8 crates/infrastructure/src/repositories/query.rs',
+    ],
+    ["a print of a file under home", "cat ~/notes/a.md"],
+    ["a search of a file under home", 'grep -n "port" ~/.config/app/config.toml'],
+    ["a listing under home beside a read", "ls ~/proj && head -20 ~/proj/README.md"],
+    [
+      "a loop over literal ranges into one sed script",
+      'for r in 486,512 572,582 1286,1300; do echo "=== $r"; sed -n "${r}p" docs/api.md; done',
+    ],
+    ["a loop over single lines into one sed script", 'for n in 12 40; do sed -n "${n}p" a.ts; done'],
+  ])("the 10-30 census: %s", (_, command) => {
+    expect(isModelDirectedRead(command)).toBe(true);
+  });
+
+  test.each([
+    ["another user's home", "cd ~bob/src && cat a.ts"],
+    ["a loop word that is not a range", 'for r in 1,3 x; do sed -n "${r}p" f.md; done'],
+    ["a loop over a variable into sed", 'for r in $R; do sed -n "${r}p" f.md; done'],
+    ["a sed script that also prints by pattern", 'for r in 1,3; do sed -n "${r}p;/x/p" f.md; done'],
+    ["a sed script naming a variable no loop sets", 'sed -n "${r}p" f.md'],
+  ])("still not a read: %s", (_, command) => {
+    expect(isModelDirectedRead(command)).toBe(false);
+  });
+
   // The surviving surface: none of these is something the model asked to read,
   // and the cut exists for exactly them.
   test.each([

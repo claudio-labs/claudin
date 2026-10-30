@@ -33,6 +33,8 @@ import {
   persistFileSnapshotIfRemote,
 } from 'src/agent/plans/plans.js'
 import { seedTasksFromPlan } from 'src/agent/tasks/planTasks.js'
+import { isUnloadedDeferredTool } from 'src/agent/tools/toolSearch.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getAgentName,
@@ -60,6 +62,30 @@ const permissionSetupModule = feature('TRANSCRIPT_CLASSIFIER')
   ? (require('src/permissions/permissionSetup.js') as typeof import('src/permissions/permissionSetup.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+/**
+ * The approval names each seeded task by id and, while TaskUpdate is still
+ * deferred, the exact call to update one — which runs without a ToolSearch,
+ * since its input is two strings. On by default since 2026-10-30;
+ * `CLAUDIN_PLAN_TASK_IDS=0` goes back to the count alone. Read per call so a
+ * test can set it.
+ *
+ * Without it, every approval in 10-25..30 was followed by
+ * `ToolSearch(select:TaskUpdate,TaskList)` and a `TaskList` before the first
+ * update: two requests a plan, spent learning ids this tool had just created
+ * (team memory `tasklist-unordered-exitplan-seeds-without-ids`).
+ *
+ * Measured (team memory `census-10-30-tool-levers`): on Opus 5.5
+ * the pair after the approval went from 3/5 sessions to 0/5, and the direct
+ * call succeeded 5/5. Sonnet 5.5 loaded TaskUpdate anyway in 3/5, at no cost
+ * to the mechanism.
+ */
+function isPlanTaskIdsEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_PLAN_TASK_IDS)
+}
+
+/** How many seeded tasks the approval lists by name; past it, a count. */
+const MAX_LISTED_TASKS = 30
 
 /**
  * Schema for prompt-based permission requests.
@@ -136,6 +162,14 @@ export const outputSchema = lazySchema(() =>
       .describe(
         "Number of TodoV2 tasks seeded from the plan's Tasks section on approval",
       ),
+    seededTasks: z
+      .array(z.object({ id: z.string(), subject: z.string() }))
+      .optional()
+      .describe('The tasks seeded on approval, by id (CLAUDIN_PLAN_TASK_IDS)'),
+    taskUpdateUnloaded: z
+      .boolean()
+      .optional()
+      .describe('True when TaskUpdate is deferred and not loaded in this conversation yet'),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -416,7 +450,8 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
     // only: teammates return earlier, and we skip sub-agents (`isAgent`) so a
     // forked/background agent doesn't write into the shared task list.
     // Fail-soft inside.
-    const tasksSeeded = plan && !isAgent ? await seedTasksFromPlan(plan) : 0
+    const seeded = plan && !isAgent ? await seedTasksFromPlan(plan) : []
+    const tasksSeeded = seeded.length
     if (tasksSeeded > 0) {
       // Auto-expand the task view so the seeded checklist is visible, matching
       // TaskCreateTool's behavior (seedTasksFromPlan writes tasks directly and
@@ -427,6 +462,10 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
           : { ...prev, expandedView: 'tasks' as const },
       )
     }
+    const namesTasks = tasksSeeded > 0 && isPlanTaskIdsEnabled()
+    const taskUpdate = namesTasks
+      ? context.options.tools.find(t => toolMatchesName(t, TASK_UPDATE_TOOL_NAME))
+      : undefined
 
     return {
       data: {
@@ -436,6 +475,12 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
         hasTaskTool: hasTaskTool || undefined,
         planWasEdited: inputPlan !== undefined || undefined,
         tasksSeeded: tasksSeeded || undefined,
+        ...(namesTasks && {
+          seededTasks: seeded,
+          taskUpdateUnloaded:
+            taskUpdate !== undefined &&
+            isUnloadedDeferredTool(taskUpdate, context.options.tools, context.messages),
+        }),
       },
     }
   },
@@ -449,6 +494,8 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
       awaitingLeaderApproval,
       requestId,
       tasksSeeded,
+      seededTasks,
+      taskUpdateUnloaded,
     },
     toolUseID,
   ) {
@@ -496,9 +543,11 @@ Request ID: ${requestId}`,
       : ''
 
     const todoHint =
-      tasksSeeded && tasksSeeded > 0
-        ? `The ${tasksSeeded} step(s) from your plan's Tasks section have been seeded into the task list. As you implement, use ${TASK_UPDATE_TOOL_NAME} to mark each task in_progress before starting it and completed when done.`
-        : 'Start with updating your todo list if applicable'
+      seededTasks && seededTasks.length > 0
+        ? seededTaskList(seededTasks, taskUpdateUnloaded === true)
+        : tasksSeeded && tasksSeeded > 0
+          ? `The ${tasksSeeded} step(s) from your plan's Tasks section have been seeded into the task list. As you implement, use ${TASK_UPDATE_TOOL_NAME} to mark each task in_progress before starting it and completed when done.`
+          : 'Start with updating your todo list if applicable'
 
     // The model wrote the plan file itself, so echoing the body back is a
     // second copy of ~4-7k tokens that every later call in the session
@@ -518,3 +567,20 @@ You can refer back to it if needed during implementation.${teamHint}${planEcho}`
     }
   },
 } satisfies ToolDef<InputSchema, Output>)
+
+/**
+ * The seeded tasks by id, and how to update them. When TaskUpdate is still
+ * deferred the exact call is spelled out: its input is two strings, so it
+ * validates without the schema a ToolSearch would load.
+ */
+function seededTaskList(
+  tasks: readonly { id: string; subject: string }[],
+  taskUpdateUnloaded: boolean,
+): string {
+  const listed = tasks.slice(0, MAX_LISTED_TASKS).map(t => `#${t.id} ${t.subject}`)
+  const more = tasks.length > MAX_LISTED_TASKS ? `\n…and ${tasks.length - MAX_LISTED_TASKS} more` : ''
+  const call = taskUpdateUnloaded
+    ? ` ${TASK_UPDATE_TOOL_NAME} needs no ToolSearch: call it directly, e.g. ${TASK_UPDATE_TOOL_NAME}({"taskId": "${tasks[0]!.id}", "status": "in_progress"}).`
+    : ''
+  return `The ${tasks.length} step(s) from your plan's Tasks section are in the task list:\n${listed.join('\n')}${more}\nAs you implement, use ${TASK_UPDATE_TOOL_NAME} to mark each task in_progress before starting it and completed when done.${call}`
+}

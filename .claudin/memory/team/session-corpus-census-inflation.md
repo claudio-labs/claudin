@@ -50,3 +50,14 @@ command already routed to a tool is not a gap. See
 [[token-bench-measurement-traps]] for the A/B-bench equivalents, and
 [[bash-file-read-census-and-redirect-reach]] for the collector that sizes an arm
 before it is built.
+
+**Transcript shapes that skew a read census (2026-10-30).**
+- Sub-agent transcripts carry no `toolUseResult`. Read a Read's range or outline off the
+  text instead: the `N→` line numbers, or "is large — showing a structural outline".
+  Counting a Read with no limit as the whole file turns every outline follow-up into a fake
+  duplicate.
+- A batch Read's `toolUseResult.files[].lines` is 0 for a file it outlined.
+- Bound records by timestamp, not file mtime: a session active in the window holds its older
+  days too. `request-census.ts` counts such a session whole on purpose.
+- For "are we re-reading because of X", `cut-refetch-census.ts --since=… --lane` answers in
+  seconds. Run it with `NODE_ENV=test bun --preload ./src/stubs/test-preload.ts`.

@@ -215,7 +215,21 @@ describe('diff rendering', () => {
     // Never a half hunk: every kept header is followed by its lines.
     const kept = out.split('\n').filter(l => l.startsWith('@@ '))
     expect(kept.length).toBeGreaterThan(0)
-    expect(out).toContain('git diff -- src/a.ts')
+    // `git diff -- src/a.ts` would come back under the same per-file budget,
+    // so pointing at it sent the model round in a circle: only `full: true`
+    // gets the rest.
+    expect(out).not.toContain('git diff -- src/a.ts')
+    expect(out).toContain('full: true for the rest')
+  })
+
+  test('a one-file diff past the pivot names only full: true, not the same file again', () => {
+    // Asking for that one file would pivot to the same table.
+    const diff = makeDiff('src/huge.ts', 40, 8)
+    expect(diff.length).toBeGreaterThan(DIFF_PIVOT_CHARS)
+    const out = summarizeGitOutput('git diff -- src/huge.ts', diff)
+    expect(out).toContain('hunks omitted')
+    expect(out).toContain('full: true')
+    expect(out).not.toContain('git diff -- <path>')
   })
 
   test('git show routes through the same renderer', () => {

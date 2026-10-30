@@ -486,6 +486,45 @@ describe("phase 6.2 — gitShow", () => {
     const raw = " M src/a.ts\n?? src/b.ts\n";
     expect(runFilterBody("git-diff", "git diff", raw)).toBe(raw);
   });
+
+  // Through Bash the caller may have no Git tool (Explore does not), and Bash
+  // has no `full` parameter: the way out has to be the shell's. In 10-25..30
+  // an Explore agent got the Git tool's wording and re-ran the diff `| cat`.
+  test("a pivoted diff through Bash names the shell's way out, never the Git tool", () => {
+    const files = Array.from({ length: 7 }, (_, i) =>
+      [
+        `diff --git a/src/m${i}.ts b/src/m${i}.ts`,
+        `--- a/src/m${i}.ts`,
+        `+++ b/src/m${i}.ts`,
+        "@@ -1,2 +1,2 @@",
+        `-export const m${i} = ${i}`,
+        `+export const m${i} = ${i + 1}`,
+        " // tail",
+      ].join("\n"),
+    ).join("\n");
+    const body = runFilterBody("git-diff", "git diff", `${files}\n`);
+    expect(body).toContain("hunks omitted");
+    expect(body).not.toContain("Git({");
+    expect(body).not.toContain("full: true");
+    expect(body).toContain("git diff -- <path>");
+    expect(body).toContain("| cat");
+  });
+
+  test("hunks elided from one file through Bash point at `| cat`, not the Git tool", () => {
+    const hunk = (start: number) =>
+      [`@@ -${start},6 +${start},6 @@`, " a", " b", `-old ${start}`, `+new ${start}`, " c", " d"].join("\n");
+    const raw = [
+      "diff --git a/src/big.ts b/src/big.ts",
+      "--- a/src/big.ts",
+      "+++ b/src/big.ts",
+      ...Array.from({ length: 14 }, (_, i) => hunk(i * 20 + 1)),
+    ].join("\n");
+    const body = runFilterBody("git-diff", "git diff", `${raw}\n`);
+    expect(body).toContain("more hunks");
+    expect(body).not.toContain("Git({");
+    expect(body).not.toContain("full: true");
+    expect(body).toContain("| cat");
+  });
   // The commit header is spliced back verbatim — it sits above the first
   // `diff --git`, and renderDiff only ever sees the tail. What replaces the
   // hunks depends on size: this sample is ~10 KB, past DIFF_PIVOT_CHARS, so it

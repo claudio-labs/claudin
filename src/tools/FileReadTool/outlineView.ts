@@ -12,6 +12,7 @@ import {
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { isAbortError } from 'src/shared/errors.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { addLineNumbers } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
@@ -63,6 +64,38 @@ export const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
  */
 export const READ_AUTO_OUTLINE_THRESHOLD_LINES = 250
 export const READ_AUTO_OUTLINE_MIN_SYMBOLS = 3
+
+/**
+ * The most chars a short markdown or diff file may hold and still come back
+ * whole under `CLAUDIN_OUTLINE_PROSE_BY_LINES` — well inside the Read token
+ * limit (25k tokens, `limits.ts`), so dropping the outline never turns into a
+ * refusal.
+ */
+const READ_PROSE_BODY_MAX_CHARS = 25_000
+
+/** The outline languages whose symbols are headings or file sections, not code. */
+const PROSE_OUTLINE_LANGS: ReadonlySet<OutlineLang> = new Set<OutlineLang>(['markdown', 'diff'])
+
+/**
+ * `CLAUDIN_OUTLINE_PROSE_BY_LINES=1`: a markdown or diff file under
+ * READ_AUTO_OUTLINE_THRESHOLD_LINES lines and READ_PROSE_BODY_MAX_CHARS chars
+ * comes back whole instead of pivoting on the char trigger. Off until the A/B;
+ * read per call so a test can set it.
+ *
+ * In 10-25..30, 40 of 44 outlines were followed by a Read of the same file,
+ * and several were memory notes or scratchpad diffs of 185–260 lines that
+ * crossed 10k chars only by having long lines. Their headings rarely answer
+ * what the file was opened for, so the outline cost a request and the body
+ * was read anyway. Code keeps the pivot: a symbol table is an index there.
+ */
+export function proseReadsWhole(lang: OutlineLang, chars: number, totalLines: number): boolean {
+  if (!isEnvTruthy(process.env.CLAUDIN_OUTLINE_PROSE_BY_LINES)) return false
+  return (
+    PROSE_OUTLINE_LANGS.has(lang) &&
+    totalLines < READ_AUTO_OUTLINE_THRESHOLD_LINES &&
+    chars <= READ_PROSE_BODY_MAX_CHARS
+  )
+}
 
 /**
  * The plain-text sibling of the auto-outline pivot: a vanilla Read of a file

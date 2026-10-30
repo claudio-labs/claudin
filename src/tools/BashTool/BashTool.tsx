@@ -393,13 +393,15 @@ export const BashTool = buildTool({
         // names the file's line count, so the end of a long failing run —
         // where the failure usually is — is one Read away.
         const saved = await saveSpilledRun(result);
-        const errorOutput = saved
+        const failedOutput = saved
           ? safeAnnotateStderrWithSandboxFailures(input.command, pageFailedShellRun(saved, {
               code: result.code,
               interrupted: result.interrupted,
               others: safeAnnotateStderrWithSandboxFailures(input.command, '')
             }))
           : safeAnnotateStderrWithSandboxFailures(input.command, result.stdout || '');
+        // A failed run can still have left a server running (`sh start.sh && curl …`).
+        const errorOutput = result.leftoverNote ? `${failedOutput}\n${result.leftoverNote}` : failedOutput;
         throw new ShellError('', errorOutput, result.code, result.interrupted);
       }
       wasInterrupted = result.interrupted;
@@ -466,6 +468,9 @@ export const BashTool = buildTool({
       }),
       ...(notShownNote !== null && {
         readNote: notShownNote
+      }),
+      ...(result.leftoverNote && {
+        leftoverNote: result.leftoverNote
       })
     };
     // CLAUDIN_BASH_READ_CREDIT: a `cat` counts as a Read of each file it
