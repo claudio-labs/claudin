@@ -1,0 +1,36 @@
+{
+  "test": "src/platform/main/clientType.test.ts",
+  "source": "src/platform/main/clientType.ts",
+  "probes": [
+    {
+      "name": "client: GitHub Actions is not recognized",
+      "find": "  if (isEnvTruthy(process.env.GITHUB_ACTIONS)) return 'github-action';\n",
+      "replace": ""
+    },
+    {
+      "name": "client: a session token is not remote",
+      "find": "  if (process.env.CLAUDE_CODE_ENTRYPOINT === 'remote' || hasSessionIngressToken) {\n",
+      "replace": "  if (process.env.CLAUDE_CODE_ENTRYPOINT === 'remote') {\n"
+    },
+    {
+      "name": "preview: the explicit format is ignored",
+      "find": "  if (previewFormat === 'markdown' || previewFormat === 'html') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "interactive: --print is interactive",
+      "find": "  const hasPrintFlag = cliArgs.includes('-p') || cliArgs.includes('--print');\n",
+      "replace": "  const hasPrintFlag = cliArgs.includes('-p');\n"
+    },
+    {
+      "name": "interactive: a pipe is interactive",
+      "find": "hasSdkUrl || !process.stdout.isTTY;",
+      "replace": "hasSdkUrl;"
+    },
+    {
+      "name": "apply: the session source is never written",
+      "find": "    setSessionSource(resolved.sessionSource);\n",
+      "replace": ""
+    }
+  ]
+}
