@@ -3,9 +3,13 @@ import { stat } from 'fs/promises'
 import type { Readable } from 'stream'
 import treeKill from 'tree-kill'
 import { generateTaskId } from 'src/agent/Task.js'
-import { getErrnoCode } from 'src/shared/errors.js'
-import { logError } from 'src/shared/log.js'
 import { formatDuration } from 'src/shared/text/format.js'
+import {
+  findProcessGroup,
+  isAdoptLeftoversEnabled,
+  type ProcessGroup,
+  signalProcessGroup,
+} from 'src/shared/proc/processGroup.js'
 import {
   MAX_TASK_OUTPUT_BYTES,
   MAX_TASK_OUTPUT_BYTES_DISPLAY,
@@ -29,6 +33,14 @@ export type ExecResult = {
   outputTaskId?: string
   /** Error message when the command failed before spawning (e.g., deleted cwd). */
   preSpawnError?: string
+  /**
+   * What the shell left running in its process group when it exited on its
+   * own, under `CLAUDIN_ADOPT_LEFTOVERS` (processGroup.ts). The caller adopts
+   * it as a task.
+   */
+  leftovers?: ProcessGroup
+  /** The line about `leftovers` once the caller adopted them, for the model. */
+  leftoverNote?: string
 }
 
 export type ShellCommand = {
@@ -71,24 +83,6 @@ let killGraceMs = KILL_GRACE_MS
 /** Test-only: shorten the SIGTERM → SIGKILL grace; `null` restores it. */
 export function _setKillGraceMsForTesting(ms: number | null): void {
   killGraceMs = ms ?? KILL_GRACE_MS
-}
-
-/**
- * Signal the process group the shell leads. Shell.ts spawns it detached, so
- * its pid is its group's, and every process it starts stays in the group
- * unless it asks for a session of its own. `treeKill` walks parent links
- * instead, and a process whose parent exited — `(server &)`, a script that
- * backgrounds a server and returns — is no longer anyone's child there: it
- * outlived TaskStop and was killed by hand, by pid (the 10-25..30 census).
- * No such group (a shell spawned attached, as hooks are) is not an error.
- */
-function signalProcessGroup(pid: number, signal: NodeJS.Signals): void {
-  if (process.platform === 'win32') return
-  try {
-    process.kill(-pid, signal)
-  } catch (e) {
-    if (getErrnoCode(e) !== 'ESRCH') logError(e)
-  }
 }
 
 // Background tasks write stdout/stderr directly to a file fd (no JS involvement),
@@ -355,6 +349,14 @@ class ShellCommandImpl implements ShellCommand {
       stderr: this.taskOutput.getStderr(),
       interrupted: code === SIGKILL,
       backgroundTaskId: this.#backgroundTaskId,
+    }
+
+    // Only a shell that exited on its own: a killed one had its group signalled.
+    // cleanup() may already have dropped the child.
+    const pid = this.#status === 'completed' ? this.#childProcess?.pid : undefined
+    if (pid && isAdoptLeftoversEnabled()) {
+      const leftovers = findProcessGroup(pid)
+      if (leftovers) result.leftovers = leftovers
     }
 
     if (this.taskOutput.stdoutToFile && !this.#backgroundTaskId) {

@@ -146,6 +146,22 @@ test('BashTool result mapper without a read note is unchanged', () => {
   ).toEqual(BashTool.mapToolResultToToolResultBlockParam(data, 'tool-6'))
 })
 
+// CLAUDIN_ADOPT_LEFTOVERS: the line about what the run left running comes last.
+test('BashTool result mapper ends with the leftover note', () => {
+  const result = BashTool.mapToolResultToToolResultBlockParam(
+    {
+      stdout: 'started\n',
+      stderr: 'warning: x',
+      interrupted: false,
+      leftoverNote: 'Still running after the command exited: pid 7 `server` — adopted as task bk1.',
+    },
+    'tool-7',
+  )
+  expect(result.content).toBe(
+    'started\nwarning: x\nStill running after the command exited: pid 7 `server` — adopted as task bk1.',
+  )
+})
+
 test('PowerShellTool result mapper tolerates null stderr', () => {
   const result = PowerShellTool.mapToolResultToToolResultBlockParam(
     {

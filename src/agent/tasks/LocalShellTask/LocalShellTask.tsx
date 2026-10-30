@@ -18,6 +18,7 @@ import { backgroundAgentTask, isLocalAgentTask } from 'src/agent/tasks/LocalAgen
 import { isMainSessionTask } from 'src/agent/tasks/LocalMainSessionTask.js';
 import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js';
 import { killTask } from 'src/agent/tasks/LocalShellTask/killShellTasks.js';
+import { adoptLeftoversNote } from 'src/agent/tasks/LocalShellTask/leftovers.js';
 
 /** Prefix that identifies a LocalShellTask summary to the UI collapse transform. */
 export const BACKGROUND_BASH_SUMMARY_PREFIX = 'Background command ';
@@ -102,7 +103,7 @@ The command is likely blocked on an interactive prompt. Kill this task and re-ru
     clearInterval(timer);
   };
 }
-function enqueueShellNotification(taskId: string, description: string, status: 'completed' | 'failed' | 'killed', exitCode: number | undefined, setAppState: SetAppState, toolUseId?: string, kind: BashTaskKind = 'bash', agentId?: AgentId): void {
+function enqueueShellNotification(taskId: string, description: string, status: 'completed' | 'failed' | 'killed', exitCode: number | undefined, setAppState: SetAppState, toolUseId?: string, kind: BashTaskKind = 'bash', agentId?: AgentId, note?: string): void {
   // Atomically check and set notified flag to prevent duplicate notifications.
   // If the task was already marked as notified (e.g., by TaskStopTool), skip
   // enqueueing to avoid sending redundant messages to the model.
@@ -156,6 +157,7 @@ function enqueueShellNotification(taskId: string, description: string, status: '
     }
   }
   const outputPath = getTaskOutputPath(taskId);
+  if (note) summary = `${summary}. ${note}`;
   const toolUseIdLine = toolUseId ? `\n<${TOOL_USE_ID_TAG}>${toolUseId}</${TOOL_USE_ID_TAG}>` : '';
   const message = `<${TASK_NOTIFICATION_TAG}>
 <${TASK_ID_TAG}>${taskId}</${TASK_ID_TAG}>${toolUseIdLine}
@@ -240,7 +242,15 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
         endTime: Date.now()
       };
     });
-    enqueueShellNotification(taskId, description, wasKilled ? 'killed' : result.code === 0 ? 'completed' : 'failed', result.code, setAppState, toolUseId, kind, agentId);
+    // What the command left running when it ended becomes a task of its own
+    // (`CLAUDIN_ADOPT_LEFTOVERS`, leftovers.ts), named in the notification.
+    const leftoverNote = !wasKilled && result.leftovers ? adoptLeftoversNote(result.leftovers, {
+      command,
+      description,
+      toolUseId,
+      agentId
+    }, setAppState) : undefined;
+    enqueueShellNotification(taskId, description, wasKilled ? 'killed' : result.code === 0 ? 'completed' : 'failed', result.code, setAppState, toolUseId, kind, agentId, leftoverNote);
     void evictTaskOutput(taskId);
   });
   return {

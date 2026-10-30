@@ -638,3 +638,105 @@ describe('runShellCommand — interrupt-backgrounding (regression for shells-stu
     TEST_TIMEOUT_MS,
   )
 })
+
+describe('runShellCommand — CLAUDIN_ADOPT_LEFTOVERS', () => {
+  const saved = process.env.CLAUDIN_ADOPT_LEFTOVERS
+  const strays: number[] = []
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_ADOPT_LEFTOVERS
+    else process.env.CLAUDIN_ADOPT_LEFTOVERS = saved
+    for (const pid of strays.splice(0)) {
+      try {
+        process.kill(pid, 'SIGKILL')
+      } catch {
+        // already gone
+      }
+    }
+  })
+
+  /** The pid of the `sleep` the command printed with `echo $!`. */
+  function strayFrom(stdout: string): number {
+    const pid = Number(stdout.trim().split('\n').pop())
+    strays.push(pid)
+    return pid
+  }
+
+  function shellTasks(state: AppState) {
+    return Object.values(state.tasks ?? {}).filter(isLocalShellTask)
+  }
+
+  test(
+    'a foreground command that leaves a process running hands it to a task and says so',
+    async () => {
+      process.env.CLAUDIN_ADOPT_LEFTOVERS = '1'
+      const harness = makeStateHarness()
+      const result = await consume(
+        runShellCommand({
+          input: { command: 'sleep 300 & echo $!', description: 'start a sleeper' },
+          abortController: new AbortController(),
+          setAppState: harness.setAppState,
+          setToolJSX: () => {},
+          isMainThread: true,
+        }),
+      )
+      const pid = strayFrom(result.stdout)
+      expect(result.leftoverNote).toContain(`pid ${pid}`)
+      expect(result.leftoverNote).toContain('adopted as task')
+      const [task] = shellTasks(harness.getState())
+      expect(task?.status).toBe('running')
+      expect(task?.command).toBe('sleep 300 & echo $!')
+      expect(result.leftoverNote).toContain(task!.id)
+    },
+    TEST_TIMEOUT_MS,
+  )
+
+  test(
+    'without the switch the result and the task list say nothing',
+    async () => {
+      delete process.env.CLAUDIN_ADOPT_LEFTOVERS
+      const harness = makeStateHarness()
+      const result = await consume(
+        runShellCommand({
+          input: { command: 'sleep 300 & echo $!' },
+          abortController: new AbortController(),
+          setAppState: harness.setAppState,
+          setToolJSX: () => {},
+          isMainThread: true,
+        }),
+      )
+      strayFrom(result.stdout)
+      expect(result.leftoverNote).toBeUndefined()
+      expect(shellTasks(harness.getState())).toEqual([])
+    },
+    TEST_TIMEOUT_MS,
+  )
+
+  test(
+    'a background command that leaves a process running names the adopted task in its notification',
+    async () => {
+      process.env.CLAUDIN_ADOPT_LEFTOVERS = '1'
+      const harness = makeStateHarness()
+      const result = await consume(
+        runShellCommand({
+          input: { command: 'sleep 300 & echo $!', description: 'start in background', run_in_background: true },
+          abortController: new AbortController(),
+          setAppState: harness.setAppState,
+          setToolJSX: () => {},
+          isMainThread: true,
+        }),
+      )
+      expect(result.backgroundTaskId).toBeDefined()
+      const deadline = Date.now() + 10_000
+      while (shellTasks(harness.getState()).length < 2 && Date.now() < deadline) await sleep(50)
+      const adopted = shellTasks(harness.getState()).find(t => t.id !== result.backgroundTaskId)
+      expect(adopted?.status).toBe('running')
+      const { getCommandQueue } = await import('src/agent/messageQueueManager.js')
+      const note = getCommandQueue().find(c => String(c.value).includes(result.backgroundTaskId!))
+      expect(String(note?.value)).toContain(`adopted as task ${adopted!.id}`)
+      // Stop the sleeper through the task, the way the model would.
+      const { killTask } = await import('src/agent/tasks/LocalShellTask/killShellTasks.js')
+      killTask(adopted!.id, harness.setAppState)
+    },
+    TEST_TIMEOUT_MS,
+  )
+})

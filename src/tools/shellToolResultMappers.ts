@@ -54,6 +54,11 @@ export type ShellToolResultData = {
    * which renders stdout.
    */
   readNote?: string | null
+  /**
+   * The processes a run left in its group, adopted as a task, and how to stop
+   * them (`CLAUDIN_ADOPT_LEFTOVERS`, LocalShellTask/leftovers.ts).
+   */
+  leftoverNote?: string | null
 }
 
 /**
@@ -152,7 +157,7 @@ export function mapShellResultToToolResultBlockParam(
   const trimmed = trimShellStdout(normalizedStdout)
   const errorMessage = buildShellErrorMessage(normalizedStderr, data.interrupted)
   const backgroundInfo = buildShellBackgroundInfo(data)
-  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)
+  const after = [data.readNote, errorMessage, backgroundInfo, data.leftoverNote].filter(Boolean)
 
   let processedStdout = trimmed
   if (data.persistedOutputPath) {

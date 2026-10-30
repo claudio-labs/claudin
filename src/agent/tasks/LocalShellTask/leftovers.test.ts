@@ -1,16 +1,17 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { spawn } from 'child_process'
 
+import type { SetAppState } from 'src/agent/Task.js'
+
 import { killTask } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
+import { adoptLeftovers, describeLeftovers } from 'src/agent/tasks/LocalShellTask/leftovers.js'
 import {
-  adoptLeftovers,
-  describeLeftovers,
-  findLeftovers,
+  findProcessGroup as findLeftovers,
   isAdoptLeftoversEnabled,
-  killLeftovers,
-  type LeftoverDeps,
-  type LeftoverGroup,
-} from 'src/agent/tasks/LocalShellTask/leftovers.js'
+  type ProcessGroup as LeftoverGroup,
+  type ProcessGroupDeps as LeftoverDeps,
+  stopProcessGroup as killLeftovers,
+} from 'src/shared/proc/processGroup.js'
 
 type Row = { pid: number; pgid: number; command: string }
 
@@ -35,12 +36,10 @@ function fakeDeps(rows: Row[]) {
 
 function store() {
   const state = { current: { tasks: {} as Record<string, Record<string, unknown>> } }
-  return {
-    state,
-    setAppState: (f: (prev: never) => never) => {
-      state.current = f(state.current as never) as typeof state.current
-    },
+  const setAppState: SetAppState = f => {
+    state.current = f(state.current as never) as unknown as typeof state.current
   }
+  return { state, setAppState }
 }
 
 const saved = process.env.CLAUDIN_ADOPT_LEFTOVERS
