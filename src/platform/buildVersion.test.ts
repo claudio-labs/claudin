@@ -26,6 +26,15 @@ describe('getDisplayVersion', () => {
     expect(getDisplayVersion()).toBeUndefined()
   })
 
+  test('is undefined where a suite left MACRO holding undefined', () => {
+    // What `globalThis.MACRO = original` leaves when the original was unset
+    // (StartupScreen.test.ts, claudinInstallSurfaces.test.ts): the property
+    // exists, and reading through it is a TypeError, not a ReferenceError.
+    setMacro({ value: undefined, configurable: true, writable: true })
+
+    expect(getDisplayVersion()).toBeUndefined()
+  })
+
   test('lets any other failure through', () => {
     setMacro({
       get() {

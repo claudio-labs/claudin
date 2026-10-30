@@ -182,16 +182,18 @@ describe('working tree in the way', () => {
     expect(diagnoseReal(path, ['pull'])).toContain('git pull --autostash')
   })
 
-  test('a merging pull that would overwrite local changes names --autostash', () => {
-    // The 2026-10-25..30 census: `git pull --ff-only` refused over team-memory
-    // notes the session had written, and the line named only commit or stash.
+  test('a pull that would overwrite local changes names no --autostash', () => {
+    // A would-overwrite refusal means the incoming commits touch the dirty
+    // files, so `--autostash` would leave the tree conflicted with exit 0 and
+    // the stash kept (review of fix/census-2026-10-30).
     const { path } = repoBehindOrigin()
     git(path, ['reset', '-q', '--hard', 'HEAD~1'])
     git(path, ['config', 'pull.rebase', 'false'])
     writeRepoFile(path, 'src/app.ts', 'dirty\n')
     const line = diagnoseReal(path, ['pull', '--ff-only'])
     expect(line).toContain('would be overwritten by merge')
-    expect(line).toContain('git pull --autostash')
+    expect(line).toContain('git stash')
+    expect(line).not.toContain('--autostash')
   })
 
   test('a rebase over a dirty tree names --autostash', () => {
