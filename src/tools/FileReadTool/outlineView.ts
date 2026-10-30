@@ -71,7 +71,7 @@ export const READ_AUTO_OUTLINE_MIN_SYMBOLS = 3
  * limit (25k tokens, `limits.ts`), so dropping the outline never turns into a
  * refusal.
  */
-export const READ_PROSE_BODY_MAX_CHARS = 25_000
+const READ_PROSE_BODY_MAX_CHARS = 25_000
 
 /** The outline languages whose symbols are headings or file sections, not code. */
 const PROSE_OUTLINE_LANGS: ReadonlySet<OutlineLang> = new Set<OutlineLang>(['markdown', 'diff'])

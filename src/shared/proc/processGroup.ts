@@ -18,7 +18,7 @@ import { getErrnoCode } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 
 /** One line of the process table. */
-export type ProcessRow = { pid: number; pgid: number; command: string }
+type ProcessRow = { pid: number; pgid: number; command: string }
 
 /** A group that outlived its shell, and who was in it when it was found. */
 export type ProcessGroup = {
