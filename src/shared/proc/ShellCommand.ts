@@ -3,6 +3,8 @@ import { stat } from 'fs/promises'
 import type { Readable } from 'stream'
 import treeKill from 'tree-kill'
 import { generateTaskId } from 'src/agent/Task.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import {
   MAX_TASK_OUTPUT_BYTES,
@@ -69,6 +71,24 @@ let killGraceMs = KILL_GRACE_MS
 /** Test-only: shorten the SIGTERM → SIGKILL grace; `null` restores it. */
 export function _setKillGraceMsForTesting(ms: number | null): void {
   killGraceMs = ms ?? KILL_GRACE_MS
+}
+
+/**
+ * Signal the process group the shell leads. Shell.ts spawns it detached, so
+ * its pid is its group's, and every process it starts stays in the group
+ * unless it asks for a session of its own. `treeKill` walks parent links
+ * instead, and a process whose parent exited — `(server &)`, a script that
+ * backgrounds a server and returns — is no longer anyone's child there: it
+ * outlived TaskStop and was killed by hand, by pid (the 10-25..30 census).
+ * No such group (a shell spawned attached, as hooks are) is not an error.
+ */
+function signalProcessGroup(pid: number, signal: NodeJS.Signals): void {
+  if (process.platform === 'win32') return
+  try {
+    process.kill(-pid, signal)
+  } catch (e) {
+    if (getErrnoCode(e) !== 'ESRCH') logError(e)
+  }
 }
 
 // Background tasks write stdout/stderr directly to a file fd (no JS involvement),
@@ -372,17 +392,21 @@ class ShellCommandImpl implements ShellCommand {
     this.#status = 'killed'
     const child = this.#childProcess
     const pid = child.pid
+    const shellRunning = () => child.exitCode === null && child.signalCode === null
     if (pid && !graceful) {
       treeKill(pid, 'SIGKILL')
+      if (shellRunning()) signalProcessGroup(pid, 'SIGKILL')
     } else if (pid) {
       treeKill(pid, 'SIGTERM')
+      if (shellRunning()) signalProcessGroup(pid, 'SIGTERM')
       // Escalate only while the shell itself is still running: its pid is
       // still ours and the tree walk starts from it. Once it has exited, every
       // descendant already got the same SIGTERM, and a pid looked up later may
       // belong to an unrelated process.
       const escalate = setTimeout(() => {
-        if (child.exitCode === null && child.signalCode === null) {
+        if (shellRunning()) {
           treeKill(pid, 'SIGKILL')
+          signalProcessGroup(pid, 'SIGKILL')
         }
       }, killGraceMs)
       escalate.unref()
