@@ -454,6 +454,19 @@ describe('ShellCommand — the process group', () => {
     expect(member?.command).toContain('sleep 300')
   })
 
+  test('CLAUDIN_ADOPT_LEFTOVERS: a killed shell reports nothing, even when a member outlived the signal', async () => {
+    process.env.CLAUDIN_ADOPT_LEFTOVERS = '1'
+    // No SIGKILL escalation inside the test: the survivor must still be there.
+    _setKillGraceMsForTesting(60_000)
+    const file = pidFile()
+    const { command } = start(`(trap '' TERM; exec sleep 300) & echo $! > "$PIDFILE"; sleep 300`, { PIDFILE: file })
+    const survivor = await pidFrom(file)
+    command.kill()
+    const result = await command.result
+    expect(alive(survivor)).toBe(true)
+    expect(result.leftovers).toBeUndefined()
+  })
+
   test('without the switch the result says nothing about what was left running', async () => {
     delete process.env.CLAUDIN_ADOPT_LEFTOVERS
     const file = pidFile()

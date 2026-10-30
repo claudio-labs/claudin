@@ -100,6 +100,21 @@ describe('killLeftovers', () => {
     expect(killLeftovers(group, fake.deps)).toBe(false)
     expect(fake.signals.filter(([, sig]) => sig !== 0)).toEqual([])
   })
+
+  test('a group that ignores SIGTERM gets SIGKILL after the grace', async () => {
+    const fake = fakeDeps([{ pid: 501, pgid: 500, command: 'server' }])
+    expect(killLeftovers(group, fake.deps, 10)).toBe(true)
+    await new Promise(r => setTimeout(r, 60))
+    expect(fake.signals).toContainEqual([-500, 'SIGKILL'])
+  })
+
+  test('no SIGKILL for a group whose recorded members left during the grace', async () => {
+    const fake = fakeDeps([{ pid: 501, pgid: 500, command: 'server' }])
+    expect(killLeftovers(group, fake.deps, 10)).toBe(true)
+    fake.rows.splice(0)
+    await new Promise(r => setTimeout(r, 60))
+    expect(fake.signals.map(([, sig]) => sig)).not.toContain('SIGKILL')
+  })
 })
 
 describe('describeLeftovers', () => {

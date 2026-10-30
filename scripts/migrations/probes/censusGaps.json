@@ -1,0 +1,189 @@
+{
+  "test": [
+    "src/agent/tasks/tasks.test.ts",
+    "src/tools/TaskListTool/TaskListTool.test.ts",
+    "src/agent/tasks/planTasks.test.ts",
+    "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.call.test.ts",
+    "src/tools/FileReadTool/autoOutlineOnElision.test.ts",
+    "src/tools/FileReadTool/batch.test.ts",
+    "src/tools/shared/outputFilter/Bash/readLane.test.ts",
+    "src/tools/shared/outputFilter/Bash/lineBound.test.ts",
+    "src/tools/shared/outputFilter/Bash/fileReadShape.test.ts",
+    "src/tools/GitTool/budget.test.ts",
+    "src/tools/shared/outputFilter/Bash/filters/git.test.ts",
+    "src/shared/proc/ShellCommand.test.ts",
+    "src/platform/shell/bashProvider.test.ts",
+    "src/agent/tasks/LocalShellTask/leftovers.test.ts",
+    "src/tools/BashTool/runShellCommand.test.ts",
+    "src/tools/shellToolResultMappers.test.ts"
+  ],
+  "source": "src/agent/tasks/tasks.ts",
+  "probes": [
+    {
+      "name": "tasks: listTasks keeps the readdir order",
+      "find": "    .filter((t): t is Task => t !== null)\n    .sort((a, b) => compareTaskIds(a.id, b.id))\n",
+      "replace": "    .filter((t): t is Task => t !== null)\n"
+    },
+    {
+      "name": "tasks: ids compare as strings, so 10 sorts before 9",
+      "find": "  if (!isNaN(aNum) && !isNaN(bNum)) {\n    return aNum - bNum\n  }\n  return a.localeCompare(b)",
+      "replace": "  return a.localeCompare(b)"
+    },
+    {
+      "name": "plan ids: the flag is ignored",
+      "source": "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts",
+      "find": "    const namesTasks = tasksSeeded > 0 && isPlanTaskIdsEnabled()\n",
+      "replace": "    const namesTasks = false\n"
+    },
+    {
+      "name": "plan ids: TaskUpdate always counts as loaded",
+      "source": "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts",
+      "find": "            taskUpdate !== undefined &&\n            isUnloadedDeferredTool(taskUpdate, context.options.tools, context.messages),\n",
+      "replace": "            false,\n"
+    },
+    {
+      "name": "plan ids: the list is never capped",
+      "source": "src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts",
+      "find": "const MAX_LISTED_TASKS = 30\n",
+      "replace": "const MAX_LISTED_TASKS = 1000\n"
+    },
+    {
+      "name": "plan ids: seeding returns nothing it created",
+      "source": "src/agent/tasks/planTasks.ts",
+      "find": "      created.push({ id, subject })\n",
+      "replace": ""
+    },
+    {
+      "name": "prose: the flag is ignored",
+      "source": "src/tools/FileReadTool/outlineView.ts",
+      "find": "  if (!isEnvTruthy(process.env.CLAUDIN_OUTLINE_PROSE_BY_LINES)) return false\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "prose: code reads whole too",
+      "source": "src/tools/FileReadTool/outlineView.ts",
+      "find": "    PROSE_OUTLINE_LANGS.has(lang) &&\n",
+      "replace": "    lang !== undefined &&\n"
+    },
+    {
+      "name": "prose: no line ceiling",
+      "source": "src/tools/FileReadTool/outlineView.ts",
+      "find": "    totalLines < READ_AUTO_OUTLINE_THRESHOLD_LINES &&\n",
+      "replace": "    totalLines >= 0 &&\n"
+    },
+    {
+      "name": "prose: no char ceiling",
+      "source": "src/tools/FileReadTool/outlineView.ts",
+      "find": "    chars <= READ_PROSE_BODY_MAX_CHARS\n",
+      "replace": "    chars >= 0\n"
+    },
+    {
+      "name": "lane: ~ stays unexpanded",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return HOME_TILDE_RE.test(text) ? join(homedir(), text.slice(1)) : text;\n",
+      "replace": "  return text;\n"
+    },
+    {
+      "name": "lane: ~bob counts as home",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "const HOME_TILDE_RE = /^~(?=\\/|$)/;\n",
+      "replace": "const HOME_TILDE_RE = /^~/;\n"
+    },
+    {
+      "name": "lane: a sed script around a loop variable is no range print",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    const scriptRanges = sedScriptRanges(script) ?? loopScriptRanges(script, loopWords);\n",
+      "replace": "    const scriptRanges = sedScriptRanges(script);\n"
+    },
+    {
+      "name": "lane: the first pass, not the widest, sets the bound",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (lines > widestLines) {\n",
+      "replace": "      if (widest === null) {\n"
+    },
+    {
+      "name": "lane: one bad pass does not refuse the loop",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (ranges === null) return null;\n      const lines = ranges.reduce",
+      "replace": "      if (ranges === null) continue;\n      const lines = ranges.reduce"
+    },
+    {
+      "name": "lane: the line bound never learns the loop words",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  const print = sedPrintOf(args, scope.loopWords);\n",
+      "replace": "  const print = sedPrintOf(args);\n"
+    },
+    {
+      "name": "diff: Bash gets the Git tool's wording",
+      "source": "src/tools/shared/outputFilter/Bash/filters/git.ts",
+      "find": "  const rendered = renderDiff(lines.slice(0, end).join('\\n'), 'shell')\n",
+      "replace": "  const rendered = renderDiff(lines.slice(0, end).join('\\n'))\n"
+    },
+    {
+      "name": "diff: a one-file pivot points at that same file",
+      "source": "src/tools/GitTool/parsers/diff.ts",
+      "find": "      : files.length === 1\n        ? 'Re-send this command with full: true for its hunks.'\n",
+      "replace": "      : false\n        ? 'Re-send this command with full: true for its hunks.'\n"
+    },
+    {
+      "name": "diff: the per-file hint sends Bash to full: true",
+      "source": "src/tools/GitTool/parsers/diff.ts",
+      "find": "  const rest = reader === 'shell' ? 'add `| cat` to the command for the rest' : 'full: true for the rest'\n",
+      "replace": "  const rest = 'full: true for the rest'\n"
+    },
+    {
+      "name": "kill: the group is never signalled",
+      "source": "src/shared/proc/processGroup.ts",
+      "find": "    process.kill(-pid, signal)\n",
+      "replace": "    void pid\n"
+    },
+    {
+      "name": "shell: job control stays on",
+      "source": "src/platform/shell/bashProvider.ts",
+      "find": "      const disableJobControlCmd = getDisableJobControlCommand(shellPath)\n      if (disableJobControlCmd) {\n",
+      "replace": "      const disableJobControlCmd = getDisableJobControlCommand(shellPath)\n      if (false) {\n"
+    },
+    {
+      "name": "leftovers: the flag is ignored",
+      "source": "src/shared/proc/processGroup.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_ADOPT_LEFTOVERS)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "leftovers: a killed shell is probed too",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "    const pid = this.#status === 'completed' ? this.#childProcess?.pid : undefined\n",
+      "replace": "    const pid = this.#childProcess?.pid\n"
+    },
+    {
+      "name": "leftovers: the group is stopped even when its members are gone",
+      "source": "src/shared/proc/processGroup.ts",
+      "find": "  if (!stillOurs()) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "leftovers: no SIGKILL after the grace",
+      "source": "src/shared/proc/processGroup.ts",
+      "find": "      deps.signal(-group.pgid, 'SIGKILL')\n",
+      "replace": "      void group\n"
+    },
+    {
+      "name": "leftovers: a group that ends on its own leaves the task running",
+      "source": "src/agent/tasks/LocalShellTask/leftovers.ts",
+      "find": "        status: 'completed',\n",
+      "replace": "        status: 'running',\n"
+    },
+    {
+      "name": "leftovers: a foreground run is never adopted",
+      "source": "src/tools/BashTool/runShellCommand.tsx",
+      "find": "        shellCommand.cleanup();\n        return withAdoptedLeftovers(result);\n",
+      "replace": "        shellCommand.cleanup();\n        return result;\n"
+    },
+    {
+      "name": "leftovers: the note never reaches the model",
+      "source": "src/tools/shellToolResultMappers.ts",
+      "find": "  const after = [data.readNote, errorMessage, backgroundInfo, data.leftoverNote].filter(Boolean)\n",
+      "replace": "  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)\n"
+    }
+  ]
+}

@@ -101,9 +101,13 @@ export function findProcessGroup(pgid: number, deps: ProcessGroupDeps = SYSTEM):
  * Stop a group found earlier: SIGTERM, and SIGKILL if it is still there after
  * the grace. Nothing is sent once none of the members recorded at finding time
  * is left in it, since by then the group id may belong to someone else.
- * Returns whether a signal went out.
+ * Returns whether a signal went out. `graceMs` is for tests.
  */
-export function stopProcessGroup(group: ProcessGroup, deps: ProcessGroupDeps = SYSTEM): boolean {
+export function stopProcessGroup(
+  group: ProcessGroup,
+  deps: ProcessGroupDeps = SYSTEM,
+  graceMs = STOP_GRACE_MS,
+): boolean {
   const recorded = new Set(group.members.map(m => m.pid))
   const stillOurs = () => deps.list().some(row => row.pgid === group.pgid && recorded.has(row.pid))
   if (!stillOurs()) return false
@@ -120,7 +124,7 @@ export function stopProcessGroup(group: ProcessGroup, deps: ProcessGroupDeps = S
     } catch (e) {
       if (getErrnoCode(e) !== 'ESRCH') logError(e)
     }
-  }, STOP_GRACE_MS)
+  }, graceMs)
   escalate.unref()
   return true
 }

@@ -691,6 +691,27 @@ describe('runShellCommand — CLAUDIN_ADOPT_LEFTOVERS', () => {
   )
 
   test(
+    'a command still running past the progress threshold is adopted on the same terms',
+    async () => {
+      process.env.CLAUDIN_ADOPT_LEFTOVERS = '1'
+      const harness = makeStateHarness()
+      const result = await consume(
+        runShellCommand({
+          input: { command: 'sleep 300 & echo $!; sleep 3', description: 'start, then wait' },
+          abortController: new AbortController(),
+          setAppState: harness.setAppState,
+          setToolJSX: () => {},
+          isMainThread: true,
+        }),
+      )
+      const pid = strayFrom(result.stdout)
+      expect(result.leftoverNote).toContain(`pid ${pid}`)
+      expect(shellTasks(harness.getState()).map(t => t.status)).toEqual(['running'])
+    },
+    TEST_TIMEOUT_MS,
+  )
+
+  test(
     'without the switch the result and the task list say nothing',
     async () => {
       delete process.env.CLAUDIN_ADOPT_LEFTOVERS
