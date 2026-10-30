@@ -11,7 +11,9 @@ import { join } from 'path'
 import { expect, test } from 'bun:test'
 
 const REPO_ROOT = join(import.meta.dir, '..', '..')
-const GUARD_RE = /typeof\s+MACRO\b/
+// `typeof MACRO.X` is fine: the build replaces the member inside it.
+const GUARD_RE = /typeof\s*\(?\s*MACRO\b(?!\s*\.)/
+const COMMENT_LINE_RE = /^\s*(\/\/|\/?\*)/
 const SOURCE_RE = /\.tsx?$/
 const SKIPPED_RE = /\.test\.tsx?$|\.d\.ts$/
 
@@ -35,7 +37,7 @@ test('no source guards a build constant with typeof MACRO', () => {
   for (const file of files) {
     const lines = readFileSync(join(REPO_ROOT, file), 'utf8').split('\n')
     lines.forEach((line, i) => {
-      if (GUARD_RE.test(line)) offenders.push(`${file}:${i + 1}`)
+      if (GUARD_RE.test(line) && !COMMENT_LINE_RE.test(line)) offenders.push(`${file}:${i + 1}`)
     })
   }
   expect(offenders).toEqual([])
