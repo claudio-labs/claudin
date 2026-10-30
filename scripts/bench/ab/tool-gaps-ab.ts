@@ -75,10 +75,15 @@ export const ARM_ENV: Record<string, Record<string, string>> = {
     CLAUDIN_ADOPT_LEFTOVERS: '1',
     CLAUDIN_DISABLE_TOOL_REDIRECT: '1',
   },
+  // The call-forms run compares against this branch's defaults, the 10-30
+  // promotion included: `--only=current,current-placebo,meta`.
+  current: {},
+  'current-placebo': { CLAUDIN_BENCH_PLACEBO: '1' },
+  meta: { CLAUDIN_DEFERRED_CALL_FORMS: '1' },
 }
 const ALL_ARMS = Object.keys(ARM_ENV)
 /** Arms built from this branch: the diff-wording fix must hold in all of them. */
-const BRANCH_ARMS = ['base', 'placebo', 'combo']
+const BRANCH_ARMS = ['base', 'placebo', 'combo', 'current', 'current-placebo', 'meta']
 
 type Args = {
   reps: number
@@ -116,7 +121,7 @@ type RunResult = {
 export function parseArgs(argv: string[]): Args {
   const a: Args = {
     reps: 1,
-    arms: [...ALL_ARMS],
+    arms: ['main', 'base', 'placebo', 'combo'],
     phases: [1, 2],
     model: 'claude-sonnet-5-5',
     effort: 'medium',
@@ -342,6 +347,7 @@ type Gate = { gate: string; verdict: 'PASS' | 'FAIL' | 'NO HEADROOM' | 'n/a'; de
 
 export function gates(results: readonly RunResult[]): Gate[] {
   const of = (arm: string) => results.filter(r => r.arm === arm)
+  if (of('meta').length > 0) return metaGates(results)
   const base = of('base')
   const combo = of('combo')
   const placebo = of('placebo')
@@ -384,6 +390,45 @@ export function gates(results: readonly RunResult[]): Gate[] {
   const branch = results.filter(r => BRANCH_ARMS.includes(r.arm))
   const reruns = branch.reduce((n, r) => n + r.mechanisms.diffCatReruns + r.mechanisms.diffPivotsNamingGitToBash, 0)
   out.push({ gate: 'diff wording (branch arms)', verdict: reruns === 0 ? 'PASS' : 'FAIL', detail: `| cat re-runs + Git-tool hints to Bash: ${reruns}; main arm: ${of('main').reduce((n, r) => n + r.mechanisms.diffCatReruns, 0)} re-runs` })
+  return out
+}
+
+/**
+ * The call-forms run (CLAUDIN_DEFERRED_CALL_FORMS), pre-registered 10-30 in
+ * `.claudin/plans/peaceful-foraging-kahn.md`. Its baseline is this branch's
+ * defaults (`current`), with a placebo of the same defaults. Passes when every
+ * arm keeps the hidden tests, ToolSearch-only requests fall in at least 2 of 3
+ * meta reps, no direct call to a deferred tool errors, and the meta arm's
+ * median cost is no higher than the higher of current and its placebo.
+ */
+function metaGates(results: readonly RunResult[]): Gate[] {
+  const of = (arm: string) => results.filter(r => r.arm === arm)
+  const main = of('current')
+  const placebo = of('current-placebo')
+  const meta = of('meta')
+  const hidden = (rs: RunResult[]) => rs.reduce((n, r) => n + hiddenPass(r), 0)
+  const out: Gate[] = []
+  const arms = [main, placebo, meta].filter(rs => rs.length)
+  out.push({
+    gate: 'correctness',
+    verdict: results.every(r => !broken(r)) && arms.every(rs => hidden(rs) >= hidden(main)) ? 'PASS' : 'FAIL',
+    detail: `hidden current ${hidden(main)}, placebo ${hidden(placebo)}, meta ${hidden(meta)}`,
+  })
+  const tsMain = median(main.map(r => r.mechanisms.toolSearchOnlyRequests))
+  const fell = meta.filter(r => r.mechanisms.toolSearchOnlyRequests < tsMain).length
+  const errs = meta.reduce((n, r) => n + r.mechanisms.directDeferredErr, 0)
+  out.push({
+    gate: 'call forms: ToolSearch-only requests',
+    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',
+    detail: `current median ${tsMain}; meta per rep ${meta.map(r => r.mechanisms.toolSearchOnlyRequests).join(',')}; direct deferred calls ok ${meta.reduce((n, r) => n + r.mechanisms.directDeferredOk, 0)}, errors ${errs}`,
+  })
+  const cost = (rs: RunResult[]) => median(rs.map(r => r.costUsd))
+  const ceiling = placebo.length ? Math.max(cost(main), cost(placebo)) : cost(main)
+  out.push({
+    gate: 'cost',
+    verdict: cost(meta) <= ceiling ? 'PASS' : 'FAIL',
+    detail: `median $ meta ${cost(meta).toFixed(3)}, current ${cost(main).toFixed(3)}${placebo.length ? `, placebo ${cost(placebo).toFixed(3)}` : ''}`,
+  })
   return out
 }
 
@@ -445,6 +490,10 @@ const MECHANISM_ROWS: Array<[string, (r: RunResult) => number]> = [
   ['file-tools notes', r => r.mechanisms.fileToolsNotes],
   ['file-tools notes followed', r => r.mechanisms.fileToolsNotesFollowed],
   ['Read/Grep/Glob share %', r => dedicatedReadShare(r.mechanisms)],
+  ['ToolSearch-only requests', r => r.mechanisms.toolSearchOnlyRequests],
+  ['other meta-only requests', r => r.mechanisms.otherMetaOnlyRequests],
+  ['direct deferred calls, ok', r => r.mechanisms.directDeferredOk],
+  ['direct deferred calls, error', r => r.mechanisms.directDeferredErr],
 ]
 
 export function report(results: readonly RunResult[], args: Args): string {

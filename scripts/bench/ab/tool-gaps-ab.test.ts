@@ -136,3 +136,39 @@ describe('reapLeaks', () => {
     }
   })
 })
+
+describe('gates — the call-forms run', () => {
+  const run = (metaTs: number[], metaErr = 0, metaCost = 1) => [
+    ...[2, 2, 1].map(ts => result('current', { m: { toolSearchOnlyRequests: ts } })),
+    ...[2, 2, 2].map(ts => result('current-placebo', { m: { toolSearchOnlyRequests: ts } })),
+    ...metaTs.map(ts => result('meta', { cost: metaCost, m: { toolSearchOnlyRequests: ts, directDeferredErr: metaErr, directDeferredOk: 3 } })),
+  ]
+
+  test('fewer ToolSearch-only requests in 2 of 3 reps, no errors, no dearer: pass', () => {
+    const g = gates(run([0, 1, 2]))
+    expect(g.map(x => x.gate)).toEqual(['correctness', 'call forms: ToolSearch-only requests', 'cost'])
+    expect(g.every(x => x.verdict === 'PASS')).toBe(true)
+  })
+
+  test('one rep with fewer is not enough', () => {
+    expect(verdictOf(run([0, 2, 2]), 'call forms: ToolSearch-only requests')).toBe('FAIL')
+  })
+
+  test('a direct call that errors fails it', () => {
+    expect(verdictOf(run([0, 0, 0], 1), 'call forms: ToolSearch-only requests')).toBe('FAIL')
+  })
+
+  test('dearer than both baselines fails the cost gate', () => {
+    expect(verdictOf(run([0, 0, 0], 0, 1.2), 'cost')).toBe('FAIL')
+  })
+
+  test('a baseline that never searches has no headroom', () => {
+    const rs = [result('current'), result('current-placebo'), result('meta')]
+    expect(verdictOf(rs, 'call forms: ToolSearch-only requests')).toBe('NO HEADROOM')
+  })
+
+  test('the default arm set is still the 10-30 one', () => {
+    expect(parseArgs(['--bin=main:/wt/bin/claudin']).arms).toEqual(['main', 'base', 'placebo', 'combo'])
+    expect(parseArgs(['--only=current,current-placebo,meta']).arms).toEqual(['current', 'current-placebo', 'meta'])
+  })
+})

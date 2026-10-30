@@ -9,7 +9,7 @@ let seq = 0
 function call(name: string, input: Json, text: string, isError = false): Json[] {
   const id = `toolu_${++seq}`
   return [
-    { type: 'assistant', message: { content: [{ type: 'tool_use', id, name, input }] } },
+    { type: 'assistant', message: { id: `msg_${id}`, content: [{ type: 'tool_use', id, name, input }] } },
     { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error: isError, content: text }] } },
   ]
 }
@@ -148,5 +148,44 @@ describe('approver', () => {
       result: { content: { text: string }[] }
     }
     expect(JSON.parse(called.result.content[0]!.text)).toEqual({ behavior: 'allow', updatedInput: {} })
+  })
+})
+
+describe('mechanismsOf — call forms', () => {
+  test('requests that only ran ToolSearch or other meta tools, counted per request', () => {
+    const together: Json = {
+      type: 'assistant',
+      message: { id: 'msg_pair', content: [
+        { type: 'tool_use', id: 'p1', name: 'ToolSearch', input: { query: 'select:WaitFor' } },
+        { type: 'tool_use', id: 'p2', name: 'Bash', input: { command: 'ls' } },
+      ] },
+    }
+    const m = mechanismsOf(
+      [
+        ...call('ToolSearch', { query: 'select:EnterPlanMode,ExitPlanMode' }, ''),
+        ...call('EnterPlanMode', {}, 'Entered plan mode'),
+        ...call('TaskUpdate', { taskId: '1', status: 'completed' }, 'Updated task #1'),
+        together,
+        ...call('Read', { file_path: '/ws/a.ts' }, '1→x'),
+      ],
+      [],
+    )
+    expect(m.toolSearchOnlyRequests).toBe(1)
+    expect(m.otherMetaOnlyRequests).toBe(2)
+  })
+
+  test('a deferred built-in called before any ToolSearch loaded it, by outcome', () => {
+    const m = mechanismsOf(
+      [
+        ...call('EnterPlanMode', {}, 'Entered plan mode'),
+        ...call('TaskList', {}, 'InputValidationError', true),
+        ...call('ToolSearch', { query: 'select:TaskUpdate' }, ''),
+        ...call('TaskUpdate', { taskId: '1', status: 'completed' }, 'Updated task #1'),
+        ...call('WaitFor', { command: 'x' }, 'ok'),
+      ],
+      [],
+    )
+    expect(m.directDeferredOk).toBe(1)
+    expect(m.directDeferredErr).toBe(1)
   })
 })
