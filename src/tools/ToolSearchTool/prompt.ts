@@ -132,7 +132,7 @@ export function isDeferredTool(tool: Tool): boolean {
  * needs no load: TaskUpdate called from the plan approval's text validated
  * 5 of 5 times on Opus 5.5.
  */
-export function isDeferredCallFormsEnabled(): boolean {
+function isDeferredCallFormsEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)
 }
 
