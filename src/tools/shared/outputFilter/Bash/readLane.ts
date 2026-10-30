@@ -50,6 +50,7 @@
 import { walkCommandSegments } from "src/platform/bash/segments.js";
 import {
   cdTarget,
+  expandHomeTilde,
   isListing,
   type Loop,
   parseLoopHeader,
@@ -88,7 +89,8 @@ function isFileSearch(head: string, args: readonly ReadWord[], loops: readonly L
   const paths = operands.slice(1);
   if (paths.length === 0) return false;
   return paths.every(
-    (path) => !EXPANDED_WORD_RE.test(path.text) || loops.some((loop) => path.text === `$${loop.variable}`),
+    (path) =>
+      !EXPANDED_WORD_RE.test(expandHomeTilde(path.text)) || loops.some((loop) => path.text === `$${loop.variable}`),
   );
 }
 
@@ -133,7 +135,10 @@ export function isModelDirectedRead(command: string): boolean {
     const pipeline = stages;
     stages = [];
     if (pipeline.length === 0) return true;
-    const scope: Scope = { loopVariables: new Set(loops.map((loop) => loop.variable)) };
+    const scope: Scope = {
+      loopVariables: new Set(loops.map((loop) => loop.variable)),
+      loopWords: new Map(loops.map((loop) => [loop.variable, loop.words.map((word) => word.text)])),
+    };
     if (pipeline.length > 1) {
       // Piped, only into a bound: `cat f | head -40`, `grep -n X f | head`.
       const bound = pipelineBound(pipeline, scope);

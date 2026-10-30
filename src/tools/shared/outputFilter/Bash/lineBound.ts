@@ -51,6 +51,7 @@
 import { walkCommandSegments } from "src/platform/bash/segments.js";
 import {
   cdTarget,
+  expandHomeTilde,
   type ReadWord,
   sedPrintOf,
   wordsOf,
@@ -100,8 +101,15 @@ const LINE_FILTERS: ReadonlySet<string> = new Set(["cut", "tr", "sort", "uniq", 
 
 /** What one stage bounds its output to, and the files it reads rather than stdin. */
 type StageBound = { readonly lines: number; readonly files: readonly ReadWord[] };
-/** The variables of the `for` loops a segment sits in: each stands for one word per pass. */
-export type Scope = { readonly loopVariables: ReadonlySet<string> };
+/**
+ * The variables of the `for` loops a segment sits in: each stands for one word
+ * per pass. `loopWords` holds those words, where the caller knows them, so a
+ * sed script written around a variable can be read (`sedPrintOf`).
+ */
+export type Scope = {
+  readonly loopVariables: ReadonlySet<string>;
+  readonly loopWords?: ReadonlyMap<string, readonly string[]>;
+};
 
 /** How many paths `words` name, or null when a glob or an expansion hides the count. */
 function pathCount(words: readonly ReadWord[], scope: Scope): number | null {
@@ -150,7 +158,7 @@ function headOrTailBound(args: readonly ReadWord[], scope: Scope): StageBound | 
 
 /** `sed -n` with a script of numeric range prints (`sedPrintOf`); null without `-n`, where sed prints every line. */
 function sedBound(args: readonly ReadWord[], scope: Scope): StageBound | null {
-  const print = sedPrintOf(args);
+  const print = sedPrintOf(args, scope.loopWords);
   if (!print) return null;
   const lines = print.ranges.reduce((n, [from, to]) => n + to - from + 1, 0);
   // One stream across every file, unless `-s` restarts the line count in each.
@@ -286,7 +294,13 @@ export function pipelineBound(stages: readonly (readonly ReadWord[])[], scope: S
 }
 
 /** An open `for` loop: how many passes it makes, and what its body has added up so far. */
-type Loop = { readonly variable: string; readonly passes: number; lines: number; read: boolean };
+type Loop = {
+  readonly variable: string;
+  readonly words: readonly string[];
+  readonly passes: number;
+  lines: number;
+  read: boolean;
+};
 
 /**
  * The lines `command` limits its output to, or null when any part of it
@@ -302,7 +316,10 @@ export function commandLineBound(command: string): number | null {
   let stages: ReadWord[][] = [];
   let awaitingDo = false;
   const closePipeline = (): boolean => {
-    const bound = pipelineBound(stages, { loopVariables: new Set(loops.map((loop) => loop.variable)) });
+    const bound = pipelineBound(stages, {
+      loopVariables: new Set(loops.map((loop) => loop.variable)),
+      loopWords: new Map(loops.map((loop) => [loop.variable, loop.words])),
+    });
     stages = [];
     if (!bound) return false;
     const into = loops.at(-1) ?? top;
@@ -326,8 +343,11 @@ export function commandLineBound(command: string): number | null {
       const [, variable, keyword, ...list] = words;
       if (!variable || !LOOP_VARIABLE_RE.test(variable.text) || keyword?.text !== "in") return null;
       // A glob or an expansion hides how many passes the loop makes.
-      if (list.length === 0 || list.some((word) => word.glob || EXPANDED_WORD_RE.test(word.text))) return null;
-      loops.push({ variable: variable.text, passes: list.length, lines: 0, read: false });
+      const passWords = list.map((word) => expandHomeTilde(word.text));
+      if (list.length === 0 || list.some((word) => word.glob) || passWords.some((word) => EXPANDED_WORD_RE.test(word))) {
+        return null;
+      }
+      loops.push({ variable: variable.text, words: passWords, passes: list.length, lines: 0, read: false });
       awaitingDo = true;
       continue;
     }
