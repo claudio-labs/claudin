@@ -76,7 +76,7 @@ import {
 import { removeTeammateFromTeamFile } from 'src/agent/coordinator/swarm/teamHelpers.js'
 import { unassignTeammateTasks } from 'src/agent/tasks/tasks.js'
 import { getRunningTasks } from 'src/agent/tasks/framework.js'
-import { isBackgroundTask } from 'src/agent/tasks/types.js'
+import { holdsHeadlessExit, isBackgroundTask } from 'src/agent/tasks/types.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'
@@ -672,20 +672,16 @@ export async function runTurnLoop(
       ctx.runPhase = 'draining_commands'
       await drainCommandQueue()
 
-      // Check for running background tasks before exiting.
-      // Exclude in_process_teammate — teammates are long-lived by design
-      // (status: 'running' for their whole lifetime, cleaned up by the
-      // shutdown protocol, not by transitioning to 'completed'). Waiting
-      // on them here loops forever (gh-30008). Same exclusion already
-      // exists at useBackgroundTaskNavigation.ts:55 for the same reason;
-      // the hold-back check above is already narrower (type === 'local_agent')
-      // so it doesn't hit this.
+      // Check for running background tasks before exiting, except the ones
+      // that run until something stops them (holdsHeadlessExit): teammates,
+      // whose wait looped forever (gh-30008; the same exclusion is at
+      // useBackgroundTaskNavigation.ts:55), and adopted leftovers. The
+      // hold-back check above is already narrower (local_agent and
+      // local_workflow), so it reaches neither.
       waitingForAgents = false
       {
         const state = getAppState()
-        const hasRunningBg = getRunningTasks(state).some(
-          t => isBackgroundTask(t) && t.type !== 'in_process_teammate',
-        )
+        const hasRunningBg = getRunningTasks(state).some(holdsHeadlessExit)
         const hasMainThreadQueued = peek(isMainThread) !== undefined
         if (hasRunningBg || hasMainThreadQueued) {
           waitingForAgents = true

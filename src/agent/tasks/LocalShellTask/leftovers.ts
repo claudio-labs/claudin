@@ -108,6 +108,7 @@ export function adoptLeftovers(
     lastReportedTotalLines: 0,
     isBackgrounded: true,
     agentId: input.agentId,
+    adopted: true,
   }
   registerTask(task, setAppState)
   return taskId

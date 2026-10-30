@@ -168,6 +168,8 @@ describe('adoptLeftovers', () => {
     expect(task.status).toBe('running')
     expect(task.isBackgrounded).toBe(true)
     expect(task.command).toBe('sh start.sh')
+    // Marked, so `-p` does not wait for a server to end (holdsHeadlessExit).
+    expect(task.adopted).toBe(true)
 
     killTask(taskId, s.setAppState)
     expect(fake.signals).toContainEqual([-500, 'SIGTERM'])

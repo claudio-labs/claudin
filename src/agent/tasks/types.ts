@@ -56,6 +56,19 @@ export function isBackgroundTask(task: TaskState): task is BackgroundTaskState {
 }
 
 /**
+ * Whether `-p` waits for this task before it exits (`turnLoop.ts`): every
+ * background task, except the two that run until something stops them. A
+ * teammate lives as long as its team (gh-30008), and an adopted leftover
+ * (`LocalShellTask/leftovers.ts`) is a server nobody asked to wait for. Both
+ * are stopped by the exit itself, so waiting on them never ends.
+ */
+export function holdsHeadlessExit(task: TaskState): boolean {
+  if (!isBackgroundTask(task)) return false
+  if (task.type === 'in_process_teammate') return false
+  return !(task.type === 'local_bash' && task.adopted === true)
+}
+
+/**
  * Whether the footer and the background-tasks dialog list a task: every
  * background task, plus a finished one held on screen (`displayUntil`, set by
  * holdTerminalTask — whose timer, not this check, decides when it leaves).

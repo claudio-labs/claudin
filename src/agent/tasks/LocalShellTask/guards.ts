@@ -29,6 +29,9 @@ export type LocalShellTaskState = TaskStateBase & {
   // UI display variant. 'monitor' → shows description instead of command,
   // 'Monitor details' dialog title, distinct status bar pill.
   kind?: BashTaskKind
+  // Processes a command left running, handed to this task (leftovers.ts).
+  // They run until stopped, so `-p` does not wait for them (holdsHeadlessExit).
+  adopted?: boolean
 }
 
 export function isLocalShellTask(task: unknown): task is LocalShellTaskState {

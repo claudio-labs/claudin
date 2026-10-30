@@ -15,7 +15,8 @@
     "src/platform/shell/bashProvider.test.ts",
     "src/agent/tasks/LocalShellTask/leftovers.test.ts",
     "src/tools/BashTool/runShellCommand.test.ts",
-    "src/tools/shellToolResultMappers.test.ts"
+    "src/tools/shellToolResultMappers.test.ts",
+    "src/agent/tasks/types.test.ts"
   ],
   "source": "src/agent/tasks/tasks.ts",
   "probes": [
@@ -184,6 +185,18 @@
       "source": "src/tools/shellToolResultMappers.ts",
       "find": "  const after = [data.readNote, errorMessage, backgroundInfo, data.leftoverNote].filter(Boolean)\n",
       "replace": "  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)\n"
+    },
+    {
+      "name": "leftovers: -p waits for an adopted task",
+      "source": "src/agent/tasks/types.ts",
+      "find": "  return !(task.type === 'local_bash' && task.adopted === true)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "leftovers: the adopted task is not marked",
+      "source": "src/agent/tasks/LocalShellTask/leftovers.ts",
+      "find": "    adopted: true,\n",
+      "replace": ""
     }
   ]
 }
