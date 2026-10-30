@@ -49,13 +49,13 @@ describe('the built-in tools that carry a call form', () => {
 })
 
 describe('formatDeferredToolLine', () => {
-  test('off: the name alone, as before', () => {
-    delete process.env.CLAUDIN_DEFERRED_CALL_FORMS
+  test('=0: the name alone, as before 10-30', () => {
+    process.env.CLAUDIN_DEFERRED_CALL_FORMS = '0'
     expect(formatDeferredToolLine(EnterPlanModeTool as unknown as Tool)).toBe('EnterPlanMode')
   })
 
-  test('on: a tool with a call form is listed with it', () => {
-    process.env.CLAUDIN_DEFERRED_CALL_FORMS = '1'
+  test('on by default: a tool with a call form is listed with it', () => {
+    delete process.env.CLAUDIN_DEFERRED_CALL_FORMS
     expect(formatDeferredToolLine(EnterPlanModeTool as unknown as Tool)).toBe('EnterPlanMode — call directly: EnterPlanMode({})')
   })
 
@@ -76,7 +76,7 @@ describe('deferredToolsHeader', () => {
   })
 
   test('a line with a call form switches the header, whatever the flag says now', () => {
-    delete process.env.CLAUDIN_DEFERRED_CALL_FORMS
+    process.env.CLAUDIN_DEFERRED_CALL_FORMS = '0'
     const header = deferredToolsHeader(['EnterPlanMode — call directly: EnterPlanMode({})', 'WebFetch'])
     expect(header).not.toBe(OLD_HEADER)
     expect(header).toContain('called directly')
@@ -86,15 +86,15 @@ describe('deferredToolsHeader', () => {
 })
 
 describe('the ToolSearch prompt', () => {
-  test('off: unchanged', () => {
-    delete process.env.CLAUDIN_DEFERRED_CALL_FORMS
+  test('=0: unchanged', () => {
+    process.env.CLAUDIN_DEFERRED_CALL_FORMS = '0'
     const off = getPrompt()
     expect(off).toContain('there is no parameter schema, so the tool cannot be invoked.')
     expect(off).not.toContain('call form')
   })
 
-  test('on: names the exception', () => {
-    process.env.CLAUDIN_DEFERRED_CALL_FORMS = '1'
+  test('by default: names the exception', () => {
+    delete process.env.CLAUDIN_DEFERRED_CALL_FORMS
     expect(getPrompt()).toContain('call form')
   })
 })

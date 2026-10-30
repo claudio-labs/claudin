@@ -120,10 +120,10 @@ export function isDeferredTool(tool: Tool): boolean {
 }
 
 /**
- * `CLAUDIN_DEFERRED_CALL_FORMS=1`: a built-in deferred tool with a `callForm`
- * is listed with it, and the ToolSearch prompt and the listing's header say a
- * listed form is called directly. Off until the A/B decides; read per call so
- * a test can set it.
+ * On by default since 2026-10-30 (`CLAUDIN_DEFERRED_CALL_FORMS=0` turns it
+ * off): a built-in deferred tool with a `callForm` is listed with it, and the
+ * ToolSearch prompt and the listing's header say a listed form is called
+ * directly. Read per call so a test can set it.
  *
  * In 10-25..30, 25 of 2,281 main requests were a ToolSearch alone, and every
  * session of the 10-30 A/B opened with `select:EnterPlanMode,ExitPlanMode`.
@@ -131,9 +131,13 @@ export function isDeferredTool(tool: Tool): boolean {
  * the input is validated here, so a tool whose whole input fits on the line
  * needs no load: TaskUpdate called from the plan approval's text validated
  * 5 of 5 times on Opus 5.5.
+ *
+ * The A/B that promoted it (tool-gaps-ab, Opus 5.5, N=3 per arm): ToolSearch-
+ * only requests 1,1,1 → 0,0,0, 45 direct calls and no error, median cost
+ * $1.228 against $1.302 and a placebo's $1.275.
  */
 function isDeferredCallFormsEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)
 }
 
 /** What separates a deferred tool's name from its call form in the listing. */

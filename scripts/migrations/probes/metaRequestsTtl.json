@@ -22,9 +22,9 @@
       "replace": "  if (isDeferredCallFormsEnabled() && tool.callForm) {\n"
     },
     {
-      "name": "call forms: on by default",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)\n",
-      "replace": "  return true\n"
+      "name": "call forms: off by default again",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_DEFERRED_CALL_FORMS)\n",
+      "replace": "  return process.env.CLAUDIN_DEFERRED_CALL_FORMS === '1'\n"
     },
     {
       "name": "call forms: the header follows the flag, not the lines",
@@ -51,8 +51,8 @@
     {
       "name": "ttl: auto ignores one-shot print",
       "source": "src/providers/shims/claude/cacheControl.ts",
-      "find": "  if (tier === \"auto\") return !getIsOneShotPrint();\n",
-      "replace": "  if (tier === \"auto\") return true;\n"
+      "find": "  if (tier !== \"1h\") return !getIsOneShotPrint();\n",
+      "replace": "  if (tier !== \"1h\") return true;\n"
     },
     {
       "name": "ttl: 5m stops pinning",
@@ -143,6 +143,12 @@
       "source": "scripts/bench/ab/context-relief-ab.ts",
       "find": "  const cheaper = med(c, cost) <= med(b, cost) * 0.85 && max(c) < min(b)\n",
       "replace": "  const cheaper = med(c, cost) <= med(b, cost) * 0.85\n"
+    },
+    {
+      "name": "ttl: unset means 1h again",
+      "source": "src/providers/shims/claude/cacheControl.ts",
+      "find": "  if (tier !== \"1h\") return !getIsOneShotPrint();\n",
+      "replace": "  if (tier === \"auto\") return !getIsOneShotPrint();\n"
     }
   ]
 }

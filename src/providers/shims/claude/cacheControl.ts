@@ -91,20 +91,23 @@ export function should1hCacheTTL(querySource?: QuerySource): boolean {
 /**
  * The main thread's tier, from `CLAUDIN_MAIN_CACHE_TTL`:
  *
- * - `1h` (the default, and the pin the benches use): 1h everywhere;
+ * - `auto` (the default since 2026-10-30): 5m for a one-shot `-p` run
+ *   (`getIsOneShotPrint`), 1h otherwise. Such a run only pauses for its own
+ *   tools: the 40 A/B sessions of 10-30 never waited more than 74s between
+ *   requests, and would have cost 13-16% less at 5m. A live `-p` probe with a
+ *   5.5-minute tool wait wrote everything at 5m and read its prefix back
+ *   afterwards (the keep-alive pings it);
+ * - `1h`: 1h everywhere, as before 10-30, and the pin the shared bench
+ *   helpers use (`armEnv`, `runHeadless`);
  * - `5m` (EXPERIMENT 2026-09-10): the 5m tier everywhere, paired with the
  *   keep-alive pings in src/agent/cache/anthropic/keepAlive.ts, without which
  *   every >5min pause rewrites the prefix. Replayed over 10-25..30's real
- *   interactive threads it costs 10% more in writes;
- * - `auto`: 5m for a one-shot `-p` run (`getIsOneShotPrint`), 1h otherwise.
- *   Such a run only pauses for its own tools: the 40 A/B sessions of 10-30
- *   never waited more than 74s between requests, and would have cost 13-16%
- *   less at 5m.
+ *   interactive threads it costs 10% more in writes.
  */
 function mainThread1hTtl(): boolean {
   const tier = process.env.CLAUDIN_MAIN_CACHE_TTL;
   if (tier === "5m") return false;
-  if (tier === "auto") return !getIsOneShotPrint();
+  if (tier !== "1h") return !getIsOneShotPrint();
 
   // Always use 1h on first-party/vertex (matches Claude Code). The previous
   // >8k *system-prompt* gate measured the wrong thing: claudin's system prompt

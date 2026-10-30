@@ -43,6 +43,21 @@ the top of `scripts/`. If a new bench does not obviously answer one of the three
 questions, that is a sign the bench needs narrowing, not that the cut needs a
 fourth column.
 
+### A `-p` arm writes at the 5m cache tier since 2026-10-30
+
+`CLAUDIN_MAIN_CACHE_TTL=auto` became the default: a one-shot `-p` run (no
+`--input-format stream-json`, no `--sdk-url`) writes its main thread at 5m,
+where interactive and SDK-stream sessions keep 1h. Nearly every bench here runs
+`-p`, so a bench that builds its own env now measures the 5m tier. Arms of one
+run still share a tier, so comparing them holds; comparing with a run from
+before 10-30, or with Claude Code, does not.
+
+`armEnv` (`ab/session-cache-ab.ts`, reused by most `ab/` harnesses) and
+`runHeadless` (`ab/headlessProbe.ts`) pin `1h`, so what goes through them is
+unchanged. A new bench should take its env from one of the two. One that
+compares with history or with another CLI and builds its own env should set
+`CLAUDIN_MAIN_CACHE_TTL=1h` itself.
+
 ## Writing a script here
 
 - Import `REPO_ROOT`; never count `..`.

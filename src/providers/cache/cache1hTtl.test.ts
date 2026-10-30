@@ -291,8 +291,9 @@ describe('getCacheControl — CLAUDIN_MAIN_CACHE_TTL', () => {
     }
   }
 
-  test('unset: 1h everywhere, a one-shot print included, until auto is promoted', async () => {
-    expect(await main(undefined, true)).toEqual({ type: 'ephemeral', ttl: '1h' })
+  test('unset behaves as auto since 10-30: 5m for a one-shot print, 1h otherwise', async () => {
+    expect(await main(undefined, true)).toEqual({ type: 'ephemeral' })
+    expect(await main(undefined, false)).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
   test('auto: 5m for a one-shot print run', async () => {
@@ -303,7 +304,7 @@ describe('getCacheControl — CLAUDIN_MAIN_CACHE_TTL', () => {
     expect(await main('auto', false)).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
-  test('1h pins the tier even for a one-shot print run under auto-like conditions', async () => {
+  test('1h pins the tier for a one-shot print run too: the killswitch', async () => {
     expect(await main('1h', true)).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
