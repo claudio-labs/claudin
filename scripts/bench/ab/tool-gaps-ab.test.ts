@@ -3,7 +3,7 @@ import { spawn } from 'child_process'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { gates, parseArgs, reapLeaks } from './tool-gaps-ab.ts'
+import { diagnostics, gates, parseArgs, reapLeaks } from './tool-gaps-ab.ts'
 import { emptyMechanisms, type Mechanisms } from './toolGapsMechanisms.ts'
 
 type Result = Parameters<typeof gates>[0][number]
@@ -71,6 +71,25 @@ describe('gates', () => {
     const combo = goodCombo()
     combo[0] = result('combo', { m: { diffCatReruns: 1, taskStops: 1 } })
     expect(verdictOf([...baseWithProblems(), ...combo], 'diff wording (branch arms)')).toBe('FAIL')
+  })
+})
+
+describe('diagnostics', () => {
+  const check = (rs: Result[], name: string) => diagnostics(rs).find(g => g.gate === name)?.verdict
+
+  test('a load that brings TaskStop along fails the literal gate but not the task-only check', () => {
+    const base = Array.from({ length: 5 }, () => result('base', { m: { taskToolSearchAfterPlan: 1, taskOnlyToolSearchAfterPlan: 1 } }))
+    const combo = Array.from({ length: 5 }, () => result('combo', { m: { taskToolSearchAfterPlan: 1, taskOnlyToolSearchAfterPlan: 0, taskStops: 1 } }))
+    expect(verdictOf([...base, ...combo], 'tasks')).toBe('FAIL')
+    expect(check([...base, ...combo], 'tasks: task-only loads')).toBe('PASS')
+  })
+
+  test('a | cat re-run is fine there; a Git-tool hint to a Bash reader in a branch arm is not', () => {
+    const rs = [result('base'), result('combo', { m: { diffCatReruns: 1 } })]
+    expect(check(rs, 'diff: Git-tool hint to a Bash reader')).toBe('PASS')
+    rs.push(result('placebo', { m: { diffPivotsNamingGitToBash: 1 } }))
+    expect(check(rs, 'diff: Git-tool hint to a Bash reader')).toBe('FAIL')
+    expect(check([result('base'), result('main', { m: { diffPivotsNamingGitToBash: 1 } })], 'diff: Git-tool hint to a Bash reader')).toBe('PASS')
   })
 })
 

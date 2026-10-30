@@ -7,6 +7,7 @@
  *   bun scripts/bench/ab/tool-gaps-ab.ts --dry-run                 # validate the fixture, no tokens
  *   bun scripts/bench/ab/tool-gaps-ab.ts --only=combo --reps=1 --phases=1   # the live probe
  *   bun scripts/bench/ab/tool-gaps-ab.ts --reps=5 --bin=main:<worktree>/bin/claudin
+ *   bun scripts/bench/ab/tool-gaps-ab.ts --report=/tmp/tool-gaps-ab/<stamp>   # recount a finished run
  *
  * Phase 1 plans in plan mode, implements against the docs, starts the service
  * with a script that backgrounds it and returns, and stops it. Phase 2
@@ -85,6 +86,8 @@ type Args = {
   budgetUsd: number
   timeoutMs: number
   dryRun: boolean
+  /** A finished run's directory: recount its archived transcripts and print the report. */
+  reportDir: string
   bins: Record<string, string>
 }
 
@@ -117,11 +120,13 @@ export function parseArgs(argv: string[]): Args {
     budgetUsd: 6,
     timeoutMs: 40 * 60_000,
     dryRun: false,
+    reportDir: '',
     bins: Object.fromEntries(ALL_ARMS.map(arm => [arm, join(REPO_ROOT, 'bin', 'claudin')])),
   }
   for (const x of argv) {
     const [k, v = ''] = x.split(/=(.*)/s, 2) as [string, string?]
     if (k === '--dry-run') a.dryRun = true
+    else if (k === '--report') a.reportDir = v
     else if (k === '--reps') a.reps = Number(v)
     else if (k === '--only') a.arms = v.split(',').filter(Boolean)
     else if (k === '--phases') a.phases = v.split(',').map(Number) as Phase[]
@@ -137,7 +142,7 @@ export function parseArgs(argv: string[]): Args {
     } else throw new Error(`unknown argument ${x}`)
   }
   for (const arm of a.arms) if (!(arm in ARM_ENV)) throw new Error(`unknown arm ${arm}; arms: ${ALL_ARMS.join(', ')}`)
-  if (!a.dryRun && a.arms.includes('main') && a.bins.main === a.bins.base) {
+  if (!a.dryRun && !a.reportDir && a.arms.includes('main') && a.bins.main === a.bins.base) {
     throw new Error('the main arm needs --bin=main:<path to a build of the branch point>')
   }
   return a
@@ -378,11 +383,48 @@ export function gates(results: readonly RunResult[]): Gate[] {
   return out
 }
 
+/**
+ * Not gates: what the pre-registered gates count literally, next to the cost
+ * each lever exists to remove. Two wordings missed it on the first rep:
+ *
+ * - the tasks gate counts any ToolSearch naming a Task tool, including one that
+ *   loads TaskStop for an adopted server and takes TaskUpdate along, which
+ *   costs no request of its own;
+ * - the diff gate counts `| cat` re-runs, and the shell wording now names
+ *   `| cat` as the way to the raw diff. The bug was a pivot naming the Git
+ *   tool to a reader that has none.
+ */
+export function diagnostics(results: readonly RunResult[]): Gate[] {
+  const of = (arm: string) => results.filter(r => r.arm === arm)
+  const sum = (rs: RunResult[], f: (m: Mechanisms) => number) => rs.reduce((n, r) => n + f(r.mechanisms), 0)
+  const perArm = (f: (m: Mechanisms) => number) =>
+    ALL_ARMS.filter(a => of(a).length).map(a => `${a} ${of(a).map(r => f(r.mechanisms)).join(',')}`).join('; ')
+  const out: Gate[] = []
+  const combo = of('combo')
+  if (combo.length) {
+    const clean = combo.filter(r => r.mechanisms.taskOnlyToolSearchAfterPlan === 0 && r.mechanisms.taskListBeforeFirstUpdate === 0).length
+    out.push({
+      gate: 'tasks: task-only loads',
+      verdict: clean >= Math.ceil(combo.length * 0.8) ? 'PASS' : 'FAIL',
+      detail: `combo clean ${clean}/${combo.length}; task-only ToolSearch per rep: ${perArm(m => m.taskOnlyToolSearchAfterPlan)}`,
+    })
+  }
+  const branch = results.filter(r => BRANCH_ARMS.includes(r.arm))
+  const hints = sum(branch, m => m.diffPivotsNamingGitToBash)
+  out.push({
+    gate: 'diff: Git-tool hint to a Bash reader',
+    verdict: hints === 0 ? 'PASS' : 'FAIL',
+    detail: `branch arms ${hints}; main arm ${sum(of('main'), m => m.diffPivotsNamingGitToBash)}; pivots per rep: ${perArm(m => m.diffPivots)}`,
+  })
+  return out
+}
+
 const MECHANISM_ROWS: Array<[string, (r: RunResult) => number]> = [
   ['cost $ (main + sub-agents)', r => r.costUsd],
   ['API calls (main + sub-agents)', r => r.apiCalls],
   ['hidden tests passed', hiddenPass],
   ['Task ToolSearch after plan', r => r.mechanisms.taskToolSearchAfterPlan],
+  ['  of which task-only', r => r.mechanisms.taskOnlyToolSearchAfterPlan],
   ['TaskList before 1st update', r => r.mechanisms.taskListBeforeFirstUpdate],
   ['TaskUpdate calls', r => r.mechanisms.taskUpdates],
   ['TaskUpdate unloaded, ok', r => r.mechanisms.taskUpdateUnloadedOk],
@@ -394,6 +436,7 @@ const MECHANISM_ROWS: Array<[string, (r: RunResult) => number]> = [
   ['adopted notes', r => r.mechanisms.adoptedNotes],
   ['servers leaked', leaked],
   ['diff pivots', r => r.mechanisms.diffPivots],
+  ['pivots naming the Git tool to Bash', r => r.mechanisms.diffPivotsNamingGitToBash],
   ['| cat re-runs after a pivot', r => r.mechanisms.diffCatReruns],
   ['file-tools notes', r => r.mechanisms.fileToolsNotes],
   ['file-tools notes followed', r => r.mechanisms.fileToolsNotesFollowed],
@@ -420,7 +463,26 @@ export function report(results: readonly RunResult[], args: Args): string {
     '## Gates',
     '',
     table(['gate', 'verdict', 'detail'], gates(results).map(g => [g.gate, g.verdict, g.detail])),
+    '',
+    '## Diagnostics (not gates)',
+    '',
+    table(['check', 'verdict', 'detail'], diagnostics(results).map(g => [g.gate, g.verdict, g.detail])),
   ].join('\n')
+}
+
+/** A finished run, its mechanisms recounted from the transcripts it archived. */
+function recount(runDir: string): RunResult[] {
+  const results = JSON.parse(readFileSync(join(runDir, 'results.json'), 'utf8')) as RunResult[]
+  return results.map(r => {
+    const label = `${r.arm}-r${r.rep}`
+    const main = join(runDir, `${label}.transcript.jsonl`)
+    if (!existsSync(main)) return r
+    const archive = join(runDir, `${label}.subagents`)
+    const subs = existsSync(archive)
+      ? readdirSync(archive).filter(f => f.endsWith('.jsonl')).map(f => parseJsonl(readFileSync(join(archive, f), 'utf8')) as Json[])
+      : []
+    return { ...r, mechanisms: mechanismsOf(parseJsonl(readFileSync(main, 'utf8')) as Json[], subs) }
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -479,6 +541,14 @@ function dryRun(runDir: string): boolean {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
+  if (args.reportDir) {
+    const results = recount(args.reportDir)
+    const meta = JSON.parse(readFileSync(join(args.reportDir, 'meta.json'), 'utf8')) as Args
+    const md = report(results, { ...args, model: meta.model, effort: meta.effort, reps: meta.reps, phases: meta.phases, arms: meta.arms })
+    writeFileSync(join(args.reportDir, 'report.md'), md)
+    console.log(md)
+    return
+  }
   const runDir = join(BENCH_ROOT, stamp())
   mkdirSync(runDir, { recursive: true })
   if (args.dryRun) process.exit(dryRun(runDir) ? 0 : 1)

@@ -24,6 +24,8 @@ export type ThreadCall = { name: string; input: Json; text: string; isError: boo
 
 export type Mechanisms = {
   taskToolSearchAfterPlan: number
+  /** Diagnostic: those of them that loaded nothing but task-tracking tools. */
+  taskOnlyToolSearchAfterPlan: number
   taskListBeforeFirstUpdate: number
   taskUpdates: number
   taskUpdateUnloadedOk: number
@@ -75,6 +77,7 @@ export function threadCalls(records: readonly Json[]): ThreadCall[] {
 }
 
 const TASK_TOOL_RE = /\bTask(?:Update|List|Get|Create)\b/
+const SELECT_RE = /^select:(.+)$/
 const AUTO_OUTLINE_RE = /is large — showing a structural outline/
 const NUMBERED_RE = /^\s*\d+→/m
 const PROCESS_RE = /(?:^|[\s;&|(])(?:kill|pkill|pgrep|killall|fuser|lsof)\b|\bps\s+-|\bss\s+-\w*[lp]/
@@ -101,6 +104,8 @@ function countThread(calls: readonly ThreadCall[], into: Mechanisms, isMain: boo
     if (planAt >= 0 && i > planAt) {
       if (call.name === 'ToolSearch' && TASK_TOOL_RE.test(JSON.stringify(call.input))) {
         into.taskToolSearchAfterPlan++
+        const names = SELECT_RE.exec(String(call.input.query ?? ''))?.[1]?.split(',').map(n => n.trim())
+        if (names && names.every(n => TASK_TOOL_RE.test(n))) into.taskOnlyToolSearchAfterPlan++
         loaded = true
       }
       if (call.name === 'TaskList' && !updated) into.taskListBeforeFirstUpdate++
@@ -147,6 +152,7 @@ function countThread(calls: readonly ThreadCall[], into: Mechanisms, isMain: boo
 export function emptyMechanisms(): Mechanisms {
   return {
     taskToolSearchAfterPlan: 0,
+    taskOnlyToolSearchAfterPlan: 0,
     taskListBeforeFirstUpdate: 0,
     taskUpdates: 0,
     taskUpdateUnloadedOk: 0,

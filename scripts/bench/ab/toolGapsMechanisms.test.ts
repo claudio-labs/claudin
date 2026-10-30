@@ -36,6 +36,19 @@ describe('mechanismsOf — tasks after the plan', () => {
     expect(m.taskUpdateUnloadedOk).toBe(0)
   })
 
+  test('a load that brings TaskStop along is a Task search, but not a task-only one', () => {
+    const m = mechanismsOf(
+      [
+        ...call('ExitPlanMode', {}, APPROVED),
+        ...call('ToolSearch', { query: 'select:TaskStop,TaskUpdate' }, ''),
+        ...call('ToolSearch', { query: 'select:TaskUpdate,TaskList' }, ''),
+      ],
+      [],
+    )
+    expect(m.taskToolSearchAfterPlan).toBe(2)
+    expect(m.taskOnlyToolSearchAfterPlan).toBe(1)
+  })
+
   test('a TaskUpdate with no load counts as unloaded, by outcome', () => {
     const ok = mechanismsOf([...call('ExitPlanMode', {}, APPROVED), ...call('TaskUpdate', { taskId: '1', status: 'completed' }, 'Updated')], [])
     expect(ok.taskUpdateUnloadedOk).toBe(1)
