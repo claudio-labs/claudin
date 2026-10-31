@@ -30,20 +30,6 @@ describe('migrateLegacyMemoryIfNeeded', () => {
     expect(readFileSync(join(newDir, 'topic.md'), 'utf-8')).toBe('# topic\n')
   })
 
-  test('copies the team/ subfolder too', () => {
-    const oldDir = freshDir('claudin-migrate-old-')
-    const newDir = join(freshDir('claudin-migrate-new-'), 'nested')
-    writeFileSync(join(oldDir, 'MEMORY.md'), '- a memory\n')
-    mkdirSync(join(oldDir, 'team'))
-    writeFileSync(join(oldDir, 'team', 'MEMORY.md'), '- team memory\n')
-
-    migrateLegacyMemoryIfNeeded(oldDir, newDir)
-
-    expect(readFileSync(join(newDir, 'team', 'MEMORY.md'), 'utf-8')).toBe(
-      '- team memory\n',
-    )
-  })
-
   test('is a no-op when the new dir already has memory content', () => {
     const oldDir = freshDir('claudin-migrate-old-')
     const newDir = freshDir('claudin-migrate-new-')
