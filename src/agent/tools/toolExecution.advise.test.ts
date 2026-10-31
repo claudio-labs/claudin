@@ -76,6 +76,8 @@ const deferredTarget = buildTool({
   renderToolUseMessage: () => null,
 })
 const toolSearch = { ...deferredTarget, name: 'ToolSearch', shouldDefer: false }
+/** A deferred tool the listing names with a call form: it needs no load. */
+const formTarget = { ...deferredTarget, name: 'FormTarget', callForm: 'FormTarget({})' }
 
 function contextFor(tools: unknown[], messages: unknown[] = []): ToolUseContext {
   const toolPermissionContext = getEmptyToolPermissionContext()
@@ -113,7 +115,7 @@ async function run(
   }
   const allow = (async (_tool: unknown, input: unknown) => ({ behavior: 'allow', updatedInput: input })) as never
   const results: unknown[] = []
-  const context = contextFor([tool, deferredTarget, toolSearch], messages)
+  const context = contextFor([tool, deferredTarget, formTarget, toolSearch], messages)
   for await (const update of runToolUse(toolUse as never, assistant as never, allow, context)) {
     results.push(update)
   }
@@ -125,11 +127,14 @@ const NOTE = 'AdviceProbe has a better tool for this.'
 describe('Tool.advise in the tool loop', () => {
   const savedToolSearch = process.env.ENABLE_TOOL_SEARCH
   const savedReminders = process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
+  const savedForms = process.env.CLAUDIN_DEFERRED_CALL_FORMS
   afterEach(() => {
     if (savedToolSearch === undefined) delete process.env.ENABLE_TOOL_SEARCH
     else process.env.ENABLE_TOOL_SEARCH = savedToolSearch
     if (savedReminders === undefined) delete process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
     else process.env.CLAUDIN_DISABLE_TOOL_REMINDERS = savedReminders
+    if (savedForms === undefined) delete process.env.CLAUDIN_DEFERRED_CALL_FORMS
+    else process.env.CLAUDIN_DEFERRED_CALL_FORMS = savedForms
   })
 
   test('a successful result carries the note, asked for once', async () => {
@@ -174,6 +179,20 @@ describe('Tool.advise in the tool loop', () => {
     process.env.ENABLE_TOOL_SEARCH = 'true'
     const { texts } = await run('ok', () => ({ message: NOTE, suggests: 'DeferredTarget' }))
     expect(texts).toContain('DeferredTarget is deferred: load it first with ToolSearch \\"select:DeferredTarget\\".')
+  })
+
+  test('a deferred tool the listing gives a call form needs no load line', async () => {
+    process.env.ENABLE_TOOL_SEARCH = 'true'
+    const { texts } = await run('ok', () => ({ message: NOTE, suggests: 'FormTarget' }))
+    expect(texts).toContain(NOTE)
+    expect(texts).not.toContain('is deferred: load it first')
+  })
+
+  test('with the call forms off, that tool gets its load line back', async () => {
+    process.env.ENABLE_TOOL_SEARCH = 'true'
+    process.env.CLAUDIN_DEFERRED_CALL_FORMS = '0'
+    const { texts } = await run('ok', () => ({ message: NOTE, suggests: 'FormTarget' }))
+    expect(texts).toContain('FormTarget is deferred: load it first with ToolSearch \\"select:FormTarget\\".')
   })
 
   test('a tool other than Bash keeps its note whatever its result says', async () => {
