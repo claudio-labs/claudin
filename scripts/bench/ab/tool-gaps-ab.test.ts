@@ -202,4 +202,9 @@ describe('gates — the dev-tool call forms run', () => {
     const rs = [result('main'), result('current-placebo'), result('current')]
     expect(verdictOf(rs, 'dev-tool forms: ToolSearch loads')).toBe('NO HEADROOM')
   })
+
+  test('a run that also has a combo arm keeps the combo gates', () => {
+    const rs = [result('main'), result('base'), result('combo'), result('current')]
+    expect(gates(rs).map(g => g.gate)).not.toContain('dev-tool forms: ToolSearch loads')
+  })
 })

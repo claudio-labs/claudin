@@ -24,7 +24,7 @@
 //   bun run scripts/bench/ab/waitfor-adoption-ab.ts --bin=claudindev --model=claude-sonnet-5 --reps=3
 //
 // --long: does a higher WaitFor cap turn a long wait into one call
-// (perf/tool-repeat-calls, 1800 s since 2026-11)? Three arms on one build,
+// (perf/tool-repeat-calls, 1800 s since 2026-10-31)? Three arms on one build,
 // the cap scaled down by CLAUDIN_WAITFOR_MAX_TIMEOUT_S so a rep takes a
 // minute: base 20 s, placebo 20 s plus a variable nothing reads, lever 60 s.
 // A background writer puts READY in x.txt 50 s after the rep starts. Passes,

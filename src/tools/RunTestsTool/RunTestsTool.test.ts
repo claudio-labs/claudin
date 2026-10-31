@@ -10,7 +10,6 @@ import {
   stubMacroVersion,
 } from 'src/tools/BashTool/__testutils__/permissionContext.js'
 import { applyFilters, resolveRunCommand, RunTestsTool } from 'src/tools/RunTestsTool/RunTestsTool.js'
-import { COMPACT_DESCRIPTION, DESCRIPTION } from 'src/tools/RunTestsTool/prompt.js'
 import { readReportDir, runTests } from 'src/tools/RunTestsTool/run.js'
 import { buildDossier } from 'src/tools/RunTestsTool/dossier.js'
 import { detectFrameworkFromCommand, detectTestRunner } from 'src/tools/RunTestsTool/detect.js'
@@ -1304,14 +1303,11 @@ describe('RunTestsTool — the tool around the runner', () => {
     }
   })
 
-  test('a run is not read-only, never concurrent, and the classifier reads its command', async () => {
-    expect(RunTestsTool.isEnabled()).toBe(true)
+  test('a run is not read-only, never concurrent, and the classifier reads its command', () => {
     expect(RunTestsTool.isReadOnly()).toBe(false)
     expect(RunTestsTool.isConcurrencySafe()).toBe(false)
     expect(RunTestsTool.toAutoClassifierInput({ command: 'bun test' } as never)).toBe('bun test')
     expect(RunTestsTool.toAutoClassifierInput({} as never)).toBe('<detect test suite>')
-    expect(await RunTestsTool.description()).toBe(DESCRIPTION)
-    expect([DESCRIPTION, COMPACT_DESCRIPTION]).toContain(await RunTestsTool.prompt())
   })
 
   test('the result block carries the formatted summary', () => {

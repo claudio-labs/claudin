@@ -19,7 +19,7 @@
  * - Call forms (CLAUDIN_DEFERRED_CALL_FORMS), per main-thread request: the
  *   requests that only ran ToolSearch, the ones that only ran other meta
  *   tools (plan mode, tasks), and how calls to a deferred tool never loaded
- *   fared. Since 2026-11 the dev tools carry a form too, and the ToolSearch
+ *   fared. Since 2026-10-31 the dev tools carry a form too, and the ToolSearch
  *   calls that still load one are counted on their own.
  */
 

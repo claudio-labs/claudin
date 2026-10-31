@@ -348,8 +348,8 @@ type Gate = { gate: string; verdict: 'PASS' | 'FAIL' | 'NO HEADROOM' | 'n/a'; de
 
 export function gates(results: readonly RunResult[]): Gate[] {
   const of = (arm: string) => results.filter(r => r.arm === arm)
-  if (of('meta').length > 0) return metaGates(results)
-  if (of('main').length > 0 && of('current').length > 0) return devFormGates(results)
+  if (of('meta').length > 0) return callFormGates(results, META_FORMS)
+  if (of('main').length > 0 && of('current').length > 0 && of('combo').length === 0) return callFormGates(results, DEV_TOOL_FORMS)
   const base = of('base')
   const combo = of('combo')
   const placebo = of('placebo')
@@ -395,80 +395,81 @@ export function gates(results: readonly RunResult[]): Gate[] {
   return out
 }
 
-/**
- * The call-forms run (CLAUDIN_DEFERRED_CALL_FORMS), pre-registered 10-30 in
- * `.claudin/plans/peaceful-foraging-kahn.md`. Its baseline is this branch's
- * defaults (`current`), with a placebo of the same defaults. Passes when every
- * arm keeps the hidden tests, ToolSearch-only requests fall in at least 2 of 3
- * meta reps, no direct call to a deferred tool errors, and the meta arm's
- * median cost is no higher than the higher of current and its placebo.
- */
-function metaGates(results: readonly RunResult[]): Gate[] {
-  const of = (arm: string) => results.filter(r => r.arm === arm)
-  const main = of('current')
-  const placebo = of('current-placebo')
-  const meta = of('meta')
-  const hidden = (rs: RunResult[]) => rs.reduce((n, r) => n + hiddenPass(r), 0)
-  const out: Gate[] = []
-  const arms = [main, placebo, meta].filter(rs => rs.length)
-  out.push({
-    gate: 'correctness',
-    verdict: results.every(r => !broken(r)) && arms.every(rs => hidden(rs) >= hidden(main)) ? 'PASS' : 'FAIL',
-    detail: `hidden current ${hidden(main)}, placebo ${hidden(placebo)}, meta ${hidden(meta)}`,
-  })
-  const tsMain = median(main.map(r => r.mechanisms.toolSearchOnlyRequests))
-  const fell = meta.filter(r => r.mechanisms.toolSearchOnlyRequests < tsMain).length
-  const errs = meta.reduce((n, r) => n + r.mechanisms.directDeferredErr, 0)
-  out.push({
-    gate: 'call forms: ToolSearch-only requests',
-    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',
-    detail: `current median ${tsMain}; meta per rep ${meta.map(r => r.mechanisms.toolSearchOnlyRequests).join(',')}; direct deferred calls ok ${meta.reduce((n, r) => n + r.mechanisms.directDeferredOk, 0)}, errors ${errs}`,
-  })
-  const cost = (rs: RunResult[]) => median(rs.map(r => r.costUsd))
-  const ceiling = placebo.length ? Math.max(cost(main), cost(placebo)) : cost(main)
-  out.push({
-    gate: 'cost',
-    verdict: cost(meta) <= ceiling ? 'PASS' : 'FAIL',
-    detail: `median $ meta ${cost(meta).toFixed(3)}, current ${cost(main).toFixed(3)}${placebo.length ? `, placebo ${cost(placebo).toFixed(3)}` : ''}`,
-  })
-  return out
+/** One call-forms run: which arm is the baseline, which carries the forms, and what counts as fixed. */
+type FormRun = {
+  baseline: string
+  lever: string
+  gate: string
+  count: (m: Mechanisms) => number
+  /** Whether one lever rep shows the fix, against the baseline's median. */
+  fixed: (n: number, baselineMedian: number) => boolean
+  /** The share of lever reps that must show it. */
+  share: number
 }
 
 /**
- * The dev-tool call forms run (perf/tool-repeat-calls), pre-registered in
- * `.claudin/plans/structured-toasting-rossum.md`: the build of the branch point
- * (`main`) against this branch's defaults (`current`) and its placebo. Passes
- * when every arm keeps the hidden tests, `current` loads none of the four dev
- * tools through ToolSearch in at least 4 of 5 reps while `main` loads one in
- * its median rep, no direct call to a deferred tool errors, and `current`'s
- * median cost is no higher than the higher of `main` and the placebo.
+ * CLAUDIN_DEFERRED_CALL_FORMS, pre-registered 10-30 in
+ * `.claudin/plans/peaceful-foraging-kahn.md`: this branch's defaults
+ * (`current`) against the forms (`meta`). ToolSearch-only requests fall in at
+ * least 2 of 3 meta reps.
  */
-function devFormGates(results: readonly RunResult[]): Gate[] {
+const META_FORMS: FormRun = {
+  baseline: 'current',
+  lever: 'meta',
+  gate: 'call forms: ToolSearch-only requests',
+  count: m => m.toolSearchOnlyRequests,
+  fixed: (n, baselineMedian) => n < baselineMedian,
+  share: 0.6,
+}
+
+/**
+ * The dev-tool forms (perf/tool-repeat-calls), pre-registered in
+ * `.claudin/plans/structured-toasting-rossum.md`: the build of the branch
+ * point (`main`) against this branch (`current`). `current` loads none of the
+ * four dev tools through ToolSearch in at least 4 of 5 reps.
+ */
+const DEV_TOOL_FORMS: FormRun = {
+  baseline: 'main',
+  lever: 'current',
+  gate: 'dev-tool forms: ToolSearch loads',
+  count: m => m.devToolLoads,
+  fixed: n => n === 0,
+  share: 0.8,
+}
+
+/**
+ * A call-forms run's gates, with `current-placebo` as the placebo. Passes when
+ * every arm keeps the baseline's hidden tests, the lever shows the fix in its
+ * share of reps while the baseline median leaves room for it, no direct call
+ * to a deferred tool errors, and the lever's median cost is no higher than the
+ * higher of the baseline and the placebo.
+ */
+function callFormGates(results: readonly RunResult[], run: FormRun): Gate[] {
   const of = (arm: string) => results.filter(r => r.arm === arm)
-  const main = of('main')
-  const current = of('current')
+  const base = of(run.baseline)
+  const lever = of(run.lever)
   const placebo = of('current-placebo')
   const hidden = (rs: RunResult[]) => rs.reduce((n, r) => n + hiddenPass(r), 0)
   const out: Gate[] = []
   out.push({
     gate: 'correctness',
-    verdict: results.every(r => !broken(r)) && [current, placebo].every(rs => rs.length === 0 || hidden(rs) >= hidden(main)) ? 'PASS' : 'FAIL',
-    detail: `hidden main ${hidden(main)}, current ${hidden(current)}, placebo ${hidden(placebo)}`,
+    verdict: results.every(r => !broken(r)) && [lever, placebo].every(rs => rs.length === 0 || hidden(rs) >= hidden(base)) ? 'PASS' : 'FAIL',
+    detail: `hidden ${run.baseline} ${hidden(base)}, placebo ${hidden(placebo)}, ${run.lever} ${hidden(lever)}`,
   })
-  const loadsMain = median(main.map(r => r.mechanisms.devToolLoads))
-  const clean = current.filter(r => r.mechanisms.devToolLoads === 0).length
-  const errs = current.reduce((n, r) => n + r.mechanisms.directDeferredErr, 0)
+  const baseMedian = median(base.map(r => run.count(r.mechanisms)))
+  const fixedReps = lever.filter(r => run.fixed(run.count(r.mechanisms), baseMedian)).length
+  const errs = lever.reduce((n, r) => n + r.mechanisms.directDeferredErr, 0)
   out.push({
-    gate: 'dev-tool forms: ToolSearch loads',
-    verdict: loadsMain === 0 ? 'NO HEADROOM' : clean >= Math.ceil(current.length * 0.8) && errs === 0 ? 'PASS' : 'FAIL',
-    detail: `main median ${loadsMain}; current per rep ${current.map(r => r.mechanisms.devToolLoads).join(',')}; direct deferred calls ok ${current.reduce((n, r) => n + r.mechanisms.directDeferredOk, 0)}, errors ${errs}`,
+    gate: run.gate,
+    verdict: baseMedian === 0 ? 'NO HEADROOM' : fixedReps >= Math.ceil(lever.length * run.share) && errs === 0 ? 'PASS' : 'FAIL',
+    detail: `${run.baseline} median ${baseMedian}; ${run.lever} per rep ${lever.map(r => run.count(r.mechanisms)).join(',')}; direct deferred calls ok ${lever.reduce((n, r) => n + r.mechanisms.directDeferredOk, 0)}, errors ${errs}`,
   })
   const cost = (rs: RunResult[]) => median(rs.map(r => r.costUsd))
-  const ceiling = placebo.length ? Math.max(cost(main), cost(placebo)) : cost(main)
+  const ceiling = placebo.length ? Math.max(cost(base), cost(placebo)) : cost(base)
   out.push({
     gate: 'cost',
-    verdict: cost(current) <= ceiling ? 'PASS' : 'FAIL',
-    detail: `median $ current ${cost(current).toFixed(3)}, main ${cost(main).toFixed(3)}${placebo.length ? `, placebo ${cost(placebo).toFixed(3)}` : ''}`,
+    verdict: cost(lever) <= ceiling ? 'PASS' : 'FAIL',
+    detail: `median $ ${run.lever} ${cost(lever).toFixed(3)}, ${run.baseline} ${cost(base).toFixed(3)}${placebo.length ? `, placebo ${cost(placebo).toFixed(3)}` : ''}`,
   })
   return out
 }

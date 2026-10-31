@@ -192,14 +192,26 @@
     {
       "name": "bench: dev-tool forms pass in 3 of 5",
       "source": "scripts/bench/ab/tool-gaps-ab.ts",
-      "find": "clean >= Math.ceil(current.length * 0.8) && errs === 0 ? 'PASS' : 'FAIL',\n",
-      "replace": "clean >= Math.ceil(current.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',\n"
+      "find": "  fixed: n => n === 0,\n  share: 0.8,\n",
+      "replace": "  fixed: n => n === 0,\n  share: 0.6,\n"
     },
     {
-      "name": "bench: dev-tool forms ignore a failed direct call",
+      "name": "bench: call forms ignore a failed direct call",
       "source": "scripts/bench/ab/tool-gaps-ab.ts",
-      "find": "clean >= Math.ceil(current.length * 0.8) && errs === 0 ? 'PASS' : 'FAIL',\n",
-      "replace": "clean >= Math.ceil(current.length * 0.8) ? 'PASS' : 'FAIL',\n"
+      "find": "fixedReps >= Math.ceil(lever.length * run.share) && errs === 0 ? 'PASS' : 'FAIL',\n",
+      "replace": "fixedReps >= Math.ceil(lever.length * run.share) ? 'PASS' : 'FAIL',\n"
+    },
+    {
+      "name": "bench: a dev-tool rep that still loads counts as fixed",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "  fixed: n => n === 0,\n",
+      "replace": "  fixed: n => n <= 1,\n"
+    },
+    {
+      "name": "bench: a combo run with a main arm gets the dev-tool gates",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": " && of('combo').length === 0) return callFormGates(results, DEV_TOOL_FORMS)\n",
+      "replace": ") return callFormGates(results, DEV_TOOL_FORMS)\n"
     },
     {
       "name": "bench: the long wait skips the mechanism",
