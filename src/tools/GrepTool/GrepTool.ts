@@ -1,3 +1,4 @@
+import { dirname } from 'path'
 import { z } from 'zod/v4'
 import type { ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
@@ -24,6 +25,7 @@ import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
+import { anchorGlobAtSearchPath } from 'src/tools/GrepTool/globAnchor.js'
 import {
   BODIES_HEADER_SUFFIX,
   bodiesSchemaFields,
@@ -559,6 +561,16 @@ export const GrepTool = buildTool({
       args.push('--type', type)
     }
 
+    // ripgrep anchors a `/`-anchored glob at the directory it RUNS in, and the
+    // deny patterns below are normalized to the session cwd. That is not
+    // process.cwd(): a Bash `cd` only moves the cwd state, and a worktree
+    // sub-agent runs under a cwd override. Left to process.cwd(), a Read deny
+    // rule stopped hiding files from Grep in exactly those sessions. A session
+    // cwd that no longer exists falls back to process.cwd(), since ripgrep
+    // cannot start in it.
+    const sessionCwd = getCwd()
+    const rgCwd = getFsImplementation().existsSync(sessionCwd) ? sessionCwd : undefined
+
     if (glob) {
       // Split on commas and spaces, but preserve patterns with braces
       const globPatterns: string[] = []
@@ -574,14 +586,19 @@ export const GrepTool = buildTool({
         }
       }
 
+      // A glob with a `/` is written from the search path, not from where
+      // ripgrep runs (globAnchor.ts).
+      let searchDir = absolutePath
+      try {
+        if (!getFsImplementation().statSync(absolutePath).isDirectory()) searchDir = dirname(absolutePath)
+      } catch {}
       for (const globPattern of globPatterns.filter(Boolean)) {
-        args.push('--glob', globPattern)
+        args.push('--glob', anchorGlobAtSearchPath(globPattern, searchDir, rgCwd ?? process.cwd()))
       }
     }
 
     // Add ignore patterns
     const appState = getAppState()
-    const sessionCwd = getCwd()
     const ignorePatterns = normalizePatternsToPath(
       getFileReadIgnorePatterns(appState.toolPermissionContext),
       sessionCwd,
@@ -604,15 +621,6 @@ export const GrepTool = buildTool({
     )) {
       args.push('--glob', exclusion)
     }
-
-    // ripgrep anchors a `/`-anchored glob at the directory it RUNS in, and the
-    // deny patterns above are normalized to the session cwd. That is not
-    // process.cwd(): a Bash `cd` only moves the cwd state, and a worktree
-    // sub-agent runs under a cwd override. Left to process.cwd(), a Read deny
-    // rule stopped hiding files from Grep in exactly those sessions. A session
-    // cwd that no longer exists falls back to process.cwd(), since ripgrep
-    // cannot start in it.
-    const rgCwd = getFsImplementation().existsSync(sessionCwd) ? sessionCwd : undefined
 
     // WSL has severe performance penalty for file reads (3-5x slower on WSL2)
     // The timeout is handled by ripgrep itself via execFile timeout option

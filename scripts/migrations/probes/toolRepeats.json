@@ -1,0 +1,45 @@
+{
+  "test": [
+    "src/tools/GrepTool/GrepTool.test.ts",
+    "src/tools/GrepTool/globAnchor.test.ts"
+  ],
+  "source": "src/tools/GrepTool/globAnchor.ts",
+  "probes": [
+    {
+      "name": "grep: the glob reaches ripgrep raw",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "        args.push('--glob', anchorGlobAtSearchPath(globPattern, searchDir, rgCwd ?? process.cwd()))\n",
+      "replace": "        args.push('--glob', globPattern)\n"
+    },
+    {
+      "name": "anchor: a negated glob loses its bang",
+      "find": "  return `${negated ? '!' : ''}/${anchor}/${body}`\n",
+      "replace": "  return `/${anchor}/${body}`\n"
+    },
+    {
+      "name": "anchor: a search path outside the cwd is left alone",
+      "find": "  if (outside && !searchDir.startsWith('/')) return pattern\n",
+      "replace": "  if (outside) return pattern\n"
+    },
+    {
+      "name": "anchor: the search path is not escaped",
+      "find": "  const anchor = (outside ? searchDir : rel.split(sep).join('/')).replace(GLOB_META_RE, '\\\\$&')\n",
+      "replace": "  const anchor = outside ? searchDir : rel.split(sep).join('/')\n"
+    },
+    {
+      "name": "anchor: a glob led by ** is rewritten too",
+      "find": "  if (!body.includes('/') || body.startsWith('/') || body.startsWith('**/')) return pattern\n",
+      "replace": "  if (!body.includes('/') || body.startsWith('/')) return pattern\n"
+    },
+    {
+      "name": "anchor: a leading ./ is kept",
+      "find": "  const body = (negated ? pattern.slice(1) : pattern).replace(LEADING_DOT_SLASH_RE, '')\n",
+      "replace": "  const body = negated ? pattern.slice(1) : pattern\n"
+    },
+    {
+      "name": "anchor: a search path that is the cwd gets an empty lead",
+      "find": "  if (rel === '') return pattern\n",
+      "replace": ""
+    }
+  ]
+}
