@@ -8,7 +8,8 @@
     "src/tools/ToolSearchTool/callForms.test.ts",
     "scripts/bench/ab/tool-gaps-ab.test.ts",
     "scripts/bench/ab/toolGapsMechanisms.test.ts",
-    "scripts/bench/ab/waitfor-adoption-ab.test.ts"
+    "scripts/bench/ab/waitfor-adoption-ab.test.ts",
+    "src/agent/tools/toolExecution.advise.test.ts"
   ],
   "source": "src/tools/GrepTool/globAnchor.ts",
   "probes": [
@@ -127,6 +128,18 @@
       "source": "src/tools/WaitForTool/redirect.ts",
       "find": "    timeout_s: Math.min(STATED_MAX_TIMEOUT_S, Math.max(30, poll.secs * 6)),\n",
       "replace": "    timeout_s: Math.max(30, poll.secs * 6),\n"
+    },
+    {
+      "name": "advice: a tool with a call form gets the load line",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    target && isUnloadedDeferredTool(target, tools, messages) && !hasListedCallForm(target)\n",
+      "replace": "    target && isUnloadedDeferredTool(target, tools, messages)\n"
+    },
+    {
+      "name": "advice: the forms killswitch leaves the load line off",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  return isDeferredCallFormsEnabled() && tool.callForm !== undefined && tool.isMcp !== true\n",
+      "replace": "  return tool.callForm !== undefined && tool.isMcp !== true\n"
     },
     {
       "name": "forms: RunTests has none",

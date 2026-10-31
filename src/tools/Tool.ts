@@ -578,10 +578,12 @@ export type Tool<
   /**
    * How to call this deferred tool without loading its schema, written as the
    * call itself (`TaskList({})`, `TaskGet({"taskId": "<id>"})`). Only for a
-   * tool whose whole input fits on that line: the API takes a tool_use for a
+   * tool whose common call fits on that line: the API takes a tool_use for a
    * deferred tool that was never loaded, and the input is checked here, so the
-   * line is enough. Under `CLAUDIN_DEFERRED_CALL_FORMS` it is listed beside the
-   * tool's name (ToolSearchTool/prompt.ts, `formatDeferredToolLine`).
+   * line is enough. A parameter the line leaves out still validates, but the
+   * model loads the schema to learn it. Under `CLAUDIN_DEFERRED_CALL_FORMS` it
+   * is listed beside the tool's name (ToolSearchTool/prompt.ts,
+   * `formatDeferredToolLine`).
    */
   readonly callForm?: string
   /**

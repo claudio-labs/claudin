@@ -18,7 +18,7 @@ import {
   isDeferredTool,
 } from 'src/tools/ToolSearchTool/prompt.js'
 
-// CLAUDIN_DEFERRED_CALL_FORMS: a deferred tool whose whole input fits on a line
+// CLAUDIN_DEFERRED_CALL_FORMS: a deferred tool whose common call fits on a line
 // is listed with that line, so the model calls it without a ToolSearch request
 // first. Every A/B session on 10-30 opened with `ToolSearch
 // select:EnterPlanMode,ExitPlanMode`, and TaskUpdate called directly from the
