@@ -46,6 +46,7 @@ import {
   isSdkApiUserAbortError,
 } from "src/shared/errors.js";
 import { computeFingerprintFromMessages } from "src/shared/data/fingerprint.js";
+import { isUserAbort } from "src/providers/shims/claude/userAbort.js";
 import { captureAPIRequest } from "src/shared/log.js";
 import {
   createAssistantAPIErrorMessage,
@@ -1825,7 +1826,7 @@ export async function* queryModel(
           previousRequestId,
         });
 
-        if (isSdkApiUserAbortError(error)) {
+        if (isUserAbort(error, signal)) {
           releaseStreamResources();
           return;
         }
@@ -1882,7 +1883,7 @@ export async function* queryModel(
 
       // Don't yield an assistant error message for user aborts
       // The interruption message is handled in query.ts
-      if (isSdkApiUserAbortError(error)) {
+      if (isUserAbort(error, signal)) {
         releaseStreamResources();
         return;
       }
