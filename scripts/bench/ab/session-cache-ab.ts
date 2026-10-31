@@ -491,6 +491,11 @@ export function armEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
     CLAUDIN_DISABLE_BACKGROUND_TASKS: '1',
     DISABLE_AUTOUPDATER: '1',
+    // Every arm runs as `-p`, and `CLAUDIN_MAIN_CACHE_TTL=auto` gives a
+    // one-shot `-p` main thread the 5m tier. A bench measures the 1h tier
+    // interactive sessions keep, and compares with its own history; an arm
+    // that is about the tier sets it in `extra`.
+    CLAUDIN_MAIN_CACHE_TTL: '1h',
     ...extra,
   }
 }

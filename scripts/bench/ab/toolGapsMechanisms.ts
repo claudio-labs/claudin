@@ -16,6 +16,10 @@
  * - The Bash file-tools note (CLAUDIN_DISABLE_TOOL_REDIRECT in the combo arm):
  *   how often it fired and how often the next call took the tool it named,
  *   and the share of reads and searches made with Read/Grep/Glob.
+ * - Call forms (CLAUDIN_DEFERRED_CALL_FORMS), per main-thread request: the
+ *   requests that only ran ToolSearch, the ones that only ran other meta
+ *   tools (plan mode, tasks), and how calls to a deferred tool never loaded
+ *   fared.
  */
 
 type Json = Record<string, unknown>
@@ -42,6 +46,13 @@ export type Mechanisms = {
   fileToolsNotesFollowed: number
   dedicatedReads: number
   bashReads: number
+  /** Main-thread requests whose every call was ToolSearch. */
+  toolSearchOnlyRequests: number
+  /** Main-thread requests whose every call was plan mode or task tracking. */
+  otherMetaOnlyRequests: number
+  /** Calls to a deferred built-in never loaded by a ToolSearch, by outcome. */
+  directDeferredOk: number
+  directDeferredErr: number
 }
 
 const isRecord = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -87,6 +98,55 @@ const DIFF_RERUN_RE = /\bgit\b[^|\n]*\bdiff\b[^\n]*\|\s*cat\b|\bgit\s+--no-pager
 const FILE_TOOLS_NOTE_RE = /This command only reads or searches files, and ([\w/]+) do(?:es)? that without the shell/
 const BASH_READ_RE = /^\s*(?:cd\s+\S+\s*(?:&&|;)\s*)?(?:cat|sed\s+-n|head|tail|grep|egrep|rg|find|ls|wc|nl)\b/
 const DOCS_RE = /(?:^|\/)docs\/[^/]+\.md$/
+/** The built-ins that carry a call form (ToolSearchTool/prompt.ts). */
+const CALL_FORM_TOOLS: ReadonlySet<string> = new Set([
+  'EnterPlanMode',
+  'ExitPlanMode',
+  'TaskList',
+  'TaskGet',
+  'TaskStop',
+  'TaskUpdate',
+])
+const META_TOOL_RE = /^(?:EnterPlanMode|ExitPlanMode|Task(?:Update|List|Get|Create|Stop|Output))$/
+
+/** One main-thread request's tool names, records grouped by `message.id`. */
+function requestTools(records: readonly Json[]): string[][] {
+  const byId = new Map<string, string[]>()
+  for (const record of records) {
+    const message = record.message
+    if (record.type !== 'assistant' || !isRecord(message) || typeof message.id !== 'string') continue
+    const names = byId.get(message.id) ?? []
+    if (Array.isArray(message.content)) {
+      for (const block of message.content) {
+        if (isRecord(block) && block.type === 'tool_use') names.push(String(block.name))
+      }
+    }
+    byId.set(message.id, names)
+  }
+  return [...byId.values()]
+}
+
+function countRequests(records: readonly Json[], into: Mechanisms): void {
+  for (const names of requestTools(records)) {
+    if (names.length === 0) continue
+    if (names.every(n => n === 'ToolSearch')) into.toolSearchOnlyRequests++
+    else if (names.every(n => META_TOOL_RE.test(n))) into.otherMetaOnlyRequests++
+  }
+}
+
+/** Calls to a call-form built-in that no earlier ToolSearch in the thread loaded. */
+function countDirectDeferred(calls: readonly ThreadCall[], into: Mechanisms): void {
+  const loaded = new Set<string>()
+  for (const call of calls) {
+    if (call.name === 'ToolSearch') {
+      for (const n of SELECT_RE.exec(String(call.input.query ?? ''))?.[1]?.split(',') ?? []) loaded.add(n.trim())
+      continue
+    }
+    if (!CALL_FORM_TOOLS.has(call.name) || loaded.has(call.name)) continue
+    if (call.isError) into.directDeferredErr++
+    else into.directDeferredOk++
+  }
+}
 
 function readPath(call: ThreadCall): string | null {
   const path = call.input.file_path
@@ -169,13 +229,20 @@ export function emptyMechanisms(): Mechanisms {
     fileToolsNotesFollowed: 0,
     dedicatedReads: 0,
     bashReads: 0,
+    toolSearchOnlyRequests: 0,
+    otherMetaOnlyRequests: 0,
+    directDeferredOk: 0,
+    directDeferredErr: 0,
   }
 }
 
 /** The counters of one session: its main thread and every sub-agent thread. */
 export function mechanismsOf(main: readonly Json[], subagents: readonly (readonly Json[])[]): Mechanisms {
   const out = emptyMechanisms()
-  countThread(threadCalls(main), out, true)
+  const mainCalls = threadCalls(main)
+  countThread(mainCalls, out, true)
+  countRequests(main, out)
+  countDirectDeferred(mainCalls, out)
   for (const thread of subagents) countThread(threadCalls(thread), out, false)
   return out
 }

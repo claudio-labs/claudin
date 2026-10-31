@@ -7,7 +7,7 @@
 // global state.
 
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { setClientType, setIsInteractive, setQuestionPreviewFormat, setSessionSource } from 'src/platform/bootstrap/state.js';
+import { setClientType, setIsInteractive, setIsOneShotPrint, setQuestionPreviewFormat, setSessionSource } from 'src/platform/bootstrap/state.js';
 
 export type ClientType =
   | 'github-action'
@@ -30,6 +30,12 @@ export interface ResolvedClientType {
   sessionSource: 'remote-control' | undefined;
   /** `true` unless -p/--print, --init-only, --sdk-url, or non-TTY stdout. */
   isInteractive: boolean;
+  /**
+   * `-p`/`--print` with one prompt: neither `--input-format stream-json` (an
+   * SDK feeding turns in) nor `--sdk-url`. Its main thread may take the 5m
+   * cache tier (cacheControl.ts).
+   */
+  isOneShotPrint: boolean;
 }
 
 function resolveTypeFromEnv(): ClientType {
@@ -69,13 +75,20 @@ function resolvePreviewFormat(clientType: ClientType): PreviewFormat | undefined
   return undefined;
 }
 
-function resolveIsInteractive(): boolean {
-  const cliArgs = process.argv.slice(2);
+function resolveIsInteractive(cliArgs: readonly string[]): boolean {
   const hasPrintFlag = cliArgs.includes('-p') || cliArgs.includes('--print');
   const hasInitOnlyFlag = cliArgs.includes('--init-only');
   const hasSdkUrl = cliArgs.some(arg => arg.startsWith('--sdk-url'));
   const isNonInteractive = hasPrintFlag || hasInitOnlyFlag || hasSdkUrl || !process.stdout.isTTY;
   return !isNonInteractive;
+}
+
+function resolveIsOneShotPrint(cliArgs: readonly string[]): boolean {
+  if (!cliArgs.includes('-p') && !cliArgs.includes('--print')) return false;
+  if (cliArgs.some(arg => arg.startsWith('--sdk-url'))) return false;
+  const i = cliArgs.indexOf('--input-format');
+  const streamed = cliArgs[i + 1] === 'stream-json' && i >= 0;
+  return !streamed && !cliArgs.includes('--input-format=stream-json');
 }
 
 /**
@@ -88,8 +101,10 @@ export function resolveClientType(): ResolvedClientType {
   const sessionSource = process.env.CLAUDE_CODE_ENVIRONMENT_KIND === 'bridge'
     ? 'remote-control' as const
     : undefined;
-  const isInteractive = resolveIsInteractive();
-  return { clientType, previewFormat, sessionSource, isInteractive };
+  const cliArgs = process.argv.slice(2);
+  const isInteractive = resolveIsInteractive(cliArgs);
+  const isOneShotPrint = resolveIsOneShotPrint(cliArgs);
+  return { clientType, previewFormat, sessionSource, isInteractive, isOneShotPrint };
 }
 
 /**
@@ -106,4 +121,5 @@ export function applyClientType(resolved: ResolvedClientType): void {
     setSessionSource(resolved.sessionSource);
   }
   setIsInteractive(resolved.isInteractive);
+  setIsOneShotPrint(resolved.isOneShotPrint);
 }

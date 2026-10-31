@@ -55,6 +55,7 @@ export const TaskGetTool = buildTool({
     return 'TaskGet'
   },
   shouldDefer: true,
+  callForm: `${TASK_GET_TOOL_NAME}({"taskId": "<id>"})`,
   isEnabled() {
     return isTodoV2Enabled()
   },

@@ -124,8 +124,11 @@ describe('the module export surface', () => {
   //
   // 197 again with `isTurnActive`: the session list asks it whether a switch
   // would cut a running turn short.
-  test('still exports 197 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(197)
+  //
+  // 199 with `getIsOneShotPrint` and `setIsOneShotPrint`: a `-p` run with one
+  // prompt writes its main thread at the 5m cache tier (cacheControl.ts).
+  test('still exports 199 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(199)
   })
 
   test('exports at least one symbol from every planned cluster', () => {

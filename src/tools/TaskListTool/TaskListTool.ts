@@ -50,6 +50,7 @@ export const TaskListTool = buildTool({
     return 'TaskList'
   },
   shouldDefer: true,
+  callForm: `${TASK_LIST_TOOL_NAME}({})`,
   isEnabled() {
     return isTodoV2Enabled()
   },

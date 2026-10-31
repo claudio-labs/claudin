@@ -66,6 +66,12 @@ export type State = {
   initialMainLoopModel: ModelSetting
   modelStrings: ModelStrings | null
   isInteractive: boolean
+  /**
+   * A `-p` run with one prompt: no `--input-format stream-json`, no
+   * `--sdk-url`. Its only pauses are tool runs, which is what lets its main
+   * thread take the 5m cache tier (`CLAUDIN_MAIN_CACHE_TTL=auto`).
+   */
+  isOneShotPrint: boolean
   kairosActive: boolean
   // When true, ensureToolResultPairing throws on mismatch instead of
   // repairing with synthetic placeholders. HFI opts in at startup so

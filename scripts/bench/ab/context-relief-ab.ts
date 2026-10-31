@@ -78,14 +78,22 @@ import { armEnv, armTable, costOf, type ArmRow } from './session-cache-ab'
 const DEFAULT_MODEL = 'claude-sonnet-5'
 const MARKER = 'relief-ab'
 const SOURCE_DIRS = ['src/agent/compact', 'src/agent/cache']
+/** How many of the largest files the read phase reads, by default. */
+const DEFAULT_LARGE = 12
+/**
+ * A read-phase file past this many bytes risks Read's token limit, and a Read
+ * it refuses grows nothing. Only applied with `--dirs`, so the default corpus
+ * stays the one older runs used.
+ */
+const MAX_READ_BYTES = 70_000
 
 // ---------------------------------------------------------------------------
 // Workspace + turn script.
 // ---------------------------------------------------------------------------
 
-function buildWorkspace(): string {
+function buildWorkspace(dirs: readonly string[] = SOURCE_DIRS): string {
   const root = mkdtempSync(join(tmpdir(), 'relief-ab-'))
-  for (const dir of SOURCE_DIRS) {
+  for (const dir of dirs) {
     const dst = join(root, dir)
     mkdirSync(dst, { recursive: true })
     cpSync(join(REPO_ROOT, dir), dst, { recursive: true })
@@ -96,22 +104,29 @@ function buildWorkspace(): string {
 
 type Corpus = { files: string[]; large: string[]; symbols: string[] }
 
-/** Deterministic: `files` sorted by path, `large` by size descending. */
-function corpusFrom(root: string): Corpus {
+/**
+ * Deterministic: `files` sorted by path, `large` by size descending. `large`
+ * holds the `large` biggest; with more `--per-phase` turns than that the read
+ * phase asks for some again, which a Read of an unchanged file answers with a
+ * stub, so the context stops growing. `--dirs` and `--large` exist to make the
+ * corpus big enough instead.
+ */
+export function corpusFrom(root: string, dirs: readonly string[] = SOURCE_DIRS, large = DEFAULT_LARGE): Corpus {
   const files: string[] = []
-  for (const dir of SOURCE_DIRS) {
+  for (const dir of dirs) {
     for (const name of readdirSync(join(root, dir))) {
-      if (!name.endsWith('.ts')) continue
+      if (!name.endsWith('.ts') || !statSync(join(root, dir, name)).isFile()) continue
       files.push(`${dir}/${name}`)
     }
   }
   files.sort()
+  const fits = (f: string) => dirs === SOURCE_DIRS || statSync(join(root, f)).size <= MAX_READ_BYTES
   // Implementation files with a top-level export (the edit phase's anchor),
   // biggest first so the read phase grows the context as fast as it can.
-  const large = files
-    .filter(f => !f.endsWith('.test.ts') && /^export (function|const)\b/m.test(readFileSync(join(root, f), 'utf8')))
+  const largest = files
+    .filter(f => !f.endsWith('.test.ts') && !f.endsWith('.d.ts') && fits(f) && /^export (function|const)\b/m.test(readFileSync(join(root, f), 'utf8')))
     .sort((a, b) => statSync(join(root, b)).size - statSync(join(root, a)).size)
-    .slice(0, 12)
+    .slice(0, large)
   const symbols = [
     'applyStableStubs',
     'getClippedIds',
@@ -126,10 +141,10 @@ function corpusFrom(root: string): Corpus {
     'isClipStubContent',
     'getAutoCompactThreshold',
   ]
-  return { files, large, symbols }
+  return { files, large: largest, symbols }
 }
 
-type Turn = { text: string; kind: 'grep' | 'read' | 'edit' }
+type Turn = { text: string; kind: 'grep' | 'read' | 'edit'; path?: string }
 
 function turnScript(c: Corpus, perPhase: number): Turn[] {
   const turns: Turn[] = []
@@ -139,7 +154,7 @@ function turnScript(c: Corpus, perPhase: number): Turn[] {
   }
   for (let i = 0; i < perPhase; i++) {
     const big = c.large[i % c.large.length]!
-    turns.push({ kind: 'read', text: `Read ${big} in full (pass view: 'full') and reply with a one-line summary.` })
+    turns.push({ kind: 'read', path: big, text: `Read ${big} in full (pass view: 'full') and reply with a one-line summary.` })
   }
   for (let i = 0; i < perPhase; i++) {
     const target = c.large[i % c.large.length]!
@@ -163,12 +178,16 @@ function verify(root: string, expected: number): { landed: number; expected: num
       }
       if (!name.endsWith('.ts')) continue
       const lines = readFileSync(p, 'utf8').split('\n')
+      const markerRe = new RegExp(`^\\s*//\\s*${MARKER}:(\\d+)\\s*$`)
       lines.forEach((line, i) => {
-        const m = line.match(new RegExp(`^\\s*//\\s*${MARKER}:(\\d+)\\s*$`))
+        const m = line.match(markerRe)
         if (!m) return
         const n = Number(m[1])
-        const next = lines[i + 1] ?? ''
-        if (!/^export (function|const)\b/.test(next)) return
+        // Past 12 edits a file is edited twice, and both markers go above
+        // the same export: skip the other markers stacked below this one.
+        let j = i + 1
+        while (markerRe.test(lines[j] ?? '')) j++
+        if (!/^export (function|const)\b/.test(lines[j] ?? '')) return
         seen.set(n, (seen.get(n) ?? 0) + 1)
       })
     }
@@ -223,6 +242,10 @@ export type ArmResult = {
   rereads: number
   editLookups: number
   clippedIds: number
+  /** The turn (1-based) of each compact_boundary the session streamed. */
+  compactionTurns: number[]
+  /** The turn (1-based) of each re-read the script did not ask for. */
+  rereadTurns: number[]
   verdict: { landed: number; expected: number; duplicated: number }
   timeline: UsageRow[]
   workspace: string
@@ -240,12 +263,127 @@ type Args = {
   json: boolean
   dryRun: boolean
   parallel: boolean
+  /** `base,placebo,candidate`: print the compaction gate for those labels. */
+  gate: [string, string, string] | null
+  /** Source dirs the workspace copies and the read phase draws from. */
+  dirs: string[]
+  /** How many of the largest files the read phase reads. */
+  large: number
+  /** `--effort` passed to every arm; null leaves each CLI's default. */
+  effort: string | null
 }
 
 function parseBin(spec: string): ArmSpec {
   const i = spec.indexOf(':')
   if (i <= 0) throw new Error(`--bin-x expects <label>:<path>, got ${spec}`)
   return { label: spec.slice(0, i), path: resolve(spec.slice(i + 1)), env: {} }
+}
+
+/**
+ * Re-reads the script did not ask for. With `--per-phase` over 12 the read
+ * phase asks for the 12 largest files again (`large[i % 12]`), and counting
+ * those as the model recovering lost content inflated the column by the
+ * repeats. A read past the number of times the script asked for that path is
+ * the model's own. Returns the positions in `reads` of those re-reads.
+ */
+export function rereadsOutsideScript(reads: readonly string[], asked: readonly string[]): number[] {
+  const allowed = new Map<string, number>()
+  for (const path of asked) allowed.set(path, (allowed.get(path) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  const extra: number[] = []
+  reads.forEach((path, i) => {
+    const n = (seen.get(path) ?? 0) + 1
+    seen.set(path, n)
+    if (n > Math.max(allowed.get(path) ?? 0, 1)) extra.push(i)
+  })
+  return extra
+}
+
+/**
+ * The indices in `events` of compact_boundary events, once per uuid (the
+ * stream may repeat one).
+ */
+export function compactionsIn(events: readonly Record<string, unknown>[]): number[] {
+  const seen = new Set<unknown>()
+  const at: number[] = []
+  events.forEach((v, i) => {
+    if (v.type !== 'system' || v.subtype !== 'compact_boundary') return
+    const key = v.uuid ?? `#${i}`
+    if (seen.has(key)) return
+    seen.add(key)
+    at.push(i)
+  })
+  return at
+}
+
+/** The family a model id names (opus, sonnet, haiku), or the id itself. */
+function family(model: string): string {
+  return /opus|sonnet|haiku/.exec(model)?.[0] ?? model
+}
+
+/** Null when the served model is of the requested family; the warning otherwise. */
+export function modelWarning(served: string, requested: string): string | null {
+  return family(served) === family(requested) ? null : `served model ${served} ≠ ${requested}: do not compare cost across tiers`
+}
+
+/**
+ * The compaction run's gate, pre-registered 10-30 in
+ * `.claudin/plans/peaceful-foraging-kahn.md` ("Validação"):
+ *
+ * - mechanism: at least 2 compactions in every candidate rep, and no clip or
+ *   compaction in any base rep, or the run is not the comparison it claims;
+ * - cost: the candidate's median at least 15% below the base's, ranges
+ *   SEPARATED;
+ * - every edit landed in every candidate rep;
+ * - edit-turn lookups: the candidate's median at most twice the base's;
+ * - re-reads after the candidate's first compaction: per rep, against the
+ *   base's re-reads from that same turn on, the medians within 1.5×;
+ * - the placebo's cost range overlaps the base's (a noise check).
+ */
+export function compactionGate(
+  runs: readonly ArmResult[],
+  base: string,
+  placebo: string,
+  candidate: string,
+): { verdict: 'PASS' | 'FAIL' | 'NOT EXERCISED'; detail: string } {
+  const of = (l: string) => runs.filter(r => r.label === l)
+  const [b, p, c] = [of(base), of(placebo), of(candidate)]
+  const median = (xs: number[]) => {
+    const s = [...xs].sort((x, y) => x - y)
+    return s.length === 0 ? Number.NaN : s.length % 2 ? s[s.length >> 1]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2
+  }
+  const med = (rs: ArmResult[], f: (r: ArmResult) => number) => median(rs.map(f))
+  const cost = (r: ArmResult) => r.pricedUsd
+  const mechanism = c.length > 0 && c.every(r => r.compactionTurns.length >= 2) && b.every(r => r.compactionTurns.length === 0 && r.clippedIds === 0)
+  if (!mechanism) {
+    return {
+      verdict: 'NOT EXERCISED',
+      detail: `${candidate} compactions per rep ${c.map(r => r.compactionTurns.length).join(',')}; ${base} compactions ${b.map(r => r.compactionTurns.length).join(',')}, clipped ids ${b.map(r => r.clippedIds).join(',')}`,
+    }
+  }
+  const max = (rs: ArmResult[]) => Math.max(...rs.map(cost))
+  const min = (rs: ArmResult[]) => Math.min(...rs.map(cost))
+  const cheaper = med(c, cost) <= med(b, cost) * 0.85 && max(c) < min(b)
+  const edits = c.every(r => r.verdict.landed === r.verdict.expected)
+  const lookups = med(c, r => r.editLookups) <= 2 * med(b, r => r.editLookups)
+  // Per rep: the base's re-reads from the turn the candidate first compacted.
+  const after = c.map(r => {
+    const from = r.compactionTurns[0]!
+    const twin = b.find(x => x.rep === r.rep)
+    return { cand: r.rereadTurns.filter(t => t >= from).length, base: twin ? twin.rereadTurns.filter(t => t >= from).length : 0 }
+  })
+  const rereads = median(after.map(a => a.cand)) <= 1.5 * median(after.map(a => a.base))
+  const placeboOverlaps = p.length === 0 || (min(p) <= max(b) && max(p) >= min(b))
+  return {
+    verdict: cheaper && edits && lookups && rereads && placeboOverlaps ? 'PASS' : 'FAIL',
+    detail: [
+      `cost ${cheaper ? 'ok' : 'NO'}: median $ ${candidate} ${med(c, cost).toFixed(3)} vs ${base} ${med(b, cost).toFixed(3)} (${((100 * med(c, cost)) / med(b, cost) - 100).toFixed(1)}%), separated ${max(c) < min(b)}`,
+      `edits ${edits ? 'ok' : 'NO'}`,
+      `lookups ${lookups ? 'ok' : 'NO'}: ${med(c, r => r.editLookups)} vs ${med(b, r => r.editLookups)}`,
+      `re-reads after compacting ${rereads ? 'ok' : 'NO'}: ${after.map(a => `${a.cand}/${a.base}`).join(',')}`,
+      `placebo overlaps ${placeboOverlaps ? 'ok' : 'NO'}`,
+    ].join('; '),
+  }
 }
 
 /** `<label>:K=V,K2=V2` → an arm on `--bin-a`'s binary with those variables. */
@@ -274,6 +412,10 @@ export function parseArgs(argv: string[]): Args {
     json: false,
     dryRun: false,
     parallel: false,
+    gate: null,
+    dirs: [...SOURCE_DIRS],
+    large: DEFAULT_LARGE,
+    effort: null,
   }
   let binA: ArmSpec | null = null
   let binB: ArmSpec | null = null
@@ -284,13 +426,21 @@ export function parseArgs(argv: string[]): Args {
     else if (x === '--dry-run') a.dryRun = true
     else if (x === '--parallel') a.parallel = true
     else if (x.startsWith('--reps=')) a.reps = Number(x.slice('--reps='.length))
-    else if (x.startsWith('--per-phase=')) a.perPhase = Number(x.slice('--per-phase='.length))
+    else if (x.startsWith('--per-phase=')) a.perPhase = positiveInt('--per-phase', x.slice('--per-phase='.length))
+    else if (x.startsWith('--large=')) a.large = positiveInt('--large', x.slice('--large='.length))
+    else if (x.startsWith('--dirs=')) a.dirs = x.slice('--dirs='.length).split(',').filter(Boolean)
+    else if (x.startsWith('--effort=')) a.effort = x.slice('--effort='.length)
     else if (x.startsWith('--model=')) a.model = x.slice('--model='.length)
     else if (x.startsWith('--window=')) a.window = Number(x.slice('--window='.length))
     else if (x.startsWith('--turn-timeout=')) a.turnTimeoutMs = Number(x.slice('--turn-timeout='.length))
     else if (x.startsWith('--bin-a=')) binA = parseBin(x.slice('--bin-a='.length))
     else if (x.startsWith('--bin-b=')) binB = parseBin(x.slice('--bin-b='.length))
     else if (x.startsWith('--variant=')) variants.push(x.slice('--variant='.length))
+    else if (x.startsWith('--gate=')) {
+      const labels = x.slice('--gate='.length).split(',')
+      if (labels.length !== 3) throw new Error(`--gate expects base,placebo,candidate, got ${x}`)
+      a.gate = labels as [string, string, string]
+    }
     else throw new Error(`unknown arg ${x}`)
   }
   // After the loop, so a --bin-a given after its variants still applies.
@@ -301,6 +451,13 @@ export function parseArgs(argv: string[]): Args {
   if (dup) throw new Error(`two arms are labelled ${dup}`)
   a.arms = arms
   return a
+}
+
+/** A count flag's value, or an error: `Number('20+')` is NaN and ran 0 turns. */
+function positiveInt(flag: string, value: string): number {
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 1) throw new Error(`${flag} expects a positive integer, got ${value}`)
+  return n
 }
 
 /** Rep r starts at arm (r − 1) mod n, so each arm takes the cold first slot in turn. */
@@ -347,8 +504,8 @@ export function clippedIdsFrom(transcript: string): number {
 }
 
 async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult> {
-  const cwd = buildWorkspace()
-  const corpus = corpusFrom(cwd)
+  const cwd = buildWorkspace(args.dirs)
+  const corpus = corpusFrom(cwd, args.dirs, args.large)
   const turns = turnScript(corpus, args.perPhase)
 
   const child = spawn(
@@ -359,6 +516,7 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
       '--verbose',
       '--print',
       '--model', args.model,
+      ...(args.effort ? ['--effort', args.effort] : []),
       '--permission-mode', 'bypassPermissions',
     ],
     {
@@ -370,6 +528,8 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
 
   const events: Record<string, unknown>[] = []
   const eventKind: Turn['kind'][] = []
+  const eventTurn: number[] = []
+  let turnsDone = 0
   let activeKind: Turn['kind'] = 'grep'
   const rows = new Map<string, UsageRow>()
   const order: string[] = []
@@ -389,6 +549,7 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
     }
     events.push(v)
     eventKind.push(activeKind)
+    eventTurn.push(turnsDone + 1)
     if (v.type === 'assistant') {
       const m = (v.message ?? {}) as Record<string, unknown>
       if (!servedModel && typeof m.model === 'string') servedModel = m.model
@@ -431,7 +592,6 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
   }
 
   const t0 = performance.now()
-  let turnsDone = 0
   for (const turn of turns) {
     let timer: ReturnType<typeof setTimeout> | undefined
     const done = new Promise<void>((res, rej) => {
@@ -486,11 +646,13 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
   // had lost — the leak the old evictions caused.
   const seenPaths = new Set<string>()
   const seenReadIds = new Set<string>()
-  let reads = 0, rereads = 0
-  for (const v of events) {
-    if (v.type !== 'assistant') continue
+  const readPaths: string[] = []
+  const readTurns: number[] = []
+  let reads = 0
+  events.forEach((v, idx) => {
+    if (v.type !== 'assistant') return
     const content = ((v.message ?? {}) as Record<string, unknown>).content
-    if (!Array.isArray(content)) continue
+    if (!Array.isArray(content)) return
     for (const block of content as Record<string, unknown>[]) {
       if (block.type !== 'tool_use' || block.name !== 'Read') continue
       // The stream repeats an assistant message per content block.
@@ -501,10 +663,13 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
       if (!fp) continue
       const rel = relative(cwd, fp)
       reads++
-      if (seenPaths.has(rel)) rereads++
+      readPaths.push(rel)
+      readTurns.push(eventTurn[idx]!)
       seenPaths.add(rel)
     }
-  }
+  })
+  const rereadTurns = rereadsOutsideScript(readPaths, turns.filter(t => t.kind === 'read').map(t => t.path!)).map(i => readTurns[i]!)
+  const rereads = rereadTurns.length
 
   // Lookups inside edit turns: every tool call that is not the Edit itself.
   // The script asks for edits in files read one phase earlier, so each of
@@ -557,6 +722,8 @@ async function runArm(arm: ArmSpec, rep: number, args: Args): Promise<ArmResult>
     rereads,
     editLookups,
     clippedIds,
+    compactionTurns: compactionsIn(events).map(i => eventTurn[i]!),
+    rereadTurns,
     verdict,
     timeline,
     workspace: args.keep ? cwd : '(removed)',
@@ -600,6 +767,7 @@ export function summaryTable(runs: readonly ArmResult[], labels: readonly string
     ['peak context', of(r => r.peakContext), fmt],
     ['end context', of(r => r.endContext), fmt],
     ['clipped ids', of(r => r.clippedIds), int],
+    ['compactions', of(r => r.compactionTurns?.length ?? 0), int],
     ['re-reads', of(r => r.rereads), int],
     ['edit-turn lookups', of(r => r.editLookups), int],
     ['edits landed', of(r => r.verdict.landed), int],
@@ -608,11 +776,15 @@ export function summaryTable(runs: readonly ArmResult[], labels: readonly string
 }
 
 function dryRun(args: Args): void {
-  const root = buildWorkspace()
-  const corpus = corpusFrom(root)
+  const root = buildWorkspace(args.dirs)
+  const corpus = corpusFrom(root, args.dirs, args.large)
   const turns = turnScript(corpus, args.perPhase)
-  console.log(`workspace: ${root} (${corpus.files.length} files; ${SOURCE_DIRS.join(', ')})`)
+  console.log(`workspace: ${root} (${corpus.files.length} files; ${args.dirs.join(', ')})`)
   console.log(`large: ${corpus.large.join(', ')}`)
+  // What the read phase loads, first reads only: a repeat comes back as a stub.
+  const firstReads = [...new Set(turns.filter(t => t.kind === 'read').map(t => t.path!))]
+  const bytes = firstReads.reduce((n, f) => n + statSync(join(root, f)).size, 0)
+  console.log(`read phase: ${firstReads.length} distinct files, ${bytes} bytes ≈ ${Math.round(bytes / 4 / 1000)}k tokens`)
   console.log(`\n${turns.length} turns for --per-phase=${args.perPhase}:`)
   turns.forEach((t, i) => console.log(`  ${String(i + 1).padStart(3)} ${t.kind.padEnd(5)} ${t.text}`))
   // Prove the grader: plant every marker where the edit phase asks for it.
@@ -658,7 +830,8 @@ async function main(): Promise<void> {
     for (const r of results) {
       runs.push(r)
       printArm(r)
-      if (r.model && !r.model.includes('sonnet-5')) console.log(`    ⚠ served model ${r.model} ≠ ${args.model}: do not compare cost across tiers`)
+      const warning = r.model ? modelWarning(r.model, args.model) : null
+      if (warning) console.log(`    ⚠ ${warning}`)
     }
   }
 
@@ -666,9 +839,15 @@ async function main(): Promise<void> {
   console.log(`\n=== ${labels.join(' vs ')}  (${args.reps} rep(s)${args.parallel ? ', parallel' : ''}, model ${args.model}, ${args.perPhase} turns per phase, window ${args.window ?? 'native'}) ===\n`)
   console.log(summaryTable(runs, labels))
   if (args.reps < 3) console.log(`  ↑ ${args.reps} rep(s): directional only. Re-run with --reps=3 and compare RANGES, not medians.`)
+  if (args.gate) {
+    const g = compactionGate(runs, ...args.gate)
+    console.log(`\ncompaction gate: ${g.verdict} — ${g.detail}`)
+  }
 
   if (args.json) {
-    const out = join(REPO_ROOT, 'scripts', 'bench', 'ab', 'context-relief-ab.json')
+    // Under /tmp, one file per run: a fixed path in the repo was overwritten by
+    // every run, which is why the 10-24 data is gone.
+    const out = join(tmpdir(), `context-relief-ab-${new Date().toISOString().replace(/[:.]/g, '-')}.json`)
     writeFileSync(out, JSON.stringify(runs, null, 2))
     console.log(`\njson → ${out}`)
   }

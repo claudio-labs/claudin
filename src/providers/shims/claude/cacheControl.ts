@@ -2,6 +2,7 @@ import type { QuerySource } from "src/agent/prompts/querySource.js";
 import type { CacheScope } from "src/providers/transport/api.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { getAPIProvider } from "src/providers/model/providers.js";
+import { getIsOneShotPrint } from "src/platform/bootstrap/state.js";
 
 export function getCacheControl({
   scope,
@@ -66,15 +67,16 @@ export function should1hCacheTTL(querySource?: QuerySource): boolean {
 
   if (provider !== "firstParty" && provider !== "vertex") return false;
 
+  // A fork shares the main thread's prefix, so it takes whatever tier the
+  // main thread has, set below.
+  if (querySource === FORK_QUERY_SOURCE) return mainThread1hTtl();
+
   // Subagents (agent:builtin:Plan, agent:custom, …) are short-lived and
   // their cache dies with them: reads refresh the 5m TTL for free within a
   // run, so the 5m tier (1.25x write) beats 1h (2x write) unless the agent
   // idles >5min mid-run — rare for read-only search/research agents. The
   // fork child is the one exception (shares the parent's prefix, see above).
-  if (
-    querySource?.startsWith(SUBAGENT_QUERY_SOURCE_PREFIX) &&
-    querySource !== FORK_QUERY_SOURCE
-  ) {
+  if (querySource?.startsWith(SUBAGENT_QUERY_SOURCE_PREFIX)) {
     return false;
   }
 
@@ -83,15 +85,29 @@ export function should1hCacheTTL(querySource?: QuerySource): boolean {
     return false;
   }
 
-  // EXPERIMENT (2026-09-10): the main thread at the 5m tier, paired with the
-  // keep-alive pings in src/agent/cache/anthropic/keepAlive.ts. On its own
-  // this only re-creates the pre-1h behaviour — every >5min pause rewrites
-  // the prefix — so it relies on the keep-alive, on by default since
-  // 2026-10-09 (`CLAUDIN_CACHE_KEEPALIVE=0` turns it off). The bench that decides it:
-  // scripts/bench/ab/cache-keepalive-probe.ts.
-  if (process.env.CLAUDIN_MAIN_CACHE_TTL === "5m") {
-    return false;
-  }
+  return mainThread1hTtl();
+}
+
+/**
+ * The main thread's tier, from `CLAUDIN_MAIN_CACHE_TTL`:
+ *
+ * - `auto` (the default since 2026-10-30): 5m for a one-shot `-p` run
+ *   (`getIsOneShotPrint`), 1h otherwise. Such a run only pauses for its own
+ *   tools: the 40 A/B sessions of 10-30 never waited more than 74s between
+ *   requests, and would have cost 13-16% less at 5m. A live `-p` probe with a
+ *   5.5-minute tool wait wrote everything at 5m and read its prefix back
+ *   afterwards (the keep-alive pings it);
+ * - `1h`: 1h everywhere, as before 10-30, and the pin the shared bench
+ *   helpers use (`armEnv`, `runHeadless`);
+ * - `5m` (EXPERIMENT 2026-09-10): the 5m tier everywhere, paired with the
+ *   keep-alive pings in src/agent/cache/anthropic/keepAlive.ts, without which
+ *   every >5min pause rewrites the prefix. Replayed over 10-25..30's real
+ *   interactive threads it costs 10% more in writes.
+ */
+function mainThread1hTtl(): boolean {
+  const tier = process.env.CLAUDIN_MAIN_CACHE_TTL;
+  if (tier === "5m") return false;
+  if (tier !== "1h") return !getIsOneShotPrint();
 
   // Always use 1h on first-party/vertex (matches Claude Code). The previous
   // >8k *system-prompt* gate measured the wrong thing: claudin's system prompt

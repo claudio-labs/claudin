@@ -101,6 +101,7 @@ export const TaskUpdateTool = buildTool({
     return 'TaskUpdate'
   },
   shouldDefer: true,
+  callForm: `${TASK_UPDATE_TOOL_NAME}({"taskId": "<id>", "status": "<status>"})`,
   isEnabled() {
     return isTodoV2Enabled()
   },

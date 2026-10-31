@@ -591,3 +591,15 @@ describe('isGlobReadCommand — a read command the classifier judges for its glo
     }
   })
 })
+
+describe('armEnv — the cache tier a bench measures', () => {
+  test('pins the 1h tier interactive sessions keep, so CLAUDIN_MAIN_CACHE_TTL=auto never reaches a -p arm', async () => {
+    const { armEnv } = await import('./session-cache-ab')
+    expect(armEnv().CLAUDIN_MAIN_CACHE_TTL).toBe('1h')
+  })
+
+  test('an arm about the tier sets its own', async () => {
+    const { armEnv } = await import('./session-cache-ab')
+    expect(armEnv({ CLAUDIN_MAIN_CACHE_TTL: 'auto' }).CLAUDIN_MAIN_CACHE_TTL).toBe('auto')
+  })
+})

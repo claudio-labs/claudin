@@ -26,6 +26,14 @@ export function setIsInteractive(value: boolean): void {
   STATE.isInteractive = value
 }
 
+export function getIsOneShotPrint(): boolean {
+  return STATE.isOneShotPrint
+}
+
+export function setIsOneShotPrint(value: boolean): void {
+  STATE.isOneShotPrint = value
+}
+
 export function getClientType(): string {
   return STATE.clientType
 }

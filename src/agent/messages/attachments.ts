@@ -25,6 +25,7 @@ import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
 // prompt.ts is import-free, so naming the tool here costs nothing at load time.
 import { CONTAINER_TOOL_NAME } from 'src/tools/ContainerTool/prompt.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
+import { deferredToolsHeader } from 'src/tools/ToolSearchTool/prompt.js'
 import { buildTaskReconcileReminder } from 'src/agent/query/taskReconcile.js'
 import type {
   MessageOrigin,
@@ -810,7 +811,7 @@ You have exited auto mode. The user may now want to interact more directly. You 
       const parts: string[] = []
       if (attachment.addedLines.length > 0) {
         parts.push(
-          `The following deferred tools are now available via ToolSearch. Their schemas are NOT loaded — calling them directly will fail with InputValidationError. Use ToolSearch with query "select:<name>[,<name>...]" to load tool schemas before calling them:\n${attachment.addedLines.join('\n')}`,
+          `${deferredToolsHeader(attachment.addedLines)}\n${attachment.addedLines.join('\n')}`,
         )
       }
       if (attachment.removedNames.length > 0) {

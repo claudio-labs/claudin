@@ -93,6 +93,7 @@ export function getInitialState(): State {
     initialMainLoopModel: null,
     modelStrings: null,
     isInteractive: false,
+    isOneShotPrint: false,
     kairosActive: false,
     strictToolResultPairing: false,
     sdkAgentProgressSummariesEnabled: false,
