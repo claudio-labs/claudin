@@ -2,8 +2,15 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { pwd } from 'src/shared/fs/cwd.js'
-import { applyFilters } from 'src/tools/RunTestsTool/RunTestsTool.js'
+import { pwd, runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import {
+  makePermissionContext,
+  makeToolUseContext,
+  resetPermissionState,
+  stubMacroVersion,
+} from 'src/tools/BashTool/__testutils__/permissionContext.js'
+import { applyFilters, resolveRunCommand, RunTestsTool } from 'src/tools/RunTestsTool/RunTestsTool.js'
+import { COMPACT_DESCRIPTION, DESCRIPTION } from 'src/tools/RunTestsTool/prompt.js'
 import { readReportDir, runTests } from 'src/tools/RunTestsTool/run.js'
 import { buildDossier } from 'src/tools/RunTestsTool/dossier.js'
 import { detectFrameworkFromCommand, detectTestRunner } from 'src/tools/RunTestsTool/detect.js'
@@ -1240,4 +1247,108 @@ describe('runTests — a run that did not pass', () => {
     expect(result.runError).toBe('Test run was interrupted before completing.')
     expect(formatTestResult(result)).toStartWith('Test run could not start:')
   }, 30_000)
+})
+
+describe('RunTestsTool — the tool around the runner', () => {
+  const context = () => ({ abortController: new AbortController() }) as never
+  const call = (input: Record<string, unknown>, cwd: string) =>
+    runWithCwdOverride(cwd, () => RunTestsTool.call(input as never, context(), undefined as never, undefined as never))
+
+  test('the runners not pinned above name their own filter flag', () => {
+    expect(applyFilters('pytest', 'pytest', undefined, 'adds')).toBe("pytest -k 'adds'")
+    expect(applyFilters('npx jest', 'jest', undefined, 'adds')).toBe("npx jest -t 'adds'")
+    expect(applyFilters('npx vitest run', 'vitest', undefined, 'adds')).toBe("npx vitest run -t 'adds'")
+    expect(applyFilters('npx mocha', 'mocha', undefined, 'adds')).toBe("npx mocha --grep 'adds'")
+    expect(applyFilters('cargo test', 'cargo', undefined, 'adds')).toBe("cargo test 'adds'")
+    expect(applyFilters('cargo nextest run', 'nextest', undefined, 'adds')).toBe("cargo nextest run 'adds'")
+  })
+
+  test('an explicit command is filtered for the framework it names', () => {
+    expect(resolveRunCommand({ command: 'pytest', path: 'tests', pattern: 'x' })).toEqual({
+      command: "pytest -k 'x' tests",
+      framework: 'pytest',
+    })
+  })
+
+  test('without a command the suite is detected in the cwd, and none is null', () => {
+    const go = projectFixture({ 'go.mod': 'module x\n' })
+    const empty = projectFixture({})
+    try {
+      expect(runWithCwdOverride(go, () => resolveRunCommand({}))).toEqual({ command: 'go test ./...', framework: 'go' })
+      expect(runWithCwdOverride(empty, () => resolveRunCommand({}))).toBeNull()
+    } finally {
+      rmSync(go, { recursive: true, force: true })
+      rmSync(empty, { recursive: true, force: true })
+    }
+  })
+
+  test('a call with no detectable suite says how to name one', async () => {
+    const empty = projectFixture({})
+    try {
+      const { data } = await call({}, empty)
+      expect(data.degraded).toBe(true)
+      expect(data.runError).toStartWith('Could not detect a test suite in this project.')
+    } finally {
+      rmSync(empty, { recursive: true, force: true })
+    }
+  })
+
+  test('a call runs the resolved command in the cwd', async () => {
+    const root = projectFixture({ 'marker.txt': 'x' })
+    try {
+      const { data } = await call({ command: 'test -f marker.txt' }, root)
+      expect(data.command).toContain('test -f marker.txt')
+      expect(data.exitCode).toBe(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('a run is not read-only, never concurrent, and the classifier reads its command', async () => {
+    expect(RunTestsTool.isEnabled()).toBe(true)
+    expect(RunTestsTool.isReadOnly({} as never)).toBe(false)
+    expect(RunTestsTool.isConcurrencySafe({} as never)).toBe(false)
+    expect(RunTestsTool.toAutoClassifierInput({ command: 'bun test' } as never)).toBe('bun test')
+    expect(RunTestsTool.toAutoClassifierInput({} as never)).toBe('<detect test suite>')
+    expect(await RunTestsTool.description({} as never, {} as never)).toBe(DESCRIPTION)
+    expect([DESCRIPTION, COMPACT_DESCRIPTION]).toContain(await RunTestsTool.prompt({} as never))
+  })
+
+  test('the result block carries the formatted summary', () => {
+    const output: TestResult = {
+      framework: 'bun',
+      command: 'bun test',
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      failures: [],
+      degraded: false,
+      exitCode: 0,
+    }
+    expect(RunTestsTool.mapToolResultToToolResultBlockParam(output, 'tu1')).toEqual({
+      tool_use_id: 'tu1',
+      type: 'tool_result',
+      content: formatTestResult(output),
+    })
+  })
+
+  test("permission is Bash's verdict on the command, and an allow echoes the tool's own input", async () => {
+    stubMacroVersion()
+    try {
+      const input = { command: 'true', path: 'a', pattern: 'x' }
+      const allowed = await RunTestsTool.checkPermissions(
+        input as never,
+        makeToolUseContext(makePermissionContext({ allow: ['Bash(true)'] })),
+      )
+      expect(allowed).toEqual({ behavior: 'allow', updatedInput: input })
+      const denied = await RunTestsTool.checkPermissions(
+        input as never,
+        makeToolUseContext(makePermissionContext({ deny: ['Bash(true)'] })),
+      )
+      expect(denied.behavior).toBe('deny')
+    } finally {
+      resetPermissionState()
+    }
+  })
 })

@@ -1,7 +1,8 @@
 {
   "test": [
     "src/tools/GrepTool/GrepTool.test.ts",
-    "src/tools/GrepTool/globAnchor.test.ts"
+    "src/tools/GrepTool/globAnchor.test.ts",
+    "src/tools/RunTestsTool/RunTestsTool.test.ts"
   ],
   "source": "src/tools/GrepTool/globAnchor.ts",
   "probes": [
@@ -40,6 +41,30 @@
       "name": "anchor: a search path that is the cwd gets an empty lead",
       "find": "  if (rel === '') return pattern\n",
       "replace": ""
+    },
+    {
+      "name": "runtests: an allow hands back Bash's input",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "      return { behavior: 'allow', updatedInput: input }\n",
+      "replace": "      return bashDecision\n"
+    },
+    {
+      "name": "runtests: the classifier never sees the command",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "    return input.command ?? '<detect test suite>'\n",
+      "replace": "    return '<detect test suite>'\n"
+    },
+    {
+      "name": "runtests: pytest filters with -t",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "        cmd += ` -k ${q}`\n",
+      "replace": "        cmd += ` -t ${q}`\n"
+    },
+    {
+      "name": "runtests: a call runs in process.cwd()",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "      cwd,\n      abortSignal: context.abortController.signal,\n",
+      "replace": "      cwd: process.cwd(),\n      abortSignal: context.abortController.signal,\n"
     }
   ]
 }
