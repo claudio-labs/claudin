@@ -370,7 +370,7 @@ describe('sleep-poll redirect', () => {
 
   test('the call the redirect and the advice hand back validates, under the cap', () => {
     const callOf = (text: string) => JSON.parse(/WaitFor\((\{.*\})\)/.exec(text)![1]!)
-    for (const poll of [{ secs: 8, command: 'cat /tmp/out' }, { secs: 900, setup: 'make', command: 'tail -3 log' }]) {
+    for (const poll of [{ secs: 8, setup: '', command: 'cat /tmp/out' }, { secs: 900, setup: 'make', command: 'tail -3 log' }]) {
       for (const text of [renderWaitForRedirect(poll), renderWaitForAdvice(poll)]) {
         const parsed = WaitForTool.inputSchema.safeParse(callOf(text))
         expect([text, parsed.success]).toEqual([text, true])
