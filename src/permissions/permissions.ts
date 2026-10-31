@@ -59,6 +59,12 @@ import {
   persistDenialState,
 } from 'src/permissions/permissions/denial.js'
 import {
+  classifierWouldRunLocally,
+  takeLocalClassifierNotice,
+} from 'src/permissions/permissions/localClassifier.js'
+import { getClassifierModel } from 'src/permissions/yoloClassifier/classifierConfig.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import {
   createPermissionRequestMessage,
   getUpdatedInputOrFallback,
   runPermissionRequestHooksForHeadlessAgent,
@@ -287,6 +293,41 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
             mode: 'auto',
           },
         }
+      }
+
+      // The classifier runs on the main loop model: with a local one it would
+      // judge its own actions (localClassifier.ts). Ask as outside auto mode,
+      // the way PowerShell is handled above.
+      if (
+        classifierWouldRunLocally(
+          getClassifierModel(),
+          tryGetActiveProvider()?.baseUrl,
+        )
+      ) {
+        if (appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
+          return {
+            behavior: 'deny',
+            message: result.message,
+            decisionReason: {
+              type: 'asyncAgent',
+              reason:
+                'Auto mode does not classify with a local model, and permission prompts are not available in this context',
+            },
+          }
+        }
+        const notice = takeLocalClassifierNotice()
+        if (notice) {
+          context.addNotification?.({
+            key: 'auto-mode-local-classifier',
+            text: notice,
+            color: 'warning',
+            priority: 'medium',
+          })
+        }
+        logForDebugging(
+          `Skipping auto mode classifier for ${tool.name}: it would run on a local model`,
+        )
+        return result
       }
 
       // Run the auto mode classifier
