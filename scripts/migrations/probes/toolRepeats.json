@@ -2,6 +2,7 @@
   "test": [
     "src/tools/GrepTool/GrepTool.test.ts",
     "src/tools/GrepTool/globAnchor.test.ts",
+    "scripts/bench/tokens/feature-usage-census.test.ts",
     "src/tools/RunTestsTool/RunTestsTool.test.ts",
     "src/tools/WaitForTool/WaitForTool.test.ts",
     "src/tools/ToolSearchTool/callForms.test.ts",
@@ -14,37 +15,57 @@
     {
       "name": "grep: the glob reaches ripgrep raw",
       "source": "src/tools/GrepTool/GrepTool.ts",
-      "find": "        args.push('--glob', anchorGlobAtSearchPath(globPattern, searchDir, rgCwd ?? process.cwd()))\n",
-      "replace": "        args.push('--glob', globPattern)\n"
+      "find": "        for (const g of globsForSearchPath(pattern, absolutePath, rgCwd ?? process.cwd())) {\n",
+      "replace": "        for (const g of [pattern]) {\n"
     },
     {
       "name": "anchor: a negated glob loses its bang",
-      "find": "  return `${negated ? '!' : ''}/${anchor}/${body}`\n",
-      "replace": "  return `/${anchor}/${body}`\n"
+      "find": "  return lead ? [pattern, `${bang}${lead}/${body}`] : [pattern]\n",
+      "replace": "  return lead ? [pattern, `${lead}/${body}`] : [pattern]\n"
+    },
+    {
+      "name": "anchor: the glob as written is dropped",
+      "find": "  return lead ? [pattern, `${bang}${lead}/${body}`] : [pattern]\n",
+      "replace": "  return lead ? [`${bang}${lead}/${body}`] : [pattern]\n"
     },
     {
       "name": "anchor: a search path outside the cwd is left alone",
-      "find": "  if (outside && !searchDir.startsWith('/')) return pattern\n",
-      "replace": "  if (outside) return pattern\n"
+      "find": "  if (outside && !searchDir.startsWith('/')) return null\n",
+      "replace": "  if (outside) return null\n"
+    },
+    {
+      "name": "anchor: the parent of the cwd counts as inside",
+      "find": "  const outside = rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)\n",
+      "replace": "  const outside = rel.startsWith(`..${sep}`) || isAbsolute(rel)\n"
     },
     {
       "name": "anchor: the search path is not escaped",
-      "find": "  const anchor = (outside ? searchDir : rel.split(sep).join('/')).replace(GLOB_META_RE, '\\\\$&')\n",
-      "replace": "  const anchor = outside ? searchDir : rel.split(sep).join('/')\n"
+      "find": "  return `/${(outside ? searchDir : rel.split(sep).join('/')).replace(GLOB_META_RE, '\\\\$&')}`\n",
+      "replace": "  return `/${outside ? searchDir : rel.split(sep).join('/')}`\n"
     },
     {
       "name": "anchor: a glob led by ** is rewritten too",
-      "find": "  if (!body.includes('/') || body.startsWith('/') || body.startsWith('**/')) return pattern\n",
-      "replace": "  if (!body.includes('/') || body.startsWith('/')) return pattern\n"
+      "find": " && !p.startsWith('/') && !p.startsWith('**/')\n",
+      "replace": " && !p.startsWith('/')\n"
+    },
+    {
+      "name": "anchor: a trailing slash counts as an inner one",
+      "find": "  return p.replace(TRAILING_SLASHES_RE, '').includes('/')",
+      "replace": "  return p.includes('/')"
     },
     {
       "name": "anchor: a leading ./ is kept",
-      "find": "  const body = (negated ? pattern.slice(1) : pattern).replace(LEADING_DOT_SLASH_RE, '')\n",
-      "replace": "  const body = negated ? pattern.slice(1) : pattern\n"
+      "find": "  const body = raw.replace(LEADING_DOT_SLASH_RE, '')\n",
+      "replace": "  const body = raw\n"
+    },
+    {
+      "name": "anchor: a ./ glob keeps its as-written reading",
+      "find": "  if (rooted) return [`${bang}${lead ?? ''}/${body}`]\n",
+      "replace": "  if (rooted) return [pattern, `${bang}${lead ?? ''}/${body}`]\n"
     },
     {
       "name": "anchor: a search path that is the cwd gets an empty lead",
-      "find": "  if (rel === '') return pattern\n",
+      "find": "  if (rel === '') return ''\n",
       "replace": ""
     },
     {
@@ -73,27 +94,39 @@
     },
     {
       "name": "waitfor: the cap stays at 600 s",
-      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "source": "src/tools/WaitForTool/limits.ts",
       "find": "const DEFAULT_MAX_TIMEOUT_S = 1800\n",
       "replace": "const DEFAULT_MAX_TIMEOUT_S = 600\n"
     },
     {
       "name": "waitfor: the env never moves the cap",
-      "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "  return Number.isFinite(fromEnv) && fromEnv >= 1 ? fromEnv : DEFAULT_MAX_TIMEOUT_S\n",
-      "replace": "  return DEFAULT_MAX_TIMEOUT_S\n"
+      "source": "src/tools/WaitForTool/limits.ts",
+      "find": "    process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S,\n",
+      "replace": "    undefined,\n"
     },
     {
       "name": "waitfor: an empty env sets a cap of 0",
-      "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "  return Number.isFinite(fromEnv) && fromEnv >= 1 ? fromEnv : DEFAULT_MAX_TIMEOUT_S\n",
-      "replace": "  return Number.isFinite(fromEnv) ? fromEnv : DEFAULT_MAX_TIMEOUT_S\n"
+      "source": "src/tools/WaitForTool/limits.ts",
+      "find": "    DEFAULT_MAX_TIMEOUT_S,\n    1,\n",
+      "replace": "    DEFAULT_MAX_TIMEOUT_S,\n    0,\n"
     },
     {
       "name": "waitfor: the schema keeps the old max",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "semanticNumber(z.number().min(1).max(maxTimeoutS()).optional())",
+      "find": "semanticNumber(z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional())",
       "replace": "semanticNumber(z.number().min(1).max(600).optional())"
+    },
+    {
+      "name": "waitfor: the sleep advice leaves out the description",
+      "source": "src/tools/WaitForTool/redirect.ts",
+      "find": "    description: '<what you are waiting for>',\n",
+      "replace": ""
+    },
+    {
+      "name": "waitfor: the sleep advice asks past the cap",
+      "source": "src/tools/WaitForTool/redirect.ts",
+      "find": "    timeout_s: Math.min(STATED_MAX_TIMEOUT_S, Math.max(30, poll.secs * 6)),\n",
+      "replace": "    timeout_s: Math.max(30, poll.secs * 6),\n"
     },
     {
       "name": "forms: RunTests has none",
@@ -122,14 +155,14 @@
     {
       "name": "forms: WaitFor's form names the old cap",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "\"timeout_s\": <seconds, max ${maxTimeoutS()}>",
+      "find": "\"timeout_s\": <seconds, max ${STATED_MAX_TIMEOUT_S}>",
       "replace": "\"timeout_s\": <seconds, max 600>"
     },
     {
       "name": "forms: a quoted timeout_s is refused",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "    timeout_s: semanticNumber(z.number().min(1).max(maxTimeoutS()).optional()).describe(\n",
-      "replace": "    timeout_s: z.number().min(1).max(maxTimeoutS()).optional().describe(\n"
+      "find": "    timeout_s: semanticNumber(z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional()).describe(\n",
+      "replace": "    timeout_s: z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional().describe(\n"
     },
     {
       "name": "waitfor: the default runs past a lower cap",

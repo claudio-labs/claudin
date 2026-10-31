@@ -1,5 +1,6 @@
 import { splitCommandWithOperators } from 'src/platform/bash/commands.js'
 import { createOneShotMemo, MEMO_LIMIT } from 'src/tools/shared/redirect.js'
+import { STATED_MAX_TIMEOUT_S } from 'src/tools/WaitForTool/limits.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 
 /**
@@ -121,6 +122,7 @@ function waitForCall(poll: SleepPoll): string {
     ...(poll.setup ? { setup: poll.setup } : {}),
     command: poll.command,
     until: '<regex you are waiting for>',
-    timeout_s: Math.max(30, poll.secs * 6),
+    timeout_s: Math.min(STATED_MAX_TIMEOUT_S, Math.max(30, poll.secs * 6)),
+    description: '<what you are waiting for>',
   })
 }

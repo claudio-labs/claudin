@@ -6,7 +6,8 @@ import { spawn } from 'child_process'
 
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
-import { maxTimeoutS, WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
+import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
+import { maxTimeoutS } from 'src/tools/WaitForTool/limits.js'
 import {
   detectSleepPoll,
   renderWaitForAdvice,
@@ -362,7 +363,7 @@ describe('sleep-poll redirect', () => {
     })
     expect(text).toContain('Blocked: sleep 8 followed by a check')
     expect(text).toContain(
-      'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p","until":"<regex you are waiting for>","timeout_s":48})',
+      'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p","until":"<regex you are waiting for>","timeout_s":48,"description":"<what you are waiting for>"})',
     )
     expect(text).toContain('Re-send this exact command')
   })
