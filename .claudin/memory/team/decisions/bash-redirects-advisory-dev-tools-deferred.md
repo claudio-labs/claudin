@@ -12,7 +12,9 @@ paths:
 file reads, `sleep` polls, blocking sleeps) no longer refuse. The command runs,
 and `Tool.advise` appends a `<system-reminder>` naming the tool and the exact
 call to its result, success or error. For a deferred tool that is not loaded
-yet, the note also says which ToolSearch `select:` to call. Build, RunTests,
+yet, the note also says which ToolSearch `select:` to call — unless the listing
+gives it a call form, as all four dev tools have since 2026-10-31
+([[tool-repeat-calls]]). Build, RunTests,
 Typecheck and WaitFor are deferred (`isDeferredTool`, ToolSearchTool/prompt.ts).
 Both are user decisions.
 
