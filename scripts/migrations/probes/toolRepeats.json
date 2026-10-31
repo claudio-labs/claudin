@@ -2,7 +2,8 @@
   "test": [
     "src/tools/GrepTool/GrepTool.test.ts",
     "src/tools/GrepTool/globAnchor.test.ts",
-    "src/tools/RunTestsTool/RunTestsTool.test.ts"
+    "src/tools/RunTestsTool/RunTestsTool.test.ts",
+    "src/tools/WaitForTool/WaitForTool.test.ts"
   ],
   "source": "src/tools/GrepTool/globAnchor.ts",
   "probes": [
@@ -65,6 +66,30 @@
       "source": "src/tools/RunTestsTool/RunTestsTool.ts",
       "find": "      cwd,\n      abortSignal: context.abortController.signal,\n",
       "replace": "      cwd: process.cwd(),\n      abortSignal: context.abortController.signal,\n"
+    },
+    {
+      "name": "waitfor: the cap stays at 600 s",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "const DEFAULT_MAX_TIMEOUT_S = 1800\n",
+      "replace": "const DEFAULT_MAX_TIMEOUT_S = 600\n"
+    },
+    {
+      "name": "waitfor: the env never moves the cap",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "  return Number.isFinite(fromEnv) && fromEnv >= 1 ? fromEnv : DEFAULT_MAX_TIMEOUT_S\n",
+      "replace": "  return DEFAULT_MAX_TIMEOUT_S\n"
+    },
+    {
+      "name": "waitfor: an empty env sets a cap of 0",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "  return Number.isFinite(fromEnv) && fromEnv >= 1 ? fromEnv : DEFAULT_MAX_TIMEOUT_S\n",
+      "replace": "  return Number.isFinite(fromEnv) ? fromEnv : DEFAULT_MAX_TIMEOUT_S\n"
+    },
+    {
+      "name": "waitfor: the schema keeps the old max",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "      .max(maxTimeoutS())\n",
+      "replace": "      .max(600)\n"
     }
   ]
 }

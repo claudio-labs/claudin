@@ -6,7 +6,7 @@ import { spawn } from 'child_process'
 
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
-import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
+import { maxTimeoutS, WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
 import {
   detectSleepPoll,
   renderWaitForRedirect,
@@ -60,11 +60,32 @@ describe('WaitForTool', () => {
         .success,
     ).toBe(false)
     expect(
-      WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 601 })
+      WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 1800 })
+        .success,
+    ).toBe(true)
+    expect(
+      WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 1801 })
         .success,
     ).toBe(false)
     expect(WaitForTool.name).toBe('WaitFor')
     expect(WaitForTool.userFacingName()).toBe('Wait')
+  })
+
+  test('the cap is 1800 s, and CLAUDIN_WAITFOR_MAX_TIMEOUT_S moves it', () => {
+    const saved = process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+    try {
+      delete process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+      expect(maxTimeoutS()).toBe(1800)
+      process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = '600'
+      expect(maxTimeoutS()).toBe(600)
+      for (const junk of ['', '0', 'abc', '-5']) {
+        process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = junk
+        expect([junk, maxTimeoutS()]).toEqual([junk, 1800])
+      }
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+      else process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = saved
+    }
   })
 
   test('validateInput rejects an invalid until regex', async () => {
