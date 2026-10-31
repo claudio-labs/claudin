@@ -13,6 +13,7 @@ import {
   memoryIndexAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
+import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,
@@ -343,8 +344,10 @@ export const FileEditTool = buildTool({
     // the file authorizes it, and whether old_string is in the file as it is
     // now decides it below. A file never read is edited only when old_string
     // sits in it exactly once — the model wrote those bytes, so it saw them.
+    // A memory index is in context from the first turn: it counts as read.
     if (
       toolUseContext.readFileState.get(fullFilePath) === undefined &&
+      !isSessionMemoryIndex(fullFilePath) &&
       !locateExactText(fileContent, old_string)
     ) {
       return {
@@ -551,7 +554,10 @@ export const FileEditTool = buildTool({
 
     // A file never read: the check validateInput made, against the bytes
     // about to be replaced.
-    const unread = fileExists && readFileState.get(absoluteFilePath) === undefined
+    const unread =
+      fileExists &&
+      readFileState.get(absoluteFilePath) === undefined &&
+      !isSessionMemoryIndex(absoluteFilePath)
     if (unread && !locateExactText(originalFileContents, old_string)) {
       throw new Error(unreadRefusalFor(originalFileContents, old_string))
     }

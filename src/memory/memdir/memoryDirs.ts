@@ -89,6 +89,18 @@ export function memoryScopeOf(path: string): MemoryScope | null {
   return findMemoryDir(getMemoryDirs(), path)?.scope ?? null
 }
 
+/**
+ * Whether `path` is the `MEMORY.md` of one of the session's directories. An
+ * index is in context from the first turn, so an in-place write to it (Edit,
+ * Patch) counts it as read; a whole-file Write still asks for a Read, since
+ * the index in context may be the one fitted to its cap
+ * (memdir.ts fitEntrypointContent).
+ */
+export function isSessionMemoryIndex(path: string): boolean {
+  const abs = resolve(path)
+  return getMemoryDirs().some(dir => dir.index === abs)
+}
+
 function realRoot(root: string): string | null {
   try {
     return (getFsImplementation().realpathSync(root) + sep).normalize('NFC')

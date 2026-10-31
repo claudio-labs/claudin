@@ -79,7 +79,7 @@ describe('a memory index counts as read for an in-place write', () => {
   test('Edit applies to a MEMORY.md never read', async () => {
     const index = join(memDir, 'MEMORY.md')
     const input = { file_path: index, old_string: STRAIGHT, new_string: '- [Language](user.md) — PT-BR' }
-    expect(await FileEditTool.validateInput(input, ctx)).toEqual({ result: true })
+    expect((await FileEditTool.validateInput(input, ctx)).result).toBe(true)
     await FileEditTool.call(input, ctx, undefined as never, { uuid: randomUUID() } as never)
     expect(readFileSync(index, 'utf8')).toContain('- [Language](user.md) — PT-BR')
   })

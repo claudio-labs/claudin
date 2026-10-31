@@ -42,6 +42,7 @@ import {
   memoryIndexAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
+import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getPatchFromContents } from 'src/vcs/git/diff.js'
@@ -283,7 +284,8 @@ function planFile(group: FileGroup, context: ToolUseContext, strict: boolean): P
     )
   }
   let unread = false
-  if (context.readFileState.get(absPath) === undefined) {
+  // A memory index is in context from the first turn: it counts as read.
+  if (context.readFileState.get(absPath) === undefined && !isSessionMemoryIndex(absPath)) {
     const message = `${APPLY_PATCH_TOOL_NAME}: ${readGateMessage('never-read', rel, 'patching it')}`
     if (strict) {
       const served = first.type === 'update' ? serveUpdateHunk(first, absPath, context) : null
