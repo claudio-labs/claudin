@@ -13,7 +13,7 @@
  *     took its hint, `files_with_matches` → `content` re-runs of one pattern,
  *     and the globs with a `/` in them, split by whether `path` is the session
  *     cwd: ripgrep anchors such a glob at the directory it runs in, so before
- *     2026-11 they came back empty whenever the search path was elsewhere.
+ *     2026-10-31 they came back empty whenever the search path was elsewhere.
  *   - Read shape — outline / symbol / range / full, the auto-outline pivot and
  *     what the model did NEXT on the same file (symbol / range / full / nothing),
  *     re-reads of one path, and the large full bodies that never pivoted.
@@ -33,6 +33,7 @@
  */
 import { readFileSync } from 'fs'
 import { basename, dirname, resolve } from 'path'
+import { isDirAnchoredGlob, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
 import {
   contentText,
   pad,
@@ -435,22 +436,6 @@ function grepMode(input: Block): string {
   return String(input.output_mode ?? 'files_with_matches')
 }
 
-/** The patterns a Grep `glob` input becomes, split the way GrepTool splits it. */
-export function grepGlobPatterns(glob: string): string[] {
-  const out: string[] = []
-  for (const raw of glob.split(/\s+/)) {
-    if (raw.includes('{') && raw.includes('}')) out.push(raw)
-    else out.push(...raw.split(','))
-  }
-  return out.filter(Boolean)
-}
-
-/** A glob ripgrep anchors at the directory it runs in: a `/` inside, not rooted, not led by a `**` segment. */
-export function isDirAnchoredGlob(pattern: string): boolean {
-  const p = pattern.startsWith('!') ? pattern.slice(1) : pattern
-  return p.includes('/') && !p.startsWith('/') && !p.startsWith('**/')
-}
-
 export function grepReport(calls: Call[]) {
   const grep = calls.filter(c => c.tool === 'Grep' && c.answered)
   const byMode = new Map<string, { n: number; chars: number; sizes: number[]; noMatch: number; errors: number }>()
@@ -524,7 +509,7 @@ export function grepReport(calls: Call[]) {
       contentNoScopeNoLimit++
       contentNoScopeNoLimitChars += c.chars
     }
-    const anchored = typeof c.input.glob === 'string' && c.cwd ? grepGlobPatterns(c.input.glob).filter(isDirAnchoredGlob) : []
+    const anchored = typeof c.input.glob === 'string' && c.cwd ? splitGlobInput(c.input.glob).filter(isDirAnchoredGlob) : []
     if (anchored.length > 0) {
       const elsewhere = resolve(c.cwd, String(c.input.path ?? '.')) !== c.cwd
       const empty = GREP_NO_MATCH_RE.test(c.text)

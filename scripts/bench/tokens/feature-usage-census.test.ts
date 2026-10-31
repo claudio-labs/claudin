@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { type Call, grepGlobPatterns, grepReport, isDirAnchoredGlob, waitReport } from './feature-usage-census.ts'
+import { type Call, grepReport, waitReport } from './feature-usage-census.ts'
 
 let seq = 0
 function call(tool: string, input: Record<string, unknown>, text: string, extra: Partial<Call> = {}): Call {
@@ -22,18 +22,6 @@ function call(tool: string, input: Record<string, unknown>, text: string, extra:
 }
 
 describe('grep globs with a slash', () => {
-  test('patterns split the way GrepTool splits them', () => {
-    expect(grepGlobPatterns('*.ts,*.tsx {a/b.ts,c/d.ts} !x/**')).toEqual(['*.ts', '*.tsx', '{a/b.ts,c/d.ts}', '!x/**'])
-  })
-
-  test('only a relative pattern with a slash is anchored at the directory ripgrep runs in', () => {
-    expect(isDirAnchoredGlob('src/*.ts')).toBe(true)
-    expect(isDirAnchoredGlob('!fuzz/corpus/**')).toBe(true)
-    expect(isDirAnchoredGlob('*.ts')).toBe(false)
-    expect(isDirAnchoredGlob('**/a/b.ts')).toBe(false)
-    expect(isDirAnchoredGlob('/a/b.ts')).toBe(false)
-  })
-
   test('a slash glob is counted apart by whether the search path is the cwd', () => {
     const g = grepReport([
       call('Grep', { pattern: 'x', glob: '{a/b.ts}' }, 'a/b.ts'),
@@ -50,9 +38,6 @@ describe('grep globs with a slash', () => {
   })
 
   test('a trailing slash alone is no anchor: ripgrep reads it at any depth', () => {
-    expect(isDirAnchoredGlob('node_modules/')).toBe(false)
-    expect(isDirAnchoredGlob('!node_modules/')).toBe(false)
-    expect(isDirAnchoredGlob('a/b/')).toBe(true)
     const g = grepReport([call('Grep', { pattern: 'x', glob: '!node_modules/', path: '/other' }, 'f.rs')])
     expect(g.negatedSlashGlobElsewhere).toBe(0)
   })

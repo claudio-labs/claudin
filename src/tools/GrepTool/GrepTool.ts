@@ -1,4 +1,3 @@
-import { dirname } from 'path'
 import { z } from 'zod/v4'
 import type { ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
@@ -25,7 +24,7 @@ import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
-import { anchorGlobAtSearchPath } from 'src/tools/GrepTool/globAnchor.js'
+import { globsForSearchPath, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
 import {
   BODIES_HEADER_SUFFIX,
   bodiesSchemaFields,
@@ -572,28 +571,13 @@ export const GrepTool = buildTool({
     const rgCwd = getFsImplementation().existsSync(sessionCwd) ? sessionCwd : undefined
 
     if (glob) {
-      // Split on commas and spaces, but preserve patterns with braces
-      const globPatterns: string[] = []
-      const rawPatterns = glob.split(/\s+/)
-
-      for (const rawPattern of rawPatterns) {
-        // If pattern contains braces, don't split further
-        if (rawPattern.includes('{') && rawPattern.includes('}')) {
-          globPatterns.push(rawPattern)
-        } else {
-          // Split on commas for patterns without braces
-          globPatterns.push(...rawPattern.split(',').filter(Boolean))
+      // A glob with a `/` is also read from the search path, not only from
+      // where ripgrep runs (globAnchor.ts). ripgrep applies no glob to a file
+      // named on its command line, so a file path needs no special case.
+      for (const pattern of splitGlobInput(glob)) {
+        for (const g of globsForSearchPath(pattern, absolutePath, rgCwd ?? process.cwd())) {
+          args.push('--glob', g)
         }
-      }
-
-      // A glob with a `/` is written from the search path, not from where
-      // ripgrep runs (globAnchor.ts).
-      let searchDir = absolutePath
-      try {
-        if (!getFsImplementation().statSync(absolutePath).isDirectory()) searchDir = dirname(absolutePath)
-      } catch {}
-      for (const globPattern of globPatterns.filter(Boolean)) {
-        args.push('--glob', anchorGlobAtSearchPath(globPattern, searchDir, rgCwd ?? process.cwd()))
       }
     }
 
