@@ -31,6 +31,8 @@ type Snapshot = {
 const POLL_INTERVAL_MS = 2000;
 const ICON_WRITE = '\u{F163E}'; // Nerd Font — cache write
 const ICON_READ = '\u{F163B}';  // Nerd Font — cache read
+const ICON_IN = '\u{F0737}';    // nf-md-arrow_up_bold — sent
+const ICON_OUT = '\u{F072E}';   // nf-md-arrow_down_bold — received
 const GAUGE_EMPTY = '\u{F0766}';  // nf-md-circle_outline
 const GAUGE_SLICE_BASE = 0xf0a9d; // + 1..8 → nf-md-circle_slice_1..8
 // One divider for every group boundary and before the cost.
@@ -49,8 +51,9 @@ export function formatPillTokens(count: number): string {
 }
 
 /** The row's groups, cost excluded: the context size unlabelled, then the
- *  cache groups, marked by icon when Nerd Font glyphs render and by `wrt:` /
- *  `rd:` otherwise. */
+ *  cache groups — or input/output for a provider without cache data — marked
+ *  by icon when Nerd Font glyphs render and by `wrt:`/`rd:` (`in:`/`out:`)
+ *  otherwise. */
 export function formatTokenParts(snapshot: Snapshot, contextTokens: number, nerdFont: boolean): string[] {
   const parts: string[] = [];
   if (contextTokens > 0) {
@@ -64,8 +67,8 @@ export function formatTokenParts(snapshot: Snapshot, contextTokens: number, nerd
       parts.push(`${nerdFont ? ICON_READ : 'rd:'} ${formatPillTokens(snapshot.cacheRead)}`);
     }
   } else {
-    parts.push(`in: ${formatPillTokens(snapshot.input)}`);
-    parts.push(`out: ${formatPillTokens(snapshot.output)}`);
+    parts.push(`${nerdFont ? ICON_IN : 'in:'} ${formatPillTokens(snapshot.input)}`);
+    parts.push(`${nerdFont ? ICON_OUT : 'out:'} ${formatPillTokens(snapshot.output)}`);
   }
   return parts;
 }
@@ -88,8 +91,10 @@ export function contextGauge(ratio: number): { glyph: string; color: 'warning' |
  * display to the no-cache layout immediately, instead of latching on the
  * leftover non-zero `cacheCreation` from the previous provider.
  *
- * `copilot` and `ollama` are hard-wired unsupported in `extractCacheMetrics`;
- * `self-hosted` is heuristic (private URL) and treated as unsupported here.
+ * `copilot` is hard-wired unsupported in `extractCacheMetrics`; `self-hosted`
+ * is heuristic (private URL) and treated as unsupported here. Ollama reports
+ * its KV cache (prefill as a write, the reused prefix as a read), so it gets
+ * the same row as Anthropic.
  */
 function activeProviderSupportsCache(): boolean {
   const profile = tryGetActiveProvider();
@@ -98,7 +103,7 @@ function activeProviderSupportsCache(): boolean {
     githubNativeAnthropic: isGithubNativeAnthropicMode(),
     openAiBaseUrl: profile.baseUrl,
   });
-  return cacheProvider !== 'copilot' && cacheProvider !== 'ollama' && cacheProvider !== 'self-hosted';
+  return cacheProvider !== 'copilot' && cacheProvider !== 'self-hosted';
 }
 
 /**
