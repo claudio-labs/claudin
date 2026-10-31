@@ -240,6 +240,22 @@ describe('WaitForTool', () => {
     expect(data.output).not.toContain('Command timed out')
   })
 
+  test('a cap set below the default timeout caps a call that names none', async () => {
+    const saved = process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+    process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = '1'
+    try {
+      const { data } = await WaitForTool.call(
+        { command: 'echo never', until: 'READY', interval_s: 0.2, description: 'capped' },
+        makeCtx(),
+      )
+      expect(data.reason).toBe('timeout')
+      expect(data.elapsedMs).toBeLessThan(5_000)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+      else process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = saved
+    }
+  })
+
   test('abort: stops polling and reports aborted', async () => {
     const ac = new AbortController()
     setTimeout(() => ac.abort(), 500)

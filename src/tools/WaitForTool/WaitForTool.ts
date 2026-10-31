@@ -290,7 +290,8 @@ export const WaitForTool = buildTool({
     const { command, until, setup } = input
     const settleMs = (input.settle_s ?? DEFAULT_SETTLE_S) * 1000
     const intervalMs = (input.interval_s ?? DEFAULT_INTERVAL_S) * 1000
-    const timeoutMs = (input.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000
+    // The cap holds for the default too, so a cap set below it still caps.
+    const timeoutMs = Math.min(input.timeout_s ?? DEFAULT_TIMEOUT_S, maxTimeoutS()) * 1000
     const signal = toolUseContext.abortController.signal
     // Validated in validateInput; compiled once here.
     const untilRe = until === undefined ? null : compileUntil(until)
