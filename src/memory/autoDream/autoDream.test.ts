@@ -1,8 +1,16 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
+  getIsInteractive,
+  setFlagSettingsInline,
+  setIsInteractive,
+} from 'src/platform/bootstrap/state/sessionFlags.js'
+import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
+import * as autoDreamModule from 'src/memory/autoDream/autoDream.js'
+import {
   type AutoDreamDeps,
+  defaultAutoDreamDeps,
   executeAutoDream,
   initAutoDream,
 } from 'src/memory/autoDream/autoDream.js'
@@ -152,6 +160,83 @@ describe('auto-dream gates', () => {
     })
     await run(failing.deps)
     expect(failing.calls.forks).toHaveLength(0)
+  })
+})
+
+// A `-p` run is often the only turn its process sees: a dream started there
+// was cut off at exit (runHeadless drains extraction only). It now stays out
+// of `-p` unless CLAUDIN_AUTO_DREAM_HEADLESS=1 asks for it, and then the run
+// waits for it. CLAUDIN_AUTO_DREAM_FORCE=1 opens the gates for the bench.
+describe('auto-dream in a non-interactive session', () => {
+  const savedInteractive = getIsInteractive()
+  const saved = {
+    headless: process.env.CLAUDIN_AUTO_DREAM_HEADLESS,
+    force: process.env.CLAUDIN_AUTO_DREAM_FORCE,
+  }
+  const restore = () => {
+    setIsInteractive(savedInteractive)
+    setFlagSettingsInline(null)
+    resetSettingsCache()
+    for (const [key, value] of [
+      ['CLAUDIN_AUTO_DREAM_HEADLESS', saved.headless],
+      ['CLAUDIN_AUTO_DREAM_FORCE', saved.force],
+    ] as const) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
+
+  beforeEach(() => {
+    restore()
+    setFlagSettingsInline({ autoDreamEnabled: true })
+    resetSettingsCache()
+  })
+  afterAll(restore)
+
+  test('the gate stays shut in -p unless CLAUDIN_AUTO_DREAM_HEADLESS=1', () => {
+    setIsInteractive(true)
+    expect(defaultAutoDreamDeps.isGateOpen()).toBe(true)
+    setIsInteractive(false)
+    expect(defaultAutoDreamDeps.isGateOpen()).toBe(false)
+    process.env.CLAUDIN_AUTO_DREAM_HEADLESS = '1'
+    expect(defaultAutoDreamDeps.isGateOpen()).toBe(true)
+  })
+
+  test('a headless run waits for the dream it started', async () => {
+    let finish!: () => void
+    const finished = new Promise<void>(r => {
+      finish = r
+    })
+    let done = false
+    const { deps } = fakeDeps({
+      runForkedAgent: (async () => {
+        await finished
+        done = true
+        return { messages: [], totalUsage: { cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } }
+      }) as unknown as AutoDreamDeps['runForkedAgent'],
+    })
+    const h = harness()
+    initAutoDream(deps)
+    void executeAutoDream(h.context, h.append as never)
+    const drain = (autoDreamModule as Record<string, unknown>).drainPendingAutoDream as
+      | ((timeoutMs?: number) => Promise<void>)
+      | undefined
+    expect(drain).toBeDefined()
+    const drained = drain!(5_000)
+    finish()
+    await drained
+    expect(done).toBe(true)
+  })
+
+  test('CLAUDIN_AUTO_DREAM_FORCE=1 opens the gates, not the lock', async () => {
+    process.env.CLAUDIN_AUTO_DREAM_FORCE = '1'
+    const { deps, calls } = fakeDeps({
+      isGateOpen: () => false,
+      readLastConsolidatedAt: async () => Date.now(),
+      listSessionsTouchedSince: async () => [],
+    })
+    await run(deps)
+    expect(calls.forks).toHaveLength(1)
   })
 })
 

@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'fs'
 import { tmpdir } from 'os'
@@ -76,6 +77,36 @@ describe('migrateLegacyMemoryIfNeeded', () => {
     expect(readFileSync(join(oldDir, 'MEMORY.md'), 'utf-8')).toBe(
       '- a memory\n',
     )
+  })
+
+  // team/bugs/legacy-memory-migration-resurrects-team-files: the private dir
+  // looked empty, so the legacy copy wrote its June team/ back — the files
+  // since moved, renamed or deleted landed untracked in the git-tracked dir.
+  test('never copies the legacy team/ into the git-tracked team dir', () => {
+    const oldDir = freshDir('claudin-migrate-old-')
+    const newDir = freshDir('claudin-migrate-new-')
+    writeFileSync(join(oldDir, 'MEMORY.md'), '- a memory\n')
+    mkdirSync(join(oldDir, 'team'))
+    writeFileSync(join(oldDir, 'team', 'moved-since.md'), '# stale\n')
+    mkdirSync(join(newDir, 'team'))
+    writeFileSync(join(newDir, 'team', 'live.md'), '# tracked\n')
+
+    migrateLegacyMemoryIfNeeded(oldDir, newDir)
+
+    expect(readFileSync(join(newDir, 'MEMORY.md'), 'utf-8')).toBe('- a memory\n')
+    expect(existsSync(join(newDir, 'team', 'moved-since.md'))).toBe(false)
+  })
+
+  test('migrates once: a private dir emptied later is not refilled from the legacy one', () => {
+    const oldDir = freshDir('claudin-migrate-old-')
+    const newDir = freshDir('claudin-migrate-new-')
+    writeFileSync(join(oldDir, 'MEMORY.md'), '- june snapshot\n')
+    migrateLegacyMemoryIfNeeded(oldDir, newDir)
+    rmSync(join(newDir, 'MEMORY.md'))
+
+    migrateLegacyMemoryIfNeeded(oldDir, newDir)
+
+    expect(existsSync(join(newDir, 'MEMORY.md'))).toBe(false)
   })
 
   test('is a no-op when oldDir and newDir are the same path', () => {

@@ -236,6 +236,47 @@ describe('an extraction', () => {
   })
 })
 
+// The cursor and the turn count used to live in the closure only, so a new
+// process — a restart, a `--resume`, an in-process `/resume` that comes back —
+// re-mined the session from its first message and restarted the count.
+describe('an extraction across a restart', () => {
+  test('reads only what came after the last extraction of this session', async () => {
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '1'
+    const first = fakeDeps()
+    initExtractMemories(first.deps)
+    const messages = conversation('a', 'b')
+    await executeExtractMemories(contextOf(messages))
+    expect(first.forks).toHaveLength(1)
+
+    const second = fakeDeps()
+    initExtractMemories(second.deps)
+    messages.push(...conversation('c'))
+    await executeExtractMemories(contextOf(messages))
+    expect(promptOf(second.forks[0]!)).toContain('~2 messages')
+  })
+
+  test('counts the human turns since that extraction, not since the restart', async () => {
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '1'
+    const seeded = fakeDeps()
+    initExtractMemories(seeded.deps)
+    const messages = conversation('a')
+    await executeExtractMemories(contextOf(messages))
+
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '2'
+    const before = fakeDeps()
+    initExtractMemories(before.deps)
+    messages.push(...conversation('b'))
+    await executeExtractMemories(contextOf(messages))
+    expect(before.forks).toHaveLength(0)
+
+    const after = fakeDeps()
+    initExtractMemories(after.deps)
+    messages.push(...conversation('c'))
+    await executeExtractMemories(contextOf(messages))
+    expect(after.forks).toHaveLength(1)
+  })
+})
+
 describe('the fork gate', () => {
   const gate = createMemoryCanUseTool()
   const call = (tool: Tool, input: Record<string, unknown>) => gate(tool, input, null as never, null as never, 'toolu_1')
