@@ -48,6 +48,14 @@ describe('grep globs with a slash', () => {
     expect(g.slashGlobElsewhereEmpty).toBe(1)
     expect(g.negatedSlashGlobElsewhere).toBe(1)
   })
+
+  test('a trailing slash alone is no anchor: ripgrep reads it at any depth', () => {
+    expect(isDirAnchoredGlob('node_modules/')).toBe(false)
+    expect(isDirAnchoredGlob('!node_modules/')).toBe(false)
+    expect(isDirAnchoredGlob('a/b/')).toBe(true)
+    const g = grepReport([call('Grep', { pattern: 'x', glob: '!node_modules/', path: '/other' }, 'f.rs')])
+    expect(g.negatedSlashGlobElsewhere).toBe(0)
+  })
 })
 
 describe('waitReport', () => {

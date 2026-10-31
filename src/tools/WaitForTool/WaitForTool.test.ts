@@ -9,6 +9,7 @@ import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import { maxTimeoutS, WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
 import {
   detectSleepPoll,
+  renderWaitForAdvice,
   renderWaitForRedirect,
   resetWaitForRedirectMemoForTesting,
   shouldRedirectSleepPoll,
@@ -364,5 +365,15 @@ describe('sleep-poll redirect', () => {
       'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p","until":"<regex you are waiting for>","timeout_s":48})',
     )
     expect(text).toContain('Re-send this exact command')
+  })
+
+  test('the call the redirect and the advice hand back validates, under the cap', () => {
+    const callOf = (text: string) => JSON.parse(/WaitFor\((\{.*\})\)/.exec(text)![1]!)
+    for (const poll of [{ secs: 8, command: 'cat /tmp/out' }, { secs: 900, setup: 'make', command: 'tail -3 log' }]) {
+      for (const text of [renderWaitForRedirect(poll), renderWaitForAdvice(poll)]) {
+        const parsed = WaitForTool.inputSchema.safeParse(callOf(text))
+        expect([text, parsed.success]).toEqual([text, true])
+      }
+    }
   })
 })
