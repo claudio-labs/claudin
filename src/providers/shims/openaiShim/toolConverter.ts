@@ -6,9 +6,10 @@
  *    survives strict-mode providers (Groq/Azure/OpenAI): preserves only the
  *    originally-required keys, sets `additionalProperties: false`, recurses
  *    into `properties`, `items`, and combinators. Gemini mode skips strict.
- *  - `convertTools` wraps the loop: filters out `ToolSearchTool` and
- *    Anthropic server-side tools, promotes Agent sub-fields, runs the
- *    schema through `normalizeSchemaForOpenAI`.
+ *  - `convertTools` wraps the loop: filters out Anthropic server-side
+ *    tools, promotes Agent sub-fields, runs the schema through
+ *    `normalizeSchemaForOpenAI`. Deferred tools never reach it: the shim
+ *    keeps them behind the CallTool gateway (src/providers/shims/clientToolSearch/).
  *
  * Reads `CLAUDIN_DISABLE_STRICT_TOOLS` env to skip strict mode at runtime.
  */
@@ -107,7 +108,6 @@ export function convertTools(
   const strict = !isGemini && !isEnvTruthy(process.env.CLAUDIN_DISABLE_STRICT_TOOLS)
 
   return tools
-    .filter(t => t.name !== 'ToolSearchTool') // Not relevant for OpenAI
     // Anthropic server-side tools (e.g. web_search_20250305) have a non-function type and no
     // input_schema — OpenAI-compatible providers don't support them and return 400 if sent.
     // `type: 'custom'` is a regular user-defined tool (it carries an input_schema, e.g. the
