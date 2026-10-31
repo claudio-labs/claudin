@@ -27,6 +27,7 @@ import {
   commandHasAnyCd,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
+import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 
 const DEFAULT_SETTLE_S = 3
@@ -64,12 +65,11 @@ const inputSchema = lazySchema(() =>
       .min(MIN_INTERVAL_S)
       .optional()
       .describe(`Seconds between polls (default ${DEFAULT_INTERVAL_S})`),
-    timeout_s: z
-      .number()
-      .min(1)
-      .max(maxTimeoutS())
-      .optional()
-      .describe(`Give up after this many seconds and return the last output (default ${DEFAULT_TIMEOUT_S}, max ${maxTimeoutS()})`),
+    // The call form below shows timeout_s, and a call made from it carries no
+    // schema, so a quoted "900" has to pass too.
+    timeout_s: semanticNumber(z.number().min(1).max(maxTimeoutS()).optional()).describe(
+      `Give up after this many seconds and return the last output (default ${DEFAULT_TIMEOUT_S}, max ${maxTimeoutS()})`,
+    ),
     setup: z
       .string()
       .optional()
@@ -168,6 +168,7 @@ function writesNothing(input: { command: string; setup?: string }): boolean {
 export const WaitForTool = buildTool({
   name: WAITFOR_TOOL_NAME,
   searchHint: 'wait until a command output matches or settles',
+  callForm: `${WAITFOR_TOOL_NAME}({"command": "<command>", "until": "<regex>", "timeout_s": <seconds, max ${maxTimeoutS()}>, "description": "<what you wait for>"})`,
   clearableResult: true,
   maxResultSizeChars: 10_000,
 

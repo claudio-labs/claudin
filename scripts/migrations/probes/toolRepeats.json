@@ -3,7 +3,8 @@
     "src/tools/GrepTool/GrepTool.test.ts",
     "src/tools/GrepTool/globAnchor.test.ts",
     "src/tools/RunTestsTool/RunTestsTool.test.ts",
-    "src/tools/WaitForTool/WaitForTool.test.ts"
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/tools/ToolSearchTool/callForms.test.ts"
   ],
   "source": "src/tools/GrepTool/globAnchor.ts",
   "probes": [
@@ -88,8 +89,44 @@
     {
       "name": "waitfor: the schema keeps the old max",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": "      .max(maxTimeoutS())\n",
-      "replace": "      .max(600)\n"
+      "find": "semanticNumber(z.number().min(1).max(maxTimeoutS()).optional())",
+      "replace": "semanticNumber(z.number().min(1).max(600).optional())"
+    },
+    {
+      "name": "forms: RunTests has none",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "  callForm: `${RUN_TESTS_TOOL_NAME}({})`,\n",
+      "replace": ""
+    },
+    {
+      "name": "forms: Build has none",
+      "source": "src/tools/BuildTool/BuildTool.ts",
+      "find": "  callForm: `${BUILD_TOOL_NAME}({})`,\n",
+      "replace": ""
+    },
+    {
+      "name": "forms: Typecheck has none",
+      "source": "src/tools/TypecheckTool/TypecheckTool.ts",
+      "find": "  callForm: `${TYPECHECK_TOOL_NAME}({})`,\n",
+      "replace": ""
+    },
+    {
+      "name": "forms: WaitFor's form leaves out the required description",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": ", \"description\": \"<what you wait for>\"})`,\n",
+      "replace": "})`,\n"
+    },
+    {
+      "name": "forms: WaitFor's form names the old cap",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "\"timeout_s\": <seconds, max ${maxTimeoutS()}>",
+      "replace": "\"timeout_s\": <seconds, max 600>"
+    },
+    {
+      "name": "forms: a quoted timeout_s is refused",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    timeout_s: semanticNumber(z.number().min(1).max(maxTimeoutS()).optional()).describe(\n",
+      "replace": "    timeout_s: z.number().min(1).max(maxTimeoutS()).optional().describe(\n"
     }
   ]
 }

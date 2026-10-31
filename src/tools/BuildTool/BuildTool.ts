@@ -224,6 +224,7 @@ export const BuildTool = buildTool({
   name: BUILD_TOOL_NAME,
   aliases: ['Compile'],
   searchHint: 'build compile artifact cargo gradle maven make cmake',
+  callForm: `${BUILD_TOOL_NAME}({})`,
   clearableResult: true,
   maxResultSizeChars: 30_000,
   get inputSchema(): InputSchema {
