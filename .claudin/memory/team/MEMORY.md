@@ -4,7 +4,7 @@
 
 ## Decisions
 - [Gemini talks native generateContent like gemini-cli (10-28)](decisions/gemini-native-transport.md) — one Google row, /model from Google; Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
-- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72% · [1M compaction at 50% NOT PROMOTED (10-24)](decisions/large-window-compaction.md)
+- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72% · [early 1M compaction NOT PROMOTED (10-24, 10-31)](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context read autocompact's count
 - [ai-memory ideas in memory (10-16, #320)](decisions/memory-ai-memory-ideas.md) — trust note, `memory audit`, expires:, escaped envelopes; "taste is user" NOT promoted
@@ -50,6 +50,7 @@
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
 - [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md) — Opus+Sonnet A/B; adopt leftovers + prose whole stay opt-in
+- [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — `CLAUDIN_DEFERRED_CALL_FORMS=0`, `CLAUDIN_MAIN_CACHE_TTL=1h`
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
 ## Bugs
@@ -70,7 +71,7 @@
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
 - [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
-- [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md) — -p still seeds tasks with TaskUpdate absent
+- [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md) — the "-p seeds tasks" item was never a bug
 - FIXED: [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [refused Write resumed](bugs/resume-restores-refused-write.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md) · [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 
 ## Docs
