@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
+- [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
 - [Gemini talks native generateContent like gemini-cli (10-28)](decisions/gemini-native-transport.md) — one Google row, /model from Google; Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
 - [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72% · [early 1M compaction NOT PROMOTED (10-24, 10-31)](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
