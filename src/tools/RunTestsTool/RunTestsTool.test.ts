@@ -1306,12 +1306,12 @@ describe('RunTestsTool — the tool around the runner', () => {
 
   test('a run is not read-only, never concurrent, and the classifier reads its command', async () => {
     expect(RunTestsTool.isEnabled()).toBe(true)
-    expect(RunTestsTool.isReadOnly({} as never)).toBe(false)
-    expect(RunTestsTool.isConcurrencySafe({} as never)).toBe(false)
+    expect(RunTestsTool.isReadOnly()).toBe(false)
+    expect(RunTestsTool.isConcurrencySafe()).toBe(false)
     expect(RunTestsTool.toAutoClassifierInput({ command: 'bun test' } as never)).toBe('bun test')
     expect(RunTestsTool.toAutoClassifierInput({} as never)).toBe('<detect test suite>')
-    expect(await RunTestsTool.description({} as never, {} as never)).toBe(DESCRIPTION)
-    expect([DESCRIPTION, COMPACT_DESCRIPTION]).toContain(await RunTestsTool.prompt({} as never))
+    expect(await RunTestsTool.description()).toBe(DESCRIPTION)
+    expect([DESCRIPTION, COMPACT_DESCRIPTION]).toContain(await RunTestsTool.prompt())
   })
 
   test('the result block carries the formatted summary', () => {
