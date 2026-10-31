@@ -172,3 +172,34 @@ describe('gates — the call-forms run', () => {
     expect(parseArgs(['--only=current,current-placebo,meta']).arms).toEqual(['current', 'current-placebo', 'meta'])
   })
 })
+
+describe('gates — the dev-tool call forms run', () => {
+  const run = (currentLoads: number[], err = 0, currentCost = 1) => [
+    ...[1, 1, 0, 1, 2].map(n => result('main', { m: { devToolLoads: n } })),
+    ...[0, 0, 0, 0, 0].map(n => result('current-placebo', { m: { devToolLoads: n } })),
+    ...currentLoads.map(n => result('current', { cost: currentCost, m: { devToolLoads: n, directDeferredErr: err, directDeferredOk: 4 } })),
+  ]
+
+  test('no load in 4 of 5 reps, no errors, no dearer: pass', () => {
+    const g = gates(run([0, 0, 0, 0, 1]))
+    expect(g.map(x => x.gate)).toEqual(['correctness', 'dev-tool forms: ToolSearch loads', 'cost'])
+    expect(g.every(x => x.verdict === 'PASS')).toBe(true)
+  })
+
+  test('loads in 2 of 5 reps fail it', () => {
+    expect(verdictOf(run([0, 0, 0, 1, 1]), 'dev-tool forms: ToolSearch loads')).toBe('FAIL')
+  })
+
+  test('a direct call that errors fails it', () => {
+    expect(verdictOf(run([0, 0, 0, 0, 0], 1), 'dev-tool forms: ToolSearch loads')).toBe('FAIL')
+  })
+
+  test('dearer than main and the placebo fails the cost gate', () => {
+    expect(verdictOf(run([0, 0, 0, 0, 0], 0, 1.2), 'cost')).toBe('FAIL')
+  })
+
+  test('a main that never loads one has no headroom', () => {
+    const rs = [result('main'), result('current-placebo'), result('current')]
+    expect(verdictOf(rs, 'dev-tool forms: ToolSearch loads')).toBe('NO HEADROOM')
+  })
+})

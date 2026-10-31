@@ -181,11 +181,25 @@ describe('mechanismsOf — call forms', () => {
         ...call('TaskList', {}, 'InputValidationError', true),
         ...call('ToolSearch', { query: 'select:TaskUpdate' }, ''),
         ...call('TaskUpdate', { taskId: '1', status: 'completed' }, 'Updated task #1'),
-        ...call('WaitFor', { command: 'x' }, 'ok'),
+        ...call('WebFetch', { url: 'x' }, 'ok'),
       ],
       [],
     )
     expect(m.directDeferredOk).toBe(1)
     expect(m.directDeferredErr).toBe(1)
+  })
+
+  test('a dev tool called from its form counts as direct; a load of one is counted apart', () => {
+    const m = mechanismsOf(
+      [
+        ...call('RunTests', {}, '3 passed'),
+        ...call('ToolSearch', { query: 'select:EnterPlanMode,WaitFor' }, ''),
+        ...call('WaitFor', { command: 'x', description: 'd' }, 'ok'),
+        ...call('ToolSearch', { query: 'select:TaskList' }, ''),
+      ],
+      [],
+    )
+    expect(m.directDeferredOk).toBe(1)
+    expect(m.devToolLoads).toBe(1)
   })
 })

@@ -19,7 +19,8 @@
  * - Call forms (CLAUDIN_DEFERRED_CALL_FORMS), per main-thread request: the
  *   requests that only ran ToolSearch, the ones that only ran other meta
  *   tools (plan mode, tasks), and how calls to a deferred tool never loaded
- *   fared.
+ *   fared. Since 2026-11 the dev tools carry a form too, and the ToolSearch
+ *   calls that still load one are counted on their own.
  */
 
 type Json = Record<string, unknown>
@@ -53,6 +54,8 @@ export type Mechanisms = {
   /** Calls to a deferred built-in never loaded by a ToolSearch, by outcome. */
   directDeferredOk: number
   directDeferredErr: number
+  /** Main-thread ToolSearch calls that load RunTests, Typecheck, Build or WaitFor. */
+  devToolLoads: number
 }
 
 const isRecord = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -106,7 +109,12 @@ const CALL_FORM_TOOLS: ReadonlySet<string> = new Set([
   'TaskGet',
   'TaskStop',
   'TaskUpdate',
+  'RunTests',
+  'Typecheck',
+  'Build',
+  'WaitFor',
 ])
+const DEV_TOOL_RE = /^(?:RunTests|Typecheck|Build|WaitFor)$/
 const META_TOOL_RE = /^(?:EnterPlanMode|ExitPlanMode|Task(?:Update|List|Get|Create|Stop|Output))$/
 
 /** One main-thread request's tool names, records grouped by `message.id`. */
@@ -139,7 +147,9 @@ function countDirectDeferred(calls: readonly ThreadCall[], into: Mechanisms): vo
   const loaded = new Set<string>()
   for (const call of calls) {
     if (call.name === 'ToolSearch') {
-      for (const n of SELECT_RE.exec(String(call.input.query ?? ''))?.[1]?.split(',') ?? []) loaded.add(n.trim())
+      const names = SELECT_RE.exec(String(call.input.query ?? ''))?.[1]?.split(',').map(n => n.trim()) ?? []
+      for (const n of names) loaded.add(n)
+      if (names.some(n => DEV_TOOL_RE.test(n))) into.devToolLoads++
       continue
     }
     if (!CALL_FORM_TOOLS.has(call.name) || loaded.has(call.name)) continue
@@ -233,6 +243,7 @@ export function emptyMechanisms(): Mechanisms {
     otherMetaOnlyRequests: 0,
     directDeferredOk: 0,
     directDeferredErr: 0,
+    devToolLoads: 0,
   }
 }
 

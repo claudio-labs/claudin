@@ -4,7 +4,10 @@
     "src/tools/GrepTool/globAnchor.test.ts",
     "src/tools/RunTestsTool/RunTestsTool.test.ts",
     "src/tools/WaitForTool/WaitForTool.test.ts",
-    "src/tools/ToolSearchTool/callForms.test.ts"
+    "src/tools/ToolSearchTool/callForms.test.ts",
+    "scripts/bench/ab/tool-gaps-ab.test.ts",
+    "scripts/bench/ab/toolGapsMechanisms.test.ts",
+    "scripts/bench/ab/waitfor-adoption-ab.test.ts"
   ],
   "source": "src/tools/GrepTool/globAnchor.ts",
   "probes": [
@@ -127,6 +130,42 @@
       "source": "src/tools/WaitForTool/WaitForTool.ts",
       "find": "    timeout_s: semanticNumber(z.number().min(1).max(maxTimeoutS()).optional()).describe(\n",
       "replace": "    timeout_s: z.number().min(1).max(maxTimeoutS()).optional().describe(\n"
+    },
+    {
+      "name": "waitfor: the default runs past a lower cap",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    const timeoutMs = Math.min(input.timeout_s ?? DEFAULT_TIMEOUT_S, maxTimeoutS()) * 1000\n",
+      "replace": "    const timeoutMs = (input.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000\n"
+    },
+    {
+      "name": "bench: a dev-tool load goes uncounted",
+      "source": "scripts/bench/ab/toolGapsMechanisms.ts",
+      "find": "      if (names.some(n => DEV_TOOL_RE.test(n))) into.devToolLoads++\n",
+      "replace": ""
+    },
+    {
+      "name": "bench: dev-tool forms pass in 3 of 5",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "clean >= Math.ceil(current.length * 0.8) && errs === 0 ? 'PASS' : 'FAIL',\n",
+      "replace": "clean >= Math.ceil(current.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',\n"
+    },
+    {
+      "name": "bench: dev-tool forms ignore a failed direct call",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "clean >= Math.ceil(current.length * 0.8) && errs === 0 ? 'PASS' : 'FAIL',\n",
+      "replace": "clean >= Math.ceil(current.length * 0.8) ? 'PASS' : 'FAIL',\n"
+    },
+    {
+      "name": "bench: the long wait skips the mechanism",
+      "source": "scripts/bench/ab/waitfor-adoption-ab.ts",
+      "find": "  if (askedMore < need) reasons.push(`timeout_s above ${LONG_BASE_CAP_S} in ${askedMore}/${lever.length} lever reps`)\n",
+      "replace": ""
+    },
+    {
+      "name": "bench: the long wait takes a tie in requests",
+      "source": "scripts/bench/ab/waitfor-adoption-ab.ts",
+      "find": "  if (leverCalls >= floor) reasons.push(",
+      "replace": "  if (leverCalls > floor) reasons.push("
     }
   ]
 }

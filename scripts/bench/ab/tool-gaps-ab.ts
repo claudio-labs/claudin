@@ -7,6 +7,7 @@
  *   bun scripts/bench/ab/tool-gaps-ab.ts --dry-run                 # validate the fixture, no tokens
  *   bun scripts/bench/ab/tool-gaps-ab.ts --only=combo --reps=1 --phases=1   # the live probe
  *   bun scripts/bench/ab/tool-gaps-ab.ts --reps=5 --bin=main:<worktree>/bin/claudin
+ *   bun scripts/bench/ab/tool-gaps-ab.ts --only=main,current,current-placebo --reps=5 --bin=main:<worktree>/bin/claudin
  *   bun scripts/bench/ab/tool-gaps-ab.ts --report=/tmp/tool-gaps-ab/<stamp>   # recount a finished run
  *
  * Phase 1 plans in plan mode, implements against the docs, starts the service
@@ -348,6 +349,7 @@ type Gate = { gate: string; verdict: 'PASS' | 'FAIL' | 'NO HEADROOM' | 'n/a'; de
 export function gates(results: readonly RunResult[]): Gate[] {
   const of = (arm: string) => results.filter(r => r.arm === arm)
   if (of('meta').length > 0) return metaGates(results)
+  if (of('main').length > 0 && of('current').length > 0) return devFormGates(results)
   const base = of('base')
   const combo = of('combo')
   const placebo = of('placebo')
@@ -428,6 +430,45 @@ function metaGates(results: readonly RunResult[]): Gate[] {
     gate: 'cost',
     verdict: cost(meta) <= ceiling ? 'PASS' : 'FAIL',
     detail: `median $ meta ${cost(meta).toFixed(3)}, current ${cost(main).toFixed(3)}${placebo.length ? `, placebo ${cost(placebo).toFixed(3)}` : ''}`,
+  })
+  return out
+}
+
+/**
+ * The dev-tool call forms run (perf/tool-repeat-calls), pre-registered in
+ * `.claudin/plans/structured-toasting-rossum.md`: the build of the branch point
+ * (`main`) against this branch's defaults (`current`) and its placebo. Passes
+ * when every arm keeps the hidden tests, `current` loads none of the four dev
+ * tools through ToolSearch in at least 4 of 5 reps while `main` loads one in
+ * its median rep, no direct call to a deferred tool errors, and `current`'s
+ * median cost is no higher than the higher of `main` and the placebo.
+ */
+function devFormGates(results: readonly RunResult[]): Gate[] {
+  const of = (arm: string) => results.filter(r => r.arm === arm)
+  const main = of('main')
+  const current = of('current')
+  const placebo = of('current-placebo')
+  const hidden = (rs: RunResult[]) => rs.reduce((n, r) => n + hiddenPass(r), 0)
+  const out: Gate[] = []
+  out.push({
+    gate: 'correctness',
+    verdict: results.every(r => !broken(r)) && [current, placebo].every(rs => rs.length === 0 || hidden(rs) >= hidden(main)) ? 'PASS' : 'FAIL',
+    detail: `hidden main ${hidden(main)}, current ${hidden(current)}, placebo ${hidden(placebo)}`,
+  })
+  const loadsMain = median(main.map(r => r.mechanisms.devToolLoads))
+  const clean = current.filter(r => r.mechanisms.devToolLoads === 0).length
+  const errs = current.reduce((n, r) => n + r.mechanisms.directDeferredErr, 0)
+  out.push({
+    gate: 'dev-tool forms: ToolSearch loads',
+    verdict: loadsMain === 0 ? 'NO HEADROOM' : clean >= Math.ceil(current.length * 0.8) && errs === 0 ? 'PASS' : 'FAIL',
+    detail: `main median ${loadsMain}; current per rep ${current.map(r => r.mechanisms.devToolLoads).join(',')}; direct deferred calls ok ${current.reduce((n, r) => n + r.mechanisms.directDeferredOk, 0)}, errors ${errs}`,
+  })
+  const cost = (rs: RunResult[]) => median(rs.map(r => r.costUsd))
+  const ceiling = placebo.length ? Math.max(cost(main), cost(placebo)) : cost(main)
+  out.push({
+    gate: 'cost',
+    verdict: cost(current) <= ceiling ? 'PASS' : 'FAIL',
+    detail: `median $ current ${cost(current).toFixed(3)}, main ${cost(main).toFixed(3)}${placebo.length ? `, placebo ${cost(placebo).toFixed(3)}` : ''}`,
   })
   return out
 }
