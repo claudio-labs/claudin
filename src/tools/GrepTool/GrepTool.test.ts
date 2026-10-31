@@ -201,6 +201,75 @@ describe('GrepTool — baseline regression', () => {
   })
 })
 
+// ripgrep anchors a glob holding a `/` at the directory it RUNS in, which is
+// the session cwd, not the search path. The 10-25..31 census saw 24 of 28 such
+// globs under another path come back "No matches found" and the model retry
+// through Bash; a negated one excluded nothing. `dir` is outside the cwd.
+describe('GrepTool — a glob with a slash is anchored at the search path', () => {
+  test('matches under a search path outside the cwd', async () => {
+    const data = await grep({ glob: 'sub/*.py' })
+
+    expect(data.filenames.map(f => basename(f))).toEqual(['delta.py'])
+  })
+
+  test('matches inside braces', async () => {
+    const data = await grep({ glob: '{sub/delta.py,alpha.ts}' })
+
+    expect(data.filenames.map(f => basename(f)).sort()).toEqual(['alpha.ts', 'delta.py'])
+  })
+
+  test('a negated one excludes what it names', async () => {
+    const data = await grep({ glob: '!sub/**' })
+
+    expect(data.numFiles).toBe(4)
+    expect(data.filenames.some(f => f.endsWith('delta.py'))).toBe(false)
+  })
+
+  test('matches under a search path inside the cwd', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'grep-anchor-'))
+    try {
+      mkdirSync(join(root, 'pkg', 'src'), { recursive: true })
+      writeFileSync(join(root, 'pkg', 'src', 'a.ts'), 'needle\n')
+      writeFileSync(join(root, 'pkg', 'b.ts'), 'needle\n')
+      const { data } = await runWithCwdOverride(root, () =>
+        GrepTool.call({ pattern: 'needle', path: join(root, 'pkg'), glob: 'src/*.ts' } as never, makeContext()),
+      )
+      expect((data as GrepData).filenames.map(f => basename(f))).toEqual(['a.ts'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('a glob led by **/ still matches at any depth', async () => {
+    const data = await grep({ glob: '**/sub/*.py' })
+
+    expect(data.filenames.map(f => basename(f))).toEqual(['delta.py'])
+  })
+
+  test('a Read deny rule still hides a file when the search path is a subdirectory', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'grep-deny-sub-'))
+    try {
+      mkdirSync(join(root, 'pkg', 'secret'), { recursive: true })
+      writeFileSync(join(root, 'pkg', 'open.txt'), 'needle\n')
+      writeFileSync(join(root, 'pkg', 'secret', 'key.txt'), 'needle\n')
+      const toolPermissionContext = {
+        ...emptyPermissionContext,
+        alwaysDenyRules: { cliArg: [`Read(/${root}/pkg/secret/**)`] },
+      }
+      const context = {
+        ...makeContext(),
+        getAppState: () => ({ toolPermissionContext }),
+      } as unknown as ToolUseContext
+      const { data } = await runWithCwdOverride(root, () =>
+        GrepTool.call({ pattern: 'needle', path: join(root, 'pkg'), glob: 'secret/*.txt' } as never, context),
+      )
+      expect((data as GrepData).numFiles).toBe(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('GrepTool — files_with_matches ranking', () => {
   let rankDir: string
 
