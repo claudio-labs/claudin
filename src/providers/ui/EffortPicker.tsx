@@ -21,6 +21,7 @@ import {
   fitSliderLayout,
   SLIDER_MARKER,
 } from 'src/providers/ui/EffortPicker.layout.js'
+import { effortUnavailableNote } from 'src/providers/ui/effortNote.js'
 
 type SliderOption = {
   /** Effort value to apply on select. `'adaptive'` is the sentinel. */
@@ -97,7 +98,7 @@ export function EffortPicker({ onSelect, onCancel }: Props) {
       <Box marginBottom={1} flexDirection="column">
         <Text color="remember" bold={true}>Effort</Text>
         {!supportsEffort && (
-          <Text dimColor={true}>Effort not supported for this model</Text>
+          <Text dimColor={true}>{effortUnavailableNote(model, 'this model')}</Text>
         )}
       </Box>
 
