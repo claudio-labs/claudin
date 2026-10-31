@@ -1,0 +1,103 @@
+{
+  "test": [
+    "src/agent/tools/toolExecution.coverage.test.ts"
+  ],
+  "source": "src/agent/tools/toolExecution.ts",
+  "probes": [
+    {
+      "name": "classify: an errno error loses its code",
+      "find": "      return `Error:${errnoCode}`\n",
+      "replace": "      return 'Error'\n"
+    },
+    {
+      "name": "classify: a short minified name is reported",
+      "find": "    if (error.name && error.name !== 'Error' && error.name.length > 3) {\n",
+      "replace": "    if (error.name && error.name !== 'Error') {\n"
+    },
+    {
+      "name": "unknown tool: a base tool's primary name falls back like an alias",
+      "find": "    if (fallbackTool && fallbackTool.aliases?.includes(toolName)) {\n",
+      "replace": "    if (fallbackTool) {\n"
+    },
+    {
+      "name": "abort: an aborted turn still runs the tool",
+      "find": "    if (toolUseContext.abortController.signal.aborted) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "validateInput: a rejection is ignored",
+      "find": "  if (isValidCall?.result === false) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "schema hint: the hint is not appended to the validation error",
+      "find": "    if (schemaHint) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "outer catch: an abort counts toward the repeated-failure streak",
+      "find": "              isAbortError(error),\n",
+      "replace": "              false,\n"
+    },
+    {
+      "name": "bash: a model-supplied _simulatedSedEdit reaches the call",
+      "find": "    processedInput = rest as typeof processedInput\n",
+      "replace": "\n"
+    },
+    {
+      "name": "backfill: permission sees the model's raw input",
+      "find": "    processedInput = backfilledClone\n",
+      "replace": "\n"
+    },
+    {
+      "name": "backfill: the backfilled path reaches the call",
+      "find": "      file_path: (callInput as Record<string, unknown>).file_path,\n",
+      "replace": "      file_path: (processedInput as Record<string, unknown>).file_path,\n"
+    },
+    {
+      "name": "hook units: a failure reuses the units of the input before the hooks",
+      "find": "  const failedUnits = hookUnits && (tool.hookUnits?.(callInput) ?? hookUnits)\n",
+      "replace": "  const failedUnits = hookUnits\n"
+    },
+    {
+      "name": "PermissionRequest: every hook verdict is recorded as an allow",
+      "find": "        decision: permissionDecision.behavior,\n",
+      "replace": "        decision: 'allow',\n"
+    },
+    {
+      "name": "image ids: the last pasted id wins over the highest",
+      "find": "        if (id > maxId) maxId = id\n",
+      "replace": "        maxId = id\n"
+    },
+    {
+      "name": "approval: the user's feedback is dropped",
+      "find": "          text: permissionDecision.acceptFeedback,\n",
+      "replace": "          text: '',\n"
+    },
+    {
+      "name": "progress: the parent is the progress's own id",
+      "find": "          parentToolUseID: toolUseID,\n",
+      "replace": "          parentToolUseID: progress.toolUseID,\n"
+    },
+    {
+      "name": "result: the tool's new messages are dropped",
+      "find": "        resultingMessages.push({ message })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "advice: a block-content result loses its note",
+      "find": "    return { ...block, content: [...block.content, { type: 'text', text: note.trimStart() }] }\n",
+      "replace": "    return block\n"
+    },
+    {
+      "name": "mcp: the result after the PostToolUse hooks is never added",
+      "find": "    if (isMcpTool(tool)) {\n      await addToolResult(toolOutput)\n    }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "mcp auth: a server that is not connected is marked too",
+      "find": "        if (!existingClient || existingClient.type !== 'connected') {\n",
+      "replace": "        if (!existingClient) {\n"
+    }
+  ]
+}

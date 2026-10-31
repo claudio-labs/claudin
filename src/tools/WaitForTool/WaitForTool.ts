@@ -8,6 +8,15 @@
  * removes the tool (and with it the Bash sleep redirect, see redirect.ts).
  * Permissions delegate to the Bash rules exactly like Monitor: a saved
  * "don't ask again" lands as a `Bash(prefix:*)` rule.
+ *
+ * One wait may run 1800 s, the Monitor's 30 minutes, since 2026-10-31: at 600 s
+ * a CI run of 20–84 min came back as a timeout and was polled again — 25 of
+ * the 30 CI waits in the 10-25..31 census, 29 re-polls after a timeout in all,
+ * each a request at full context. The turn was blocked that long anyway, only
+ * in 10-minute slices. `CLAUDIN_WAITFOR_MAX_TIMEOUT_S` sets the cap (`=600`
+ * restores the old one). The schema and the call form state the value set
+ * when the module loads (limits.ts); each call is also capped by the value at
+ * call time, so one that settings.json applies later still caps the waits.
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import React from 'react'
@@ -20,13 +29,14 @@ import {
   commandHasAnyCd,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
+import { semanticNumber } from 'src/shared/data/semanticNumber.js'
+import { maxTimeoutS, STATED_MAX_TIMEOUT_S } from 'src/tools/WaitForTool/limits.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 
 const DEFAULT_SETTLE_S = 3
 const DEFAULT_INTERVAL_S = 1
 const MIN_INTERVAL_S = 0.2
 const DEFAULT_TIMEOUT_S = 120
-const MAX_TIMEOUT_S = 600
 // Below this much remaining budget a poll is not started (see the loop).
 const MIN_POLL_BUDGET_MS = 250
 // ShellCommand's exit code for a command it killed on its own timeout.
@@ -51,12 +61,11 @@ const inputSchema = lazySchema(() =>
       .min(MIN_INTERVAL_S)
       .optional()
       .describe(`Seconds between polls (default ${DEFAULT_INTERVAL_S})`),
-    timeout_s: z
-      .number()
-      .min(1)
-      .max(MAX_TIMEOUT_S)
-      .optional()
-      .describe(`Give up after this many seconds and return the last output (default ${DEFAULT_TIMEOUT_S}, max ${MAX_TIMEOUT_S})`),
+    // The call form below shows timeout_s, and a call made from it carries no
+    // schema, so a quoted "900" has to pass too.
+    timeout_s: semanticNumber(z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional()).describe(
+      `Give up after this many seconds and return the last output (default ${DEFAULT_TIMEOUT_S}, max ${STATED_MAX_TIMEOUT_S})`,
+    ),
     setup: z
       .string()
       .optional()
@@ -155,6 +164,7 @@ function writesNothing(input: { command: string; setup?: string }): boolean {
 export const WaitForTool = buildTool({
   name: WAITFOR_TOOL_NAME,
   searchHint: 'wait until a command output matches or settles',
+  callForm: `${WAITFOR_TOOL_NAME}({"command": "<command>", "until": "<regex>", "timeout_s": <seconds, max ${STATED_MAX_TIMEOUT_S}>, "description": "<what you wait for>"})`,
   clearableResult: true,
   maxResultSizeChars: 10_000,
 
@@ -276,7 +286,8 @@ export const WaitForTool = buildTool({
     const { command, until, setup } = input
     const settleMs = (input.settle_s ?? DEFAULT_SETTLE_S) * 1000
     const intervalMs = (input.interval_s ?? DEFAULT_INTERVAL_S) * 1000
-    const timeoutMs = (input.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000
+    // The cap holds for the default too, so a cap set below it still caps.
+    const timeoutMs = Math.min(input.timeout_s ?? DEFAULT_TIMEOUT_S, maxTimeoutS()) * 1000
     const signal = toolUseContext.abortController.signal
     // Validated in validateInput; compiled once here.
     const untilRe = until === undefined ? null : compileUntil(until)

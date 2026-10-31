@@ -13,8 +13,8 @@
     },
     {
       "name": "a failing call drops the note",
-      "find": "              ) + (isInterrupt || !adviceNote ? '' : adviceNote),\n",
-      "replace": "              ),\n"
+      "find": "                (isInterrupt || !adviceNote ? '' : adviceNote),\n",
+      "replace": "                '',\n"
     },
     {
       "name": "a throwing advise takes the call down with it",
@@ -28,7 +28,7 @@
     },
     {
       "name": "a deferred tool's load line is never added",
-      "find": "    target && isUnloadedDeferredTool(target, tools, messages)\n",
+      "find": "    target && isUnloadedDeferredTool(target, tools, messages) && !hasListedCallForm(target)\n",
       "replace": "    target && (false as boolean)\n"
     },
     {

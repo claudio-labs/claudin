@@ -25,7 +25,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
 import { settleOwnWrites } from 'src/agent/attachments/ownWrites.js'
-import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
+import { hasListedCallForm, TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
 import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
@@ -486,7 +486,8 @@ function askToolAdvice(
  * The advice as the reminder appended to a result. When the tool it points at
  * is deferred and not loaded in this conversation, the note also names the
  * ToolSearch call that loads it — without that line a model that decides to
- * switch would call a tool it has no schema for.
+ * switch would call a tool it has no schema for. A tool the listing gives a
+ * call form needs no load, so it gets no such line.
  */
 export function renderToolAdvice(
   advice: ToolAdvice,
@@ -495,7 +496,7 @@ export function renderToolAdvice(
 ): string {
   const target = advice.suggests ? findToolByName(tools, advice.suggests) : undefined
   const load =
-    target && isUnloadedDeferredTool(target, tools, messages)
+    target && isUnloadedDeferredTool(target, tools, messages) && !hasListedCallForm(target)
       ? ` ${target.name} is deferred: load it first with ${TOOL_SEARCH_TOOL_NAME} "select:${target.name}".`
       : ''
   return `\n\n<system-reminder>\n${advice.message}${load}\n</system-reminder>`

@@ -1,6 +1,6 @@
 ---
 name: census-10-30-compaction-meta-ttl
-description: Since 2026-10-31 deferred built-ins whose input fits a line are listed with a call form and called without ToolSearch (CLAUDIN_DEFERRED_CALL_FORMS=0 reverts), and a one-shot -p run's main thread writes its cache at 5m (CLAUDIN_MAIN_CACHE_TTL=1h reverts); compacting a 1M thread early was measured on Opus and NOT promoted — −33% cost but 9× the edit-turn lookups
+description: Since 2026-10-31 deferred built-ins whose common call fits a line are listed with a call form and called without ToolSearch (CLAUDIN_DEFERRED_CALL_FORMS=0 reverts), and a one-shot -p run's main thread writes its cache at 5m (CLAUDIN_MAIN_CACHE_TTL=1h reverts); compacting a 1M thread early was measured on Opus and NOT promoted — −33% cost but 9× the edit-turn lookups
 type: project
 scope: src/tools/ToolSearchTool/prompt.ts, src/providers/shims/claude/cacheControl.ts, src/agent/compact/autoCompact.ts
 impact: functional
@@ -33,7 +33,8 @@ impact: functional
 - A bench is `-p`. `armEnv` (session-cache-ab and its reusers) and `runHeadless` pin
   `CLAUDIN_MAIN_CACHE_TTL=1h`; the other harnesses that build their own env now measure 5m, so
   their history before 10-31 is 1h (`scripts/README.md`).
-- A new deferred tool with a one-line input gets a `callForm`; `callForms.test.ts` checks every
-  declared form against its own schema.
+- A new deferred tool whose common call fits on a line gets a `callForm`; `callForms.test.ts`
+  checks every declared form against its own schema. The four dev tools got one later the same
+  day ([[tool-repeat-calls]]).
 - The "-p seeds tasks with TaskUpdate absent" bug filed on 10-30 never existed
   ([[tasklist-unordered-exitplan-seeds-without-ids]]).

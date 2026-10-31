@@ -15,10 +15,11 @@ its labels.
 ## Steps
 
 1. **Exclude this session.** Its transcript grows while the census runs. Pass
-   it to the two scripts that take it: `--exclude-session=<session id>` to the
-   request census, and `--exclude=<first 8 chars of the id>` to the re-read
-   census. Benches under `/tmp` are already left out.
-2. **Run the four in one response**, each into the scratchpad. None of them
+   it to the three scripts that take it: `--exclude-session=<session id>` to the
+   request census, `--exclude=<first 8 chars of the id>` to the re-read census,
+   and `--exclude=<session id>` to the feature-usage census. Benches under
+   `/tmp` are already left out.
+2. **Run the five in one response**, each into the scratchpad. None of them
    writes to the tree.
    - `NODE_ENV=test bun --preload ./src/stubs/test-preload.ts scripts/bench/tokens/request-census.ts --since=$since --exclude-session=…`
      answers which requests could have shared an earlier response, by lever.
@@ -30,6 +31,9 @@ its labels.
      the read lane would now pass.
    - `bun scripts/bench/tokens/session-census.ts --since=$since` answers the
      spend, the cache drops and the tool errors.
+   - `bun scripts/bench/tokens/feature-usage-census.ts --since=$since --exclude=… --project=<slug>`,
+     once per directory under `~/.claudin/projects/`, answers how Grep and Read were shaped, the
+     Grep globs with a `/` that came back empty, and the WaitFor re-polls.
 3. **Compare with the last census.** Find it with
    `Grep(pattern: "census-", path: ".claudin/memory/team/")` and read it before
    calling anything new. A number with no baseline is a measurement, not a
@@ -38,6 +42,7 @@ its labels.
    - re-reads by cause;
    - mergeable requests;
    - Bash cuts and what followed them;
+   - WaitFor re-polls and empty slash-glob Greps;
    - tool errors;
    - cache.
 
@@ -49,6 +54,8 @@ its labels.
 - `request-census.ts` bounds sessions by file mtime, so a session active in the
   window counts whole. `reread-census.ts` bounds records by timestamp, so the
   two totals differ.
+- `feature-usage-census.ts` walks only the project of the cwd unless
+  `--project` names another, and `--until` defaults to today.
 - Sub-agent transcripts carry no `toolUseResult`. The re-read census reads
   ranges off the `N→` line numbers. Any new counter must do the same, or it
   will count every follow-up Read as a duplicate.

@@ -39,7 +39,8 @@ import {
  *  - **advise** (the default since 2026-09-24): the command RUNS, and its result
  *    carries a note naming the tool and the call to make instead
  *    (`Tool.advise`, appended by toolExecution). A deferred tool's note also
- *    names the ToolSearch call that loads it.
+ *    names the ToolSearch call that loads it, unless the listing gives that
+ *    tool a call form.
  *  - **refuse** (`CLAUDIN_BASH_REDIRECT=refuse`): the command is refused once
  *    with the same pointer and the identical re-send runs — the behaviour
  *    before 2026-09-24, byte for byte, kept as the A/B arm and the way back.

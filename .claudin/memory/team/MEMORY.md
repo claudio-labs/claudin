@@ -50,6 +50,7 @@
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
 - [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md) — Opus+Sonnet A/B; adopt leftovers + prose whole stay opt-in
+- [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, dev-tool call forms](decisions/tool-repeat-calls.md) — forms kept on a cost FAIL inside placebo noise
 - [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — `CLAUDIN_DEFERRED_CALL_FORMS=0`, `CLAUDIN_MAIN_CACHE_TTL=1h`
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
@@ -113,7 +114,7 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09, rewrites 39%](weekly-token-census-2026-10-09.md) · [09-28 fan-out](token-census-2026-09-28.md) · [09-10 rule injections](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
-- Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30 clean](census-2026-10-30-cache-tools-context.md) · [own writes PASSED](own-writes-next-census-checks.md)
+- Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30 clean](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [own writes PASSED](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features

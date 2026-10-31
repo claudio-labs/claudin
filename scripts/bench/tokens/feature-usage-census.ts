@@ -10,10 +10,16 @@
  *     reduction that cost more wrapper than it saved.
  *   - Grep output modes — explicit `output_mode` mix, `head_limit` / context /
  *     `path` scoping, the auto-pivot to the symbol map and whether the model
- *     took its hint, `files_with_matches` → `content` re-runs of one pattern.
+ *     took its hint, `files_with_matches` → `content` re-runs of one pattern,
+ *     and the globs with a `/` in them, split by whether `path` is the session
+ *     cwd: ripgrep anchors such a glob at the directory it runs in, so before
+ *     2026-10-31 they came back empty whenever the search path was elsewhere.
  *   - Read shape — outline / symbol / range / full, the auto-outline pivot and
  *     what the model did NEXT on the same file (symbol / range / full / nothing),
  *     re-reads of one path, and the large full bodies that never pivoted.
+ *   - WaitFor — why each wait ended, the runs of back-to-back waits (each call
+ *     past the first is one more request) and the ones after a timeout, CI
+ *     polls, and the `timeout_s` asked for.
  *
  * Same walk discipline as session-census.ts: recurses into
  * `<session>/subagents/`, dedupes tool uses by id (a fork mirrors its parent's
@@ -26,7 +32,8 @@
  *   bun scripts/bench/tokens/feature-usage-census.ts --since=2026-09-14 --exclude=<sessionId> --json
  */
 import { readFileSync } from 'fs'
-import { basename, dirname } from 'path'
+import { basename, dirname, resolve } from 'path'
+import { isDirAnchoredGlob, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
 import {
   contentText,
   pad,
@@ -88,9 +95,11 @@ type Use = {
   session: string
   sub: boolean
   seq: number
+  /** The session cwd the record was written under; `''` when it has none. */
+  cwd: string
 }
 
-type Call = Use & {
+export type Call = Use & {
   text: string
   chars: number
   isError: boolean
@@ -143,6 +152,7 @@ function walk(files: readonly string[]): Call[] {
             session,
             sub,
             seq: seq++,
+            cwd: typeof rec.cwd === 'string' ? rec.cwd : '',
           })
         } else if (b.type === 'tool_result' && typeof b.tool_use_id === 'string') {
           if (results.has(b.tool_use_id)) continue
@@ -426,7 +436,7 @@ function grepMode(input: Block): string {
   return String(input.output_mode ?? 'files_with_matches')
 }
 
-function grepReport(calls: Call[]) {
+export function grepReport(calls: Call[]) {
   const grep = calls.filter(c => c.tool === 'Grep' && c.answered)
   const byMode = new Map<string, { n: number; chars: number; sizes: number[]; noMatch: number; errors: number }>()
   const byModeSub = new Map<string, number>()
@@ -453,6 +463,11 @@ function grepReport(calls: Call[]) {
   const contentOver6kLimits = new Map<string, number>()
   let contentNoScopeNoLimit = 0
   let contentNoScopeNoLimitChars = 0
+  let slashGlobAtCwd = 0
+  let slashGlobAtCwdEmpty = 0
+  let slashGlobElsewhere = 0
+  let slashGlobElsewhereEmpty = 0
+  let negatedSlashGlobElsewhere = 0
 
   for (const c of grep) {
     const mode = grepMode(c.input)
@@ -493,6 +508,21 @@ function grepReport(calls: Call[]) {
     if (mode === 'content' && c.input.path === undefined && c.input.head_limit === undefined) {
       contentNoScopeNoLimit++
       contentNoScopeNoLimitChars += c.chars
+    }
+    const anchored = typeof c.input.glob === 'string' && c.cwd ? splitGlobInput(c.input.glob).filter(isDirAnchoredGlob) : []
+    if (anchored.length > 0) {
+      const elsewhere = resolve(c.cwd, String(c.input.path ?? '.')) !== c.cwd
+      const empty = GREP_NO_MATCH_RE.test(c.text)
+      if (anchored.some(p => !p.startsWith('!'))) {
+        if (elsewhere) {
+          slashGlobElsewhere++
+          if (empty) slashGlobElsewhereEmpty++
+        } else {
+          slashGlobAtCwd++
+          if (empty) slashGlobAtCwdEmpty++
+        }
+      }
+      if (elsewhere && anchored.some(p => p.startsWith('!'))) negatedSlashGlobElsewhere++
     }
   }
 
@@ -584,6 +614,11 @@ function grepReport(calls: Call[]) {
     contentOver6kLimits: sortedEntries(contentOver6kLimits),
     contentNoScopeNoLimit,
     contentNoScopeNoLimitChars,
+    slashGlobAtCwd,
+    slashGlobAtCwdEmpty,
+    slashGlobElsewhere,
+    slashGlobElsewhereEmpty,
+    negatedSlashGlobElsewhere,
     transitions: sortedEntries(transitions),
     contentRerunKinds: sortedEntries(contentRerunKinds),
     pivotThenHint,
@@ -833,6 +868,70 @@ function readReport(calls: Call[]) {
 // Overview
 // ---------------------------------------------------------------------------
 
+const WAITFOR_STATUS_RE = /\[WaitFor: (match|settled|timeout|aborted) after ([\d.]+)s/
+const CI_POLL_RE = /\bgh\s+(?:pr|run)\b/
+
+/**
+ * WaitFor calls in transcript order. A run is back-to-back WaitFor calls with
+ * no other tool between them: every call past the first is one more request
+ * spent waiting on the same thing.
+ */
+export function waitReport(calls: readonly Call[]) {
+  const reasons = new Map<string, number>()
+  const timeoutAsked = new Map<string, number>()
+  let waits = 0
+  let runs = 0
+  let multiCallRuns = 0
+  let repolls = 0
+  let repollsAfterTimeout = 0
+  let ciPolls = 0
+  let ciTimeouts = 0
+  let waitedS = 0
+  let file = ''
+  let runLength = 0
+  let lastReason = ''
+  for (const c of calls) {
+    if (c.file !== file) {
+      file = c.file
+      runLength = 0
+    }
+    if (c.tool !== 'WaitFor') {
+      runLength = 0
+      continue
+    }
+    waits++
+    const status = WAITFOR_STATUS_RE.exec(c.text)
+    const reason = c.isError ? 'error' : (status?.[1] ?? 'unparsed')
+    bump(reasons, reason)
+    waitedS += Number(status?.[2] ?? 0)
+    bump(timeoutAsked, c.input.timeout_s === undefined ? 'default' : String(c.input.timeout_s))
+    if (CI_POLL_RE.test(String(c.input.command ?? ''))) {
+      ciPolls++
+      if (reason === 'timeout') ciTimeouts++
+    }
+    if (runLength === 0) runs++
+    else {
+      repolls++
+      if (lastReason === 'timeout') repollsAfterTimeout++
+      if (runLength === 1) multiCallRuns++
+    }
+    runLength++
+    lastReason = reason
+  }
+  return {
+    waits,
+    runs,
+    multiCallRuns,
+    repolls,
+    repollsAfterTimeout,
+    ciPolls,
+    ciTimeouts,
+    waitedMin: waitedS / 60,
+    reasons: sortedEntries(reasons),
+    timeoutAsked: sortedEntries(timeoutAsked),
+  }
+}
+
 function overview(calls: Call[]) {
   const byTool = new Map<string, { n: number; chars: number; errors: number; sub: number }>()
   for (const c of calls) {
@@ -937,6 +1036,19 @@ function printGrep(g: ReturnType<typeof grepReport>): void {
   console.log(`    head_limit on the >6K content results: ${g.contentOver6kLimits.map(([k, n]) => `${k}:${n}`).join('  ')}`)
   console.log(`    content → content by what changed: ${g.contentRerunKinds.map(([k, n]) => `${k}:${n}`).join('  ') || '(none)'}`)
   console.log(`  after auto-pivot: took hint (head_limit/narrower)=${g.pivotThenHint} re-ran same=${g.pivotThenSame} no re-run=${g.pivotThenNothing}`)
+  console.log(
+    `  glob with a "/": path is the cwd ${g.slashGlobAtCwd} (empty ${g.slashGlobAtCwdEmpty}), path elsewhere ${g.slashGlobElsewhere} (empty ${g.slashGlobElsewhereEmpty}); negated with path elsewhere ${g.negatedSlashGlobElsewhere}`,
+  )
+}
+
+function printWait(w: ReturnType<typeof waitReport>): void {
+  console.log('\n== WaitFor ==')
+  console.log(
+    `calls=${w.waits} runs=${w.runs} (with >1 call: ${w.multiCallRuns}) re-polls=${w.repolls} (after a timeout: ${w.repollsAfterTimeout}) waited=${fmt(w.waitedMin)}min`,
+  )
+  console.log(`  ended by: ${w.reasons.map(([k, n]) => `${k}:${n}`).join('  ') || '(none)'}`)
+  console.log(`  CI polls (gh pr|run): ${w.ciPolls} timed out=${w.ciTimeouts}`)
+  console.log(`  timeout_s asked: ${w.timeoutAsked.map(([k, n]) => `${k}:${n}`).join('  ') || '(none)'}`)
 }
 
 function printRead(r: ReturnType<typeof readReport>): void {
@@ -1019,8 +1131,9 @@ function main(): void {
   const b = bashReport(calls)
   const g = grepReport(calls)
   const r = readReport(calls)
+  const w = waitReport(calls)
   if (args.json) {
-    console.log(JSON.stringify({ overview: o, bash: b, grep: g, read: r }, null, 2))
+    console.log(JSON.stringify({ overview: o, bash: b, grep: g, read: r, wait: w }, null, 2))
     return
   }
   console.log(`window=${args.since}..${args.until} files scanned=${files.length} excluded sessions=${[...args.exclude].join(',') || '(none)'}`)
@@ -1028,7 +1141,8 @@ function main(): void {
   printBash(b)
   printGrep(g)
   printRead(r)
+  printWait(w)
   printSymbols(o, g, r)
 }
 
-main()
+if (import.meta.main) main()

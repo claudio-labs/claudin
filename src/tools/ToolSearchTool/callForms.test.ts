@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import type { Tool } from 'src/tools/Tool.js'
+import { BuildTool } from 'src/tools/BuildTool/BuildTool.js'
 import { EnterPlanModeTool } from 'src/tools/EnterPlanModeTool/EnterPlanModeTool.js'
 import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
+import { RunTestsTool } from 'src/tools/RunTestsTool/RunTestsTool.js'
 import { TaskGetTool } from 'src/tools/TaskGetTool/TaskGetTool.js'
 import { TaskListTool } from 'src/tools/TaskListTool/TaskListTool.js'
 import { TaskStopTool } from 'src/tools/TaskStopTool/TaskStopTool.js'
 import { TaskUpdateTool } from 'src/tools/TaskUpdateTool/TaskUpdateTool.js'
+import { TypecheckTool } from 'src/tools/TypecheckTool/TypecheckTool.js'
+import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
 import {
   deferredToolsHeader,
   formatDeferredToolLine,
@@ -14,7 +18,7 @@ import {
   isDeferredTool,
 } from 'src/tools/ToolSearchTool/prompt.js'
 
-// CLAUDIN_DEFERRED_CALL_FORMS: a deferred tool whose whole input fits on a line
+// CLAUDIN_DEFERRED_CALL_FORMS: a deferred tool whose common call fits on a line
 // is listed with that line, so the model calls it without a ToolSearch request
 // first. Every A/B session on 10-30 opened with `ToolSearch
 // select:EnterPlanMode,ExitPlanMode`, and TaskUpdate called directly from the
@@ -34,7 +38,18 @@ function fake(over: Partial<Tool> & { name: string }): Tool {
   return { shouldDefer: true, isMcp: false, ...over } as unknown as Tool
 }
 
-const WITH_FORMS: Tool[] = [EnterPlanModeTool, ExitPlanModeV2Tool, TaskListTool, TaskGetTool, TaskStopTool, TaskUpdateTool] as unknown as Tool[]
+const WITH_FORMS: Tool[] = [
+  EnterPlanModeTool,
+  ExitPlanModeV2Tool,
+  TaskListTool,
+  TaskGetTool,
+  TaskStopTool,
+  TaskUpdateTool,
+  RunTestsTool,
+  TypecheckTool,
+  BuildTool,
+  WaitForTool,
+] as unknown as Tool[]
 
 describe('the built-in tools that carry a call form', () => {
   test.each(WITH_FORMS.map(t => [t.name, t] as const))('%s: deferred, named, and its form validates against its own schema', (_, tool) => {
@@ -43,8 +58,17 @@ describe('the built-in tools that carry a call form', () => {
     expect(isDeferredTool(tool)).toBe(true)
     const match = /^(\w+)\((.*)\)$/.exec(form!)
     expect(match?.[1]).toBe(tool.name)
-    const input = JSON.parse(match![2]!.replaceAll('<id>', '1').replaceAll('<status>', 'completed'))
+    const input = JSON.parse(
+      match![2]!.replaceAll('<id>', '1').replaceAll('<status>', 'completed').replace(/<seconds, max (\d+)>/, '$1'),
+    )
     expect(tool.inputSchema.safeParse(input).success).toBe(true)
+  })
+
+  test('WaitFor shows its cap, and the quoted number a schema-less call may send still passes', () => {
+    const form = (WaitForTool as { callForm?: string }).callForm
+    expect(form).toContain('<seconds, max 1800>')
+    expect(WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: '900' }).success).toBe(true)
+    expect(WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: '1801' }).success).toBe(false)
   })
 })
 

@@ -7,8 +7,10 @@ import { spawn } from 'child_process'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
+import { maxTimeoutS } from 'src/tools/WaitForTool/limits.js'
 import {
   detectSleepPoll,
+  renderWaitForAdvice,
   renderWaitForRedirect,
   resetWaitForRedirectMemoForTesting,
   shouldRedirectSleepPoll,
@@ -60,11 +62,32 @@ describe('WaitForTool', () => {
         .success,
     ).toBe(false)
     expect(
-      WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 601 })
+      WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 1800 })
+        .success,
+    ).toBe(true)
+    expect(
+      WaitForTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_s: 1801 })
         .success,
     ).toBe(false)
     expect(WaitForTool.name).toBe('WaitFor')
     expect(WaitForTool.userFacingName()).toBe('Wait')
+  })
+
+  test('the cap is 1800 s, and CLAUDIN_WAITFOR_MAX_TIMEOUT_S moves it', () => {
+    const saved = process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+    try {
+      delete process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+      expect(maxTimeoutS()).toBe(1800)
+      process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = '600'
+      expect(maxTimeoutS()).toBe(600)
+      for (const junk of ['', '0', 'abc', '-5']) {
+        process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = junk
+        expect([junk, maxTimeoutS()]).toEqual([junk, 1800])
+      }
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+      else process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = saved
+    }
   })
 
   test('validateInput rejects an invalid until regex', async () => {
@@ -219,6 +242,22 @@ describe('WaitForTool', () => {
     expect(data.output).not.toContain('Command timed out')
   })
 
+  test('a cap set below the default timeout caps a call that names none', async () => {
+    const saved = process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+    process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = '1'
+    try {
+      const { data } = await WaitForTool.call(
+        { command: 'echo never', until: 'READY', interval_s: 0.2, description: 'capped' },
+        makeCtx(),
+      )
+      expect(data.reason).toBe('timeout')
+      expect(data.elapsedMs).toBeLessThan(5_000)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S
+      else process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S = saved
+    }
+  })
+
   test('abort: stops polling and reports aborted', async () => {
     const ac = new AbortController()
     setTimeout(() => ac.abort(), 500)
@@ -324,8 +363,18 @@ describe('sleep-poll redirect', () => {
     })
     expect(text).toContain('Blocked: sleep 8 followed by a check')
     expect(text).toContain(
-      'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p","until":"<regex you are waiting for>","timeout_s":48})',
+      'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p","until":"<regex you are waiting for>","timeout_s":48,"description":"<what you are waiting for>"})',
     )
     expect(text).toContain('Re-send this exact command')
+  })
+
+  test('the call the redirect and the advice hand back validates, under the cap', () => {
+    const callOf = (text: string) => JSON.parse(/WaitFor\((\{.*\})\)/.exec(text)![1]!)
+    for (const poll of [{ secs: 8, setup: '', command: 'cat /tmp/out' }, { secs: 900, setup: 'make', command: 'tail -3 log' }]) {
+      for (const text of [renderWaitForRedirect(poll), renderWaitForAdvice(poll)]) {
+        const parsed = WaitForTool.inputSchema.safeParse(callOf(text))
+        expect([text, parsed.success]).toEqual([text, true])
+      }
+    }
   })
 })

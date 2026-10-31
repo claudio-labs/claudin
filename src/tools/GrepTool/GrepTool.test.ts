@@ -201,6 +201,119 @@ describe('GrepTool — baseline regression', () => {
   })
 })
 
+// ripgrep anchors a glob holding a `/` at the directory it RUNS in, which is
+// the session cwd, not the search path. The 10-25..31 census saw 24 of 28 such
+// globs under another path come back "No matches found"; a negated one
+// excluded nothing. `dir` is outside the cwd.
+describe('GrepTool — a glob with a slash is anchored at the search path', () => {
+  test('matches under a search path outside the cwd', async () => {
+    const data = await grep({ glob: 'sub/*.py' })
+
+    expect(data.filenames.map(f => basename(f))).toEqual(['delta.py'])
+  })
+
+  test('matches inside braces', async () => {
+    const data = await grep({ glob: '{sub/delta.py,alpha.ts}' })
+
+    expect(data.filenames.map(f => basename(f)).sort()).toEqual(['alpha.ts', 'delta.py'])
+  })
+
+  test('a negated one excludes what it names', async () => {
+    const data = await grep({ glob: '!sub/**' })
+
+    expect(data.numFiles).toBe(4)
+    expect(data.filenames.some(f => f.endsWith('delta.py'))).toBe(false)
+  })
+
+  test('matches under a search path inside the cwd', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'grep-anchor-'))
+    try {
+      mkdirSync(join(root, 'pkg', 'src'), { recursive: true })
+      writeFileSync(join(root, 'pkg', 'src', 'a.ts'), 'needle\n')
+      writeFileSync(join(root, 'pkg', 'b.ts'), 'needle\n')
+      const { data } = await runWithCwdOverride(root, () =>
+        GrepTool.call({ pattern: 'needle', path: join(root, 'pkg'), glob: 'src/*.ts' } as never, makeContext()),
+      )
+      expect((data as GrepData).filenames.map(f => basename(f))).toEqual(['a.ts'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('a glob led by **/ still matches at any depth', async () => {
+    const data = await grep({ glob: '**/sub/*.py' })
+
+    expect(data.filenames.map(f => basename(f))).toEqual(['delta.py'])
+  })
+
+  test('a glob led by ./ matches from the search path, slash or not', async () => {
+    // ripgrep never matches a glob spelled with a leading `./`.
+    expect((await grep({ glob: './sub/*.py' })).filenames.map(f => basename(f))).toEqual(['delta.py'])
+    expect((await grep({ glob: './alpha.ts' })).filenames.map(f => basename(f))).toEqual(['alpha.ts'])
+  })
+
+  test('a Read deny rule still hides a file when the search path is a subdirectory', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'grep-deny-sub-'))
+    try {
+      mkdirSync(join(root, 'pkg', 'secret'), { recursive: true })
+      writeFileSync(join(root, 'pkg', 'open.txt'), 'needle\n')
+      writeFileSync(join(root, 'pkg', 'secret', 'key.txt'), 'needle\n')
+      const toolPermissionContext = {
+        ...emptyPermissionContext,
+        alwaysDenyRules: { cliArg: [`Read(/${root}/pkg/secret/**)`] },
+      }
+      const context = {
+        ...makeContext(),
+        getAppState: () => ({ toolPermissionContext }),
+      } as unknown as ToolUseContext
+      const { data } = await runWithCwdOverride(root, () =>
+        GrepTool.call({ pattern: 'needle', path: join(root, 'pkg'), glob: 'secret/*.txt' } as never, context),
+      )
+      expect((data as GrepData).numFiles).toBe(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
+// The anchoring adds a reading of the glob; it never takes one away. A review
+// of the first version found two globs that matched on main and stopped.
+describe('GrepTool — every glob that matched before anchoring still matches', () => {
+  let root: string
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'grep-anchor-kept-'))
+    mkdirSync(join(root, 'pkg', 'node_modules', 'x'), { recursive: true })
+    mkdirSync(join(root, 'pkg', 'deep', 'node_modules', 'y'), { recursive: true })
+    mkdirSync(join(root, 'pkg', 'src'), { recursive: true })
+    writeFileSync(join(root, 'pkg', 'node_modules', 'x', 'a.js'), 'needle\n')
+    writeFileSync(join(root, 'pkg', 'deep', 'node_modules', 'y', 'b.js'), 'needle\n')
+    writeFileSync(join(root, 'pkg', 'src', 'c.ts'), 'needle\n')
+    writeFileSync(join(root, 'pkg', 'd.ts'), 'needle\n')
+  })
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  const grepPkg = async (glob: string) => {
+    const { data } = await runWithCwdOverride(root, () =>
+      GrepTool.call({ pattern: 'needle', path: join(root, 'pkg'), glob } as never, makeContext()),
+    )
+    return (data as GrepData).filenames.map(f => basename(f)).sort()
+  }
+
+  test('a trailing slash alone still means a directory at any depth', async () => {
+    // `node_modules/` has no slash once the trailing one is dropped, so ripgrep
+    // reads it at every depth.
+    expect(await grepPkg('!node_modules/')).toEqual(['c.ts', 'd.ts'])
+  })
+
+  test('a glob written from the cwd still matches', async () => {
+    expect(await grepPkg('pkg/src/*.ts')).toEqual(['c.ts'])
+  })
+
+  test('a negated glob written from the cwd still excludes', async () => {
+    expect(await grepPkg('!pkg/src/**')).not.toContain('c.ts')
+  })
+})
+
 describe('GrepTool — files_with_matches ranking', () => {
   let rankDir: string
 

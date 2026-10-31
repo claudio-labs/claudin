@@ -1,0 +1,229 @@
+{
+  "test": [
+    "src/tools/GrepTool/GrepTool.test.ts",
+    "src/tools/GrepTool/globAnchor.test.ts",
+    "scripts/bench/tokens/feature-usage-census.test.ts",
+    "src/tools/RunTestsTool/RunTestsTool.test.ts",
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/tools/ToolSearchTool/callForms.test.ts",
+    "scripts/bench/ab/tool-gaps-ab.test.ts",
+    "scripts/bench/ab/toolGapsMechanisms.test.ts",
+    "scripts/bench/ab/waitfor-adoption-ab.test.ts",
+    "src/agent/tools/toolExecution.advise.test.ts"
+  ],
+  "source": "src/tools/GrepTool/globAnchor.ts",
+  "probes": [
+    {
+      "name": "grep: the glob reaches ripgrep raw",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "        for (const g of globsForSearchPath(pattern, absolutePath, rgCwd ?? process.cwd())) {\n",
+      "replace": "        for (const g of [pattern]) {\n"
+    },
+    {
+      "name": "anchor: a negated glob loses its bang",
+      "find": "  return lead ? [pattern, `${bang}${lead}/${body}`] : [pattern]\n",
+      "replace": "  return lead ? [pattern, `${lead}/${body}`] : [pattern]\n"
+    },
+    {
+      "name": "anchor: the glob as written is dropped",
+      "find": "  return lead ? [pattern, `${bang}${lead}/${body}`] : [pattern]\n",
+      "replace": "  return lead ? [`${bang}${lead}/${body}`] : [pattern]\n"
+    },
+    {
+      "name": "anchor: a search path outside the cwd is left alone",
+      "find": "  if (outside && !searchDir.startsWith('/')) return null\n",
+      "replace": "  if (outside) return null\n"
+    },
+    {
+      "name": "anchor: the parent of the cwd counts as inside",
+      "find": "  const outside = rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)\n",
+      "replace": "  const outside = rel.startsWith(`..${sep}`) || isAbsolute(rel)\n"
+    },
+    {
+      "name": "anchor: the search path is not escaped",
+      "find": "  return `/${(outside ? searchDir : rel.split(sep).join('/')).replace(GLOB_META_RE, '\\\\$&')}`\n",
+      "replace": "  return `/${outside ? searchDir : rel.split(sep).join('/')}`\n"
+    },
+    {
+      "name": "anchor: a glob led by ** is rewritten too",
+      "find": " && !p.startsWith('/') && !p.startsWith('**/')\n",
+      "replace": " && !p.startsWith('/')\n"
+    },
+    {
+      "name": "anchor: a trailing slash counts as an inner one",
+      "find": "  return p.replace(TRAILING_SLASHES_RE, '').includes('/')",
+      "replace": "  return p.includes('/')"
+    },
+    {
+      "name": "anchor: a leading ./ is kept",
+      "find": "  const body = raw.replace(LEADING_DOT_SLASH_RE, '')\n",
+      "replace": "  const body = raw\n"
+    },
+    {
+      "name": "anchor: a ./ glob keeps its as-written reading",
+      "find": "  if (rooted) return [`${bang}${lead ?? ''}/${body}`]\n",
+      "replace": "  if (rooted) return [pattern, `${bang}${lead ?? ''}/${body}`]\n"
+    },
+    {
+      "name": "anchor: a search path that is the cwd gets an empty lead",
+      "find": "  if (rel === '') return ''\n",
+      "replace": ""
+    },
+    {
+      "name": "runtests: an allow hands back Bash's input",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "      return { behavior: 'allow', updatedInput: input }\n",
+      "replace": "      return bashDecision\n"
+    },
+    {
+      "name": "runtests: the classifier never sees the command",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "    return input.command ?? '<detect test suite>'\n",
+      "replace": "    return '<detect test suite>'\n"
+    },
+    {
+      "name": "runtests: pytest filters with -t",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "        cmd += ` -k ${q}`\n",
+      "replace": "        cmd += ` -t ${q}`\n"
+    },
+    {
+      "name": "runtests: a call runs in process.cwd()",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "      cwd,\n      abortSignal: context.abortController.signal,\n",
+      "replace": "      cwd: process.cwd(),\n      abortSignal: context.abortController.signal,\n"
+    },
+    {
+      "name": "waitfor: the cap stays at 600 s",
+      "source": "src/tools/WaitForTool/limits.ts",
+      "find": "const DEFAULT_MAX_TIMEOUT_S = 1800\n",
+      "replace": "const DEFAULT_MAX_TIMEOUT_S = 600\n"
+    },
+    {
+      "name": "waitfor: the env never moves the cap",
+      "source": "src/tools/WaitForTool/limits.ts",
+      "find": "    process.env.CLAUDIN_WAITFOR_MAX_TIMEOUT_S,\n",
+      "replace": "    undefined,\n"
+    },
+    {
+      "name": "waitfor: an empty env sets a cap of 0",
+      "source": "src/tools/WaitForTool/limits.ts",
+      "find": "    DEFAULT_MAX_TIMEOUT_S,\n    1,\n",
+      "replace": "    DEFAULT_MAX_TIMEOUT_S,\n    0,\n"
+    },
+    {
+      "name": "waitfor: the schema keeps the old max",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "semanticNumber(z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional())",
+      "replace": "semanticNumber(z.number().min(1).max(600).optional())"
+    },
+    {
+      "name": "waitfor: the sleep advice leaves out the description",
+      "source": "src/tools/WaitForTool/redirect.ts",
+      "find": "    description: '<what you are waiting for>',\n",
+      "replace": ""
+    },
+    {
+      "name": "waitfor: the sleep advice asks past the cap",
+      "source": "src/tools/WaitForTool/redirect.ts",
+      "find": "    timeout_s: Math.min(STATED_MAX_TIMEOUT_S, Math.max(30, poll.secs * 6)),\n",
+      "replace": "    timeout_s: Math.max(30, poll.secs * 6),\n"
+    },
+    {
+      "name": "advice: a tool with a call form gets the load line",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    target && isUnloadedDeferredTool(target, tools, messages) && !hasListedCallForm(target)\n",
+      "replace": "    target && isUnloadedDeferredTool(target, tools, messages)\n"
+    },
+    {
+      "name": "advice: the forms killswitch leaves the load line off",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  return isDeferredCallFormsEnabled() && tool.callForm !== undefined && tool.isMcp !== true\n",
+      "replace": "  return tool.callForm !== undefined && tool.isMcp !== true\n"
+    },
+    {
+      "name": "forms: RunTests has none",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "  callForm: `${RUN_TESTS_TOOL_NAME}({})`,\n",
+      "replace": ""
+    },
+    {
+      "name": "forms: Build has none",
+      "source": "src/tools/BuildTool/BuildTool.ts",
+      "find": "  callForm: `${BUILD_TOOL_NAME}({})`,\n",
+      "replace": ""
+    },
+    {
+      "name": "forms: Typecheck has none",
+      "source": "src/tools/TypecheckTool/TypecheckTool.ts",
+      "find": "  callForm: `${TYPECHECK_TOOL_NAME}({})`,\n",
+      "replace": ""
+    },
+    {
+      "name": "forms: WaitFor's form leaves out the required description",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": ", \"description\": \"<what you wait for>\"})`,\n",
+      "replace": "})`,\n"
+    },
+    {
+      "name": "forms: WaitFor's form names the old cap",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "\"timeout_s\": <seconds, max ${STATED_MAX_TIMEOUT_S}>",
+      "replace": "\"timeout_s\": <seconds, max 600>"
+    },
+    {
+      "name": "forms: a quoted timeout_s is refused",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    timeout_s: semanticNumber(z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional()).describe(\n",
+      "replace": "    timeout_s: z.number().min(1).max(STATED_MAX_TIMEOUT_S).optional().describe(\n"
+    },
+    {
+      "name": "waitfor: the default runs past a lower cap",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "    const timeoutMs = Math.min(input.timeout_s ?? DEFAULT_TIMEOUT_S, maxTimeoutS()) * 1000\n",
+      "replace": "    const timeoutMs = (input.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000\n"
+    },
+    {
+      "name": "bench: a dev-tool load goes uncounted",
+      "source": "scripts/bench/ab/toolGapsMechanisms.ts",
+      "find": "      if (names.some(n => DEV_TOOL_RE.test(n))) into.devToolLoads++\n",
+      "replace": ""
+    },
+    {
+      "name": "bench: dev-tool forms pass in 3 of 5",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "  fixed: n => n === 0,\n  share: 0.8,\n",
+      "replace": "  fixed: n => n === 0,\n  share: 0.6,\n"
+    },
+    {
+      "name": "bench: call forms ignore a failed direct call",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "fixedReps >= Math.ceil(lever.length * run.share) && errs === 0 ? 'PASS' : 'FAIL',\n",
+      "replace": "fixedReps >= Math.ceil(lever.length * run.share) ? 'PASS' : 'FAIL',\n"
+    },
+    {
+      "name": "bench: a dev-tool rep that still loads counts as fixed",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": "  fixed: n => n === 0,\n",
+      "replace": "  fixed: n => n <= 1,\n"
+    },
+    {
+      "name": "bench: a combo run with a main arm gets the dev-tool gates",
+      "source": "scripts/bench/ab/tool-gaps-ab.ts",
+      "find": " && of('combo').length === 0) return callFormGates(results, DEV_TOOL_FORMS)\n",
+      "replace": ") return callFormGates(results, DEV_TOOL_FORMS)\n"
+    },
+    {
+      "name": "bench: the long wait skips the mechanism",
+      "source": "scripts/bench/ab/waitfor-adoption-ab.ts",
+      "find": "  if (askedMore < need) reasons.push(`timeout_s above ${LONG_BASE_CAP_S} in ${askedMore}/${lever.length} lever reps`)\n",
+      "replace": ""
+    },
+    {
+      "name": "bench: the long wait takes a tie in requests",
+      "source": "scripts/bench/ab/waitfor-adoption-ab.ts",
+      "find": "  if (leverCalls >= floor) reasons.push(",
+      "replace": "  if (leverCalls > floor) reasons.push("
+    }
+  ]
+}

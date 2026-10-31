@@ -13,13 +13,13 @@
   "probes": [
     {
       "name": "call forms: the line drops the form",
-      "find": "    return `${tool.name}${CALL_FORM_SEPARATOR}${tool.callForm}`\n",
-      "replace": "    return tool.name\n"
+      "find": "  return hasListedCallForm(tool) ? `${tool.name}${CALL_FORM_SEPARATOR}${tool.callForm}` : tool.name\n",
+      "replace": "  return tool.name\n"
     },
     {
       "name": "call forms: an MCP tool gets one",
-      "find": "  if (isDeferredCallFormsEnabled() && tool.callForm && tool.isMcp !== true) {\n",
-      "replace": "  if (isDeferredCallFormsEnabled() && tool.callForm) {\n"
+      "find": "  return isDeferredCallFormsEnabled() && tool.callForm !== undefined && tool.isMcp !== true\n",
+      "replace": "  return isDeferredCallFormsEnabled() && tool.callForm !== undefined\n"
     },
     {
       "name": "call forms: off by default again",
@@ -99,8 +99,8 @@
     {
       "name": "bench: meta gates tolerate a failed direct call",
       "source": "scripts/bench/ab/tool-gaps-ab.ts",
-      "find": "    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) && errs === 0 ? 'PASS' : 'FAIL',\n",
-      "replace": "    verdict: tsMain === 0 ? 'NO HEADROOM' : fell >= Math.ceil(meta.length * 0.6) ? 'PASS' : 'FAIL',\n"
+      "find": "fixedReps >= Math.ceil(lever.length * run.share) && errs === 0 ? 'PASS' : 'FAIL',\n",
+      "replace": "fixedReps >= Math.ceil(lever.length * run.share) ? 'PASS' : 'FAIL',\n"
     },
     {
       "name": "bench: re-reads count the script's repeats",

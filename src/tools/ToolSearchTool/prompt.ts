@@ -21,10 +21,12 @@ const PROMPT_HEAD = `Fetches full schema definitions for deferred tools so they 
 /**
  * Build, RunTests, Typecheck and WaitFor wait behind ToolSearch: ~11.5k chars
  * of schema that every request carried, for tools used in 30–45% of sessions.
- * When a Bash command has a better home in one of them, Bash's advice names it
- * and the ToolSearch call that loads it. `CLAUDIN_EAGER_DEV_TOOLS=1` sends them
- * eagerly again — the A/B arm and the escape hatch. Read per call and never per
- * project, like the Monitor rule: the tools array is a shared cache prefix.
+ * When a Bash command has a better home in one of them, Bash's advice names
+ * it; since 2026-10-31 each is listed with a call form, so the advice names no
+ * ToolSearch call to load it (`hasListedCallForm`). `CLAUDIN_EAGER_DEV_TOOLS=1`
+ * sends them eagerly again — the A/B arm and the escape hatch. Read per call
+ * and never per project, like the Monitor rule: the tools array is a shared
+ * cache prefix.
  */
 const DEFERRED_DEV_TOOLS: ReadonlySet<string> = new Set([
   BUILD_TOOL_NAME,
@@ -70,7 +72,7 @@ function getToolLocationHint(): string {
 const UNTIL_FETCHED =
   ' Until fetched, only the name is known — there is no parameter schema, so the tool cannot be invoked.'
 const UNTIL_FETCHED_WITH_FORMS =
-  ' Until fetched, only the name is known, and the tool cannot be invoked — except one listed with a call form ("— call directly: X({…})"), whose whole input is that line: call it directly, no fetch needed.'
+  ' Until fetched, only the name is known, and the tool cannot be invoked — except one listed with a call form ("— call directly: X({…})"): call it directly with that input, no fetch needed; fetch it only for a parameter the form does not show.'
 const PROMPT_TAIL = ` This tool takes a query, matches it against the deferred tool list, and returns the matched tools' complete JSONSchema definitions inside a <functions> block. Once a tool's schema appears in that result, it is callable exactly like any tool defined at the top of the prompt.
 
 Query forms:
@@ -128,9 +130,10 @@ export function isDeferredTool(tool: Tool): boolean {
  * In 10-25..30, 25 of 2,281 main requests were a ToolSearch alone, and every
  * session of the 10-30 A/B opened with `select:EnterPlanMode,ExitPlanMode`.
  * The API takes a tool_use for a deferred tool that was never loaded, and
- * the input is validated here, so a tool whose whole input fits on the line
+ * the input is validated here, so a tool whose common call fits on the line
  * needs no load: TaskUpdate called from the plan approval's text validated
- * 5 of 5 times on Opus 5.5.
+ * 5 of 5 times on Opus 5.5. Since 2026-10-31 the dev tools carry one too,
+ * which shows their common call, not every parameter.
  *
  * The A/B that promoted it (tool-gaps-ab, Opus 5.5, N=3 per arm): ToolSearch-
  * only requests 1,1,1 → 0,0,0, 45 direct calls and no error, median cost
@@ -143,6 +146,11 @@ function isDeferredCallFormsEnabled(): boolean {
 /** What separates a deferred tool's name from its call form in the listing. */
 const CALL_FORM_SEPARATOR = ' — call directly: '
 
+/** Whether the listing shows this tool with a call form, so calling it needs no load. */
+export function hasListedCallForm(tool: Tool): boolean {
+  return isDeferredCallFormsEnabled() && tool.callForm !== undefined && tool.isMcp !== true
+}
+
 /**
  * Format one deferred-tool line for the listing (the deferred_tools_delta
  * attachment, or the legacy <available-deferred-tools> message). Search hints
@@ -151,10 +159,7 @@ const CALL_FORM_SEPARATOR = ' — call directly: '
  * input comes from a server, not from this repository.
  */
 export function formatDeferredToolLine(tool: Tool): string {
-  if (isDeferredCallFormsEnabled() && tool.callForm && tool.isMcp !== true) {
-    return `${tool.name}${CALL_FORM_SEPARATOR}${tool.callForm}`
-  }
-  return tool.name
+  return hasListedCallForm(tool) ? `${tool.name}${CALL_FORM_SEPARATOR}${tool.callForm}` : tool.name
 }
 
 const DEFERRED_HEADER =
