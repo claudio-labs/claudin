@@ -22,7 +22,7 @@ import Link from 'src/terminal/ink/components/Link.js';
 import ThemedText from 'src/terminal/design-system/ThemedText.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { useAppStateStore } from 'src/terminal/state/AppState.js';
-import { isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
+import { isBackgroundWork, type TaskState } from 'src/agent/tasks/types.js';
 import { getPillLabel } from 'src/agent/tasks/pillLabel.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import { HOOK_TIMING_DISPLAY_THRESHOLD_MS } from 'src/agent/tools/toolExecution.js';
@@ -513,7 +513,7 @@ function TurnDurationMessage(t0: { message: SystemTurnDurationMessage; addMargin
   if ($[0] !== store) {
     t1 = () => {
       const tasks = store.getState().tasks;
-      const running = (Object.values(tasks ?? {}) as TaskState[]).filter(isBackgroundTask);
+      const running = (Object.values(tasks ?? {}) as TaskState[]).filter(isBackgroundWork);
       return running.length > 0 ? getPillLabel(running) : null;
     };
     $[0] = store;

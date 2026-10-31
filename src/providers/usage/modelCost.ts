@@ -28,6 +28,8 @@ import {
   getDefaultMainLoopModelSetting,
   type ModelShortName,
 } from 'src/providers/model/model.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { isLocalProviderUrl } from 'src/providers/presets/providerConfig.js'
 import { formatTokens } from 'src/shared/text/format.js'
 
 // @see https://platform.claude.com/docs/en/about-claude/pricing
@@ -491,6 +493,11 @@ function trackUnknownModelCost(model: string, shortName: ModelShortName): void {
 // Calculate the cost of a query in US dollars.
 // If the model's costs are not found, use the default model's costs.
 export function calculateUSDCost(resolvedModel: string, usage: Usage): number {
+  // A model served from the user's own machine or LAN (Ollama, llama.cpp,
+  // vLLM) costs nothing, whatever its name matches in the price tables: a
+  // local qwen was billed as $0.0059 a turn. A paid gateway on a private
+  // address reads as free too — accepted.
+  if (isLocalProviderUrl(tryGetActiveProvider()?.baseUrl)) return 0
   const modelCosts = getModelCosts(resolvedModel, usage)
   return tokensToUSDCost(modelCosts, usage)
 }

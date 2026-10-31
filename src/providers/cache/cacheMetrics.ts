@@ -11,16 +11,16 @@
  *   2. `extractCacheMetrics` — consumes POST-shim Anthropic-shape usage,
  *      which is what every downstream caller (cost-tracker, REPL display,
  *      /cache-stats) actually sees. Uses the `provider` argument only to
- *      decide whether the metric is `supported` (Copilot vanilla, Ollama
- *      get N/A rather than a fabricated 0%).
+ *      decide whether the metric is `supported` (Copilot vanilla gets N/A
+ *      rather than a fabricated 0%).
  *
  * Design rationale:
  *   - Pure functions, no globals: callers pass the provider explicitly so
  *     that tests, background agents and teammates get consistent results
  *     even when the process-level provider flag differs.
- *   - Honest N/A: Copilot (non-Claude) and Ollama do not expose cache data
- *     at all. Returning 0 would lie and corrupt aggregate hit-rate, so we
- *     return `supported: false` and let the display decide how to render.
+ *   - Honest N/A: Copilot (non-Claude) does not expose cache data at all.
+ *     Returning 0 would lie and corrupt aggregate hit-rate, so we return
+ *     `supported: false` and let the display decide how to render.
  *   - `hitRate` is null whenever there is no input to compare against
  *     (0 read + 0 created). A 0% hit rate would suggest "cold" when in
  *     reality the turn had no cacheable content to begin with.
@@ -42,9 +42,13 @@
  *                       usage.prompt_cache_miss_tokens
  *   - Gemini:           usage.cached_content_token_count,
  *                       usage.prompt_token_count
- *   - Copilot (non-Claude) / Ollama: not reported → supported=false
+ *   - Ollama (0.40):     usage.prompt_tokens (the whole prompt),
+ *                       usage.prompt_tokens_details.cached_tokens (its KV
+ *                       cache) — read with `kvCache`, see below
+ *   - Copilot (non-Claude): not reported → supported=false
  */
 import type { APIProvider } from 'src/providers/model/providers.js'
+import { isOllamaBaseUrl } from 'src/providers/model/ollamaBaseUrl.js'
 
 /** Providers for which we know how to read cache fields. */
 export type CacheAwareProvider =
@@ -54,13 +58,12 @@ export type CacheAwareProvider =
   | 'kimi'
   | 'deepseek'
   | 'gemini'
+  // Ollama by its default port, local or not: it reports its KV cache in
+  // prompt_tokens_details.cached_tokens (Ollama 0.40, measured 2026-10-31).
   | 'ollama'
   // Generic local / self-hosted OpenAI-compatible endpoints (vLLM,
   // LM Studio, LocalAI, text-generation-webui, custom internal servers
   // on RFC1918 addresses, reserved TLDs like .local / .internal, etc.).
-  // Distinct from `ollama` because Ollama might someday add cache
-  // reporting; keeping the buckets separate means that change stays
-  // local to one branch.
   | 'self-hosted'
   | 'copilot'
   | 'copilot-claude'
@@ -239,6 +242,8 @@ function isLocalOrPrivateUrl(url: string): boolean {
  * flag — see `isGithubNativeAnthropicMode` in utils/model/providers.ts.
  *
  * Order of OpenAI-compatible checks matters:
+ *   0. Ollama's port — before the private-URL check, since Ollama reports
+ *      cache data where a generic local server does not.
  *   1. Private / self-hosted URL — no cache fields regardless of vendor.
  *   2. Vendor-specific hosted providers (Kimi, DeepSeek) — known cache
  *      shapes that deserve their own normalization branch.
@@ -263,15 +268,12 @@ export function resolveCacheProvider(
   if (provider === 'codex') return 'codex'
   if (provider === 'openai') {
     const url = hints?.openAiBaseUrl ?? ''
+    if (isOllamaBaseUrl(url)) return 'ollama'
     // Self-hosted / private-network endpoint — detect first so a vLLM
     // server on 192.168.x.x or a .internal DNS entry is honestly
     // classified as no-cache, not misreported as plain OpenAI.
     if (isLocalOrPrivateUrl(url)) return 'self-hosted'
     const lower = url.toLowerCase()
-    // The :11434 port still signals Ollama specifically (default port).
-    // If someone runs Ollama on a private IP:11434 we picked it up above
-    // as 'self-hosted'; only a public-looking URL with :11434 lands here.
-    if (lower.includes(':11434')) return 'ollama'
     if (lower.includes('moonshot') || lower.includes('kimi')) return 'kimi'
     if (lower.includes('deepseek')) return 'deepseek'
     return 'openai'
@@ -407,9 +409,15 @@ export type NormalizedShimUsage = {
  * if needed — extend `extractCacheReadFromRawUsage` to pick a field
  * that represents cached-tokens-already-excluded (and skip the
  * subtraction by setting `rawInput` to `prompt_tokens + cache_read`).
+ *
+ * `kvCache` is for a server whose prompt cache is its own KV cache (Ollama):
+ * every prompt token it processes is written there, so the fresh input is a
+ * cache write and `input_tokens` is 0 — `read + created` is then the whole
+ * prompt, which is what the footer's context gauge sums.
  */
 export function buildAnthropicUsageFromRawUsage(
   raw: RawUsage,
+  opts?: { kvCache?: boolean },
 ): NormalizedShimUsage {
   const cacheRead = extractCacheReadFromRawUsage(raw)
   const u = (raw ?? {}) as Record<string, unknown>
@@ -418,6 +426,14 @@ export function buildAnthropicUsageFromRawUsage(
   const fresh = rawInput >= cacheRead ? rawInput - cacheRead : rawInput
   const output =
     asNumber(u.output_tokens) || asNumber(u.completion_tokens)
+  if (opts?.kvCache) {
+    return {
+      input_tokens: 0,
+      output_tokens: output,
+      cache_creation_input_tokens: fresh,
+      cache_read_input_tokens: cacheRead,
+    }
+  }
   return {
     input_tokens: fresh,
     output_tokens: output,
@@ -449,15 +465,16 @@ export function extractCacheMetrics(
   const read = asNumber(u.cache_read_input_tokens)
   const created = asNumber(u.cache_creation_input_tokens)
   const fresh = asNumber(u.input_tokens)
-  // Copilot vanilla (no Claude) and Ollama don't expose cache fields at
-  // all as a provider-identity matter. These are explicit provider
-  // selections (via CLAUDIN_USE_GITHUB and the Ollama base-URL
-  // default port), so we can hard-wire `supported: false` and let the
-  // REPL print "N/A" instead of a fabricated 0%.
-  if (provider === 'copilot' || provider === 'ollama') {
+  // Copilot vanilla (no Claude) doesn't expose cache fields at all as a
+  // provider-identity matter. It is an explicit provider selection (via
+  // CLAUDIN_USE_GITHUB), so we can hard-wire `supported: false` and let
+  // the REPL print "N/A" instead of a fabricated 0%.
+  if (provider === 'copilot') {
     return UNSUPPORTED
   }
-  // `self-hosted` is different: the bucket is inferred from the base
+  // `self-hosted` and `ollama` are different. Ollama reports its KV cache
+  // only when asked for usage, and an older one not at all; `self-hosted`
+  // is inferred from the base
   // URL being on a private network (RFC1918, .local TLD, etc.), which
   // is a heuristic, not an authoritative "this endpoint cannot cache"
   // signal. An internal reverse proxy forwarding to OpenAI / Kimi /
@@ -467,7 +484,7 @@ export function extractCacheMetrics(
   // cache activity (read OR created), trust it and fall through to
   // normal extraction; otherwise render honest N/A for vanilla
   // vLLM/LocalAI-style endpoints that really don't cache.
-  if (provider === 'self-hosted' && read === 0 && created === 0) {
+  if ((provider === 'self-hosted' || provider === 'ollama') && read === 0 && created === 0) {
     return UNSUPPORTED
   }
   // total = fresh + read + created — shim already stripped `read` out of

@@ -37,6 +37,8 @@ import type {
 } from 'src/providers/model/reasoningCatalogTrim.js'
 import { activeTransportUsesOpenAiShim } from 'src/providers/model/providers.js'
 import { getCodexAccountLimits } from 'src/providers/model/codexModelCatalog.js'
+import { getCachedOllamaModelInfo } from 'src/providers/model/ollamaModelInfo.js'
+import { isOllamaBaseUrl } from 'src/providers/model/ollamaBaseUrl.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   getCodexAliasModel,
@@ -241,6 +243,9 @@ const OPENAI_FAMILY_LEVELS: readonly CatalogEffortValue[] = [
   'xhigh',
 ]
 
+/** gpt-oss on Ollama; every other Ollama thinking model only turns on or off. */
+const OLLAMA_THINKING_LEVELS: readonly CatalogEffortValue[] = ['low', 'medium', 'high']
+
 /**
  * Levels for a Gemini model on the native transport (shims/gemini), which the
  * catalog lookup misses twice: on Vertex the endpoint resolves to
@@ -285,6 +290,11 @@ export function resolveShimEffortValues(
   model: string,
 ): readonly CatalogEffortValue[] | undefined {
   if (isDisabled()) return undefined
+  // Ollama: what /api/show said about the model (ollamaModelInfo.ts). On/off
+  // thinking is the /config Thinking toggle, not a level.
+  if (isOllamaBaseUrl(baseUrl)) {
+    return getCachedOllamaModelInfo(model)?.thinkingLevels ? OLLAMA_THINKING_LEVELS : undefined
+  }
   const providerId = resolveCatalogProviderId(baseUrl)
   // DeepSeek and Kimi Code own their dialect in the shim already.
   if (providerId && SHIM_OWNED_PROVIDER_IDS.has(providerId)) return undefined

@@ -1,0 +1,32 @@
+{
+  "test": [
+    "src/agent/tasks/types.test.ts",
+    "src/agent/ui/messages/SystemTextMessage.backgroundCount.test.tsx",
+    "src/terminal/spinner/BriefIdleStatus.backgroundCount.test.tsx"
+  ],
+  "source": "src/agent/tasks/types.ts",
+  "probes": [
+    {
+      "name": "MCP server rows count as work again",
+      "find": "isBackgroundTask(task) && task.type !== 'mcp_server' && task.type !== 'container'",
+      "replace": "isBackgroundTask(task) && task.type !== 'container'"
+    },
+    {
+      "name": "container rows count as work again",
+      "find": "isBackgroundTask(task) && task.type !== 'mcp_server' && task.type !== 'container'",
+      "replace": "isBackgroundTask(task) && task.type !== 'mcp_server'"
+    },
+    {
+      "name": "the turn-end line counts every listed row",
+      "source": "src/agent/ui/messages/SystemTextMessage.tsx",
+      "find": "(Object.values(tasks ?? {}) as TaskState[]).filter(isBackgroundWork)",
+      "replace": "(Object.values(tasks ?? {}) as TaskState[]).filter(t => isBackgroundWork(t) || t.type === 'mcp_server' || t.type === 'container')"
+    },
+    {
+      "name": "brief mode counts every listed row",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "count(Object.values(s_0.tasks), isBackgroundWork)",
+      "replace": "count(Object.values(s_0.tasks), t => isBackgroundWork(t) || t.type === 'mcp_server' || t.type === 'container')"
+    }
+  ]
+}

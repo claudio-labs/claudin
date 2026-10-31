@@ -21,7 +21,7 @@ import { getDefaultCharacters, isBoldSpinnerFrame, SPINNER_FRAME_MS, type Spinne
 import { SpinnerAnimationRow } from 'src/terminal/spinner/SpinnerAnimationRow.js';
 import { useSettings } from 'src/platform/useSettings.js';
 import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js';
-import { isBackgroundTask } from 'src/agent/tasks/types.js';
+import { isBackgroundWork } from 'src/agent/tasks/types.js';
 import { getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { getEffortSuffix, isAdaptiveEffort } from 'src/providers/effort/effort.js';
 import { getMainLoopModel } from 'src/providers/model/model.js';
@@ -326,7 +326,7 @@ export function BriefIdleStatus() {
   return t2;
 }
 function _temp8(s_0: AppState) {
-  return count(Object.values(s_0.tasks), isBackgroundTask) + s_0.remoteBackgroundTaskCount;
+  return count(Object.values(s_0.tasks), isBackgroundWork) + s_0.remoteBackgroundTaskCount;
 }
 function _temp7(s: AppState) {
   return s.remoteConnectionStatus;

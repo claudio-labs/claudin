@@ -5,6 +5,7 @@
  */
 
 import type { ModelOption } from 'src/providers/model/modelOptions.js'
+import { isOllamaBaseUrl, loadOllamaModelInfo } from 'src/providers/model/ollamaModelInfo.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { getOllamaApiBaseUrl } from 'src/providers/presets/providerDiscovery.js'
 
@@ -80,10 +81,16 @@ export async function fetchOllamaModels(): Promise<ModelOption[]> {
 }
 
 /**
- * Prefetch and cache Ollama models. Call during startup.
+ * Prefetch and cache Ollama models, and the active model's info (thinking,
+ * context window) so `/model` and the effort picker can answer before the
+ * first request. Call during startup.
  */
 export function prefetchOllamaModels(): void {
   if (!isOllamaProvider()) return
+  const profile = tryGetActiveProvider()
+  if (profile && isOllamaBaseUrl(profile.baseUrl) && profile.model) {
+    void loadOllamaModelInfo(profile.baseUrl, profile.model)
+  }
   if (cachedOllamaOptions && cachedOllamaOptions.length > 0) return
   if (fetchPromise) return
   fetchPromise = fetchOllamaModels()

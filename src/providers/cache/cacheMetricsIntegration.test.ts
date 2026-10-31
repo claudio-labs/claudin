@@ -210,6 +210,43 @@ describe('no-cache providers — pipeline honestly reports unsupported', () => {
   })
 })
 
+describe('Ollama — the KV cache reads as a prompt cache', () => {
+  // Measured on Ollama 0.40.13 (2026-10-31): with include_usage it reports the
+  // whole prompt in prompt_tokens and the reused prefix in cached_tokens.
+  const raw = {
+    prompt_tokens: 178,
+    prompt_tokens_details: { cached_tokens: 174 },
+    completion_tokens: 28,
+  }
+
+  test('the prefill is a cache write and the reused prefix a read', () => {
+    const shimmed = buildAnthropicUsageFromRawUsage(raw, { kvCache: true })
+    expect(shimmed.input_tokens).toBe(0)
+    expect(shimmed.cache_creation_input_tokens).toBe(4)
+    expect(shimmed.cache_read_input_tokens).toBe(174)
+    expect(shimmed.output_tokens).toBe(28)
+  })
+
+  test('extractCacheMetrics reports it as supported', () => {
+    const shimmed = buildAnthropicUsageFromRawUsage(raw, { kvCache: true })
+    const metrics = extractCacheMetrics(
+      shimmed as unknown as Record<string, unknown>,
+      'ollama',
+    )
+    expect(metrics.supported).toBe(true)
+    expect(metrics.read).toBe(174)
+    expect(metrics.created).toBe(4)
+    expect(metrics.total).toBe(178)
+  })
+
+  test('without the option the OpenAI reading stays: fresh input, no write', () => {
+    const shimmed = buildAnthropicUsageFromRawUsage(raw)
+    expect(shimmed.input_tokens).toBe(4)
+    expect(shimmed.cache_creation_input_tokens).toBe(0)
+    expect(shimmed.cache_read_input_tokens).toBe(174)
+  })
+})
+
 describe('display path end-to-end — private-IP, custom-port, self-hosted endpoints', () => {
   // These tests exercise the FULL pipeline that runs when a user
   // configures Claudin against a self-hosted OpenAI-compatible

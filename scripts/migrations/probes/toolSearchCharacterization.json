@@ -1,0 +1,56 @@
+{
+  "test": [
+    "src/agent/tools/toolSearch.test.ts"
+  ],
+  "source": "src/agent/tools/toolSearch.ts",
+  "probes": [
+    {
+      "name": "the kill switch no longer forces standard",
+      "comment": "non-first-party providers under CLAUDIN_DISABLE_EXPERIMENTAL_BETAS must get 'standard' when ENABLE_TOOL_SEARCH is unset",
+      "find": "    !shimDefersTools\n  ) {\n    return 'standard'",
+      "replace": "    !shimDefersTools\n  ) {\n    return 'tst'"
+    },
+    {
+      "name": "genuine first-party loses its kill-switch exception",
+      "comment": "Anthropic on api.anthropic.com (or no profile) keeps tool search under the kill switch",
+      "find": "getAPIProvider() === 'firstParty' && isFirstPartyAnthropicBaseUrl()",
+      "replace": "false && isFirstPartyAnthropicBaseUrl()"
+    },
+    {
+      "name": "auto:0 stops meaning always-on",
+      "comment": "auto:0 (and a negative auto:N clamped to 0) is 'tst', not 'tst-auto'",
+      "find": "if (autoPercent === 0) return 'tst'",
+      "replace": "if (autoPercent === 0) return 'tst-auto'"
+    },
+    {
+      "name": "Haiku 4.x is treated as supporting tool_reference",
+      "comment": "the claude-haiku-4 pattern is what keeps Haiku 4.5 out of tool search",
+      "find": "  'claude-haiku-4',\n",
+      "replace": "  'claude-haiku-4-unmatched',\n"
+    },
+    {
+      "name": "the optimistic proxy gate stops firing",
+      "comment": "firstParty transport on a non-Anthropic base URL with ENABLE_TOOL_SEARCH unset must be optimistic-false",
+      "find": "    !isFirstPartyAnthropicBaseUrl()\n  ) {",
+      "replace": "    false\n  ) {"
+    },
+    {
+      "name": "tool_reference blocks are no longer read from tool_result content",
+      "comment": "extractDiscoveredToolNames must collect tool_name from tool_reference items",
+      "find": "discoveredTools.add(item.tool_name)",
+      "replace": "void item.tool_name"
+    },
+    {
+      "name": "the compact boundary's discovered set is dropped",
+      "comment": "compactMetadata.preCompactDiscoveredTools must be carried into the set",
+      "find": "for (const name of carried) discoveredTools.add(name)",
+      "replace": "for (const name of carried) void name"
+    },
+    {
+      "name": "the tst-auto char threshold inverts",
+      "comment": "deferred descriptions at/above the char threshold enable tool search; below it they do not",
+      "find": "enabled: deferredToolDescriptionChars >= charThreshold,",
+      "replace": "enabled: deferredToolDescriptionChars < charThreshold,"
+    }
+  ]
+}

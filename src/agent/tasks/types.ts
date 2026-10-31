@@ -56,6 +56,18 @@ export function isBackgroundTask(task: TaskState): task is BackgroundTaskState {
 }
 
 /**
+ * Whether a task is work still in flight, for the lines that say so: the
+ * turn-end "· N background tasks still running" and brief mode's "N in
+ * background". An MCP server (#201) or a container (#145) row stays `running`
+ * for as long as the footer panel lists it, so `isBackgroundTask` accepts it;
+ * counted here, two MCP servers read as "2 background tasks still running"
+ * after every turn.
+ */
+export function isBackgroundWork(task: TaskState): task is BackgroundTaskState {
+  return isBackgroundTask(task) && task.type !== 'mcp_server' && task.type !== 'container'
+}
+
+/**
  * Whether `-p` waits for this task before it exits (`turnLoop.ts`): every
  * background task, except the two that run until something stops them. A
  * teammate lives as long as its team (gh-30008), and an adopted leftover

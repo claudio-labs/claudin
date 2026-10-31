@@ -1,0 +1,44 @@
+{
+  "test": [
+    "src/terminal/spinner/Spinner.characterization.test.tsx"
+  ],
+  "source": "src/terminal/spinner/Spinner.tsx",
+  "probes": [
+    {
+      "name": "brief mode drops the remote background count",
+      "comment": "\"N in background\" is the local background tasks plus remoteBackgroundTaskCount",
+      "find": "count(Object.values(s_0.tasks), isBackgroundTask) + s_0.remoteBackgroundTaskCount",
+      "replace": "count(Object.values(s_0.tasks), isBackgroundTask)"
+    },
+    {
+      "name": "brief mode hides the reconnecting warning",
+      "comment": "both reconnecting and disconnected show a left-hand warning",
+      "find": "const showConnWarning = connStatus === \"reconnecting\" || connStatus === \"disconnected\";",
+      "replace": "const showConnWarning = connStatus === \"disconnected\";"
+    },
+    {
+      "name": "the spinner glyph never advances",
+      "comment": "one orbit step per SPINNER_FRAME_MS of clock time, wrapping",
+      "find": "const frame = Math.floor(time / SPINNER_FRAME_MS) % SPINNER_FRAMES.length;",
+      "replace": "const frame = 0;"
+    },
+    {
+      "name": "Next ignores blockers",
+      "comment": "the first pending todo with no unresolved blocker is Next; the first pending one only as fallback",
+      "find": "return pendingTasks.find(t => !t.blockedBy.some(id => unresolvedIds.has(id))) ?? pendingTasks[0];",
+      "replace": "return pendingTasks[0];"
+    },
+    {
+      "name": "leader idle shows Idle even with no running teammate",
+      "comment": "the static Idle display needs a running teammate; otherwise the spinner row renders",
+      "find": "if (leaderIsIdle && hasRunningTeammates && !foregroundedTeammate) {",
+      "replace": "if (leaderIsIdle && !foregroundedTeammate) {"
+    },
+    {
+      "name": "a short thinking block skips its 2s minimum",
+      "comment": "\"thinking\" stays on screen for at least 2s before \"thought for Ns\"",
+      "find": "const remainingThinkingTime = Math.max(0, 2000 - elapsed);",
+      "replace": "const remainingThinkingTime = Math.max(0, 0 - elapsed);"
+    }
+  ]
+}

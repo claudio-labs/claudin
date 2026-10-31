@@ -8,6 +8,10 @@ import {
   resolveCatalogProviderId,
   resolveShimEffortValues,
 } from 'src/providers/model/reasoningCatalog.js'
+import {
+  _resetOllamaModelInfoForTesting,
+  _setOllamaModelInfoForTesting,
+} from 'src/providers/model/ollamaModelInfo.js'
 
 afterEach(() => {
   delete process.env.CLAUDIN_DISABLE_REASONING_EFFORT_WIRE
@@ -219,5 +223,32 @@ describe('reasoningEffortWireFor', () => {
     expect(reasoningEffortWireFor('https://opencode.ai/zen/go/v1')).toBe('reasoning_effort')
     expect(reasoningEffortWireFor('https://api.openai.com/v1')).toBe('reasoning_effort')
     expect(reasoningEffortWireFor(undefined)).toBe('reasoning_effort')
+  })
+})
+
+describe('resolveShimEffortValues — Ollama, from the model info /api/show gave', () => {
+  const OLLAMA = 'http://localhost:11434/v1'
+
+  afterEach(() => {
+    _resetOllamaModelInfoForTesting()
+  })
+
+  test('a thinking model with levels (gpt-oss) offers low/medium/high', () => {
+    _setOllamaModelInfoForTesting('gpt-oss:20b', { thinking: true, thinkingLevels: true })
+    expect(resolveShimEffortValues(OLLAMA, 'gpt-oss:20b')).toEqual(['low', 'medium', 'high'])
+  })
+
+  test('a thinking model that only turns on or off offers no level', () => {
+    _setOllamaModelInfoForTesting('qwen3:8b', { thinking: true, thinkingLevels: false })
+    expect(resolveShimEffortValues(OLLAMA, 'qwen3:8b')).toBeUndefined()
+  })
+
+  test('no info read yet: nothing offered', () => {
+    expect(resolveShimEffortValues(OLLAMA, 'gpt-oss:20b')).toBeUndefined()
+  })
+
+  test('the levels belong to Ollama: the same name elsewhere is not affected', () => {
+    _setOllamaModelInfoForTesting('gpt-oss:20b', { thinking: true, thinkingLevels: true })
+    expect(resolveShimEffortValues('https://llm.example.test/v1', 'gpt-oss:20b')).toBeUndefined()
   })
 })

@@ -111,7 +111,24 @@ import {
 } from 'src/providers/shims/openaiShim/providerModes.js'
 import { extractReasoningMessage } from 'src/providers/shims/openaiShim/reasoningNormalizer.js'
 import { openaiStreamToAnthropic, OpenAIShimStream } from 'src/providers/shims/openaiShim/streamParser.js'
+import {
+  localModelServerDispatcher,
+  resolveShimIdleTimeoutMs,
+} from 'src/providers/shims/openaiShim/fetchTimeout.js'
+import {
+  getCachedOllamaModelInfo,
+  isOllamaBaseUrl,
+  loadOllamaModelInfo,
+  refreshOllamaLoadedContext,
+} from 'src/providers/model/ollamaModelInfo.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
+import {
+  CALL_TOOL,
+  CALL_TOOL_NAME,
+  clientToolSearchDisabled,
+  planToolDeferral,
+  unwrapGatewayCall,
+} from 'src/providers/shims/clientToolSearch/index.js'
 
 // An Anthropic model by name, however a gateway spells it: `claude-…`,
 // `anthropic/…`, a Bedrock region prefix (`us.anthropic.claude-…`) or a bare
@@ -134,6 +151,37 @@ import { isHy3Model, recoverXmlToolCallsFromText } from 'src/providers/shims/ope
 import type { SecretValueSource } from 'src/providers/shims/openaiShim/types.js'
 import { redactUrlForDiagnostics } from 'src/providers/shims/openaiShim/urlRedaction.js'
 
+// The rough token count of each request body the shim sent, keyed by its
+// response: the fallback usage for a server that reports none counts what
+// actually went on the wire — tools included, which were most of it.
+const requestBodyTokens = new WeakMap<Response, number>()
+
+/**
+ * Messages + system prompt, for a stream that did not come from a Chat
+ * Completions body. The messages may be in either the internal Claudin format
+ * ({ type, message: { content } }) or the Anthropic SDK format
+ * ({ role, content }) — extract content and delegate to
+ * roughTokenCountEstimationForContent which handles all block types (text,
+ * tool_use, tool_result, image, etc.).
+ */
+function estimateMessagesAndSystemTokens(params: ShimCreateParams): number {
+  let tokens = 0
+  for (const msg of params.messages) {
+    const m = msg as Record<string, unknown>
+    const content = m.message
+      ? (m.message as Record<string, unknown>).content
+      : m.content
+    if (content != null && typeof content !== 'string' && !Array.isArray(content)) continue
+    tokens += roughTokenCountEstimationForContent(content ?? undefined)
+  }
+  if (typeof params.system === 'string') {
+    tokens += roughTokenCountEstimation(params.system)
+  } else if (Array.isArray(params.system)) {
+    tokens += roughTokenCountEstimationForContent(params.system)
+  }
+  return tokens
+}
+
 class OpenAIShimMessages {
   private defaultHeaders: Record<string, string>
   private reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
@@ -152,6 +200,13 @@ class OpenAIShimMessages {
     let httpResponse: Response | undefined
 
     const promise = (async () => {
+      // An Ollama model's info (thinking, Modelfile sampling, context window)
+      // is read before anything below asks for it — the effort levels first.
+      const target = resolveProviderRequest({ model: params.model })
+      if (isOllamaBaseUrl(target.baseUrl)) {
+        await loadOllamaModelInfo(target.baseUrl, target.resolvedModel)
+      }
+
       // Resolve the effort level that will actually be sent. This applies the
       // same precedence chain used by the Anthropic path (env override →
       // appState / /effort → model default) so OpenAI-compatible shims get a
@@ -175,6 +230,11 @@ class OpenAIShimMessages {
       const geminiNative = isGeminiNativeRequest(request.baseUrl)
       const response = await self._doRequest(request, params, options)
       httpResponse = response
+      const isOllama = isOllamaBaseUrl(request.baseUrl)
+      if (isOllama && !getCachedOllamaModelInfo(request.resolvedModel)?.contextWindow) {
+        // The runner answered, so /api/ps now lists the context it runs with.
+        void refreshOllamaLoadedContext(request.baseUrl, request.resolvedModel)
+      }
 
       // Names of tools advertised on this request. Used to recover XML-embedded
       // tool calls (models that emit `<tool_call>…` as text) while rejecting
@@ -184,6 +244,12 @@ class OpenAIShimMessages {
           .map(t => (t as { name?: unknown }).name)
           .filter((n): n is string => typeof n === 'string'),
       )
+      // Client-side tool search sent the CallTool gateway in place of the
+      // deferred tools (_doOpenAIRequest): its calls come back as the real tool.
+      const gateway =
+        !clientToolSearchDisabled() &&
+        (params.tools ?? []).some(t => (t as { defer_loading?: unknown }).defer_loading === true)
+      if (gateway) toolNames.add(CALL_TOOL_NAME)
 
       if (geminiNative) {
         return params.stream
@@ -193,35 +259,19 @@ class OpenAIShimMessages {
 
       if (params.stream) {
         const isResponsesStream = response.url?.includes('/responses')
-        // Estimate input tokens from request messages + system prompt so the
-        // fallback path (providers that don't emit usage) can report non-zero
-        // input instead of 0. The messages may be in either the internal
-        // Claudin format ({ type, message: { content } }) or the Anthropic
-        // SDK format ({ role, content }) — extract content and delegate to
-        // roughTokenCountEstimationForContent which handles all block types
-        // (text, tool_use, tool_result, image, etc.).
-        let estimatedInputTokens = 0
-        for (const msg of params.messages) {
-          const m = msg as Record<string, unknown>
-          const content = m.message
-            ? (m.message as Record<string, unknown>).content
-            : m.content
-          if (content != null && typeof content !== 'string' && !Array.isArray(content)) continue
-          estimatedInputTokens += roughTokenCountEstimationForContent(
-            content ?? undefined,
-          )
-        }
-        if (typeof params.system === 'string') {
-          estimatedInputTokens += roughTokenCountEstimation(params.system)
-        } else if (Array.isArray(params.system)) {
-          estimatedInputTokens += roughTokenCountEstimationForContent(params.system)
-        }
+        // Estimate input tokens so the fallback path (providers that don't
+        // emit usage) can report non-zero input instead of 0.
+        const estimatedInputTokens =
+          requestBodyTokens.get(response) ?? estimateMessagesAndSystemTokens(params)
         return new OpenAIShimStream(
           (request.transport === 'codex_responses' || isResponsesStream)
             ? codexStreamToAnthropic(response, request.resolvedModel, options?.signal, {
                 captureCodexItems: codexReplayActive(request),
               })
-            : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens, toolNames),
+            : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens, toolNames, {
+                kvCache: isOllama,
+                gateway,
+              }),
         )
       }
 
@@ -249,14 +299,14 @@ class OpenAIShimMessages {
               request.resolvedModel,
             )
           }
-          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames)
+          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames, { kvCache: isOllama, gateway })
         }
       }
 
       const contentType = response.headers.get('content-type') ?? ''
       if (contentType.includes('application/json')) {
         const data = await response.json()
-        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames)
+        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames, { kvCache: isOllama, gateway })
       }
 
       const textBody = await response.text().catch(() => '')
@@ -398,6 +448,19 @@ class OpenAIShimMessages {
         }>,
       ),
     )
+    // Client-side tool search: tools flagged defer_loading stay behind the
+    // CallTool gateway (src/providers/shims/clientToolSearch/).
+    const toolChoice = params.tool_choice as { type?: string; name?: string } | undefined
+    const toolPlan = planToolDeferral(
+      (params.tools ?? []) as Array<{
+        name: string
+        description?: string
+        input_schema?: Record<string, unknown>
+        type?: string
+        defer_loading?: boolean
+      }>,
+      toolChoice?.type === 'tool' ? toolChoice.name : undefined,
+    )
     const openaiMessages = convertMessages(compressedMessages, params.system, {
       // Moonshot/Kimi Code requires every assistant tool-call message to carry
       // reasoning_content when its thinking feature is active. DeepSeek does
@@ -407,6 +470,7 @@ class OpenAIShimMessages {
         isMoonshotCompatibleBaseUrl(request.baseUrl) ||
         isDeepSeekBaseUrl(request.baseUrl) ||
         isGlmCompatibleBaseUrl(request.baseUrl),
+      deferredTools: toolPlan.deferred,
     })
 
     const body: Record<string, unknown> = {
@@ -441,7 +505,11 @@ class OpenAIShimMessages {
       body.max_completion_tokens = maxCompletionTokensValue
     }
 
-    if (params.stream && !isLocalProviderUrl(request.baseUrl)) {
+    // Ollama is local but reports usage — with its KV cache in cached_tokens —
+    // so it is asked; other local servers keep #13's strict-parser caution.
+    const isOllama = isOllamaBaseUrl(request.baseUrl)
+    const ollamaInfo = isOllama ? getCachedOllamaModelInfo(request.resolvedModel) : undefined
+    if (params.stream && (!isLocalProviderUrl(request.baseUrl) || isOllama)) {
       body.stream_options = { include_usage: true }
     }
 
@@ -476,6 +544,14 @@ class OpenAIShimMessages {
 
     if (params.temperature !== undefined) body.temperature = params.temperature
     if (params.top_p !== undefined) body.top_p = params.top_p
+    // Ollama's /v1 replaces a missing temperature/top_p with 1.0, over the
+    // Modelfile. Send the Modelfile's; Claudin's own default of 1 yields too.
+    if (ollamaInfo?.temperature !== undefined && (params.temperature === undefined || params.temperature === 1)) {
+      body.temperature = ollamaInfo.temperature
+    }
+    if (ollamaInfo?.topP !== undefined && params.top_p === undefined) {
+      body.top_p = ollamaInfo.topP
+    }
 
     if (isDeepSeek) {
       const requestedThinkingType = (params.thinking as { type?: string } | undefined)?.type
@@ -537,15 +613,17 @@ class OpenAIShimMessages {
       }
     }
 
+    // Thinking off — the /config toggle, or a side query (title, summary)
+    // that asks for none — reaches an Ollama thinking model as "none", which
+    // Ollama maps to think=false. With thinking on, the server's default
+    // (thinking) or the level above stands.
+    if (ollamaInfo?.thinking && (params.thinking as { type?: string } | undefined)?.type === 'disabled') {
+      body.reasoning_effort = 'none'
+    }
+
     if (params.tools && params.tools.length > 0) {
-      const converted = convertTools(
-        params.tools as Array<{
-          name: string
-          description?: string
-          input_schema?: Record<string, unknown>
-          type?: string
-        }>,
-      )
+      const converted = convertTools(toolPlan.sent)
+      if (toolPlan.deferred.size > 0) converted.push(CALL_TOOL)
       if (converted.length > 0) {
         body.tools = converted
         if (params.tool_choice) {
@@ -752,11 +830,16 @@ class OpenAIShimMessages {
       serializedBody = stableStringify(body)
     }
 
+    // Bun reads `timeout` (its fetch idle timeout); under Node a local server
+    // gets its own undici Agent carrying the same value (fetchTimeout.ts).
+    const idleTimeoutMs = resolveShimIdleTimeoutMs(request.baseUrl)
     const buildFetchInit = () => ({
       method: 'POST' as const,
       headers,
       body: serializedBody,
       signal: options?.signal,
+      timeout: idleTimeoutMs,
+      ...(isLocal && { dispatcher: localModelServerDispatcher(idleTimeoutMs) }),
     })
 
     const maxSelfHealAttempts = isLocal
@@ -867,7 +950,9 @@ class OpenAIShimMessages {
         response = await fetchWithProxyRetry(
           chatCompletionsUrl,
           buildFetchInit(),
-          { provider: dispatcherProvider },
+          // A local server keeps the Agent above: the per-provider one would
+          // replace it and bring back undici's 300 s headersTimeout.
+          { provider: isLocal ? undefined : dispatcherProvider },
         )
       } catch (error) {
         const isAbortError =
@@ -900,6 +985,7 @@ class OpenAIShimMessages {
       }
 
       if (response.ok) {
+        requestBodyTokens.set(response, roughTokenCountEstimation(serializedBody))
         let tokensIn = 0
         let tokensOut = 0
         // Skip clone() for streaming responses - it blocks until full body is received,
@@ -1114,6 +1200,7 @@ class OpenAIShimMessages {
     },
     model: string,
     toolNames?: Set<string>,
+    opts: { kvCache?: boolean; gateway?: boolean } = {},
   ) {
     const choice = data.choices?.[0]
     const content: Array<Record<string, unknown>> = []
@@ -1155,11 +1242,17 @@ class OpenAIShimMessages {
           content.push({ type: 'text', text: recovered.visibleText })
         }
         for (const tc of recovered.calls) {
+          const viaGateway =
+            opts.gateway && tc.name === CALL_TOOL_NAME
+              ? unwrapGatewayCall(JSON.stringify(tc.arguments))
+              : null
           content.push({
             type: 'tool_use',
             id: tc.id,
-            name: tc.name,
-            input: normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
+            name: viaGateway?.name ?? tc.name,
+            input: viaGateway
+              ? viaGateway.input
+              : normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
           })
         }
         recoveredXmlToolUse = true
@@ -1192,14 +1285,18 @@ class OpenAIShimMessages {
 
     if (choice?.message?.tool_calls) {
       for (const tc of choice.message.tool_calls) {
-        const input = normalizeToolArguments(
-          tc.function.name,
-          tc.function.arguments,
-        )
+        // A gateway call names the real tool in its arguments.
+        const viaGateway =
+          opts.gateway && tc.function.name === CALL_TOOL_NAME
+            ? unwrapGatewayCall(tc.function.arguments)
+            : null
+        const input = viaGateway
+          ? viaGateway.input
+          : normalizeToolArguments(tc.function.name, tc.function.arguments)
         content.push({
           type: 'tool_use',
           id: tc.id,
-          name: tc.function.name,
+          name: viaGateway?.name ?? tc.function.name,
           input,
           ...(tc.extra_content ? { extra_content: tc.extra_content } : {}),
           // Extract Gemini signature from extra_content
@@ -1234,6 +1331,7 @@ class OpenAIShimMessages {
       stop_sequence: null,
       usage: buildAnthropicUsageFromRawUsage(
         data.usage as unknown as Record<string, unknown> | undefined,
+        { kvCache: opts.kvCache },
       ),
     }
   }

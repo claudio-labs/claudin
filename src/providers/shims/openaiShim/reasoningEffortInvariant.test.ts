@@ -29,6 +29,10 @@ import {
   type FetchType,
   type OpenAIShimClient,
 } from 'src/providers/shims/openaiShim/__testutils__/shimHarness.js'
+import {
+  _resetOllamaModelInfoForTesting,
+  _setOllamaModelInfoForTesting,
+} from 'src/providers/model/ollamaModelInfo.js'
 
 useShimHarness()
 
@@ -187,4 +191,21 @@ test('DeepSeek and Kimi Code are the two documented exceptions', async () => {
   const kimi = await bodyFor('https://api.kimi.com/coding/v1', 'k3', 'high')
   expect(kimi?.thinking).toEqual({ type: 'enabled', effort: 'high', keep: 'all' })
   expect(kimi?.reasoning_effort).toBeUndefined()
+})
+
+test('picker and wire agree on Ollama, from what /api/show said about the model', async () => {
+  const OLLAMA = 'http://localhost:11434/v1'
+  process.env.OPENAI_BASE_URL = OLLAMA
+  process.env.OPENAI_API_KEY = 'sk-invariant-test'
+  _setOllamaModelInfoForTesting('gpt-oss:20b', { thinking: true, thinkingLevels: true })
+  _setOllamaModelInfoForTesting('qwen3:8b', { thinking: true, thinkingLevels: false })
+  try {
+    for (const [model, offered] of [['gpt-oss:20b', true], ['qwen3:8b', false]] as const) {
+      expect(modelSupportsEffort(model)).toBe(offered)
+      const body = await bodyFor(OLLAMA, model, 'high')
+      expect(body?.reasoning_effort !== undefined).toBe(offered)
+    }
+  } finally {
+    _resetOllamaModelInfoForTesting()
+  }
 })

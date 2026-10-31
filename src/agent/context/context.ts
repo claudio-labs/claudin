@@ -35,6 +35,10 @@ export const OPENAI_FALLBACK_CONTEXT_WINDOW = (() => {
 // Maximum output tokens for compact operations
 export const COMPACT_MAX_OUTPUT_TOKENS = 20_000
 
+// Models already warned about the 128k fallback: a dozen callers ask on every
+// turn, so an unconditional warning printed four times in a single -p run.
+const warnedFallbackModels = new Set<string>()
+
 // Default max output tokens
 const MAX_OUTPUT_TOKENS_DEFAULT = 32_000
 const MAX_OUTPUT_TOKENS_UPPER_LIMIT = 64_000
@@ -91,10 +95,13 @@ export function getContextWindowForModel(
     if (openaiWindow !== undefined) {
       return openaiWindow
     }
-    console.error(
-      `[context] Warning: model "${model}" not in context window table — using conservative 128k default. ` +
-      'Add it to src/providers/model/openaiContextWindows.ts for accurate compaction.',
-    )
+    if (!warnedFallbackModels.has(model)) {
+      warnedFallbackModels.add(model)
+      console.error(
+        `[context] Warning: model "${model}" not in context window table — using conservative 128k default. ` +
+        'Add it to src/providers/model/openaiContextWindows.ts for accurate compaction.',
+      )
+    }
     return OPENAI_FALLBACK_CONTEXT_WINDOW
   }
 

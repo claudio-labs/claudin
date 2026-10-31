@@ -1,0 +1,36 @@
+{
+  "test": ["src/agent/ui/messages/SystemTextMessage.characterization.test.tsx"],
+  "source": "src/agent/ui/messages/SystemTextMessage.tsx",
+  "probes": [
+    {
+      "name": "the turn-end line drops its background suffix",
+      "find": "const t8 = backgroundTaskSummary && ` \\u00B7 ${backgroundTaskSummary} still running`;",
+      "replace": "const t8 = null;"
+    },
+    {
+      "name": "a finished task counts as still running",
+      "find": ".filter(isBackgroundTask);",
+      "replace": ".filter(Boolean);"
+    },
+    {
+      "name": "a met budget renders as a percentage",
+      "find": "t5 = tokens >= limit ?",
+      "replace": "t5 = tokens > limit * 2 ?"
+    },
+    {
+      "name": "the away summary loses its text",
+      "find": "t3 = <Text dimColor={true}>{message.content}</Text>;",
+      "replace": "t3 = null;"
+    },
+    {
+      "name": "an info message shows outside verbose",
+      "find": "if (!isStopHookSummary && !verbose && message.level === \"info\") {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a stop hook error loses its label",
+      "find": "{message.hookLabel ?? \"Stop\"} hook error: {err}",
+      "replace": "{err}"
+    }
+  ]
+}

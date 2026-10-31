@@ -97,7 +97,8 @@ test('preserves usage from final OpenAI stream chunk with empty choices', async 
 })
 
 test('local provider streaming does NOT send stream_options (uses fallback estimation)', async () => {
-  process.env.OPENAI_BASE_URL = 'http://localhost:11434/v1'
+  // Not Ollama's port: Ollama reports usage and is asked for it (ollamaWire.test.ts).
+  process.env.OPENAI_BASE_URL = 'http://localhost:8080/v1'
 
   globalThis.fetch = (async (_input, init) => {
     const body = JSON.parse(String(init?.body))

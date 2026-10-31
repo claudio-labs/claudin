@@ -1,0 +1,132 @@
+{
+  "test": [
+    "src/providers/shims/claude/userAbort.test.ts",
+    "src/providers/shims/openaiShim/fetchTimeout.test.ts",
+    "src/providers/shims/openaiShim/ollamaWire.test.ts",
+    "src/providers/shims/openaiShim/clientToolSearch.e2e.test.ts",
+    "src/providers/shims/openaiShim/usage.test.ts",
+    "src/providers/shims/clientToolSearch/clientToolSearch.test.ts",
+    "src/permissions/permissions/localClassifier.test.ts",
+    "src/providers/usage/modelCost.localEndpoint.test.ts",
+    "src/providers/cache/cacheMetrics.test.ts",
+    "src/providers/cache/cacheMetricsIntegration.test.ts",
+    "src/agent/tools/toolSearch.test.ts",
+    "src/agent/context/context.test.ts",
+    "src/providers/model/reasoningCatalog.test.ts",
+    "src/providers/model/ollamaModelInfo.test.ts",
+    "src/providers/ui/effortNote.test.ts",
+    "src/providers/ui/SessionTokensIndicator.render.test.tsx",
+    "src/permissions/permissions.test.ts"
+  ],
+  "source": "src/providers/shims/openaiShim/messagesClient.ts",
+  "probes": [
+    {
+      "name": "Esc on the shim path is no longer a user abort",
+      "source": "src/providers/shims/claude/userAbort.ts",
+      "find": "isSdkApiUserAbortError(error) || (signal.aborted && isAbortError(error))",
+      "replace": "isSdkApiUserAbortError(error)"
+    },
+    {
+      "name": "the shim stops passing its idle timeout to fetch",
+      "find": "      timeout: idleTimeoutMs,\n",
+      "replace": ""
+    },
+    {
+      "name": "a local server gets the hosted timeout",
+      "source": "src/providers/shims/openaiShim/fetchTimeout.ts",
+      "find": "return isLocalProviderUrl(baseUrl) ? LOCAL_SHIM_IDLE_TIMEOUT_MS : HOSTED_SHIM_IDLE_TIMEOUT_MS",
+      "replace": "return HOSTED_SHIM_IDLE_TIMEOUT_MS"
+    },
+    {
+      "name": "Ollama is no longer asked for usage",
+      "find": "if (params.stream && (!isLocalProviderUrl(request.baseUrl) || isOllama)) {",
+      "replace": "if (params.stream && !isLocalProviderUrl(request.baseUrl)) {"
+    },
+    {
+      "name": "the fallback estimate no longer counts the request body",
+      "find": "        requestBodyTokens.set(response, roughTokenCountEstimation(serializedBody))\n",
+      "replace": ""
+    },
+    {
+      "name": "the Modelfile temperature is not sent",
+      "find": "      body.temperature = ollamaInfo.temperature\n",
+      "replace": ""
+    },
+    {
+      "name": "thinking off does not reach Ollama",
+      "find": "      body.reasoning_effort = 'none'\n",
+      "replace": ""
+    },
+    {
+      "name": "deferred tools go out whole again",
+      "source": "src/providers/shims/clientToolSearch/deferral.ts",
+      "find": "    if (tool.defer_loading === true && tool.name !== toolChoiceName) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "the CallTool gateway is not sent",
+      "find": "      if (toolPlan.deferred.size > 0) converted.push(CALL_TOOL)\n",
+      "replace": ""
+    },
+    {
+      "name": "the Tool loaded. sibling is kept beside an expanded reference",
+      "source": "src/providers/shims/openaiShim/messageConverter.ts",
+      "find": "            (b: { type?: string; text?: string }) => !(b.type === 'text' && b.text === TOOL_LOADED_TEXT),",
+      "replace": "            () => true,"
+    },
+    {
+      "name": "a streamed gateway call keeps the gateway name",
+      "source": "src/providers/shims/openaiShim/streamParser.ts",
+      "find": "      content_block: { type: 'tool_use', id: tc.id, name: call?.name ?? CALL_TOOL_NAME, input: {} },",
+      "replace": "      content_block: { type: 'tool_use', id: tc.id, name: CALL_TOOL_NAME, input: {} },"
+    },
+    {
+      "name": "the shim path falls back under the experimental-betas kill switch",
+      "source": "src/agent/tools/toolSearch.ts",
+      "find": "    !genuineFirstParty &&\n    !shimDefersTools\n",
+      "replace": "    !genuineFirstParty\n"
+    },
+    {
+      "name": "the auto-mode classifier runs on a local model again",
+      "source": "src/permissions/permissions/localClassifier.ts",
+      "find": "  return isLocalProviderUrl(baseUrl) && !ANTHROPIC_MODEL_NAME_RE.test(model)",
+      "replace": "  return false"
+    },
+    {
+      "name": "permissions.ts no longer asks the local check",
+      "source": "src/permissions/permissions.ts",
+      "find": "        classifierWouldRunLocally(\n          getClassifierModel(),\n          tryGetActiveProvider()?.baseUrl,\n        )\n",
+      "replace": "        false\n"
+    },
+    {
+      "name": "a local endpoint is priced again",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "  if (isLocalProviderUrl(tryGetActiveProvider()?.baseUrl)) return 0\n",
+      "replace": ""
+    },
+    {
+      "name": "Ollama falls back into the self-hosted bucket",
+      "source": "src/providers/cache/cacheMetrics.ts",
+      "find": "    if (isOllamaBaseUrl(url)) return 'ollama'\n",
+      "replace": ""
+    },
+    {
+      "name": "Ollama usage is read without its KV cache split",
+      "source": "src/providers/cache/cacheMetrics.ts",
+      "find": "  if (opts?.kvCache) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "Ollama thinking levels are not offered",
+      "source": "src/providers/model/reasoningCatalog.ts",
+      "find": "    return getCachedOllamaModelInfo(model)?.thinkingLevels ? OLLAMA_THINKING_LEVELS : undefined",
+      "replace": "    return undefined"
+    },
+    {
+      "name": "the 128k warning repeats on every call again",
+      "source": "src/agent/context/context.ts",
+      "find": "    if (!warnedFallbackModels.has(model)) {",
+      "replace": "    if (true) {"
+    }
+  ]
+}

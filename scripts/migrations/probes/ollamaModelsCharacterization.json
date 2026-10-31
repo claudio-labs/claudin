@@ -1,0 +1,42 @@
+{
+  "test": "src/providers/model/ollamaModels.test.ts",
+  "source": "src/providers/model/ollamaModels.ts",
+  "probes": [
+    {
+      "name": "isOllamaProvider: port 11434 is not recognized",
+      "comment": "a profile on :11434 must read as Ollama",
+      "find": "if (parsed.port === '11434') return true",
+      "replace": "if (parsed.port === '11435') return true"
+    },
+    {
+      "name": "fetch: a non-OK status still parses the body",
+      "comment": "the 500 test asserts the body is never read",
+      "find": "    if (!response.ok) return []\n",
+      "replace": ""
+    },
+    {
+      "name": "fetch: nameless tags are kept",
+      "comment": "the mapping test feeds two nameless rows",
+      "find": ".filter(m => Boolean(m.name))",
+      "replace": ".filter(m => m !== undefined)"
+    },
+    {
+      "name": "fetch: the 5s abort timer is gone",
+      "comment": "the timeout test compresses exactly the 5000ms timer and expects the signal aborted",
+      "find": "setTimeout(() => controller.abort(), 5000)",
+      "replace": "setTimeout(() => controller.abort(), 50)"
+    },
+    {
+      "name": "prefetch: a filled cache is refetched",
+      "comment": "lifecycle step 6",
+      "find": "  if (cachedOllamaOptions && cachedOllamaOptions.length > 0) return\n",
+      "replace": ""
+    },
+    {
+      "name": "prefetch: an in-flight request is duplicated",
+      "comment": "lifecycle step 5",
+      "find": "  if (fetchPromise) return\n",
+      "replace": ""
+    }
+  ]
+}
