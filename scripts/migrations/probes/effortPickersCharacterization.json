@@ -1,0 +1,49 @@
+{
+  "test": [
+    "src/providers/ui/EffortPicker.test.tsx",
+    "src/providers/ui/ModelPicker.test.tsx"
+  ],
+  "source": "src/providers/ui/EffortPicker.tsx",
+  "probes": [
+    {
+      "name": "EffortPicker: the not-supported note changes",
+      "comment": "the message the Ollama-thinking work will replace",
+      "find": "  return `Effort not supported${named}`",
+      "replace": "  return `Effort unavailable`",
+      "source": "src/providers/ui/effortNote.ts"
+    },
+    {
+      "name": "EffortPicker: the saved effort is not focused",
+      "comment": "'opens on the saved effort' and the max-shown-as-high case",
+      "find": "const idx = options.findIndex(o => o.value === label || o.label === label)",
+      "replace": "const idx = options.findIndex(o => o.value === undefined)"
+    },
+    {
+      "name": "EffortPicker: Enter does not write the app state",
+      "comment": "'Enter applies the focused level to the app state'",
+      "find": "setAppState(prev => ({ ...prev, effortValue: selected.value }))",
+      "replace": "setAppState(prev => prev)"
+    },
+    {
+      "name": "ModelPicker: the not-supported note drops the model name",
+      "comment": "the message the Ollama-thinking work will replace",
+      "source": "src/providers/ui/ModelPicker.tsx",
+      "find": "{effortUnavailableNote(focusedModelName, focusedModelName)}",
+      "replace": "{effortUnavailableNote(focusedModelName, undefined)}"
+    },
+    {
+      "name": "ModelPicker: an untoggled effort is reported on Enter",
+      "comment": "'Enter without a toggle reports no effort'",
+      "source": "src/providers/ui/ModelPicker.tsx",
+      "find": "const selectedEffort = hasToggledEffort && selectedModel && modelSupportsEffort(selectedModel) ? effort : undefined;",
+      "replace": "const selectedEffort = effort;"
+    },
+    {
+      "name": "ModelPicker: moving the focus resets a toggled effort",
+      "comment": "'an effort toggled in the picker survives moving the focus'",
+      "source": "src/providers/ui/ModelPicker.tsx",
+      "find": "if (!hasToggledEffort && effortValue === undefined) {",
+      "replace": "if (effortValue === undefined) {"
+    }
+  ]
+}

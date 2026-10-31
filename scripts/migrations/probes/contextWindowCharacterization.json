@@ -1,0 +1,44 @@
+{
+  "test": [
+    "src/agent/context/context.test.ts"
+  ],
+  "source": "src/agent/context/context.ts",
+  "probes": [
+    {
+      "name": "the unknown-model warning goes somewhere other than console.error",
+      "comment": "pins that the 128k fallback warns on console.error on every call (the once-per-model change will move this)",
+      "find": "      console.error(\n",
+      "replace": "      console.debug(\n"
+    },
+    {
+      "name": "the shim fallback stops being 128k",
+      "comment": "unknown openai-compatible model must fall back to OPENAI_FALLBACK_CONTEXT_WINDOW",
+      "find": "    return OPENAI_FALLBACK_CONTEXT_WINDOW\n",
+      "replace": "    return 8_000\n"
+    },
+    {
+      "name": "a known or discovered shim window is ignored",
+      "comment": "table hit (gpt-4o) and recordDiscoveredContextWindow value must be returned as-is",
+      "find": "    if (openaiWindow !== undefined) {",
+      "replace": "    if (openaiWindow === -1) {"
+    },
+    {
+      "name": "the [1m] suffix no longer wins over the shim table",
+      "comment": "explicit [1m] opt-in is checked before the shim branch",
+      "find": "  if (has1mContext(model)) {\n    return 1_000_000",
+      "replace": "  if (has1mContext(model) && false) {\n    return 1_000_000"
+    },
+    {
+      "name": "the 1M beta header is ignored on first party",
+      "comment": "sonnet-4-6 + context-1m beta header → 1M",
+      "find": "  if (betas?.includes(CONTEXT_1M_BETA_HEADER) && modelSupports1M(model)) {",
+      "replace": "  if (betas?.includes('no-such-beta') && modelSupports1M(model)) {"
+    },
+    {
+      "name": "claude-3-opus loses its 4k output cap",
+      "comment": "first-party output-cap family table",
+      "find": "  } else if (m.includes('claude-3-opus')) {",
+      "replace": "  } else if (m.includes('claude-3-opus-nope')) {"
+    }
+  ]
+}

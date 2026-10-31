@@ -254,15 +254,20 @@ describe('resolveCacheProvider', () => {
     expect(
       resolveCacheProvider('openai', { openAiBaseUrl: 'http://127.0.0.1:1234/v1' }),
     ).toBe('self-hosted')
-    // Localhost:11434 hits the self-hosted branch first — 'ollama' only
-    // kicks in when the :11434 port appears on a public-looking URL
-    // (which would be unusual but still deserves honest classification).
-    expect(
-      resolveCacheProvider('openai', { openAiBaseUrl: 'http://localhost:11434/v1' }),
-    ).toBe('self-hosted')
     expect(
       resolveCacheProvider('openai', { openAiBaseUrl: 'http://[::1]:5000/v1' }),
     ).toBe('self-hosted')
+  })
+
+  test('openai on Ollama\'s port → ollama, local or not', () => {
+    // Ollama reports usage with prompt_tokens_details.cached_tokens (its KV
+    // cache), so it gets its own bucket ahead of the private-URL check.
+    expect(
+      resolveCacheProvider('openai', { openAiBaseUrl: 'http://localhost:11434/v1' }),
+    ).toBe('ollama')
+    expect(
+      resolveCacheProvider('openai', { openAiBaseUrl: 'http://192.168.1.20:11434/v1' }),
+    ).toBe('ollama')
   })
 
   test('openai on RFC1918 private IP → self-hosted (pre-fix: misclassified as openai)', () => {

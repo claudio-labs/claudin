@@ -403,10 +403,10 @@ describe('helpers', () => {
 })
 
 describe('convertTools', () => {
-  test('drops ToolSearchTool and Anthropic server-side tools', () => {
+  test('drops Anthropic server-side tools; ToolSearch is a tool like any other', () => {
     const out = convertTools([
       {
-        name: 'ToolSearchTool',
+        name: 'ToolSearch',
         description: 'noop',
         input_schema: { type: 'object', properties: {} },
       },
@@ -417,8 +417,7 @@ describe('convertTools', () => {
         input_schema: { type: 'object', properties: {} },
       },
     ])
-    expect(out).toHaveLength(1)
-    expect(out[0].function.name).toBe('MyTool')
+    expect(out.map(t => t.function.name)).toEqual(['ToolSearch', 'MyTool'])
   })
 
   test("keeps type:'custom' user tools (e.g. the auto-mode classifier schema)", () => {

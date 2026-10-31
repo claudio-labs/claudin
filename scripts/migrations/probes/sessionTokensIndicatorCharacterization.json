@@ -1,0 +1,45 @@
+{
+  "test": [
+    "src/providers/ui/SessionTokensIndicator.test.ts",
+    "src/providers/ui/SessionTokensIndicator.render.test.tsx"
+  ],
+  "source": "src/providers/ui/SessionTokensIndicator.tsx",
+  "probes": [
+    {
+      "name": "snapshotEqual always reports a change",
+      "comment": "an unchanged poll must hand back the previous snapshot (no commit, counted by React.Profiler)",
+      "find": "  return (\n    a.input === b.input &&",
+      "replace": "  return false && (\n    a.input === b.input &&"
+    },
+    {
+      "name": "a reset to zero keeps the stale row",
+      "comment": "the last non-zero snapshot is dropped when the totals collapse to zero",
+      "find": "    lastNonZeroRef.current = null;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the all-zero snapshot renders a row",
+      "comment": "an empty session renders nothing, cache layout or not",
+      "find": "  if (grandTotal > 0) {",
+      "replace": "  if (grandTotal >= 0) {"
+    },
+    {
+      "name": "the gauge shows without a Nerd Font",
+      "comment": "the context gauge glyph is Nerd Font only; the size alone stays",
+      "find": "    nerdFont && contextTokens > 0\n",
+      "replace": "    contextTokens > 0\n"
+    },
+    {
+      "name": "a zero cost is printed",
+      "comment": "cost is appended only when above zero",
+      "find": "displaySnapshot.cost > 0 ? formatCost",
+      "replace": "displaySnapshot.cost >= 0 ? formatCost"
+    },
+    {
+      "name": "self-hosted gets the cache layout",
+      "comment": "Ollama on its default port resolves to self-hosted today and must keep in:/out:",
+      "find": "return cacheProvider !== 'copilot' && cacheProvider !== 'self-hosted';",
+      "replace": "return cacheProvider !== 'copilot';"
+    }
+  ]
+}

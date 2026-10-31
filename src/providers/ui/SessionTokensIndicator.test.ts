@@ -134,10 +134,10 @@ describe('readSnapshot — supportsCache layout flag', () => {
     expect(readSnapshot().supportsCache).toBe(true);
   });
 
-  test('Ollama resolution → supportsCache=false', () => {
+  test('Ollama resolution → supportsCache=true (its KV cache)', () => {
     setCacheProvider('ollama');
     setProfile({ id: 'o', model: 'llama3.1:8b', baseUrl: 'http://localhost:11434' });
-    expect(readSnapshot().supportsCache).toBe(false);
+    expect(readSnapshot().supportsCache).toBe(true);
   });
 
   test('Copilot resolution → supportsCache=false', () => {
@@ -186,9 +186,10 @@ describe('formatTokenParts', () => {
     expect(formatTokenParts(cached, 86_300, false)).toEqual(['86k', 'wrt: 74k', 'rd: 1.4m']);
   });
 
-  test('providers without cache keep in/out', () => {
+  test('providers without cache show in/out: arrows under a Nerd Font, text otherwise', () => {
     const plain = { ...cached, input: 12_000, output: 3_400, supportsCache: false };
-    expect(formatTokenParts(plain, 0, true)).toEqual(['in: 12k', 'out: 3k']);
+    expect(formatTokenParts(plain, 0, true)).toEqual(['\u{F0737} 12k', '\u{F072E} 3k']);
+    expect(formatTokenParts(plain, 0, false)).toEqual(['in: 12k', 'out: 3k']);
   });
 });
 
