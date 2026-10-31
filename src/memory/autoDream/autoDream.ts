@@ -9,6 +9,9 @@
 //
 // State is closure-scoped inside initAutoDream() rather than module-level
 // (tests call initAutoDream() in beforeEach for a fresh closure).
+// What the runner reaches outside itself — the gate, the lock, the decision
+// sources and the fork — comes in as AutoDreamDeps, so a test drives the
+// whole runner without mock.module.
 
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
@@ -89,6 +92,30 @@ function isForced(): boolean {
 
 type AppendSystemMessageFn = NonNullable<ToolUseContext['appendSystemMessage']>
 
+/** What the runner calls outside itself; production passes defaultAutoDreamDeps. */
+export type AutoDreamDeps = {
+  isGateOpen: () => boolean
+  readLastConsolidatedAt: () => Promise<number>
+  listSessionsTouchedSince: (sinceMs: number) => Promise<string[]>
+  tryAcquireConsolidationLock: () => Promise<number | null>
+  rollbackConsolidationLock: (priorMtime: number) => Promise<void>
+  collectDreamDigest: (sinceMs: number, sessionIds: readonly string[]) => Promise<string>
+  runForkedAgent: typeof runForkedAgent
+  /** Whether a finished dream says so in the transcript (`notifyMemorySaved`). */
+  notifyMemorySaved: () => boolean
+}
+
+export const defaultAutoDreamDeps: AutoDreamDeps = {
+  isGateOpen,
+  readLastConsolidatedAt,
+  listSessionsTouchedSince,
+  tryAcquireConsolidationLock,
+  rollbackConsolidationLock,
+  collectDreamDigest: (sinceMs, sessionIds) => collectDreamDigest(sinceMs, sessionIds),
+  runForkedAgent,
+  notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
+}
+
 let runner:
   | ((
       context: REPLHookContext,
@@ -100,18 +127,18 @@ let runner:
  * Call once at startup (from backgroundHousekeeping alongside
  * initExtractMemories), or per-test in beforeEach for a fresh closure.
  */
-export function initAutoDream(): void {
+export function initAutoDream(deps: AutoDreamDeps = defaultAutoDreamDeps): void {
   let lastSessionScanAt = 0
 
   runner = async function runAutoDream(context, appendSystemMessage) {
     const cfg = DEFAULTS
     const force = isForced()
-    if (!force && !isGateOpen()) return
+    if (!force && !deps.isGateOpen()) return
 
     // --- Time gate ---
     let lastAt: number
     try {
-      lastAt = await readLastConsolidatedAt()
+      lastAt = await deps.readLastConsolidatedAt()
     } catch (e: unknown) {
       logForDebugging(
         `[autoDream] readLastConsolidatedAt failed: ${(e as Error).message}`,
@@ -134,7 +161,7 @@ export function initAutoDream(): void {
     // --- Session gate ---
     let sessionIds: string[]
     try {
-      sessionIds = await listSessionsTouchedSince(lastAt)
+      sessionIds = await deps.listSessionsTouchedSince(lastAt)
     } catch (e: unknown) {
       logForDebugging(
         `[autoDream] listSessionsTouchedSince failed: ${(e as Error).message}`,
@@ -160,7 +187,7 @@ export function initAutoDream(): void {
       priorMtime = lastAt
     } else {
       try {
-        priorMtime = await tryAcquireConsolidationLock()
+        priorMtime = await deps.tryAcquireConsolidationLock()
       } catch (e: unknown) {
         logForDebugging(
           `[autoDream] lock acquire failed: ${(e as Error).message}`,
@@ -189,7 +216,7 @@ export function initAutoDream(): void {
       // The decision sources (plans, session prompts, impactful commits) are
       // read here, in the harness, so the fork judges with data instead of
       // grepping transcripts — and never runs git itself.
-      const digest = await collectDreamDigest(lastAt, sessionIds)
+      const digest = await deps.collectDreamDigest(lastAt, sessionIds)
       // Tool constraints note goes in `extra`, not the shared prompt body —
       // manual /dream runs in the main loop with normal permissions and this
       // would be misleading there.
@@ -203,7 +230,7 @@ ${sessionIds.map(id => `- ${id}`).join('\n')}
 ${digest}`
       const prompt = buildConsolidationPrompt(getMemoryDirs(), transcriptDir, extra)
 
-      const result = await runForkedAgent({
+      const result = await deps.runForkedAgent({
         promptMessages: [createUserMessage({ content: prompt })],
         cacheSafeParams: createCacheSafeParams(context),
         // One project's run cannot judge the global dir stale: it may only add to it.
@@ -223,7 +250,7 @@ ${digest}`
         appendSystemMessage &&
         isDreamTask(dreamState) &&
         dreamState.filesTouched.length > 0 &&
-        getGlobalConfig().notifyMemorySaved === true
+        deps.notifyMemorySaved()
       ) {
         appendSystemMessage({
           ...createMemorySavedMessage(dreamState.filesTouched),
@@ -247,7 +274,7 @@ ${digest}`
       logForDebugging(`[autoDream] fork failed: ${(e as Error).message}`)
       failDreamTask(taskId, setAppState)
       // Rewind mtime so time-gate passes again. Scan throttle is the backoff.
-      await rollbackConsolidationLock(priorMtime)
+      await deps.rollbackConsolidationLock(priorMtime)
     }
   }
 }

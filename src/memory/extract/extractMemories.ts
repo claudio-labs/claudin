@@ -442,12 +442,31 @@ let extractor:
 let drainer: (timeoutMs?: number) => Promise<void> = async () => {}
 
 /**
+ * What an extraction calls outside itself: the fork, the manifest scan and
+ * the notification setting. Injected so a test drives the whole closure
+ * without mock.module; production passes defaultExtractMemoriesDeps.
+ */
+export type ExtractMemoriesDeps = {
+  runForkedAgent: typeof runForkedAgent
+  existingMemoryManifest: (dirs: readonly MemoryDir[]) => Promise<string>
+  notifyMemorySaved: () => boolean
+}
+
+export const defaultExtractMemoriesDeps: ExtractMemoriesDeps = {
+  runForkedAgent,
+  existingMemoryManifest,
+  notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
+}
+
+/**
  * Initialize the memory extraction system.
  * Creates a fresh closure that captures all mutable state (cursor position,
  * overlap guard, pending context). Call once at startup alongside
  * initConfidenceRating/initPromptCoaching, or per-test in beforeEach.
  */
-export function initExtractMemories(): void {
+export function initExtractMemories(
+  deps: ExtractMemoriesDeps = defaultExtractMemoriesDeps,
+): void {
   // --- Closure-scoped mutable state ---
 
   /** Every promise handed out by the extractor that hasn't settled yet.
@@ -564,7 +583,7 @@ export function initExtractMemories(): void {
       // Pre-inject the memory directory manifest so the agent doesn't spend
       // a turn on `ls` (memoryScan.ts, frontmatter only).
       // Placed after the throttle gate so skipped turns don't pay the scan cost.
-      const existingMemories = await existingMemoryManifest(getMemoryDirs())
+      const existingMemories = await deps.existingMemoryManifest(getMemoryDirs())
       const globalDir = getMemoryDir('global')?.root ?? null
 
       // The MEMORY.md index is always in the system prompt now that the
@@ -578,7 +597,7 @@ export function initExtractMemories(): void {
       )
 
       const freshAgent = freshAgentFromEnv()
-      const result = await runForkedAgent({
+      const result = await deps.runForkedAgent({
         promptMessages: [createUserMessage({ content: userPrompt })],
         ...(freshAgent
           ? freshAgentParams(cacheSafeParams, lastMemoryMessageUuid, freshAgent)
@@ -637,7 +656,7 @@ export function initExtractMemories(): void {
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
       )
-      if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
+      if (memoryPaths.length > 0 && deps.notifyMemorySaved()) {
         appendSystemMessage?.({
           ...createMemorySavedMessage(memoryPaths),
           memoryCounts: memoryCountsOf(memoryPaths),
