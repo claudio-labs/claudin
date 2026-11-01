@@ -222,7 +222,7 @@ export function wrapCommandText(
 ): string {
   switch (origin?.kind) {
     case 'task-notification':
-      return `A background agent completed a task:\n${raw}`
+      return `A background task sent a notification:\n${raw}`
     case 'agent':
       return `${origin.name === MAIN_ADDRESS ? 'The main conversation' : `Agent "${origin.name}"`} sent you a message while you were working:\n${raw}\n\nAddress this before completing your current task.`
     case 'channel':
