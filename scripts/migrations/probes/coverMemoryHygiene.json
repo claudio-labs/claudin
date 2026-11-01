@@ -3,7 +3,8 @@
     "src/memory/autoDream/autoDream.test.ts",
     "src/memory/autoDream/config.test.ts",
     "src/memory/extract/extractMemories.closure.test.ts",
-    "src/memory/memdir/paths.gates.test.ts"
+    "src/memory/memdir/paths.gates.test.ts",
+    "src/memory/forkToolGate.test.ts"
   ],
   "source": "src/memory/autoDream/autoDream.ts",
   "probes": [
@@ -69,7 +70,7 @@
     },
     {
       "name": "extract: the gate lets any shell command through",
-      "source": "src/memory/extract/extractMemories.ts",
+      "source": "src/memory/forkToolGate.ts",
       "find": "if (parsed.success && tool.isReadOnly(parsed.data)) {",
       "replace": "if (parsed.success) {"
     },

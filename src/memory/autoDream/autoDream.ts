@@ -56,9 +56,9 @@ import {
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import {
-  createMemoryCanUseTool,
   memoryCountsOf,
 } from 'src/memory/extract/extractMemories.js'
+import { createMemoryCanUseTool } from 'src/memory/forkToolGate.js'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
 import { collectDreamDigest } from 'src/memory/autoDream/dreamDigest.js'
 import {

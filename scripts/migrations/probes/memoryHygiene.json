@@ -13,7 +13,8 @@
     "src/memory/autoDream/autoDream.test.ts",
     "src/memory/autoDream/dreamDigest.test.ts",
     "src/memory/autoDream/consolidationPrompt.test.ts",
-    "src/commands/memory/tidyPrompt.test.ts"
+    "src/commands/memory/tidyPrompt.test.ts",
+    "src/memory/forkToolGate.test.ts"
   ],
   "source": "src/memory/memdir/memoryHygiene.ts",
   "probes": [
@@ -104,25 +105,25 @@
     },
     {
       "name": "dream gate: a lone private delete passes",
-      "source": "src/memory/extract/extractMemories.ts",
+      "source": "src/memory/forkToolGate.ts",
       "find": "      if (scope === 'private') privateDeletes.push(abs)\n",
       "replace": ""
     },
     {
       "name": "dream gate: an index may be deleted",
-      "source": "src/memory/extract/extractMemories.ts",
+      "source": "src/memory/forkToolGate.ts",
       "find": "      if (basename(abs) === ENTRYPOINT_NAME) return `${ENTRYPOINT_NAME} is never deleted: remove its lines instead`\n",
       "replace": ""
     },
     {
       "name": "dream gate: the extraction may Patch too",
-      "source": "src/memory/extract/extractMemories.ts",
+      "source": "src/memory/forkToolGate.ts",
       "find": "if (tool.name === APPLY_PATCH_TOOL_NAME && patch === 'prune') {",
       "replace": "if (tool.name === APPLY_PATCH_TOOL_NAME) {"
     },
     {
       "name": "dream gate: a Patch may rewrite a global memory",
-      "source": "src/memory/extract/extractMemories.ts",
+      "source": "src/memory/forkToolGate.ts",
       "find": "hunk.chunks.every(c => keepsInOrder(c.oldLines, c.newLines))",
       "replace": "true"
     },

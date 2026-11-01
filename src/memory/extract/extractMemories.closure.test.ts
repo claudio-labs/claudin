@@ -7,19 +7,14 @@ import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { getGlobalMemPath, getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import {
-  createMemoryCanUseTool,
   drainPendingExtraction,
   executeExtractMemories,
   type ExtractMemoriesDeps,
   humanTurnsSince,
   initExtractMemories,
-  prunePatchProblem,
 } from 'src/memory/extract/extractMemories.js'
 import type { Message } from 'src/shared/types/message.js'
-import type { Tool } from 'src/tools/Tool.js'
 import { memoryCursorStore } from 'src/memory/extract/extractionCursor.js'
-import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 
 // The extraction closure, driven end to end through its injected deps: the
@@ -368,71 +363,5 @@ describe('the cursor follows the session', () => {
     expect(humanTurnsSince(messages, undefined)).toBe(3)
     expect(humanTurnsSince(messages, messages[1]!.uuid)).toBe(2)
     expect(humanTurnsSince(messages, 'gone')).toBe(3)
-  })
-})
-
-describe('a pruning Patch (the dream)', () => {
-  const team = () => join(memDir, 'team')
-  const global = () => join(root, 'config', 'memory')
-  const patch = (...sections: string[]) => ['*** Begin Patch', ...sections, '*** End Patch'].join('\n')
-  const del = (path: string) => `*** Delete File: ${path}`
-  const update = (path: string, old: string, next: string[]) => [`*** Update File: ${path}`, '@@', ` ${old}`, ...next.map(l => `+${l}`)].join('\n')
-  const problem = (text: unknown) => prunePatchProblem(text, ['global'])
-
-  test('a team memory is deleted alone: git keeps it', () => {
-    expect(problem(patch(del(join(team(), 'old-note.md'))))).toBeNull()
-  })
-
-  test('a private memory is deleted only beside the write of its survivor', () => {
-    expect(problem(patch(del(join(memDir, 'copy.md'))))).toContain('only in the Patch that writes the memory it was merged into')
-    expect(problem(patch(del(join(memDir, 'copy.md')), update(join(memDir, 'survivor.md'), 'fact', ['more'])))).toBeNull()
-    expect(problem(patch(del(join(memDir, 'copy.md')), update(join(memDir, 'MEMORY.md'), '- [Copy](copy.md)', [])))).toContain(
-      'only in the Patch that writes',
-    )
-  })
-
-  test('the private copy of a global memory merges in one Patch that only adds to the global one', () => {
-    expect(problem(patch(update(join(global(), 'user-language.md'), 'Answers in PT-BR.', ['Examples in TypeScript.']), del(join(memDir, 'copy.md'))))).toBeNull()
-  })
-
-  test('the global dir takes an Add or an Update that keeps its lines, nothing else', () => {
-    expect(problem(patch(`*** Add File: ${join(global(), 'new.md')}`, '+fact'))).toBeNull()
-    const rewrite = ['*** Update File: ' + join(global(), 'x.md'), '@@', '-old line', '+new line'].join('\n')
-    expect(problem(patch(rewrite))).toContain('append-only')
-    expect(problem(patch(del(join(global(), 'x.md'))))).toContain('append-only')
-  })
-
-  test('an index is never deleted, nothing outside memory is touched, and a broken Patch is refused', () => {
-    expect(problem(patch(del(join(team(), 'MEMORY.md'))))).toContain('MEMORY.md is never deleted')
-    expect(problem(patch(del(join(root, 'project', 'src.ts'))))).toContain('outside the memory dirs')
-    expect(problem('not a patch')).toContain('does not parse')
-    expect(problem(undefined)).toContain('patchText')
-  })
-
-  test('the extraction gate refuses a Patch; the dream gate takes a sound one', async () => {
-    const tool = { name: 'Patch' } as unknown as Tool
-    const input = { patchText: patch(del(join(team(), 'old-note.md'))) }
-    expect((await createMemoryCanUseTool(['global'])(tool, input, null as never, null as never, 't')).behavior).toBe('deny')
-    expect((await createMemoryCanUseTool(['global'], { patch: 'prune' })(tool, input, null as never, null as never, 't')).behavior).toBe('allow')
-    const lone = { patchText: patch(del(join(memDir, 'copy.md'))) }
-    expect((await createMemoryCanUseTool(['global'], { patch: 'prune' })(tool, lone, null as never, null as never, 't')).behavior).toBe('deny')
-  })
-})
-
-describe('the fork gate', () => {
-  const gate = createMemoryCanUseTool()
-  const call = (tool: Tool, input: Record<string, unknown>) => gate(tool, input, null as never, null as never, 'toolu_1')
-
-  test('reads are free, a shell command only when read-only', async () => {
-    expect((await call({ name: FILE_READ_TOOL_NAME } as Tool, { file_path: '/etc/hosts' })).behavior).toBe('allow')
-    const bash = {
-      name: BASH_TOOL_NAME,
-      inputSchema: { safeParse: (input: unknown) => ({ success: true, data: input }) },
-      isReadOnly: (input: { command: string }) => input.command.startsWith('ls'),
-    } as unknown as Tool
-    expect((await call(bash, { command: 'ls -la' })).behavior).toBe('allow')
-    const denied = await call(bash, { command: 'rm -rf x' })
-    expect(denied.behavior).toBe('deny')
-    expect((denied as { message: string }).message).toContain('read-only shell commands')
   })
 })
