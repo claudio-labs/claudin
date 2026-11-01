@@ -122,6 +122,11 @@ describe('buildConsolidationPrompt', () => {
       expect(prompt).toContain('never from which file is newer')
       expect(prompt).toContain('mark one with `contradicts:`')
       expect(prompt).toContain('fold that into the decision or memory it supports, then delete the snapshot (outside the global dir)')
+      // What the digest's hygiene findings point at
+      expect(prompt).toContain('Two memories that hold one fact: merge them into one survivor')
+      expect(prompt).toContain('a private copy of a global memory goes in one Patch')
+      expect(prompt).toContain('A `type: user` memory outside the global dir: write it into the global dir')
+      expect(prompt).toContain('keep its rule short, and move the history into a memory it links to')
     })
 
     test('off, none of it is said and the old global line is back', () => {
@@ -129,6 +134,8 @@ describe('buildConsolidationPrompt', () => {
       const prompt = buildConsolidationPrompt(GLOBAL_DIRS, TRANSCRIPTS, '')
       expect(prompt).not.toContain('*** Delete File:')
       expect(prompt).not.toContain('contradicts:')
+      expect(prompt).not.toContain('Two memories that hold one fact')
+      expect(prompt).not.toContain('outside the global dir: write it into the global dir')
       expect(prompt).toContain('unless it is a global memory: name that one in your summary')
     })
   })

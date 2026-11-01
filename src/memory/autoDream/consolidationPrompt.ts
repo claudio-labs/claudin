@@ -39,6 +39,33 @@ export function buildConsolidationPrompt(
   const notGlobal = global === null ? '' : ' (outside the global dir)'
   const prune = isMemoryHygieneEnabled()
 
+  // What memory hygiene adds to Phases 3 and 4, each '' under
+  // CLAUDIN_MEMORY_HYGIENE=0. The digest's hygiene section lists the findings
+  // and points here; this is the one place the policy is written.
+  const disagreement = prune
+    ? `\n- Two memories that disagree: settle it from the code or the transcript, never from which file is newer, and fix the wrong one. When nothing settles it, keep both and mark one with \`contradicts:\` and the other's \`name\` in its frontmatter, so the next session sees the conflict instead of picking a side`
+    : ''
+  const duplicates = prune
+    ? `\n- Two memories that hold one fact: merge them into one survivor — the fuller, or the one in the broader scope — and delete the other${global === null ? '' : '; a private copy of a global memory goes in one Patch that adds what it has more to the global one and deletes the copy, while a team memory and a global one stay apart, since teammates have no copy of the global dir'}. Two facts that only look alike: link them with \`[[name]]\``
+    : ''
+  const misplaced = prune && global !== null ? '\n- A `type: user` memory outside the global dir: write it into the global dir and delete it here, in one Patch' : ''
+  const snapshots = prune
+    ? `\n- A dated measurement or status — a census, a bench, a PR's state — once its conclusion is what matters: fold that into the decision or memory it supports, then delete the snapshot${notGlobal}`
+    : ''
+  const oversized = prune ? '\n- A memory too long to read whole on every recall: keep its rule short, and move the history into a memory it links to' : ''
+  const deletes = prune
+    ? `, and delete the files themselves with a Patch \`*** Delete File:\` (Bash cannot delete), the index line removed in the same Patch:
+  - in the team dir, a memory you merged into another, one the code or a newer memory shows is wrong or superseded, or a snapshot you folded into what it supports — git keeps it, and the user's commit is the review. A memory that is only thin, old or rarely needed stays: never delete to make room in an index
+  - in the private dir, only a memory you merged into another, in the Patch that writes that survivor — nothing restores a private file
+  - never a \`${ENTRYPOINT_NAME}\`${global === null ? '' : ', and nothing in the global dir'}`
+    : ''
+  const globalContradiction =
+    global === null
+      ? ''
+      : prune
+        ? ', unless it is a global memory: add `contradicts:` to it instead (an Edit that only adds the key), and name it in your summary'
+        : ', unless it is a global memory: name that one in your summary'
+
   const whereToWrite = `For each thing worth remembering, write or update a memory file in the directory its type's scope names — the \`# Memory\` section of your system prompt is the source of truth for that:
 
 ${global === null ? '' : `- the global dir \`${global}\`, shared by every project — add to it only (below)\n`}- the private dir \`${memoryRoot}\`, at its top level
@@ -98,29 +125,16 @@ Focus on:
 - Merging new signal into existing topic files rather than creating near-duplicates
 - Converting relative dates ("yesterday", "last week") to absolute dates so they remain interpretable after time passes
 - Giving a fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — \`expires: YYYY-MM-DD\` in its frontmatter, the last day it holds
-- Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source${
-    prune
-      ? `
-- Two memories that disagree: settle it from the code or the transcript, never from which file is newer, and fix the wrong one. When nothing settles it, keep both and mark one with \`contradicts:\` and the other's \`name\` in its frontmatter, so the next session sees the conflict instead of picking a side
-- A dated measurement or status — a census, a bench, a PR's state — once its conclusion is what matters: fold that into the decision or memory it supports, then delete the snapshot${notGlobal}`
-      : ''
-  }
+- Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source${disagreement}${duplicates}${misplaced}${snapshots}${oversized}
 ${teamSection}
 ## Phase 4 — Prune and index
 
 Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, only add lines.'}
 
-- Remove pointers to memories that are now stale, wrong, or superseded${
-    prune
-      ? `, and delete the files themselves with a Patch \`*** Delete File:\` (Bash cannot delete), the index line removed in the same Patch:
-  - in the team dir, a memory you merged into another, one the code or a newer memory shows is wrong or superseded, or a snapshot you folded into what it supports — git keeps it, and the user's commit is the review. A memory that is only thin, old or rarely needed stays: never delete to make room in an index
-  - in the private dir, only a memory you merged into another, in the Patch that writes that survivor — nothing restores a private file
-  - never a \`${ENTRYPOINT_NAME}\`${global === null ? '' : ', and nothing in the global dir'}`
-      : ''
-  }
+- Remove pointers to memories that are now stale, wrong, or superseded${deletes}
 - Demote verbose entries: if an index line is over ~200 chars, it's carrying content that belongs in the topic file — shorten the line, move the detail
 - Add pointers to newly important memories
-- Resolve contradictions — if two files disagree, fix the wrong one${global === null ? '' : prune ? ', unless it is a global memory: add `contradicts:` to it instead (an Edit that only adds the key), and name it in your summary' : ', unless it is a global memory: name that one in your summary'}
+- Resolve contradictions — if two files disagree, fix the wrong one${globalContradiction}
 
 ---
 

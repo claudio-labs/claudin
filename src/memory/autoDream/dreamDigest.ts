@@ -301,6 +301,8 @@ export function buildDreamDigest(
   }
 
   const expired = inputs.expired ?? []
+  // With hygiene on, a snapshot is folded and deleted (the prompt's Phase 3)
+  const snapshot = inputs.hygiene === undefined ? '' : ' A dated measurement or status (a census, a bench, a PR): fold it and delete it, as Phase 3 says.'
   if (expired.length > 0) {
     const { kept, left } = takeUnderCap(
       expired.map(e => `- \`${e.path}\` — expired ${e.expires}`),
@@ -310,9 +312,7 @@ export function buildDreamDigest(
       '',
       `## Memories past their \`expires:\` date (${expired.length})`,
       '',
-      inputs.hygiene === undefined
-        ? 'Re-verify each against what you see now. Still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone is never a reason to delete.'
-        : 'Re-verify each against what you see now. A dated measurement or status (a census, a bench, a PR): fold its conclusion into the decision or memory it supports, then delete it — outside the global dir; in the team dir git keeps it. Anything else still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone, on a memory that is not a snapshot, is never a reason to delete.',
+      `Re-verify each against what you see now.${snapshot} ${snapshot ? 'Anything else still true' : 'Still true'}: move its \`expires:\` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone${snapshot ? ', on a memory that is not a snapshot,' : ''} is never a reason to delete.`,
       ...kept,
     )
     if (left > 0) out.push(`…and ${left} more.`)
@@ -340,12 +340,7 @@ export function buildDreamDigest(
       '',
       `## Memory hygiene (${hygiene.length})`,
       '',
-      'What the audit found without judging it. For each, decide from the files and the code:',
-      '- A near-duplicate that is the same fact: merge into one survivor — the fuller, or the one in the broader scope — and delete the other. A private copy of a global memory: one Patch that adds what it has more to the global memory and deletes the private copy. Two facts that only look alike: link them with `[[name]]`. A team memory and a global one stay apart: teammates have no copy of the global dir.',
-      '- A user memory outside the global dir: write it into the global dir and delete it here, in one Patch.',
-      '- A contradiction: settle it from the code or the transcript, never from which file is newer. Settled: fix the wrong one and remove the key. Not settled: leave both as they are.',
-      '- An index over its cap: shorten the hooks to one line under ~150 chars. Never delete a memory to make room — only one that is merged, superseded, wrong, or a snapshot already folded into what it supports.',
-      '- An oversized memory: keep its rule short, and move the history into a memory it links to.',
+      'What the audit found without judging it. Decide each from the files and the code, as Phases 3 and 4 say; a contradiction you settle loses its `contradicts:` key.',
       ...kept,
     )
     if (left > 0) out.push(`…and ${left} more.`)

@@ -185,7 +185,7 @@ describe('buildDreamDigest', () => {
     expect(buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], cwd: '/repo' })).not.toContain('expires:')
   })
 
-  test('with memory hygiene on, an expired snapshot is folded and deleted; the findings come with what to do', () => {
+  test('with memory hygiene on, an expired snapshot is folded and deleted; the findings point at the prompt for what to do', () => {
     const digest = buildDreamDigest({
       sinceMs: since,
       plans: [],
@@ -201,13 +201,14 @@ describe('buildDreamDigest', () => {
       ],
       cwd: '/repo',
     })
-    expect(digest).toContain('fold its conclusion into the decision or memory it supports, then delete it')
+    expect(digest).toContain('A dated measurement or status (a census, a bench, a PR): fold it and delete it, as Phase 3 says.')
     expect(digest).not.toContain('An expired date alone is never a reason to delete.')
     expect(digest).toContain('## Memory hygiene (5)')
-    expect(digest).toContain('never from which file is newer')
-    // The first hygiene bench deleted 50 thin notes to fit the cap
-    expect(digest).toContain('Never delete a memory to make room')
-    expect(digest).not.toContain('retire what nothing needs')
+    // The policy is the prompt's alone (consolidationPrompt.ts): the digest
+    // only lists, so a rule is never written twice and changed once
+    expect(digest).toContain('Decide each from the files and the code, as Phases 3 and 4 say')
+    expect(digest).not.toContain('never from which file is newer')
+    expect(digest).not.toMatch(/retire|make room/)
     expect(digest).toContain('- near-duplicate: `.claudin/memory/copy.md` (private) reads like `/home/u/.claudin/memory/lang.md` (global, 0.64)')
     expect(digest).toContain('- user memory outside the global dir: `.claudin/memory/user-role.md` (private)')
     expect(digest).toContain('- contradiction: `.claudin/memory/team/t-b.md` (team) contradicts `t-a`')

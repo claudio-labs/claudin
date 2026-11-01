@@ -278,7 +278,7 @@ export function initAutoDream(deps: AutoDreamDeps = defaultAutoDreamDeps): void 
 
 **Tool constraints for this run:** Bash is restricted to read-only commands (\`ls\`, \`find\`, \`grep\`, \`cat\`, \`stat\`, \`wc\`, \`head\`, \`tail\`, and similar). Anything that writes, redirects to a file, or modifies state will be denied. Plan your exploration with this in mind — no need to probe.${
         prune
-          ? ' A memory file is deleted with a Patch `*** Delete File:` section, after a Read of it; the gate refuses one that deletes an index, touches the global dir other than by adding, or deletes a private memory without writing its survivor in the same Patch.'
+          ? ' Delete a memory file with a Patch `*** Delete File:` section, after a Read of it. Your Patch applies all or nothing: one section that fails, and nothing in it is written — so a merge and the delete it allows go in one Patch, and land together or not at all.'
           : ''
       }
 
