@@ -331,7 +331,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     'Do not sleep between commands that can run immediately — just run them.',
     ...(feature('MONITOR_TOOL')
       ? [
-          'Use the Monitor tool to stream events from a background process (each stdout line is a notification). For one-shot "wait until done," use Bash with run_in_background instead.',
+          'Use the Monitor tool to stream events from a background process (new output lines reach you as notifications). For one-shot "wait until done," use Bash with run_in_background instead.',
         ]
       : []),
     'If your command is long running and you would like to be notified when it finishes — use `run_in_background`. No sleep needed.',

@@ -81,6 +81,13 @@ export type LocalShellSpawnInput = {
   agentId?: AgentId
   /** UI display variant: description-as-label, dialog title, status bar pill. */
   kind?: 'bash' | 'monitor'
+  /**
+   * Stream new output lines to the model while the command runs, and kill it
+   * at `timeoutMs` (monitorStream.ts). Only the Monitor tool sets it: kind
+   * 'monitor' is display-only, and ContainerTool uses it for builds whose
+   * output belongs in the file.
+   */
+  monitorStream?: { timeoutMs: number }
 }
 
 // What getTaskByType dispatches for: kill. spawn/render were never

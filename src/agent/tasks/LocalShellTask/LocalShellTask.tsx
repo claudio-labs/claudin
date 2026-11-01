@@ -11,7 +11,7 @@ import { tailFile } from 'src/shared/fs/fsOperations.js';
 import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import type { ShellCommand } from 'src/shared/proc/ShellCommand.js';
-import { evictTaskOutput, getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
+import { evictTaskOutput, getTaskOutputDelta, getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
 import { registerTask, updateTaskState } from 'src/agent/tasks/framework.js';
 import { escapeXml } from 'src/shared/data/xml.js';
 import { backgroundAgentTask, isLocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
@@ -19,6 +19,7 @@ import { isMainSessionTask } from 'src/agent/tasks/LocalMainSessionTask.js';
 import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js';
 import { killTask } from 'src/agent/tasks/LocalShellTask/killShellTasks.js';
 import { adoptLeftoversNote } from 'src/agent/tasks/LocalShellTask/leftovers.js';
+import { type MonitorStreamDeps, startMonitorStream } from 'src/agent/tasks/LocalShellTask/monitorStream.js';
 
 /** Prefix that identifies a LocalShellTask summary to the UI collapse transform. */
 export const BACKGROUND_BASH_SUMMARY_PREFIX = 'Background command ';
@@ -179,6 +180,29 @@ export const LocalShellTask: Task = {
     killTask(taskId, setAppState);
   }
 };
+function monitorStreamDeps(taskId: string, agentId: AgentId | undefined, setAppState: SetAppState): MonitorStreamDeps {
+  return {
+    readDelta: fromOffset => getTaskOutputDelta(taskId, fromOffset),
+    enqueue: value => enqueuePendingNotification({
+      value,
+      mode: 'task-notification',
+      priority: 'next',
+      agentId
+    }),
+    kill: () => killTask(taskId, setAppState),
+    now: () => Date.now(),
+    every: (ms, fn) => {
+      const timer = setInterval(fn, ms);
+      timer.unref();
+      return () => clearInterval(timer);
+    },
+    after: (ms, fn) => {
+      const timer = setTimeout(fn, ms);
+      timer.unref();
+      return () => clearTimeout(timer);
+    }
+  };
+}
 export async function spawnShellTask(input: LocalShellSpawnInput & {
   shellCommand: ShellCommand;
 }, context: TaskContext): Promise<TaskHandle> {
@@ -188,7 +212,8 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
     shellCommand,
     toolUseId,
     agentId,
-    kind
+    kind,
+    monitorStream
   } = input;
   const {
     setAppState
@@ -221,6 +246,13 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
   // Just transition to backgrounded state so the process keeps running.
   shellCommand.background(taskId);
   const cancelStallWatchdog = startStallWatchdog(taskId, description, kind, toolUseId, agentId);
+  const stream = monitorStream ? startMonitorStream({
+    taskId,
+    description,
+    toolUseId,
+    outputPath: getTaskOutputPath(taskId),
+    timeoutMs: monitorStream.timeoutMs
+  }, monitorStreamDeps(taskId, agentId, setAppState)) : null;
   void shellCommand.result.then(async result => {
     cancelStallWatchdog();
     await flushAndCleanup(shellCommand);
@@ -241,6 +273,10 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
         unregisterCleanup: undefined,
         endTime: Date.now()
       };
+    });
+    // The last lines go out before the exit notice; a stopped task gets none.
+    await stream?.stop({
+      flush: !wasKilled
     });
     // What the command left running when it ended becomes a task of its own
     // (`CLAUDIN_ADOPT_LEFTOVERS`, leftovers.ts), named in the notification.
