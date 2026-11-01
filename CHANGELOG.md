@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.1.50 — 2026-11-01
+
+### ✨ Features
+
+- feat(memory): clean memory up instead of only growing it (#333) (5db043ea)
+- feat(providers): load tools on demand for openai-compatible providers (#332) (2336c690)
+- feat(providers): talk to gemini natively, like gemini-cli (#327) (d0adb52a)
+
+### 🐛 Bug Fixes
+
+- fix(tools): close the tool gaps the 10-30 census found (#329) (1cdd7437)
+- fix(agent): record the real version, let auto mode see earlier calls (#328) (9b5b8e3d)
+
+### ⚡ Performance
+
+- perf(tools): cut repeated waits, retries and ToolSearch loads (#331) (406131f4)
+- perf(tools): call deferred tools directly, cache -p runs at 5m (#330) (18a4a063)
+
+### 📦 Dependencies
+
+- chore(deps): bump @​anthropic-ai/sdk from 0.135.0 to 1.2.0 (#326) (d82ac0ac)
+- chore(deps): bump @​anthropic-ai/bedrock-sdk from 0.35.0 to 1.1.0 (#325) (da55bc47)
+- chore(deps): bump chokidar from 5.0.0 to 6.0.0 (#324) (87708bd0)
+- chore(deps): bump the production-dependencies group with 6 updates (#323) (22191e6b)
+- chore(deps): bump the dev-dependencies group with 3 updates (#322) (4a918718)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.49 — 2026-10-25
 
 ### ✨ Features
