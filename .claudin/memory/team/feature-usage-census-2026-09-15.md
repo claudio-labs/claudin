@@ -1,6 +1,6 @@
 ---
 name: feature-usage-census-2026-09-15
-description: Bash filter / Grep output modes / Read shape usage measured over 2026-09-14..15 (14 sessions, 7,456 tool calls) — the floor cap's 33% re-ask rate, head_limit=0 on 1 in 5 Greps, symbols mode dead, auto-outline bypassed 1 in 3
+description: Bash filter / Grep output modes / Read shape usage measured 2026-09-14..16 (two runs) — the floor cap's 33% re-ask rate, head_limit=0 on 1 in 5 Greps, symbols mode dead, auto-outline bypassed 1 in 3; outline 82/82 usable, filter −62% lines
 type: project
 ---
 
@@ -56,3 +56,20 @@ ISO-date guard.
 day-by-day ratios held (2026-09-14 alone: filtered 11.4%, re-ask 10/35, auto
 outline → full 12/29). Related: [[session-corpus-census-inflation]] for why
 the walk dedupes by tool_use id.
+
+## Validation run, 2026-09-16 (merged from feature-usage-census-2026-09-16)
+
+Asked as "validar read outline, symbol, bash outputfilter"; ad-hoc script over 09-14..16,
+windowed by **internal message timestamps**, not file mtime (159 files had recent mtimes from
+resume-touching, only 31 sessions were active). 4,261 calls deduped by `tool_use.id`.
+- **Read (1,226):** range 64.1%, default 18.0%, outline 6.7% (82) — **82/82 outlines usable**
+  (median ~23 symbol lines), zero empty outlines.
+- **symbol=** — that run claimed 79/79 (6.4%); **wrong**. A deduped raw grep over 09-14..20
+  finds 25, and `feature-usage-census.ts` agrees (23): treat symbol= as ~0.4% of Reads
+  ([[weekly-token-census-2026-09-20]]). The ad-hoc script likely counted sub-agent mirrors or
+  Grep `symbols` output.
+- **Bash outputFilter (732):** 13.9% marked; 3,640 → 1,384 lines (62% saved, per-result median
+  77%); zero 0%-reduction or negative markers.
+- The open levers above (cap re-ask, `head_limit: 0` bypass, ISO-date guard) were NOT
+  re-measured. If this validation recurs, promote the script into `scripts/bench/tokens/`
+  (floated, undecided).
