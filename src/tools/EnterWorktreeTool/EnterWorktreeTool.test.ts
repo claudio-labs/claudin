@@ -1,8 +1,17 @@
 import { describe, expect, test } from 'bun:test'
 
 import { EnterWorktreeTool } from 'src/tools/EnterWorktreeTool/EnterWorktreeTool.js'
+import { getEnterWorktreeToolPrompt } from 'src/tools/EnterWorktreeTool/prompt.js'
 
 describe('EnterWorktreeTool', () => {
+  // call() refuses only a worktree session; from a worktree the user made it
+  // re-roots to the main repository.
+  test('the prompt refuses only an active worktree session', () => {
+    const prompt = getEnterWorktreeToolPrompt()
+    expect(prompt).toContain('Must not already be in a worktree session (one this session entered)')
+    expect(prompt).not.toContain('Must not already be in a worktree\n')
+  })
+
   test('shouldDefer is true and the user-facing name is human-friendly', () => {
     expect(EnterWorktreeTool.shouldDefer).toBe(true)
     expect(EnterWorktreeTool.userFacingName(undefined)).toBe('Creating worktree')

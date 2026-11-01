@@ -14,7 +14,7 @@ export function getEnterWorktreeToolPrompt(): string {
 ## Requirements
 
 - Must be in a git repository, OR have WorktreeCreate/WorktreeRemove hooks configured in settings.json
-- Must not already be in a worktree
+- Must not already be in a worktree session (one this session entered); a session started inside a worktree you created yourself is fine — the new worktree is made from the main repository
 
 ## Behavior
 

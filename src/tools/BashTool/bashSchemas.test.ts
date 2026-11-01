@@ -60,5 +60,14 @@ describe('Bash input schema — the texts that ship', () => {
       const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
       expect(missing.map(String)).toEqual([])
     })
+
+    // A sub-agent's cd never carries over (BashTool.tsx preventCwdChanges), and
+    // its system prompt says so; the tool text must not say the opposite.
+    test(`${family}: the working directory persists only in the main session`, () => {
+      _setToolPromptFamilyForTesting(family)
+      const prompt = getSimplePrompt()
+      expect(prompt).toContain('In the main session the working directory persists between commands')
+      expect(prompt).toContain('in a sub-agent it resets after every call')
+    })
   }
 })

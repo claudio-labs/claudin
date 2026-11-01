@@ -387,7 +387,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
   return [
     'Executes a given bash command and returns its output.',
     '',
-    "The working directory persists between commands, but shell state (env vars, functions) does not. The shell environment is initialized from the user's profile (bash or zsh).",
+    "In the main session the working directory persists between commands (a `cd` outside the working directories is reset); in a sub-agent it resets after every call. Shell state (env vars, functions) does not persist. The shell environment is initialized from the user's profile (bash or zsh).",
     'Command output is displayed to you, not reliably to the user — describe what you found rather than pointing at it.',
     '',
     `IMPORTANT: Avoid running ${avoidCommands} via this tool unless a dedicated tool cannot do the job. Prefer:`,
@@ -416,7 +416,7 @@ function getCompactPrompt(): string {
     "Chain dependent commands with '&&', use ';' only when later commands should run anyway, and never separate commands with newlines (newlines inside quotes are fine).",
   ]
   return [
-    'Executes a bash command and returns its output. The working directory persists between commands; shell state (env vars, functions) does not, and the shell starts from the user\'s profile. Output is shown to you, not reliably to the user — describe what you found.',
+    'Executes a bash command and returns its output. In the main session the working directory persists between commands (a `cd` outside the working directories is reset); in a sub-agent it resets after every call. Shell state (env vars, functions) does not persist, and the shell starts from the user\'s profile. Output is shown to you, not reliably to the user — describe what you found.',
     '',
     ...prependBullets(items),
     getSimpleSandboxSection(),
