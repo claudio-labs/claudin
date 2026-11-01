@@ -62,6 +62,14 @@ describe('Agent tool schema on the wire', () => {
     expect(props).toContain('name')
   })
 
+  test('name says it reaches a finished agent and stops a running one', () => {
+    const { properties } = zodToJsonSchema(AgentTool.inputSchema) as {
+      properties: Record<string, { description?: string }>
+    }
+    expect(properties.name?.description).toContain('running or finished')
+    expect(properties.name?.description).toContain('TaskStop')
+  })
+
   test('an interactive session is offered run_in_background and name, not the team fields', async () => {
     setIsInteractive(true)
     const fields = await wireFields()
