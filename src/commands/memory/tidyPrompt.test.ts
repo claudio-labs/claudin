@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
@@ -87,8 +87,9 @@ describe('buildMemoryTidyPrompt', () => {
     // Partial overlap is not a duplicate (over-merge guard)
     expect(prompt).toContain('partially overlap')
     expect(prompt).toContain('facts X+Y')
-    // Conflicts resolve to union, never silent choice
-    expect(prompt).toContain('keep BOTH facts (union)')
+    // A conflict is never a silent choice: kept, and marked in the files
+    expect(prompt).toContain('they are not duplicates: keep both files, and add `contradicts:`')
+    expect(prompt).toContain('Never silently pick one side')
     // Only duplicates are deleted
     expect(prompt).toContain('only confirmed duplicates')
     // Malformed frontmatter is skipped, not mangled
@@ -144,16 +145,48 @@ describe('buildMemoryTidyPrompt', () => {
     expect(prompt).toContain('(and the team index if applicable)')
   })
 
-  test('global-on: tidied by the same steps, never merged across, deletions reach every project', () => {
+  test('global-on: tidied by the same steps, a private copy merged into it, deletions reach every project', () => {
     const prompt = buildMemoryTidyPrompt(
       testMemoryDirs({ private: PRIVATE_ROOT, team: TEAM_ROOT, global: GLOBAL_ROOT }),
     )
     expect(prompt).toContain('## Global memory')
     expect(prompt).toContain('/home/u/.claudin/memory/MEMORY.md')
     expect(prompt).not.toContain('//MEMORY.md')
-    expect(prompt).toContain("Moving a private memory to the global dir is `/memory sort`'s job, not tidy's.")
+    expect(prompt).toContain('**A private memory that repeats a global one merges into it**')
+    expect(prompt).toContain('a team memory and a global one stay separate')
     expect(prompt).toContain('a deletion here takes the memory away from all of them')
-    expect(prompt).toContain('- Never merge across the global ↔ private/team boundary.')
+    expect(prompt).toContain('- Never merge across the global ↔ team boundary; global ↔ private only as above, the global memory surviving.')
     expect(prompt).toContain('(and the team and global indexes if applicable)')
+  })
+
+  describe('under CLAUDIN_MEMORY_HYGIENE=0', () => {
+    const saved = process.env.CLAUDIN_MEMORY_HYGIENE
+    beforeEach(() => {
+      process.env.CLAUDIN_MEMORY_HYGIENE = '0'
+    })
+    afterEach(() => {
+      if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
+      else process.env.CLAUDIN_MEMORY_HYGIENE = saved
+    })
+
+    test('nothing merges across the global boundary and a conflict is a union again', () => {
+      const prompt = buildMemoryTidyPrompt(testMemoryDirs({ private: PRIVATE_ROOT, team: TEAM_ROOT, global: GLOBAL_ROOT }))
+      expect(prompt).toContain("Moving a private memory to the global dir is `/memory sort`'s job, not tidy's.")
+      expect(prompt).toContain('- Never merge across the global ↔ private/team boundary.')
+      expect(prompt).toContain('keep BOTH facts (union)')
+      expect(prompt).not.toContain('contradicts:')
+    })
+  })
+
+  test('a near-duplicate pair from the audit is a candidate; the other hygiene findings are reported, untouched', () => {
+    const prompt = buildMemoryTidyPrompt(DIRS, [
+      { kind: 'near-duplicate', scope: 'team', path: `${TEAM_ROOT}/a.md`, other: { scope: 'team', path: `${TEAM_ROOT}/b.md` }, score: 0.6 },
+      { kind: 'oversize', scope: 'private', path: `${PRIVATE_ROOT}/big.md`, bytes: 13_000 },
+    ])
+    expect(prompt).toContain(`- Reads like \`${TEAM_ROOT}/b.md\` (team, score 0.6): \`${TEAM_ROOT}/a.md\``)
+    expect(prompt).toContain('except a near-duplicate pair, which is a candidate for Step 2 like any other')
+    expect(prompt).toContain('The near-duplicate pairs the audit found above — the first to check')
+    expect(prompt).toContain(`- 13 KB, over the size a memory is read at cheaply: \`${PRIVATE_ROOT}/big.md\``)
+    expect(prompt).toContain('- **Hygiene, for review**')
   })
 })
