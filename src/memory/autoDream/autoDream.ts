@@ -12,6 +12,12 @@
 // What the runner reaches outside itself — the gate, the lock, the decision
 // sources and the fork — comes in as AutoDreamDeps, so a test drives the
 // whole runner without mock.module.
+//
+// Interactive sessions only: a `-p` run is often the only turn its process
+// sees, and a fork started there was cut off at exit.
+// CLAUDIN_AUTO_DREAM_HEADLESS=1 lets a `-p` run dream, and runHeadless then
+// waits for it (drainPendingAutoDream). CLAUDIN_AUTO_DREAM_FORCE=1 opens the
+// gates — enabled, time, sessions — for a bench fixture.
 
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
@@ -26,6 +32,7 @@ import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
@@ -33,6 +40,7 @@ import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import {
   getOriginalCwd,
   getKairosActive,
+  getIsNonInteractiveSession,
   getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
@@ -79,15 +87,18 @@ const DEFAULTS: AutoDreamConfig = {
 function isGateOpen(): boolean {
   if (getKairosActive()) return false // KAIROS mode uses disk-skill dream
   if (getIsRemoteMode()) return false
+  if (getIsNonInteractiveSession() && !isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_HEADLESS)) {
+    return false
+  }
   if (!isAutoMemoryEnabled()) return false
   return isAutoDreamEnabled()
 }
 
-// Ant-build-only test override. Bypasses enabled/time/session gates but NOT
-// the lock (so repeated turns don't pile up dreams) or the memory-dir
-// precondition. Still scans sessions so the prompt's session-hint is populated.
+// CLAUDIN_AUTO_DREAM_FORCE=1, for a bench fixture: bypasses the enabled,
+// time and session gates and the lock acquire. Still scans sessions so the
+// prompt's session list is populated.
 function isForced(): boolean {
-  return false
+  return isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FORCE)
 }
 
 type AppendSystemMessageFn = NonNullable<ToolUseContext['appendSystemMessage']>
@@ -327,5 +338,29 @@ export async function executeAutoDream(
   context: REPLHookContext,
   appendSystemMessage?: AppendSystemMessageFn,
 ): Promise<void> {
-  await runner?.(context, appendSystemMessage)
+  if (!runner) return
+  const run = runner(context, appendSystemMessage)
+  inFlightDreams.add(run)
+  try {
+    await run
+  } finally {
+    inFlightDreams.delete(run)
+  }
+}
+
+/** Every dream executeAutoDream started that has not settled yet. */
+const inFlightDreams = new Set<Promise<void>>()
+
+/**
+ * Awaits the dreams in flight, with a soft timeout. Called by runHeadless
+ * before gracefulShutdownSync, so a dream CLAUDIN_AUTO_DREAM_HEADLESS let a
+ * `-p` run start is not cut off mid-write. No-op when none is running.
+ */
+export async function drainPendingAutoDream(timeoutMs = 10 * 60_000): Promise<void> {
+  if (inFlightDreams.size === 0) return
+  await Promise.race([
+    Promise.all(inFlightDreams).catch(() => {}),
+    // eslint-disable-next-line no-restricted-syntax -- sleep() has no .unref(); timer must not block exit
+    new Promise<void>(r => setTimeout(r, timeoutMs).unref()),
+  ])
 }

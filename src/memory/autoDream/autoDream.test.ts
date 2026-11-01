@@ -1,4 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
@@ -228,7 +230,7 @@ describe('auto-dream in a non-interactive session', () => {
     expect(done).toBe(true)
   })
 
-  test('CLAUDIN_AUTO_DREAM_FORCE=1 opens the gates, not the lock', async () => {
+  test('CLAUDIN_AUTO_DREAM_FORCE=1 opens the enabled, time and session gates and skips the lock', async () => {
     process.env.CLAUDIN_AUTO_DREAM_FORCE = '1'
     const { deps, calls } = fakeDeps({
       isGateOpen: () => false,
@@ -237,6 +239,19 @@ describe('auto-dream in a non-interactive session', () => {
     })
     await run(deps)
     expect(calls.forks).toHaveLength(1)
+    expect(calls.acquire).toBe(0)
+  })
+
+  // runHeadless (no test of its own drives it) waits for the dream after the
+  // extraction and the map, before it shuts the process down.
+  test('runHeadless drains a pending dream before gracefulShutdownSync', () => {
+    const source = readFileSync(
+      join(import.meta.dir, '..', '..', 'platform', 'headless', 'print', 'runHeadless.ts'),
+      'utf8',
+    )
+    const drain = source.indexOf('await drainPendingAutoDream()')
+    expect(drain).toBeGreaterThan(source.indexOf('await drainPendingRuleMapSync()'))
+    expect(drain).toBeLessThan(source.indexOf('gracefulShutdownSync(\n'))
   })
 })
 
