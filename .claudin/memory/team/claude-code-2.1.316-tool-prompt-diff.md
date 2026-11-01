@@ -27,6 +27,15 @@ paragraph. Still 26 tools, env still in a `role: "system"` message.
 - Ported in Claudin's own words: stand-alone AskUserQuestion questions (and its "This allows you
   to" list dropped), the GitHub `@name` warning in both git bodies, Bash `description` not
   repeating the command, cron results naming the real next run (local time, jitter included).
+- The 3-agent review round found 5 bugs the green suite and two live runs missed, all fixed in the
+  same PR: the stream counted decoded text, not bytes (a Latin-1 byte ate the next line's start;
+  it reads raw bytes now), the event cap cut by characters, a failed read stopped the stream,
+  `timeout_ms` refused `"60000"`, and a fired session cron job reported the next hour inside its
+  jitter window (`firstFireMs`/`nextFireMs` in cronTasks.ts are now the one rule the scheduler
+  and the tools share). Also changed: mid-turn task notifications read "A background task sent a
+  notification" (was "A background agent completed a task", for Bash exits too), and the
+  auto-mode classifier sees them as `Background task notification (not from the user)`, never as
+  "User:".
 
 **Follow-ups, decided out of that PR:**
 - The untrusted-downloads env bullet — the user will revisit it.

@@ -30,7 +30,7 @@ src/
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
 │   │                              thresholds, markers, contentShape, and decisionRecord, which is
 │   │                              the sole owner of the lastDecision mutable
-│   ├── tasks/ (46)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+│   ├── tasks/ (52)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (40)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (34)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
