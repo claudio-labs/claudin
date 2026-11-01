@@ -59,6 +59,7 @@
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
 ## Bugs
+- [ContainerTool background timeout never fires](bugs/container-background-timeout-never-fires.md) — not fixed
 - [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red from Claudin's Bash, CI green; 3 load flakes
 - [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — cache read is 0.1x; 3-arm A/B owed before flipping to retain
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code
@@ -94,7 +95,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
-- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided
+- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) · [2.1.316 tools, 11-01](claude-code-2.1.316-tool-prompt-diff.md) — 3 A/Bs open
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a throwaway cwd

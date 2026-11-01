@@ -13,6 +13,8 @@ decided with a measurement; nothing ships on the text diff alone.
   against a placebo at −5.3%, one more turn. The user dropped the per-turn countdown before the
   run, fearing cache breaks; a reminder appended once to a tool result never rewrites the prefix
   (cache.md), so that fear is not the reason to skip it — the countdown is simply unmeasured.
+  **Moot since 2.1.316 (re-capture 2026-11-01):** Claude Code itself dropped the line from
+  both the system prompt and the env message (2.1.311 still had it).
 - **2, env as role:system — NO-GO.** The API takes a role:system message after the prompt on
   Opus 5.5 with or without `mid-conversation-system-2026-04-07`, and the model obeys it
   (`scripts/bench/tokens/beta-acceptance-probe.ts`, arm `mid-conv-system*`). But the only gain is
