@@ -3,8 +3,9 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
+- [Memory cleans itself (11-01)](decisions/memory-hygiene.md) — dream deletes merged/folded, on by default; never to make room; `CLAUDIN_MEMORY_HYGIENE=0`
 - [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
-- [Gemini talks native generateContent like gemini-cli (10-28)](decisions/gemini-native-transport.md) — one Google row, /model from Google; Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
+- [Gemini talks native generateContent like gemini-cli (#327)](decisions/gemini-native-transport.md) — one Google row, /model from Google; Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
 - [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72% · [early 1M compaction NOT PROMOTED (10-24, 10-31)](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context read autocompact's count
@@ -69,12 +70,11 @@
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — echo the real input
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run it in isolation first
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
-- [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — copied back as untracked
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — sessions retries never cap, relay 502 gaps
 - [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md) — the "-p seeds tasks" item was never a bug
-- FIXED: [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [refused Write resumed](bugs/resume-restores-refused-write.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md) · [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
+- FIXED: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [refused Write resumed](bugs/resume-restores-refused-write.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md) · [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md

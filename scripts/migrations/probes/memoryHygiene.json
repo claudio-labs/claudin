@@ -221,6 +221,18 @@
       "find": " * The hygiene pass of the memory audit: what lets memory grow without ever\n",
       "replace": " * The hygiene pass of the audit: what lets memory grow without ever\n",
       "expect": "green"
+    },
+    {
+      "name": "dream digest: an index over its cap may be cut by deletion again",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "shorten the hooks to one line under ~150 chars. Never delete a memory to make room — only one that is merged, superseded, wrong, or a snapshot already folded into what it supports.",
+      "replace": "shorten the hooks to one line under ~150 chars, and retire what nothing needs any more."
+    },
+    {
+      "name": "dream prompt: a thin team memory may be deleted to make room",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": " A memory that is only thin, old or rarely needed stays: never delete to make room in an index",
+      "replace": ""
     }
   ]
 }
