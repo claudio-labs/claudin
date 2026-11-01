@@ -600,17 +600,21 @@ export function initExtractMemories(
     | {
         context: REPLHookContext
         appendSystemMessage?: AppendSystemMessageFn
+        sessionId: string
       }
     | undefined
 
-  /** The cursor of the session running now, read from the store when the session changed. */
-  function syncCursor(): string {
-    const sessionId = deps.sessionId()
+  /**
+   * Loads `sessionId`'s cursor when the closure last worked for another
+   * session. A run is handed the session its context belongs to, taken when
+   * its stop hook fired: an idle or trailing run can start after an
+   * in-process /resume has moved deps.sessionId() on.
+   */
+  function syncCursor(sessionId: string): void {
     if (sessionId !== cursorSession) {
       cursorSession = sessionId
       lastMemoryMessageUuid = deps.cursors.read(sessionId)
     }
-    return sessionId
   }
 
   function advanceCursor(sessionId: string, messages: Message[]): void {
@@ -626,14 +630,14 @@ export function initExtractMemories(
   }
 
   /** After a throttled turn: extract its tail if nothing else happens for a while. */
-  function armIdle(context: REPLHookContext, appendSystemMessage?: AppendSystemMessageFn): void {
+  function armIdle(context: REPLHookContext, sessionId: string, appendSystemMessage?: AppendSystemMessageFn): void {
     cancelIdle()
     idleTimer = setTimeout(() => {
       idleTimer = undefined
       // A turn running now ends in a stop hook, which arms the timer again
       if (inProgress || deps.isTurnActive()) return
       logForDebugging('[extractMemories] idle — extracting the turns the throttle held back')
-      const run = runExtraction({ context, appendSystemMessage, isTrailingRun: true })
+      const run = runExtraction({ context, sessionId, appendSystemMessage, isTrailingRun: true })
       inFlightExtractions.add(run)
       void run.finally(() => inFlightExtractions.delete(run))
     }, getExtractionIdleMs())
@@ -644,15 +648,17 @@ export function initExtractMemories(
 
   async function runExtraction({
     context,
+    sessionId,
     appendSystemMessage,
     isTrailingRun,
   }: {
     context: REPLHookContext
+    sessionId: string
     appendSystemMessage?: AppendSystemMessageFn
     isTrailingRun?: boolean
   }): Promise<void> {
     const { messages } = context
-    const sessionId = syncCursor()
+    syncCursor(sessionId)
     const newMessageCount = countModelVisibleMessagesSince(
       messages,
       lastMemoryMessageUuid,
@@ -707,7 +713,7 @@ export function initExtractMemories(
     if (!isTrailingRun && loopHint === undefined) {
       const turns = humanTurnsSince(messages, lastMemoryMessageUuid)
       if (turns < getExtractionTurnInterval()) {
-        if (turns > 0) armIdle(context, appendSystemMessage)
+        if (turns > 0) armIdle(context, sessionId, appendSystemMessage)
         return
       }
     }
@@ -817,6 +823,7 @@ export function initExtractMemories(
         )
         await runExtraction({
           context: trailing.context,
+          sessionId: trailing.sessionId,
           appendSystemMessage: trailing.appendSystemMessage,
           isTrailingRun: true,
         })
@@ -849,6 +856,12 @@ export function initExtractMemories(
       return
     }
 
+    // A new stop supersedes the idle trigger an older turn armed: that
+    // context's tail is this one's head, and whatever this call decides
+    // (skip, stash, run, throttle) settles it — a throttle arms it again.
+    cancelIdle()
+    const sessionId = deps.sessionId()
+
     // If an extraction is already in progress, stash this context for a
     // trailing run (overwrites any previously stashed context — only the
     // latest matters since it has the most messages).
@@ -856,11 +869,11 @@ export function initExtractMemories(
       logForDebugging(
         '[extractMemories] extraction in progress — stashing for trailing run',
       )
-      pendingContext = { context, appendSystemMessage }
+      pendingContext = { context, appendSystemMessage, sessionId }
       return
     }
 
-    await runExtraction({ context, appendSystemMessage })
+    await runExtraction({ context, sessionId, appendSystemMessage })
   }
 
   extractor = async (context, appendSystemMessage) => {
