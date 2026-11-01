@@ -11,6 +11,7 @@ import {
   MONITOR_FLOOD_WINDOW_MS,
   MONITOR_MAX_TIMEOUT_MS,
   MONITOR_POLL_MS,
+  MONITOR_READ_MAX_BYTES,
   type MonitorStreamDeps,
   type MonitorStreamOptions,
   startMonitorStream,
@@ -40,15 +41,14 @@ function harness(options: MonitorStreamOptions = OPTIONS, setup: { running?: boo
   let pollCancelled = false
   let deadlineCancelled = false
   const deps: MonitorStreamDeps = {
-    async readDelta(fromOffset) {
+    async read(fromOffset, maxBytes) {
+      expect(maxBytes).toBe(MONITOR_READ_MAX_BYTES)
       reads.push(fromOffset)
       if (failReads > 0) {
         failReads--
         throw new Error('read failed')
       }
-      // Decoded the way readFileRange decodes: invalid bytes become U+FFFD.
-      const content = file.subarray(fromOffset).toString('utf8')
-      return { content, newOffset: file.length }
+      return file.subarray(fromOffset)
     },
     enqueue: message => enqueued.push(message),
     kill: () => {
@@ -108,20 +108,34 @@ describe('clampMonitorTimeout', () => {
 })
 
 describe('takeCompleteLines', () => {
+  const take = (text: string | Buffer, flush: boolean) => takeCompleteLines(Buffer.from(text), flush)
+
   test('keeps a trailing partial line for the next read', () => {
-    expect(takeCompleteLines('a\nb\npar', false)).toEqual({ lines: ['a', 'b'], consumed: 'a\nb\n' })
-    expect(takeCompleteLines('partial', false)).toEqual({ lines: [], consumed: '' })
+    expect(take('a\nb\npar', false)).toEqual({ lines: ['a', 'b'], consumedBytes: 4 })
+    expect(take('partial', false)).toEqual({ lines: [], consumedBytes: 0 })
   })
 
   test('flush takes the partial line too, and CRLF splits like LF', () => {
-    expect(takeCompleteLines('a\r\nb', true)).toEqual({ lines: ['a', 'b'], consumed: 'a\r\nb' })
-    expect(takeCompleteLines('a\r\n', false)).toEqual({ lines: ['a'], consumed: 'a\r\n' })
-    expect(takeCompleteLines('', true)).toEqual({ lines: [], consumed: '' })
+    expect(take('a\r\nb', true)).toEqual({ lines: ['a', 'b'], consumedBytes: 4 })
+    expect(take('a\r\n', false)).toEqual({ lines: ['a'], consumedBytes: 3 })
+    expect(take('', true)).toEqual({ lines: [], consumedBytes: 0 })
   })
 
-  test('a newline-less run over the byte cap is taken whole', () => {
+  test('a newline-less run over the byte cap is taken up to its last whole character', () => {
     const long = 'x'.repeat(MONITOR_EVENT_MAX_BYTES + 1)
-    expect(takeCompleteLines(long, false)).toEqual({ lines: [long], consumed: long })
+    expect(take(long, false)).toEqual({ lines: [long], consumedBytes: long.length })
+    // "€" is 3 bytes; with one or two of them read, the run stops before it.
+    for (const cut of [1, 2]) {
+      const split = Buffer.concat([Buffer.from(long), Buffer.from('€').subarray(0, cut)])
+      expect(take(split, false)).toEqual({ lines: [long], consumedBytes: long.length })
+    }
+    // A whole 4-byte character at the end is kept.
+    const emoji = Buffer.from(`${long}😀`)
+    expect(take(emoji, false)).toEqual({ lines: [`${long}😀`], consumedBytes: emoji.length })
+  })
+
+  test('an invalid byte decodes to U+FFFD but counts as the one byte it is', () => {
+    expect(take(Buffer.from([0x61, 0xe9, 0x0a, 0x62]), false)).toEqual({ lines: ['a\uFFFD'], consumedBytes: 3 })
   })
 })
 
@@ -343,5 +357,25 @@ describe('startMonitorStream ends once', () => {
     expect(h.enqueued).toHaveLength(1)
     expect(h.enqueued[0]!.endsWith('\nlost for a second')).toBe(true)
     await expect(h.stream.stop({ flush: true })).resolves.toBeUndefined()
+  })
+
+  test('a deadline whose last read fails still kills the command and says so', async () => {
+    const h = harness(OPTIONS, { failReads: 1 })
+    h.expire()
+    await drain()
+    expect(h.kills()).toBe(1)
+    expect(h.enqueued).toHaveLength(1)
+    expect(h.enqueued[0]).toContain('expired after')
+    expect(h.cancelled()).toEqual({ poll: true, deadline: true })
+  })
+
+  test('a stop whose last read fails still stops polling', async () => {
+    const h = harness(OPTIONS, { failReads: 1 })
+    await h.stream.stop({ flush: true })
+    expect(h.cancelled()).toEqual({ poll: true, deadline: true })
+    h.write('late\n')
+    h.tick()
+    await drain()
+    expect(h.enqueued).toEqual([])
   })
 })

@@ -11,7 +11,7 @@ import { tailFile } from 'src/shared/fs/fsOperations.js';
 import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import type { ShellCommand } from 'src/shared/proc/ShellCommand.js';
-import { evictTaskOutput, getTaskOutputDelta, getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
+import { evictTaskOutput, getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
 import { registerTask, updateTaskState } from 'src/agent/tasks/framework.js';
 import { escapeXml } from 'src/shared/data/xml.js';
 import { backgroundAgentTask, isLocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
@@ -20,6 +20,7 @@ import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from 's
 import { killTask } from 'src/agent/tasks/LocalShellTask/killShellTasks.js';
 import { adoptLeftoversNote } from 'src/agent/tasks/LocalShellTask/leftovers.js';
 import { type MonitorStreamDeps, startMonitorStream } from 'src/agent/tasks/LocalShellTask/monitorStream.js';
+import { readOutputBytes } from 'src/agent/tasks/LocalShellTask/readOutputBytes.js';
 
 /** Prefix that identifies a LocalShellTask summary to the UI collapse transform. */
 export const BACKGROUND_BASH_SUMMARY_PREFIX = 'Background command ';
@@ -182,14 +183,22 @@ export const LocalShellTask: Task = {
 };
 function monitorStreamDeps(taskId: string, agentId: AgentId | undefined, setAppState: SetAppState): MonitorStreamDeps {
   return {
-    readDelta: fromOffset => getTaskOutputDelta(taskId, fromOffset),
+    read: (fromOffset, maxBytes) => readOutputBytes(getTaskOutputPath(taskId), fromOffset, maxBytes),
     enqueue: value => enqueuePendingNotification({
       value,
       mode: 'task-notification',
       priority: 'next',
       agentId
     }),
-    kill: () => killTask(taskId, setAppState),
+    kill: () => {
+      let running = false;
+      updateTaskState<LocalShellTaskState>(taskId, setAppState, task => {
+        running = task.status === 'running';
+        return task;
+      });
+      if (running) killTask(taskId, setAppState);
+      return running;
+    },
     now: () => Date.now(),
     every: (ms, fn) => {
       const timer = setInterval(fn, ms);

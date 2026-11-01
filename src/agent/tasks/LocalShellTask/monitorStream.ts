@@ -6,6 +6,8 @@
 //
 // Everything that touches the clock, the disk or the queue comes in through
 // MonitorStreamDeps, so the tests drive it without timers or mock.module.
+// The output file is read as bytes: the offset counts what is on disk, and a
+// line is decoded only once it is complete.
 
 import {
   OUTPUT_FILE_TAG,
@@ -16,6 +18,7 @@ import {
   TOOL_USE_ID_TAG,
 } from 'src/shared/constants/xml.js'
 import { escapeXml } from 'src/shared/data/xml.js'
+import { logError } from 'src/shared/log.js'
 
 export const MONITOR_POLL_MS = 1_000
 export const MONITOR_EVENT_MAX_LINES = 20
@@ -24,11 +27,14 @@ export const MONITOR_FLOOD_EVENTS = 20
 export const MONITOR_FLOOD_WINDOW_MS = 60_000
 export const MONITOR_DEFAULT_TIMEOUT_MS = 300_000
 export const MONITOR_MAX_TIMEOUT_MS = 1_800_000
+export const MONITOR_READ_MAX_BYTES = 1024 * 1024
 
+const NEWLINE = 0x0a
 const LINE_BREAK_RE = /\r?\n/
 const TRAILING_BREAK_RE = /\r?\n$/
 
-export type MonitorEndReason = 'exit' | 'expired' | 'flood'
+/** Why the stream stopped its own command. */
+export type MonitorEndReason = 'expired' | 'flood'
 
 export type MonitorStreamOptions = {
   taskId: string
@@ -39,9 +45,11 @@ export type MonitorStreamOptions = {
 }
 
 export type MonitorStreamDeps = {
-  readDelta(fromOffset: number): Promise<{ content: string; newOffset: number }>
+  /** The output file's bytes from `fromOffset`, at most `maxBytes`. */
+  read(fromOffset: number, maxBytes: number): Promise<Buffer>
   enqueue(message: string): void
-  kill(): void
+  /** Kill the command; false when it had already ended. */
+  kill(): boolean
   now(): number
   every(ms: number, fn: () => void): () => void
   after(ms: number, fn: () => void): () => void
@@ -58,20 +66,42 @@ export function clampMonitorTimeout(timeoutMs: number | undefined): number {
 }
 
 /**
- * Split off the complete lines of `text`. A trailing partial line stays for the
- * next read unless `flush` is set, or it alone is over the byte cap (a command
- * that never prints a newline would otherwise be re-read forever).
+ * Where `bytes` up to `end` stops being whole UTF-8: before a multi-byte
+ * character the cut at `end` would split, else `end`.
+ */
+function utf8Boundary(bytes: Buffer, end: number): number {
+  let lead = end - 1
+  while (lead >= 0 && end - lead < 4 && (bytes[lead]! & 0xc0) === 0x80) lead--
+  if (lead < 0) return end
+  const byte = bytes[lead]!
+  const length = byte >= 0xf0 ? 4 : byte >= 0xe0 ? 3 : byte >= 0xc0 ? 2 : 1
+  return lead + length > end ? lead : end
+}
+
+/**
+ * Split off the complete lines of `bytes`. A trailing partial line stays for
+ * the next read unless `flush` is set, or it alone is over the byte cap (a
+ * command that never prints a newline would otherwise be re-read forever) —
+ * then it is taken up to the last whole character.
  */
 export function takeCompleteLines(
-  text: string,
+  bytes: Buffer,
   flush: boolean,
-): { lines: string[]; consumed: string } {
-  const end = text.lastIndexOf('\n')
-  const takeAll = flush || (end === -1 && Buffer.byteLength(text) > MONITOR_EVENT_MAX_BYTES)
-  const consumed = takeAll ? text : text.slice(0, end + 1)
-  const body = consumed.replace(TRAILING_BREAK_RE, '')
+): { lines: string[]; consumedBytes: number } {
+  const end = bytes.lastIndexOf(NEWLINE)
+  const consumedBytes = flush
+    ? bytes.length
+    : end === -1 && bytes.length > MONITOR_EVENT_MAX_BYTES
+      ? utf8Boundary(bytes, bytes.length)
+      : end + 1
+  const body = bytes.subarray(0, consumedBytes).toString('utf8').replace(TRAILING_BREAK_RE, '')
   const lines = body === '' ? [] : body.split(LINE_BREAK_RE)
-  return { lines, consumed }
+  return { lines, consumedBytes }
+}
+
+function cutToBytes(line: string, room: number): string {
+  const bytes = Buffer.from(line)
+  return bytes.length > room ? `${bytes.subarray(0, utf8Boundary(bytes, room)).toString('utf8')}…` : line
 }
 
 function capLines(lines: string[], outputPath: string): string[] {
@@ -81,7 +111,7 @@ function capLines(lines: string[], outputPath: string): string[] {
     if (kept.length === MONITOR_EVENT_MAX_LINES) break
     const room = MONITOR_EVENT_MAX_BYTES - bytes
     if (room <= 0) break
-    const fitted = Buffer.byteLength(line) > room ? `${line.slice(0, room)}…` : line
+    const fitted = cutToBytes(line, room)
     kept.push(fitted)
     bytes += Buffer.byteLength(fitted) + 1
   }
@@ -114,7 +144,7 @@ function formatRan(ms: number): string {
 /** The notice for a monitor the stream stopped itself. */
 export function formatMonitorStop(
   options: MonitorStreamOptions,
-  reason: Exclude<MonitorEndReason, 'exit'>,
+  reason: MonitorEndReason,
   events: number,
   ranMs: number,
 ): string {
@@ -134,10 +164,14 @@ export function startMonitorStream(options: MonitorStreamOptions, deps: MonitorS
   let stopped = false
   let inFlight: Promise<void> = Promise.resolve()
 
+  // One link at a time; a failed link is logged and the next one still runs.
+  const schedule = (work: () => Promise<void>): void => {
+    inFlight = inFlight.then(work).catch(logError)
+  }
+
   const read = async (flush: boolean): Promise<void> => {
-    const delta = await deps.readDelta(offset)
-    const { lines, consumed } = takeCompleteLines(delta.content, flush)
-    offset += Buffer.byteLength(consumed)
+    const { lines, consumedBytes } = takeCompleteLines(await deps.read(offset, MONITOR_READ_MAX_BYTES), flush)
+    offset += consumedBytes
     if (lines.length === 0) return
     deps.enqueue(formatMonitorEvent(options, lines))
     events++
@@ -147,34 +181,42 @@ export function startMonitorStream(options: MonitorStreamOptions, deps: MonitorS
   }
 
   const cancelPoll = deps.every(MONITOR_POLL_MS, () => {
-    inFlight = inFlight.then(async () => {
+    schedule(async () => {
       if (stopped) return
       await read(false)
       if (eventTimes.length >= MONITOR_FLOOD_EVENTS) await end('flood', false)
     })
   })
-  const cancelDeadline = deps.after(options.timeoutMs, () => {
-    inFlight = inFlight.then(() => end('expired', true))
-  })
+  const cancelDeadline = deps.after(options.timeoutMs, () => schedule(() => end('expired', true)))
 
-  async function end(reason: Exclude<MonitorEndReason, 'exit'>, flush: boolean): Promise<void> {
+  // The one way the stream stops: deliver what is left, then no more polls.
+  async function halt(flush: boolean): Promise<void> {
+    try {
+      if (flush) await read(true)
+    } finally {
+      stopped = true
+      cancelPoll()
+      cancelDeadline()
+    }
+  }
+
+  // The stream stopping its own command. A command that ended on its own in
+  // the same instant already had its exit notice, so it gets no second one.
+  async function end(reason: MonitorEndReason, flush: boolean): Promise<void> {
     if (stopped) return
-    if (flush) await read(true)
-    stopped = true
-    cancelPoll()
-    cancelDeadline()
-    deps.enqueue(formatMonitorStop(options, reason, events, deps.now() - startedAt))
-    deps.kill()
+    try {
+      await halt(flush)
+    } finally {
+      if (deps.kill()) deps.enqueue(formatMonitorStop(options, reason, events, deps.now() - startedAt))
+    }
   }
 
   return {
     async stop({ flush }) {
+      schedule(async () => {
+        if (!stopped) await halt(flush)
+      })
       await inFlight
-      if (stopped) return
-      stopped = true
-      cancelPoll()
-      cancelDeadline()
-      if (flush) await read(true)
     },
   }
 }
