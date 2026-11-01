@@ -241,7 +241,10 @@ describe('the Edit advice', () => {
     const path = join(privateDir, 'feedback-listed.md')
     const input = { file_path: path, old_string: '', new_string: memory('feedback') }
     const sibling = { id: 't2', name: 'Write', input: { file_path: join(privateDir, 'MEMORY.md'), content: '- [Listed](feedback-listed.md) — hook\n' } }
-    expect(FileEditTool.advise!(input, { ...ctx, responseToolUses: [sibling] })).toBeNull()
+    // The hygiene notes may still speak (the fixture's memories share one
+    // description); the index-line note must not
+    const advice = FileEditTool.advise!(input, { ...ctx, responseToolUses: [sibling] })
+    expect(advice?.message ?? '').not.toContain('is not in the private memory index yet')
   })
 
   test('an Edit that changes an existing file, or a file outside memory, gets none', () => {

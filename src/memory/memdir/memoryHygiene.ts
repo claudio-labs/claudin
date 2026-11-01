@@ -35,13 +35,33 @@
  * language (the five PT-BR copies of the census were in other projects), or
  * a rule kept global with its case notes in a private memory on purpose.
  */
-import { basename } from 'path'
-import { fitEntrypointContent } from 'src/memory/memdir/memdir.js'
+import { readdirSync, readFileSync } from 'fs'
+import { basename, join, relative } from 'path'
 import type { AuditedFile } from 'src/memory/memdir/memoryAudit.js'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { logError } from 'src/shared/log.js'
+
+/**
+ * memdir.ts's fit, required lazily: memdir.ts pulls the prompt graph, and the
+ * write tools import this module through memoryFormatGuard.ts.
+ */
+function fitIndex(content: string): { overCap: boolean; bytes: number; lines: number; shortened: number } {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { fitEntrypointContent }: typeof import('src/memory/memdir/memdir.js') = require('src/memory/memdir/memdir.js')
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const fit = fitEntrypointContent(content)
+  return { overCap: fit.overLineCap || fit.overByteCap, bytes: fit.byteCount, lines: fit.lineCount, shortened: fit.shortenedEntryCount }
+}
+
+/** The caps an index is fitted to, for the notes that name them (memdir.ts MAX_ENTRYPOINT_*). */
+export function indexOverCap(content: string): { bytes: number; lines: number; shortened: number } | null {
+  const fit = fitIndex(content)
+  return fit.overCap ? fit : null
+}
 
 /** Whether the model-facing parts of memory hygiene are on (the header). */
 export function isMemoryHygieneEnabled(): boolean {
@@ -167,9 +187,9 @@ export function findHygieneFindings(files: readonly AuditedFile[], dirs: readonl
   const memories: Memory[] = []
   for (const file of files) {
     if (isIndex(file.path)) {
-      const fit = fitEntrypointContent(file.content)
-      if (fit.overLineCap || fit.overByteCap) {
-        findings.push({ kind: 'index-over-cap', scope: file.scope, path: file.path, bytes: fit.byteCount, lines: fit.lineCount, shortened: fit.shortenedEntryCount })
+      const over = indexOverCap(file.content)
+      if (over) {
+        findings.push({ kind: 'index-over-cap', scope: file.scope, path: file.path, ...over })
       }
       continue
     }
@@ -196,4 +216,47 @@ export function findHygieneFindings(files: readonly AuditedFile[], dirs: readonl
     }
   }
   return findings
+}
+
+/** A memory as the write-time near-duplicate note compares it. */
+export type VisibleMemory = { scope: MemoryScope; path: string; name: string | null; tokens: Set<string> }
+
+/** Every `.md` under `root` but the indexes, absolute; the team dir is read with its subdirectories. */
+function memoryPathsSync(dir: MemoryDir, dirs: readonly MemoryDir[]): string[] {
+  try {
+    return readdirSync(dir.root, { recursive: dir.scope === 'team', withFileTypes: true })
+      .filter(e => e.isFile() && e.name.endsWith('.md') && e.name !== ENTRYPOINT_NAME)
+      .map(e => join(e.parentPath, e.name))
+      .filter(path => !dirs.some(other => other !== dir && other.root.startsWith(dir.root) && path.startsWith(other.root)))
+  } catch (e) {
+    if (!isENOENT(e)) logError(e)
+    return []
+  }
+}
+
+/**
+ * The memories of every directory, read now: what the near-duplicate note
+ * compares a new memory against. Synchronous, as a tool's `advise` is; a
+ * write that creates a memory is rare, and the dirs hold a few hundred files.
+ */
+export function readVisibleMemoriesSync(dirs: readonly MemoryDir[]): VisibleMemory[] {
+  const out: VisibleMemory[] = []
+  for (const dir of dirs) {
+    for (const path of memoryPathsSync(dir, dirs)) {
+      try {
+        const facts = readHygieneFacts(path, readFileSync(path, 'utf8'))
+        out.push({ scope: dir.scope, path, name: facts.name, tokens: facts.tokens })
+      } catch (e) {
+        // A file gone since the listing is simply not compared
+        if (!isENOENT(e)) logError(e)
+      }
+    }
+  }
+  return out
+}
+
+/** Where a memory is, for a note: relative to its directory, prefixed with the scope. */
+export function describeMemory(memory: { scope: MemoryScope; path: string }, dirs: readonly MemoryDir[]): string {
+  const root = dirs.find(dir => dir.scope === memory.scope)?.root
+  return `${memory.scope}:${root ? relative(root, memory.path) : memory.path}`
 }

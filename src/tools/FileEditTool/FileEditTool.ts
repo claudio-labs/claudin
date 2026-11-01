@@ -9,8 +9,11 @@ import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import {
   checkMemoryFileFormat,
+  editedContent,
   indexTextFromResponse,
-  memoryIndexAdvice,
+  isMemoryWriteTarget,
+  memoryFileExists,
+  memoryWriteAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
@@ -454,10 +457,18 @@ export const FileEditTool = buildTool({
   },
   advise(input, context) {
     // An Edit that creates a memory file gets the index-line note a Write
-    // gets (memoryFormatGuard.ts); one that changes a file does not
-    if (input.old_string !== '') return null
-    return memoryIndexAdvice(
-      expandPath(input.file_path),
+    // gets (memoryFormatGuard.ts), one that changes a file does not; both
+    // get the hygiene notes on what the edit leaves
+    const path = expandPath(input.file_path)
+    if (!isMemoryWriteTarget(path)) return null
+    const creates = input.old_string === ''
+    return memoryWriteAdvice(
+      path,
+      {
+        content: editedContent(path, input.old_string, input.new_string, input.replace_all ?? false),
+        isNew: creates && !memoryFileExists(path),
+        indexNote: creates,
+      },
       indexTextFromResponse(context.responseToolUses, getCwd()),
     )
   },

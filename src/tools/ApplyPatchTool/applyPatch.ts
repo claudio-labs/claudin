@@ -39,7 +39,8 @@ import type { ToolAdvice, ToolUseContext, ValidationResult } from 'src/tools/Too
 import {
   checkMemoryFileFormat,
   indexTextFromResponse,
-  memoryIndexAdvice,
+  memoryFileExists,
+  memoryWriteNotes,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
@@ -430,11 +431,12 @@ export function checkApplyPatchPermissions(
 }
 
 /**
- * The index-line note (memoryFormatGuard.ts) for the first memory file this
- * patch adds, updates or moves in that its directory's `MEMORY.md` does not
- * list — a line this patch, or another call of the same response
- * (`responseToolUses`), adds to that index counts. One note per call is
- * enough. An Add the format guard will refuse gets none: its refusal carries
+ * The notes of memoryFormatGuard.ts for this patch: the index-line note for
+ * the first memory file it adds, updates or moves in that its directory's
+ * `MEMORY.md` does not list — a line this patch, or another call of the same
+ * response (`responseToolUses`), adds to that index counts; one note per call
+ * is enough — and the hygiene notes for every memory file and index it
+ * writes. An Add the format guard will refuse gets none: its refusal carries
  * the rules.
  */
 export function applyPatchMemoryIndexAdvice(
@@ -448,6 +450,7 @@ export function applyPatchMemoryIndexAdvice(
     return null // validateInput has refused it already
   }
   const targets: Array<{ hunk: Hunk; path: string }> = []
+  const indexes: Array<{ hunk: Hunk; path: string }> = []
   const pending = indexTextFromResponse(responseToolUses, getCwd())
   for (const hunk of hunks) {
     if (hunk.type === 'delete') continue
@@ -462,15 +465,49 @@ export function applyPatchMemoryIndexAdvice(
       targets.push({ hunk, path })
       continue
     }
+    indexes.push({ hunk, path })
     const added = hunk.type === 'add' ? hunk.contents : hunk.chunks.map(c => c.newLines.join('\n')).join('\n')
     pending.set(path, `${pending.get(path) ?? ''}\n${added}`)
   }
+  let index: string | null = null
+  const hygiene: string[] = []
   for (const { hunk, path } of targets) {
     if (hunk.type === 'add' && checkMemoryFileFormat(path, addContent(hunk))) continue
-    const advice = memoryIndexAdvice(path, pending)
-    if (advice) return advice
+    const notes = memoryWriteNotes(
+      path,
+      { content: hunk.type === 'add' ? addContent(hunk) : null, isNew: hunk.type === 'add' && !memoryFileExists(path), indexNote: index === null },
+      pending,
+    )
+    index ??= notes.index
+    hygiene.push(...notes.hygiene)
   }
-  return null
+  for (const { hunk, path } of indexes) {
+    hygiene.push(...memoryWriteNotes(path, { content: patchedText(path, hunk), isNew: false, indexNote: false }).hygiene)
+  }
+  const notes = [...(index ? [index] : []), ...hygiene]
+  return notes.length > 0 ? { message: notes.join('\n\n') } : null
+}
+
+/**
+ * What a hunk leaves in a file, near enough for a size check: an Add's
+ * content, or each Update chunk's old lines replaced by its new ones in the
+ * file as it is. Null when a chunk's old lines are not found as written.
+ */
+function patchedText(path: string, hunk: Hunk): string | null {
+  if (hunk.type === 'add') return addContent(hunk)
+  if (hunk.type === 'delete') return null
+  let text: string
+  try {
+    text = readFileForStaging(path).content
+  } catch {
+    return null // a file that cannot be read is reported by the call
+  }
+  for (const chunk of hunk.chunks) {
+    const before = chunk.oldLines.join('\n')
+    if (before === '' || !text.includes(before)) return null
+    text = text.replace(before, () => chunk.newLines.join('\n'))
+  }
+  return text
 }
 
 /** What staging one file produced: its change, if any, and the reports of its hunks. */

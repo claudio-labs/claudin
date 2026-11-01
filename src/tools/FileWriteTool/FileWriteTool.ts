@@ -11,7 +11,9 @@ import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import {
   checkMemoryFileFormat,
   indexTextFromResponse,
-  memoryIndexAdvice,
+  isMemoryWriteTarget,
+  memoryFileExists,
+  memoryWriteAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
@@ -292,11 +294,15 @@ export const FileWriteTool = buildTool({
 
     return { result: true }
   },
-  advise({ file_path }, context) {
-    // The index line a new memory needs (memoryFormatGuard.ts); one a later
-    // call of the same response writes counts
-    return memoryIndexAdvice(
-      expandPath(file_path),
+  advise({ file_path, content }, context) {
+    // The index line a new memory needs, and the hygiene notes
+    // (memoryFormatGuard.ts); an index line a later call of the same
+    // response writes counts
+    const path = expandPath(file_path)
+    if (!isMemoryWriteTarget(path)) return null
+    return memoryWriteAdvice(
+      path,
+      { content, isNew: !memoryFileExists(path), indexNote: true },
       indexTextFromResponse(context.responseToolUses, getCwd()),
     )
   },
