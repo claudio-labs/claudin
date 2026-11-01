@@ -111,7 +111,32 @@ The eight existing cases, `/tmp/memory-recall-eval/20261101-003908`:
   with `src/math.ts`, so the memory reached context by Read instead of by attachment. It
   reached context in 3/3.
 
+## After the review round (2026-11-01, 5b800b5a)
+
+The review fixes changed what the dream reads (its policy now only in the prompt, the
+digest listing findings) and how the write notes size a write, so the two benches that read
+them ran again, base (`CLAUDIN_MEMORY_HYGIENE=0`) against the branch, N=3. The placebo
+was measured above and is not repeated.
+
+`memory-hygiene-eval.ts`, `/tmp/memory-hygiene-eval/` run of 2026-11-01T03:59Z:
+
+| check | base | claudindev |
+|---|---|---|
+| S1 / S2 / S4 (hard) | 3/3 each | 3/3 each |
+| S3, E1, E3 | 0/3 | 3/3 |
+| E2 | 1/3 | 3/3 |
+| E4, E5 | 3/3 | 3/3 |
+| deleted, total | 0 | 9 |
+| dream $, median | $0.508 | $0.504 |
+
+Every gate passed, three deletions a dream, as in the second run.
+
+`memory-write-ab.ts`, `/tmp/memory-write-ab/20261101-035913`: correction, decision,
+duplicate and duplicate-overcap 3/3 in both arms; snapshot 0/3 → 3/3; 12/15 → 15/15 at
+$0.131 against $0.128 a session (+2.3%). The `decision` case files a team decision, the
+kind the old snapshot detector asked to expire.
+
 ## Spend
 
-The baselines, the arms, the rerun and the live checks came to about $37 in all, on the
-Max plan. The plan estimate was ~$45.
+The baselines, the arms, the reruns and the live checks came to about $37 in all, on the
+Max plan, and about $11 more after the review round. The plan estimate was ~$45.
