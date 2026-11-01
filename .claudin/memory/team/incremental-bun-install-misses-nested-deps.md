@@ -44,5 +44,5 @@ import" against a package you did not touch, check
 `--frozen-lockfile` install on a clean checkout does materialize the nested
 copy (verified in a temp dir), which is why all five workflows in
 `.github/workflows/` can keep the flag. Related:
-[[dependabot-bumps-2026-08-03-no-code-changes]],
+[[dependabot-bumps-2026-08-no-code-changes]],
 [[dependabot-bumps-2026-08-31-audited]].
