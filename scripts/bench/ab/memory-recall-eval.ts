@@ -69,7 +69,7 @@ import { isAbsolute, join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
 import { CASES, type CaseId, DEPS_LINE, type Fixture, FREEZE_LINE, PROJECT_FILES, type RecallCase } from './memory-recall/cases'
-import { GLOBAL, gitWorkspace, MEMORY_REL, writeTree } from './memory-write-ab'
+import { GLOBAL, gitWorkspace, INDEX_CAP, MEMORY_REL, writeTree } from './memory-write-ab'
 import { git, spawnCollect, stamp, table, version } from './session-cache-ab'
 
 const BENCH_ROOT = '/tmp/memory-recall-eval'
@@ -420,8 +420,8 @@ export function selfTest(dir: string): Array<[string, boolean, string]> {
     const index = (caseById(id).memories['team/MEMORY.md'] ?? '').trim()
     const lines = index.split('\n')
     const nonBlank = lines.filter(l => l.trim() !== '')
-    out.push([`the ${id} team index is over the line cap`, lines.length > 200, `${lines.length} lines`])
-    out.push(['…and over the byte cap', Buffer.byteLength(index) > 25_000, `${Buffer.byteLength(index)} bytes`])
+    out.push([`the ${id} team index is over the line cap`, lines.length > INDEX_CAP.lines, `${lines.length} lines`])
+    out.push(['…and over the byte cap', Buffer.byteLength(index) > INDEX_CAP.bytes, `${Buffer.byteLength(index)} bytes`])
     out.push(['…fits the line cap without its blank lines', nonBlank.length <= 200, `${nonBlank.length} lines`])
     out.push(['…and ends with the line the case needs', lines.at(-1) === last, lines.at(-1) ?? ''])
   }

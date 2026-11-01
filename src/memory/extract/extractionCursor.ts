@@ -22,7 +22,8 @@ export type ExtractionCursorStore = {
   write(sessionId: string, uuid: string): void
 }
 
-const CURSOR_SUFFIX = '.memory-cursor'
+/** A cursor file's suffix: platform/cleanup.ts sweeps them with the transcripts. */
+export const CURSOR_SUFFIX = '.memory-cursor'
 
 /** A store over `dir()`, the session's project dir (sessionStorage.ts getProjectDir). */
 export function fileCursorStore(dir: () => string): ExtractionCursorStore {
@@ -45,14 +46,5 @@ export function fileCursorStore(dir: () => string): ExtractionCursorStore {
         logError(e)
       }
     },
-  }
-}
-
-/** A store in memory, for a caller that keeps no file (tests, a fork). */
-export function memoryCursorStore(): ExtractionCursorStore {
-  const cursors = new Map<string, string>()
-  return {
-    read: sessionId => cursors.get(sessionId),
-    write: (sessionId, uuid) => void cursors.set(sessionId, uuid),
   }
 }

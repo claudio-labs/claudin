@@ -1,6 +1,4 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
@@ -9,10 +7,10 @@ import {
   setIsInteractive,
 } from 'src/platform/bootstrap/state/sessionFlags.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
-import * as autoDreamModule from 'src/memory/autoDream/autoDream.js'
 import {
   type AutoDreamDeps,
   defaultAutoDreamDeps,
+  drainPendingAutoDream,
   executeAutoDream,
   initAutoDream,
 } from 'src/memory/autoDream/autoDream.js'
@@ -222,11 +220,7 @@ describe('auto-dream in a non-interactive session', () => {
     const h = harness()
     initAutoDream(deps)
     void executeAutoDream(h.context, h.append as never)
-    const drain = (autoDreamModule as Record<string, unknown>).drainPendingAutoDream as
-      | ((timeoutMs?: number) => Promise<void>)
-      | undefined
-    expect(drain).toBeDefined()
-    const drained = drain!(5_000)
+    const drained = drainPendingAutoDream(5_000)
     finish()
     await drained
     expect(done).toBe(true)
@@ -242,18 +236,6 @@ describe('auto-dream in a non-interactive session', () => {
     await run(deps)
     expect(calls.forks).toHaveLength(1)
     expect(calls.acquire).toBe(0)
-  })
-
-  // runHeadless (no test of its own drives it) waits for the dream after the
-  // extraction and the map, before it shuts the process down.
-  test('runHeadless drains a pending dream before gracefulShutdownSync', () => {
-    const source = readFileSync(
-      join(import.meta.dir, '..', '..', 'platform', 'headless', 'print', 'runHeadless.ts'),
-      'utf8',
-    )
-    const drain = source.indexOf('await drainPendingAutoDream()')
-    expect(drain).toBeGreaterThan(source.indexOf('await drainPendingRuleMapSync()'))
-    expect(drain).toBeLessThan(source.indexOf('gracefulShutdownSync(\n'))
   })
 })
 

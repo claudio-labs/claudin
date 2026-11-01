@@ -14,7 +14,7 @@ import {
   initExtractMemories,
 } from 'src/memory/extract/extractMemories.js'
 import type { Message } from 'src/shared/types/message.js'
-import { memoryCursorStore } from 'src/memory/extract/extractionCursor.js'
+import { memoryCursorStore } from 'src/memory/extract/__testutils__/memoryCursorStore.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 
 // The extraction closure, driven end to end through its injected deps: the

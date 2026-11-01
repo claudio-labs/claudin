@@ -55,12 +55,10 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, join } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
-import { fm, frontmatterOf, gitWorkspace, MEMORY_REL } from './memory-write-ab'
+import { fm, frontmatterOf, gitWorkspace, INDEX_CAP, MEMORY_REL } from './memory-write-ab'
 import { git, spawnCollect, stamp, table, version } from './session-cache-ab'
 
 const BENCH_ROOT = '/tmp/memory-hygiene-eval'
-const INDEX_BYTES = 25_000
-const INDEX_LINES = 200
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -239,7 +237,7 @@ export function gradeHygiene(before: Files, after: Files): HygieneGrade {
   if (!E3) problems.push(`snapshot: ${after['team/bench-cache-2026-08-01.md'] === undefined ? 'gone' : 'kept'}, decision ${/12\s?%/.test(after['team/decisions/cache-ttl.md'] ?? '') ? 'carries' : 'lacks'} 12%`)
 
   const index = (after['team/MEMORY.md'] ?? '').trim()
-  const E4 = Buffer.byteLength(index) <= INDEX_BYTES && index.split('\n').length <= INDEX_LINES
+  const E4 = Buffer.byteLength(index) <= INDEX_CAP.bytes && index.split('\n').length <= INDEX_CAP.lines
   if (!E4) problems.push(`team index ${Buffer.byteLength(index)} bytes, ${index.split('\n').length} lines`)
 
   const E5 = carrying(isPrivate, /retries 3 times/i).length === 0
@@ -399,7 +397,7 @@ export function selfTest(): Array<[string, boolean, string]> {
   const out: Array<[string, boolean, string]> = []
   const before = seedMemories()
   const index = before['team/MEMORY.md']!.trim()
-  out.push(['the seeded team index is over the byte cap', Buffer.byteLength(index) > INDEX_BYTES, `${Buffer.byteLength(index)} bytes`])
+  out.push(['the seeded team index is over the byte cap', Buffer.byteLength(index) > INDEX_CAP.bytes, `${Buffer.byteLength(index)} bytes`])
   const untouched = gradeHygiene(before, before)
   out.push(['a dream that changes nothing keeps S1, S2 and S4', untouched.S1 && untouched.S2 && untouched.S4, untouched.problems.join('; ')])
   out.push(['…and fails every E check and S3', !untouched.S3 && CHECKS.filter(c => c.startsWith('E')).every(c => !untouched[c]), untouched.problems.join('; ')])

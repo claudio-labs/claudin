@@ -5,6 +5,7 @@ import {
 } from 'src/memory/memdir/paths.js'
 import { getMemoryDirs, type MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { auditMemoryDirs, type MemoryAudit } from 'src/memory/memdir/memoryAudit.js'
+import { isHygieneFinding, isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
 import {
   MEMORY_SCOPE_SPECS,
   MEMORY_SCOPES,
@@ -108,6 +109,8 @@ export async function runMemoryTidy(
   } catch (error) {
     logError(error)
   }
+  // The audit always reports the hygiene findings; the model reads them only with hygiene on
+  if (!isMemoryHygieneEnabled()) findings = findings.filter(f => !isHygieneFinding(f))
 
   onDone('Running memory tidy — merging duplicate memories…', {
     display: 'system',

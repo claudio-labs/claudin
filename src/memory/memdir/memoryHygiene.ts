@@ -79,6 +79,19 @@ export type HygieneFinding =
   | IndexOverCapFinding
   | OversizeFinding
 
+const HYGIENE_KINDS: ReadonlySet<string> = new Set<HygieneFinding['kind']>([
+  'near-duplicate',
+  'misplaced-type',
+  'open-contradiction',
+  'index-over-cap',
+  'oversize',
+])
+
+/** Whether an audit finding is one of these: what a model is not handed under CLAUDIN_MEMORY_HYGIENE=0. */
+export function isHygieneFinding(finding: { kind: string }): boolean {
+  return HYGIENE_KINDS.has(finding.kind)
+}
+
 const SPLIT_RE = /[^\p{L}\p{N}]+/u
 const MARKS_RE = /\p{M}+/gu
 const CAMEL_RE = /([a-z])([A-Z])/g

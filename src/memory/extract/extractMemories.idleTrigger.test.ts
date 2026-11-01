@@ -13,7 +13,7 @@ import {
   type ExtractMemoriesDeps,
   initExtractMemories,
 } from 'src/memory/extract/extractMemories.js'
-import { memoryCursorStore } from 'src/memory/extract/extractionCursor.js'
+import { memoryCursorStore } from 'src/memory/extract/__testutils__/memoryCursorStore.js'
 import type { Message } from 'src/shared/types/message.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 

@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { fileCursorStore, memoryCursorStore } from 'src/memory/extract/extractionCursor.js'
+import { fileCursorStore } from 'src/memory/extract/extractionCursor.js'
 
 describe('fileCursorStore', () => {
   const root = mkdtempSync(join(tmpdir(), 'extraction-cursor-'))
@@ -27,14 +27,5 @@ describe('fileCursorStore', () => {
     const blocked = fileCursorStore(() => join(root, 'blocked'))
     expect(() => blocked.write('s1', 'uuid')).not.toThrow()
     expect(blocked.read('s1')).toBeUndefined()
-  })
-})
-
-describe('memoryCursorStore', () => {
-  test('keeps cursors for the life of the store', () => {
-    const store = memoryCursorStore()
-    store.write('s1', 'u')
-    expect(store.read('s1')).toBe('u')
-    expect(store.read('s2')).toBeUndefined()
   })
 })

@@ -90,6 +90,12 @@ const IMPACTS = ['structural', 'functional', 'rejected'] as const
 const CATEGORY_TYPES: Record<string, string> = { decisions: 'project', bugs: 'project', docs: 'reference' }
 /** The global memory dir, as a prefix of a memory's path relative to the memory root. */
 export const GLOBAL = '@global/'
+/**
+ * A `MEMORY.md` index's caps, mirrored from src/memory/memdir/entrypointFit.ts
+ * (a bench script loads none of src/); memory-hygiene-eval.test.ts pins the
+ * mirror to the source.
+ */
+export const INDEX_CAP = { lines: 200, bytes: 25_000 } as const
 
 // ---------------------------------------------------------------------------
 // Requests
