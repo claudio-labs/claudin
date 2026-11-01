@@ -9,6 +9,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import type { Tool } from 'src/tools/Tool.js';
 import { buildTool, type ToolDef } from 'src/tools/Tool.js';
 import { lazySchema } from 'src/shared/data/lazySchema.js';
+import { noteLines } from 'src/tools/AskUserQuestionTool/optionNotes.js';
 import { ASK_USER_QUESTION_TOOL_CHIP_WIDTH, ASK_USER_QUESTION_TOOL_NAME, ASK_USER_QUESTION_TOOL_PROMPT, DESCRIPTION, PREVIEW_FEATURE_PROMPT } from 'src/tools/AskUserQuestionTool/prompt.js';
 const questionOptionSchema = lazySchema(() => z.object({
   label: z.string().describe('Display text the user selects (1-5 words).'),
@@ -75,10 +76,11 @@ type OutputSchema = ReturnType<typeof outputSchema>;
 export type Question = z.infer<ReturnType<typeof questionSchema>>;
 export type QuestionOption = z.infer<ReturnType<typeof questionOptionSchema>>;
 export type Output = z.infer<OutputSchema>;
-function AskUserQuestionResultMessage(t0: { answers: Output['answers'] }) {
-  const $ = _c(3);
+function AskUserQuestionResultMessage(t0: { answers: Output['answers']; annotations?: Output['annotations'] }) {
+  const $ = _c(4);
   const {
-    answers
+    answers,
+    annotations
   } = t0;
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -88,18 +90,23 @@ function AskUserQuestionResultMessage(t0: { answers: Output['answers'] }) {
     t1 = $[0];
   }
   let t2;
-  if ($[1] !== answers) {
-    t2 = <Box flexDirection="column" marginTop={1}>{t1}<MessageResponse><Box flexDirection="column">{Object.entries(answers).map(_temp)}</Box></MessageResponse></Box>;
+  if ($[1] !== answers || $[3] !== annotations) {
+    t2 = <Box flexDirection="column" marginTop={1}>{t1}<MessageResponse><Box flexDirection="column">{answerRows(answers, annotations)}</Box></MessageResponse></Box>;
     $[1] = answers;
+    $[3] = annotations;
     $[2] = t2;
   } else {
     t2 = $[2];
   }
   return t2;
 }
-function _temp(t0: [string, string]) {
-  const [questionText, answer] = t0;
-  return <Text key={questionText} color="inactive">· {questionText} → {answer}</Text>;
+function answerRows(answers: Output['answers'], annotations: Output['annotations']) {
+  const notesOnly = Object.keys(annotations ?? {}).filter(questionText => !(questionText in answers) && annotations?.[questionText]?.notes);
+  const rows: Array<[string, string | undefined]> = [...Object.entries(answers), ...notesOnly.map((questionText): [string, undefined] => [questionText, undefined])];
+  return rows.map(([questionText, answer]) => <Box key={questionText} flexDirection="column">
+      <Text color="inactive">· {questionText}{answer !== undefined && <> → {answer}</>}</Text>
+      {noteLines(annotations?.[questionText]?.notes).map((line, i) => <Text key={i} color="inactive">  ⎿ {line}</Text>)}
+    </Box>);
 }
 export const AskUserQuestionTool: Tool<InputSchema, Output> = buildTool({
   name: ASK_USER_QUESTION_TOOL_NAME,
@@ -180,9 +187,10 @@ export const AskUserQuestionTool: Tool<InputSchema, Output> = buildTool({
     return null;
   },
   renderToolResultMessage({
-    answers
+    answers,
+    annotations
   }, _toolUseID) {
-    return <AskUserQuestionResultMessage answers={answers} />;
+    return <AskUserQuestionResultMessage answers={answers} annotations={annotations} />;
   },
   renderToolUseRejectedMessage() {
     return <Box flexDirection="row" marginTop={1}>
@@ -222,7 +230,9 @@ export const AskUserQuestionTool: Tool<InputSchema, Output> = buildTool({
         parts.push(`user notes: ${annotation.notes}`);
       }
       return parts.join(' ');
-    }).join(', ');
+    }).concat(
+    // A note can stand without an answer — notes on options, none picked.
+    Object.entries(annotations ?? {}).filter(([questionText, annotation]) => !(questionText in answers) && annotation.notes).map(([questionText, annotation]) => `"${questionText}"=(no answer) user notes: ${annotation.notes}`)).join(', ');
     return {
       type: 'tool_result',
       content: `User has answered your questions: ${answersText}. You can now continue with the user's answers in mind.`,

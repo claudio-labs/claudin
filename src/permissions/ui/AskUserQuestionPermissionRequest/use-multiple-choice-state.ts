@@ -1,12 +1,14 @@
 import { useCallback, useReducer } from 'react'
 
+import type { OptionNotes } from 'src/tools/AskUserQuestionTool/optionNotes.js'
+
 export type AnswerValue = string
 
 export type QuestionState = {
   selectedValue?: string | string[]
   /** The Other option's text — an answer, never a note. */
   textInputValue: string
-  notes?: string
+  notes?: OptionNotes
 }
 
 type State = {

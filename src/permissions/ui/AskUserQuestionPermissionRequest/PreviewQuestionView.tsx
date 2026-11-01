@@ -83,7 +83,18 @@ export function PreviewQuestionView({
   }
   const focusedOption = allOptions[focusedIndex];
   const selectedValue = questionState?.selectedValue as string | undefined;
-  const notesValue = questionState?.notes || '';
+  // Notes belong to the focused option, like the preview beside them.
+  const notes = questionState?.notes;
+  const notesValue = (focusedOption && notes?.[focusedOption.label]) || '';
+  const updateFocusedNote = useCallback((value: string) => {
+    if (!focusedOption) return;
+    onUpdateQuestionState(questionText, {
+      notes: {
+        ...notes,
+        [focusedOption.label]: value
+      }
+    }, false);
+  }, [focusedOption, notes, questionText, onUpdateQuestionState]);
   const handleSelectOption = useCallback((index: number) => {
     const option = allOptions[index];
     if (!option) return;
@@ -110,12 +121,10 @@ export function PreviewQuestionView({
 
   // Handle ctrl+g to open external editor for notes
   useKeybinding('chat:externalEditor', async () => {
-    const currentValue = questionState?.notes || '';
+    const currentValue = notesValue;
     const result = await editPromptInEditor(currentValue);
     if (result.content !== null && result.content !== currentValue) {
-      onUpdateQuestionState(questionText, {
-        notes: result.content
-      }, false);
+      updateFocusedNote(result.content);
     }
   }, {
     context: 'Chat',
@@ -215,6 +224,7 @@ export function PreviewQuestionView({
     } else if (e.key === 'n' && !e.ctrl && !e.meta) {
       // Press 'n' to focus the notes input
       e.preventDefault();
+      setCursorOffset(notesValue.length);
       setIsInNotesInput(true);
       onTextInputFocus(true);
     } else if (e.key === 'escape') {
@@ -227,7 +237,7 @@ export function PreviewQuestionView({
         handleNavigate(idx_0);
       }
     }
-  }, [isFooterFocused, footerIndex, isInPlanMode, isInNotesInput, focusedIndex, allOptions.length, handleUpFromFooter, handleDownFromPreview, handleNavigate, handleSelectOption, handleNotesExit, onRespondToClaude, onFinishPlanInterview, onCancel, onTextInputFocus]);
+  }, [isFooterFocused, footerIndex, isInPlanMode, isInNotesInput, focusedIndex, allOptions.length, notesValue, handleUpFromFooter, handleDownFromPreview, handleNavigate, handleSelectOption, handleNotesExit, onRespondToClaude, onFinishPlanInterview, onCancel, onTextInputFocus]);
   const previewContent = focusedOption?.preview || null;
 
   // The right panel's available width is terminal minus the left panel and gap.
@@ -286,11 +296,7 @@ export function PreviewQuestionView({
               <PreviewBox content={previewContent || 'No preview available'} maxLines={previewMaxLines} minWidth={minContentWidth} maxWidth={previewMaxWidth} />
               <Box marginTop={1} flexDirection="row" gap={1}>
                 <Text color="suggestion">Notes:</Text>
-                {isInNotesInput ? <TextInput value={notesValue} placeholder="Add notes on this design…" onChange={value => {
-                onUpdateQuestionState(questionText, {
-                  notes: value
-                }, false);
-              }} onSubmit={handleNotesExit} onExit={handleNotesExit} focus={true} showCursor={true} columns={60} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} /> : <Text dimColor italic>
+                {isInNotesInput ? <TextInput value={notesValue} placeholder="Add notes on this design…" onChange={updateFocusedNote} onSubmit={handleNotesExit} onExit={handleNotesExit} focus={true} showCursor={true} columns={60} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} /> : <Text dimColor italic>
                     {notesValue || 'press n to add notes'}
                   </Text>}
               </Box>

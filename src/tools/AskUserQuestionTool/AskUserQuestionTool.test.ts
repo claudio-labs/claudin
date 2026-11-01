@@ -146,6 +146,23 @@ describe('AskUserQuestionTool', () => {
     expect(block?.content).toContain('selected preview')
     expect(block?.content).toContain('user notes: preferred')
   })
+
+  test('notes on a question left unanswered still reach the model', () => {
+    const block = AskUserQuestionTool.mapToolResultToToolResultBlockParam?.(
+      {
+        questions: [validQuestion(), validQuestion({ question: 'Second?' })],
+        answers: { 'Pick one?': 'A' },
+        annotations: {
+          'Second?': { notes: '"A": too slow' },
+          'Third?': { preview: '<div>p</div>' },
+        },
+      },
+      'u1',
+    )
+    expect(block?.content).toBe(
+      'User has answered your questions: "Pick one?"="A", "Second?"=(no answer) user notes: "A": too slow. You can now continue with the user\'s answers in mind.',
+    )
+  })
 })
 
 describe('AskUserQuestionTool prompt and preview format', () => {
@@ -221,6 +238,30 @@ describe('AskUserQuestionTool rendering', () => {
     expect(out).toContain("User answered Claudin's questions:")
     expect(out).toContain('· Pick one? → A')
     expect(out).toContain('· Second? → B, C')
+  })
+
+  test('notes sit under their answer, and a notes-only question is listed too', async () => {
+    const out = await renderToString(
+      AskUserQuestionTool.renderToolResultMessage?.(
+        {
+          questions: [validQuestion()],
+          answers: { 'Pick one?': 'A' },
+          annotations: {
+            'Pick one?': { notes: '"A": reuse it\n"B": too slow', preview: '<div>p</div>' },
+            'Second?': { notes: '"C": maybe later' },
+            'Third?': { preview: '<div>q</div>' },
+          },
+        },
+        [],
+        {} as never,
+      ),
+      80,
+    )
+    const flat = out.replace(/\s+/g, ' ')
+    expect(flat).toContain('· Pick one? → A ⎿ "A": reuse it ⎿ "B": too slow')
+    expect(flat).toContain('· Second? ⎿ "C": maybe later')
+    expect(flat).not.toContain('Third?')
+    expect(flat).not.toContain('<div>')
   })
 
   test('a rejected tool use says the user declined', async () => {

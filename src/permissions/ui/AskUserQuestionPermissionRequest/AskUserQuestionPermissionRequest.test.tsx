@@ -296,6 +296,158 @@ describe('AskUserQuestion dialog — the multi-select Other answer keeps every k
   })
 })
 
+describe('AskUserQuestion dialog — a note on any option', () => {
+  test('n notes the focused option, shown under its description', async () => {
+    const dialog = await mountAskDialog([MULTI])
+    try {
+      expect(dialog.frame()).toContain('n to add notes')
+      await dialog.press(KEY.down, 'n')
+      await dialog.waitForText('Note on "Beta":')
+      expect(dialog.frame()).toContain('Enter or Esc to save the note')
+      await dialog.press('o', 'n', 'l', 'y', ' ', 'i', 'f', ' ', 'f', 'a', 's', 't')
+      await dialog.press(KEY.enter)
+      await dialog.waitForText('⎿ only if fast')
+      expect(dialog.frame()).not.toContain('Note on "Beta":')
+      expect(dialog.frame()).toContain('[ ] Beta')
+      expect(dialog.frame()).toMatch(/2\. \[ \] Beta\s+second choice\s+⎿ only if fast/)
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('typing in the note neither moves nor toggles the list', async () => {
+    const dialog = await mountAskDialog([MULTI])
+    try {
+      await dialog.press('n', 'j', 'k', ' ', '2')
+      await dialog.waitForText('Note on "Alpha": jk 2')
+      expect(dialog.frame()).toContain('[ ] Alpha')
+      expect(dialog.frame()).toContain('[ ] Beta')
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('Escape saves the note instead of cancelling, and Tab stays on the question', async () => {
+    const dialog = await mountAskDialog([question(), SECOND])
+    try {
+      await dialog.press('n', 'x', KEY.tab)
+      await dialog.pressEscape()
+      await waitForCondition(() => !dialog.frame().includes('Note on'), { label: 'note closed' })
+      expect(dialog.frame()).toContain('⎿ x')
+      expect(dialog.rejected).toEqual([])
+      expect(dialog.frame()).toContain('Which one?')
+      await dialog.pressEscape()
+      await waitForCondition(() => dialog.rejected.length === 1, { label: 'onReject' })
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('n on the Other row types into it', async () => {
+    const dialog = await mountAskDialog([question()])
+    try {
+      await dialog.press(KEY.down, KEY.down, 'n', 'o')
+      await dialog.waitForText('no')
+      expect(dialog.frame()).not.toContain('Note on')
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('a single question still submits on Enter, carrying the note', async () => {
+    const dialog = await mountAskDialog([question()])
+    try {
+      await dialog.press(KEY.down, 'n', 'w', 'h', 'y', KEY.enter)
+      await dialog.waitForText('⎿ why')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which one?': 'Beta' })
+      expect(call.annotations).toEqual({ 'Which one?': { notes: '"Beta": why' } })
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('notes on picked and unpicked options both reach the model, in option order', async () => {
+    const dialog = await mountAskDialog([MULTI])
+    try {
+      await dialog.press(KEY.down, 'n', 'n', 'o', 't', ' ', 't', 'h', 'i', 's', KEY.enter)
+      await dialog.waitForText('⎿ not this')
+      await dialog.press(KEY.up, KEY.space, 'n', 'y', 'e', 's', KEY.enter)
+      await dialog.waitForText('⎿ yes')
+      await dialog.press(KEY.down, KEY.down, KEY.down)
+      await dialog.waitForText('❯    Submit')
+      await dialog.press(KEY.enter)
+      await dialog.waitForText('Review your answers')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which ones?': 'Alpha' })
+      expect(call.annotations).toEqual({
+        'Which ones?': { notes: '"Alpha": yes\n"Beta": not this' },
+      })
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('the review shows the notes, including a question left unanswered', async () => {
+    const dialog = await mountAskDialog([question(), SECOND])
+    try {
+      await dialog.press(KEY.down, 'n', 'b', 'u', 't', KEY.enter)
+      await dialog.waitForText('⎿ but')
+      await dialog.press(KEY.enter)
+      await dialog.waitForText('Which two?')
+      await dialog.press('n', 'l', 'a', 't', 'e', 'r', KEY.enter)
+      await dialog.waitForText('⎿ later')
+      await dialog.press(KEY.tab)
+      await dialog.waitForText('Review your answers')
+      const flat = dialog.frame().replace(/\s+/g, ' ')
+      expect(flat).toContain('Which one? → Beta ⎿ "Beta": but')
+      expect(flat).toContain('Which two? ⎿ "Gamma": later')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which one?': 'Beta' })
+      expect(call.annotations).toEqual({
+        'Which one?': { notes: '"Beta": but' },
+        'Which two?': { notes: '"Gamma": later' },
+      })
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  for (const columns of [80, 50, 34]) {
+    test(`a long note wraps inside its option at ${columns} columns`, async () => {
+      const dialog = await mountAskDialog([MULTI], { columns })
+      try {
+        await dialog.press(KEY.down, 'n', ...'only if it fits in the CI budget', KEY.enter)
+        await waitForCondition(() => !dialog.frame().includes('Note on'), { label: 'note closed' })
+        const flat = dialog.frame().replace(/\s+/g, ' ')
+        expect(flat).toContain('2. [ ] Beta second choice ⎿ only if it fits in the CI budget 3. [ ] Type something')
+      } finally {
+        await dialog.cleanup()
+      }
+    })
+  }
+
+  test('n again edits the note, and clearing it removes it', async () => {
+    const dialog = await mountAskDialog([question()])
+    try {
+      await dialog.press('n', 'a', 'b', KEY.enter)
+      await dialog.waitForText('⎿ ab')
+      await dialog.press('n')
+      await dialog.waitForText('Note on "Alpha": ab')
+      await dialog.press('\x7F', '\x7F', KEY.enter)
+      await waitForCondition(() => !dialog.frame().includes('⎿'), { label: 'note removed' })
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.annotations).toBeUndefined()
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+})
+
 describe('AskUserQuestion dialog — previews', () => {
   test('shows the focused option preview and the notes line', async () => {
     const dialog = await mountAskDialog([PREVIEWED])
@@ -336,7 +488,30 @@ describe('AskUserQuestion dialog — previews', () => {
       await dialog.press(KEY.enter)
       const call = await waitForAllow(dialog)
       expect(call.annotations).toEqual({
-        'Which layout?': { preview: 'GRID-PREVIEW', notes: 'hi' },
+        'Which layout?': { preview: 'GRID-PREVIEW', notes: '"Grid": hi' },
+      })
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('each preview option keeps its own note', async () => {
+    const dialog = await mountAskDialog([PREVIEWED])
+    try {
+      await dialog.press('n', 'a', KEY.enter)
+      await dialog.waitForText('Notes: a')
+      await dialog.press(KEY.down)
+      await dialog.waitForText('LIST-PREVIEW')
+      expect(dialog.frame()).toContain('press n to add notes')
+      await dialog.press('n', 'b', KEY.enter)
+      await dialog.waitForText('Notes: b')
+      await dialog.press(KEY.up)
+      await dialog.waitForText('Notes: a')
+      await dialog.press(KEY.down, KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which layout?': 'List' })
+      expect(call.annotations).toEqual({
+        'Which layout?': { preview: 'LIST-PREVIEW', notes: '"Grid": a\n"List": b' },
       })
     } finally {
       await dialog.cleanup()
