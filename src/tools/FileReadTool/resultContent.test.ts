@@ -88,6 +88,12 @@ describe('the memory-file note', () => {
     expect(text).toContain('fact')
   })
 
+  test('a Read of a memory marked contradicts: opens with the names it disagrees with', () => {
+    const data = textResult('---\nname: b\ncontradicts:\n  - timeout-a\n---\n\nfact')
+    markMemoryFileRead(data, { mtimeMs: Date.now(), expires: null, contradicts: ['timeout-a'] })
+    expect(render(data)).toStartWith('<system-reminder>It is marked as contradicting `timeout-a`')
+  })
+
   test('a fresh, unexpired memory and a file never marked carry no note', () => {
     const fresh = textResult('fact')
     markMemoryFileRead(fresh, { mtimeMs: Date.now(), expires: null })

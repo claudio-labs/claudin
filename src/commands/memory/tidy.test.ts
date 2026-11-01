@@ -206,6 +206,33 @@ describe('runMemoryTidy', () => {
     expect(failed.calls[0]?.options?.metaMessages?.[0] ?? '').not.toContain('Found before you started')
   })
 
+  test('CLAUDIN_MEMORY_HYGIENE=0 keeps the hygiene findings out of the prompt, and the rest in', async () => {
+    process.env[DISABLE_ENV] = '0'
+    const saved = process.env.CLAUDIN_MEMORY_HYGIENE
+    const audit = async () => ({
+      files: 2,
+      findings: [
+        { kind: 'expired' as const, scope: 'private' as const, path: '/r/.claudin/memory/oncall.md', expires: '2026-09-30' },
+        { kind: 'oversize' as const, scope: 'private' as const, path: '/r/.claudin/memory/profile.md', bytes: 13_000 },
+      ],
+    })
+    try {
+      process.env.CLAUDIN_MEMORY_HYGIENE = '0'
+      const off = recordingOnDone()
+      await runMemoryTidy(off.onDone, audit)
+      const prompt = off.calls[0]?.options?.metaMessages?.[0] ?? ''
+      expect(prompt).toContain('/r/.claudin/memory/oncall.md')
+      expect(prompt).not.toContain('/r/.claudin/memory/profile.md')
+      delete process.env.CLAUDIN_MEMORY_HYGIENE
+      const on = recordingOnDone()
+      await runMemoryTidy(on.onDone, audit)
+      expect(on.calls[0]?.options?.metaMessages?.[0] ?? '').toContain('/r/.claudin/memory/profile.md')
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
+      else process.env.CLAUDIN_MEMORY_HYGIENE = saved
+    }
+  })
+
   test('auto memory disabled → system warning, no query', async () => {
     process.env[DISABLE_ENV] = '1'
     const { onDone, calls } = recordingOnDone()

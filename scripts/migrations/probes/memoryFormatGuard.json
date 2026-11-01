@@ -199,20 +199,20 @@
     {
       "name": "an Edit that creates a memory file gets the index advice",
       "source": "src/tools/FileEditTool/FileEditTool.ts",
-      "find": "    if (input.old_string !== '') return null\n",
-      "replace": "    return null\n"
+      "find": "indexNote: creates },",
+      "replace": "indexNote: false },"
     },
     {
       "name": "an Edit that changes a file gets no index advice",
       "source": "src/tools/FileEditTool/FileEditTool.ts",
-      "find": "    if (input.old_string !== '') return null\n",
-      "replace": ""
+      "find": "indexNote: creates },",
+      "replace": "indexNote: true },"
     },
     {
       "name": "the Edit advice counts the rest of the response",
       "source": "src/tools/FileEditTool/FileEditTool.ts",
-      "find": "      expandPath(input.file_path),\n      indexTextFromResponse(context.responseToolUses, getCwd()),\n",
-      "replace": "      expandPath(input.file_path),\n      new Map(),\n"
+      "find": "        indexTextFromResponse(context.responseToolUses, getCwd()),\n",
+      "replace": "        new Map(),\n"
     }
   ]
 }

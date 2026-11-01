@@ -2,6 +2,7 @@
 name: census-2026-10-30-cache-tools-context
 description: Census 10-25..30 (claudin + ferrous-dns, Opus/Haiku 5.5 only) — cache clean (11 rewrites, all idle/clip/5m TTL, tail 0); #321 classifier writes/call −67% live (14.2k→4.6k); tools 1.1%; zero compactions; map set-aside skips a multi-file dirty tree; Bash-filter cuts cause no excess re-reads, outlines do (40/44 followed by a body Read)
 type: project
+expires: 2026-12-29
 ---
 
 Window 2026-10-25T03Z → 10-30, record timestamps, `-tmp*` and the census session left out.

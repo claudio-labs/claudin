@@ -59,7 +59,7 @@ extra calls / 5.9M chars (38% of Read chars); slice-walks with no outline
 first 339 paths / 1,666 calls / 3.9M; read-right-after-edit 324 calls.
 Explicit outline 425 (7.6%, 333 by sub-agents) and 237 of them needed no
 follow-up; `symbol=` only **25** (raw grep, deduped) — the 09-16 census's "79
-symbol calls" is contradicted, see [[feature-usage-census-2026-09-16]]. Grep:
+symbol calls" is contradicted, see [[feature-usage-census-2026-09-15]]. Grep:
 `head_limit:0` on 427 calls / 1.26M chars. 1h TTL premium $63 vs $225 of 5m
 rewrites — keep 1h. Poll turns 156 ($23); WaitFor used 108×.
 

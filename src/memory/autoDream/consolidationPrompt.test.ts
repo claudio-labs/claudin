@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
@@ -79,8 +79,9 @@ describe('buildConsolidationPrompt', () => {
     test('the deleting and contradiction-resolving lines exempt it', () => {
       expect(prompt).toContain('- Deleting contradicted facts (outside the global dir) — if today')
       expect(prompt).toContain(
-        '- Resolve contradictions — if two files disagree, fix the wrong one, unless it is a global memory: name that one in your summary',
+        '- Resolve contradictions — if two files disagree, fix the wrong one, unless it is a global memory: add `contradicts:` to it instead (an Edit that only adds the key), and name it in your summary',
       )
+      expect(prompt).toContain('never a `MEMORY.md`, and nothing in the global dir')
     })
 
     test('without it the prompt never says "global"', () => {
@@ -98,7 +99,44 @@ describe('buildConsolidationPrompt', () => {
         expect(src).toContain('buildConsolidationPrompt(getMemoryDirs(), transcriptDir, extra)')
       }
       const autoDream = readFileSync(new URL('./autoDream.ts', import.meta.url), 'utf8')
-      expect(autoDream).toContain("canUseTool: createMemoryCanUseTool(['global'])")
+      expect(autoDream).toContain("canUseTool: createMemoryCanUseTool(['global'], { patch: prune ? 'prune' : 'none' })")
+    })
+  })
+
+  // memoryHygiene.ts: the dream prunes, decides a disagreement from the code
+  // and marks what nothing settles; under CLAUDIN_MEMORY_HYGIENE=0 the prompt
+  // is the one before it.
+  describe('memory hygiene', () => {
+    const saved = process.env.CLAUDIN_MEMORY_HYGIENE
+    afterEach(() => {
+      if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
+      else process.env.CLAUDIN_MEMORY_HYGIENE = saved
+    })
+
+    test('on, the dream deletes with Patch within its limits and marks an unsettled contradiction', () => {
+      delete process.env.CLAUDIN_MEMORY_HYGIENE
+      const prompt = buildConsolidationPrompt(GLOBAL_DIRS, TRANSCRIPTS, '')
+      expect(prompt).toContain('delete the files themselves with a Patch `*** Delete File:`')
+      expect(prompt).toContain('in the private dir, only a memory you merged into another, in the Patch that writes that survivor')
+      expect(prompt).toContain('never delete to make room in an index')
+      expect(prompt).toContain('never from which file is newer')
+      expect(prompt).toContain('mark one with `contradicts:`')
+      expect(prompt).toContain('fold that into the decision or memory it supports, then delete the snapshot (outside the global dir)')
+      // What the digest's hygiene findings point at
+      expect(prompt).toContain('Two memories that hold one fact: merge them into one survivor')
+      expect(prompt).toContain('a private copy of a global memory goes in one Patch')
+      expect(prompt).toContain('A `type: user` memory outside the global dir: write it into the global dir')
+      expect(prompt).toContain('keep its rule short, and move the history into a memory it links to')
+    })
+
+    test('off, none of it is said and the old global line is back', () => {
+      process.env.CLAUDIN_MEMORY_HYGIENE = '0'
+      const prompt = buildConsolidationPrompt(GLOBAL_DIRS, TRANSCRIPTS, '')
+      expect(prompt).not.toContain('*** Delete File:')
+      expect(prompt).not.toContain('contradicts:')
+      expect(prompt).not.toContain('Two memories that hold one fact')
+      expect(prompt).not.toContain('outside the global dir: write it into the global dir')
+      expect(prompt).toContain('unless it is a global memory: name that one in your summary')
     })
   })
 })

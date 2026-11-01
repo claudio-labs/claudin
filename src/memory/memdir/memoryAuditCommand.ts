@@ -49,6 +49,16 @@ function findingLine(finding: MemoryAudit['findings'][number], cwd: string): str
       return `${path}: nothing links to it from its MEMORY.md — index it, or link it from a memory that is`
     case 'duplicate-name':
       return `${path}: name "${finding.name}" is shared with another memory in its directory`
+    case 'near-duplicate':
+      return `${path}: reads like ${relativeIfInside(finding.other.path, cwd)} (${finding.other.scope}, score ${finding.score}) — one fact twice? merge them`
+    case 'misplaced-type':
+      return `${path}: a user memory outside the global dir — /memory sort moves it`
+    case 'open-contradiction':
+      return `${path}: contradicts ${finding.targets.join(', ')} — reconcile them, then remove the key`
+    case 'index-over-cap':
+      return `${path}: ${finding.lines} lines, ${finding.bytes} bytes — over the index cap${finding.shortened ? `, ${finding.shortened} entries load without their hook` : ''}`
+    case 'oversize':
+      return `${path}: ${Math.round(finding.bytes / 1024)} KB, read whole on every recall — keep the rule short, link the history`
   }
 }
 

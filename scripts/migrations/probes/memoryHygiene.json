@@ -1,0 +1,305 @@
+{
+  "test": [
+    "src/memory/memdir/memoryMigration.test.ts",
+    "src/memory/memdir/memoryIndexReadGate.test.ts",
+    "src/memory/memdir/memoryHygiene.test.ts",
+    "src/memory/memdir/memoryWriteNotes.test.ts",
+    "src/memory/memdir/memoryFormatGuard.test.ts",
+    "src/memory/memdir/memoryAge.test.ts",
+    "src/memory/memdir/paths.gates.test.ts",
+    "src/tools/FileReadTool/resultContent.test.ts",
+    "src/tools/FileReadTool/memoryReadNote.test.ts",
+    "src/memory/extract/extractMemories.closure.test.ts",
+    "src/memory/autoDream/autoDream.test.ts",
+    "src/memory/autoDream/dreamDigest.test.ts",
+    "src/memory/autoDream/consolidationPrompt.test.ts",
+    "src/commands/memory/tidyPrompt.test.ts",
+    "src/memory/forkToolGate.test.ts",
+    "src/memory/extract/extractMemories.idleTrigger.test.ts",
+    "src/memory/memdir/memoryFormatGuard.snapshotNote.test.ts",
+    "src/platform/cleanup.test.ts",
+    "src/commands/memory/tidy.test.ts",
+    "src/memory/instructions/ruleMapWiring.test.ts"
+  ],
+  "source": "src/memory/memdir/memoryHygiene.ts",
+  "probes": [
+    {
+      "name": "migration: the legacy team/ is copied again",
+      "source": "src/memory/memdir/memoryMigration.ts",
+      "find": "return rel !== TEAM_DIRNAME && !rel.startsWith(TEAM_DIRNAME + sep)",
+      "replace": "return true"
+    },
+    {
+      "name": "migration: a migrated legacy dir migrates again",
+      "source": "src/memory/memdir/memoryMigration.ts",
+      "find": "  if (existsSync(join(oldDir, MIGRATED_MARKER))) return\n",
+      "replace": ""
+    },
+    {
+      "name": "read gate: Edit refuses a session index never read",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "      !isSessionMemoryIndex(fullFilePath) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "read gate: Patch refuses a session index never read",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "&& !isSessionMemoryIndex(absPath)) {",
+      "replace": ") {"
+    },
+    {
+      "name": "audit: the near-duplicate threshold is out of reach",
+      "find": "export const NEAR_DUPLICATE_MIN = 0.5",
+      "replace": "export const NEAR_DUPLICATE_MIN = 0.95"
+    },
+    {
+      "name": "audit: a user memory outside global is not reported",
+      "find": "if (globalOn && memory.type === 'user' && memory.scope !== 'global') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "audit: an oversized memory is not reported",
+      "find": "if (memory.bytes > OVERSIZE_BYTES) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "audit: -ies plurals stop comparing",
+      "find": "  if (plain.length > 4 && plain.endsWith('ies')) return `${plain.slice(0, -3)}y`\n",
+      "replace": ""
+    },
+    {
+      "name": "dream line: a global contradiction is not named",
+      "find": "      (f.kind === 'open-contradiction' && f.scope === 'global'),",
+      "replace": "      false,",
+      "source": "src/memory/autoDream/autoDream.ts"
+    },
+    {
+      "name": "write notes: a snapshot without expires: gets no note",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "if (!file.category && !isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "write notes: an update of a saved memory gets the new-memory notes",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "if (!file || !write.isNew) return []",
+      "replace": "if (!file) return []"
+    },
+    {
+      "name": "format guard: a contradicts: naming nothing passes",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "if (parseContradicts(frontmatter.contradicts) === null) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "write notes: the killswitch leaves the hygiene notes on",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "  const hygiene = isMemoryHygieneEnabled()\n    ? memoryHygieneNotesIn(",
+      "replace": "  const hygiene = true\n    ? memoryHygieneNotesIn("
+    },
+    {
+      "name": "read note: contradicts: is not said",
+      "source": "src/memory/memdir/memoryAge.ts",
+      "find": "if (facts.contradicts && facts.contradicts.length > 0 && isMemoryHygieneEnabled()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "read note: a Read never sees contradicts:",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "contradicts: offset === 1 ? contradictsOf(content) : [],",
+      "replace": "contradicts: [],"
+    },
+    {
+      "name": "dream gate: a lone private delete passes",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "      if (scope === 'private') privateDeletes.push(abs)\n",
+      "replace": ""
+    },
+    {
+      "name": "dream gate: an index may be deleted",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "      if (basename(abs) === ENTRYPOINT_NAME) return `${ENTRYPOINT_NAME} is never deleted: remove its lines instead`\n",
+      "replace": ""
+    },
+    {
+      "name": "dream gate: the extraction may Patch too",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "if (tool.name === APPLY_PATCH_TOOL_NAME && patch === 'prune') {",
+      "replace": "if (tool.name === APPLY_PATCH_TOOL_NAME) {"
+    },
+    {
+      "name": "dream gate: a Patch may rewrite a global memory",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "hunk.chunks.every(c => keepsInOrder(c.oldLines, c.newLines))",
+      "replace": "true"
+    },
+    {
+      "name": "extraction: a restart forgets the session's cursor",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "lastMemoryMessageUuid = deps.cursors.read(sessionId)",
+      "replace": "lastMemoryMessageUuid = undefined"
+    },
+    {
+      "name": "extraction: a throttled turn arms no idle trigger",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "        if (turns > 0) armIdle(context, sessionId, appendSystemMessage)\n",
+      "replace": ""
+    },
+    {
+      "name": "extraction: the idle trigger fires during a turn",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "if (inProgress || deps.isTurnActive()) return",
+      "replace": "if (inProgress) return"
+    },
+    {
+      "name": "extraction: a cursor gone from the messages hides a main-agent write",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "  for (const message of messages.slice(cursor + 1)) {\n    if (message.type !== 'assistant') {",
+      "replace": "  if (sinceUuid !== undefined && cursor < 0) return false\n  for (const message of messages.slice(cursor + 1)) {\n    if (message.type !== 'assistant') {"
+    },
+    {
+      "name": "paths: the turn interval is 15 again",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 5",
+      "replace": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 15"
+    },
+    {
+      "name": "dream: a -p run dreams without the headless switch",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "if (getIsNonInteractiveSession() && !isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_HEADLESS)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "dream: CLAUDIN_AUTO_DREAM_FORCE does nothing",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "return isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FORCE)",
+      "replace": "return false"
+    },
+    {
+      "name": "dream: nothing waits for a dream in flight",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "  inFlightDreams.add(run)\n",
+      "replace": ""
+    },
+    {
+      "name": "dream: the fork may not prune",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "canUseTool: createMemoryCanUseTool(['global'], { patch: prune ? 'prune' : 'none' }),",
+      "replace": "canUseTool: createMemoryCanUseTool(['global']),"
+    },
+    {
+      "name": "dream: the global line is never said",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "if (appendSystemMessage && globalLine) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "headless: runHeadless no longer drains the dream",
+      "source": "src/platform/headless/print/runHeadless.ts",
+      "find": "  await drainPendingAutoDream()\n",
+      "replace": ""
+    },
+    {
+      "name": "digest: the hygiene findings are never asked for",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "hygieneOn && deps.listHygieneFindings ? orEmpty(deps.listHygieneFindings()) : Promise.resolve([]),",
+      "replace": "Promise.resolve([]),"
+    },
+    {
+      "name": "digest: the hygiene section is never rendered",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "  if (hygiene.length > 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "prompt: the dream never prunes",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": "  const prune = isMemoryHygieneEnabled()\n",
+      "replace": "  const prune = false\n"
+    },
+    {
+      "name": "tidy: no merge into the global memory, conflicts as a union",
+      "source": "src/commands/memory/tidyPrompt.ts",
+      "find": "  const hygiene = isMemoryHygieneEnabled()\n",
+      "replace": "  const hygiene = false\n"
+    },
+    {
+      "name": "control: a comment in the hygiene header",
+      "find": " * The hygiene pass of the memory audit: what lets memory grow without ever\n",
+      "replace": " * The hygiene pass of the audit: what lets memory grow without ever\n",
+      "expect": "green"
+    },
+    {
+      "name": "dream digest: the findings carry a make-room rule again",
+      "source": "src/memory/autoDream/dreamDigest.ts",
+      "find": "as Phases 3 and 4 say; a contradiction you settle loses its `contradicts:` key.",
+      "replace": "as Phases 3 and 4 say; a contradiction you settle loses its `contradicts:` key. An index over its cap: retire what nothing needs any more."
+    },
+    {
+      "name": "dream prompt: a thin team memory may be deleted to make room",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": " A memory that is only thin, old or rarely needed stays: never delete to make room in an index",
+      "replace": ""
+    },
+    {
+      "name": "review B1: the dream's Patch applies what matches again",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "          ...(prune && { options: { ...context.toolUseContext.options, patchAllOrNothing: true } }),\n",
+      "replace": ""
+    },
+    {
+      "name": "review B1: the Patch tool ignores options.patchAllOrNothing",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  return context.options?.patchAllOrNothing === true || isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)",
+      "replace": "  return isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)"
+    },
+    {
+      "name": "review B2: a new stop leaves an older idle timer armed",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "    cancelIdle()\n    const sessionId = deps.sessionId()",
+      "replace": "    const sessionId = deps.sessionId()"
+    },
+    {
+      "name": "review B3: a run reads the session running now, not its own",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "    syncCursor(sessionId)",
+      "replace": "    syncCursor(deps.sessionId())"
+    },
+    {
+      "name": "review B4: a prune Patch's ~ path resolves under cwd",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "    const abs = expandPath(hunk.path, cwd)",
+      "replace": "    const abs = resolve(cwd, hunk.path)"
+    },
+    {
+      "name": "review C1: the over-cap note offers to retire a memory",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "a memory is never deleted to make room.",
+      "replace": "or retire a memory nothing needs any more."
+    },
+    {
+      "name": "review B5: a date alone reads as a snapshot",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "const SNAPSHOT_RE = /\\bcensus\\b",
+      "replace": "const SNAPSHOT_RE = /\\b20\\d{2}-\\d{2}-\\d{2}\\b|\\bcensus\\b"
+    },
+    {
+      "name": "review B5: a team decision is asked to expire",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "  if (!file.category && !isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {",
+      "replace": "  if (!isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {"
+    },
+    {
+      "name": "review E6: the session cleanup keeps old cursor files",
+      "source": "src/platform/cleanup.ts",
+      "find": " && !entry.name.endsWith(CURSOR_SUFFIX)) {",
+      "replace": ") {"
+    },
+    {
+      "name": "review: tidy hands the hygiene findings over when off",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "  if (!isMemoryHygieneEnabled()) findings = findings.filter(f => !isHygieneFinding(f))\n",
+      "replace": ""
+    }
+  ]
+}

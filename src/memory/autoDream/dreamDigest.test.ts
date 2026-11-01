@@ -185,6 +185,42 @@ describe('buildDreamDigest', () => {
     expect(buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], cwd: '/repo' })).not.toContain('expires:')
   })
 
+  test('with memory hygiene on, an expired snapshot is folded and deleted; the findings point at the prompt for what to do', () => {
+    const digest = buildDreamDigest({
+      sinceMs: since,
+      plans: [],
+      sessions: [],
+      commitSubjects: [],
+      expired: [{ path: '/repo/.claudin/memory/team/bench-2026-08-01.md', expires: '2026-09-01' }],
+      hygiene: [
+        { kind: 'near-duplicate', scope: 'private', path: '/repo/.claudin/memory/copy.md', other: { scope: 'global', path: '/home/u/.claudin/memory/lang.md' }, score: 0.64 },
+        { kind: 'misplaced-type', scope: 'private', path: '/repo/.claudin/memory/user-role.md', type: 'user' },
+        { kind: 'open-contradiction', scope: 'team', path: '/repo/.claudin/memory/team/t-b.md', targets: ['t-a'] },
+        { kind: 'index-over-cap', scope: 'team', path: '/repo/.claudin/memory/team/MEMORY.md', bytes: 26_000, lines: 180, shortened: 12 },
+        { kind: 'oversize', scope: 'private', path: '/repo/.claudin/memory/profile.md', bytes: 13_000 },
+      ],
+      cwd: '/repo',
+    })
+    expect(digest).toContain('A dated measurement or status (a census, a bench, a PR): fold it and delete it, as Phase 3 says.')
+    expect(digest).not.toContain('An expired date alone is never a reason to delete.')
+    expect(digest).toContain('## Memory hygiene (5)')
+    // The policy is the prompt's alone (consolidationPrompt.ts): the digest
+    // only lists, so a rule is never written twice and changed once
+    expect(digest).toContain('Decide each from the files and the code, as Phases 3 and 4 say')
+    expect(digest).not.toContain('never from which file is newer')
+    expect(digest).not.toMatch(/retire|make room/)
+    expect(digest).toContain('- near-duplicate: `.claudin/memory/copy.md` (private) reads like `/home/u/.claudin/memory/lang.md` (global, 0.64)')
+    expect(digest).toContain('- user memory outside the global dir: `.claudin/memory/user-role.md` (private)')
+    expect(digest).toContain('- contradiction: `.claudin/memory/team/t-b.md` (team) contradicts `t-a`')
+    expect(digest).toContain('- index over its cap: `.claudin/memory/team/MEMORY.md`, 180 lines and 26000 bytes, 12 entries load without their hook')
+    expect(digest).toContain('- oversized: `.claudin/memory/profile.md` (private), 13 KB read whole on every recall')
+  })
+
+  test('with memory hygiene on and nothing found, there is no hygiene section', () => {
+    const digest = buildDreamDigest({ sinceMs: since, plans: [], sessions: [], commitSubjects: [], hygiene: [], cwd: '/repo' })
+    expect(digest).not.toContain('## Memory hygiene')
+  })
+
   test('each session names the memories it wrote; what changed with no session is listed apart', () => {
     const writes = Array.from({ length: 7 }, (_, i) => `/repo/.claudin/memory/m${i}.md`)
     const digest = buildDreamDigest({
@@ -285,5 +321,35 @@ describe('collectDreamDigest', () => {
     expect(digest).toContain('### Memories also changed in this period (1)')
     expect(digest).toContain('new.md')
     expect(digest).not.toContain('- /r/.claudin/memory/oncall.md\n')
+  })
+
+  test('the hygiene findings are asked for unless CLAUDIN_MEMORY_HYGIENE=0, and a failing scan leaves the section out', async () => {
+    const saved = process.env.CLAUDIN_MEMORY_HYGIENE
+    const deps = (find: () => Promise<never[] | Array<{ kind: 'oversize'; scope: 'private'; path: string; bytes: number }>>) => ({
+      listPlans: async () => [],
+      listSessions: async () => [],
+      commitSubjectsSince: async () => [],
+      listMemoryHeaders: async () => [],
+      listHygieneFindings: find,
+    })
+    const big = async () => [{ kind: 'oversize' as const, scope: 'private' as const, path: '/r/.claudin/memory/big.md', bytes: 9_000 }]
+    try {
+      delete process.env.CLAUDIN_MEMORY_HYGIENE
+      expect(await collectDreamDigest(1_000, [], deps(big))).toContain('## Memory hygiene (1)')
+      expect(
+        await collectDreamDigest(
+          1_000,
+          [],
+          deps(async () => {
+            throw new Error('EACCES')
+          }),
+        ),
+      ).not.toContain('## Memory hygiene')
+      process.env.CLAUDIN_MEMORY_HYGIENE = '0'
+      expect(await collectDreamDigest(1_000, [], deps(big))).not.toContain('## Memory hygiene')
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
+      else process.env.CLAUDIN_MEMORY_HYGIENE = saved
+    }
   })
 })

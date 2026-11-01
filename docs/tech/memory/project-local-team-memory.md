@@ -13,8 +13,10 @@ directories, below),
 `src/memory/memdir/memoryTypes.ts` (the team categories and `TYPE_SCOPES`),
 `src/memory/memdir/pathScopedMemories.ts` (on-demand loading),
 `src/memory/autoDream/dreamDigest.ts` (what the dream reads),
-`src/commands/memory/sortPrompt.ts` (`/memory sort`) and
-`src/memory/memdir/memoryFormatGuard.ts`.
+`src/commands/memory/sortPrompt.ts` (`/memory sort`),
+`src/memory/memdir/memoryFormatGuard.ts`, and — memory hygiene, below —
+`src/memory/memdir/memoryHygiene.ts`, `src/memory/extract/extractionCursor.ts`
+and the dream's gate in `src/memory/extract/extractMemories.ts`.
 
 ## Problem
 
@@ -60,9 +62,13 @@ The first time the project-local path resolves for a project whose legacy
 per-project directory already has memory content, `migrateLegacyMemoryIfNeeded()`
 (`src/memory/memdir/memoryMigration.ts`) **copies** that content into the new
 location — it never deletes or moves the original, so the old
-`~/.claudin/projects/.../memory/` directory remains as a backup. The copy is
-idempotent: once the project-local directory has any memory content of its
-own, migration is skipped.
+`~/.claudin/projects/.../memory/` directory remains as a backup. It runs
+once: the copy leaves a `.migrated` marker in the legacy dir, and a
+project-local directory with memory content of its own skips it too. It
+never copies the legacy `team/`: the project-local team dir is git-tracked,
+and until 2026-10-31 the copy wrote back, untracked, every legacy team file
+moved, renamed or deleted since (team bug
+`legacy-memory-migration-resurrects-team-files`).
 
 ### Making `team/` actually git-trackable
 
@@ -476,7 +482,9 @@ history stays byte-stable), and the audit finds it for `claudin memory
 audit` and `/memory tidy` (as a finding to report). From the scan header
 (`memoryScan.ts`): the dream digest — one uncapped scan that also yields the
 memories changed in the period — hands it over to re-verify (move the date,
-fix or delete it only when contradicted, outside the global dir), and the
+fix or delete it only when contradicted, outside the global dir; with memory
+hygiene on, a dated measurement or status is folded into what it supports
+and then deleted — by the dream, after re-verifying, never by code), and the
 `/memory` browser tags its row `expired <date>`.
 The index never shows it: an index that changed on a day boundary would
 rewrite the cached prefix at midnight. Known limit: a memory a `paths:`
@@ -520,6 +528,8 @@ what every request needs; the full prompt of the other families is unchanged.
   written in the same response gets none — by the same Patch, or by a Write,
   Edit or Patch beside it (`indexTextFromResponse`; `advise` runs before the
   calls after it, so it reads them from `ToolUseContext.responseToolUses`).
+  Since 2026-10-31 it is `memoryWriteAdvice`, which adds the hygiene notes
+  (below).
 
 The guard applies to every family, and asks for nothing their prompts do not
 already state. Its checks are format checks, so the rules no check can
@@ -563,9 +573,68 @@ built before the fork starts so the fork never runs git:
   The extraction fork keeps no transcript (`skipTranscript`), so what else
   changed in the period is listed apart, by mtime;
 - the memories past their `expires:` date, from the audit.
+- with memory hygiene on, what its findings are, each with what to do
+  (`## Memory hygiene`, below).
 
 Everything is capped (`DEFAULT_DIGEST_CAPS`), and a source that fails to read
 is left out.
+
+Since 2026-10-31 the dream is **on by default** (`autoDreamEnabled: false`,
+the `/memory` toggle, turns it off): at most once a day after five sessions,
+and never in a `-p` run, where a fork was cut off at exit —
+`CLAUDIN_AUTO_DREAM_HEADLESS=1` lets one start and `runHeadless` drains it;
+`CLAUDIN_AUTO_DREAM_FORCE=1` opens its gates for a bench fixture.
+
+## Memory hygiene
+
+The October 2026 census found the team index at its cap for seven weeks
+while the dir grew from 138 to 257 files, one user fact in five places, and
+memories that disagreed with nothing to record it. Every cleanup path was
+closed: the dream could not delete a file (pruning an index line orphaned
+it), `/memory tidy` never merged across the global boundary, the audit saw a
+duplicate only by an identical `name`, and the extraction never fired (its
+cursor and count lived in a closure; 0 requests in nine days).
+`memoryHygiene.ts` holds the parts; `CLAUDIN_MEMORY_HYGIENE=0` turns off
+every model-facing one and leaves the audit.
+
+- **Findings** (`findHygieneFindings`, report-only in `claudin memory
+  audit`, `/memory tidy` and the dream digest): `near-duplicate` (token
+  overlap of the name and `description`, threshold 0.5 calibrated by hand on
+  this repo's 291 memories — precise, blind to a fact restated in another
+  language), `misplaced-type` (`type: user` outside the global dir),
+  `open-contradiction`, `index-over-cap`, `oversize` (over 8 KB).
+- **Write-time notes** (`memoryWriteAdvice`): a new memory that reads like a
+  saved one is told which; a dated measurement or status without `expires:`
+  is asked for one; an index the write leaves over its cap is named with
+  what it would lose. Through `advise`, so the system prompt is unchanged
+  and the forks get them too.
+- **`contradicts:`** — a name or a list of names, refused when it names
+  nothing; a Read of the memory says it, the audit reports it until the key
+  is removed. Dream and tidy decide a disagreement from the code or the
+  transcript, never from which file is newer, and mark what nothing settles.
+- **The dream deletes**, through a Patch its gate checks
+  (`prunePatchProblem`): any team memory (git keeps it), a private memory
+  only in the Patch that writes the memory it was merged into, never an
+  index, and in the global dir only an Add or an Update that keeps every line
+  it touches. A dream that leaves near-duplicates or contradictions inside
+  the global dir — which no one project's run may change — says so in the
+  transcript (`globalFindingsLine`).
+- **`/memory tidy`** merges a private memory that repeats a global one into
+  it; team and global still never merge.
+- **The extraction** keeps its cursor per session beside the transcript
+  (`extractionCursor.ts`), counts human turns since it with an interval of 5,
+  and a throttled turn arms an idle trigger (10 minutes,
+  `CLAUDIN_EXTRACT_MEMORIES_IDLE_MS`) that extracts the tail while the main
+  cache is warm.
+- **Edit and Patch** count a session `MEMORY.md` as read
+  (`isSessionMemoryIndex`): it is in context from the first turn. Write keeps
+  its gate, since the index in context may be the fitted one.
+
+Measured by `scripts/bench/ab/memory-hygiene-eval.ts` (a seeded mess, one
+dream, graded on the files it leaves) beside `memory-write-ab.ts` and
+`memory-recall-eval.ts`; results in
+`scripts/bench/results/memory-hygiene-2026-11-01.md`. Every guarantee is
+break-probed in `scripts/migrations/probes/memoryHygiene.json`.
 
 ## Verified unaffected
 

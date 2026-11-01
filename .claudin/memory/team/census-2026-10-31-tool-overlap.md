@@ -2,6 +2,7 @@
 name: census-2026-10-31-tool-overlap
 description: Tool-overlap census 10-25..31 (claudin + ferrous-dns): Bash does a dedicated tool's job in 15–93% of uses depending on the job, but a switch is 1:1 in calls; only 24 of 739 classifier-bound Bash calls were read-only, so the "~250 avoidable classifier calls" estimate was wrong
 type: project
+expires: 2026-12-30
 ---
 
 Window 2026-10-25 → 10-31: 81 transcripts, 6,859 tool uses and 4,626 tool-bearing API calls. The main thread made 1,104 classifier calls. The analysis session was left out. The scratch script was not committed; the counters that held up went into `feature-usage-census.ts` ([[tool-repeat-calls]]).

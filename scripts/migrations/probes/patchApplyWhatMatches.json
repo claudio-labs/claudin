@@ -95,8 +95,8 @@
     },
     {
       "name": "the killswitch is ignored",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)\n",
-      "replace": "  return false\n"
+      "find": "  return context.options?.patchAllOrNothing === true || isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)\n",
+      "replace": "  return context.options?.patchAllOrNothing === true\n"
     },
     {
       "name": "resume takes the files from the input, not from the result",

@@ -9,6 +9,15 @@
 //
 // State is closure-scoped inside initAutoDream() rather than module-level
 // (tests call initAutoDream() in beforeEach for a fresh closure).
+// What the runner reaches outside itself — the gate, the lock, the decision
+// sources and the fork — comes in as AutoDreamDeps, so a test drives the
+// whole runner without mock.module.
+//
+// Interactive sessions only: a `-p` run is often the only turn its process
+// sees, and a fork started there was cut off at exit.
+// CLAUDIN_AUTO_DREAM_HEADLESS=1 lets a `-p` run dream, and runHeadless then
+// waits for it (drainPendingAutoDream). CLAUDIN_AUTO_DREAM_FORCE=1 opens the
+// gates — enabled, time, sessions — for a bench fixture.
 
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
@@ -18,25 +27,33 @@ import {
 import {
   createUserMessage,
   createMemorySavedMessage,
+  createSystemMessage,
 } from 'src/agent/messages/messages.js'
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import { type HygieneFinding, isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
+import { auditHygiene } from 'src/memory/memdir/memoryAudit.js'
+import { writtenPaths } from 'src/tools/shared/writtenPaths.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import {
   getOriginalCwd,
   getKairosActive,
+  getIsNonInteractiveSession,
   getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import {
-  createMemoryCanUseTool,
   memoryCountsOf,
 } from 'src/memory/extract/extractMemories.js'
+import { createMemoryCanUseTool } from 'src/memory/forkToolGate.js'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
 import { collectDreamDigest } from 'src/memory/autoDream/dreamDigest.js'
 import {
@@ -54,6 +71,7 @@ import {
 } from 'src/agent/tasks/DreamTask/DreamTask.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 
 // Scan throttle: when time-gate passes but session-gate doesn't, the lock
 // mtime doesn't advance, so the time-gate keeps passing every turn.
@@ -76,18 +94,80 @@ const DEFAULTS: AutoDreamConfig = {
 function isGateOpen(): boolean {
   if (getKairosActive()) return false // KAIROS mode uses disk-skill dream
   if (getIsRemoteMode()) return false
+  if (getIsNonInteractiveSession() && !isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_HEADLESS)) {
+    return false
+  }
   if (!isAutoMemoryEnabled()) return false
   return isAutoDreamEnabled()
 }
 
-// Ant-build-only test override. Bypasses enabled/time/session gates but NOT
-// the lock (so repeated turns don't pile up dreams) or the memory-dir
-// precondition. Still scans sessions so the prompt's session-hint is populated.
+// CLAUDIN_AUTO_DREAM_FORCE=1, for a bench fixture: bypasses the enabled,
+// time and session gates and the lock acquire. Still scans sessions so the
+// prompt's session list is populated.
 function isForced(): boolean {
-  return false
+  return isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FORCE)
 }
 
 type AppendSystemMessageFn = NonNullable<ToolUseContext['appendSystemMessage']>
+
+/** What the runner calls outside itself; production passes defaultAutoDreamDeps. */
+export type AutoDreamDeps = {
+  isGateOpen: () => boolean
+  /** CLAUDIN_AUTO_DREAM_FORCE (above). */
+  isForced: () => boolean
+  readLastConsolidatedAt: () => Promise<number>
+  listSessionsTouchedSince: (sinceMs: number) => Promise<string[]>
+  tryAcquireConsolidationLock: () => Promise<number | null>
+  rollbackConsolidationLock: (priorMtime: number) => Promise<void>
+  collectDreamDigest: (sinceMs: number, sessionIds: readonly string[]) => Promise<string>
+  runForkedAgent: typeof runForkedAgent
+  /** Whether a finished dream says so in the transcript (`notifyMemorySaved`). */
+  notifyMemorySaved: () => boolean
+  /** What the hygiene pass finds once the dream is done, for the line about the global dir. */
+  hygieneFindings: () => Promise<HygieneFinding[]>
+}
+
+/**
+ * The findings no dream may act on: a near-duplicate inside the global dir,
+ * and a contradiction a global memory is marked with. One project's run may
+ * only add to the global dir, so these wait for the user (`/memory tidy`).
+ */
+function globalOnlyFindings(findings: readonly HygieneFinding[]): HygieneFinding[] {
+  return findings.filter(
+    f =>
+      (f.kind === 'near-duplicate' && f.scope === 'global' && f.other.scope === 'global') ||
+      (f.kind === 'open-contradiction' && f.scope === 'global'),
+  )
+}
+
+/** The transcript line a dream leaves when global findings remain, or null. */
+export function globalFindingsLine(findings: readonly HygieneFinding[]): string | null {
+  const global = globalOnlyFindings(findings)
+  if (global.length === 0) return null
+  const duplicates = global.filter(f => f.kind === 'near-duplicate').length
+  const contradictions = global.length - duplicates
+  const what = [
+    duplicates > 0 ? `${duplicates} near-duplicate${duplicates === 1 ? '' : 's'}` : '',
+    contradictions > 0 ? `${contradictions} contradiction${contradictions === 1 ? '' : 's'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' and ')
+  return `Dream: ${what} in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.`
+}
+
+
+export const defaultAutoDreamDeps: AutoDreamDeps = {
+  isGateOpen,
+  isForced,
+  readLastConsolidatedAt,
+  listSessionsTouchedSince,
+  tryAcquireConsolidationLock,
+  rollbackConsolidationLock,
+  collectDreamDigest,
+  runForkedAgent,
+  notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
+  hygieneFindings: () => auditHygiene(getMemoryDirs()),
+}
 
 let runner:
   | ((
@@ -100,18 +180,18 @@ let runner:
  * Call once at startup (from backgroundHousekeeping alongside
  * initExtractMemories), or per-test in beforeEach for a fresh closure.
  */
-export function initAutoDream(): void {
+export function initAutoDream(deps: AutoDreamDeps = defaultAutoDreamDeps): void {
   let lastSessionScanAt = 0
 
   runner = async function runAutoDream(context, appendSystemMessage) {
     const cfg = DEFAULTS
-    const force = isForced()
-    if (!force && !isGateOpen()) return
+    const force = deps.isForced()
+    if (!force && !deps.isGateOpen()) return
 
     // --- Time gate ---
     let lastAt: number
     try {
-      lastAt = await readLastConsolidatedAt()
+      lastAt = await deps.readLastConsolidatedAt()
     } catch (e: unknown) {
       logForDebugging(
         `[autoDream] readLastConsolidatedAt failed: ${(e as Error).message}`,
@@ -134,7 +214,7 @@ export function initAutoDream(): void {
     // --- Session gate ---
     let sessionIds: string[]
     try {
-      sessionIds = await listSessionsTouchedSince(lastAt)
+      sessionIds = await deps.listSessionsTouchedSince(lastAt)
     } catch (e: unknown) {
       logForDebugging(
         `[autoDream] listSessionsTouchedSince failed: ${(e as Error).message}`,
@@ -160,7 +240,7 @@ export function initAutoDream(): void {
       priorMtime = lastAt
     } else {
       try {
-        priorMtime = await tryAcquireConsolidationLock()
+        priorMtime = await deps.tryAcquireConsolidationLock()
       } catch (e: unknown) {
         logForDebugging(
           `[autoDream] lock acquire failed: ${(e as Error).message}`,
@@ -186,16 +266,21 @@ export function initAutoDream(): void {
 
     try {
       const transcriptDir = getProjectDir(getOriginalCwd())
+      const prune = isMemoryHygieneEnabled()
       // The decision sources (plans, session prompts, impactful commits) are
       // read here, in the harness, so the fork judges with data instead of
       // grepping transcripts — and never runs git itself.
-      const digest = await collectDreamDigest(lastAt, sessionIds)
+      const digest = await deps.collectDreamDigest(lastAt, sessionIds)
       // Tool constraints note goes in `extra`, not the shared prompt body —
       // manual /dream runs in the main loop with normal permissions and this
       // would be misleading there.
       const extra = `
 
-**Tool constraints for this run:** Bash is restricted to read-only commands (\`ls\`, \`find\`, \`grep\`, \`cat\`, \`stat\`, \`wc\`, \`head\`, \`tail\`, and similar). Anything that writes, redirects to a file, or modifies state will be denied. Plan your exploration with this in mind — no need to probe.
+**Tool constraints for this run:** Bash is restricted to read-only commands (\`ls\`, \`find\`, \`grep\`, \`cat\`, \`stat\`, \`wc\`, \`head\`, \`tail\`, and similar). Anything that writes, redirects to a file, or modifies state will be denied. Plan your exploration with this in mind — no need to probe.${
+        prune
+          ? ' Delete a memory file with a Patch `*** Delete File:` section, after a Read of it. Your Patch applies all or nothing: one section that fails, and nothing in it is written — so a merge and the delete it allows go in one Patch, and land together or not at all.'
+          : ''
+      }
 
 Sessions since last consolidation (${sessionIds.length}):
 ${sessionIds.map(id => `- ${id}`).join('\n')}
@@ -203,15 +288,20 @@ ${sessionIds.map(id => `- ${id}`).join('\n')}
 ${digest}`
       const prompt = buildConsolidationPrompt(getMemoryDirs(), transcriptDir, extra)
 
-      const result = await runForkedAgent({
+      const result = await deps.runForkedAgent({
         promptMessages: [createUserMessage({ content: prompt })],
         cacheSafeParams: createCacheSafeParams(context),
         // One project's run cannot judge the global dir stale: it may only add to it.
-        canUseTool: createMemoryCanUseTool(['global']),
+        canUseTool: createMemoryCanUseTool(['global'], { patch: prune ? 'prune' : 'none' }),
         querySource: 'auto_dream',
         forkLabel: 'auto_dream',
         skipTranscript: true,
-        overrides: { abortController },
+        // A prune Patch applies all or nothing: a private memory it deletes
+        // has no git history, so it must not outlive a failed survivor write.
+        overrides: {
+          abortController,
+          ...(prune && { options: { ...context.toolUseContext.options, patchAllOrNothing: true } }),
+        },
         onMessage: makeDreamProgressWatcher(taskId, setAppState),
       })
 
@@ -223,7 +313,7 @@ ${digest}`
         appendSystemMessage &&
         isDreamTask(dreamState) &&
         dreamState.filesTouched.length > 0 &&
-        getGlobalConfig().notifyMemorySaved === true
+        deps.notifyMemorySaved()
       ) {
         appendSystemMessage({
           ...createMemorySavedMessage(dreamState.filesTouched),
@@ -232,6 +322,18 @@ ${digest}`
           // consumed by the renderer (SystemTextMessage.tsx says "Saved").
           verb: 'Improved',
         } as ReturnType<typeof createMemorySavedMessage> & { verb?: string })
+      }
+      // What only the user can settle, said whatever notifyMemorySaved says
+      const globalLine = prune
+        ? globalFindingsLine(
+            await deps.hygieneFindings().catch(error => {
+              logError(error)
+              return []
+            }),
+          )
+        : null
+      if (appendSystemMessage && globalLine) {
+        appendSystemMessage(createSystemMessage(globalLine, 'info'))
       }
       logForDebugging(
         `[autoDream] completed — cache: read=${result.totalUsage.cache_read_input_tokens} created=${result.totalUsage.cache_creation_input_tokens}`,
@@ -247,7 +349,7 @@ ${digest}`
       logForDebugging(`[autoDream] fork failed: ${(e as Error).message}`)
       failDreamTask(taskId, setAppState)
       // Rewind mtime so time-gate passes again. Scan throttle is the backoff.
-      await rollbackConsolidationLock(priorMtime)
+      await deps.rollbackConsolidationLock(priorMtime)
     }
   }
 }
@@ -255,8 +357,9 @@ ${digest}`
 /**
  * Watch the forked agent's messages. For each assistant turn, extracts any
  * text blocks (the agent's reasoning/summary — what the user wants to see)
- * and collapses tool_use blocks to a count. Edit/Write file_paths are
- * collected for phase-flip + the inline completion message.
+ * and collapses tool_use blocks to a count. The paths an Edit, Write or
+ * Patch writes — a Patch's deletes included — are collected for phase-flip +
+ * the inline completion message.
  */
 function makeDreamProgressWatcher(
   taskId: string,
@@ -274,12 +377,10 @@ function makeDreamProgressWatcher(
         toolUseCount++
         if (
           block.name === FILE_EDIT_TOOL_NAME ||
-          block.name === FILE_WRITE_TOOL_NAME
+          block.name === FILE_WRITE_TOOL_NAME ||
+          block.name === APPLY_PATCH_TOOL_NAME
         ) {
-          const input = block.input as { file_path?: unknown }
-          if (typeof input.file_path === 'string') {
-            touchedPaths.push(input.file_path)
-          }
+          touchedPaths.push(...writtenPaths(block.input, getCwd()))
         }
       }
     }
@@ -300,5 +401,29 @@ export async function executeAutoDream(
   context: REPLHookContext,
   appendSystemMessage?: AppendSystemMessageFn,
 ): Promise<void> {
-  await runner?.(context, appendSystemMessage)
+  if (!runner) return
+  const run = runner(context, appendSystemMessage)
+  inFlightDreams.add(run)
+  try {
+    await run
+  } finally {
+    inFlightDreams.delete(run)
+  }
+}
+
+/** Every dream executeAutoDream started that has not settled yet. */
+const inFlightDreams = new Set<Promise<void>>()
+
+/**
+ * Awaits the dreams in flight, with a soft timeout. Called by runHeadless
+ * before gracefulShutdownSync, so a dream CLAUDIN_AUTO_DREAM_HEADLESS let a
+ * `-p` run start is not cut off mid-write. No-op when none is running.
+ */
+export async function drainPendingAutoDream(timeoutMs = 10 * 60_000): Promise<void> {
+  if (inFlightDreams.size === 0) return
+  await Promise.race([
+    Promise.all(inFlightDreams).catch(() => {}),
+    // eslint-disable-next-line no-restricted-syntax -- sleep() has no .unref(); timer must not block exit
+    new Promise<void>(r => setTimeout(r, timeoutMs).unref()),
+  ])
 }

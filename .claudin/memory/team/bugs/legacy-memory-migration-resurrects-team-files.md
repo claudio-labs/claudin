@@ -1,6 +1,6 @@
 ---
 name: legacy-memory-migration-resurrects-team-files
-description: migrateGlobalMemoryIfNeeded re-copies the whole legacy ~/.claudin/projects/<slug>/memory/ tree, team/ included, whenever the private dir has no top-level .md — moved or deleted team memories come back as untracked files at the team root
+description: FIXED on feat/memory-hygiene (2026-10-31) — migrateLegacyMemoryIfNeeded re-copied the whole legacy ~/.claudin/projects/<slug>/memory/ tree, team/ included, whenever the private dir had no top-level .md; it now never copies team/ and leaves a .migrated marker so it runs once
 type: project
 paths:
   - "src/memory/memdir/memoryMigration.ts"
@@ -18,8 +18,8 @@ and gotchas that moved into `.claudin/rules/` (`ink-*`,
 `bun-mock-module-cross-file-leak`, `feature-macro-breaks-bun-test-outside-if`).
 In the same instant the private dir came back as the legacy June 26 snapshot.
 
-**Where:** `migrateGlobalMemoryIfNeeded` in `src/memory/memdir/memoryMigration.ts`,
-called on every auto-memory path resolution from `src/memory/memdir/paths.ts`.
+**Where:** `migrateLegacyMemoryIfNeeded` in `src/memory/memdir/memoryMigration.ts`,
+called once per process (memoized `getPrivateMemPath`) from `src/memory/memdir/paths.ts`.
 Its "already migrated" test, `hasMemoryContent(newDir)`, looks only at
 `MEMORY.md` and top-level `*.md` in the private dir — the git-tracked `team/`
 subdirectory does not count. With the private files absent it runs
@@ -34,15 +34,14 @@ the project-local memory dir, start a session.
 **Also bites:** a teammate who clones the repo while holding a legacy dir for
 the same slug — a fresh clone has no private files, so their stale team files
 land in the tracked team dir and show up in `git status`, ready to be committed.
-`memoryMigration.test.ts` pins "copies the team/ subtree" as intended.
+`memoryMigration.test.ts` pinned "copies the team/ subtree" as intended.
 
-**Status:** open, 2026-09-28. The 29 root copies are untracked and all
-superseded — delete them, don't commit them (none is linked from the index).
-Why the private dir was empty is unknown: it was intact at 2026-09-27 22:08 and
+**Status:** FIXED 2026-10-31 on `feat/memory-hygiene`. The copy filters out
+`team/` and then writes `.migrated` into the legacy dir, so a private dir that
+empties later is not refilled with the old snapshot either. Red tests first
+(`never copies the legacy team/…`, `migrates once…`); the "copies the team/
+subtree" pin was deleted with the fix. The 29 root copies of 09-28 were
+untracked and are gone. Why the private dir was empty is unknown: it was intact at 2026-09-27 22:08 and
 empty before 09-28 18:30. The 14 private memories written after June were lost
 with it and restored from session transcripts.
-
-**Why not fixed:** found by a memory-maintenance pass, which cannot edit `src/`.
-Likely fix: count an existing `team/` (or a marker file) as "already migrated",
-and never copy the legacy `team/` into the git-tracked team dir. Design context:
-[[memory-subsystem-design-doc]].
+Design context: [[memory-subsystem-design-doc]].

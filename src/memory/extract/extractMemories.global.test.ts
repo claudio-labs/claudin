@@ -8,12 +8,11 @@ import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import { withoutTrailingSep } from 'src/memory/memdir/memoryScopes.js'
 import {
-  createExtractionCanUseTool,
-  createMemoryCanUseTool,
   existingMemoryManifest,
   hasMemoryWritesSince,
   memoryCountsOf,
 } from 'src/memory/extract/extractMemories.js'
+import { createExtractionCanUseTool, createMemoryCanUseTool } from 'src/memory/forkToolGate.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import type { Message } from 'src/shared/types/message.js'

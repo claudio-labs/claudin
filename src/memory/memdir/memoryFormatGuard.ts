@@ -21,7 +21,19 @@ import {
 } from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { MAX_ENTRYPOINT_BYTES, MAX_ENTRYPOINT_LINES } from 'src/memory/memdir/entrypointFit.js'
+import { readMemoryFilesSync } from 'src/memory/memdir/memoryAudit.js'
 import { parseExpires } from 'src/memory/memdir/memoryExpires.js'
+import {
+  describeMemory,
+  indexOverCap,
+  isMemoryHygieneEnabled,
+  parseContradicts,
+  readHygieneFacts,
+  visibleMemories,
+  similarMemories,
+  type VisibleMemory,
+} from 'src/memory/memdir/memoryHygiene.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
 import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPaths.js'
 
@@ -39,13 +51,19 @@ import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPat
  *    as it will be — so one file gets one verdict, whichever tool writes it.
  *    Where a type may live is judged only for a file that is new or changes
  *    its type: a memory saved before a rule existed is updated in place.
- *  - memoryIndexAdvice notes, after a Write, a Patch or an Edit that creates
- *    the file, a memory file its directory's `MEMORY.md` does not list yet —
- *    counting what the rest of the same response writes to that index
- *    (indexTextFromResponse).
+ *  - memoryWriteNotes, the write tools' `advise` (through notesToAdvice),
+ *    gives two kinds of note. The index-line note, after a Write, a Patch or
+ *    an Edit that creates the file: a memory file its directory's
+ *    `MEMORY.md` does not list yet — counting what the rest of the same
+ *    response writes to that index (indexTextFromResponse). And since
+ *    2026-10-31 (memoryHygiene.ts) three hygiene notes on what makes memory
+ *    grow uncleaned: a new memory that reads like one already saved, a
+ *    measurement or a PR's state saved without `expires:`, and an index the
+ *    write leaves over its cap. CLAUDIN_MEMORY_HYGIENE=0 leaves only the
+ *    index note.
  *
- * Both apply to every family: another family's prompt states the same rules
- * in full, and the guard asks for nothing it does not.
+ * All of it applies to every family: another family's prompt states the same
+ * rules in full, and the guard asks for nothing it does not.
  *
  * The pure halves (`…In`) take the directories as arguments, so they are
  * tested without the path modules; the wrappers resolve them.
@@ -185,6 +203,9 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs, bef
   const expires = parseExpires(frontmatter.expires)
   if (expires.kind === 'invalid') {
     problems.push(`\`expires: ${expires.raw}\` is not a date — write the last day it holds as YYYY-MM-DD, or leave the key out`)
+  }
+  if (parseContradicts(frontmatter.contradicts) === null) {
+    problems.push('`contradicts:` names no memory — list the `name` of each memory this one disagrees with, or leave the key out')
   }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]
@@ -333,19 +354,110 @@ function readIfExists(path: string): string | null {
   }
 }
 
-/**
- * The index-line note for a write to `filePath`, for a tool's `advise`.
- * `pending` is what the same call adds to an index, keyed by the index's
- * absolute path (a Patch that writes the memory and its index line
- * together).
- */
-export function memoryIndexAdvice(
-  filePath: string,
-  pending?: ReadonlyMap<string, string>,
-): ToolAdvice | null {
-  return memoryIndexAdviceIn(getMemoryDirs(), filePath, indexPath => {
+function pendingIndexText(pending?: ReadonlyMap<string, string>): (indexPath: string) => string | null {
+  return indexPath => {
     const onDisk = readIfExists(indexPath)
     const added = pending?.get(indexPath)
     return added === undefined ? onDisk : `${onDisk ?? ''}\n${added}`
-  })
+  }
+}
+
+/** What a write is about to leave, for its notes. */
+export type MemoryWrite = {
+  /** The whole file as the write leaves it, when the call says it; null otherwise. */
+  content: string | null
+  /** The file does not exist yet. */
+  isNew: boolean
+  /** Whether to give the index-line note (a write that creates or replaces a memory file). */
+  indexNote: boolean
+}
+
+/**
+ * A measurement or a PR's state: what is true for a while, not for good. A
+ * date alone is not one — 59 of this repo's 62 team decisions open their
+ * description with the day they were taken — and neither is a bare "status"
+ * ("the PR status pill"). Measured on the repo's 276 memories (2026-10-31):
+ * 46 of the 162 team-root files match, the censuses and benches.
+ */
+const SNAPSHOT_RE = /\bcensus\b|\bcenso\b|\bbench(?:mark)?s?\b|\bsnapshot\b|\b(?:pr|mr|issue)[- ]?#?\d+\b/i
+
+const MAX_SIMILAR = 3
+
+/**
+ * The hygiene notes for a write of `write.content` to `filePath`
+ * (memoryHygiene.ts): pure over its inputs. `memories` lists what the
+ * directories hold now, asked only for a new memory file.
+ */
+export function memoryHygieneNotesIn(
+  dirs: MemoryDirs,
+  filePath: string,
+  write: MemoryWrite,
+  memories: () => readonly VisibleMemory[],
+): string[] {
+  if (write.content === null) return []
+  const abs = resolve(filePath)
+  const index = dirs.find(dir => dir.index === abs)
+  if (index) {
+    const over = indexOverCap(write.content)
+    if (!over) return []
+    const lost = over.shortened > 0 ? `${over.shortened} entries would load without their hook, the last ones first` : 'its tail would not load'
+    return [
+      `\`${abs}\` will be ${over.lines} lines and ${over.bytes} bytes, over its cap (${MAX_ENTRYPOINT_LINES} lines, ${MAX_ENTRYPOINT_BYTES.toLocaleString('en-US')} bytes): ${lost}. Shorten the hooks to one line under ~150 chars and move detail into the topic files — a memory is never deleted to make room.`,
+    ]
+  }
+  const file = memoryFileOf(filePath, dirs)
+  if (!file || !write.isNew) return []
+  const notes: string[] = []
+  const facts = readHygieneFacts(abs, write.content)
+  const others = memories().filter(m => resolve(m.path) !== abs)
+  const similar = similarMemories(facts.tokens, others).slice(0, MAX_SIMILAR)
+  if (similar.length > 0) {
+    const list = similar.map(({ memory }) => `\`${describeMemory(memory, dirs)}\``).join(', ')
+    notes.push(
+      `\`${relative(file.root, abs)}\` reads like ${similar.length === 1 ? 'a memory already saved' : 'memories already saved'}: ${list}. If it is the same fact, update that one and delete this one, so the fact lives in one file; if it is another fact, link the two with \`[[name]]\`.`,
+    )
+  }
+  const { frontmatter } = parseFrontmatter(write.content, abs)
+  const said = [basename(abs, '.md'), frontmatter.name, frontmatter.description].filter(v => typeof v === 'string').join(' ')
+  // A decision, a bug or a doc is filed to last: a bench it cites is its evidence, not its end
+  if (!file.category && !isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {
+    notes.push(
+      `\`${relative(file.root, abs)}\` reads like a dated measurement or status. Give it \`expires: YYYY-MM-DD\`, the last day it holds (about 60 days out when it says nothing else), so it is re-verified and folded into what it supports instead of staying in the index for good.`,
+    )
+  }
+  return notes
+}
+
+/** A write's notes: the index-line note and the hygiene notes, kept apart for a call that writes several files and gives one index note. */
+export type MemoryWriteNotes = { index: string | null; hygiene: string[] }
+
+/**
+ * Every note for a write to `filePath`. `pending` is what the same response
+ * adds to an index, keyed by the index's absolute path
+ * (indexTextFromResponse).
+ */
+export function memoryWriteNotes(
+  filePath: string,
+  write: MemoryWrite,
+  pending?: ReadonlyMap<string, string>,
+): MemoryWriteNotes {
+  const dirs = getMemoryDirs()
+  const index = write.indexNote ? (memoryIndexAdviceIn(dirs, filePath, pendingIndexText(pending))?.message ?? null) : null
+  const hygiene = isMemoryHygieneEnabled()
+    ? memoryHygieneNotesIn(dirs, filePath, write, () => visibleMemories(readMemoryFilesSync(dirs)))
+    : []
+  return { index, hygiene }
+}
+
+/** The notes as a tool's `advise`: the index note first, or null when there is none. */
+export function notesToAdvice({ index, hygiene }: MemoryWriteNotes): ToolAdvice | null {
+  const notes = [...(index ? [index] : []), ...hygiene]
+  return notes.length > 0 ? { message: notes.join('\n\n') } : null
+}
+
+/** Whether `filePath` is a file the write notes speak of — a memory file or an index. Cheap. */
+export function isMemoryWriteTarget(filePath: string): boolean {
+  const dirs = getMemoryDirs()
+  const abs = resolve(filePath)
+  return dirs.some(dir => dir.index === abs) || memoryFileOf(abs, dirs) !== null
 }

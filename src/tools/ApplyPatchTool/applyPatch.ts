@@ -17,7 +17,9 @@
 // validation refuses only a patch in which nothing could apply. Killswitch:
 // CLAUDIN_PATCH_ALL_OR_NOTHING=1 — any change not applied fails the call with
 // nothing written, and validation refuses every file-level problem up front,
-// the never-read gate included (with its lines served).
+// the never-read gate included (with its lines served). A context with
+// `options.patchAllOrNothing` gets the same: the auto-dream, so a private
+// memory it deletes never outlives the failed write of its survivor.
 //
 // Read gate. Any read counts: the whole file, an outline, a symbol, a range,
 // an injected CLAUDE.md, a Read since clipped out of the transcript, a file
@@ -39,9 +41,11 @@ import type { ToolAdvice, ToolUseContext, ValidationResult } from 'src/tools/Too
 import {
   checkMemoryFileFormat,
   indexTextFromResponse,
-  memoryIndexAdvice,
+  memoryWriteNotes,
+  notesToAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
+import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getPatchFromContents } from 'src/vcs/git/diff.js'
@@ -176,8 +180,8 @@ function servedSuffix(served: string): string {
 /** The tool-name prefix each single-problem message carries, dropped when several are listed. */
 const MESSAGE_PREFIX_RE = new RegExp(`^${APPLY_PATCH_TOOL_NAME}:?\\s*`)
 
-function isAllOrNothing(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)
+function isAllOrNothing(context: ToolUseContext): boolean {
+  return context.options?.patchAllOrNothing === true || isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)
 }
 
 const bullets = (messages: string[]): string =>
@@ -283,7 +287,8 @@ function planFile(group: FileGroup, context: ToolUseContext, strict: boolean): P
     )
   }
   let unread = false
-  if (context.readFileState.get(absPath) === undefined) {
+  // A memory index is in context from the first turn: it counts as read.
+  if (context.readFileState.get(absPath) === undefined && !isSessionMemoryIndex(absPath)) {
     const message = `${APPLY_PATCH_TOOL_NAME}: ${readGateMessage('never-read', rel, 'patching it')}`
     if (strict) {
       const served = first.type === 'update' ? serveUpdateHunk(first, absPath, context) : null
@@ -330,7 +335,7 @@ export function validateApplyPatchInput(
     return fail(`${APPLY_PATCH_TOOL_NAME}: the patch contains no file operations.`)
   }
 
-  const strict = isAllOrNothing()
+  const strict = isAllOrNothing(context)
   const plans = planPatch(hunks, context, strict)
   const problems = plans.flatMap(p => (p.kind === 'problem' ? [p] : []))
   if (problems.length === 0 || (!strict && problems.length < plans.length)) return { result: true }
@@ -428,11 +433,12 @@ export function checkApplyPatchPermissions(
 }
 
 /**
- * The index-line note (memoryFormatGuard.ts) for the first memory file this
- * patch adds, updates or moves in that its directory's `MEMORY.md` does not
- * list — a line this patch, or another call of the same response
- * (`responseToolUses`), adds to that index counts. One note per call is
- * enough. An Add the format guard will refuse gets none: its refusal carries
+ * The notes of memoryFormatGuard.ts for this patch: the index-line note for
+ * the first memory file it adds, updates or moves in that its directory's
+ * `MEMORY.md` does not list — a line this patch, or another call of the same
+ * response (`responseToolUses`), adds to that index counts; one note per call
+ * is enough — and the hygiene notes for every memory file and index it
+ * writes. An Add the format guard will refuse gets none: its refusal carries
  * the rules.
  */
 export function applyPatchMemoryIndexAdvice(
@@ -446,6 +452,7 @@ export function applyPatchMemoryIndexAdvice(
     return null // validateInput has refused it already
   }
   const targets: Array<{ hunk: Hunk; path: string }> = []
+  const indexes: Array<{ hunk: Hunk; path: string }> = []
   const pending = indexTextFromResponse(responseToolUses, getCwd())
   for (const hunk of hunks) {
     if (hunk.type === 'delete') continue
@@ -460,15 +467,43 @@ export function applyPatchMemoryIndexAdvice(
       targets.push({ hunk, path })
       continue
     }
+    indexes.push({ hunk, path })
     const added = hunk.type === 'add' ? hunk.contents : hunk.chunks.map(c => c.newLines.join('\n')).join('\n')
     pending.set(path, `${pending.get(path) ?? ''}\n${added}`)
   }
+  let index: string | null = null
+  const hygiene: string[] = []
   for (const { hunk, path } of targets) {
     if (hunk.type === 'add' && checkMemoryFileFormat(path, addContent(hunk))) continue
-    const advice = memoryIndexAdvice(path, pending)
-    if (advice) return advice
+    const notes = memoryWriteNotes(
+      path,
+      { content: hunk.type === 'add' ? addContent(hunk) : null, isNew: hunk.type === 'add' && !getFsImplementation().existsSync(path), indexNote: index === null },
+      pending,
+    )
+    index ??= notes.index
+    hygiene.push(...notes.hygiene)
   }
-  return null
+  for (const { hunk, path } of indexes) {
+    hygiene.push(...memoryWriteNotes(path, { content: patchedText(path, hunk), isNew: false, indexNote: false }).hygiene)
+  }
+  return notesToAdvice({ index, hygiene })
+}
+
+/**
+ * What a hunk leaves in a file, by the engine that stages it (applySections):
+ * an Add's content, or the Update's chunks applied to the file as it is. Null
+ * when a chunk will not apply, or the file cannot be read — the call reports
+ * both.
+ */
+function patchedText(path: string, hunk: Hunk): string | null {
+  if (hunk.type === 'add') return addContent(hunk)
+  if (hunk.type === 'delete') return null
+  try {
+    const { text, outcomes } = applySections(path, [hunk.chunks], readFileForStaging(path).content)
+    return outcomes.flat().some(o => o.kind === 'failed') ? null : text
+  } catch {
+    return null
+  }
 }
 
 /** What staging one file produced: its change, if any, and the reports of its hunks. */
@@ -585,7 +620,7 @@ export async function runApplyPatch(
   messageId: UUID,
 ): Promise<{ output: ApplyPatchOutput; newMessages: DiagnosticAttachment[] }> {
   const hunks = parsePatch(input.patchText).hunks
-  const strict = isAllOrNothing()
+  const strict = isAllOrNothing(context)
   const plans = planPatch(hunks, context, strict)
 
   const staged: StagedChange[] = []

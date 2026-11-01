@@ -19,6 +19,7 @@ import {
   rawSettingsContainsKey,
 } from 'src/platform/settings/settings.js'
 import { TOOL_RESULTS_SUBDIR } from 'src/agent/tools/toolResultStorage.js'
+import { CURSOR_SUFFIX } from 'src/memory/extract/extractionCursor.js'
 import { cleanupStaleAgentWorktrees } from 'src/vcs/git/worktree.js'
 
 const DEFAULT_CLEANUP_PERIOD_DAYS = 30
@@ -181,7 +182,8 @@ export async function cleanupOldSessionFiles(): Promise<CleanupResult> {
 
     for (const entry of entries) {
       if (entry.isFile()) {
-        if (!entry.name.endsWith('.jsonl') && !entry.name.endsWith('.cast')) {
+        // A transcript, its recording, and its memory-extraction cursor
+        if (!entry.name.endsWith('.jsonl') && !entry.name.endsWith('.cast') && !entry.name.endsWith(CURSOR_SUFFIX)) {
           continue
         }
         try {

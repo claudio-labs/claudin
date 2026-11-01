@@ -10,9 +10,12 @@ import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import {
   checkMemoryFileFormat,
   indexTextFromResponse,
-  memoryIndexAdvice,
+  isMemoryWriteTarget,
+  memoryWriteNotes,
+  notesToAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
+import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,
@@ -95,6 +98,7 @@ import {
 import {
   applyEditToFile,
   areFileEditsInputsEquivalent,
+  editedFile,
   findActualString,
   getPatchForEdit,
   preserveQuoteStyle,
@@ -343,8 +347,10 @@ export const FileEditTool = buildTool({
     // the file authorizes it, and whether old_string is in the file as it is
     // now decides it below. A file never read is edited only when old_string
     // sits in it exactly once — the model wrote those bytes, so it saw them.
+    // A memory index is in context from the first turn: it counts as read.
     if (
       toolUseContext.readFileState.get(fullFilePath) === undefined &&
+      !isSessionMemoryIndex(fullFilePath) &&
       !locateExactText(fileContent, old_string)
     ) {
       return {
@@ -451,11 +457,27 @@ export const FileEditTool = buildTool({
   },
   advise(input, context) {
     // An Edit that creates a memory file gets the index-line note a Write
-    // gets (memoryFormatGuard.ts); one that changes a file does not
-    if (input.old_string !== '') return null
-    return memoryIndexAdvice(
-      expandPath(input.file_path),
-      indexTextFromResponse(context.responseToolUses, getCwd()),
+    // gets (memoryFormatGuard.ts), one that changes a file does not; both
+    // get the hygiene notes on what the edit leaves
+    const path = expandPath(input.file_path)
+    if (!isMemoryWriteTarget(path)) return null
+    const creates = input.old_string === ''
+    let onDisk: string | null
+    try {
+      const current = readFileForEdit(path)
+      onDisk = current.fileExists ? current.content : null
+    } catch {
+      return null // an unreadable file is reported by the call
+    }
+    const content = creates
+      ? onDisk === null ? input.new_string : null
+      : onDisk === null ? null : editedFile(onDisk, input.old_string, input.new_string, input.replace_all ?? false)
+    return notesToAdvice(
+      memoryWriteNotes(
+        path,
+        { content, isNew: creates && onDisk === null, indexNote: creates },
+        indexTextFromResponse(context.responseToolUses, getCwd()),
+      ),
     )
   },
   inputsEquivalent(input1, input2) {
@@ -551,7 +573,10 @@ export const FileEditTool = buildTool({
 
     // A file never read: the check validateInput made, against the bytes
     // about to be replaced.
-    const unread = fileExists && readFileState.get(absoluteFilePath) === undefined
+    const unread =
+      fileExists &&
+      readFileState.get(absoluteFilePath) === undefined &&
+      !isSessionMemoryIndex(absoluteFilePath)
     if (unread && !locateExactText(originalFileContents, old_string)) {
       throw new Error(unreadRefusalFor(originalFileContents, old_string))
     }

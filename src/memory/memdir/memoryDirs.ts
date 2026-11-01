@@ -89,6 +89,25 @@ export function memoryScopeOf(path: string): MemoryScope | null {
   return findMemoryDir(getMemoryDirs(), path)?.scope ?? null
 }
 
+/**
+ * Whether `path` is the `MEMORY.md` of one of the session's directories. An
+ * index is in context from the first turn, so an in-place write to it (Edit,
+ * Patch) counts it as read; a whole-file Write still asks for a Read, since
+ * the index in context may be the one fitted to its cap
+ * (memdir.ts fitEntrypointContent).
+ *
+ * Asked by the tools rather than seeding readFileState where the index is
+ * injected, as attachments/memory.ts does for a `paths:` memory: a seeded
+ * entry is watched for changes, so every edit the dream or another session
+ * made to an index would come back as a changed-file reminder. Edit and
+ * Patch match their old text against the bytes on disk either way, so
+ * nothing is ever written blind.
+ */
+export function isSessionMemoryIndex(path: string): boolean {
+  const abs = resolve(path)
+  return getMemoryDirs().some(dir => dir.index === abs)
+}
+
 function realRoot(root: string): string | null {
   try {
     return (getFsImplementation().realpathSync(root) + sep).normalize('NFC')

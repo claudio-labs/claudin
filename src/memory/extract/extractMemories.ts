@@ -17,14 +17,21 @@
 
 import { feature } from 'bun:bundle'
 import { basename } from 'path'
-import { readFileSync } from 'fs'
-import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
+import {
+  getIsRemoteMode,
+  getOriginalCwd,
+  getSessionId,
+  isTurnActive,
+} from 'src/platform/bootstrap/state.js'
+import { getProjectDir } from 'src/sessions/sessionStorage.js'
+import { type ExtractionCursorStore, fileCursorStore } from 'src/memory/extract/extractionCursor.js'
+import { createExtractionCanUseTool } from 'src/memory/forkToolGate.js'
 import {
   formatMemoryManifest,
   scanMemoryFiles,
 } from 'src/memory/memdir/memoryScan.js'
 import {
+  getExtractionIdleMs,
   getExtractionTurnInterval,
   isAutoMemoryEnabled,
   isExtractMemoriesEnabled,
@@ -35,18 +42,7 @@ import {
   type MemoryDir,
   memoryScopeOf,
 } from 'src/memory/memdir/memoryDirs.js'
-import {
-  ENTRYPOINT_NAME,
-  type MemoryScope,
-  withoutTrailingSep,
-} from 'src/memory/memdir/memoryScopes.js'
-import type { Tool } from 'src/tools/Tool.js'
-import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
-import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
-import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { writtenPaths as writtenPathsOf } from 'src/tools/shared/writtenPaths.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import type {
@@ -74,7 +70,6 @@ import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
 import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
 import { type EffortValue, parseEffortValue } from 'src/providers/effort/effort.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
-import { isENOENT } from 'src/shared/errors.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {
   buildExtractCombinedPrompt,
@@ -136,6 +131,16 @@ function countModelVisibleMessagesSince(
 }
 
 /**
+ * The human turns — prompts the user typed, not tool results — after the
+ * cursor; every one when the cursor is unset or gone (compaction), like
+ * countModelVisibleMessagesSince.
+ */
+export function humanTurnsSince(messages: Message[], sinceUuid: string | undefined): number {
+  const cursor = sinceUuid === undefined ? -1 : messages.findIndex(m => m.uuid === sinceUuid)
+  return count(messages.slice(cursor + 1), isHumanTurn)
+}
+
+/**
  * Returns true if any assistant message after the cursor UUID contains a
  * tool_use block that writes a memory path — a Write, an Edit or a Patch,
  * by input shape (writtenPaths.ts).
@@ -143,20 +148,16 @@ function countModelVisibleMessagesSince(
  * The main agent's prompt has full save instructions — when it writes
  * memories, the forked extraction is redundant. runExtraction skips the
  * agent and advances the cursor past this range, making the main agent
- * and the background agent mutually exclusive per turn.
+ * and the background agent mutually exclusive per turn. A cursor no longer
+ * among the messages (compaction, a cursor read back from another process)
+ * checks them all, as countModelVisibleMessagesSince counts them all.
  */
 export function hasMemoryWritesSince(
   messages: Message[],
   sinceUuid: string | undefined,
 ): boolean {
-  let foundStart = sinceUuid === undefined
-  for (const message of messages) {
-    if (!foundStart) {
-      if (message.uuid === sinceUuid) {
-        foundStart = true
-      }
-      continue
-    }
+  const cursor = sinceUuid === undefined ? -1 : messages.findIndex(m => m.uuid === sinceUuid)
+  for (const message of messages.slice(cursor + 1)) {
     if (message.type !== 'assistant') {
       continue
     }
@@ -173,113 +174,6 @@ export function hasMemoryWritesSince(
   return false
 }
 
-// ============================================================================
-// Tool Permissions
-// ============================================================================
-
-function denyMemoryTool(tool: Tool, reason: string) {
-  logForDebugging(`[autoMem] denied ${tool.name}: ${reason}`)
-  return {
-    behavior: 'deny' as const,
-    message: reason,
-    decisionReason: { type: 'other' as const, reason },
-  }
-}
-
-/**
- * Whether an Edit or Write only adds to `filePath`: an Edit whose new text
- * keeps the old, a Write of a new file or of content that keeps the file's.
- */
-function onlyAdds(toolName: string, input: Record<string, unknown>, filePath: string): boolean {
-  if (toolName === FILE_EDIT_TOOL_NAME) {
-    return (
-      typeof input.old_string === 'string' &&
-      typeof input.new_string === 'string' &&
-      input.new_string.includes(input.old_string)
-    )
-  }
-  let existing: string
-  try {
-    existing = readFileSync(filePath, 'utf-8')
-  } catch (e) {
-    return isENOENT(e)
-  }
-  return typeof input.content === 'string' && input.content.includes(existing.trimEnd())
-}
-
-/**
- * Creates a canUseTool function that allows Read/Grep/Glob (unrestricted),
- * read-only Bash commands, and Edit/Write only within the memory directories
- * (memoryDirs.ts). Shared by extractMemories and autoDream.
- *
- * `appendOnly` scopes take an Edit or Write only when it adds: both forks
- * pass the global dir, which they may add to but never prune — one project's
- * run cannot tell that a memory every project reads is stale.
- */
-export function createMemoryCanUseTool(
-  appendOnly: readonly MemoryScope[] = [],
-): CanUseToolFn {
-  return async (tool: Tool, input: Record<string, unknown>) => {
-    // Allow Read/Grep/Glob unrestricted — all inherently read-only
-    if (
-      tool.name === FILE_READ_TOOL_NAME ||
-      tool.name === GREP_TOOL_NAME ||
-      tool.name === GLOB_TOOL_NAME
-    ) {
-      return { behavior: 'allow' as const, updatedInput: input }
-    }
-
-    // Allow Bash only for commands that pass BashTool.isReadOnly.
-    // `tool` IS BashTool here — no static import needed.
-    if (tool.name === BASH_TOOL_NAME) {
-      const parsed = tool.inputSchema.safeParse(input)
-      if (parsed.success && tool.isReadOnly(parsed.data)) {
-        return { behavior: 'allow' as const, updatedInput: input }
-      }
-      return denyMemoryTool(
-        tool,
-        'Only read-only shell commands are permitted in this context (ls, find, grep, cat, stat, wc, head, tail, and similar)',
-      )
-    }
-
-    if (
-      (tool.name === FILE_EDIT_TOOL_NAME ||
-        tool.name === FILE_WRITE_TOOL_NAME) &&
-      'file_path' in input
-    ) {
-      const filePath = input.file_path
-      const scope = typeof filePath === 'string' ? memoryScopeOf(filePath) : null
-      if (scope !== null && !appendOnly.includes(scope)) {
-        return { behavior: 'allow' as const, updatedInput: input }
-      }
-      if (scope !== null) {
-        return onlyAdds(tool.name, input, filePath as string)
-          ? { behavior: 'allow' as const, updatedInput: input }
-          : denyMemoryTool(
-              tool,
-              `the ${scope} memory dir is append-only in this run: add a memory or a line, never remove or rewrite one — leave a ${scope} memory this project contradicts as it is, and report it`,
-            )
-      }
-    }
-
-    const where = getMemoryDirs()
-      .map(dir => withoutTrailingSep(dir.root))
-      .join(', ')
-    return denyMemoryTool(
-      tool,
-      `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${where} are allowed`,
-    )
-  }
-}
-
-/**
- * The extraction fork's gate: append-only on the global dir, as the dream's
- * is — a background run in one project never rewrites or removes a memory
- * every project reads.
- */
-export function createExtractionCanUseTool(): CanUseToolFn {
-  return createMemoryCanUseTool(['global'])
-}
 
 // ============================================================================
 // Fresh agent on another model
@@ -442,12 +336,46 @@ let extractor:
 let drainer: (timeoutMs?: number) => Promise<void> = async () => {}
 
 /**
+ * What an extraction calls outside itself: the fork, the manifest scan and
+ * the notification setting. Injected so a test drives the whole closure
+ * without mock.module; production passes defaultExtractMemoriesDeps.
+ */
+export type ExtractMemoriesDeps = {
+  runForkedAgent: typeof runForkedAgent
+  existingMemoryManifest: (dirs: readonly MemoryDir[]) => Promise<string>
+  notifyMemorySaved: () => boolean
+  /** Where each session's extraction stopped (extractionCursor.ts). */
+  cursors: ExtractionCursorStore
+  sessionId: () => string
+  /** Whether a turn is running now: the idle trigger waits for the next stop then. */
+  isTurnActive: () => boolean
+}
+
+export const defaultExtractMemoriesDeps: ExtractMemoriesDeps = {
+  runForkedAgent,
+  existingMemoryManifest,
+  notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
+  cursors: fileCursorStore(() => getProjectDir(getOriginalCwd())),
+  sessionId: getSessionId,
+  isTurnActive,
+}
+
+/**
  * Initialize the memory extraction system.
  * Creates a fresh closure that captures all mutable state (cursor position,
  * overlap guard, pending context). Call once at startup alongside
  * initConfidenceRating/initPromptCoaching, or per-test in beforeEach.
+ *
+ * The cursor is also kept per session in `deps.cursors`, and the turn
+ * throttle counts the human turns after it, so both survive a restart and a
+ * resume. A throttled turn arms the idle trigger: with no new prompt for
+ * getExtractionIdleMs, the tail the throttle held back is extracted while
+ * the main loop's cache is still warm — the end of a session, which no exit
+ * hook could wait for.
  */
-export function initExtractMemories(): void {
+export function initExtractMemories(
+  deps: ExtractMemoriesDeps = defaultExtractMemoriesDeps,
+): void {
   // --- Closure-scoped mutable state ---
 
   /** Every promise handed out by the extractor that hasn't settled yet.
@@ -457,14 +385,17 @@ export function initExtractMemories(): void {
   const inFlightExtractions = new Set<Promise<void>>()
 
   /** UUID of the last message processed — cursor so each run only
-   *  considers messages added since the previous extraction. */
+   *  considers messages added since the previous extraction. Kept in
+   *  `deps.cursors` for `cursorSession`, and read back when the session
+   *  changes (a restart, an in-process /resume). */
   let lastMemoryMessageUuid: string | undefined
+  let cursorSession: string | undefined
 
   /** True while runExtraction is executing — prevents overlapping runs. */
   let inProgress = false
 
-  /** Counts eligible turns since the last extraction run. Resets to 0 after each run. */
-  let turnsSinceLastExtraction = 0
+  /** The idle trigger armed by the last throttled turn, if any. */
+  let idleTimer: ReturnType<typeof setTimeout> | undefined
 
   /** loopKey we last fired a repeated-error extraction for, and the human turn
    *  it was in — together they form the "per loop-key + new human turn" cooldown
@@ -478,21 +409,65 @@ export function initExtractMemories(): void {
     | {
         context: REPLHookContext
         appendSystemMessage?: AppendSystemMessageFn
+        sessionId: string
       }
     | undefined
+
+  /**
+   * Loads `sessionId`'s cursor when the closure last worked for another
+   * session. A run is handed the session its context belongs to, taken when
+   * its stop hook fired: an idle or trailing run can start after an
+   * in-process /resume has moved deps.sessionId() on.
+   */
+  function syncCursor(sessionId: string): void {
+    if (sessionId !== cursorSession) {
+      cursorSession = sessionId
+      lastMemoryMessageUuid = deps.cursors.read(sessionId)
+    }
+  }
+
+  function advanceCursor(sessionId: string, messages: Message[]): void {
+    const uuid = messages.at(-1)?.uuid
+    if (!uuid) return
+    lastMemoryMessageUuid = uuid
+    deps.cursors.write(sessionId, uuid)
+  }
+
+  function cancelIdle(): void {
+    if (idleTimer !== undefined) clearTimeout(idleTimer)
+    idleTimer = undefined
+  }
+
+  /** After a throttled turn: extract its tail if nothing else happens for a while. */
+  function armIdle(context: REPLHookContext, sessionId: string, appendSystemMessage?: AppendSystemMessageFn): void {
+    cancelIdle()
+    idleTimer = setTimeout(() => {
+      idleTimer = undefined
+      // A turn running now ends in a stop hook, which arms the timer again
+      if (inProgress || deps.isTurnActive()) return
+      logForDebugging('[extractMemories] idle — extracting the turns the throttle held back')
+      const run = runExtraction({ context, sessionId, appendSystemMessage, isTrailingRun: true })
+      inFlightExtractions.add(run)
+      void run.finally(() => inFlightExtractions.delete(run))
+    }, getExtractionIdleMs())
+    idleTimer.unref?.()
+  }
 
   // --- Inner extraction logic ---
 
   async function runExtraction({
     context,
+    sessionId,
     appendSystemMessage,
     isTrailingRun,
   }: {
     context: REPLHookContext
+    sessionId: string
     appendSystemMessage?: AppendSystemMessageFn
     isTrailingRun?: boolean
   }): Promise<void> {
     const { messages } = context
+    syncCursor(sessionId)
     const newMessageCount = countModelVisibleMessagesSince(
       messages,
       lastMemoryMessageUuid,
@@ -505,10 +480,7 @@ export function initExtractMemories(): void {
       logForDebugging(
         '[extractMemories] skipping — conversation already wrote to memory files',
       )
-      const lastMessage = messages.at(-1)
-      if (lastMessage?.uuid) {
-        lastMemoryMessageUuid = lastMessage.uuid
-      }
+      advanceCursor(sessionId, messages)
       return
     }
 
@@ -541,18 +513,20 @@ export function initExtractMemories(): void {
     const canUseTool = createExtractionCanUseTool()
     const cacheSafeParams = createCacheSafeParams(context)
 
-    // Only run extraction every N eligible turns (getExtractionTurnInterval).
-    // Trailing extractions (from stashed contexts) skip this check since they
-    // process already-committed work that should not be throttled. A loop-fire
-    // also bypasses the throttle (we want the lesson promptly) but still resets
-    // the counter below, so it doubles as the routine extraction for cadence.
+    // Only run extraction every N human turns since the cursor
+    // (getExtractionTurnInterval) — counted from the messages, so a restart
+    // keeps the count. Trailing and idle extractions skip this check since
+    // they process already-committed work that should not be throttled. A
+    // loop-fire also bypasses the throttle (we want the lesson promptly) and,
+    // advancing the cursor, doubles as the routine extraction for cadence.
     if (!isTrailingRun && loopHint === undefined) {
-      turnsSinceLastExtraction++
-      if (turnsSinceLastExtraction < getExtractionTurnInterval()) {
+      const turns = humanTurnsSince(messages, lastMemoryMessageUuid)
+      if (turns < getExtractionTurnInterval()) {
+        if (turns > 0) armIdle(context, sessionId, appendSystemMessage)
         return
       }
     }
-    turnsSinceLastExtraction = 0
+    cancelIdle()
 
     inProgress = true
     const startTime = Date.now()
@@ -564,7 +538,7 @@ export function initExtractMemories(): void {
       // Pre-inject the memory directory manifest so the agent doesn't spend
       // a turn on `ls` (memoryScan.ts, frontmatter only).
       // Placed after the throttle gate so skipped turns don't pay the scan cost.
-      const existingMemories = await existingMemoryManifest(getMemoryDirs())
+      const existingMemories = await deps.existingMemoryManifest(getMemoryDirs())
       const globalDir = getMemoryDir('global')?.root ?? null
 
       // The MEMORY.md index is always in the system prompt now that the
@@ -578,7 +552,7 @@ export function initExtractMemories(): void {
       )
 
       const freshAgent = freshAgentFromEnv()
-      const result = await runForkedAgent({
+      const result = await deps.runForkedAgent({
         promptMessages: [createUserMessage({ content: userPrompt })],
         ...(freshAgent
           ? freshAgentParams(cacheSafeParams, lastMemoryMessageUuid, freshAgent)
@@ -597,10 +571,7 @@ export function initExtractMemories(): void {
       // Advance the cursor only after a successful run. If the agent errors
       // out (caught below), the cursor stays put so those messages are
       // reconsidered on the next extraction.
-      const lastMessage = messages.at(-1)
-      if (lastMessage?.uuid) {
-        lastMemoryMessageUuid = lastMessage.uuid
-      }
+      advanceCursor(sessionId, messages)
 
       const writtenPaths = extractWrittenPaths(result.messages)
       const turnCount = count(result.messages, m => m.type === 'assistant')
@@ -637,7 +608,7 @@ export function initExtractMemories(): void {
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
       )
-      if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
+      if (memoryPaths.length > 0 && deps.notifyMemorySaved()) {
         appendSystemMessage?.({
           ...createMemorySavedMessage(memoryPaths),
           memoryCounts: memoryCountsOf(memoryPaths),
@@ -661,6 +632,7 @@ export function initExtractMemories(): void {
         )
         await runExtraction({
           context: trailing.context,
+          sessionId: trailing.sessionId,
           appendSystemMessage: trailing.appendSystemMessage,
           isTrailingRun: true,
         })
@@ -693,6 +665,12 @@ export function initExtractMemories(): void {
       return
     }
 
+    // A new stop supersedes the idle trigger an older turn armed: that
+    // context's tail is this one's head, and whatever this call decides
+    // (skip, stash, run, throttle) settles it — a throttle arms it again.
+    cancelIdle()
+    const sessionId = deps.sessionId()
+
     // If an extraction is already in progress, stash this context for a
     // trailing run (overwrites any previously stashed context — only the
     // latest matters since it has the most messages).
@@ -700,11 +678,11 @@ export function initExtractMemories(): void {
       logForDebugging(
         '[extractMemories] extraction in progress — stashing for trailing run',
       )
-      pendingContext = { context, appendSystemMessage }
+      pendingContext = { context, appendSystemMessage, sessionId }
       return
     }
 
-    await runExtraction({ context, appendSystemMessage })
+    await runExtraction({ context, sessionId, appendSystemMessage })
   }
 
   extractor = async (context, appendSystemMessage) => {

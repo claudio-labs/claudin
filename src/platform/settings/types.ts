@@ -893,7 +893,7 @@ export const SettingsSchema = lazySchema(() =>
         .boolean()
         .optional()
         .describe(
-          'Enable background memory consolidation (auto-dream). When set, overrides the server-side default.',
+          'Background memory consolidation (auto-dream): at most once a day, after five sessions, a background pass merges, retires and re-indexes memories. On unless set to false.',
         ),
       showThinkingSummaries: z
         .boolean()

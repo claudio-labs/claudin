@@ -1,4 +1,5 @@
 import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+import { isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
 
 /**
  * Days elapsed since mtime.  Floor-rounded — 0 for today, 1 for
@@ -28,13 +29,19 @@ function memoryFreshnessText(mtimeMs: number): string {
   )
 }
 
-/** What a Read of a memory file knows of it: its mtime, and its `expires:` date when the read saw the frontmatter. */
-export type MemoryReadFacts = { mtimeMs: number; expires: string | null }
+/**
+ * What a Read of a memory file knows of it: its mtime, and — when the read saw
+ * the frontmatter — its `expires:` date and the memories its `contradicts:`
+ * names.
+ */
+export type MemoryReadFacts = { mtimeMs: number; expires: string | null; contradicts?: readonly string[] }
 
 /**
  * The note a Read of a memory file carries: the age caveat, and — past its
- * `expires:` date — a call to re-verify, in one <system-reminder>. '' when
- * neither applies. Prefixed to FileReadTool output (resultContent.ts) when
+ * `expires:` date — a call to re-verify, and — when it is marked
+ * `contradicts:` (memoryHygiene.ts, off under CLAUDIN_MEMORY_HYGIENE=0) — the
+ * memories it disagrees with, in one <system-reminder>. '' when none
+ * applies. Prefixed to FileReadTool output (resultContent.ts) when
  * the file read lives in a memory directory, and rendered once, when the
  * tool result is mapped, so the day it compares against is the day of the
  * Read and history stays byte-stable.
@@ -44,6 +51,11 @@ export function memoryReadNote(facts: MemoryReadFacts, today: string = localDay(
   if (facts.expires !== null && isExpired(facts.expires, today)) {
     parts.push(
       `Its \`expires:\` date, ${facts.expires}, has passed: re-verify it before relying on it, then move the date or remove the memory.`,
+    )
+  }
+  if (facts.contradicts && facts.contradicts.length > 0 && isMemoryHygieneEnabled()) {
+    parts.push(
+      `It is marked as contradicting ${facts.contradicts.map(name => `\`${name}\``).join(', ')}: another memory says otherwise and neither settled it. Check the code, or ask, before relying on either.`,
     )
   }
   const text = parts.filter(Boolean).join(' ')

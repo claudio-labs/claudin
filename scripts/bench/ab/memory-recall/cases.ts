@@ -23,6 +23,9 @@ export type CaseId =
   | 'team-command'
   | 'expired-memory'
   | 'expired-sole-source'
+  | 'conflict'
+  | 'corrected'
+  | 'abstain'
 
 export type RecallCase = {
   id: CaseId
@@ -210,5 +213,58 @@ export const CASES: readonly RecallCase[] = [
       'MEMORY.md': '- [On-call](project-oncall.md) — who to page for production incidents\n',
     },
     mention: [/expir|out of date|outdated|stale|no longer (?:current|valid|on call)|may no longer|2026-09-30/i],
+  },
+  // Memory hygiene (2026-10-31), from ai-memory 3.3.0's abstention and
+  // contradiction fixtures: two memories that disagree with nothing in the
+  // code to settle it, a value corrected inside its own memory, and a
+  // question no memory answers.
+  {
+    id: 'conflict',
+    measures: 'contradicts: two memories disagree and nothing settles it — the answer raises the conflict',
+    prompt: 'What timeout does this project use for upstream calls? Answer with the number.',
+    memories: {
+      'project-upstream-timeout.md': fm(
+        ['name: project-upstream-timeout', 'description: the timeout for upstream calls', 'type: project'],
+        'Upstream calls time out after 15 seconds.',
+      ),
+      'MEMORY.md': '- [Upstream timeout](project-upstream-timeout.md) — the timeout for upstream calls\n',
+      'team/upstream-timeout.md': fm(
+        ['name: upstream-timeout', 'description: the timeout for upstream calls', 'type: project', 'contradicts:', '  - project-upstream-timeout'],
+        'Upstream calls time out after 45 seconds.',
+      ),
+      'team/MEMORY.md': '- [Upstream timeout](upstream-timeout.md) — the timeout for upstream calls\n',
+    },
+    mention: [/conflict|contradict|disagree|inconsisten|(?=[\s\S]*\b15\b)(?=[\s\S]*\b45\b)/i],
+  },
+  {
+    id: 'corrected',
+    measures: 'a value corrected inside its own memory — the answer gives the correction',
+    prompt: 'How many times does the upstream client retry before it fails? Answer with the number.',
+    memories: {
+      'project-upstream-retries.md': fm(
+        ['name: project-upstream-retries', 'description: how often the upstream client retries', 'type: project'],
+        'The upstream client retries 3 times before failing.\n\n**Corrected 2026-10-20:** it retries 5 times since the client rewrite; 3 was the old client.',
+      ),
+      'MEMORY.md': '- [Upstream retries](project-upstream-retries.md) — how often the upstream client retries\n',
+    },
+    mention: [/\b5\b|five/i],
+  },
+  {
+    id: 'abstain',
+    measures: 'nothing in memory or the code answers it — the answer says so instead of inventing',
+    prompt: 'Which database does this project use in production? Answer in one sentence.',
+    memories: {
+      'feedback-test-command.md': fm(
+        ['name: feedback-test-command', 'description: how the tests are run in this project', 'type: feedback'],
+        'Run the test suite with `bun run check`.',
+      ),
+      'MEMORY.md': '- [Test command](feedback-test-command.md) — how the tests are run here\n',
+    },
+    mention: [
+      // Baseline 20261101-000744: "The repo doesn't show a production
+      // database … nothing … mentions one" was graded a miss; `show`,
+      // `indicate` and "nothing … mention(s)" were added before any new arm ran.
+      /(?:do(?:es)?n['’]t|do not|does not|did not|didn['’]t|could(?: not|n['’]t)|can(?:not|['’]t)) (?:\w+ ){0,3}(?:know|find|see|show|have|mention|specif|contain|use|tell|determine|indicate)|nothing (?:[\w,]+ ){0,8}mentions?|no (?:database|information|mention|indication|evidence)|not (?:specified|documented|mentioned|clear|configured)|unknown|unclear|no production/i,
+    ],
   },
 ]

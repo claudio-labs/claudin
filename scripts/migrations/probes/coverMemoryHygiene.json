@@ -1,0 +1,102 @@
+{
+  "test": [
+    "src/memory/autoDream/autoDream.test.ts",
+    "src/memory/autoDream/config.test.ts",
+    "src/memory/extract/extractMemories.closure.test.ts",
+    "src/memory/memdir/paths.gates.test.ts",
+    "src/memory/forkToolGate.test.ts"
+  ],
+  "source": "src/memory/autoDream/autoDream.ts",
+  "probes": [
+    {
+      "name": "dream: the session gate is skipped",
+      "find": "if (!force && sessionIds.length < cfg.minSessions) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "dream: the time gate is skipped",
+      "find": "if (!force && hoursSince < cfg.minHours) return",
+      "replace": ""
+    },
+    {
+      "name": "dream: a failed fork keeps the lock",
+      "find": "await deps.rollbackConsolidationLock(priorMtime)",
+      "replace": ""
+    },
+    {
+      "name": "dream: a killed fork rewinds the lock twice",
+      "find": "if (abortController.signal.aborted) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "dream: the watcher drops Edit paths",
+      "find": "block.name === FILE_EDIT_TOOL_NAME ||",
+      "replace": "false ||"
+    },
+    {
+      "name": "dream: the transcript line ignores the setting",
+      "find": "deps.notifyMemorySaved()\n      ) {",
+      "replace": "true\n      ) {"
+    },
+    {
+      "name": "extract: the turn throttle is skipped",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "if (turns < getExtractionTurnInterval()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "extract: a main-agent memory write no longer skips the range",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "if (hasMemoryWritesSince(messages, lastMemoryMessageUuid)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "extract: a successful run does not advance the cursor",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "// reconsidered on the next extraction.\n      advanceCursor(sessionId, messages)",
+      "replace": "// reconsidered on the next extraction."
+    },
+    {
+      "name": "extract: the index counts as a saved memory",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "p => basename(p) !== ENTRYPOINT_NAME,",
+      "replace": "p => true,"
+    },
+    {
+      "name": "extract: a stashed call never runs",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "const trailing = pendingContext\n",
+      "replace": "const trailing = undefined as typeof pendingContext\n"
+    },
+    {
+      "name": "extract: the gate lets any shell command through",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "if (parsed.success && tool.isReadOnly(parsed.data)) {",
+      "replace": "if (parsed.success) {"
+    },
+    {
+      "name": "paths: CLAUDIN_DISABLE_AUTO_MEMORY=0 no longer forces memory on",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  if (isEnvDefinedFalsy(envVal)) {\n    return true\n  }",
+      "replace": ""
+    },
+    {
+      "name": "paths: a -p session extracts without the headless switch",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "(!getIsNonInteractiveSession() ||",
+      "replace": "(true ||"
+    },
+    {
+      "name": "paths: a .claudin symlink out of the repo is used",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    if (!containmentVerified) {\n      return legacyPath\n    }",
+      "replace": ""
+    },
+    {
+      "name": "config: the dream is off without the setting",
+      "source": "src/memory/autoDream/config.ts",
+      "find": "return getInitialSettings().autoDreamEnabled !== false",
+      "replace": "return getInitialSettings().autoDreamEnabled === true"
+    }
+  ]
+}

@@ -34,9 +34,10 @@ describe('navigation-map sync wiring', () => {
     )
   })
 
-  test('a headless run waits for a write in flight before it exits', () => {
-    expect(source('platform/headless/print/runHeadless.ts')).toMatch(
-      /await drainPendingRuleMapSync\(\)\s*gracefulShutdownSync\(/,
+  test('a headless run waits for a write in flight before it exits, and for a dream after it', () => {
+    const code = source('platform/headless/print/runHeadless.ts').replace(LINE_COMMENT_RE, '')
+    expect(code).toMatch(
+      /await drainPendingRuleMapSync\(\)\s*await drainPendingAutoDream\(\)\s*gracefulShutdownSync\(/,
     )
   })
 

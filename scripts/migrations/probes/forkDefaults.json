@@ -42,10 +42,10 @@
       "replace": "      false)\n"
     },
     {
-      "name": "extraction fires every 15 eligible turns",
+      "name": "extraction fires every 5 human turns",
       "source": "src/memory/memdir/paths.ts",
-      "find": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 15\n",
-      "replace": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 14\n"
+      "find": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 5\n",
+      "replace": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 4\n"
     },
     {
       "name": "CLAUDIN_EXTRACT_MEMORIES_EVERY is read",
