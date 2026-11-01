@@ -44,6 +44,12 @@ async function waitForNotification(
   )
 }
 
+// A command still running when its test fails would notify into the next test.
+function killTask(state: AppState, taskId: string): void {
+  const task = state.tasks[taskId] as { shellCommand?: { kill(): void } | null } | undefined
+  task?.shellCommand?.kill()
+}
+
 describe('MonitorTool', () => {
   test('isConcurrencySafe is true and userFacingName is Monitor', () => {
     expect(MonitorTool.isConcurrencySafe?.()).toBe(true)
@@ -218,8 +224,67 @@ describe('MonitorTool.call', () => {
     const task = harness.getState().tasks[taskId]
     expect(task).toMatchObject({ type: 'local_bash', kind: 'monitor' })
 
-    const exit = await waitForNotification(n => n.includes('<status>'))
+    const exit = await waitForNotification(n => n.includes(taskId) && n.includes('<status>'))
     expect(exit).toContain(taskId)
     expect(exit).toContain('<status>completed</status>')
+  }, 15_000)
+
+  // The prompt promises output while the command runs; until 11-01 only the
+  // exit notice ever reached the model.
+  test('delivers output lines while the command is still running', async () => {
+    const harness = makeStateHarness()
+    const context = {
+      abortController: new AbortController(),
+      setAppState: harness.setAppState,
+      toolUseId: 'toolu_monitor_stream',
+    } as unknown as ToolUseContext
+
+    const result = await MonitorTool.call(
+      { command: "printf 'first-event\\n'; sleep 4; printf 'second-event\\n'", description: 'two events' },
+      context,
+    )
+    const { taskId } = result.data
+    try {
+      const event = await waitForNotification(n => n.includes('first-event'), 3_000)
+      expect(event).toContain(taskId)
+      expect(event).not.toContain('<status>')
+      expect(harness.getState().tasks[taskId]?.status).toBe('running')
+
+      await waitForNotification(n => n.includes(taskId) && n.includes('<status>'), 10_000)
+      const second = getCommandQueue()
+        .map(c => String(c.value))
+        .filter(v => v.includes('second-event'))
+      expect(second).toHaveLength(1)
+    } finally {
+      killTask(harness.getState(), taskId)
+    }
+  }, 20_000)
+
+  test('input schema accepts timeout_ms', () => {
+    expect(
+      MonitorTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_ms: 60_000 }).success,
+    ).toBe(true)
+  })
+
+  test('timeout_ms kills the monitor and says it expired', async () => {
+    const harness = makeStateHarness()
+    const context = {
+      abortController: new AbortController(),
+      setAppState: harness.setAppState,
+      toolUseId: 'toolu_monitor_timeout',
+    } as unknown as ToolUseContext
+
+    const result = await MonitorTool.call(
+      { command: 'sleep 30', description: 'never ends', timeout_ms: 1_000 } as never,
+      context,
+    )
+    const { taskId } = result.data
+    try {
+      const exit = await waitForNotification(n => n.includes(taskId) && n.includes('<status>'), 6_000)
+      expect(exit).toContain('<status>killed</status>')
+      expect(exit).toContain('expired')
+    } finally {
+      killTask(harness.getState(), taskId)
+    }
   }, 15_000)
 })
