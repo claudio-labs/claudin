@@ -33,6 +33,10 @@
  *   G4   expired-sole-source  new ≥ 4/5 and new > base
  *   R    private-recall, team-decision, index-tail, expired-memory
  *                             new ≥ base − 1
+ *   G5   conflict             new ≥ base + 1, or base already at N — "no
+ *                             headroom, no regression" (memory hygiene,
+ *                             plan greedy-petting-torvalds.md, 2026-10-31)
+ *   R    corrected, abstain   new ≥ base − 1
  *   C    cost            median session cost of new ≤ base + 10%
  *   P    placebo         |base − placebo| ≤ 1 on every case; a case whose
  *                        placebo gap is as large as its effect is reported as
@@ -233,7 +237,15 @@ export function evaluateGates(rows: readonly SessionRow[], roles: Roles, reps: n
       detail: pair('expired-sole-source'),
     })
   }
-  for (const id of ['private-recall', 'team-decision', 'index-tail', 'expired-memory'] as const) {
+  if (has('conflict')) {
+    const ceiling = passes(base, 'conflict') === of(base, 'conflict').length
+    out.push({
+      gate: 'G5 conflict',
+      ok: ceiling ? passes(next, 'conflict') >= passes(base, 'conflict') - 1 : passes(next, 'conflict') > passes(base, 'conflict'),
+      detail: `${pair('conflict')}${ceiling ? ' — base at the ceiling: no headroom, read as no regression' : ''}`,
+    })
+  }
+  for (const id of ['private-recall', 'team-decision', 'index-tail', 'expired-memory', 'corrected', 'abstain'] as const) {
     if (has(id)) out.push({ gate: `R ${id}`, ok: passes(next, id) >= passes(base, id) - 1, detail: pair(id) })
   }
   const nextCost = median(of(next).map(r => r.costUsd))
@@ -449,6 +461,16 @@ export function selfTest(dir: string): Array<[string, boolean, string]> {
   const port = caseById('expired-memory')
   out.push(['the expired memory passes on the port the code holds', gradeCase(port, traceOf([event.answer('5173')], ws)).pass, ''])
   out.push(['…and fails on the port the memory holds', !gradeCase(port, traceOf([event.answer('Port 4000.')], ws)).pass, ''])
+  const conflict = caseById('conflict')
+  out.push(['a conflict raised passes', gradeCase(conflict, traceOf([event.answer('Two memories disagree: 15 s in one, 45 s in the other.')], ws)).pass, ''])
+  out.push(['…a conflict named in words passes', gradeCase(conflict, traceOf([event.answer('The memories contradict each other.')], ws)).pass, ''])
+  out.push(['…and picking one side fails', !gradeCase(conflict, traceOf([event.answer('45 seconds.')], ws)).pass, ''])
+  const corrected = caseById('corrected')
+  out.push(['the corrected value passes', gradeCase(corrected, traceOf([event.answer('5')], ws)).pass, ''])
+  out.push(['…and the old one fails', !gradeCase(corrected, traceOf([event.answer('3 retries.')], ws)).pass, ''])
+  const abstain = caseById('abstain')
+  out.push(['saying it is not known passes', gradeCase(abstain, traceOf([event.answer("I don't see a database configured anywhere in this project.")], ws)).pass, ''])
+  out.push(['…and inventing one fails', !gradeCase(abstain, traceOf([event.answer('It uses PostgreSQL 16.')], ws)).pass, ''])
   out.push(['a batch Read records each of its files', traceOf([event.tool('t1', 'Read', { file_paths: [join(ws, 'a.ts'), '/elsewhere/b.ts'] })], ws).reads.join(',') === 'a.ts,/elsewhere/b.ts', ''])
   const transcript = [
     { type: 'attachment', attachment: { type: 'nested_memory', path: join(ws, MEMORY_REL, 'team/bugs/flaky-math-build.md') } },

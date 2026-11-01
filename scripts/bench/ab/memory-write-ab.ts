@@ -32,6 +32,14 @@
  *               clock) goes global, the project's own part (its fake clock)
  *               stays private or team — and neither copies the other's
  *               project name
+ *   duplicate   a private feedback memory from before the global dir says
+ *               what the user restates as theirs: the fact ends in ONE file,
+ *               the global one — the private copy merged away, not kept
+ *               beside a new one (memory hygiene, 2026-10-31)
+ *   snapshot    a dated measurement for the team: saved with `expires:`
+ *               30–90 days out, so it does not sit in the index forever
+ *
+ * `--request=<id>[,<id>]` runs a subset (a baseline of the new cases).
  *
  * Each session gets a fresh workspace under /tmp/memory-write-ab/<stamp>/: a
  * git repo with one pinned commit and an empty `.claudin/memory/team/`, so the
@@ -87,7 +95,16 @@ export const GLOBAL = '@global/'
 // Requests
 // ---------------------------------------------------------------------------
 
-type RequestId = 'pnpm' | 'staging' | 'correction' | 'decision' | 'preference' | 'taste' | 'taste-split'
+type RequestId =
+  | 'pnpm'
+  | 'staging'
+  | 'correction'
+  | 'decision'
+  | 'preference'
+  | 'taste'
+  | 'taste-split'
+  | 'duplicate'
+  | 'snapshot'
 
 type Request = {
   id: RequestId
@@ -106,6 +123,10 @@ type Request = {
   type?: (typeof MEMORY_TYPES)[number]
   /** The project's own part of a split: a second memory, in one of `dirs`. */
   also?: { dirs: readonly string[]; fact: RegExp }
+  /** Memories on disk before the session starts, in the Fixture layout. */
+  seed?: Fixture
+  /** The memory must carry `expires:` 30–90 days after the session's day. */
+  expires?: boolean
 }
 
 const REQUESTS: readonly Request[] = [
@@ -166,6 +187,34 @@ const REQUESTS: readonly Request[] = [
     dirsWithGlobal: [GLOBAL],
     fact: /inje[ct]|inject/i,
     also: { dirs: ['', 'team/'], fact: /FixedClock/ },
+  },
+  {
+    // A private feedback memory from before the global dir existed says
+    // what the user restates: the fact belongs in ONE file, the global one,
+    // so the private copy has to go (merged), not stay beside a new one.
+    id: 'duplicate',
+    turns: ['lembra que eu sou brasileiro e quero que você me responda sempre em português, em qualquer projeto'],
+    dirs: [''],
+    dirsWithGlobal: [GLOBAL],
+    fact: /portugu|pt-br/i,
+    seed: {
+      'respostas-em-portugues.md': fm(
+        ['name: respostas-em-portugues', 'description: o usuário quer as respostas em português', 'type: feedback'],
+        'Responder sempre em português.\n\n**Why:** pedido do usuário.\n**How to apply:** toda resposta.',
+      ),
+      'MEMORY.md': '- [Respostas em português](respostas-em-portugues.md) — sempre PT-BR\n',
+    },
+  },
+  {
+    // A dated measurement: true until the next census, so it carries an
+    // `expires:` date instead of piling up in the team index forever.
+    id: 'snapshot',
+    turns: [
+      'salva na memória do time: o bench de hoje (N=3) mostrou que o cache novo corta 12% do custo por sessão — vale até a gente rodar o próximo census',
+    ],
+    dirs: ['team/', 'team/decisions/', ''],
+    fact: /12\s?%/,
+    expires: true,
   },
 ]
 
@@ -325,11 +374,25 @@ type Grade = {
   single: boolean
   /** The project part of a split where the request has one; true otherwise. */
   also: boolean
+  /** An `expires:` 30–90 days out where the request asks for one; true otherwise. */
+  expires: boolean
   pass: boolean
   /** Every memory file the session left. */
   files: number
   problems: string[]
 }
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const DAY_MS = 86_400_000
+
+/** Whether `expires` is a date 30 to 90 days after `today` (both YYYY-MM-DD). */
+export function expiresInWindow(expires: string | undefined, today: string): boolean {
+  if (!expires || !DATE_RE.test(expires)) return false
+  const days = (Date.parse(expires) - Date.parse(today)) / DAY_MS
+  return days >= 30 && days <= 90
+}
+
+const today = (): string => new Date().toISOString().slice(0, 10)
 
 function gradeMemory(roots: MemoryRoots, request: Request): Grade {
   const globalOn = roots.globalRoot !== null
@@ -352,23 +415,26 @@ function gradeMemory(roots: MemoryRoots, request: Request): Grade {
         ]
   const also = alsoProblems.length === 0
   if (!file) {
-    return { file, where: false, frontmatter: false, index: false, single: false, also, pass: false, files: all.length, problems: ['no memory carries the fact', ...alsoProblems] }
+    return { file, where: false, frontmatter: false, index: false, single: false, also, expires: false, pass: false, files: all.length, problems: ['no memory carries the fact', ...alsoProblems] }
   }
   const text = textOf(file)
-  const type = frontmatterOf(text)?.type
+  const front = frontmatterOf(text)
+  const type = front?.type
   const formatProblems = frontmatterProblems(file, text, globalOn)
   const typeOk = !request.type || type === request.type
   const frontmatter = formatProblems.length === 0 && typeOk
   const where = dirs.includes(dirOf(file))
   const index = isIndexed(roots, file)
   const single = carrying.length === 1
+  const expires = !request.expires || expiresInWindow(front?.expires, today())
   const problems = [...formatProblems]
   if (!typeOk) problems.push(`expected type "${request.type}", got "${type ?? ''}"`)
   if (!where) problems.push(`in "${dirOf(file) || '(private root)'}"`)
   if (!index) problems.push('not in its index')
   if (!single) problems.push(`the fact is in ${carrying.length} files`)
+  if (!expires) problems.push(`expires "${front?.expires ?? ''}" is not 30–90 days out`)
   problems.push(...alsoProblems)
-  return { file, where, frontmatter, index, single, also, pass: where && frontmatter && index && single && also, files: all.length, problems }
+  return { file, where, frontmatter, index, single, also, expires, pass: where && frontmatter && index && single && also && expires, files: all.length, problems }
 }
 
 // ---------------------------------------------------------------------------
@@ -380,6 +446,7 @@ type Arm = string
 type Args = {
   reps: number
   only: Arm[] | null
+  requests: RequestId[] | null
   model: string
   effort: string
   maxTurns: number
@@ -456,6 +523,7 @@ async function runSession(args: Args, runDir: string, arm: Arm, request: Request
   const ws = join(runDir, label)
   const globalDir = join(runDir, `${label}.global`)
   makeWorkspace(ws)
+  if (request.seed) writeFixture({ root: join(ws, MEMORY_REL), globalRoot: globalDir }, request.seed)
   let sessionId: string | null = null
   let costUsd = 0
   let refusals = 0
@@ -491,15 +559,16 @@ async function runSession(args: Args, runDir: string, arm: Arm, request: Request
 // Report
 // ---------------------------------------------------------------------------
 
-const CHECKS = ['pass', 'where', 'frontmatter', 'index', 'single', 'also'] as const
+const CHECKS = ['pass', 'where', 'frontmatter', 'index', 'single', 'also', 'expires'] as const
 
-function report(sessions: Session[], arms: Arm[]): string {
+function report(sessions: Session[], arms: Arm[], requests: readonly Request[]): string {
   const of = (arm: Arm, request?: RequestId) =>
     sessions.filter(s => s.arm === arm && (request === undefined || s.request === request))
   const rows: string[][] = []
-  for (const request of REQUESTS) {
+  for (const request of requests) {
     for (const check of CHECKS) {
       if (check === 'also' && !request.also) continue
+      if (check === 'expires' && !request.expires) continue
       rows.push([
         check === 'pass' ? request.id : '',
         check,
@@ -540,7 +609,10 @@ function report(sessions: Session[], arms: Arm[]): string {
 
 type Fixture = Record<string, string>
 
-export const fm = (lines: readonly string[], body: string): string => `---\n${lines.join('\n')}\n---\n\n${body}\n`
+/** A memory file: its frontmatter lines, then its body. A declaration, so REQUESTS' seeds can use it. */
+export function fm(lines: readonly string[], body: string): string {
+  return `---\n${lines.join('\n')}\n---\n\n${body}\n`
+}
 
 /** One memory tree per request that must pass. */
 const GOOD: Record<RequestId, Fixture> = {
@@ -591,6 +663,21 @@ const GOOD: Record<RequestId, Fixture> = {
       'Tests inject `FixedClock` from test/clock.ts. Applies [[inject-the-clock]].',
     ),
     'MEMORY.md': '- [Test clock](test-clock.md) — FixedClock in test/clock.ts\n',
+  },
+  duplicate: {
+    [`${GLOBAL}user-language.md`]: fm(
+      ['name: user-language', 'description: the user is Brazilian and wants every answer in Portuguese', 'type: user'],
+      'Answer in Portuguese (PT-BR), in every project.',
+    ),
+    [`${GLOBAL}MEMORY.md`]: '- [Language](user-language.md) — answers in PT-BR\n',
+    'MEMORY.md': '',
+  },
+  snapshot: {
+    'team/bench-cache-cut.md': fm(
+      ['name: bench-cache-cut', 'description: the new cache cut session cost 12% (N=3)', 'type: project', `expires: ${new Date(Date.now() + 60 * DAY_MS).toISOString().slice(0, 10)}`],
+      'The new cache cuts 12% of the cost per session (N=3). Holds until the next census.',
+    ),
+    'team/MEMORY.md': '- [Cache bench](bench-cache-cut.md) — new cache −12% cost per session\n',
   },
 }
 
@@ -698,6 +785,26 @@ const BAD: Array<{ request: RequestId; name: string; fails: (typeof CHECKS)[numb
       'MEMORY.md': '- [Clock](test-clock.md) — x\n',
     },
   },
+  {
+    request: 'duplicate',
+    name: 'a global copy saved beside the private one',
+    fails: 'single',
+    files: {
+      [`${GLOBAL}user-language.md`]: fm(['name: user-language', 'description: Portuguese answers', 'type: user'], 'Answer in Portuguese.'),
+      [`${GLOBAL}MEMORY.md`]: '- [Language](user-language.md) — PT-BR\n',
+      'respostas-em-portugues.md': fm(['name: respostas-em-portugues', 'description: português', 'type: feedback'], 'Responder sempre em português.'),
+      'MEMORY.md': '- [Respostas em português](respostas-em-portugues.md) — PT-BR\n',
+    },
+  },
+  {
+    request: 'snapshot',
+    name: 'a measurement with no expires:',
+    fails: 'expires',
+    files: {
+      'team/bench-cache-cut.md': fm(['name: bench-cache-cut', 'description: cache −12%', 'type: project'], 'Cuts 12% of the cost.'),
+      'team/MEMORY.md': '- [Cache bench](bench-cache-cut.md) — x\n',
+    },
+  },
 ]
 
 function writeFixture(roots: MemoryRoots, files: Fixture): void {
@@ -777,6 +884,7 @@ function parseArgs(argv: string[]): Args {
   const a: Args = {
     reps: 3,
     only: null,
+    requests: null,
     model: 'claude-opus-5-5',
     effort: 'medium',
     maxTurns: 12,
@@ -792,6 +900,7 @@ function parseArgs(argv: string[]): Args {
     if (k === '--dry-run') a.dryRun = true
     else if (k === '--reps') a.reps = Number(v)
     else if (k === '--only') a.only = v.split(',').filter(Boolean)
+    else if (k === '--request') a.requests = v.split(',').filter(Boolean) as RequestId[]
     else if (k === '--model') a.model = v
     else if (k === '--effort') a.effort = v
     else if (k === '--max-turns') a.maxTurns = Number(v)
@@ -831,6 +940,7 @@ async function main(): Promise<void> {
   }
   const runDir = join(BENCH_ROOT, stamp())
   mkdirSync(runDir, { recursive: true })
+  const requests = args.requests ? REQUESTS.filter(r => args.requests!.includes(r.id)) : REQUESTS
   const head = git(REPO_ROOT, 'rev-parse', '--short', 'HEAD').out.trim()
   const meta = {
     started: new Date().toISOString(),
@@ -839,6 +949,7 @@ async function main(): Promise<void> {
     effort: args.effort,
     reps: args.reps,
     arms,
+    requests: requests.map(r => r.id),
     armEnv: Object.fromEntries(arms.map(a => [a, args.env[a] ?? {}])),
     version: `${version(args.bin)} @ ${head}`,
   }
@@ -846,12 +957,12 @@ async function main(): Promise<void> {
   const sessions: Session[] = []
   const save = () => writeFileSync(join(runDir, 'results.json'), JSON.stringify({ meta, sessions }, null, 1))
   for (let rep = 1; rep <= args.reps; rep++) {
-    for (const request of REQUESTS) {
+    for (const request of requests) {
       sessions.push(...(await Promise.all(arms.map(arm => runSession(args, runDir, arm, request, rep)))))
       save()
     }
   }
-  const text = report(sessions, arms)
+  const text = report(sessions, arms, requests)
   writeFileSync(join(runDir, 'report.md'), text)
   console.log(`\n${text}\n\nresults → ${join(runDir, 'results.json')}\nreport  → ${join(runDir, 'report.md')}`)
 }
