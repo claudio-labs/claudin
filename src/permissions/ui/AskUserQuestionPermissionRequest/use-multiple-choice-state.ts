@@ -31,7 +31,7 @@ type Action =
     }
   | { type: 'set-text-input-mode'; isInInput: boolean }
 
-function reducer(state: State, action: Action): State {
+export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'next-question':
       return {
@@ -95,7 +95,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const INITIAL_STATE: State = {
+export const INITIAL_STATE: State = {
   currentQuestionIndex: 0,
   answers: {},
   questionStates: {},

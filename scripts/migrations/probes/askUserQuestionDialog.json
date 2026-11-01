@@ -1,0 +1,123 @@
+{
+  "test": [
+    "src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.test.ts",
+    "src/tools/AskUserQuestionTool/AskUserQuestionTool.test.ts"
+  ],
+  "source": "src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "the Other text stops being the answer",
+      "find": "          answer_2 = questionImages.length > 0 ? `${textInput} (Image attached)` : textInput;\n",
+      "replace": "          answer_2 = label;\n"
+    },
+    {
+      "name": "a single question stops submitting on Enter",
+      "find": "      if (!isMultiSelect && isSingleQuestion && shouldAdvance) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "multi-select answers lose their separator",
+      "find": "        answer_2 = label.join(\", \");\n",
+      "replace": "        answer_2 = label.join(\"; \");\n"
+    },
+    {
+      "name": "the selected preview no longer reaches the model",
+      "find": "            ...(preview && {\n",
+      "replace": "            ...(false && {\n"
+    },
+    {
+      "name": "the notes no longer reach the model",
+      "find": "            ...(notes?.trim() && {\n",
+      "replace": "            ...(false && {\n"
+    },
+    {
+      "name": "cancel stops rejecting the tool use",
+      "find": "      toolUseConfirm.onReject();\n",
+      "replace": "      void 0;\n"
+    },
+    {
+      "name": "Tab stops moving to the next question",
+      "find": "      if (currentQuestionIndex < maxIndex) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "the footer stops chatting",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        if (footerIndex === 0) {\n          onRespondToClaude();\n",
+      "replace": "        if (footerIndex === 0) {\n          void 0;\n"
+    },
+    {
+      "name": "the footer never reaches the skip-interview row",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        if (isInPlanMode && footerIndex === 0) {\n",
+      "replace": "        if (false) {\n"
+    },
+    {
+      "name": "Escape on the footer stops cancelling",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        event.stopImmediatePropagation();\n        onCancel();\n",
+      "replace": "        event.stopImmediatePropagation();\n"
+    },
+    {
+      "name": "the review stops warning about unanswered questions",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "    t4 = !allQuestionsAnswered && <Box",
+      "replace": "    t4 = false && <Box"
+    },
+    {
+      "name": "the review stops listing the answers",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "{figures.arrowRight} {answer}</Text>",
+      "replace": "{figures.arrowRight}</Text>"
+    },
+    {
+      "name": "n stops opening the preview notes",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "    } else if (e.key === 'n' && !e.ctrl && !e.meta) {\n",
+      "replace": "    } else if (false) {\n"
+    },
+    {
+      "name": "Escape in the preview notes cancels the dialog",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "        e.preventDefault();\n        handleNotesExit();\n",
+      "replace": "        e.preventDefault();\n        onCancel();\n"
+    },
+    {
+      "name": "the preview footer stops chatting",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "        if (footerIndex === 0) {\n          onRespondToClaude();\n",
+      "replace": "        if (footerIndex === 0) {\n          void 0;\n"
+    },
+    {
+      "name": "next-question goes back instead",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "    dispatch({ type: 'next-question' })\n",
+      "replace": "    dispatch({ type: 'prev-question' })\n"
+    },
+    {
+      "name": "the reducer forgets the earlier text",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "          action.updates.textInputValue ?? existing?.textInputValue ?? '',\n",
+      "replace": "          action.updates.textInputValue ?? '',\n"
+    },
+    {
+      "name": "the transcript drops the answer",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "· {questionText} → {answer}</Text>",
+      "replace": "· {questionText}</Text>"
+    },
+    {
+      "name": "an html preview may carry a script",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "  if (/<\\s*(script|style)\\b/i.test(preview)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the prompt always carries the preview guidance",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "    if (format === undefined) {\n",
+      "replace": "    if (false) {\n"
+    }
+  ]
+}
