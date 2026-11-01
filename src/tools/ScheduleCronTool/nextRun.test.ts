@@ -23,6 +23,17 @@ describe('nextRunMs', () => {
     expect(nextRunMs(task, later)).toBe(jitteredNextCronRunMs('*/10 * * * *', later, '00000000'))
   })
 
+  // Review round, PR #337: a session job's fires are not written back, and
+  // re-anchoring at `now` inside the jitter window skipped the pending fire.
+  test('a fired session job listed inside its jitter window reports the pending fire', () => {
+    const cron = '0 * * * *'
+    const task = { id: 'ffffffff', cron, createdAt: NOV_1_0905, recurring: true }
+    const firstFire = jitteredNextCronRunMs(cron, NOV_1_0905, 'ffffffff')! // ~10:06
+    const pending = jitteredNextCronRunMs(cron, firstFire, 'ffffffff')! // ~11:06, the scheduler's reschedule
+    const at1103 = new Date(2026, 10, 1, 11, 3).getTime()
+    expect(nextRunMs(task, at1103)).toBe(pending)
+  })
+
   test('a fired-before durable job anchors at lastFiredAt', () => {
     const lastFiredAt = NOV_1_0905 + HOUR
     const task = { id: '80000000', cron: '0 * * * *', createdAt: NOV_1_0905, recurring: true, lastFiredAt }

@@ -26,26 +26,35 @@ const OPTIONS: MonitorStreamOptions = {
 }
 
 // A fake output file plus a hand-driven clock: `tick()` runs one poll, and
-// `expire()` fires the deadline.
-function harness(options: MonitorStreamOptions = OPTIONS) {
-  let file = ''
+// `expire()` fires the deadline. `running: false` plays a command that already
+// ended when the stream tries to kill it; `failReads` fails that many reads.
+function harness(options: MonitorStreamOptions = OPTIONS, setup: { running?: boolean; failReads?: number } = {}) {
+  let file = Buffer.alloc(0)
   let clock = 0
   let poll: (() => void) | null = null
   let deadline: (() => void) | null = null
   const enqueued: string[] = []
   const reads: number[] = []
   let kills = 0
+  let failReads = setup.failReads ?? 0
   let pollCancelled = false
   let deadlineCancelled = false
   const deps: MonitorStreamDeps = {
     async readDelta(fromOffset) {
       reads.push(fromOffset)
-      const bytes = Buffer.from(file)
-      const content = bytes.subarray(fromOffset).toString('utf8')
-      return { content, newOffset: bytes.length }
+      if (failReads > 0) {
+        failReads--
+        throw new Error('read failed')
+      }
+      // Decoded the way readFileRange decodes: invalid bytes become U+FFFD.
+      const content = file.subarray(fromOffset).toString('utf8')
+      return { content, newOffset: file.length }
     },
     enqueue: message => enqueued.push(message),
-    kill: () => kills++,
+    kill: () => {
+      kills++
+      return setup.running ?? true
+    },
     now: () => clock,
     every(ms, fn) {
       expect(ms).toBe(MONITOR_POLL_MS)
@@ -69,8 +78,8 @@ function harness(options: MonitorStreamOptions = OPTIONS) {
     stream,
     enqueued,
     reads,
-    write(text: string) {
-      file += text
+    write(data: string | Buffer) {
+      file = Buffer.concat([file, Buffer.from(data)])
     },
     advance(ms: number) {
       clock += ms
@@ -158,6 +167,16 @@ describe('formatMonitorEvent', () => {
     const event = formatMonitorEvent(OPTIONS, [half, half, 'third'])
     expect(event).not.toContain('third')
     expect(event.endsWith('[1 more line in /tmp/b1.output]')).toBe(true)
+  })
+
+  // Review round, PR #337: the cut counted characters against a byte budget,
+  // so a line of two-byte characters came out at twice the cap.
+  test('cuts a long multi-byte line by bytes, on a character boundary', () => {
+    const event = formatMonitorEvent(OPTIONS, ['é'.repeat(3_000)])
+    const body = event.slice(event.indexOf('</task-notification>\n') + '</task-notification>\n'.length)
+    expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MONITOR_EVENT_MAX_BYTES + Buffer.byteLength('…'))
+    expect(body).not.toContain('\uFFFD')
+    expect(body.endsWith('é…')).toBe(true)
   })
 })
 
@@ -266,5 +285,63 @@ describe('startMonitorStream', () => {
     expect(h.kills()).toBe(0)
     expect(h.enqueued).toHaveLength(MONITOR_FLOOD_EVENTS * 2)
     await h.finish()
+  })
+})
+
+// Review round, PR #337: the offset advanced by the decoded text's length, so
+// a byte that is not UTF-8 (U+FFFD, 3 bytes, for 1 byte read) moved it past
+// the start of the next line.
+describe('startMonitorStream reads bytes, not decoded text', () => {
+  test('a non-UTF-8 byte in one line does not eat the start of the next', async () => {
+    const h = harness()
+    h.write(Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a])) // Latin-1 "café\n"
+    h.tick()
+    await drain()
+    h.write('next line\n')
+    h.tick()
+    await drain()
+    expect(h.enqueued).toHaveLength(2)
+    expect(h.enqueued[1]!.endsWith('\nnext line')).toBe(true)
+    await h.finish()
+  })
+
+  test('a character split at the end of a long newline-less run is not skipped', async () => {
+    const h = harness()
+    h.write(Buffer.concat([Buffer.from('a'.repeat(MONITOR_EVENT_MAX_BYTES + 1)), Buffer.from([0xc3])]))
+    h.tick()
+    await drain()
+    h.write(Buffer.concat([Buffer.from([0xa9]), Buffer.from('XYZ tail\n')]))
+    h.tick()
+    await drain()
+    expect(h.enqueued).toHaveLength(2)
+    expect(h.enqueued[1]!.endsWith('\néXYZ tail')).toBe(true)
+    await h.finish()
+  })
+})
+
+describe('startMonitorStream ends once', () => {
+  // Review round, PR #337: the command can exit on its own in the instant the
+  // deadline fires; the exit notice already went out, so a killed notice would
+  // be a second, false ending.
+  test('a deadline that finds the command already ended posts no notice', async () => {
+    const h = harness(OPTIONS, { running: false })
+    h.expire()
+    await drain()
+    expect(h.kills()).toBe(1)
+    expect(h.enqueued).toEqual([])
+  })
+
+  // A failed read rejected the shared chain: every later poll was skipped and
+  // stop() threw, which took the exit notice down with it.
+  test('a failed read skips one poll, not the rest of the stream', async () => {
+    const h = harness(OPTIONS, { failReads: 1 })
+    h.write('lost for a second\n')
+    h.tick()
+    await drain()
+    h.tick()
+    await drain()
+    expect(h.enqueued).toHaveLength(1)
+    expect(h.enqueued[0]!.endsWith('\nlost for a second')).toBe(true)
+    await expect(h.stream.stop({ flush: true })).resolves.toBeUndefined()
   })
 })

@@ -261,6 +261,14 @@ describe('MonitorTool.call', () => {
     ).toBe(true)
   })
 
+  // Review round, PR #337: models quote numbers; Bash timeout and WaitFor take
+  // "60000", and Monitor refused it.
+  test('timeout_ms accepts a quoted number, like Bash timeout', () => {
+    const parsed = MonitorTool.inputSchema.safeParse({ command: 'ls', description: 'd', timeout_ms: '60000' })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.timeout_ms).toBe(60_000)
+  })
+
   test('timeout_ms kills the monitor and says it expired', async () => {
     const harness = makeStateHarness()
     const context = {
