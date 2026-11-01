@@ -1,5 +1,9 @@
-import { beforeAll, describe, expect, test } from 'bun:test'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
+import { getCommandQueue, resetCommandQueue } from 'src/agent/messageQueueManager.js'
+import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
@@ -9,6 +13,36 @@ beforeAll(() => {
     VERSION: 'test',
   }
 })
+
+function makeStateHarness(): {
+  setAppState: (f: (prev: AppState) => AppState) => void
+  getState: () => AppState
+} {
+  let state = getDefaultAppState()
+  return {
+    setAppState: updater => {
+      state = updater(state)
+    },
+    getState: () => state,
+  }
+}
+
+async function waitForNotification(
+  matches: (value: string) => boolean,
+  timeoutMs = 10_000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const hit = getCommandQueue()
+      .map(c => String(c.value))
+      .find(matches)
+    if (hit !== undefined) return hit
+    await new Promise(r => setTimeout(r, 50))
+  }
+  throw new Error(
+    `no matching notification within ${timeoutMs}ms; queue: ${JSON.stringify(getCommandQueue().map(c => c.value))}`,
+  )
+}
 
 describe('MonitorTool', () => {
   test('isConcurrencySafe is true and userFacingName is Monitor', () => {
@@ -94,6 +128,54 @@ describe('MonitorTool', () => {
     expect(block?.content).toContain('TaskStop')
   })
 
+  test('preparePermissionMatcher matches every pattern', async () => {
+    const match = await MonitorTool.preparePermissionMatcher?.({
+      command: 'tail -f log',
+      description: 'd',
+    } as never)
+    expect(match?.('anything')).toBe(true)
+    expect(match?.('')).toBe(true)
+  })
+
+  test('the prompt points one-shot waits at Bash run_in_background', async () => {
+    const prompt = await MonitorTool.prompt({} as never)
+    expect(prompt).toContain('run_in_background')
+  })
+
+  test('renderToolUseMessage joins description and command, else shows whichever is set', () => {
+    const render = (input: object) =>
+      MonitorTool.renderToolUseMessage(input as never, {} as never)
+    expect(render({ command: 'tail -f a.log', description: 'app log' })).toBe(
+      'app log: tail -f a.log',
+    )
+    expect(render({ command: 'tail -f a.log' })).toBe('tail -f a.log')
+    expect(render({ description: 'app log' })).toBe('app log')
+    expect(render({})).toBe('')
+  })
+
+  test('renderToolResultMessage names the task', () => {
+    expect(
+      MonitorTool.renderToolResultMessage?.(
+        { taskId: 'tsk_9', outputFile: '/tmp/o' },
+        [],
+        {} as never,
+      ),
+    ).toBe('Monitor started (task tsk_9)')
+  })
+
+  test('a non-allow Bash verdict is returned as is', async () => {
+    const context = {
+      abortController: new AbortController(),
+      options: { isNonInteractiveSession: false },
+      getAppState: () => ({ toolPermissionContext: getEmptyToolPermissionContext() }),
+    } as unknown as ToolUseContext
+    const result = await MonitorTool.checkPermissions(
+      { command: 'rm -rf /tmp/monitor-cover-probe', description: 'd' },
+      context,
+    )
+    expect(result.behavior).not.toBe('allow')
+  })
+
   // Same contract as WaitFor: Bash's `updatedInput` is `{ command }`, and the
   // harness applies it verbatim — `description` would not survive the allow.
   test('on allow it hands back its own input, never the Bash-shaped one', async () => {
@@ -113,4 +195,31 @@ describe('MonitorTool', () => {
       expect(result.updatedInput).toBe(input)
     }
   })
+})
+
+describe('MonitorTool.call', () => {
+  beforeEach(() => resetCommandQueue())
+  afterEach(() => resetCommandQueue())
+
+  test('registers a background monitor task and notifies when the command exits', async () => {
+    const harness = makeStateHarness()
+    const context = {
+      abortController: new AbortController(),
+      setAppState: harness.setAppState,
+      toolUseId: 'toolu_monitor_call',
+    } as unknown as ToolUseContext
+
+    const result = await MonitorTool.call(
+      { command: "printf 'one\\n'", description: 'print one line' },
+      context,
+    )
+    const { taskId, outputFile } = result.data
+    expect(outputFile).toBe(getTaskOutputPath(taskId))
+    const task = harness.getState().tasks[taskId]
+    expect(task).toMatchObject({ type: 'local_bash', kind: 'monitor' })
+
+    const exit = await waitForNotification(n => n.includes('<status>'))
+    expect(exit).toContain(taskId)
+    expect(exit).toContain('<status>completed</status>')
+  }, 15_000)
 })
