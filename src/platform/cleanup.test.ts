@@ -223,3 +223,34 @@ describe('cleanupOldTaskListDirs', () => {
     expect(await cleanupOldTaskListDirs()).toEqual({ messages: 0, errors: 0 })
   })
 })
+
+describe('cleanupOldSessionFiles', () => {
+  const tmpDirs: string[] = []
+  const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
+
+  afterAll(() => {
+    for (const dir of tmpDirs) rmSync(dir, { recursive: true, force: true })
+    if (originalConfigDirEnv === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = originalConfigDirEnv
+  })
+
+  test('sweeps an old session with its memory-extraction cursor, and keeps a recent one', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'claudin-cleanup-sessions-'))
+    tmpDirs.push(home)
+    const configDir = join(home, '.claudin')
+    const projectDir = join(configDir, 'projects', '-repo')
+    mkdirSync(projectDir, { recursive: true })
+    const mod = await importFreshCleanupModule({ plansDir: join(configDir, 'plans'), legacyHomeConfigDir: configDir })
+    const aged = (name: string, days: number) => writeAgedPlanFile(projectDir, name, days)
+    const oldCursor = aged('old.memory-cursor', 40)
+    const oldTranscript = aged('old.jsonl', 40)
+    const recentCursor = aged('new.memory-cursor', 1)
+
+    await mod.cleanupOldSessionFiles()
+
+    expect(existsSync(oldTranscript)).toBe(false)
+    // A cursor lives beside its transcript (extractionCursor.ts) and goes with it
+    expect(existsSync(oldCursor)).toBe(false)
+    expect(existsSync(recentCursor)).toBe(true)
+  })
+})
