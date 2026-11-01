@@ -113,7 +113,7 @@ Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_E
 - Remove pointers to memories that are now stale, wrong, or superseded${
     prune
       ? `, and delete the files themselves with a Patch \`*** Delete File:\` (Bash cannot delete), the index line removed in the same Patch:
-  - in the team dir, any memory you merged or retired — git keeps it, and the user's commit is the review
+  - in the team dir, a memory you merged into another, one the code or a newer memory shows is wrong or superseded, or a snapshot you folded into what it supports — git keeps it, and the user's commit is the review. A memory that is only thin, old or rarely needed stays: never delete to make room in an index
   - in the private dir, only a memory you merged into another, in the Patch that writes that survivor — nothing restores a private file
   - never a \`${ENTRYPOINT_NAME}\`${global === null ? '' : ', and nothing in the global dir'}`
       : ''

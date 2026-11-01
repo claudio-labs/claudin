@@ -344,7 +344,7 @@ export function buildDreamDigest(
       '- A near-duplicate that is the same fact: merge into one survivor — the fuller, or the one in the broader scope — and delete the other. A private copy of a global memory: one Patch that adds what it has more to the global memory and deletes the private copy. Two facts that only look alike: link them with `[[name]]`. A team memory and a global one stay apart: teammates have no copy of the global dir.',
       '- A user memory outside the global dir: write it into the global dir and delete it here, in one Patch.',
       '- A contradiction: settle it from the code or the transcript, never from which file is newer. Settled: fix the wrong one and remove the key. Not settled: leave both as they are.',
-      '- An index over its cap: shorten the hooks to one line under ~150 chars, and retire what nothing needs any more.',
+      '- An index over its cap: shorten the hooks to one line under ~150 chars. Never delete a memory to make room — only one that is merged, superseded, wrong, or a snapshot already folded into what it supports.',
       '- An oversized memory: keep its rule short, and move the history into a memory it links to.',
       ...kept,
     )

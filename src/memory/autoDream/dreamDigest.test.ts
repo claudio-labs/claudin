@@ -205,6 +205,9 @@ describe('buildDreamDigest', () => {
     expect(digest).not.toContain('An expired date alone is never a reason to delete.')
     expect(digest).toContain('## Memory hygiene (5)')
     expect(digest).toContain('never from which file is newer')
+    // The first hygiene bench deleted 50 thin notes to fit the cap
+    expect(digest).toContain('Never delete a memory to make room')
+    expect(digest).not.toContain('retire what nothing needs')
     expect(digest).toContain('- near-duplicate: `.claudin/memory/copy.md` (private) reads like `/home/u/.claudin/memory/lang.md` (global, 0.64)')
     expect(digest).toContain('- user memory outside the global dir: `.claudin/memory/user-role.md` (private)')
     expect(digest).toContain('- contradiction: `.claudin/memory/team/t-b.md` (team) contradicts `t-a`')

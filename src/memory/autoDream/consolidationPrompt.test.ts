@@ -118,6 +118,7 @@ describe('buildConsolidationPrompt', () => {
       const prompt = buildConsolidationPrompt(GLOBAL_DIRS, TRANSCRIPTS, '')
       expect(prompt).toContain('delete the files themselves with a Patch `*** Delete File:`')
       expect(prompt).toContain('in the private dir, only a memory you merged into another, in the Patch that writes that survivor')
+      expect(prompt).toContain('never delete to make room in an index')
       expect(prompt).toContain('never from which file is newer')
       expect(prompt).toContain('mark one with `contradicts:`')
       expect(prompt).toContain('fold that into the decision or memory it supports, then delete the snapshot (outside the global dir)')
