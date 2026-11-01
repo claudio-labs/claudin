@@ -32,15 +32,18 @@ What each one taught, which the next bump of the same package will ask again:
   `keepAliveTimeout`/`pipelining` — a new stream/window/ping knob goes under `h2Options`.
 - **The SDK's User-Agent never reaches the wire.** SDK 0.116 hardcodes its UA string, but
   `buildHeaders` applies `defaultHeaders` after it, and `getAnthropicClient` puts
-  `buildIdentityHeaders(...)` there, so Claudin's identity wins on every lane
-  ([[defingerprinting-branch-2026-08]]). SDK 0.117's message_delta accumulation fix is
+  `buildIdentityHeaders(...)` there, so our identity headers win on every lane — Claudin's
+  own everywhere except first-party Anthropic, which keeps the upstream `claude-cli` UA on
+  purpose (`src/providers/transport/identityHeaders.ts`; [[defingerprinting-branch-2026-08]]).
+  SDK 0.117's message_delta accumulation fix is
   transcript fidelity only here: refusal handling reads `stop_details` off the event.
 - **Inert, for the record:** axios 1.19's interceptor change (ours only mutate `config`) and its
   `NO_PROXY` change (`axios.defaults.proxy = false`); marked 18.0.9's parser fixes (`~100` stays
   literal through the `del()` tokenizer override in `src/shared/text/markdown.ts`); ws 8.21.3
   (server-side permessage-deflate; our ws use is client-only).
 
-**How to apply:** a merge does not refresh `node_modules` — run plain `bun install` first and
-check the installed versions, or every green check measures the old tree
+**How to apply:** a merge does not refresh `node_modules` — run `bun install --force` first
+(plain `bun install` misses nested deps) and check the installed versions, or every green
+check measures the old tree
 ([[incremental-bun-install-misses-nested-deps]]). Later batches:
 [[dependabot-bumps-2026-08-31-audited]].

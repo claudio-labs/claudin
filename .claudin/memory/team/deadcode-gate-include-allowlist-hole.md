@@ -69,10 +69,11 @@ consumer — genuinely dead) and `src/shared/types/typeAssertions.ts` (27 lines,
 
 ## Also worth knowing
 
-Neither script runs in CI at all: `.github/workflows/pr-checks.yml` runs
-`typecheck:ci`, `verify:sdk-types`, `verify:rules`, `smoke` and `bun test`.
-`deadcode:ci` has "ci" in its name and no workflow executes it — it is only in
-the [/pre-pr](../../skills/pre-pr/SKILL.md) skill.
+When this was measured, neither script ran in CI: `.github/workflows/pr-checks.yml`
+ran `typecheck:ci`, `verify:sdk-types`, `verify:rules`, `smoke` and `bun test`,
+and `deadcode:ci` was only in the [/pre-pr](../../skills/pre-pr/SKILL.md) skill.
+Since rounds 3–4 all three dead-code scripts run there (re-checked 2026-11-01),
+as the header says.
 
 And when counting occurrences to apply guard (a), **count raw occurrences rather
 than stripping comments**: a comment-stripping pass produced a false "dead"

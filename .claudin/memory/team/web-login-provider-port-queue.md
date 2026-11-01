@@ -20,4 +20,4 @@ Reusable opencode plumbing (already mirrored in claudin, do NOT re-port): token 
 
 Each new port currently requires cloning the Codex-style `<XxxOAuthSetup>` component in `ProviderManager.tsx`. The longer-term cleanup is to port opencode's `Method`/`Authorization`/`prompts` two-step from `packages/opencode/src/provider/auth.ts` so future providers register declaratively — explicitly deferred per user decision in plan luminous-popping-clarke.md.
 
-Already shipped or in-flight (NOT in this queue): Anthropic OAuth, Codex/ChatGPT, GitHub Copilot device-flow, xAI (branch feat/xai-oauth-provider), Windsurf (branch feat/windsurf-provider), Devin (blocked on f31).
+Already shipped or settled (NOT in this queue; status corrected 2026-11-01): Anthropic OAuth, Codex/ChatGPT, GitHub Copilot device-flow, xAI (merged on main, verified 2026-09-10 — [[xai-oauth-provider-shipped]]). Windsurf and Devin never merged: the Windsurf branch lived on the retired Gitea remote and was archived 2026-09-21 ([[windsurf-upstream-reference]]); the Devin port halted on f31 ([[devin-provider-port-halted]]).
