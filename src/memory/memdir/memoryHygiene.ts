@@ -37,6 +37,7 @@
  */
 import { readdirSync, readFileSync } from 'fs'
 import { basename, join, relative } from 'path'
+import { fitEntrypointContent } from 'src/memory/memdir/entrypointFit.js'
 import type { AuditedFile } from 'src/memory/memdir/memoryAudit.js'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
@@ -45,22 +46,11 @@ import { isENOENT } from 'src/shared/errors.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { logError } from 'src/shared/log.js'
 
-/**
- * memdir.ts's fit, required lazily: memdir.ts pulls the prompt graph, and the
- * write tools import this module through memoryFormatGuard.ts.
- */
-function fitIndex(content: string): { overCap: boolean; bytes: number; lines: number; shortened: number } {
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const { fitEntrypointContent }: typeof import('src/memory/memdir/memdir.js') = require('src/memory/memdir/memdir.js')
-  /* eslint-enable @typescript-eslint/no-require-imports */
-  const fit = fitEntrypointContent(content)
-  return { overCap: fit.overLineCap || fit.overByteCap, bytes: fit.byteCount, lines: fit.lineCount, shortened: fit.shortenedEntryCount }
-}
-
-/** The caps an index is fitted to, for the notes that name them (memdir.ts MAX_ENTRYPOINT_*). */
+/** What an index over its caps costs when it is fitted to them (entrypointFit.ts), or null within them. */
 export function indexOverCap(content: string): { bytes: number; lines: number; shortened: number } | null {
-  const fit = fitIndex(content)
-  return fit.overCap ? fit : null
+  const fit = fitEntrypointContent(content)
+  if (!fit.overLineCap && !fit.overByteCap) return null
+  return { bytes: fit.byteCount, lines: fit.lineCount, shortened: fit.shortenedEntryCount }
 }
 
 /** Whether the model-facing parts of memory hygiene are on (the header). */
@@ -92,6 +82,7 @@ export type HygieneFinding =
 const SPLIT_RE = /[^\p{L}\p{N}]+/u
 const MARKS_RE = /\p{M}+/gu
 const CAMEL_RE = /([a-z])([A-Z])/g
+const DIGITS_RE = /^\d+$/
 
 /** Words that say nothing about which fact a memory holds, in English and Portuguese. */
 const STOPWORDS = new Set(
@@ -118,7 +109,7 @@ export function memoryTokens(path: string, name: string | null, description: str
     text
       .split(SPLIT_RE)
       .map(stem)
-      .filter(word => word.length >= 3 && !STOPWORDS.has(word) && !/^\d+$/.test(word)),
+      .filter(word => word.length >= 3 && !STOPWORDS.has(word) && !DIGITS_RE.test(word)),
   )
 }
 

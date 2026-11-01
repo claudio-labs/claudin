@@ -66,7 +66,8 @@ describe('memoryHygieneNotesIn', () => {
     expect(note).toContain('over its cap (200 lines, 25,000 bytes)')
     expect(note).toMatch(/\d+ entries would load without their hook/)
     // Never delete to make room (team decision memory-hygiene): the forks read this note too
-    expect(note).not.toMatch(/retire|delete/i)
+    expect(note).not.toMatch(/retire/i)
+    expect(note).toContain('a memory is never deleted to make room')
     expect(memoryHygieneNotesIn(dirs, `${TEAM}MEMORY.md`, { content: line(1), isNew: false, indexNote: false }, () => [])).toEqual([])
   })
 

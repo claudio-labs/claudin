@@ -21,6 +21,7 @@ import {
 } from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { MAX_ENTRYPOINT_BYTES, MAX_ENTRYPOINT_LINES } from 'src/memory/memdir/entrypointFit.js'
 import { parseExpires } from 'src/memory/memdir/memoryExpires.js'
 import {
   describeMemory,
@@ -382,8 +383,14 @@ export type MemoryWrite = {
   indexNote: boolean
 }
 
-/** A date, a measurement or a status: what is true for a while, not for good. */
-const SNAPSHOT_RE = /\b20\d{2}-\d{2}-\d{2}\b|\bcensus\b|\bbench(?:mark)?s?\b|\bstatus\b|\bsnapshot\b|\bpr[- ]?#?\d+\b|\bissue[- ]?#?\d+\b|\bmerged\b|\bopened\b/i
+/**
+ * A measurement or a PR's state: what is true for a while, not for good. A
+ * date alone is not one — 59 of this repo's 62 team decisions open their
+ * description with the day they were taken — and neither is a bare "status"
+ * ("the PR status pill"). Measured on the repo's 276 memories (2026-10-31):
+ * 46 of the 162 team-root files match, the censuses and benches.
+ */
+const SNAPSHOT_RE = /\bcensus\b|\bcenso\b|\bbench(?:mark)?s?\b|\bsnapshot\b|\b(?:pr|mr|issue)[- ]?#?\d+\b/i
 
 const MAX_SIMILAR = 3
 
@@ -406,7 +413,7 @@ export function memoryHygieneNotesIn(
     if (!over) return []
     const lost = over.shortened > 0 ? `${over.shortened} entries would load without their hook, the last ones first` : 'its tail would not load'
     return [
-      `\`${abs}\` will be ${over.lines} lines and ${over.bytes} bytes, over its cap (200 lines, 25,000 bytes): ${lost}. Shorten the hooks to one line under ~150 chars, move detail into the topic files, or retire a memory nothing needs any more.`,
+      `\`${abs}\` will be ${over.lines} lines and ${over.bytes} bytes, over its cap (${MAX_ENTRYPOINT_LINES} lines, ${MAX_ENTRYPOINT_BYTES.toLocaleString('en-US')} bytes): ${lost}. Shorten the hooks to one line under ~150 chars and move detail into the topic files — a memory is never deleted to make room.`,
     ]
   }
   const file = memoryFileOf(filePath, dirs)
@@ -423,7 +430,8 @@ export function memoryHygieneNotesIn(
   }
   const { frontmatter } = parseFrontmatter(write.content, abs)
   const said = [basename(abs, '.md'), frontmatter.name, frontmatter.description].filter(v => typeof v === 'string').join(' ')
-  if (!isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {
+  // A decision, a bug or a doc is filed to last: a bench it cites is its evidence, not its end
+  if (!file.category && !isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {
     notes.push(
       `\`${relative(file.root, abs)}\` reads like a dated measurement or status. Give it \`expires: YYYY-MM-DD\`, the last day it holds (about 60 days out when it says nothing else), so it is re-verified and folded into what it supports instead of staying in the index for good.`,
     )
