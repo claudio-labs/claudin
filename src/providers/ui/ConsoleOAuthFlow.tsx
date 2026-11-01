@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { installOAuthTokens } from 'src/platform/headless/handlers/auth.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotification.js';
-import { Box, Link, Text } from 'src/terminal/ink.js';
+import { Box, type DOMElement, Link, measureAbsoluteRect, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js';
 import { sendNotification } from 'src/platform/notifications/notifier.js';
@@ -53,6 +53,35 @@ type OAuthStatus = {
   toRetry?: OAuthStatus;
 };
 const PASTE_HERE_MSG = 'Paste code here if prompted > ';
+/**
+ * The sign-in URL, drawn from column 0 whatever pads the flow. It wraps over
+ * several rows, and inside a padded parent (the /provider Pane pads 2 columns)
+ * every continuation row would start with that padding. The terminal's own
+ * selection copies it, so the URL reaches the browser as `…-594  4d19…`:
+ * Firefox strips only the line breaks, and claude.com rejects the client_id.
+ * Pulling the box left by its measured offset leaves nothing but line breaks
+ * between the pieces, which every browser drops on paste.
+ */
+export function SignInUrl({
+  url
+}: {
+  url: string;
+}): React.ReactNode {
+  const ref = useRef<DOMElement>(null);
+  const [bleed, setBleed] = useState(0);
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const {
+      left
+    } = measureAbsoluteRect(ref.current);
+    if (left !== 0) setBleed(b => Math.max(0, b + left));
+  });
+  return <Box ref={ref} marginLeft={-bleed}>
+      <Link url={url}>
+        <Text dimColor>{url}</Text>
+      </Link>
+    </Box>;
+}
 export function ConsoleOAuthFlow({
   onDone,
   startingMessage,
@@ -273,9 +302,7 @@ export function ConsoleOAuthFlow({
                 <KeyboardShortcutHint shortcut="c" action="copy" parens />
               </Text>}
           </Box>
-          <Link url={oauthStatus.url}>
-            <Text dimColor>{oauthStatus.url}</Text>
-          </Link>
+          <SignInUrl url={oauthStatus.url} />
         </Box>}
       {mode === 'setup-token' && oauthStatus.state === 'success' && oauthStatus.token && <Box key="tokenOutput" flexDirection="column" gap={1} paddingTop={1}>
             <Text color="success">
