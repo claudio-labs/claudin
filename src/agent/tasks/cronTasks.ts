@@ -443,6 +443,44 @@ export function oneShotJitteredNextCronRunMs(
   return Math.max(t1 - lead, fromMs)
 }
 
+export type CronFireAnchor = Pick<CronTask, 'id' | 'cron' | 'createdAt' | 'recurring' | 'lastFiredAt'>
+
+/**
+ * When the scheduler first schedules `task`: a recurring task from its last
+ * fire (or its creation) with the late jitter, a one-shot from its creation
+ * with the early one. cronScheduler's first sight and the cron tools' "next
+ * run" both read it, so what a tool reports is what fires.
+ */
+export function firstFireMs(
+  task: CronFireAnchor,
+  cfg: CronJitterConfig = DEFAULT_CRON_JITTER_CONFIG,
+): number | null {
+  return task.recurring
+    ? jitteredNextCronRunMs(task.cron, task.lastFiredAt ?? task.createdAt, task.id, cfg)
+    : oneShotJitteredNextCronRunMs(task.cron, task.createdAt, task.id, cfg)
+}
+
+/**
+ * When the scheduler will next fire `task`, as seen at `nowMs`. A session
+ * task's fires are never written back, so past its anchor the pending fire is
+ * the first match whose jittered time has not passed yet — no earlier than
+ * `nowMs - recurringCapMs`, the most a fire can lag its match.
+ */
+export function nextFireMs(
+  task: CronFireAnchor,
+  nowMs: number,
+  cfg: CronJitterConfig = DEFAULT_CRON_JITTER_CONFIG,
+): number | null {
+  const first = firstFireMs(task, cfg)
+  if (!task.recurring || first === null || first >= nowMs) return first
+  let from = nowMs - cfg.recurringCapMs
+  for (;;) {
+    const fire = jitteredNextCronRunMs(task.cron, from, task.id, cfg)
+    if (fire === null || fire >= nowMs) return fire
+    from = nextCronRunMs(task.cron, from)!
+  }
+}
+
 /**
  * A task is "missed" when its next scheduled run (computed from createdAt)
  * is in the past. Surfaced to the user at startup. Works for both one-shot

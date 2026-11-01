@@ -1,21 +1,42 @@
 {
-  "test": ["src/agent/tasks/cronScheduler.test.ts"],
-  "source": "src/agent/tasks/cronScheduler.ts",
+  "test": [
+    "src/agent/tasks/cronScheduler.test.ts",
+    "src/agent/tasks/cronTasks.test.ts",
+    "src/tools/ScheduleCronTool/nextRun.test.ts"
+  ],
+  "source": "src/agent/tasks/cronTasks.ts",
   "probes": [
     {
       "name": "recurring first sight ignores lastFiredAt",
-      "find": "              t.lastFiredAt ?? t.createdAt,\n",
-      "replace": "              t.createdAt,\n"
+      "find": "task.lastFiredAt ?? task.createdAt",
+      "replace": "task.createdAt"
     },
     {
       "name": "one-shot first sight uses the recurring jitter",
-      "find": "          : (oneShotJitteredNextCronRunMs(\n",
-      "replace": "          : (jitteredNextCronRunMs(\n"
+      "find": "    : oneShotJitteredNextCronRunMs(task.cron, task.createdAt, task.id, cfg)\n",
+      "replace": "    : jitteredNextCronRunMs(task.cron, task.createdAt, task.id, cfg)\n"
     },
     {
       "name": "recurring first sight drops the jitter",
-      "find": "              t.id,\n              jitterCfg,\n            ) ?? Infinity)\n          : (oneShot",
-      "replace": "              '00000000',\n              jitterCfg,\n            ) ?? Infinity)\n          : (oneShot"
+      "find": "task.lastFiredAt ?? task.createdAt, task.id, cfg)",
+      "replace": "task.lastFiredAt ?? task.createdAt, '00000000', cfg)"
+    },
+    {
+      "name": "the scheduler stops reading firstFireMs",
+      "source": "src/agent/tasks/cronScheduler.ts",
+      "find": "        next = firstFireMs(t, jitterCfg) ?? Infinity\n",
+      "replace": "        next = jitteredNextCronRunMs(t.cron, t.createdAt, t.id, jitterCfg) ?? Infinity\n"
+    },
+    {
+      "name": "a stale session job re-anchors at now (the review round's bug)",
+      "find": "  let from = nowMs - cfg.recurringCapMs\n",
+      "replace": "  let from = nowMs\n"
+    },
+    {
+      "name": "the tools stop asking for the fire as of now",
+      "source": "src/tools/ScheduleCronTool/nextRun.ts",
+      "find": "  const next = nextFireMs(task, nowMs)\n",
+      "replace": "  const next = nextFireMs(task, task.createdAt)\n"
     }
   ]
 }

@@ -21,11 +21,11 @@ import {
   type CronTask,
   DEFAULT_CRON_JITTER_CONFIG,
   findMissedTasks,
+  firstFireMs,
   getCronFilePath,
   hasCronTasksSync,
   jitteredNextCronRunMs,
   markCronTasksFired,
-  oneShotJitteredNextCronRunMs,
   readCronTasks,
   removeCronTasks,
 } from 'src/agent/tasks/cronTasks.js'
@@ -271,19 +271,7 @@ export function createCronScheduler(
         // set in-memory here. Without this, a daemon child despawning on
         // idle loses nextFireAt and the next spawn re-anchors from 10-day-
         // old createdAt → fires every task every cycle.
-        next = t.recurring
-          ? (jitteredNextCronRunMs(
-              t.cron,
-              t.lastFiredAt ?? t.createdAt,
-              t.id,
-              jitterCfg,
-            ) ?? Infinity)
-          : (oneShotJitteredNextCronRunMs(
-              t.cron,
-              t.createdAt,
-              t.id,
-              jitterCfg,
-            ) ?? Infinity)
+        next = firstFireMs(t, jitterCfg) ?? Infinity
         nextFireAt.set(t.id, next)
         logForDebugging(
           `[ScheduledTasks] scheduled ${t.id} for ${next === Infinity ? 'never' : new Date(next).toISOString()}`,

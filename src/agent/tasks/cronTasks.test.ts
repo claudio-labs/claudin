@@ -8,12 +8,14 @@ import {
   type CronTask,
   DEFAULT_CRON_JITTER_CONFIG,
   findMissedTasks,
+  firstFireMs,
   getCronFilePath,
   hasCronTasksSync,
   jitteredNextCronRunMs,
   listAllCronTasks,
   markCronTasksFired,
   nextCronRunMs,
+  nextFireMs,
   oneShotJitteredNextCronRunMs,
   readCronTasks,
   removeCronTasks,
@@ -221,5 +223,56 @@ describe('fire times', () => {
     const never = task({ id: 'never', cron: '0 0 31 2 *' })
     const now = NOV_1_0905 + HOUR
     expect(findMissedTasks([due, later, never], now).map(t => t.id)).toEqual(['due'])
+  })
+})
+
+// The scheduler's first sight (cronScheduler.test.ts pins that it uses this)
+// and the next fire the cron tools report.
+describe('firstFireMs and nextFireMs', () => {
+  test('a new recurring job fires at its first match after createdAt plus jitter', () => {
+    const job = { id: 'ffffffff', cron: '0 * * * *', createdAt: NOV_1_0905, recurring: true }
+    const next = nextFireMs(job, NOV_1_0905)
+    expect(next).toBe(firstFireMs(job))
+    expect(next).toBe(jitteredNextCronRunMs('0 * * * *', NOV_1_0905, 'ffffffff'))
+    // An hourly job with the largest jitter runs about six minutes after :00.
+    const late = next! - new Date(2026, 10, 1, 10, 0).getTime()
+    expect(late).toBeGreaterThan(5.9 * MIN)
+    expect(late).toBeLessThanOrEqual(6 * MIN)
+  })
+
+  test('a fired-before durable job anchors at lastFiredAt', () => {
+    const lastFiredAt = NOV_1_0905 + HOUR
+    const job = { id: '80000000', cron: '0 * * * *', createdAt: NOV_1_0905, recurring: true, lastFiredAt }
+    expect(firstFireMs(job)).toBe(jitteredNextCronRunMs('0 * * * *', lastFiredAt, '80000000'))
+    expect(nextFireMs(job, lastFiredAt)).toBe(firstFireMs(job))
+  })
+
+  test('a one-shot keeps its createdAt anchor, even once past', () => {
+    const job = { id: 'ffffffff', cron: '30 14 1 11 *', createdAt: NOV_1_0905, recurring: false }
+    const once = oneShotJitteredNextCronRunMs('30 14 1 11 *', NOV_1_0905, 'ffffffff')
+    expect(firstFireMs(job)).toBe(once)
+    expect(nextFireMs(job, NOV_1_0905 + 8 * HOUR)).toBe(once)
+  })
+
+  test('a recurring job past its anchor fires at the next match that is not past', () => {
+    const job = { id: '00000000', cron: '*/10 * * * *', createdAt: NOV_1_0905, recurring: true }
+    const later = NOV_1_0905 + 2 * HOUR
+    expect(nextFireMs(job, later)).toBe(jitteredNextCronRunMs('*/10 * * * *', later, '00000000'))
+  })
+
+  // Review round, PR #337: a session job's fires are not written back, and
+  // re-anchoring at `now` inside the jitter window skipped the pending fire.
+  test('a fired session job listed inside its jitter window reports the pending fire', () => {
+    const cron = '0 * * * *'
+    const job = { id: 'ffffffff', cron, createdAt: NOV_1_0905, recurring: true }
+    const firstFire = jitteredNextCronRunMs(cron, NOV_1_0905, 'ffffffff')! // ~10:06
+    const pending = jitteredNextCronRunMs(cron, firstFire, 'ffffffff')! // ~11:06, the scheduler's reschedule
+    expect(nextFireMs(job, new Date(2026, 10, 1, 11, 3).getTime())).toBe(pending)
+  })
+
+  test('a job whose cron never matches again has no fire', () => {
+    const job = { id: '00000000', cron: '0 0 31 2 *', createdAt: NOV_1_0905, recurring: true }
+    expect(firstFireMs(job)).toBeNull()
+    expect(nextFireMs(job, NOV_1_0905 + HOUR)).toBeNull()
   })
 })
