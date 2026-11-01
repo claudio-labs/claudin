@@ -29,4 +29,17 @@ describe('the snapshot note', () => {
     ])
     expect(memoryHygieneNotesIn(dirs, `${TEAM}decisions/pr-status-gitlab-gitea.md`, fresh(doc), () => [])).toEqual([])
   })
+
+  test('at the team root too, a date alone or a bare status is not a snapshot', () => {
+    const rotation = memory(['name: oncall-rotation', 'description: 2026-09-24 — the on-call rotation moved to Mondays; status page owners unchanged', 'type: project'])
+    expect(memoryHygieneNotesIn(dirs, `${TEAM}oncall-rotation.md`, fresh(rotation), () => [])).toEqual([])
+  })
+
+  test('a decision that cites a bench is filed to last; the same words at the team root are a snapshot', () => {
+    const lines = ['name: cache-ttl-1h', 'description: keep the 1h cache TTL — the bench showed it 12% cheaper', 'type: project']
+    expect(memoryHygieneNotesIn(dirs, `${TEAM}decisions/cache-ttl-1h.md`, fresh(memory(lines)), () => [])).toEqual([])
+    expect(memoryHygieneNotesIn(dirs, `${TEAM}cache-ttl-1h.md`, fresh(memory(lines)), () => [])).toEqual([
+      expect.stringContaining('reads like a dated measurement or status'),
+    ])
+  })
 })

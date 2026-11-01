@@ -119,14 +119,18 @@ describe('the idle trigger', () => {
   test('an idle run after a session switch keeps each session cursor its own', async () => {
     let session = 'session-a'
     const { deps, forks } = fakeDeps({ sessionId: () => session })
-    initExtractMemories(deps)
     const a = conversation('a1', 'a2')
+    // Session A was extracted through a1: its idle run should read a2 alone
+    deps.cursors.write('session-a', a[1]!.uuid)
+    initExtractMemories(deps)
     await executeExtractMemories(contextOf(a)) // throttled: arms the timer on session A's context
     session = 'session-b' // in-process /resume or /clear
     deps.cursors.write('session-b', 'b-cursor')
     await sleep(80)
     await drainPendingExtraction(1_000)
     expect(forks).toHaveLength(1)
+    // Measured from A's cursor, not B's (which is not among A's messages)
+    expect(JSON.stringify(forks[0]!.promptMessages)).toContain('~2 messages')
     // The run extracted session A's messages: A's cursor should move, B's must be left alone.
     expect(deps.cursors.read('session-b')).toBe('b-cursor')
     expect(deps.cursors.read('session-a')).toBe(a.at(-1)!.uuid)

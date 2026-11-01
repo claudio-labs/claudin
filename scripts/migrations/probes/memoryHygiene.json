@@ -18,7 +18,8 @@
     "src/memory/extract/extractMemories.idleTrigger.test.ts",
     "src/memory/memdir/memoryFormatGuard.snapshotNote.test.ts",
     "src/platform/cleanup.test.ts",
-    "src/commands/memory/tidy.test.ts"
+    "src/commands/memory/tidy.test.ts",
+    "src/memory/instructions/ruleMapWiring.test.ts"
   ],
   "source": "src/memory/memdir/memoryHygiene.ts",
   "probes": [
