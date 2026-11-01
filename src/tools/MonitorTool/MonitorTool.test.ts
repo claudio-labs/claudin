@@ -144,13 +144,12 @@ describe('MonitorTool', () => {
   })
 
   test('the prompt points one-shot waits at Bash run_in_background', async () => {
-    const prompt = await MonitorTool.prompt({} as never)
+    const prompt = await MonitorTool.prompt()
     expect(prompt).toContain('run_in_background')
   })
 
   test('renderToolUseMessage joins description and command, else shows whichever is set', () => {
-    const render = (input: object) =>
-      MonitorTool.renderToolUseMessage(input as never, {} as never)
+    const render = (input: object) => MonitorTool.renderToolUseMessage(input as never)
     expect(render({ command: 'tail -f a.log', description: 'app log' })).toBe(
       'app log: tail -f a.log',
     )
@@ -161,11 +160,7 @@ describe('MonitorTool', () => {
 
   test('renderToolResultMessage names the task', () => {
     expect(
-      MonitorTool.renderToolResultMessage?.(
-        { taskId: 'tsk_9', outputFile: '/tmp/o' },
-        [],
-        {} as never,
-      ),
+      MonitorTool.renderToolResultMessage?.({ taskId: 'tsk_9', outputFile: '/tmp/o' }),
     ).toBe('Monitor started (task tsk_9)')
   })
 
