@@ -11,9 +11,9 @@ function setSettings(settings: Record<string, unknown> | null): void {
 describe('isAutoDreamEnabled', () => {
   afterEach(() => setSettings(null))
 
-  test('is off without the setting', () => {
+  test('is on without the setting', () => {
     setSettings(null)
-    expect(isAutoDreamEnabled()).toBe(false)
+    expect(isAutoDreamEnabled()).toBe(true)
   })
 
   test('follows autoDreamEnabled', () => {
