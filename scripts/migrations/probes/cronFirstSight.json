@@ -1,0 +1,21 @@
+{
+  "test": ["src/agent/tasks/cronScheduler.test.ts"],
+  "source": "src/agent/tasks/cronScheduler.ts",
+  "probes": [
+    {
+      "name": "recurring first sight ignores lastFiredAt",
+      "find": "              t.lastFiredAt ?? t.createdAt,\n",
+      "replace": "              t.createdAt,\n"
+    },
+    {
+      "name": "one-shot first sight uses the recurring jitter",
+      "find": "          : (oneShotJitteredNextCronRunMs(\n",
+      "replace": "          : (jitteredNextCronRunMs(\n"
+    },
+    {
+      "name": "recurring first sight drops the jitter",
+      "find": "              t.id,\n              jitterCfg,\n            ) ?? Infinity)\n          : (oneShot",
+      "replace": "              '00000000',\n              jitterCfg,\n            ) ?? Infinity)\n          : (oneShot"
+    }
+  ]
+}
