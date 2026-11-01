@@ -2,12 +2,14 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import type { AuditedFile } from 'src/memory/memdir/memoryAudit.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 import {
+  contradictsOf,
   findHygieneFindings,
   isMemoryHygieneEnabled,
   memoryTokens,
   NEAR_DUPLICATE_MIN,
   nearDuplicateScore,
   OVERSIZE_BYTES,
+  parseContradicts,
   similarMemories,
 } from 'src/memory/memdir/memoryHygiene.js'
 
@@ -107,6 +109,18 @@ describe('findHygieneFindings', () => {
 })
 
 describe('isMemoryHygieneEnabled', () => {
+  test('parseContradicts reads one name or a list, and refuses what names nothing', () => {
+    expect(parseContradicts(undefined)).toEqual([])
+    expect(parseContradicts(' timeout-a ')).toEqual(['timeout-a'])
+    expect(parseContradicts(['a', ' b'])).toEqual(['a', 'b'])
+    expect(parseContradicts('')).toBeNull()
+    expect(parseContradicts([])).toBeNull()
+    expect(parseContradicts(['a', 3])).toBeNull()
+    expect(parseContradicts({ a: 1 })).toBeNull()
+    expect(contradictsOf(memory(['name: b', 'description: b', 'type: project', 'contradicts:', '  - a']))).toEqual(['a'])
+    expect(contradictsOf(memory(['name: b', 'description: b', 'type: project', 'contradicts: []']))).toEqual([])
+  })
+
   const saved = process.env.CLAUDIN_MEMORY_HYGIENE
   afterEach(() => {
     if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE

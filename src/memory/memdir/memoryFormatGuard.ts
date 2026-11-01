@@ -26,6 +26,7 @@ import {
   describeMemory,
   indexOverCap,
   isMemoryHygieneEnabled,
+  parseContradicts,
   readHygieneFacts,
   readVisibleMemoriesSync,
   similarMemories,
@@ -199,6 +200,9 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs, bef
   const expires = parseExpires(frontmatter.expires)
   if (expires.kind === 'invalid') {
     problems.push(`\`expires: ${expires.raw}\` is not a date — write the last day it holds as YYYY-MM-DD, or leave the key out`)
+  }
+  if (parseContradicts(frontmatter.contradicts) === null) {
+    problems.push('`contradicts:` names no memory — list the `name` of each memory this one disagrees with, or leave the key out')
   }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]

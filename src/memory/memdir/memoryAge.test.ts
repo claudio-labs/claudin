@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { memoryAgeDays, memoryReadNote } from 'src/memory/memdir/memoryAge.js'
 
 const DAY = 86_400_000
@@ -43,5 +43,25 @@ describe('memoryReadNote', () => {
     const note = memoryReadNote({ mtimeMs: ago(40, 1000), expires: '2026-09-30' }, TODAY)
     expect(note.match(/<system-reminder>/g)?.length).toBe(1)
     expect(note.indexOf('days old')).toBeLessThan(note.indexOf('has passed'))
+  })
+
+  describe('contradicts:', () => {
+    const saved = process.env.CLAUDIN_MEMORY_HYGIENE
+    afterEach(() => {
+      if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
+      else process.env.CLAUDIN_MEMORY_HYGIENE = saved
+    })
+
+    test('a memory marked contradicts: names the others and asks to check before relying on either', () => {
+      expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: null, contradicts: ['timeout-a', 'timeout-c'] }, TODAY)).toBe(
+        '<system-reminder>It is marked as contradicting `timeout-a`, `timeout-c`: another memory says otherwise and neither settled it. Check the code, or ask, before relying on either.</system-reminder>\n',
+      )
+    })
+
+    test('an empty list says nothing, and CLAUDIN_MEMORY_HYGIENE=0 drops the note', () => {
+      expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: null, contradicts: [] }, TODAY)).toBe('')
+      process.env.CLAUDIN_MEMORY_HYGIENE = '0'
+      expect(memoryReadNote({ mtimeMs: ago(0, 1000), expires: null, contradicts: ['timeout-a'] }, TODAY)).toBe('')
+    })
   })
 })

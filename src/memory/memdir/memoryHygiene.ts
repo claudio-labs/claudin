@@ -147,8 +147,25 @@ type Memory = Where & {
 const isIndex = (path: string): boolean => basename(path) === ENTRYPOINT_NAME
 
 function asStrings(value: unknown): string[] {
-  if (typeof value === 'string') return value.trim() ? [value.trim()] : []
-  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string' && v.trim() !== '').map(v => v.trim()) : []
+  return parseContradicts(value) ?? []
+}
+
+/**
+ * The names a `contradicts:` value lists: one name, or a list of them. [] when
+ * the key is absent; null when it is there but names nothing a reader could
+ * follow (the format guard refuses it).
+ */
+export function parseContradicts(value: unknown): string[] | null {
+  if (value === undefined || value === null) return []
+  if (typeof value === 'string') return value.trim() ? [value.trim()] : null
+  if (!Array.isArray(value) || value.length === 0) return null
+  if (!value.every(v => typeof v === 'string' && v.trim() !== '')) return null
+  return value.map(v => (v as string).trim())
+}
+
+/** The names a memory file's `contradicts:` lists, [] for none. */
+export function contradictsOf(content: string): string[] {
+  return asStrings(parseFrontmatter(content).frontmatter.contradicts)
 }
 
 /** A memory's frontmatter, as the hygiene checks read it. */

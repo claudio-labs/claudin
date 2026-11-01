@@ -58,6 +58,7 @@ import {
 } from 'src/tools/FileReadTool/outlineView.js'
 import { markMemoryFileRead } from 'src/tools/FileReadTool/resultContent.js'
 import { expiresOf } from 'src/memory/memdir/memoryExpires.js'
+import { contradictsOf } from 'src/memory/memdir/memoryHygiene.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
@@ -498,9 +499,14 @@ export async function callInner(
     },
   }
   // A memory file of any directory gets the read note (memoryAge.ts): its
-  // age, and its `expires:` date when this read starts at the frontmatter.
+  // age, and its `expires:` date and `contradicts:` names when this read
+  // starts at the frontmatter.
   if (memoryScopeOf(fullFilePath) !== null) {
-    markMemoryFileRead(data, { mtimeMs, expires: offset === 1 ? expiresOf(content) : null })
+    markMemoryFileRead(data, {
+      mtimeMs,
+      expires: offset === 1 ? expiresOf(content) : null,
+      contradicts: offset === 1 ? contradictsOf(content) : [],
+    })
   }
 
   return { data }

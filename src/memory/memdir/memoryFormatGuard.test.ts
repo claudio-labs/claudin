@@ -112,6 +112,13 @@ describe('checkMemoryFileFormatIn — what it refuses', () => {
     expect(check('team/x.md', fromTemplate('project', ['expires: 2026-11-30']))).toBeNull()
   })
 
+  test('a contradicts: naming no memory is refused; one name or a list of names is not', () => {
+    expect(check('x.md', fromTemplate('project', ['contradicts: []']))).toContain('`contradicts:` names no memory')
+    expect(check('x.md', fromTemplate('project', ['contradicts:', '  - 3']))).toContain('`contradicts:` names no memory')
+    expect(check('x.md', fromTemplate('project', ['contradicts: timeout-a']))).toBeNull()
+    expect(check('team/x.md', fromTemplate('project', ['contradicts:', '  - timeout-a', '  - timeout-b']))).toBeNull()
+  })
+
   test('a missing name, description or type names the key', () => {
     const full = fromTemplate('feedback')
     expect(check('x.md', full.replace(/^name: .*\n/m, ''))).toContain('it lacks `name:`')
