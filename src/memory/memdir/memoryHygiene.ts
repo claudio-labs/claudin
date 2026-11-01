@@ -283,7 +283,7 @@ export function describeMemory(memory: { scope: MemoryScope; path: string }, dir
  * and a contradiction a global memory is marked with. One project's run may
  * only add to the global dir, so these wait for the user (`/memory tidy`).
  */
-export function globalOnlyFindings(findings: readonly HygieneFinding[]): HygieneFinding[] {
+function globalOnlyFindings(findings: readonly HygieneFinding[]): HygieneFinding[] {
   return findings.filter(
     f =>
       (f.kind === 'near-duplicate' && f.scope === 'global' && f.other.scope === 'global') ||

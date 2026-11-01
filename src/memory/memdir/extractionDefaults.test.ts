@@ -68,8 +68,8 @@ describe('memory extraction', () => {
     expect(isExtractModeActive()).toBe(false)
   })
 
-  test('fires every 15 eligible turns', () => {
-    expect(getExtractionTurnInterval()).toBe(15)
+  test('fires every 5 human turns (15 until 2026-11-01, when no session reached it)', () => {
+    expect(getExtractionTurnInterval()).toBe(5)
   })
 
   test('CLAUDIN_EXTRACT_MEMORIES_EVERY retunes the cadence', () => {
@@ -81,7 +81,7 @@ describe('memory extraction', () => {
     'CLAUDIN_EXTRACT_MEMORIES_EVERY=%s keeps the default',
     value => {
       process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = value
-      expect(getExtractionTurnInterval()).toBe(15)
+      expect(getExtractionTurnInterval()).toBe(5)
     },
   )
 })
