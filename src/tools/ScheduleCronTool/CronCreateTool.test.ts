@@ -121,6 +121,24 @@ describe('CronCreateTool', () => {
     expect(data.durable).toBe(false)
     expect(getScheduledTasksEnabled()).toBe(true)
     expect(getSessionCronTasks().some(t => t.id === data.id)).toBe(true)
+    // The time the scheduler will fire it, jitter included.
+    expect(data.nextRun).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
+  })
+
+  // The jitter can delay a recurring job by up to 15 minutes; the result
+  // carries the real time so the model does not quote the cron's minute.
+  test('the result names the next run in local time when it is known', () => {
+    const map = CronCreateTool.mapToolResultToToolResultBlockParam
+    const recurring = map?.(
+      { id: 'abc', humanSchedule: 'every hour', recurring: true, durable: false, nextRun: '2026-11-01 09:06' },
+      'u1',
+    )
+    expect(recurring?.content).toContain('(every hour; next run 2026-11-01 09:06 local time)')
+    const oneShot = map?.(
+      { id: 'def', humanSchedule: 'at 14:30', recurring: false, durable: false, nextRun: '2026-11-01 14:29' },
+      'u1',
+    )
+    expect(oneShot?.content).toContain('(at 14:30; runs 2026-11-01 14:29 local time)')
   })
 
   test('mapToolResultToToolResultBlockParam describes recurring vs one-shot', () => {
