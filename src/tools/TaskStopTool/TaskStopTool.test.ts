@@ -80,26 +80,24 @@ describe('TaskStopTool', () => {
     expect(result?.result).toBe(true)
   })
 
-  test('call() stops the task a name points at', async () => {
-    const killed: string[] = []
+  test('call() stops the background agent a name points at', async () => {
+    const abortController = new AbortController()
     let state = {
       tasks: {
         a1: {
           id: 'a1',
-          type: 'local_bash',
+          type: 'local_agent',
           status: 'running',
-          command: 'npm run watch',
-          description: 'watcher',
-          notified: false,
-          shellCommand: { kill: () => killed.push('kill'), cleanup: () => {} },
+          description: 'Run sleep 90',
+          abortController,
         },
       },
-      agentNameRegistry: new Map([['watcher', 'a1']]),
+      agentNameRegistry: new Map([['sleeper', 'a1']]),
     }
     const wasInteractive = !getIsNonInteractiveSession()
     setIsInteractive(false)
     try {
-      const result = await TaskStopTool.call({ task_id: 'watcher' } as never, {
+      const result = await TaskStopTool.call({ task_id: 'sleeper' } as never, {
         getAppState: () => state,
         setAppState: (f: (prev: typeof state) => typeof state) => {
           state = f(state)
@@ -107,7 +105,9 @@ describe('TaskStopTool', () => {
         abortController: new AbortController(),
       } as never)
       expect(result.data.task_id).toBe('a1')
-      expect(killed).toEqual(['kill'])
+      expect(result.data.task_type).toBe('local_agent')
+      expect(abortController.signal.aborted).toBe(true)
+      expect(state.tasks.a1.status).toBe('killed')
     } finally {
       setIsInteractive(wasInteractive)
       drainSdkEvents()

@@ -45,7 +45,7 @@ async function waitForNotification(
 }
 
 // A command still running when its test fails would notify into the next test.
-function killTask(state: AppState, taskId: string): void {
+function stopCommand(state: AppState, taskId: string): void {
   const task = state.tasks[taskId] as { shellCommand?: { kill(): void } | null } | undefined
   task?.shellCommand?.kill()
 }
@@ -251,7 +251,7 @@ describe('MonitorTool.call', () => {
         .filter(v => v.includes('second-event'))
       expect(second).toHaveLength(1)
     } finally {
-      killTask(harness.getState(), taskId)
+      stopCommand(harness.getState(), taskId)
     }
   }, 20_000)
 
@@ -278,7 +278,7 @@ describe('MonitorTool.call', () => {
     } as unknown as ToolUseContext
 
     const result = await MonitorTool.call(
-      { command: 'sleep 30', description: 'never ends', timeout_ms: 1_000 } as never,
+      { command: 'sleep 30', description: 'never ends', timeout_ms: 1_000 },
       context,
     )
     const { taskId } = result.data
@@ -287,7 +287,7 @@ describe('MonitorTool.call', () => {
       expect(exit).toContain('<status>killed</status>')
       expect(exit).toContain('expired')
     } finally {
-      killTask(harness.getState(), taskId)
+      stopCommand(harness.getState(), taskId)
     }
   }, 15_000)
 })
