@@ -227,6 +227,75 @@ describe('AskUserQuestion dialog — multi-select', () => {
   })
 })
 
+describe('AskUserQuestion dialog — the Other text is sent once', () => {
+  test('a single-select Other answer is not repeated as user notes', async () => {
+    const dialog = await mountAskDialog([question()])
+    try {
+      await dialog.press(KEY.down, KEY.down, 'f', 'o', 'o')
+      await dialog.waitForText('foo')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which one?': 'foo' })
+      expect(call.annotations).toBeUndefined()
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('Other text left behind for an option does not become a hidden note', async () => {
+    const dialog = await mountAskDialog([question()])
+    try {
+      await dialog.press(KEY.down, KEY.down, 'f', 'o', 'o')
+      await dialog.waitForText('foo')
+      await dialog.press(KEY.up)
+      await dialog.waitForText('❯ 2. Beta')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which one?': 'Beta' })
+      expect(call.annotations).toBeUndefined()
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+
+  test('a multi-select Other answer is not repeated as user notes', async () => {
+    const dialog = await mountAskDialog([MULTI])
+    try {
+      await dialog.press(KEY.space, KEY.down, KEY.down, 'f', 'o', 'o')
+      await dialog.waitForText('foo')
+      await dialog.press(KEY.down)
+      await dialog.waitForText('❯    Submit')
+      await dialog.press(KEY.enter)
+      await dialog.waitForText('Review your answers')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.annotations).toBeUndefined()
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+})
+
+describe('AskUserQuestion dialog — the multi-select Other answer keeps every keystroke', () => {
+  test('the last character typed reaches the answer and the review', async () => {
+    const dialog = await mountAskDialog([MULTI])
+    try {
+      await dialog.press(KEY.space, KEY.down, KEY.down, 'f', 'o', 'o')
+      await dialog.waitForText('foo')
+      await dialog.press(KEY.down)
+      await dialog.waitForText('❯    Submit')
+      await dialog.press(KEY.enter)
+      await dialog.waitForText('Review your answers')
+      expect(dialog.frame()).toContain('→ Alpha, foo')
+      await dialog.press(KEY.enter)
+      const call = await waitForAllow(dialog)
+      expect(call.answers).toEqual({ 'Which ones?': 'Alpha, foo' })
+    } finally {
+      await dialog.cleanup()
+    }
+  })
+})
+
 describe('AskUserQuestion dialog — previews', () => {
   test('shows the focused option preview and the notes line', async () => {
     const dialog = await mountAskDialog([PREVIEWED])
