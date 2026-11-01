@@ -30,6 +30,10 @@ import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
+// Both PR sections end with it: GitHub notifies whoever an @name points at.
+const GITHUB_MENTIONS =
+  'An `@name` in a PR, issue or comment notifies that GitHub account: put roles, placeholders and package names (`@reviewer`, `@types/node`) in backticks or drop the `@`.'
+
 export function getDefaultTimeoutMs(): number {
   return getDefaultBashTimeoutMs()
 }
@@ -123,6 +127,8 @@ Use \`gh\` for everything GitHub — issues, pull requests, checks, releases —
 
 Before opening one, read the whole branch rather than its last commit, again in a SINGLE ${GIT_TOOL_NAME} call: status, diff, whether the branch tracks a remote and is up to date with it, and \`git log\` plus \`git diff [base-branch]...HEAD\` for every commit since it diverged. Then create the branch and push with \`-u\` if needed, and open the PR with a title under 70 characters (details belong in the body), returning its URL when you're done.
 
+${GITHUB_MENTIONS}
+
 <example>
 ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullet points>\\n\\n## Test plan\\n[Bulleted markdown checklist of TODOs for testing the pull request...]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
 </example>
@@ -173,7 +179,7 @@ Subject, blank line and body go in ONE quoted \`-m\` argument: '…' when it hol
 
 # Creating pull requests
 
-Use \`gh\` through the ${GIT_TOOL_NAME} tool for everything GitHub, a GitHub URL included (review comments: \`gh api repos/foo/bar/pulls/123/comments\`). Before opening a PR, read the whole branch in a SINGLE ${GIT_TOOL_NAME} call: status, diff, remote tracking and sync, \`git log\` and \`git diff [base-branch]...HEAD\`. Create the branch and push with \`-u\` if needed, open the PR with a title under 70 characters (details go in the body), and return its URL.
+Use \`gh\` through the ${GIT_TOOL_NAME} tool for everything GitHub, a GitHub URL included (review comments: \`gh api repos/foo/bar/pulls/123/comments\`). Before opening a PR, read the whole branch in a SINGLE ${GIT_TOOL_NAME} call: status, diff, remote tracking and sync, \`git log\` and \`git diff [base-branch]...HEAD\`. Create the branch and push with \`-u\` if needed, open the PR with a title under 70 characters (details go in the body), and return its URL. ${GITHUB_MENTIONS}
 
 <example>
 ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullets>\\n\\n## Test plan\\n[checklist]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})

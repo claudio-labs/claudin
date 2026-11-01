@@ -216,6 +216,12 @@ describe('getBashGitInstructionsBody', () => {
     expect(bodies.unset).toBe(bodies.lean)
   })
 
+  it('both bodies warn that an @name notifies a GitHub account', () => {
+    for (const body of [bodies.full, bodies.lean]) {
+      expect(body).toContain('An `@name` in a PR, issue or comment notifies that GitHub account')
+    }
+  })
+
   // CLAUDIN_RESPONSE_CHAINS moves the read step into the last check's response
   // and changes nothing else: the commit still waits for the check's result.
   const LEAN_READ_STEP = `1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call: `

@@ -35,6 +35,7 @@ describe('Bash input schema — the texts that ship', () => {
     const description = descriptionOf('description')
     expect(description).toStartWith('Clear, concise description of what this command does in active voice.')
     expect(description).toContain('Never use words like "complex" or "risk" in the description')
+    expect(description).toContain('without repeating the command, its flags or its paths')
     expect(description).toContain('git status → "Show working tree status"')
     expect(description).toContain(`curl -s url | jq '.data[]' → "Fetch JSON from URL and extract data array elements"`)
     expect(description.split('→').length - 1).toBe(2)
