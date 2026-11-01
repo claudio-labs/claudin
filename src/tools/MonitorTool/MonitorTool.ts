@@ -5,16 +5,21 @@ import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { spawnShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js'
 import {
   clampMonitorTimeout,
+  MONITOR_DEFAULT_TIMEOUT_MS,
   MONITOR_EVENT_MAX_LINES,
   MONITOR_FLOOD_EVENTS,
+  MONITOR_MAX_TIMEOUT_MS,
 } from 'src/agent/tasks/LocalShellTask/monitorStream.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   bashToolHasPermission,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
+
+const minutes = (ms: number): number => ms / 60_000
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -26,13 +31,9 @@ const inputSchema = lazySchema(() =>
       .describe(
         'Clear, concise description of what this command does in active voice.',
       ),
-    timeout_ms: z
-      .number()
-      .min(1000)
-      .optional()
-      .describe(
-        'Kill the monitor after this many ms. Default 300000 (5 min); values above 1800000 (30 min) are capped. You are notified when it expires.',
-      ),
+    timeout_ms: semanticNumber(z.number().min(1000).optional()).describe(
+      `Kill the monitor after this many ms. Default ${MONITOR_DEFAULT_TIMEOUT_MS} (${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} min); values above ${MONITOR_MAX_TIMEOUT_MS} (${minutes(MONITOR_MAX_TIMEOUT_MS)} min) are capped. You are notified when it expires.`,
+    ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -97,7 +98,7 @@ export const MonitorTool = buildTool({
 
 - Filter to the lines you would act on, and make every pipe stage flush per line, or matches wait in its buffer: \`tail -f app.log | grep --line-buffered -E "ERROR|FAILED|Traceback"\`. Match the failure signatures too, not only success: silence looks the same as "still running".
 - A notification carries at most ${MONITOR_EVENT_MAX_LINES} lines; the rest stays in the output file. A monitor that sends ${MONITOR_FLOOD_EVENTS} notifications within a minute is stopped; call Monitor again with a tighter filter.
-- It expires after \`timeout_ms\` (default 5 minutes, at most 30): the command is killed and you get one notice with its event count. Call Monitor again to keep watching; TaskStop ends it early.`
+- It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching; TaskStop ends it early.`
   },
 
   get inputSchema(): InputSchema {
