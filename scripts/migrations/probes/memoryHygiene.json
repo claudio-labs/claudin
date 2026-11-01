@@ -14,7 +14,11 @@
     "src/memory/autoDream/dreamDigest.test.ts",
     "src/memory/autoDream/consolidationPrompt.test.ts",
     "src/commands/memory/tidyPrompt.test.ts",
-    "src/memory/forkToolGate.test.ts"
+    "src/memory/forkToolGate.test.ts",
+    "src/memory/extract/extractMemories.idleTrigger.test.ts",
+    "src/memory/memdir/memoryFormatGuard.snapshotNote.test.ts",
+    "src/platform/cleanup.test.ts",
+    "src/commands/memory/tidy.test.ts"
   ],
   "source": "src/memory/memdir/memoryHygiene.ts",
   "probes": [
@@ -65,12 +69,13 @@
     {
       "name": "dream line: a global contradiction is not named",
       "find": "      (f.kind === 'open-contradiction' && f.scope === 'global'),",
-      "replace": "      false,"
+      "replace": "      false,",
+      "source": "src/memory/autoDream/autoDream.ts"
     },
     {
       "name": "write notes: a snapshot without expires: gets no note",
       "source": "src/memory/memdir/memoryFormatGuard.ts",
-      "find": "if (!isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {",
+      "find": "if (!file.category && !isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {",
       "replace": "if (false) {"
     },
     {
@@ -136,7 +141,7 @@
     {
       "name": "extraction: a throttled turn arms no idle trigger",
       "source": "src/memory/extract/extractMemories.ts",
-      "find": "        if (turns > 0) armIdle(context, appendSystemMessage)\n",
+      "find": "        if (turns > 0) armIdle(context, sessionId, appendSystemMessage)\n",
       "replace": ""
     },
     {
@@ -224,15 +229,75 @@
       "expect": "green"
     },
     {
-      "name": "dream digest: an index over its cap may be cut by deletion again",
+      "name": "dream digest: the findings carry a make-room rule again",
       "source": "src/memory/autoDream/dreamDigest.ts",
-      "find": "shorten the hooks to one line under ~150 chars. Never delete a memory to make room — only one that is merged, superseded, wrong, or a snapshot already folded into what it supports.",
-      "replace": "shorten the hooks to one line under ~150 chars, and retire what nothing needs any more."
+      "find": "as Phases 3 and 4 say; a contradiction you settle loses its `contradicts:` key.",
+      "replace": "as Phases 3 and 4 say; a contradiction you settle loses its `contradicts:` key. An index over its cap: retire what nothing needs any more."
     },
     {
       "name": "dream prompt: a thin team memory may be deleted to make room",
       "source": "src/memory/autoDream/consolidationPrompt.ts",
       "find": " A memory that is only thin, old or rarely needed stays: never delete to make room in an index",
+      "replace": ""
+    },
+    {
+      "name": "review B1: the dream's Patch applies what matches again",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "          ...(prune && { options: { ...context.toolUseContext.options, patchAllOrNothing: true } }),\n",
+      "replace": ""
+    },
+    {
+      "name": "review B1: the Patch tool ignores options.patchAllOrNothing",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  return context.options?.patchAllOrNothing === true || isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)",
+      "replace": "  return isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)"
+    },
+    {
+      "name": "review B2: a new stop leaves an older idle timer armed",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "    cancelIdle()\n    const sessionId = deps.sessionId()",
+      "replace": "    const sessionId = deps.sessionId()"
+    },
+    {
+      "name": "review B3: a run reads the session running now, not its own",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "    syncCursor(sessionId)",
+      "replace": "    syncCursor(deps.sessionId())"
+    },
+    {
+      "name": "review B4: a prune Patch's ~ path resolves under cwd",
+      "source": "src/memory/forkToolGate.ts",
+      "find": "    const abs = expandPath(hunk.path, cwd)",
+      "replace": "    const abs = resolve(cwd, hunk.path)"
+    },
+    {
+      "name": "review C1: the over-cap note offers to retire a memory",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "a memory is never deleted to make room.",
+      "replace": "or retire a memory nothing needs any more."
+    },
+    {
+      "name": "review B5: a date alone reads as a snapshot",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "const SNAPSHOT_RE = /\\bcensus\\b",
+      "replace": "const SNAPSHOT_RE = /\\b20\\d{2}-\\d{2}-\\d{2}\\b|\\bcensus\\b"
+    },
+    {
+      "name": "review B5: a team decision is asked to expire",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "  if (!file.category && !isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {",
+      "replace": "  if (!isFilled(frontmatter.expires) && SNAPSHOT_RE.test(said)) {"
+    },
+    {
+      "name": "review E6: the session cleanup keeps old cursor files",
+      "source": "src/platform/cleanup.ts",
+      "find": " && !entry.name.endsWith(CURSOR_SUFFIX)) {",
+      "replace": ") {"
+    },
+    {
+      "name": "review: tidy hands the hygiene findings over when off",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "  if (!isMemoryHygieneEnabled()) findings = findings.filter(f => !isHygieneFinding(f))\n",
       "replace": ""
     }
   ]

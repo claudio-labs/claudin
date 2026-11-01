@@ -68,7 +68,7 @@ describe('memory extraction', () => {
     expect(isExtractModeActive()).toBe(false)
   })
 
-  test('fires every 5 human turns (15 until 2026-11-01, when no session reached it)', () => {
+  test('fires every 5 human turns (15 until 2026-10-31, when no session reached it)', () => {
     expect(getExtractionTurnInterval()).toBe(5)
   })
 

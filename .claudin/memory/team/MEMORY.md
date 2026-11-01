@@ -3,10 +3,11 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
-- [Memory cleans itself (11-01)](decisions/memory-hygiene.md) — dream deletes merged/folded, on by default; never to make room; `CLAUDIN_MEMORY_HYGIENE=0`
+- [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
 - [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
 - [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
-- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72% · [early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — 9× lookups
+- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%
+- [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context read autocompact's count
 - [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:; "taste is user" NOT promoted
@@ -74,7 +75,11 @@
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — retries never cap
 - [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md)
-- FIXED: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [refused Write resumed](bugs/resume-restores-refused-write.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [resume cache](bugs/resume-rewrites-cache-prefix.md) · [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
+- FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md)
+- FIXED, tools: [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md)
+- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md)
+- FIXED, other: [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md)
+- FIXED, memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
@@ -128,7 +133,8 @@
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3, D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
-- Read censuses: [Bash as file reader](bash-file-read-census-and-redirect-reach.md) · [auto-outline cap claim false](auto-outline-pivot-false-cap-claim.md) · [feature usage 09-15](feature-usage-census-2026-09-15.md)
+- Read censuses: [Bash as reader](bash-file-read-census-and-redirect-reach.md) · [outline cap false](auto-outline-pivot-false-cap-claim.md)
+- [Feature usage census 09-15/16](feature-usage-census-2026-09-15.md) — floor cap re-asks 33%; outlines 82/82 usable
 - Bench traps: [token-bench, `--allowedTools` keeps tools](token-bench-measurement-traps.md) · [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
 - [R3 background agent — IMPLEMENTED 07-17](r3-background-agent-implemented.md) — workflow run|watch, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas

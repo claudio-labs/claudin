@@ -95,7 +95,7 @@
     },
     {
       "name": "countIndexEntries counts bullets, so a grouped entry still counts",
-      "source": "src/memory/memdir/memdir.ts",
+      "source": "src/memory/memdir/entrypointFit.ts",
       "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/gm\n",
       "replace": "const INDEX_ENTRY_RE = /^-[ \\t]+\\[/gm\n"
     },

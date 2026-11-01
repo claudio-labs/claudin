@@ -38,17 +38,20 @@
     {
       "name": "the blank lines are kept over a cap",
       "find": "  const lines = contentLines.filter(line => line.trim() !== '')\n",
-      "replace": "  const lines = [...contentLines]\n"
+      "replace": "  const lines = [...contentLines]\n",
+      "source": "src/memory/memdir/entrypointFit.ts"
     },
     {
       "name": "a hook is counted but not dropped",
       "find": "    lines[i] = short\n",
-      "replace": ""
+      "replace": "",
+      "source": "src/memory/memdir/entrypointFit.ts"
     },
     {
       "name": "the hook is looked for after the FIRST link",
       "find": "  for (const match of line.matchAll(INDEX_LINK_TARGET_RE)) linkEnd = match.index + match[0].length\n",
-      "replace": "  for (const match of line.matchAll(INDEX_LINK_TARGET_RE)) { linkEnd = match.index + match[0].length; break }\n"
+      "replace": "  for (const match of line.matchAll(INDEX_LINK_TARGET_RE)) { linkEnd = match.index + match[0].length; break }\n",
+      "source": "src/memory/memdir/entrypointFit.ts"
     },
     {
       "name": "the transcript line forgets the shortened entries",
@@ -126,8 +129,8 @@
     {
       "name": "the Read never hands over the expires: date",
       "source": "src/tools/FileReadTool/readDispatch.ts",
-      "find": "    markMemoryFileRead(data, { mtimeMs, expires: offset === 1 ? expiresOf(content) : null })\n",
-      "replace": "    markMemoryFileRead(data, { mtimeMs, expires: null })\n"
+      "find": "      expires: offset === 1 ? expiresOf(content) : null,\n",
+      "replace": "      expires: null,\n"
     },
     {
       "name": "the scan header drops expires",
@@ -198,7 +201,7 @@
     },
     {
       "name": "the shortened count includes entries the tail cut dropped",
-      "source": "src/memory/memdir/memdir.ts",
+      "source": "src/memory/memdir/entrypointFit.ts",
       "find": "const shortenedEntryCount = shortenedAt.filter(i => i < kept).length",
       "replace": "const shortenedEntryCount = shortenedAt.length"
     }

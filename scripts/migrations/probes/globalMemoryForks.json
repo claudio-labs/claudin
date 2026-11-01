@@ -72,8 +72,8 @@
     {
       "name": "auto-dream's gate is append-only on the global dir",
       "source": "src/memory/autoDream/autoDream.ts",
-      "find": "        canUseTool: createMemoryCanUseTool(['global']),\n",
-      "replace": "        canUseTool: createMemoryCanUseTool(),\n"
+      "find": "        canUseTool: createMemoryCanUseTool(['global'], { patch: prune ? 'prune' : 'none' }),\n",
+      "replace": "        canUseTool: createMemoryCanUseTool([], { patch: prune ? 'prune' : 'none' }),\n"
     },
     {
       "name": "auto-dream hands the prompt the session dirs",
