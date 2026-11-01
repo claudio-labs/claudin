@@ -170,7 +170,7 @@
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits (3 no-ops: `*-no-code-changes.md`): [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
+- Dependabot audits: [3 Aug no-ops](dependabot-bumps-2026-08-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
 - [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310: undici zstd + SDK 0.135 OTel binary crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
 - [SDK 1.x changes the wire; pinned to 0.x's (#326)](dependabot-bumps-2026-10-26-anthropic-sdk-1x.md)
@@ -189,7 +189,7 @@
 - ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md)
 
 ## References (sibling repos, wire formats, archives)
-- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; inherited bugs closed in #319
+- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; #319 closed them · [audits](openclaude-audit-history.md)
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — 4 gaps · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth: wire + OAuth

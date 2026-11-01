@@ -30,7 +30,7 @@ src/
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
 │   │                              thresholds, markers, contentShape, and decisionRecord, which is
 │   │                              the sole owner of the lastDecision mutable
-│   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+│   ├── tasks/ (46)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (40)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (34)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
@@ -43,17 +43,17 @@ src/
 │   ├── hooks/ (18)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
 │   ├── plans/ goal/ autoFix/           ← planning + self-correction
 │   └── scratchpad.ts            ← the per-session scratchpad dir (permissions only consumes it)
-├── providers/ (333)             ← provider abstraction (start here for provider issues)
+├── providers/ (391)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (77)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   ├── shims/ (107)             ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
 │   │                              Completions renderer is openaiShim/ (~4.9k lines), which also
 │   │                              holds the ten end-to-end suites that drive the barrel with a
 │   │                              stubbed fetch over __testutils__/shimHarness.ts. Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
 │   ├── transport/ (49)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
 │   ├── oauth/ (37)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
-│   ├── model/ (51)              ← model.ts (getMainLoopModel, getSmallFastModel),
+│   ├── model/ (57)              ← model.ts (getMainLoopModel, getSmallFastModel),
 │   │                              providers.ts (getAPIProvider), modelOptions, catalogs.
 │   │                              getPrimaryModel is presets/providerModels.ts and
 │   │                              getContextWindowForModel is agent/context/context.ts
@@ -61,7 +61,7 @@ src/
 │   ├── usage/ (25)              ← cost, billing, quota, per-provider usage endpoints
 │   ├── cache/ (10)              ← cache METRICS: hit stats, break detection. The cache policy
 │   │                              itself is agent/cache/ (→ cache.md)
-│   ├── ui/ (38)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
+│   ├── ui/ (43)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
 │   └── (adding a preset? use the /add-provider-preset skill)
 ├── tools/ (751)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
 │   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()
@@ -166,7 +166,7 @@ src/
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (54)                ← plugin discovery, install, marketplace, dxt/, hooks/ (4)
-├── memory/ (96)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+├── memory/ (114)                ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, autoDream/, ui/, and instructions/ —
 │                                  memdir/pathScopedMemories.ts is the on-demand loader (a
 │                                  memory with `paths:` rides the rules' nested_memory lane),

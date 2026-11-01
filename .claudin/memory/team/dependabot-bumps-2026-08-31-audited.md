@@ -51,4 +51,4 @@ Trap for the next batch: the changelog fetch of
 prompt-injection text** posing as a `<system-reminder>` with autonomous-execution
 directives. A researcher agent flagged and ignored it. Expect it again on that
 URL. Related: [[incremental-bun-install-misses-nested-deps]],
-[[dependabot-bumps-2026-08-17-no-code-changes]].
+[[dependabot-bumps-2026-08-no-code-changes]].

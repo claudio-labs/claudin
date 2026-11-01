@@ -22,7 +22,7 @@ stub used to return `{}`, so **every** request under the flag died with
 This was stale-contract rot, not a regression from any bump: google-auth-library
 moved `getRequestHeaders()` to `Promise<Headers>` well before v11, and 10.7.0 and
 11.0.0 declare it identically. Nothing exercised the flag, so it rotted silently.
-See [[dependabot-bumps-2026-08-03-no-code-changes]].
+See [[dependabot-bumps-2026-08-no-code-changes]].
 
 **How to apply:** the guard is the test
 `'CLAUDIN_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read'` in
