@@ -204,7 +204,7 @@ ${reschedulePrompt}
 --- END SCHEDULED PROMPT ---
 
 3. Only one wakeup is alive at a time — calling ${SCHEDULE_WAKEUP_TOOL_NAME} again replaces the pending one. Do not use ${CRON_CREATE_TOOL_NAME} in this mode.
-4. If the next iteration is gated on an external event the ${MONITOR_TOOL_NAME} tool can watch (a CI run, a deploy, an endpoint or file changing) and ${MONITOR_TOOL_NAME} is available in this session, arm a persistent ${MONITOR_TOOL_NAME} as the primary wake signal and use ${SCHEDULE_WAKEUP_TOOL_NAME} only as a 1200–1800s fallback heartbeat.
+4. If the next iteration is gated on an external event the ${MONITOR_TOOL_NAME} tool can watch (a CI run, a deploy, an endpoint or file changing) and ${MONITOR_TOOL_NAME} is available in this session, arm a ${MONITOR_TOOL_NAME} as the primary wake signal (\`timeout_ms\` at its 30-minute maximum, re-armed each time it expires) and use ${SCHEDULE_WAKEUP_TOOL_NAME} only as a 1200–1800s fallback heartbeat.
 5. To end the loop (the task is complete, you are blocked on the user, or the user asked to stop), do not call ${SCHEDULE_WAKEUP_TOOL_NAME} — and briefly tell the user the loop ended and why. If a wakeup is already pending from a previous turn (e.g. the user interrupted to ask you to stop), call ${SCHEDULE_WAKEUP_TOOL_NAME} with cancel: true to kill it.
 `
 }

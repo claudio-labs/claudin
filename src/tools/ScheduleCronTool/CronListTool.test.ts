@@ -60,6 +60,7 @@ describe('CronListTool', () => {
     expect(job?.durable).toBe(false)
     expect(job?.cron).toBe('*/5 * * * *')
     expect(typeof job?.humanSchedule).toBe('string')
+    expect(job?.nextRun).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
   })
 
   test('mapToolResultToToolResultBlockParam renders empty and populated states', () => {
@@ -86,5 +87,12 @@ describe('CronListTool', () => {
     expect(block?.content).toContain('(recurring)')
     expect(block?.content).toContain('[session-only]')
     expect(block?.content).toContain('do thing')
+    expect(block?.content).not.toContain(', next')
+
+    const withNext = map?.(
+      { jobs: [{ id: 'abc', cron: '0 * * * *', humanSchedule: 'every hour', prompt: 'p', recurring: true, nextRun: '2026-11-01 09:06' }] },
+      'u',
+    )
+    expect(withNext?.content).toContain('abc — every hour (recurring), next 2026-11-01 09:06: p')
   })
 })

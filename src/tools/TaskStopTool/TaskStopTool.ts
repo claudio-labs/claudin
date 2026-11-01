@@ -1,5 +1,6 @@
 import { z } from 'zod/v4'
 import type { TaskStateBase } from 'src/agent/Task.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { stopTask } from 'src/agent/tasks/stopTask.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -12,7 +13,7 @@ const inputSchema = lazySchema(() =>
     task_id: z
       .string()
       .optional()
-      .describe('The ID of the background task to stop'),
+      .describe('The ID of the background task to stop, or the name of a background agent'),
     // shell_id is accepted for backward compatibility with the deprecated KillShell tool
     shell_id: z.string().optional().describe('Deprecated: use task_id instead'),
   }),
@@ -35,6 +36,12 @@ const outputSchema = lazySchema(() =>
 type OutputSchema = ReturnType<typeof outputSchema>
 
 export type Output = z.infer<OutputSchema>
+
+// The Agent prompt has the model name its background agents, and the name is
+// what it remembers; resolve it the way SendMessage does.
+function resolveTaskId(id: string, appState: AppState): string {
+  return appState.agentNameRegistry?.get(id) ?? id
+}
 
 export const TaskStopTool = buildTool({
   name: TASK_STOP_TOOL_NAME,
@@ -70,7 +77,7 @@ export const TaskStopTool = buildTool({
     }
 
     const appState = getAppState()
-    const task = appState.tasks?.[id] as TaskStateBase | undefined
+    const task = appState.tasks?.[resolveTaskId(id, appState)] as TaskStateBase | undefined
 
     if (!task) {
       return {
@@ -91,7 +98,7 @@ export const TaskStopTool = buildTool({
     return { result: true }
   },
   async description() {
-    return `Stop a running background task by ID`
+    return `Stop a running background task by ID or agent name`
   },
   async prompt() {
     return DESCRIPTION
@@ -115,7 +122,7 @@ export const TaskStopTool = buildTool({
       throw new Error('Missing required parameter: task_id')
     }
 
-    const result = await stopTask(id, {
+    const result = await stopTask(resolveTaskId(id, getAppState()), {
       getAppState,
       setAppState,
     })

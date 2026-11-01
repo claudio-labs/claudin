@@ -131,6 +131,14 @@ describe('a message queued for a running agent', () => {
       'Agent "tester" sent you a message',
     )
   })
+
+  // Review round, PR #337: every task notification, a Monitor event or a Bash
+  // command's exit included, was introduced as a finished background agent.
+  test('a task notification is introduced as one, not as a finished agent', () => {
+    const wrapped = wrapCommandText('<task-notification>…</task-notification>', { kind: 'task-notification' })
+    expect(wrapped).toStartWith('A background task sent a notification:\n')
+    expect(wrapped).not.toContain('agent completed')
+  })
 })
 
 describe('messages an agent never read', () => {

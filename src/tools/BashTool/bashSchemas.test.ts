@@ -35,6 +35,7 @@ describe('Bash input schema — the texts that ship', () => {
     const description = descriptionOf('description')
     expect(description).toStartWith('Clear, concise description of what this command does in active voice.')
     expect(description).toContain('Never use words like "complex" or "risk" in the description')
+    expect(description).toContain('without repeating the command, its flags or its paths')
     expect(description).toContain('git status → "Show working tree status"')
     expect(description).toContain(`curl -s url | jq '.data[]' → "Fetch JSON from URL and extract data array elements"`)
     expect(description.split('→').length - 1).toBe(2)
@@ -59,6 +60,15 @@ describe('Bash input schema — the texts that ship', () => {
       const markers = ['timeout', /absolute path/i, 'RunTests', 'Typecheck', 'Build', 'Git', 'Read', 'Grep', 'Glob']
       const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
       expect(missing.map(String)).toEqual([])
+    })
+
+    // A sub-agent's cd never carries over (BashTool.tsx preventCwdChanges), and
+    // its system prompt says so; the tool text must not say the opposite.
+    test(`${family}: the working directory persists only in the main session`, () => {
+      _setToolPromptFamilyForTesting(family)
+      const prompt = getSimplePrompt()
+      expect(prompt).toContain('In the main session the working directory persists between commands')
+      expect(prompt).toContain('in a sub-agent it resets after every call')
     })
   }
 })

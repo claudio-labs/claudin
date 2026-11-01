@@ -12,6 +12,7 @@ import {
   isKairosCronEnabled,
 } from 'src/tools/ScheduleCronTool/prompt.js'
 import { renderListResultMessage, renderListToolUseMessage } from 'src/tools/ScheduleCronTool/UI.js'
+import { describeNextRun } from 'src/tools/ScheduleCronTool/nextRun.js'
 
 const inputSchema = lazySchema(() => z.strictObject({}))
 type InputSchema = ReturnType<typeof inputSchema>
@@ -26,6 +27,7 @@ const outputSchema = lazySchema(() =>
         prompt: z.string(),
         recurring: z.boolean().optional(),
         durable: z.boolean().optional(),
+        nextRun: z.string().optional(),
       }),
     ),
   }),
@@ -66,14 +68,19 @@ export const CronListTool = buildTool({
     const tasks = ctx
       ? allTasks.filter(t => t.agentId === ctx.agentId)
       : allTasks
-    const jobs = tasks.map(t => ({
-      id: t.id,
-      cron: t.cron,
-      humanSchedule: cronToHuman(t.cron),
-      prompt: t.prompt,
-      ...(t.recurring ? { recurring: true } : {}),
-      ...(t.durable === false ? { durable: false } : {}),
-    }))
+    const now = Date.now()
+    const jobs = tasks.map(t => {
+      const nextRun = describeNextRun(t, now)
+      return {
+        id: t.id,
+        cron: t.cron,
+        humanSchedule: cronToHuman(t.cron),
+        prompt: t.prompt,
+        ...(t.recurring ? { recurring: true } : {}),
+        ...(t.durable === false ? { durable: false } : {}),
+        ...(nextRun !== undefined && { nextRun }),
+      }
+    })
     return { data: { jobs } }
   },
   mapToolResultToToolResultBlockParam(output, toolUseID) {
@@ -85,7 +92,7 @@ export const CronListTool = buildTool({
           ? output.jobs
               .map(
                 j =>
-                  `${j.id} — ${j.humanSchedule}${j.recurring ? ' (recurring)' : ' (one-shot)'}${j.durable === false ? ' [session-only]' : ''}: ${truncate(j.prompt, 80, true)}`,
+                  `${j.id} — ${j.humanSchedule}${j.recurring ? ' (recurring)' : ' (one-shot)'}${j.durable === false ? ' [session-only]' : ''}${j.nextRun ? `, next ${j.nextRun}` : ''}: ${truncate(j.prompt, 80, true)}`,
               )
               .join('\n')
           : 'No scheduled jobs.',

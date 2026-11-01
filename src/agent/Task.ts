@@ -76,11 +76,20 @@ export type TaskStateBase = {
 export type LocalShellSpawnInput = {
   command: string
   description: string
-  timeout?: number
   toolUseId?: string
   agentId?: AgentId
-  /** UI display variant: description-as-label, dialog title, status bar pill. */
+  /**
+   * UI display variant (description-as-label, dialog title, status bar pill);
+   * 'monitor' also skips the stall watchdog and words the exit notice.
+   */
   kind?: 'bash' | 'monitor'
+  /**
+   * Stream new output lines to the model while the command runs, and kill it
+   * at `timeoutMs` (monitorStream.ts). Only the Monitor tool sets it: kind
+   * 'monitor' does not imply it, and ContainerTool uses that kind for builds
+   * whose output belongs in the file.
+   */
+  monitorStream?: { timeoutMs: number }
 }
 
 // What getTaskByType dispatches for: kill. spawn/render were never

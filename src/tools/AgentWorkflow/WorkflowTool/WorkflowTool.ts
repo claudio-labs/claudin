@@ -23,7 +23,9 @@ const inputSchema = lazySchema(() =>
     run_in_background: z
       .boolean()
       .optional()
-      .describe('Run detached; returns a runId immediately and notifies on completion.'),
+      .describe(
+        "Run detached; returns a runId immediately and notifies on completion. Omitted, the user's /config default decides (synchronous unless they changed it).",
+      ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -51,7 +53,7 @@ Use this ONLY when the user explicitly asks for a workflow / multi-phase orchest
 
 - \`workflow\`: the workflow name (see ListWorkflows).
 - \`task\`: what to accomplish.
-- \`run_in_background: true\`: return immediately with a runId and get a notification when done (inspect progress with WorkflowStatus); omit to run synchronously and get the final result inline.`
+- \`run_in_background\`: \`true\` returns immediately with a runId and notifies you when done (inspect progress with WorkflowStatus); \`false\` runs synchronously and returns the final result inline. Omitted, the user's /config default decides — synchronous unless they changed it, and always synchronous in a non-interactive (-p) session.`
 
 export const WorkflowTool = buildTool({
   name: WORKFLOW_RUN_TOOL_NAME,

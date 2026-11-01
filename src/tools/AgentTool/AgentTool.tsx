@@ -124,7 +124,7 @@ const baseInputSchema = lazySchema(() => z.object({
 const fullInputSchema = lazySchema(() => {
   // Multi-agent parameters
   const multiAgentInputSchema = z.object({
-    name: z.string().optional().describe('Name for the spawned agent. Makes it addressable via SendMessage({to: name}) while running.'),
+    name: z.string().optional().describe('Name for the spawned agent. SendMessage({to: name}) reaches it, running or finished, and TaskStop stops it by name while it runs.'),
     team_name: z.string().optional().describe('Team name for spawning. Uses current team context if omitted.'),
     mode: permissionModeSchema().optional().describe('Permission mode for spawned teammate (e.g., "plan" to require plan approval).')
   });

@@ -20,6 +20,7 @@ import {
   isKairosCronEnabled,
 } from 'src/tools/ScheduleCronTool/prompt.js'
 import { renderCreateResultMessage, renderCreateToolUseMessage } from 'src/tools/ScheduleCronTool/UI.js'
+import { describeNextRun } from 'src/tools/ScheduleCronTool/nextRun.js'
 
 const MAX_JOBS = 50
 
@@ -47,6 +48,8 @@ const outputSchema = lazySchema(() =>
     humanSchedule: z.string(),
     recurring: z.boolean(),
     durable: z.boolean().optional(),
+    // Optional: results replayed on --resume predate it.
+    nextRun: z.string().optional(),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -114,6 +117,7 @@ export const CronCreateTool = buildTool({
     return { result: true }
   },
   async call({ cron, prompt, recurring = true, durable = false }) {
+    const createdAt = Date.now()
     const id = await addCronTask(
       cron,
       prompt,
@@ -127,12 +131,14 @@ export const CronCreateTool = buildTool({
     // — check() reads the session store directly — but the enable flag
     // is still what starts the tick loop.
     setScheduledTasksEnabled(true)
+    const nextRun = describeNextRun({ id, cron, createdAt, recurring }, createdAt)
     return {
       data: {
         id,
         humanSchedule: cronToHuman(cron),
         recurring,
         durable,
+        ...(nextRun !== undefined && { nextRun }),
       },
     }
   },
@@ -140,12 +146,13 @@ export const CronCreateTool = buildTool({
     const where = output.durable
       ? 'Persisted to .claudin/scheduled_tasks.json'
       : 'Session-only (not written to disk, dies when Claudin exits)'
+    const when = output.nextRun ? `; ${output.recurring ? 'next run' : 'runs'} ${output.nextRun} local time` : ''
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
       content: output.recurring
-        ? `Scheduled recurring job ${output.id} (${output.humanSchedule}). ${where}. Auto-expires after ${DEFAULT_MAX_AGE_DAYS} days. Use CronDelete to cancel sooner.`
-        : `Scheduled one-shot task ${output.id} (${output.humanSchedule}). ${where}. It will fire once then auto-delete.`,
+        ? `Scheduled recurring job ${output.id} (${output.humanSchedule}${when}). ${where}. Auto-expires after ${DEFAULT_MAX_AGE_DAYS} days. Use CronDelete to cancel sooner.`
+        : `Scheduled one-shot task ${output.id} (${output.humanSchedule}${when}). ${where}. It will fire once then auto-delete.`,
     }
   },
   renderToolUseMessage: renderCreateToolUseMessage,

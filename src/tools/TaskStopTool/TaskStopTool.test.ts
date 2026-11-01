@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
+import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
+import { getIsNonInteractiveSession, setIsInteractive } from 'src/platform/bootstrap/state.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { TaskStopTool } from 'src/tools/TaskStopTool/TaskStopTool.js'
 
@@ -63,6 +65,53 @@ describe('TaskStopTool', () => {
       makeCtx({ tasks: { b: { id: 'b', status: 'running' } } }),
     )
     expect(result?.result).toBe(true)
+  })
+
+  // The Agent prompt tells the model to name background agents; that name has
+  // to reach the task the same way SendMessage resolves it.
+  test('validateInput accepts a background agent by its name', async () => {
+    const result = await TaskStopTool.validateInput?.(
+      { task_id: 'reviewer' } as never,
+      makeCtx({
+        tasks: { a1: { id: 'a1', status: 'running' } },
+        agentNameRegistry: new Map([['reviewer', 'a1']]),
+      }),
+    )
+    expect(result?.result).toBe(true)
+  })
+
+  test('call() stops the background agent a name points at', async () => {
+    const abortController = new AbortController()
+    let state = {
+      tasks: {
+        a1: {
+          id: 'a1',
+          type: 'local_agent',
+          status: 'running',
+          description: 'Run sleep 90',
+          abortController,
+        },
+      },
+      agentNameRegistry: new Map([['sleeper', 'a1']]),
+    }
+    const wasInteractive = !getIsNonInteractiveSession()
+    setIsInteractive(false)
+    try {
+      const result = await TaskStopTool.call({ task_id: 'sleeper' } as never, {
+        getAppState: () => state,
+        setAppState: (f: (prev: typeof state) => typeof state) => {
+          state = f(state)
+        },
+        abortController: new AbortController(),
+      } as never)
+      expect(result.data.task_id).toBe('a1')
+      expect(result.data.task_type).toBe('local_agent')
+      expect(abortController.signal.aborted).toBe(true)
+      expect(state.tasks.a1.status).toBe('killed')
+    } finally {
+      setIsInteractive(wasInteractive)
+      drainSdkEvents()
+    }
   })
 
   test('call() throws when no id is provided', async () => {

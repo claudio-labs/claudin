@@ -182,6 +182,15 @@ describe('AskUserQuestionTool prompt and preview format', () => {
     )
   })
 
+  // The dialog covers the transcript (ModalSlot), so a question that leans on
+  // earlier output reads as a riddle; and a list of reasons to ask invited
+  // asking what the first line forbids.
+  test('the prompt asks for questions that stand on their own, without a list of reasons to ask', () => {
+    expect(ASK_USER_QUESTION_TOOL_PROMPT).toContain('Make each one stand on its own')
+    expect(ASK_USER_QUESTION_TOOL_PROMPT).not.toContain('This allows you to')
+    expect(ASK_USER_QUESTION_TOOL_PROMPT).not.toContain('Offer choices to the user')
+  })
+
   test('validateInput() checks every preview when the format is html', async () => {
     setQuestionPreviewFormat('html')
     const withPreview = (preview: string) =>

@@ -3,7 +3,7 @@
 exports[`getSimplePrompt family tiering verbose shape snapshot 1`] = `
 "Executes a given bash command and returns its output.
 
-The working directory persists between commands, but shell state (env vars, functions) does not. The shell environment is initialized from the user's profile (bash or zsh).
+In the main session the working directory persists between commands (a \`cd\` outside the working directories is reset); in a sub-agent it resets after every call. Shell state (env vars, functions) does not persist. The shell environment is initialized from the user's profile (bash or zsh).
 Command output is displayed to you, not reliably to the user — describe what you found rather than pointing at it.
 
 IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\`, \`awk\`, or \`echo\` via this tool unless a dedicated tool cannot do the job. Prefer:
@@ -43,7 +43,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
 exports[`getSimplePrompt family tiering lean shape snapshot 1`] = `
 "Executes a given bash command and returns its output.
 
-The working directory persists between commands, but shell state (env vars, functions) does not. The shell environment is initialized from the user's profile (bash or zsh).
+In the main session the working directory persists between commands (a \`cd\` outside the working directories is reset); in a sub-agent it resets after every call. Shell state (env vars, functions) does not persist. The shell environment is initialized from the user's profile (bash or zsh).
 Command output is displayed to you, not reliably to the user — describe what you found rather than pointing at it.
 
 IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\`, \`awk\`, or \`echo\` via this tool unless a dedicated tool cannot do the job. Prefer:

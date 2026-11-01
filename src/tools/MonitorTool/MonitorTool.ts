@@ -3,7 +3,15 @@ import React from 'react'
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { spawnShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js'
+import {
+  clampMonitorTimeout,
+  MONITOR_DEFAULT_TIMEOUT_MS,
+  MONITOR_EVENT_MAX_LINES,
+  MONITOR_FLOOD_EVENTS,
+  MONITOR_MAX_TIMEOUT_MS,
+} from 'src/agent/tasks/LocalShellTask/monitorStream.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
@@ -11,7 +19,7 @@ import {
 } from 'src/tools/BashTool/bashPermissions.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
 
-const MONITOR_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+const minutes = (ms: number): number => ms / 60_000
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -23,6 +31,9 @@ const inputSchema = lazySchema(() =>
       .describe(
         'Clear, concise description of what this command does in active voice.',
       ),
+    timeout_ms: semanticNumber(z.number().min(1000).optional()).describe(
+      `Kill the monitor after this many ms. Default ${MONITOR_DEFAULT_TIMEOUT_MS} (${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} min); values above ${MONITOR_MAX_TIMEOUT_MS} (${minutes(MONITOR_MAX_TIMEOUT_MS)} min) are capped. You are notified when it expires.`,
+    ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -83,7 +94,11 @@ export const MonitorTool = buildTool({
   },
 
   async prompt() {
-    return `Execute a shell command in the background and stream its stdout line-by-line as notifications. Each polling interval (~1s), new output lines are delivered to you. Use this for monitoring logs, watching build output, or observing long-running processes. For one-shot "wait until done" commands, prefer Bash with run_in_background instead.`
+    return `Run a shell command in the background and get its output while it runs: about once a second, the lines that arrived (stdout and stderr together) reach you as a notification. Use it for "tell me each time X happens" — a log tail, a build or test watch, a poll loop. For "tell me when X is done", use Bash with run_in_background and a command that exits when the condition holds (e.g. \`until grep -q Ready app.log; do sleep 1; done\`): one notification, no expiry.
+
+- Filter to the lines you would act on, and make every pipe stage flush per line, or matches wait in its buffer: \`tail -f app.log | grep --line-buffered -E "ERROR|FAILED|Traceback"\`. Match the failure signatures too, not only success: silence looks the same as "still running".
+- A notification carries at most ${MONITOR_EVENT_MAX_LINES} lines; the rest stays in the output file. A monitor that sends ${MONITOR_FLOOD_EVENTS} notifications within a minute is stopped; call Monitor again with a tighter filter.
+- It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching; TaskStop ends it early.`
   },
 
   get inputSchema(): InputSchema {
@@ -137,24 +152,20 @@ export const MonitorTool = buildTool({
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: `Monitor task started with ID: ${output.taskId}. Output is being streamed to: ${outputPath}. You will receive notifications as new output lines appear (~1s polling). Use TaskStop to end monitoring when done.`,
+      content: `Monitor task started with ID: ${output.taskId}. New output lines reach you as notifications about once a second until the command exits or the monitor expires; all output also goes to ${outputPath}. Use TaskStop to end it early.`,
     }
   },
 
   async call(input, toolUseContext) {
-    const { command, description } = input
+    const { command, description, timeout_ms } = input
     const { abortController, setAppState } = toolUseContext
 
     // Create the shell command — uses the same Shell.exec() as BashTool.
     // This is intentionally a shell execution (not execFile) because
     // MonitorTool needs full shell features (pipes, redirects, etc.)
-    // just like BashTool does.
-    const shellCommand = await exec(
-      command,
-      abortController.signal,
-      'bash',
-      { timeout: MONITOR_TIMEOUT_MS },
-    )
+    // just like BashTool does. No exec timeout: backgrounding clears it, so
+    // the deadline is the stream's (monitorStream.ts).
+    const shellCommand = await exec(command, abortController.signal, 'bash')
 
     // Spawn as a background task with kind='monitor' — identical to
     // BashTool's run_in_background path but always monitor-flavored.
@@ -166,6 +177,7 @@ export const MonitorTool = buildTool({
         toolUseId: toolUseContext.toolUseId,
         agentId: toolUseContext.agentId,
         kind: 'monitor',
+        monitorStream: { timeoutMs: clampMonitorTimeout(timeout_ms) },
       },
       {
         abortController,

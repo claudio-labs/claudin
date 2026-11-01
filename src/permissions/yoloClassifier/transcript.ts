@@ -69,9 +69,11 @@ export function classifierTranscriptBudget(actionChars: number): number {
 type TranscriptBlock =
   /**
    * `agent` names who wrote text that arrived in a user-role message but not
-   * from the user: another session, or one of this session's own agents.
+   * from the user: another session, or one of this session's own agents;
+   * `task` marks a background task's notification (a Monitor event, a
+   * command's exit), whose text is command output.
    */
-  | { type: 'text'; text: string; agent?: string }
+  | { type: 'text'; text: string; agent?: string; task?: true }
   | { type: 'tool_use'; name: string; input: unknown }
 
 export type TranscriptEntry = {
@@ -79,7 +81,8 @@ export type TranscriptEntry = {
   content: TranscriptBlock[]
 }
 
-function authorOf(origin: MessageOrigin | undefined): { agent?: string } {
+function authorOf(origin: MessageOrigin | undefined): { agent?: string; task?: true } {
+  if (origin?.kind === 'task-notification') return { task: true }
   return isAgentAuthored(origin) && origin && 'name' in origin
     ? { agent: origin.name }
     : {}
@@ -207,9 +210,12 @@ function toCompactBlock(
     return `${block.name} ${s}\n`
   }
   if (block.type === 'text' && role === 'user') {
+    // Both encoded onto one line: text another agent or a command wrote must
+    // not be able to open a line of its own that reads as the user's.
+    if (block.task) {
+      return `Background task notification (not from the user): ${jsonStringify(truncateClassifierValue(block.text))}\n`
+    }
     if (block.agent !== undefined) {
-      // Encoded onto one line: a message another agent wrote must not be
-      // able to open a line of its own that reads as the user's.
       const text = truncateClassifierValue(block.text)
       return `Agent message (not from the user) from ${jsonStringify(block.agent)}: ${jsonStringify(text)}\n`
     }
