@@ -83,7 +83,7 @@ export function PreviewQuestionView({
   }
   const focusedOption = allOptions[focusedIndex];
   const selectedValue = questionState?.selectedValue as string | undefined;
-  const notesValue = questionState?.textInputValue || '';
+  const notesValue = questionState?.notes || '';
   const handleSelectOption = useCallback((index: number) => {
     const option = allOptions[index];
     if (!option) return;
@@ -110,11 +110,11 @@ export function PreviewQuestionView({
 
   // Handle ctrl+g to open external editor for notes
   useKeybinding('chat:externalEditor', async () => {
-    const currentValue = questionState?.textInputValue || '';
+    const currentValue = questionState?.notes || '';
     const result = await editPromptInEditor(currentValue);
     if (result.content !== null && result.content !== currentValue) {
       onUpdateQuestionState(questionText, {
-        textInputValue: result.content
+        notes: result.content
       }, false);
     }
   }, {
@@ -288,7 +288,7 @@ export function PreviewQuestionView({
                 <Text color="suggestion">Notes:</Text>
                 {isInNotesInput ? <TextInput value={notesValue} placeholder="Add notes on this design…" onChange={value => {
                 onUpdateQuestionState(questionText, {
-                  textInputValue: value
+                  notes: value
                 }, false);
               }} onSubmit={handleNotesExit} onExit={handleNotesExit} focus={true} showCursor={true} columns={60} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} /> : <Text dimColor italic>
                     {notesValue || 'press n to add notes'}

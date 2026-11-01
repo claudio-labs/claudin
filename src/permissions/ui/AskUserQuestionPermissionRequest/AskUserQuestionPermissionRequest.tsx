@@ -354,7 +354,7 @@ Questions asked and answers provided:\n${questionsWithAnswers_0}`;
       }> = {};
       for (const q_3 of questions) {
         const answer_1 = answersToSubmit[q_3.question];
-        const notes = questionStates[q_3.question]?.textInputValue;
+        const notes = questionStates[q_3.question]?.notes;
         const selectedOption = answer_1 ? q_3.options.find((opt_1: QuestionOption) => opt_1.label === answer_1) : undefined;
         const preview = selectedOption?.preview;
         if (preview || notes?.trim()) {

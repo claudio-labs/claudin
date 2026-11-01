@@ -4,7 +4,9 @@ export type AnswerValue = string
 
 export type QuestionState = {
   selectedValue?: string | string[]
+  /** The Other option's text — an answer, never a note. */
   textInputValue: string
+  notes?: string
 }
 
 type State = {
@@ -56,6 +58,7 @@ export function reducer(state: State, action: Action): State {
           (action.isMultiSelect ? [] : undefined),
         textInputValue:
           action.updates.textInputValue ?? existing?.textInputValue ?? '',
+        notes: action.updates.notes ?? existing?.notes,
       }
 
       return {
