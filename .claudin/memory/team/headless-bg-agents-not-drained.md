@@ -4,7 +4,7 @@ description: In claudin `-p` print mode, auto-background sub-agents are orphaned
 type: project
 ---
 
-In claudin headless `-p`, an orchestrator that spawns auto-background sub-agents (autoBackgroundAgentsEnabled default ON) **non-deterministically** drains them: sometimes the parent waits and surfaces the agent reports (sentinel present, `out~1.2k`), sometimes it exits BEFORE the sub-agents finish (orphaned: `out=21`, ~5 turns, sentinel absent). When orphaned, the sub-agent token usage is NOT in the parent's final `usage`, so the run looks artificially cheap.
+In claudin headless `-p`, an orchestrator that spawns auto-background sub-agents (`autoBackgroundAgentsEnabled`, which this note called default ON — corrected 2026-11-01: it is opt-in, `false` in `src/platform/config/config/defaults.ts`) **non-deterministically** drains them: sometimes the parent waits and surfaces the agent reports (sentinel present, `out~1.2k`), sometimes it exits BEFORE the sub-agents finish (orphaned: `out=21`, ~5 turns, sentinel absent). When orphaned, the sub-agent token usage is NOT in the parent's final `usage`, so the run looks artificially cheap.
 
 **Why:** observed both outcomes across runs of the SAME command in `scripts/bench/ab/agent-bg-token-bench.ts` (2 agents x 10 files). The script prints a `drained` (Y/N) column = whether the BENCH_AGENT_REPORT sentinel appeared.
 

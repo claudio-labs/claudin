@@ -15,8 +15,8 @@ leaks in the local order but unmasks them under CI's order.
 **Reproduce locally:** clone to a *different path* reusing node_modules
 (`git clone file://<repo> /tmp/ci-repro && ln -s <repo>/node_modules ...`) — the
 different path gives a different Bun file order and reproduces the leaks; a fresh
-checkout also drops the gitignored AGENTS.md. Fixing the leaker dropped
-`/tmp/ci-repro` failures 19→6.
+checkout also dropped AGENTS.md while it was gitignored (07-08 → 07-17). Fixing
+the leaker dropped `/tmp/ci-repro` failures 19→6.
 
 **Root causes + fixes (42→6 so far):**
 - `process.stdout.isTTY = true` throws "readonly property" when stdout is a pipe
@@ -37,11 +37,12 @@ checkout also drops the gitignored AGENTS.md. Fixing the leaker dropped
     → broke getAutoMemPath + isTeamMemLikelyGitIgnored + getProjectTotals.
 
 **RESOLVED — CI green as of 03d75a9 (42→0):**
-- getAttachments claude_md_delta ×2 — AGENTS.md is `.gitignore`d+untracked
-  (c6d8e44) so a fresh CI clone lacks the project doc. Did NOT re-track it; made
-  the omit-gate tests hermetic via a scoped getUserContext mock returning a fixed
-  claudeMd (attachments.orchestrator.test.ts). Repro CI state locally with
-  CLAUDE_CODE_DISABLE_CLAUDE_MDS=1.
+- getAttachments claude_md_delta ×2 — AGENTS.md was `.gitignore`d+untracked
+  (c6d8e44) so a fresh CI clone lacked the project doc. This fix did NOT re-track
+  it; made the omit-gate tests hermetic via a scoped getUserContext mock returning
+  a fixed claudeMd (attachments.orchestrator.test.ts). Repro CI state locally with
+  CLAUDE_CODE_DISABLE_CLAUDE_MDS=1. (Corrected 2026-11-01: AGENTS.md is tracked
+  again since e3243b9d, #16, 2026-07-17, so a fresh clone has it.)
 - useApiKeyVerification timeout — the REPL harness (replTestHarness.ts) stubbed
   useApiKeyVerification to `{status:'valid'}` but teardown only restored
   useMainLoopModel; the stub leaked into the hook's own test. Snapshot+restore it

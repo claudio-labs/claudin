@@ -16,7 +16,7 @@ type: reference
 - **Auto-format on edit/write** `format/` (wired at `edit.ts:156`/`write.ts:65`) — prettier/gofmt/ruff detection. claudin has NO auto-format. Low effort, isolated.
 - **LSP diagnostics injected after edit/write** `edit.ts:197-201`/`write.ts:75-90` — claudin's LSPTool is read-only and does NOT auto-inject diagnostics. Medium effort.
 - **ACP/Zed adapter** `acp/` (`opencode acp`, Agent Client Protocol over stdio) — diffs/click-to-open/permission prompt, 100% local. `acp/tool.ts`+`acp/permission.ts` liftable. High value.
-- **Fuzzy edit (11 replacers)** `edit.ts` — reference impl for claudin's Tier-1 fuzzy-edit backlog.
+- **Fuzzy edit (11 replacers)** `edit.ts` — NO LONGER A GAP (re-checked 2026-11-01): Edit falls back to `resolveFuzzyEdit` (`src/tools/FileEditTool/utils.ts` over `src/tools/shared/fuzzyLineMatch.ts`), and [[openclaude-audit-history]] lists it as converged. opencode's replacers are only a reference for widening it.
 - **Part-level revert/time-travel** `session/revert.ts:38-137` — snapshot-backed undo per message/part. High value, high effort (entangled w/ message graph).
 - **Truncation spill-to-disk + delegate-to-subagent hint** `tool/truncate.ts:129-131`.
 - **Background promote-to-foreground registry** `background/` — promote a bg job to foreground.

@@ -61,7 +61,9 @@ always the same — **wire it, or drop it** — and it is never ours:
 - `entrypoints/sdk/` (~2.6k) — the whole SDK API is uncallable because the build
   has one entrypoint and `package.json` has no `exports`/`main`. Publishing an
   SDK entry is a product direction; note `generate-sdk-types.ts` reads these
-  files as TEXT, so they are NOT safe to delete on a grep.
+  files as TEXT, so they are NOT safe to delete on a grep. (Corrected in
+  [[dead-code-round-4-seed]]: not uncallable — `structuredIO.ts` and
+  `teammateMailbox.ts` import its schemas as runtime values.)
 - `lifecycleHooks/hookChains.ts` (1319) — `HOOK_CHAINS`, parked on purpose.
 - `agent/context/conversationArc.ts` (262) — every WRITER has zero callers, so
   the live `/knowledge` readers can only ever show an empty arc. This one is

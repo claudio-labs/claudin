@@ -34,9 +34,10 @@ tree, do not work from it.**
 | `src/agent/compact/compact.ts` † | 1540 | 1050 | 2 |
 
 † not a pure barrel — see below. The last four landed on
-`refactor/split-group-a-round-2`, 2026-09-20.
-The last four landed on branch `refactor/split-remaining-giants`, 2026-09-19;
-the four above them on `refactor/split-giant-modules`, 2026-09-14.
+`refactor/split-group-a-round-2`, 2026-09-20 (#217); the four above them
+(`pathValidation`, `auth`, `permissionSetup`, `worktree`) on branch
+`refactor/split-remaining-giants`, 2026-09-19 (#216); the four above those on
+`refactor/split-giant-modules`, 2026-09-14.
 **The BashTool pair is a RE-land, not a first one** — PR #129 merged in August
 and its code was then dropped from `main` by a non-fast-forward push; see
 [[pr-129-lost-to-force-push]] for the detection recipe and the

@@ -134,7 +134,9 @@ The 124MB devin Rust binary is static-PIE, stripped, with no symtab.
   the 2026.5.26-6 build.
 - **Per-request entropy**: `getrandom(16)` called once per
   GetChatMessage. So f31 has 128 bits of fresh randomness even
-  on the same machine.
+  on the same machine. **Corrected in [[devin-f31-characterization]]:**
+  the `getrandom(16)` calls are Rust `HashMap` DoS seeds, not f31
+  input; the crypto material is `getrandom(32)` ×6 per run.
 - **Key material**: NOT in `~/.local/share/devin/credentials.toml`
   (only stores JWT + URLs). Key embedded in binary, not derivable
   from filesystem.
