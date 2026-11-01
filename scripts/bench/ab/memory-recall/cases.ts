@@ -261,7 +261,10 @@ export const CASES: readonly RecallCase[] = [
       'MEMORY.md': '- [Test command](feedback-test-command.md) — how the tests are run here\n',
     },
     mention: [
-      /(?:do(?:es)?n['’]t|do not|does not|did not|didn['’]t|could(?: not|n['’]t)|can(?:not|['’]t)) (?:\w+ ){0,3}(?:know|find|see|have|mention|specif|contain|use|tell|determine)|no (?:database|information|mention|indication|evidence)|not (?:specified|documented|mentioned|clear|configured)|unknown|unclear|no production/i,
+      // Baseline 20261101-000744: "The repo doesn't show a production
+      // database … nothing … mentions one" was graded a miss; `show`,
+      // `indicate` and "nothing … mention(s)" were added before any new arm ran.
+      /(?:do(?:es)?n['’]t|do not|does not|did not|didn['’]t|could(?: not|n['’]t)|can(?:not|['’]t)) (?:\w+ ){0,3}(?:know|find|see|show|have|mention|specif|contain|use|tell|determine|indicate)|nothing (?:[\w,]+ ){0,8}mentions?|no (?:database|information|mention|indication|evidence)|not (?:specified|documented|mentioned|clear|configured)|unknown|unclear|no production/i,
     ],
   },
 ]

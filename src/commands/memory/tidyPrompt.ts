@@ -23,6 +23,16 @@ function findingLine(f: MemoryAudit['findings'][number]): string {
       return `- Nothing links to it from its \`MEMORY.md\`: \`${f.path}\``
     case 'duplicate-name':
       return `- Shares \`name: ${f.name}\` with another memory: \`${f.path}\``
+    case 'near-duplicate':
+      return `- Reads like \`${f.other.path}\` (${f.other.scope}, score ${f.score}): \`${f.path}\``
+    case 'misplaced-type':
+      return `- A \`type: user\` memory outside the global dir: \`${f.path}\``
+    case 'open-contradiction':
+      return `- Marked \`contradicts:\` ${f.targets.map(t => `\`${t}\``).join(', ')}: \`${f.path}\``
+    case 'index-over-cap':
+      return `- Index over its cap (${f.lines} lines, ${f.bytes} bytes): \`${f.path}\``
+    case 'oversize':
+      return `- ${Math.round(f.bytes / 1024)} KB, over the size a memory is read at cheaply: \`${f.path}\``
   }
 }
 

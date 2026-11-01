@@ -104,6 +104,7 @@ type RequestId =
   | 'taste'
   | 'taste-split'
   | 'duplicate'
+  | 'duplicate-overcap'
   | 'snapshot'
 
 type Request = {
@@ -216,7 +217,39 @@ const REQUESTS: readonly Request[] = [
     fact: /12\s?%/,
     expires: true,
   },
+  {
+    // The baseline (20261101-000744) passed `duplicate` 3/3: with the old
+    // memory's index line in view, Opus 5.5 moves it instead of writing a
+    // second one. Here the index is over its cap and the old memory's line,
+    // the last one, loads without its hook — the case the October census
+    // found (12 hooks dropped) — so nothing in view says the fact is saved.
+    id: 'duplicate-overcap',
+    turns: ['registra na memória do time: qualquer dependência nova de runtime precisa de review no canal #deps antes de entrar'],
+    dirs: ['team/', 'team/decisions/'],
+    fact: /#deps/,
+    seed: {
+      'team/notes-sc-14.md': fm(
+        ['name: notes-sc-14', 'description: adding a runtime dependency needs a review in the #deps channel first', 'type: project'],
+        'A new runtime dependency needs a review in #deps before it lands.\n\n**Why:** every dependency is a supply-chain surface.\n**How to apply:** before adding to `dependencies`.',
+      ),
+      'team/MEMORY.md': overCapTeamIndex('- [Supply chain note 14](notes-sc-14.md) — what a teammate checks before a new package lands in package.json'),
+    },
+  },
 ]
+
+/**
+ * A team index over both caps (memdir.ts: 200 lines, 25,000 bytes) ending in
+ * `lastLine`, whose hook the fit drops first. The other lines point at notes
+ * that do not exist, as in memory-recall's index-tail case.
+ */
+function overCapTeamIndex(lastLine: string): string {
+  const lines = ['# Team Memory', '']
+  for (let n = 1; n <= 190; n++) {
+    lines.push(`- [Component ${n} note](notes/component-${n}.md) — what changed in component ${n}, why it was measured first, who owns it, and the follow-up still open`)
+  }
+  lines.push(lastLine)
+  return `${lines.join('\n')}\n`
+}
 
 const allowedDirs = (request: Request, globalOn: boolean): readonly string[] =>
   globalOn ? (request.dirsWithGlobal ?? request.dirs) : request.dirs
@@ -679,6 +712,13 @@ const GOOD: Record<RequestId, Fixture> = {
     ),
     'team/MEMORY.md': '- [Cache bench](bench-cache-cut.md) — new cache −12% cost per session\n',
   },
+  'duplicate-overcap': {
+    'team/notes-sc-14.md': fm(
+      ['name: notes-sc-14', 'description: adding a runtime dependency needs a review in #deps first', 'type: project'],
+      'A new runtime dependency needs a review in #deps before it lands. Applies to dev dependencies too.',
+    ),
+    'team/MEMORY.md': '- [Supply chain note 14](notes-sc-14.md) — runtime deps need a #deps review\n',
+  },
 }
 
 /** Memory trees that must fail, each on the check it names. */
@@ -803,6 +843,16 @@ const BAD: Array<{ request: RequestId; name: string; fails: (typeof CHECKS)[numb
     files: {
       'team/bench-cache-cut.md': fm(['name: bench-cache-cut', 'description: cache −12%', 'type: project'], 'Cuts 12% of the cost.'),
       'team/MEMORY.md': '- [Cache bench](bench-cache-cut.md) — x\n',
+    },
+  },
+  {
+    request: 'duplicate-overcap',
+    name: 'a second team memory beside the hidden one',
+    fails: 'single',
+    files: {
+      'team/notes-sc-14.md': fm(['name: notes-sc-14', 'description: deps review', 'type: project'], 'Needs a review in #deps.'),
+      'team/runtime-deps-review.md': fm(['name: runtime-deps-review', 'description: deps review', 'type: project'], 'Review in #deps first.'),
+      'team/MEMORY.md': '- [Note](notes-sc-14.md) — x\n- [Deps](runtime-deps-review.md) — x\n',
     },
   },
 ]

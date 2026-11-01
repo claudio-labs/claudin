@@ -7,7 +7,10 @@
  * commit's reviewer (hiddenText.ts), and memories past their `expires:` date
  * (memoryExpires.ts), to be re-verified, never deleted — and, in every
  * scope, links that resolve to nothing, memories nothing reaches from their
- * index, and shared names (memoryLinks.ts), reported and never failing.
+ * index, and shared names (memoryLinks.ts), and what lets memory grow
+ * uncleaned — near-duplicates, a user memory outside the global dir, open
+ * contradictions, an index over its cap, an oversized memory
+ * (memoryHygiene.ts) — reported and never failing.
  *
  * One auditor and several readers — `claudin memory audit` (the CI and
  * pre-commit gate of any repo carrying a team dir), `/memory tidy`, the dream
@@ -19,6 +22,7 @@ import { basename, join, relative } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { findHiddenText } from 'src/memory/memdir/hiddenText.js'
 import { expiresOf, isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+import { findHygieneFindings, type HygieneFinding } from 'src/memory/memdir/memoryHygiene.js'
 import { findLinkFindings, type LinkFinding } from 'src/memory/memdir/memoryLinks.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
@@ -53,7 +57,7 @@ export type ExpiredFinding = {
   expires: string
 }
 
-type MemoryFinding = SecretFinding | HiddenTextFinding | ExpiredFinding | LinkFinding
+type MemoryFinding = SecretFinding | HiddenTextFinding | ExpiredFinding | LinkFinding | HygieneFinding
 
 export type MemoryAudit = {
   /** How many files were read. */
@@ -155,6 +159,7 @@ export async function auditMemoryDirs(
       ...findHiddenTextFiles(files),
       ...findExpiredMemories(files, today),
       ...findLinkFindings(files, dirs),
+      ...findHygieneFindings(files, dirs),
     ],
   }
 }
