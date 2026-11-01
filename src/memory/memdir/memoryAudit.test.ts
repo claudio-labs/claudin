@@ -9,6 +9,7 @@ import {
   findSecretShapedFiles,
   type AuditedFile,
   readMemoryFiles,
+  readMemoryFilesSync,
 } from 'src/memory/memdir/memoryAudit.js'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
@@ -143,6 +144,8 @@ describe('readMemoryFiles and auditMemoryDirs', () => {
         ['team', '/memory/team/MEMORY.md'],
         ['team', '/memory/team/bugs/b.md'],
       ])
+      // The write tools' synchronous twin lists the same files
+      expect(readMemoryFilesSync(dirs)).toEqual(files)
 
       const audit = await auditMemoryDirs(dirs)
       expect(audit.files).toBe(4)
@@ -168,6 +171,7 @@ describe('readMemoryFiles and auditMemoryDirs', () => {
       writeFileSync(join(root, 'memory', 'team', 'real.md'), 'clean\n')
       const files = await readMemoryFiles(dirs)
       expect(files.map(f => f.path.slice(root.length))).toEqual(['/memory/team/real.md'])
+      expect(readMemoryFilesSync(dirs).map(f => f.path.slice(root.length))).toEqual(['/memory/team/real.md'])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
@@ -177,6 +181,7 @@ describe('readMemoryFiles and auditMemoryDirs', () => {
     const root = join(tmpdir(), 'memory-audit-missing-dir-never-created')
     const dirs = testMemoryDirs({ private: join(root, 'memory'), team: join(root, 'memory', 'team') })
     expect(await auditMemoryDirs(dirs)).toEqual({ files: 0, findings: [] })
+    expect(readMemoryFilesSync(dirs)).toEqual([])
   })
 
   test('a read failure that is not ENOENT propagates', async () => {

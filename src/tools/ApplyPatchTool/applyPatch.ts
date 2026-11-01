@@ -41,8 +41,8 @@ import type { ToolAdvice, ToolUseContext, ValidationResult } from 'src/tools/Too
 import {
   checkMemoryFileFormat,
   indexTextFromResponse,
-  memoryFileExists,
   memoryWriteNotes,
+  notesToAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
@@ -477,7 +477,7 @@ export function applyPatchMemoryIndexAdvice(
     if (hunk.type === 'add' && checkMemoryFileFormat(path, addContent(hunk))) continue
     const notes = memoryWriteNotes(
       path,
-      { content: hunk.type === 'add' ? addContent(hunk) : null, isNew: hunk.type === 'add' && !memoryFileExists(path), indexNote: index === null },
+      { content: hunk.type === 'add' ? addContent(hunk) : null, isNew: hunk.type === 'add' && !getFsImplementation().existsSync(path), indexNote: index === null },
       pending,
     )
     index ??= notes.index
@@ -486,30 +486,24 @@ export function applyPatchMemoryIndexAdvice(
   for (const { hunk, path } of indexes) {
     hygiene.push(...memoryWriteNotes(path, { content: patchedText(path, hunk), isNew: false, indexNote: false }).hygiene)
   }
-  const notes = [...(index ? [index] : []), ...hygiene]
-  return notes.length > 0 ? { message: notes.join('\n\n') } : null
+  return notesToAdvice({ index, hygiene })
 }
 
 /**
- * What a hunk leaves in a file, near enough for a size check: an Add's
- * content, or each Update chunk's old lines replaced by its new ones in the
- * file as it is. Null when a chunk's old lines are not found as written.
+ * What a hunk leaves in a file, by the engine that stages it (applySections):
+ * an Add's content, or the Update's chunks applied to the file as it is. Null
+ * when a chunk will not apply, or the file cannot be read — the call reports
+ * both.
  */
 function patchedText(path: string, hunk: Hunk): string | null {
   if (hunk.type === 'add') return addContent(hunk)
   if (hunk.type === 'delete') return null
-  let text: string
   try {
-    text = readFileForStaging(path).content
+    const { text, outcomes } = applySections(path, [hunk.chunks], readFileForStaging(path).content)
+    return outcomes.flat().some(o => o.kind === 'failed') ? null : text
   } catch {
-    return null // a file that cannot be read is reported by the call
+    return null
   }
-  for (const chunk of hunk.chunks) {
-    const before = chunk.oldLines.join('\n')
-    if (before === '' || !text.includes(before)) return null
-    text = text.replace(before, () => chunk.newLines.join('\n'))
-  }
-  return text
 }
 
 /** What staging one file produced: its change, if any, and the reports of its hunks. */

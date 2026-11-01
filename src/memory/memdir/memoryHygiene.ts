@@ -35,16 +35,13 @@
  * language (the five PT-BR copies of the census were in other projects), or
  * a rule kept global with its case notes in a private memory on purpose.
  */
-import { readdirSync, readFileSync } from 'fs'
-import { basename, join, relative } from 'path'
+import { basename, relative } from 'path'
 import { fitEntrypointContent } from 'src/memory/memdir/entrypointFit.js'
 import type { AuditedFile } from 'src/memory/memdir/memoryAudit.js'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
-import { isENOENT } from 'src/shared/errors.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
-import { logError } from 'src/shared/log.js'
 
 /** What an index over its caps costs when it is fitted to them (entrypointFit.ts), or null within them. */
 export function indexOverCap(content: string): { bytes: number; lines: number; shortened: number } | null {
@@ -150,10 +147,6 @@ type Memory = Where & {
 
 const isIndex = (path: string): boolean => basename(path) === ENTRYPOINT_NAME
 
-function asStrings(value: unknown): string[] {
-  return parseContradicts(value) ?? []
-}
-
 /**
  * The names a `contradicts:` value lists: one name, or a list of them. [] when
  * the key is absent; null when it is there but names nothing a reader could
@@ -169,7 +162,7 @@ export function parseContradicts(value: unknown): string[] | null {
 
 /** The names a memory file's `contradicts:` lists, [] for none. */
 export function contradictsOf(content: string): string[] {
-  return asStrings(parseFrontmatter(content).frontmatter.contradicts)
+  return parseContradicts(parseFrontmatter(content).frontmatter.contradicts) ?? []
 }
 
 /** A memory's frontmatter, as the hygiene checks read it. */
@@ -181,7 +174,7 @@ export function readHygieneFacts(path: string, content: string): Omit<Memory, 's
   return {
     name,
     type: text('type'),
-    contradicts: asStrings(frontmatter.contradicts),
+    contradicts: parseContradicts(frontmatter.contradicts) ?? [],
     tokens: memoryTokens(path, name, text('description')),
     bytes: Buffer.byteLength(content),
   }
@@ -242,70 +235,22 @@ export function findHygieneFindings(files: readonly AuditedFile[], dirs: readonl
 /** A memory as the write-time near-duplicate note compares it. */
 export type VisibleMemory = { scope: MemoryScope; path: string; name: string | null; tokens: Set<string> }
 
-/** Every `.md` under `root` but the indexes, absolute; the team dir is read with its subdirectories. */
-function memoryPathsSync(dir: MemoryDir, dirs: readonly MemoryDir[]): string[] {
-  try {
-    return readdirSync(dir.root, { recursive: dir.scope === 'team', withFileTypes: true })
-      .filter(e => e.isFile() && e.name.endsWith('.md') && e.name !== ENTRYPOINT_NAME)
-      .map(e => join(e.parentPath, e.name))
-      .filter(path => !dirs.some(other => other !== dir && other.root.startsWith(dir.root) && path.startsWith(other.root)))
-  } catch (e) {
-    if (!isENOENT(e)) logError(e)
-    return []
-  }
-}
-
 /**
- * The memories of every directory, read now: what the near-duplicate note
- * compares a new memory against. Synchronous, as a tool's `advise` is; a
- * write that creates a memory is rare, and the dirs hold a few hundred files.
+ * The memories of `files` (the audit's readMemoryFiles, or its synchronous
+ * twin for a tool's `advise`): what the near-duplicate note compares a new
+ * memory against.
  */
-export function readVisibleMemoriesSync(dirs: readonly MemoryDir[]): VisibleMemory[] {
-  const out: VisibleMemory[] = []
-  for (const dir of dirs) {
-    for (const path of memoryPathsSync(dir, dirs)) {
-      try {
-        const facts = readHygieneFacts(path, readFileSync(path, 'utf8'))
-        out.push({ scope: dir.scope, path, name: facts.name, tokens: facts.tokens })
-      } catch (e) {
-        // A file gone since the listing is simply not compared
-        if (!isENOENT(e)) logError(e)
-      }
-    }
-  }
-  return out
+export function visibleMemories(files: readonly AuditedFile[]): VisibleMemory[] {
+  return files
+    .filter(file => !isIndex(file.path))
+    .map(file => {
+      const { name, tokens } = readHygieneFacts(file.path, file.content)
+      return { scope: file.scope, path: file.path, name, tokens }
+    })
 }
 
 /** Where a memory is, for a note: relative to its directory, prefixed with the scope. */
 export function describeMemory(memory: { scope: MemoryScope; path: string }, dirs: readonly MemoryDir[]): string {
   const root = dirs.find(dir => dir.scope === memory.scope)?.root
   return `${memory.scope}:${root ? relative(root, memory.path) : memory.path}`
-}
-
-/**
- * The findings no dream may act on: a near-duplicate inside the global dir,
- * and a contradiction a global memory is marked with. One project's run may
- * only add to the global dir, so these wait for the user (`/memory tidy`).
- */
-function globalOnlyFindings(findings: readonly HygieneFinding[]): HygieneFinding[] {
-  return findings.filter(
-    f =>
-      (f.kind === 'near-duplicate' && f.scope === 'global' && f.other.scope === 'global') ||
-      (f.kind === 'open-contradiction' && f.scope === 'global'),
-  )
-}
-
-/** The transcript line a dream leaves when global findings remain, or null. */
-export function globalFindingsLine(findings: readonly HygieneFinding[]): string | null {
-  const global = globalOnlyFindings(findings)
-  if (global.length === 0) return null
-  const duplicates = global.filter(f => f.kind === 'near-duplicate').length
-  const contradictions = global.length - duplicates
-  const what = [
-    duplicates > 0 ? `${duplicates} near-duplicate${duplicates === 1 ? '' : 's'}` : '',
-    contradictions > 0 ? `${contradictions} contradiction${contradictions === 1 ? '' : 's'}` : '',
-  ]
-    .filter(Boolean)
-    .join(' and ')
-  return `Dream: ${what} in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.`
 }

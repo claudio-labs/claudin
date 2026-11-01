@@ -12,6 +12,7 @@ import {
   defaultAutoDreamDeps,
   drainPendingAutoDream,
   executeAutoDream,
+  globalFindingsLine,
   initAutoDream,
 } from 'src/memory/autoDream/autoDream.js'
 import { isDreamTask } from 'src/agent/tasks/DreamTask/DreamTask.js'
@@ -54,6 +55,7 @@ function fakeDeps(over: Partial<AutoDreamDeps> = {}) {
   const calls = { read: 0, list: 0, acquire: 0, rollback: [] as number[], forks: [] as Record<string, unknown>[] }
   const deps: AutoDreamDeps = {
     isGateOpen: () => true,
+    isForced: () => false,
     readLastConsolidatedAt: async () => {
       calls.read++
       return 0
@@ -228,7 +230,9 @@ describe('auto-dream in a non-interactive session', () => {
 
   test('CLAUDIN_AUTO_DREAM_FORCE=1 opens the enabled, time and session gates and skips the lock', async () => {
     process.env.CLAUDIN_AUTO_DREAM_FORCE = '1'
+    expect(defaultAutoDreamDeps.isForced()).toBe(true)
     const { deps, calls } = fakeDeps({
+      isForced: defaultAutoDreamDeps.isForced,
       isGateOpen: () => false,
       readLastConsolidatedAt: async () => Date.now(),
       listSessionsTouchedSince: async () => [],
@@ -338,5 +342,24 @@ describe('an auto-dream run', () => {
     const h = await run(deps)
     expect(calls.rollback).toEqual([])
     expect(h.dreams()[0]?.status).toBe('running')
+  })
+})
+
+describe('globalFindingsLine', () => {
+  const dup = (scope: 'global' | 'private', otherScope: 'global' | 'team') => ({
+    kind: 'near-duplicate' as const,
+    scope,
+    path: `/${scope}/a.md`,
+    other: { scope: otherScope, path: `/${otherScope}/b.md` },
+    score: 0.6,
+  })
+
+  test('names the near-duplicates inside the global dir and its marked contradictions, nothing a dream may fix', () => {
+    const contradiction = { kind: 'open-contradiction' as const, scope: 'global' as const, path: '/g/c.md', targets: ['d'] }
+    expect(globalFindingsLine([dup('global', 'global'), dup('global', 'global'), contradiction])).toBe(
+      'Dream: 2 near-duplicates and 1 contradiction in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.',
+    )
+    expect(globalFindingsLine([contradiction])).toContain('Dream: 1 contradiction in the global memory')
+    expect(globalFindingsLine([dup('private', 'global'), dup('global', 'team')])).toBeNull()
   })
 })

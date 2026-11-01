@@ -5,9 +5,9 @@ import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 import {
-  editedContent,
   memoryHygieneNotesIn,
-  memoryWriteAdvice,
+  memoryWriteNotes,
+  notesToAdvice,
   type MemoryWrite,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { memoryTokens, type VisibleMemory } from 'src/memory/memdir/memoryHygiene.js'
@@ -76,22 +76,6 @@ describe('memoryHygieneNotesIn', () => {
   })
 })
 
-describe('editedContent', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'edited-content-'))
-  afterAll(() => rmSync(dir, { recursive: true, force: true }))
-
-  test('applies the edit to the bytes on disk, once or everywhere; null when it would not apply', () => {
-    const path = join(dir, 'a.md')
-    writeFileSync(path, 'x y x\n')
-    expect(editedContent(path, 'x', 'z', false)).toBe('z y x\n')
-    expect(editedContent(path, 'x', 'z', true)).toBe('z y z\n')
-    expect(editedContent(path, 'q', 'z', false)).toBeNull()
-    expect(editedContent(path, 'x', '$&$&', false)).toBe('$&$& y x\n')
-    expect(editedContent(join(dir, 'new.md'), '', 'created', false)).toBe('created')
-    expect(editedContent(join(dir, 'missing.md'), 'x', 'z', false)).toBeNull()
-  })
-})
-
 describe('the write notes through the session dirs', () => {
   const saved = { config: process.env.CLAUDIN_CONFIG_DIR, hygiene: process.env.CLAUDIN_MEMORY_HYGIENE }
   let savedProjectRoot: string
@@ -130,14 +114,14 @@ describe('the write notes through the session dirs', () => {
   })
 
   test('a new memory gets the index note and the near-duplicate note, read from disk', () => {
-    const message = memoryWriteAdvice(join(teamDir, 'runtime-deps-review.md'), fresh(DEPS))?.message ?? ''
+    const message = notesToAdvice(memoryWriteNotes(join(teamDir, 'runtime-deps-review.md'), fresh(DEPS)))?.message ?? ''
     expect(message).toContain('is not in the team memory index yet')
     expect(message).toContain('reads like a memory already saved: `team:notes-sc-14.md`')
   })
 
   test('CLAUDIN_MEMORY_HYGIENE=0 leaves the index note alone', () => {
     process.env.CLAUDIN_MEMORY_HYGIENE = '0'
-    const message = memoryWriteAdvice(join(teamDir, 'runtime-deps-review.md'), fresh(DEPS))?.message ?? ''
+    const message = notesToAdvice(memoryWriteNotes(join(teamDir, 'runtime-deps-review.md'), fresh(DEPS)))?.message ?? ''
     expect(message).toContain('is not in the team memory index yet')
     expect(message).not.toContain('reads like')
   })

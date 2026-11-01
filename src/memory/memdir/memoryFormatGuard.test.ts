@@ -14,7 +14,7 @@ import {
   checkMemoryFileFormat,
   checkMemoryFileFormatIn,
   indexTextFromResponse,
-  memoryIndexAdvice,
+  memoryWriteNotes,
   memoryIndexAdviceIn,
   type MemoryDirs,
 } from 'src/memory/memdir/memoryFormatGuard.js'
@@ -60,6 +60,9 @@ function fromTemplate(type: MemoryType, extra: string[] = [], body = FEEDBACK_BO
 }
 
 const check = (rel: string, content: string) => checkMemoryFileFormatIn(DIRS, `${AUTO}${rel}`, content)
+/** The index-line note alone, as the write tools get it (memoryWriteNotes). */
+const indexNote = (path: string, pending?: ReadonlyMap<string, string>) =>
+  memoryWriteNotes(path, { content: null, isNew: true, indexNote: true }, pending).index
 
 describe('checkMemoryFileFormatIn — what it lets through', () => {
   test('the template fills every placeholder', () => {
@@ -414,9 +417,9 @@ describe('the wrappers, on the session dirs', () => {
 
   test('the advice reads the index on disk, and a line the call adds to it', () => {
     const index = join(getPrivateMemPath(), 'MEMORY.md')
-    expect(memoryIndexAdvice(probe())?.message).toContain('memory-format-guard-probe.md')
+    expect(indexNote(probe())).toContain('memory-format-guard-probe.md')
     const pending = new Map([[index, '- [Probe](memory-format-guard-probe.md) — hook']])
-    expect(memoryIndexAdvice(probe(), pending)).toBeNull()
+    expect(indexNote(probe(), pending)).toBeNull()
   })
 })
 
@@ -515,10 +518,10 @@ describe('the rest of the response (indexTextFromResponse)', () => {
       { input: { file_path: memory, content: fromTemplate('feedback') } },
       { input: { file_path: index, content: '- [Probe](memory-format-guard-probe.md) — hook\n' } },
     ]
-    expect(memoryIndexAdvice(memory, indexTextFromResponse(response, '/'))).toBeNull()
+    expect(indexNote(memory, indexTextFromResponse(response, '/'))).toBeNull()
     // The same index written for another file does not count.
     const other = [response[0]!, { input: { file_path: index, content: '- [Other](other.md) — x\n' } }]
-    expect(memoryIndexAdvice(memory, indexTextFromResponse(other, '/'))?.message).toContain('memory-format-guard-probe.md')
+    expect(indexNote(memory, indexTextFromResponse(other, '/'))).toContain('memory-format-guard-probe.md')
   })
 })
 

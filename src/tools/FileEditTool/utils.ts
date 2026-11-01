@@ -370,6 +370,24 @@ export function applyEditToFile(
  * Applies an edit to a file and returns the patch and updated file.
  * Does not write the file to disk.
  */
+
+/**
+ * The file an Edit of `file` leaves, by the steps validateInput and call()
+ * take: the exact or quote-normalized match, else — one occurrence only —
+ * the whitespace-tolerant one, re-indented; the file's quote style kept.
+ * Null when old_string does not apply: absent, or in it more than once
+ * without replace_all.
+ */
+export function editedFile(file: string, oldString: string, newString: string, replaceAll: boolean): string | null {
+  const exact = findActualString(file, oldString)
+  if (exact) {
+    if (!replaceAll && file.split(exact).length > 2) return null
+    return applyEditToFile(file, exact, preserveQuoteStyle(oldString, exact, newString), replaceAll)
+  }
+  if (replaceAll) return null
+  const fuzzy = resolveFuzzyEdit(file, oldString, newString)
+  return fuzzy.kind === 'match' ? applyEditToFile(file, fuzzy.matchedOldString, fuzzy.adjustedNewString) : null
+}
 export function getPatchForEdit({
   filePath,
   fileContents,

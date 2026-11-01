@@ -17,6 +17,7 @@
  * digest — so none of them scans on its own. The core is pure over the files
  * it is handed; readMemoryFiles is the thin I/O shell.
  */
+import { type Dirent, readdirSync, readFileSync } from 'fs'
 import { readdir, readFile } from 'fs/promises'
 import { basename, join, relative } from 'path'
 import type { MemoryDir } from 'src/memory/memdir/memoryDirs.js'
@@ -27,6 +28,7 @@ import { findLinkFindings, type LinkFinding } from 'src/memory/memdir/memoryLink
 import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { isENOENT } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 
 export type AuditedFile = {
   scope: MemoryScope
@@ -110,11 +112,15 @@ export type MemoryAuditDeps = {
  * pointing at content that is not what the repository commits — has nothing
  * to scan, and reading one threw out of the audit.
  */
+function markdownFiles(root: string, entries: Dirent[]): string[] {
+  return entries
+    .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+    .map(entry => relative(root, join(entry.parentPath, entry.name)))
+}
+
 async function listMarkdown(root: string, recursive: boolean): Promise<string[]> {
   try {
-    return (await readdir(root, { recursive, withFileTypes: true }))
-      .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
-      .map(entry => relative(root, join(entry.parentPath, entry.name)))
+    return markdownFiles(root, await readdir(root, { recursive, withFileTypes: true }))
   } catch (e) {
     if (isENOENT(e)) return []
     throw e
@@ -144,6 +150,38 @@ export async function readMemoryFiles(
     }
   }
   return files
+}
+
+/**
+ * readMemoryFiles, synchronous, for a write tool's `advise`: the same files,
+ * and a file that cannot be read is left out rather than failing the write's
+ * notes.
+ */
+export function readMemoryFilesSync(dirs: readonly MemoryDir[]): AuditedFile[] {
+  const files: AuditedFile[] = []
+  for (const dir of dirs) {
+    let names: string[]
+    try {
+      names = markdownFiles(dir.root, readdirSync(dir.root, { recursive: dir.scope === 'team', withFileTypes: true }))
+    } catch (e) {
+      if (!isENOENT(e)) logError(e)
+      continue
+    }
+    for (const name of names.sort()) {
+      const path = join(dir.root, name)
+      try {
+        files.push({ scope: dir.scope, path, content: readFileSync(path, 'utf8') })
+      } catch (e) {
+        if (!isENOENT(e)) logError(e)
+      }
+    }
+  }
+  return files
+}
+
+/** The hygiene findings alone (memoryHygiene.ts), for the dream's digest and end-of-run line. */
+export async function auditHygiene(dirs: readonly MemoryDir[]): Promise<HygieneFinding[]> {
+  return findHygieneFindings(await readMemoryFiles(dirs), dirs)
 }
 
 export async function auditMemoryDirs(

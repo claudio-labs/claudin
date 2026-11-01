@@ -4,7 +4,7 @@ import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 import {
   contradictsOf,
   findHygieneFindings,
-  globalFindingsLine,
+  visibleMemories,
   isMemoryHygieneEnabled,
   memoryTokens,
   NEAR_DUPLICATE_MIN,
@@ -109,22 +109,16 @@ describe('findHygieneFindings', () => {
   })
 })
 
-describe('globalFindingsLine', () => {
-  const dup = (scope: 'global' | 'private', otherScope: 'global' | 'team') => ({
-    kind: 'near-duplicate' as const,
-    scope,
-    path: `/${scope}/a.md`,
-    other: { scope: otherScope, path: `/${otherScope}/b.md` },
-    score: 0.6,
-  })
-
-  test('names the near-duplicates inside the global dir and its marked contradictions, nothing a dream may fix', () => {
-    const contradiction = { kind: 'open-contradiction' as const, scope: 'global' as const, path: '/g/c.md', targets: ['d'] }
-    expect(globalFindingsLine([dup('global', 'global'), dup('global', 'global'), contradiction])).toBe(
-      'Dream: 2 near-duplicates and 1 contradiction in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.',
-    )
-    expect(globalFindingsLine([contradiction])).toContain('Dream: 1 contradiction in the global memory')
-    expect(globalFindingsLine([dup('private', 'global'), dup('global', 'team')])).toBeNull()
+describe('visibleMemories', () => {
+  test('every memory but the indexes, with the words its note compares', () => {
+    const files = [
+      file('private', `${PRIVATE}MEMORY.md`, '- [Lang](lang.md) — PT-BR'),
+      file('private', `${PRIVATE}lang.md`, memory(['name: lang', 'description: answers in Portuguese', 'type: user'])),
+    ]
+    const [only, ...rest] = visibleMemories(files)
+    expect(rest).toEqual([])
+    expect(only).toMatchObject({ scope: 'private', path: `${PRIVATE}lang.md`, name: 'lang' })
+    expect(only!.tokens.has('portuguese')).toBe(true)
   })
 })
 

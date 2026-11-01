@@ -12,8 +12,8 @@ import {
   checkMemoryFileFormat,
   indexTextFromResponse,
   isMemoryWriteTarget,
-  memoryFileExists,
-  memoryWriteAdvice,
+  memoryWriteNotes,
+  notesToAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
@@ -300,10 +300,12 @@ export const FileWriteTool = buildTool({
     // response writes counts
     const path = expandPath(file_path)
     if (!isMemoryWriteTarget(path)) return null
-    return memoryWriteAdvice(
-      path,
-      { content, isNew: !memoryFileExists(path), indexNote: true },
-      indexTextFromResponse(context.responseToolUses, getCwd()),
+    return notesToAdvice(
+      memoryWriteNotes(
+        path,
+        { content, isNew: !getFsImplementation().existsSync(path), indexNote: true },
+        indexTextFromResponse(context.responseToolUses, getCwd()),
+      ),
     )
   },
   async call(

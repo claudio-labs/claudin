@@ -37,9 +37,9 @@ import { join } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { readMemoryWrites } from 'src/memory/autoDream/memoryWrites.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
-import { readMemoryFiles } from 'src/memory/memdir/memoryAudit.js'
+import { auditHygiene } from 'src/memory/memdir/memoryAudit.js'
 import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
-import { findHygieneFindings, type HygieneFinding, isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
+import { type HygieneFinding, isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
 import { type MemoryHeader, scanMemoryFiles } from 'src/memory/memdir/memoryScan.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { relativeIfInside } from 'src/shared/fs/path.js'
@@ -428,17 +428,13 @@ async function memoryHeadersOnDisk(): Promise<MemoryHeader[]> {
   return headers
 }
 
-async function hygieneFindingsOnDisk(): Promise<HygieneFinding[]> {
-  const dirs = getMemoryDirs()
-  return findHygieneFindings(await readMemoryFiles(dirs), dirs)
-}
 
 const defaultDreamDigestDeps: DreamDigestDeps = {
   listPlans: listPlansOnDisk,
   listSessions: listSessionsFromIndex,
   commitSubjectsSince: commitSubjectsFromGit,
   listMemoryHeaders: memoryHeadersOnDisk,
-  listHygieneFindings: hygieneFindingsOnDisk,
+  listHygieneFindings: () => auditHygiene(getMemoryDirs()),
 }
 
 /**

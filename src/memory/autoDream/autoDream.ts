@@ -36,13 +36,8 @@ import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
-import {
-  findHygieneFindings,
-  globalFindingsLine,
-  type HygieneFinding,
-  isMemoryHygieneEnabled,
-} from 'src/memory/memdir/memoryHygiene.js'
-import { readMemoryFiles } from 'src/memory/memdir/memoryAudit.js'
+import { type HygieneFinding, isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
+import { auditHygiene } from 'src/memory/memdir/memoryAudit.js'
 import { writtenPaths } from 'src/tools/shared/writtenPaths.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
@@ -118,6 +113,8 @@ type AppendSystemMessageFn = NonNullable<ToolUseContext['appendSystemMessage']>
 /** What the runner calls outside itself; production passes defaultAutoDreamDeps. */
 export type AutoDreamDeps = {
   isGateOpen: () => boolean
+  /** CLAUDIN_AUTO_DREAM_FORCE (above). */
+  isForced: () => boolean
   readLastConsolidatedAt: () => Promise<number>
   listSessionsTouchedSince: (sinceMs: number) => Promise<string[]>
   tryAcquireConsolidationLock: () => Promise<number | null>
@@ -130,20 +127,46 @@ export type AutoDreamDeps = {
   hygieneFindings: () => Promise<HygieneFinding[]>
 }
 
+/**
+ * The findings no dream may act on: a near-duplicate inside the global dir,
+ * and a contradiction a global memory is marked with. One project's run may
+ * only add to the global dir, so these wait for the user (`/memory tidy`).
+ */
+function globalOnlyFindings(findings: readonly HygieneFinding[]): HygieneFinding[] {
+  return findings.filter(
+    f =>
+      (f.kind === 'near-duplicate' && f.scope === 'global' && f.other.scope === 'global') ||
+      (f.kind === 'open-contradiction' && f.scope === 'global'),
+  )
+}
+
+/** The transcript line a dream leaves when global findings remain, or null. */
+export function globalFindingsLine(findings: readonly HygieneFinding[]): string | null {
+  const global = globalOnlyFindings(findings)
+  if (global.length === 0) return null
+  const duplicates = global.filter(f => f.kind === 'near-duplicate').length
+  const contradictions = global.length - duplicates
+  const what = [
+    duplicates > 0 ? `${duplicates} near-duplicate${duplicates === 1 ? '' : 's'}` : '',
+    contradictions > 0 ? `${contradictions} contradiction${contradictions === 1 ? '' : 's'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' and ')
+  return `Dream: ${what} in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.`
+}
+
+
 export const defaultAutoDreamDeps: AutoDreamDeps = {
   isGateOpen,
+  isForced,
   readLastConsolidatedAt,
   listSessionsTouchedSince,
   tryAcquireConsolidationLock,
   rollbackConsolidationLock,
-  collectDreamDigest: (sinceMs, sessionIds) => collectDreamDigest(sinceMs, sessionIds),
+  collectDreamDigest,
   runForkedAgent,
   notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
-  hygieneFindings: async () => {
-    if (!isMemoryHygieneEnabled()) return []
-    const dirs = getMemoryDirs()
-    return findHygieneFindings(await readMemoryFiles(dirs), dirs)
-  },
+  hygieneFindings: () => auditHygiene(getMemoryDirs()),
 }
 
 let runner:
@@ -162,7 +185,7 @@ export function initAutoDream(deps: AutoDreamDeps = defaultAutoDreamDeps): void 
 
   runner = async function runAutoDream(context, appendSystemMessage) {
     const cfg = DEFAULTS
-    const force = isForced()
+    const force = deps.isForced()
     if (!force && !deps.isGateOpen()) return
 
     // --- Time gate ---
@@ -301,12 +324,14 @@ ${digest}`
         } as ReturnType<typeof createMemorySavedMessage> & { verb?: string })
       }
       // What only the user can settle, said whatever notifyMemorySaved says
-      const globalLine = globalFindingsLine(
-        await deps.hygieneFindings().catch(error => {
-          logError(error)
-          return []
-        }),
-      )
+      const globalLine = prune
+        ? globalFindingsLine(
+            await deps.hygieneFindings().catch(error => {
+              logError(error)
+              return []
+            }),
+          )
+        : null
       if (appendSystemMessage && globalLine) {
         appendSystemMessage(createSystemMessage(globalLine, 'info'))
       }

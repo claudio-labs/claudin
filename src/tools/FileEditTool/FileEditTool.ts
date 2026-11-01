@@ -9,11 +9,10 @@ import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import {
   checkMemoryFileFormat,
-  editedContent,
   indexTextFromResponse,
   isMemoryWriteTarget,
-  memoryFileExists,
-  memoryWriteAdvice,
+  memoryWriteNotes,
+  notesToAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
@@ -99,6 +98,7 @@ import {
 import {
   applyEditToFile,
   areFileEditsInputsEquivalent,
+  editedFile,
   findActualString,
   getPatchForEdit,
   preserveQuoteStyle,
@@ -462,14 +462,22 @@ export const FileEditTool = buildTool({
     const path = expandPath(input.file_path)
     if (!isMemoryWriteTarget(path)) return null
     const creates = input.old_string === ''
-    return memoryWriteAdvice(
-      path,
-      {
-        content: editedContent(path, input.old_string, input.new_string, input.replace_all ?? false),
-        isNew: creates && !memoryFileExists(path),
-        indexNote: creates,
-      },
-      indexTextFromResponse(context.responseToolUses, getCwd()),
+    let onDisk: string | null
+    try {
+      const current = readFileForEdit(path)
+      onDisk = current.fileExists ? current.content : null
+    } catch {
+      return null // an unreadable file is reported by the call
+    }
+    const content = creates
+      ? onDisk === null ? input.new_string : null
+      : onDisk === null ? null : editedFile(onDisk, input.old_string, input.new_string, input.replace_all ?? false)
+    return notesToAdvice(
+      memoryWriteNotes(
+        path,
+        { content, isNew: creates && onDisk === null, indexNote: creates },
+        indexTextFromResponse(context.responseToolUses, getCwd()),
+      ),
     )
   },
   inputsEquivalent(input1, input2) {
