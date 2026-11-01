@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import type { Question, QuestionOption } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
@@ -69,6 +69,9 @@ export function QuestionView(t0: Props) {
   const [isFooterFocused, setIsFooterFocused] = useState(false);
   const [footerIndex, setFooterIndex] = useState(0);
   const [isOtherFocused, setIsOtherFocused] = useState(false);
+  // SelectMulti reports the selection in the same tick as the Other keystroke,
+  // before questionStates re-renders, so the answer reads the text from here.
+  const otherTextRef = useRef<Record<string, string>>({});
   let t2;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     const editor = getExternalEditor();
@@ -186,6 +189,7 @@ export function QuestionView(t0: Props) {
     let t11;
     if ($[22] !== onUpdateQuestionState || $[23] !== question.multiSelect || $[24] !== questionText) {
       t11 = (value_0: string) => {
+        otherTextRef.current[questionText] = value_0;
         onUpdateQuestionState(questionText, {
           textInputValue: value_0
         }, question.multiSelect ?? false);
@@ -296,7 +300,7 @@ export function QuestionView(t0: Props) {
         onUpdateQuestionState(questionText, {
           selectedValue: values
         }, true);
-        const textInput = values.includes("__other__") ? questionStates[questionText]?.textInputValue : undefined;
+        const textInput = values.includes("__other__") ? otherTextRef.current[questionText] ?? questionStates[questionText]?.textInputValue : undefined;
         const finalValues = values.filter(_temp4).concat(textInput ? [textInput] : []);
         onAnswer(questionText, finalValues, undefined, false);
       }} onFocus={handleFocus} onCancel={onCancel} submitButtonText={currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"} onSubmit={onSubmit} onDownFromLastItem={handleDownFromLastItem} isDisabled={isFooterFocused} onOpenEditor={handleOpenEditor} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} /> : <Select key={question.question} options={options} defaultValue={questionStates[question.question]?.selectedValue as string | undefined} onChange={value_1 => {
