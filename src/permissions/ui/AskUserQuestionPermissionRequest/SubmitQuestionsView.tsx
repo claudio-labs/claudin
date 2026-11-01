@@ -3,6 +3,7 @@ import figures from 'figures';
 import React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Question } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
+import { noteLines } from 'src/tools/AskUserQuestionTool/optionNotes.js';
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
@@ -13,17 +14,20 @@ type Props = {
   questions: Question[];
   currentQuestionIndex: number;
   answers: Record<string, string>;
+  /** Each question's notes, formatted as they are sent. */
+  notes?: Record<string, string | undefined>;
   allQuestionsAnswered: boolean;
   permissionResult: PermissionDecision;
   minContentHeight?: number;
   onFinalResponse: (value: 'submit' | 'cancel') => void;
 };
 export function SubmitQuestionsView(t0: Props) {
-  const $ = _c(27);
+  const $ = _c(28);
   const {
     questions,
     currentQuestionIndex,
     answers,
+    notes,
     allQuestionsAnswered,
     permissionResult,
     minContentHeight,
@@ -62,13 +66,15 @@ export function SubmitQuestionsView(t0: Props) {
     t4 = $[7];
   }
   let t5;
-  if ($[8] !== answers || $[9] !== questions) {
-    t5 = Object.keys(answers).length > 0 && <Box flexDirection="column" marginBottom={1}>{questions.filter(q => q?.question && answers[q.question]).map(q_0 => {
+  if ($[8] !== answers || $[9] !== questions || $[27] !== notes) {
+    const listed = questions.filter(q => q?.question && (answers[q.question] || notes?.[q.question]));
+    t5 = listed.length > 0 && <Box flexDirection="column" marginBottom={1}>{listed.map(q_0 => {
         const answer = answers[q_0?.question];
-        return <Box key={q_0?.question || "answer"} flexDirection="column" marginLeft={1}><Text>{figures.bullet} {q_0?.question || "Question"}</Text><Box marginLeft={2}><Text color="success">{figures.arrowRight} {answer}</Text></Box></Box>;
+        return <Box key={q_0?.question || "answer"} flexDirection="column" marginLeft={1}><Text>{figures.bullet} {q_0?.question || "Question"}</Text>{answer && <Box marginLeft={2}><Text color="success">{figures.arrowRight} {answer}</Text></Box>}{noteLines(notes?.[q_0.question]).map((line, i) => <Box key={i} marginLeft={2}><Text color="inactive">⎿ {line}</Text></Box>)}</Box>;
       })}</Box>;
     $[8] = answers;
     $[9] = questions;
+    $[27] = notes;
     $[10] = t5;
   } else {
     t5 = $[10];

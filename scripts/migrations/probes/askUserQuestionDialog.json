@@ -1,0 +1,224 @@
+{
+  "test": [
+    "src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.test.ts",
+    "src/tools/AskUserQuestionTool/AskUserQuestionTool.test.ts",
+    "src/tools/AskUserQuestionTool/optionNotes.test.ts"
+  ],
+  "source": "src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "the Other text stops being the answer",
+      "find": "          answer_2 = questionImages.length > 0 ? `${textInput} (Image attached)` : textInput;\n",
+      "replace": "          answer_2 = label;\n"
+    },
+    {
+      "name": "a single question stops submitting on Enter",
+      "find": "      if (!isMultiSelect && isSingleQuestion && shouldAdvance) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "multi-select answers lose their separator",
+      "find": "        answer_2 = label.join(\", \");\n",
+      "replace": "        answer_2 = label.join(\"; \");\n"
+    },
+    {
+      "name": "the selected preview no longer reaches the model",
+      "find": "            ...(preview && {\n",
+      "replace": "            ...(false && {\n"
+    },
+    {
+      "name": "the notes no longer reach the model",
+      "find": "            ...(notes && {\n",
+      "replace": "            ...(false && {\n"
+    },
+    {
+      "name": "cancel stops rejecting the tool use",
+      "find": "      toolUseConfirm.onReject();\n",
+      "replace": "      void 0;\n"
+    },
+    {
+      "name": "Tab stops moving to the next question",
+      "find": "      if (currentQuestionIndex < maxIndex) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "the footer stops chatting",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        if (footerIndex === 0) {\n          onRespondToClaude();\n",
+      "replace": "        if (footerIndex === 0) {\n          void 0;\n"
+    },
+    {
+      "name": "the footer never reaches the skip-interview row",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        if (isInPlanMode && footerIndex === 0) {\n",
+      "replace": "        if (false) {\n"
+    },
+    {
+      "name": "Escape on the footer stops cancelling",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        event.stopImmediatePropagation();\n        onCancel();\n",
+      "replace": "        event.stopImmediatePropagation();\n"
+    },
+    {
+      "name": "the review stops warning about unanswered questions",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "    t4 = !allQuestionsAnswered && <Box",
+      "replace": "    t4 = false && <Box"
+    },
+    {
+      "name": "the review stops listing the answers",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "{figures.arrowRight} {answer}</Text>",
+      "replace": "{figures.arrowRight}</Text>"
+    },
+    {
+      "name": "n stops opening the preview notes",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "    } else if (e.key === 'n' && !e.ctrl && !e.meta) {\n",
+      "replace": "    } else if (false) {\n"
+    },
+    {
+      "name": "Escape in the preview notes cancels the dialog",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "        e.preventDefault();\n        handleNotesExit();\n",
+      "replace": "        e.preventDefault();\n        onCancel();\n"
+    },
+    {
+      "name": "the preview footer stops chatting",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "        if (footerIndex === 0) {\n          onRespondToClaude();\n",
+      "replace": "        if (footerIndex === 0) {\n          void 0;\n"
+    },
+    {
+      "name": "next-question goes back instead",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "    dispatch({ type: 'next-question' })\n",
+      "replace": "    dispatch({ type: 'prev-question' })\n"
+    },
+    {
+      "name": "the reducer forgets the earlier text",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "          action.updates.textInputValue ?? existing?.textInputValue ?? '',\n",
+      "replace": "          action.updates.textInputValue ?? '',\n"
+    },
+    {
+      "name": "the transcript drops the answer",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "{answer !== undefined && <> → {answer}</>}",
+      "replace": "{answer !== undefined && <></>}"
+    },
+    {
+      "name": "an html preview may carry a script",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "  if (/<\\s*(script|style)\\b/i.test(preview)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the prompt always carries the preview guidance",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "    if (format === undefined) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a multi-select Other answer reads the text from the last render",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "otherTextRef.current[questionText] ?? questionStates[questionText]?.textInputValue",
+      "replace": "questionStates[questionText]?.textInputValue"
+    },
+    {
+      "name": "the Other text is sent again as notes",
+      "find": "        const notes = formatOptionNotes(q_3, questionStates[q_3.question]?.notes);\n",
+      "replace": "        const notes = questionStates[q_3.question]?.textInputValue || formatOptionNotes(q_3, questionStates[q_3.question]?.notes);\n"
+    },
+    {
+      "name": "the option notes never reach the model",
+      "find": "        const notes = formatOptionNotes(q_3, questionStates[q_3.question]?.notes);\n",
+      "replace": "        const notes = undefined as string | undefined;\n"
+    },
+    {
+      "name": "n stops opening a note",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "      if (input === 'n' && !key.ctrl",
+      "replace": "      if (false && input === 'n' && !key.ctrl"
+    },
+    {
+      "name": "n on the Other row opens a note",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "focusedValue !== undefined && focusedValue !== '__other__'",
+      "replace": "focusedValue !== undefined"
+    },
+    {
+      "name": "Escape leaves the note open",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "          event.stopImmediatePropagation();\n          closeNote();\n",
+      "replace": "          event.stopImmediatePropagation();\n"
+    },
+    {
+      "name": "the list keeps taking keys while a note is typed",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "  const isSelectDisabled = isFooterFocused || noteTarget !== null;\n",
+      "replace": "  const isSelectDisabled = isFooterFocused;\n"
+    },
+    {
+      "name": "Tab switches the question while a note is typed",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        setNoteCursorOffset((notes?.[focusedValue] ?? '').length);\n        onTextInputFocus(true);\n",
+      "replace": "        setNoteCursorOffset((notes?.[focusedValue] ?? '').length);\n"
+    },
+    {
+      "name": "the note is not shown under its option",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "    description: note ? [opt.description, `⎿ ${note}`].filter(Boolean).join(\"\\n\") : opt.description\n",
+      "replace": "    description: opt.description\n"
+    },
+    {
+      "name": "the note editor drops what is typed",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "            [noteTarget]: value_2\n",
+      "replace": "            [noteTarget]: \"\"\n"
+    },
+    {
+      "name": "the preview note is one per question again",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "  const notesValue = (focusedOption && notes?.[focusedOption.label]) || '';\n",
+      "replace": "  const notesValue = Object.values(notes ?? {})[0] || '';\n"
+    },
+    {
+      "name": "the review hides the notes",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "{noteLines(notes?.[q_0.question]).map(",
+      "replace": "{noteLines(undefined).map("
+    },
+    {
+      "name": "the review skips a notes-only question",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "(answers[q.question] || notes?.[q.question])",
+      "replace": "answers[q.question]"
+    },
+    {
+      "name": "the model never hears a notes-only question",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": ".filter(([questionText, annotation]) => !(questionText in answers) && annotation.notes)",
+      "replace": ".filter(() => false)"
+    },
+    {
+      "name": "the transcript hides the notes",
+      "source": "src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+      "find": "{noteLines(annotations?.[questionText]?.notes).map(",
+      "replace": "{noteLines(undefined).map("
+    },
+    {
+      "name": "a blank note is still sent",
+      "source": "src/tools/AskUserQuestionTool/optionNotes.ts",
+      "find": "    return note ? [`\"${option.label}\": ${note}`] : []\n",
+      "replace": "    return option.label in notes ? [`\"${option.label}\": ${note}`] : []\n"
+    },
+    {
+      "name": "a note keeps its line breaks",
+      "source": "src/tools/AskUserQuestionTool/optionNotes.ts",
+      "find": "  return note.replace(WHITESPACE_RUN_RE, ' ').trim()\n",
+      "replace": "  return note.trim()\n"
+    }
+  ]
+}

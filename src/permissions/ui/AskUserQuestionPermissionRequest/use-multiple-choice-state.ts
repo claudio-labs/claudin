@@ -1,10 +1,14 @@
 import { useCallback, useReducer } from 'react'
 
+import type { OptionNotes } from 'src/tools/AskUserQuestionTool/optionNotes.js'
+
 export type AnswerValue = string
 
 export type QuestionState = {
   selectedValue?: string | string[]
+  /** The Other option's text — an answer, never a note. */
   textInputValue: string
+  notes?: OptionNotes
 }
 
 type State = {
@@ -31,7 +35,7 @@ type Action =
     }
   | { type: 'set-text-input-mode'; isInInput: boolean }
 
-function reducer(state: State, action: Action): State {
+export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'next-question':
       return {
@@ -56,6 +60,7 @@ function reducer(state: State, action: Action): State {
           (action.isMultiSelect ? [] : undefined),
         textInputValue:
           action.updates.textInputValue ?? existing?.textInputValue ?? '',
+        notes: action.updates.notes ?? existing?.notes,
       }
 
       return {
@@ -95,7 +100,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const INITIAL_STATE: State = {
+export const INITIAL_STATE: State = {
   currentQuestionIndex: 0,
   answers: {},
   questionStates: {},

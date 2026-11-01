@@ -1,6 +1,14 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 
+import { setQuestionPreviewFormat } from 'src/platform/bootstrap/state.js'
+import { STATE } from 'src/platform/bootstrap/state/store.js'
+import { renderToString } from 'src/terminal/render/staticRender.js'
 import { AskUserQuestionTool } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js'
+import {
+  ASK_USER_QUESTION_TOOL_PROMPT,
+  DESCRIPTION,
+  PREVIEW_FEATURE_PROMPT,
+} from 'src/tools/AskUserQuestionTool/prompt.js'
 
 function validQuestion(over: Record<string, unknown> = {}) {
   return {
@@ -137,5 +145,130 @@ describe('AskUserQuestionTool', () => {
     expect(block?.content).toContain('"Pick one?"="A"')
     expect(block?.content).toContain('selected preview')
     expect(block?.content).toContain('user notes: preferred')
+  })
+
+  test('notes on a question left unanswered still reach the model', () => {
+    const block = AskUserQuestionTool.mapToolResultToToolResultBlockParam?.(
+      {
+        questions: [validQuestion(), validQuestion({ question: 'Second?' })],
+        answers: { 'Pick one?': 'A' },
+        annotations: {
+          'Second?': { notes: '"A": too slow' },
+          'Third?': { preview: '<div>p</div>' },
+        },
+      },
+      'u1',
+    )
+    expect(block?.content).toBe(
+      'User has answered your questions: "Pick one?"="A", "Second?"=(no answer) user notes: "A": too slow. You can now continue with the user\'s answers in mind.',
+    )
+  })
+})
+
+describe('AskUserQuestionTool prompt and preview format', () => {
+  afterEach(() => {
+    STATE.questionPreviewFormat = undefined
+  })
+
+  test('description() is the static DESCRIPTION', async () => {
+    expect(await AskUserQuestionTool.description({} as never, {} as never)).toBe(DESCRIPTION)
+  })
+
+  test('prompt() omits preview guidance until a preview format is set', async () => {
+    expect(await AskUserQuestionTool.prompt({} as never)).toBe(ASK_USER_QUESTION_TOOL_PROMPT)
+    setQuestionPreviewFormat('markdown')
+    expect(await AskUserQuestionTool.prompt({} as never)).toBe(
+      ASK_USER_QUESTION_TOOL_PROMPT + PREVIEW_FEATURE_PROMPT.markdown,
+    )
+  })
+
+  test('validateInput() checks every preview when the format is html', async () => {
+    setQuestionPreviewFormat('html')
+    const withPreview = (preview: string) =>
+      AskUserQuestionTool.validateInput?.(
+        {
+          questions: [
+            validQuestion({
+              options: [
+                { label: 'A', description: 'a', preview },
+                { label: 'B', description: 'b' },
+              ],
+            }),
+          ],
+        } as never,
+        {} as never,
+      )
+
+    expect((await withPreview('<div>ok</div>'))?.result).toBe(true)
+
+    for (const [preview, fragment] of [
+      ['<html><div>x</div></html>', 'not a full document'],
+      ['<div><script>x</script></div>', 'must not contain <script>'],
+      ['plain text', 'must contain HTML'],
+    ] as const) {
+      const result = await withPreview(preview)
+      expect(result?.result).toBe(false)
+      if (result?.result === false) {
+        expect(result.message).toContain('Option "A" in question "Pick one?"')
+        expect(result.message).toContain(fragment)
+      }
+    }
+  })
+})
+
+describe('AskUserQuestionTool rendering', () => {
+  test('tool use and progress render nothing', () => {
+    expect(AskUserQuestionTool.renderToolUseMessage({} as never, {} as never)).toBeNull()
+    expect(AskUserQuestionTool.renderToolUseProgressMessage?.([], {} as never)).toBeNull()
+    expect(AskUserQuestionTool.renderToolUseErrorMessage?.({} as never, {} as never)).toBeNull()
+  })
+
+  test('the result lists every question with its answer', async () => {
+    const out = await renderToString(
+      AskUserQuestionTool.renderToolResultMessage?.(
+        {
+          questions: [validQuestion()],
+          answers: { 'Pick one?': 'A', 'Second?': 'B, C' },
+        },
+        [],
+        {} as never,
+      ),
+      80,
+    )
+    expect(out).toContain("User answered Claudin's questions:")
+    expect(out).toContain('· Pick one? → A')
+    expect(out).toContain('· Second? → B, C')
+  })
+
+  test('notes sit under their answer, and a notes-only question is listed too', async () => {
+    const out = await renderToString(
+      AskUserQuestionTool.renderToolResultMessage?.(
+        {
+          questions: [validQuestion()],
+          answers: { 'Pick one?': 'A' },
+          annotations: {
+            'Pick one?': { notes: '"A": reuse it\n"B": too slow', preview: '<div>p</div>' },
+            'Second?': { notes: '"C": maybe later' },
+            'Third?': { preview: '<div>q</div>' },
+          },
+        },
+        [],
+        {} as never,
+      ),
+      80,
+    )
+    const flat = out.replace(/\s+/g, ' ')
+    expect(flat).toContain('· Pick one? → A ⎿ "A": reuse it ⎿ "B": too slow')
+    expect(flat).toContain('· Second? ⎿ "C": maybe later')
+    expect(flat).not.toContain('Third?')
+    expect(flat).not.toContain('<div>')
+  })
+
+  test('a rejected tool use says the user declined', async () => {
+    const out = await renderToString(
+      AskUserQuestionTool.renderToolUseRejectedMessage?.({} as never, {} as never),
+      80,
+    )
+    expect(out).toContain('User declined to answer questions')
   })
 })

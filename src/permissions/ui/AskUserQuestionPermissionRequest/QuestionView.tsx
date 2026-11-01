@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import type { Question, QuestionOption } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
@@ -9,10 +9,15 @@ import { getExternalEditor } from 'src/shared/editor.js';
 import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js';
 import { editPromptInEditor } from 'src/terminal/input/promptEditor.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
 import { type OptionWithDescription, Select, SelectMulti } from 'src/terminal/custom-select/index.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { PermissionRequestTitle } from 'src/permissions/ui/PermissionRequestTitle.js';
+import { normalizeNote, type OptionNotes } from 'src/tools/AskUserQuestionTool/optionNotes.js';
 import { PreviewQuestionView } from 'src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.js';
 import { QuestionNavigationBar } from 'src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.js';
 import type { QuestionState } from 'src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.js';
@@ -40,7 +45,7 @@ type Props = {
   onRemoveImage?: (id: number) => void;
 };
 export function QuestionView(t0: Props) {
-  const $ = _c(114);
+  const $ = _c(126);
   const {
     question,
     questions,
@@ -69,6 +74,16 @@ export function QuestionView(t0: Props) {
   const [isFooterFocused, setIsFooterFocused] = useState(false);
   const [footerIndex, setFooterIndex] = useState(0);
   const [isOtherFocused, setIsOtherFocused] = useState(false);
+  // SelectMulti reports the selection in the same tick as the Other keystroke,
+  // before questionStates re-renders, so the answer reads the text from here.
+  const otherTextRef = useRef<Record<string, string>>({});
+  // The option the Select has focused, and the one whose note is being edited.
+  const [focusedValue, setFocusedValue] = useState<string | undefined>(undefined);
+  const [noteTarget, setNoteTarget] = useState<string | null>(null);
+  const [noteCursorOffset, setNoteCursorOffset] = useState(0);
+  const {
+    columns
+  } = useTerminalSize();
   let t2;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     const editor = getExternalEditor();
@@ -82,6 +97,7 @@ export function QuestionView(t0: Props) {
   if ($[1] !== onTextInputFocus) {
     t3 = (value: string) => {
       const isOther = value === "__other__";
+      setFocusedValue(value);
       setIsOtherFocused(isOther);
       onTextInputFocus(isOther);
     };
@@ -155,13 +171,55 @@ export function QuestionView(t0: Props) {
     { isActive: isFooterFocused },
   );
 
+  const hasAnyPreview = !question.multiSelect && question.options.some(_temp3);
+  const notes = questionStates[question.question]?.notes;
+  const closeNote = () => {
+    setNoteTarget(null);
+    onTextInputFocus(false);
+  };
+
+  // n notes the focused option. The Other row is excluded: n types there, and
+  // its focus also stands for the submit button below it.
+  useInput(
+    (input, key, event) => {
+      if (noteTarget !== null) {
+        if (key.escape) {
+          event.stopImmediatePropagation();
+          closeNote();
+        }
+        return;
+      }
+      if (input === 'n' && !key.ctrl && !key.meta && focusedValue !== undefined && focusedValue !== '__other__') {
+        event.stopImmediatePropagation();
+        setNoteTarget(focusedValue);
+        setNoteCursorOffset((notes?.[focusedValue] ?? '').length);
+        onTextInputFocus(true);
+      }
+    },
+    { isActive: !isFooterFocused && !hasAnyPreview },
+  );
+
+  useKeybinding('chat:externalEditor', async () => {
+    if (noteTarget === null) return;
+    const currentValue = notes?.[noteTarget] ?? '';
+    const result = await editPromptInEditor(currentValue);
+    if (result.content !== null && result.content !== currentValue) {
+      onUpdateQuestionState(question.question, {
+        notes: { ...notes, [noteTarget]: result.content }
+      }, question.multiSelect ?? false);
+    }
+  }, {
+    context: 'Chat',
+    isActive: noteTarget !== null && editorName !== null
+  });
+
   let handleOpenEditor;
   let questionText: string;
   let t7;
   if ($[12] !== onUpdateQuestionState || $[13] !== question || $[14] !== questionStates) {
-    const textOptions = question.options.map(_temp2);
     questionText = question.question;
     const questionState = questionStates[questionText];
+    const textOptions = question.options.map(opt => toTextOption(opt, questionState?.notes));
     let t8;
     if ($[18] !== onUpdateQuestionState || $[19] !== question.multiSelect || $[20] !== questionText) {
       t8 = async (currentValue: string, setValue: (value: string) => void) => {
@@ -186,6 +244,7 @@ export function QuestionView(t0: Props) {
     let t11;
     if ($[22] !== onUpdateQuestionState || $[23] !== question.multiSelect || $[24] !== questionText) {
       t11 = (value_0: string) => {
+        otherTextRef.current[questionText] = value_0;
         onUpdateQuestionState(questionText, {
           textInputValue: value_0
         }, question.multiSelect ?? false);
@@ -228,7 +287,6 @@ export function QuestionView(t0: Props) {
     t7 = $[17];
   }
   const options = t7;
-  const hasAnyPreview = !question.multiSelect && question.options.some(_temp3);
   if (hasAnyPreview) {
     let t8;
     if ($[30] !== answers || $[31] !== currentQuestionIndex || $[32] !== hideSubmitTab || $[33] !== minContentHeight || $[34] !== minContentWidth || $[35] !== onAnswer || $[36] !== onCancel || $[37] !== onFinishPlanInterview || $[38] !== onRespondToClaude || $[39] !== onTabNext || $[40] !== onTabPrev || $[41] !== onTextInputFocus || $[42] !== onUpdateQuestionState || $[43] !== question || $[44] !== questionStates || $[45] !== questions) {
@@ -291,25 +349,26 @@ export function QuestionView(t0: Props) {
     t11 = $[57];
   }
   let t12;
-  if ($[58] !== currentQuestionIndex || $[59] !== handleFocus || $[60] !== handleOpenEditor || $[61] !== isFooterFocused || $[62] !== onAnswer || $[63] !== onCancel || $[64] !== onImagePaste || $[65] !== onRemoveImage || $[66] !== onSubmit || $[67] !== onUpdateQuestionState || $[68] !== options || $[69] !== pastedContents || $[70] !== question.multiSelect || $[71] !== question.question || $[72] !== questionStates || $[73] !== questionText || $[74] !== questions.length) {
+  const isSelectDisabled = isFooterFocused || noteTarget !== null;
+  if ($[58] !== currentQuestionIndex || $[59] !== handleFocus || $[60] !== handleOpenEditor || $[61] !== isSelectDisabled || $[62] !== onAnswer || $[63] !== onCancel || $[64] !== onImagePaste || $[65] !== onRemoveImage || $[66] !== onSubmit || $[67] !== onUpdateQuestionState || $[68] !== options || $[69] !== pastedContents || $[70] !== question.multiSelect || $[71] !== question.question || $[72] !== questionStates || $[73] !== questionText || $[74] !== questions.length) {
     t12 = <Box marginTop={1}>{question.multiSelect ? <SelectMulti key={question.question} options={options} defaultValue={questionStates[question.question]?.selectedValue as string[] | undefined} onChange={values => {
         onUpdateQuestionState(questionText, {
           selectedValue: values
         }, true);
-        const textInput = values.includes("__other__") ? questionStates[questionText]?.textInputValue : undefined;
+        const textInput = values.includes("__other__") ? otherTextRef.current[questionText] ?? questionStates[questionText]?.textInputValue : undefined;
         const finalValues = values.filter(_temp4).concat(textInput ? [textInput] : []);
         onAnswer(questionText, finalValues, undefined, false);
-      }} onFocus={handleFocus} onCancel={onCancel} submitButtonText={currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"} onSubmit={onSubmit} onDownFromLastItem={handleDownFromLastItem} isDisabled={isFooterFocused} onOpenEditor={handleOpenEditor} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} /> : <Select key={question.question} options={options} defaultValue={questionStates[question.question]?.selectedValue as string | undefined} onChange={value_1 => {
+      }} onFocus={handleFocus} onCancel={onCancel} submitButtonText={currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"} onSubmit={onSubmit} onDownFromLastItem={handleDownFromLastItem} isDisabled={isSelectDisabled} onOpenEditor={handleOpenEditor} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} /> : <Select key={question.question} options={options} defaultValue={questionStates[question.question]?.selectedValue as string | undefined} onChange={value_1 => {
         onUpdateQuestionState(questionText, {
           selectedValue: value_1
         }, false);
         const textInput_0 = value_1 === "__other__" ? questionStates[questionText]?.textInputValue : undefined;
         onAnswer(questionText, value_1, textInput_0);
-      }} onFocus={handleFocus} onCancel={onCancel} onDownFromLastItem={handleDownFromLastItem} isDisabled={isFooterFocused} layout="compact-vertical" onOpenEditor={handleOpenEditor} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />}</Box>;
+      }} onFocus={handleFocus} onCancel={onCancel} onDownFromLastItem={handleDownFromLastItem} isDisabled={isSelectDisabled} layout="compact-vertical" onOpenEditor={handleOpenEditor} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />}</Box>;
     $[58] = currentQuestionIndex;
     $[59] = handleFocus;
     $[60] = handleOpenEditor;
-    $[61] = isFooterFocused;
+    $[61] = isSelectDisabled;
     $[62] = onAnswer;
     $[63] = onCancel;
     $[64] = onImagePaste;
@@ -392,29 +451,58 @@ export function QuestionView(t0: Props) {
     t21 = $[95];
   }
   let t22;
-  if ($[96] !== isOtherFocused) {
-    t22 = isOtherFocused && editorName && <> · ctrl+g to edit in {editorName}</>;
+  if ($[96] !== isOtherFocused || $[124] !== noteTarget) {
+    t22 = noteTarget !== null || isOtherFocused ? editorName && <> · ctrl+g to edit in {editorName}</> : " · n to add notes";
     $[96] = isOtherFocused;
+    $[124] = noteTarget;
     $[97] = t22;
   } else {
     t22 = $[97];
   }
   let t23;
-  if ($[98] !== t21 || $[99] !== t22) {
-    t23 = <Box marginTop={1}><Text color="inactive" dimColor={true}>Enter to select ·{" "}{t21}{t22}{" "}· Esc to cancel</Text></Box>;
+  if ($[98] !== t21 || $[99] !== t22 || $[125] !== noteTarget) {
+    t23 = <Box marginTop={1}><Text color="inactive" dimColor={true}>{noteTarget !== null ? <>Enter or Esc to save the note{t22}</> : <>Enter to select ·{" "}{t21}{t22}{" "}· Esc to cancel</>}</Text></Box>;
     $[98] = t21;
     $[99] = t22;
+    $[125] = noteTarget;
     $[100] = t23;
   } else {
     t23 = $[100];
   }
+  let tNoteEditor;
+  if ($[114] !== columns || $[115] !== noteCursorOffset || $[116] !== noteTarget || $[117] !== notes || $[118] !== onTextInputFocus || $[119] !== onUpdateQuestionState || $[120] !== question.multiSelect || $[121] !== questionText) {
+    const noteLabel = `Note on "${noteTarget}":`;
+    tNoteEditor = noteTarget !== null && <Box marginTop={1} marginLeft={2} flexDirection="row" gap={1}><Text color="suggestion">{noteLabel}</Text><TextInput value={notes?.[noteTarget] ?? ""} placeholder="Add a note on this option…" onChange={value_2 => {
+        onUpdateQuestionState(questionText, {
+          notes: {
+            ...notes,
+            [noteTarget]: value_2
+          }
+        }, question.multiSelect ?? false);
+      }} onSubmit={() => {
+        setNoteTarget(null);
+        onTextInputFocus(false);
+      }} focus={true} showCursor={true} columns={Math.max(20, columns - stringWidth(noteLabel) - 4)} cursorOffset={noteCursorOffset} onChangeCursorOffset={setNoteCursorOffset} /></Box>;
+    $[114] = columns;
+    $[115] = noteCursorOffset;
+    $[116] = noteTarget;
+    $[117] = notes;
+    $[118] = onTextInputFocus;
+    $[119] = onUpdateQuestionState;
+    $[120] = question.multiSelect;
+    $[121] = questionText;
+    $[122] = tNoteEditor;
+  } else {
+    tNoteEditor = $[122];
+  }
   let t24;
-  if ($[101] !== minContentHeight || $[102] !== t12 || $[103] !== t20 || $[104] !== t23) {
-    t24 = <Box flexDirection="column" minHeight={minContentHeight}>{t12}{t20}{t23}</Box>;
+  if ($[101] !== minContentHeight || $[102] !== t12 || $[103] !== t20 || $[104] !== t23 || $[123] !== tNoteEditor) {
+    t24 = <Box flexDirection="column" minHeight={minContentHeight}>{t12}{tNoteEditor}{t20}{t23}</Box>;
     $[101] = minContentHeight;
     $[102] = t12;
     $[103] = t20;
     $[104] = t23;
+    $[123] = tNoteEditor;
     $[105] = t24;
   } else {
     t24 = $[105];
@@ -446,12 +534,13 @@ function _temp4(v: string) {
 function _temp3(opt_0: QuestionOption) {
   return opt_0.preview;
 }
-function _temp2(opt: QuestionOption) {
+function toTextOption(opt: QuestionOption, notes: OptionNotes | undefined) {
+  const note = normalizeNote(notes?.[opt.label] ?? "");
   return {
     type: "text" as const,
     value: opt.label,
     label: opt.label,
-    description: opt.description
+    description: note ? [opt.description, `⎿ ${note}`].filter(Boolean).join("\n") : opt.description
   };
 }
 function _temp(s: AppState) {

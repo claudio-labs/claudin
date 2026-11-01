@@ -21,6 +21,7 @@ import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
 import { getPlanFilePath } from 'src/agent/plans/plans.js';
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js';
 import { QuestionView } from 'src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.js';
+import { formatOptionNotes } from 'src/tools/AskUserQuestionTool/optionNotes.js';
 import { SubmitQuestionsView } from 'src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.js';
 import { useMultipleChoiceState } from 'src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.js';
 const MIN_CONTENT_HEIGHT = 12;
@@ -76,7 +77,7 @@ type AskUserQuestionBodyProps = PermissionRequestProps & {
   highlight: CliHighlight | null;
 };
 function AskUserQuestionPermissionRequestBody(t0: AskUserQuestionBodyProps) {
-  const $ = _c(115);
+  const $ = _c(116);
   const {
     toolUseConfirm,
     onDone,
@@ -354,16 +355,16 @@ Questions asked and answers provided:\n${questionsWithAnswers_0}`;
       }> = {};
       for (const q_3 of questions) {
         const answer_1 = answersToSubmit[q_3.question];
-        const notes = questionStates[q_3.question]?.textInputValue;
+        const notes = formatOptionNotes(q_3, questionStates[q_3.question]?.notes);
         const selectedOption = answer_1 ? q_3.options.find((opt_1: QuestionOption) => opt_1.label === answer_1) : undefined;
         const preview = selectedOption?.preview;
-        if (preview || notes?.trim()) {
+        if (preview || notes) {
           annotations[q_3.question] = {
             ...(preview && {
               preview
             }),
-            ...(notes?.trim() && {
-              notes: notes.trim()
+            ...(notes && {
+              notes
             })
           };
         }
@@ -565,8 +566,9 @@ Questions asked and answers provided:\n${questionsWithAnswers_0}`;
   }
   if (isInSubmitView) {
     let t23;
-    if ($[107] !== allQuestionsAnswered || $[108] !== answers || $[109] !== currentQuestionIndex || $[110] !== globalContentHeight || $[111] !== handleFinalResponse || $[112] !== questions || $[113] !== toolUseConfirm.permissionResult) {
-      t23 = <><SubmitQuestionsView questions={questions} currentQuestionIndex={currentQuestionIndex} answers={answers} allQuestionsAnswered={allQuestionsAnswered} permissionResult={toolUseConfirm.permissionResult} minContentHeight={globalContentHeight} onFinalResponse={handleFinalResponse} /></>;
+    if ($[107] !== allQuestionsAnswered || $[108] !== answers || $[109] !== currentQuestionIndex || $[110] !== globalContentHeight || $[111] !== handleFinalResponse || $[112] !== questions || $[113] !== toolUseConfirm.permissionResult || $[115] !== questionStates) {
+      const reviewNotes = Object.fromEntries(questions.map(q_4 => [q_4.question, formatOptionNotes(q_4, questionStates[q_4.question]?.notes)]));
+      t23 = <><SubmitQuestionsView questions={questions} currentQuestionIndex={currentQuestionIndex} answers={answers} notes={reviewNotes} allQuestionsAnswered={allQuestionsAnswered} permissionResult={toolUseConfirm.permissionResult} minContentHeight={globalContentHeight} onFinalResponse={handleFinalResponse} /></>;
       $[107] = allQuestionsAnswered;
       $[108] = answers;
       $[109] = currentQuestionIndex;
@@ -574,6 +576,7 @@ Questions asked and answers provided:\n${questionsWithAnswers_0}`;
       $[111] = handleFinalResponse;
       $[112] = questions;
       $[113] = toolUseConfirm.permissionResult;
+      $[115] = questionStates;
       $[114] = t23;
     } else {
       t23 = $[114];

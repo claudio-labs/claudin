@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
+- [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
 - [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
 - [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
@@ -58,6 +59,7 @@
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
 ## Bugs
+- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red from Claudin's Bash, CI green; 3 load flakes
 - [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — cache read is 0.1x; 3-arm A/B owed before flipping to retain
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code
 - FIXED #302: [Image blocks pinned the clip frontier](bugs/clip-frontier-stalls-on-image-blocks.md) — "mutated at 14" still open
