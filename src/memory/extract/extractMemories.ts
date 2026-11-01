@@ -18,13 +18,21 @@
 import { feature } from 'bun:bundle'
 import { basename, resolve } from 'path'
 import { readFileSync } from 'fs'
-import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
+import {
+  getIsRemoteMode,
+  getOriginalCwd,
+  getSessionId,
+  isTurnActive,
+} from 'src/platform/bootstrap/state.js'
+import { getProjectDir } from 'src/sessions/sessionStorage.js'
+import { type ExtractionCursorStore, fileCursorStore } from 'src/memory/extract/extractionCursor.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   formatMemoryManifest,
   scanMemoryFiles,
 } from 'src/memory/memdir/memoryScan.js'
 import {
+  getExtractionIdleMs,
   getExtractionTurnInterval,
   isAutoMemoryEnabled,
   isExtractMemoriesEnabled,
@@ -138,6 +146,16 @@ function countModelVisibleMessagesSince(
 }
 
 /**
+ * The human turns — prompts the user typed, not tool results — after the
+ * cursor; every one when the cursor is unset or gone (compaction), like
+ * countModelVisibleMessagesSince.
+ */
+export function humanTurnsSince(messages: Message[], sinceUuid: string | undefined): number {
+  const cursor = sinceUuid === undefined ? -1 : messages.findIndex(m => m.uuid === sinceUuid)
+  return count(messages.slice(cursor + 1), isHumanTurn)
+}
+
+/**
  * Returns true if any assistant message after the cursor UUID contains a
  * tool_use block that writes a memory path — a Write, an Edit or a Patch,
  * by input shape (writtenPaths.ts).
@@ -145,20 +163,16 @@ function countModelVisibleMessagesSince(
  * The main agent's prompt has full save instructions — when it writes
  * memories, the forked extraction is redundant. runExtraction skips the
  * agent and advances the cursor past this range, making the main agent
- * and the background agent mutually exclusive per turn.
+ * and the background agent mutually exclusive per turn. A cursor no longer
+ * among the messages (compaction, a cursor read back from another process)
+ * checks them all, as countModelVisibleMessagesSince counts them all.
  */
 export function hasMemoryWritesSince(
   messages: Message[],
   sinceUuid: string | undefined,
 ): boolean {
-  let foundStart = sinceUuid === undefined
-  for (const message of messages) {
-    if (!foundStart) {
-      if (message.uuid === sinceUuid) {
-        foundStart = true
-      }
-      continue
-    }
+  const cursor = sinceUuid === undefined ? -1 : messages.findIndex(m => m.uuid === sinceUuid)
+  for (const message of messages.slice(cursor + 1)) {
     if (message.type !== 'assistant') {
       continue
     }
@@ -521,12 +535,20 @@ export type ExtractMemoriesDeps = {
   runForkedAgent: typeof runForkedAgent
   existingMemoryManifest: (dirs: readonly MemoryDir[]) => Promise<string>
   notifyMemorySaved: () => boolean
+  /** Where each session's extraction stopped (extractionCursor.ts). */
+  cursors: ExtractionCursorStore
+  sessionId: () => string
+  /** Whether a turn is running now: the idle trigger waits for the next stop then. */
+  isTurnActive: () => boolean
 }
 
 export const defaultExtractMemoriesDeps: ExtractMemoriesDeps = {
   runForkedAgent,
   existingMemoryManifest,
   notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
+  cursors: fileCursorStore(() => getProjectDir(getOriginalCwd())),
+  sessionId: getSessionId,
+  isTurnActive,
 }
 
 /**
@@ -534,6 +556,13 @@ export const defaultExtractMemoriesDeps: ExtractMemoriesDeps = {
  * Creates a fresh closure that captures all mutable state (cursor position,
  * overlap guard, pending context). Call once at startup alongside
  * initConfidenceRating/initPromptCoaching, or per-test in beforeEach.
+ *
+ * The cursor is also kept per session in `deps.cursors`, and the turn
+ * throttle counts the human turns after it, so both survive a restart and a
+ * resume. A throttled turn arms the idle trigger: with no new prompt for
+ * getExtractionIdleMs, the tail the throttle held back is extracted while
+ * the main loop's cache is still warm — the end of a session, which no exit
+ * hook could wait for.
  */
 export function initExtractMemories(
   deps: ExtractMemoriesDeps = defaultExtractMemoriesDeps,
@@ -547,14 +576,17 @@ export function initExtractMemories(
   const inFlightExtractions = new Set<Promise<void>>()
 
   /** UUID of the last message processed — cursor so each run only
-   *  considers messages added since the previous extraction. */
+   *  considers messages added since the previous extraction. Kept in
+   *  `deps.cursors` for `cursorSession`, and read back when the session
+   *  changes (a restart, an in-process /resume). */
   let lastMemoryMessageUuid: string | undefined
+  let cursorSession: string | undefined
 
   /** True while runExtraction is executing — prevents overlapping runs. */
   let inProgress = false
 
-  /** Counts eligible turns since the last extraction run. Resets to 0 after each run. */
-  let turnsSinceLastExtraction = 0
+  /** The idle trigger armed by the last throttled turn, if any. */
+  let idleTimer: ReturnType<typeof setTimeout> | undefined
 
   /** loopKey we last fired a repeated-error extraction for, and the human turn
    *  it was in — together they form the "per loop-key + new human turn" cooldown
@@ -571,6 +603,43 @@ export function initExtractMemories(
       }
     | undefined
 
+  /** The cursor of the session running now, read from the store when the session changed. */
+  function syncCursor(): string {
+    const sessionId = deps.sessionId()
+    if (sessionId !== cursorSession) {
+      cursorSession = sessionId
+      lastMemoryMessageUuid = deps.cursors.read(sessionId)
+    }
+    return sessionId
+  }
+
+  function advanceCursor(sessionId: string, messages: Message[]): void {
+    const uuid = messages.at(-1)?.uuid
+    if (!uuid) return
+    lastMemoryMessageUuid = uuid
+    deps.cursors.write(sessionId, uuid)
+  }
+
+  function cancelIdle(): void {
+    if (idleTimer !== undefined) clearTimeout(idleTimer)
+    idleTimer = undefined
+  }
+
+  /** After a throttled turn: extract its tail if nothing else happens for a while. */
+  function armIdle(context: REPLHookContext, appendSystemMessage?: AppendSystemMessageFn): void {
+    cancelIdle()
+    idleTimer = setTimeout(() => {
+      idleTimer = undefined
+      // A turn running now ends in a stop hook, which arms the timer again
+      if (inProgress || deps.isTurnActive()) return
+      logForDebugging('[extractMemories] idle — extracting the turns the throttle held back')
+      const run = runExtraction({ context, appendSystemMessage, isTrailingRun: true })
+      inFlightExtractions.add(run)
+      void run.finally(() => inFlightExtractions.delete(run))
+    }, getExtractionIdleMs())
+    idleTimer.unref?.()
+  }
+
   // --- Inner extraction logic ---
 
   async function runExtraction({
@@ -583,6 +652,7 @@ export function initExtractMemories(
     isTrailingRun?: boolean
   }): Promise<void> {
     const { messages } = context
+    const sessionId = syncCursor()
     const newMessageCount = countModelVisibleMessagesSince(
       messages,
       lastMemoryMessageUuid,
@@ -595,10 +665,7 @@ export function initExtractMemories(
       logForDebugging(
         '[extractMemories] skipping — conversation already wrote to memory files',
       )
-      const lastMessage = messages.at(-1)
-      if (lastMessage?.uuid) {
-        lastMemoryMessageUuid = lastMessage.uuid
-      }
+      advanceCursor(sessionId, messages)
       return
     }
 
@@ -631,18 +698,20 @@ export function initExtractMemories(
     const canUseTool = createExtractionCanUseTool()
     const cacheSafeParams = createCacheSafeParams(context)
 
-    // Only run extraction every N eligible turns (getExtractionTurnInterval).
-    // Trailing extractions (from stashed contexts) skip this check since they
-    // process already-committed work that should not be throttled. A loop-fire
-    // also bypasses the throttle (we want the lesson promptly) but still resets
-    // the counter below, so it doubles as the routine extraction for cadence.
+    // Only run extraction every N human turns since the cursor
+    // (getExtractionTurnInterval) — counted from the messages, so a restart
+    // keeps the count. Trailing and idle extractions skip this check since
+    // they process already-committed work that should not be throttled. A
+    // loop-fire also bypasses the throttle (we want the lesson promptly) and,
+    // advancing the cursor, doubles as the routine extraction for cadence.
     if (!isTrailingRun && loopHint === undefined) {
-      turnsSinceLastExtraction++
-      if (turnsSinceLastExtraction < getExtractionTurnInterval()) {
+      const turns = humanTurnsSince(messages, lastMemoryMessageUuid)
+      if (turns < getExtractionTurnInterval()) {
+        if (turns > 0) armIdle(context, appendSystemMessage)
         return
       }
     }
-    turnsSinceLastExtraction = 0
+    cancelIdle()
 
     inProgress = true
     const startTime = Date.now()
@@ -687,10 +756,7 @@ export function initExtractMemories(
       // Advance the cursor only after a successful run. If the agent errors
       // out (caught below), the cursor stays put so those messages are
       // reconsidered on the next extraction.
-      const lastMessage = messages.at(-1)
-      if (lastMessage?.uuid) {
-        lastMemoryMessageUuid = lastMessage.uuid
-      }
+      advanceCursor(sessionId, messages)
 
       const writtenPaths = extractWrittenPaths(result.messages)
       const turnCount = count(result.messages, m => m.type === 'assistant')

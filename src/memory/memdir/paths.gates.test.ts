@@ -10,6 +10,7 @@ import {
 } from 'src/platform/bootstrap/state/sessionFlags.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import {
+  getExtractionIdleMs,
   getExtractionTurnInterval,
   getGlobalMemPath,
   getMemoryBaseDir,
@@ -144,14 +145,29 @@ describe('the extraction gates', () => {
     expect(isExtractModeActive()).toBe(true)
   })
 
-  test('the turn interval defaults to 15 and takes a positive override', () => {
-    expect(getExtractionTurnInterval()).toBe(15)
+  test('the turn interval defaults to 5 and takes a positive override', () => {
+    expect(getExtractionTurnInterval()).toBe(5)
     process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '4'
     expect(getExtractionTurnInterval()).toBe(4)
     process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = 'often'
-    expect(getExtractionTurnInterval()).toBe(15)
+    expect(getExtractionTurnInterval()).toBe(5)
     process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '0'
-    expect(getExtractionTurnInterval()).toBe(15)
+    expect(getExtractionTurnInterval()).toBe(5)
+  })
+
+  test('the idle wait defaults to 10 minutes and takes an override up to a day', () => {
+    const saved = process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS
+    try {
+      delete process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS
+      expect(getExtractionIdleMs()).toBe(600_000)
+      process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS = '60000'
+      expect(getExtractionIdleMs()).toBe(60_000)
+      process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS = String(10 * 86_400_000)
+      expect(getExtractionIdleMs()).toBe(86_400_000)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS
+      else process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS = saved
+    }
   })
 })
 

@@ -94,16 +94,19 @@ export function isExtractModeActive(): boolean {
   )
 }
 
-const DEFAULT_EXTRACTION_TURN_INTERVAL = 15
+const DEFAULT_EXTRACTION_TURN_INTERVAL = 5
 
 /**
- * How many eligible turns pass between two background extractions. A trailing
+ * How many human turns pass between two background extractions, counted from
+ * the session's cursor so a restart keeps the count. A trailing run, an idle
  * run and a repeated-error loop bypass it (extractMemories.ts).
  *
- * 15 in this fork, where upstream fired every turn: a fire costs ~2-4k
- * effective tokens, mostly cache_read at 10%, so this amortizes to
- * ~130-270 tokens a turn. CLAUDIN_EXTRACT_MEMORIES_EVERY=<n> overrides it;
- * a value that is not a positive integer keeps the default.
+ * 5 since 2026-10-31 (15 before, where upstream fires every turn): at 15,
+ * with the median session ~6 prompts and the count reset by every restart,
+ * the October census found 0 extraction requests in nine days. A fire costs
+ * ~2-4k effective tokens, mostly cache_read at 10%.
+ * CLAUDIN_EXTRACT_MEMORIES_EVERY=<n> overrides it; a value that is not a
+ * positive integer keeps the default.
  */
 export function getExtractionTurnInterval(): number {
   return validateBoundedIntEnvVar(
@@ -111,6 +114,24 @@ export function getExtractionTurnInterval(): number {
     process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY,
     DEFAULT_EXTRACTION_TURN_INTERVAL,
     1000,
+  ).effective
+}
+
+const DEFAULT_EXTRACTION_IDLE_MS = 10 * 60_000
+
+/**
+ * How long after a throttled turn, with no new prompt, the turns the
+ * throttle held back are extracted anyway (extractMemories.ts armIdle): the
+ * end of a session, which an exit hook could not wait for. 10 minutes keeps
+ * the fork inside the main loop's 1h cache.
+ * CLAUDIN_EXTRACT_MEMORIES_IDLE_MS=<ms> overrides it, up to a day.
+ */
+export function getExtractionIdleMs(): number {
+  return validateBoundedIntEnvVar(
+    'CLAUDIN_EXTRACT_MEMORIES_IDLE_MS',
+    process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS,
+    DEFAULT_EXTRACTION_IDLE_MS,
+    86_400_000,
   ).effective
 }
 

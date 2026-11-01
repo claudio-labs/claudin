@@ -11,11 +11,13 @@ import {
   drainPendingExtraction,
   executeExtractMemories,
   type ExtractMemoriesDeps,
+  humanTurnsSince,
   initExtractMemories,
   prunePatchProblem,
 } from 'src/memory/extract/extractMemories.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { Tool } from 'src/tools/Tool.js'
+import { memoryCursorStore } from 'src/memory/extract/extractionCursor.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
@@ -92,11 +94,19 @@ function contextOf(messages: Message[], agentId?: string): REPLHookContext {
 
 type Fork = Record<string, unknown> & { promptMessages: unknown[] }
 
+// One store for the whole file, as the cursor file outlives a process: a
+// re-init below is a restart of the same session.
+const cursors = memoryCursorStore()
+let turnActive = false
+
 function fakeDeps(over: Partial<ExtractMemoriesDeps> & { written?: string[] } = {}) {
   const forks: Fork[] = []
   const deps: ExtractMemoriesDeps = {
     existingMemoryManifest: async () => '- existing.md',
     notifyMemorySaved: () => true,
+    cursors,
+    sessionId: () => 'session-1',
+    isTurnActive: () => turnActive,
     runForkedAgent: (async (params: Fork) => {
       forks.push(params)
       return {
@@ -275,6 +285,89 @@ describe('an extraction across a restart', () => {
     messages.push(...conversation('c'))
     await executeExtractMemories(contextOf(messages))
     expect(after.forks).toHaveLength(1)
+  })
+})
+
+describe('the idle trigger', () => {
+  const savedIdle = process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+  beforeEach(() => {
+    process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS = '20'
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '5'
+    turnActive = false
+  })
+  afterAll(() => {
+    if (savedIdle === undefined) delete process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS
+    else process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS = savedIdle
+    turnActive = false
+  })
+
+  test('a throttled turn is extracted once nothing else happens for a while', async () => {
+    const { deps, forks } = fakeDeps()
+    initExtractMemories(deps)
+    await executeExtractMemories(contextOf(conversation('a', 'b')))
+    expect(forks).toHaveLength(0)
+    await sleep(60)
+    await drainPendingExtraction(1_000)
+    expect(forks).toHaveLength(1)
+    expect(promptOf(forks[0]!)).toContain('~4 messages')
+  })
+
+  test('it waits while a turn runs, and a new prompt resets it', async () => {
+    const { deps, forks } = fakeDeps()
+    initExtractMemories(deps)
+    turnActive = true
+    await executeExtractMemories(contextOf(conversation('a')))
+    await sleep(60)
+    expect(forks).toHaveLength(0)
+    turnActive = false
+    process.env.CLAUDIN_EXTRACT_MEMORIES_IDLE_MS = '200'
+    await executeExtractMemories(contextOf(conversation('a')))
+    await sleep(40)
+    await executeExtractMemories(contextOf(conversation('a', 'b')))
+    await sleep(100)
+    expect(forks).toHaveLength(0)
+    await sleep(200)
+    await drainPendingExtraction(1_000)
+    expect(forks).toHaveLength(1)
+  })
+
+  test('a session with nothing new since its cursor arms nothing', async () => {
+    const { deps, forks } = fakeDeps()
+    initExtractMemories(deps)
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '1'
+    const messages = conversation('a')
+    await executeExtractMemories(contextOf(messages))
+    expect(forks).toHaveLength(1)
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '5'
+    await executeExtractMemories(contextOf(messages))
+    await sleep(60)
+    expect(forks).toHaveLength(1)
+  })
+})
+
+describe('the cursor follows the session', () => {
+  test('a switch to another session reads that one\'s cursor', async () => {
+    let session = 'session-a'
+    const { deps, forks } = fakeDeps({ sessionId: () => session })
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '1'
+    initExtractMemories(deps)
+    const a = conversation('a1', 'a2')
+    await executeExtractMemories(contextOf(a))
+    session = 'session-b'
+    const b = conversation('b1')
+    cursors.write('session-b', b[1]!.uuid)
+    b.push(...conversation('b2'))
+    await executeExtractMemories(contextOf(b))
+    expect(promptOf(forks[1]!)).toContain('~2 messages')
+  })
+
+  test('humanTurnsSince counts prompts, not tool results, after the cursor', () => {
+    const toolResult = createUserMessage({ content: [{ type: 'tool_result', tool_use_id: 't', content: 'x' }], toolUseResult: 'x' })
+    const messages = [...conversation('a'), toolResult, ...conversation('b', 'c')]
+    expect(humanTurnsSince(messages, undefined)).toBe(3)
+    expect(humanTurnsSince(messages, messages[1]!.uuid)).toBe(2)
+    expect(humanTurnsSince(messages, 'gone')).toBe(3)
   })
 })
 
