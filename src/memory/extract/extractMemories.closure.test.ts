@@ -12,6 +12,7 @@ import {
   executeExtractMemories,
   type ExtractMemoriesDeps,
   initExtractMemories,
+  prunePatchProblem,
 } from 'src/memory/extract/extractMemories.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { Tool } from 'src/tools/Tool.js'
@@ -274,6 +275,54 @@ describe('an extraction across a restart', () => {
     messages.push(...conversation('c'))
     await executeExtractMemories(contextOf(messages))
     expect(after.forks).toHaveLength(1)
+  })
+})
+
+describe('a pruning Patch (the dream)', () => {
+  const team = () => join(memDir, 'team')
+  const global = () => join(root, 'config', 'memory')
+  const patch = (...sections: string[]) => ['*** Begin Patch', ...sections, '*** End Patch'].join('\n')
+  const del = (path: string) => `*** Delete File: ${path}`
+  const update = (path: string, old: string, next: string[]) => [`*** Update File: ${path}`, '@@', ` ${old}`, ...next.map(l => `+${l}`)].join('\n')
+  const problem = (text: unknown) => prunePatchProblem(text, ['global'])
+
+  test('a team memory is deleted alone: git keeps it', () => {
+    expect(problem(patch(del(join(team(), 'old-note.md'))))).toBeNull()
+  })
+
+  test('a private memory is deleted only beside the write of its survivor', () => {
+    expect(problem(patch(del(join(memDir, 'copy.md'))))).toContain('only in the Patch that writes the memory it was merged into')
+    expect(problem(patch(del(join(memDir, 'copy.md')), update(join(memDir, 'survivor.md'), 'fact', ['more'])))).toBeNull()
+    expect(problem(patch(del(join(memDir, 'copy.md')), update(join(memDir, 'MEMORY.md'), '- [Copy](copy.md)', [])))).toContain(
+      'only in the Patch that writes',
+    )
+  })
+
+  test('the private copy of a global memory merges in one Patch that only adds to the global one', () => {
+    expect(problem(patch(update(join(global(), 'user-language.md'), 'Answers in PT-BR.', ['Examples in TypeScript.']), del(join(memDir, 'copy.md'))))).toBeNull()
+  })
+
+  test('the global dir takes an Add or an Update that keeps its lines, nothing else', () => {
+    expect(problem(patch(`*** Add File: ${join(global(), 'new.md')}`, '+fact'))).toBeNull()
+    const rewrite = ['*** Update File: ' + join(global(), 'x.md'), '@@', '-old line', '+new line'].join('\n')
+    expect(problem(patch(rewrite))).toContain('append-only')
+    expect(problem(patch(del(join(global(), 'x.md'))))).toContain('append-only')
+  })
+
+  test('an index is never deleted, nothing outside memory is touched, and a broken Patch is refused', () => {
+    expect(problem(patch(del(join(team(), 'MEMORY.md'))))).toContain('MEMORY.md is never deleted')
+    expect(problem(patch(del(join(root, 'project', 'src.ts'))))).toContain('outside the memory dirs')
+    expect(problem('not a patch')).toContain('does not parse')
+    expect(problem(undefined)).toContain('patchText')
+  })
+
+  test('the extraction gate refuses a Patch; the dream gate takes a sound one', async () => {
+    const tool = { name: 'Patch' } as unknown as Tool
+    const input = { patchText: patch(del(join(team(), 'old-note.md'))) }
+    expect((await createMemoryCanUseTool(['global'])(tool, input, null as never, null as never, 't')).behavior).toBe('deny')
+    expect((await createMemoryCanUseTool(['global'], { patch: 'prune' })(tool, input, null as never, null as never, 't')).behavior).toBe('allow')
+    const lone = { patchText: patch(del(join(memDir, 'copy.md'))) }
+    expect((await createMemoryCanUseTool(['global'], { patch: 'prune' })(tool, lone, null as never, null as never, 't')).behavior).toBe('deny')
   })
 })
 

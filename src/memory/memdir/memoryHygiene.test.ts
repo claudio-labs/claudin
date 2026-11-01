@@ -4,6 +4,7 @@ import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 import {
   contradictsOf,
   findHygieneFindings,
+  globalFindingsLine,
   isMemoryHygieneEnabled,
   memoryTokens,
   NEAR_DUPLICATE_MIN,
@@ -105,6 +106,25 @@ describe('findHygieneFindings', () => {
     const big = memory(['name: big', 'description: a profile', 'type: feedback'], 'x'.repeat(OVERSIZE_BYTES))
     const found = findHygieneFindings([file('private', `${PRIVATE}big.md`, big)], dirs)
     expect(found.map(f => f.kind)).toEqual(['oversize'])
+  })
+})
+
+describe('globalFindingsLine', () => {
+  const dup = (scope: 'global' | 'private', otherScope: 'global' | 'team') => ({
+    kind: 'near-duplicate' as const,
+    scope,
+    path: `/${scope}/a.md`,
+    other: { scope: otherScope, path: `/${otherScope}/b.md` },
+    score: 0.6,
+  })
+
+  test('names the near-duplicates inside the global dir and its marked contradictions, nothing a dream may fix', () => {
+    const contradiction = { kind: 'open-contradiction' as const, scope: 'global' as const, path: '/g/c.md', targets: ['d'] }
+    expect(globalFindingsLine([dup('global', 'global'), dup('global', 'global'), contradiction])).toBe(
+      'Dream: 2 near-duplicates and 1 contradiction in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.',
+    )
+    expect(globalFindingsLine([contradiction])).toContain('Dream: 1 contradiction in the global memory')
+    expect(globalFindingsLine([dup('private', 'global'), dup('global', 'team')])).toBeNull()
   })
 })
 

@@ -27,13 +27,24 @@ import {
 import {
   createUserMessage,
   createMemorySavedMessage,
+  createSystemMessage,
 } from 'src/agent/messages/messages.js'
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import {
+  findHygieneFindings,
+  globalFindingsLine,
+  type HygieneFinding,
+  isMemoryHygieneEnabled,
+} from 'src/memory/memdir/memoryHygiene.js'
+import { readMemoryFiles } from 'src/memory/memdir/memoryAudit.js'
+import { writtenPaths } from 'src/tools/shared/writtenPaths.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
@@ -65,6 +76,7 @@ import {
 } from 'src/agent/tasks/DreamTask/DreamTask.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 
 // Scan throttle: when time-gate passes but session-gate doesn't, the lock
 // mtime doesn't advance, so the time-gate keeps passing every turn.
@@ -114,6 +126,8 @@ export type AutoDreamDeps = {
   runForkedAgent: typeof runForkedAgent
   /** Whether a finished dream says so in the transcript (`notifyMemorySaved`). */
   notifyMemorySaved: () => boolean
+  /** What the hygiene pass finds once the dream is done, for the line about the global dir. */
+  hygieneFindings: () => Promise<HygieneFinding[]>
 }
 
 export const defaultAutoDreamDeps: AutoDreamDeps = {
@@ -125,6 +139,11 @@ export const defaultAutoDreamDeps: AutoDreamDeps = {
   collectDreamDigest: (sinceMs, sessionIds) => collectDreamDigest(sinceMs, sessionIds),
   runForkedAgent,
   notifyMemorySaved: () => getGlobalConfig().notifyMemorySaved === true,
+  hygieneFindings: async () => {
+    if (!isMemoryHygieneEnabled()) return []
+    const dirs = getMemoryDirs()
+    return findHygieneFindings(await readMemoryFiles(dirs), dirs)
+  },
 }
 
 let runner:
@@ -224,6 +243,7 @@ export function initAutoDream(deps: AutoDreamDeps = defaultAutoDreamDeps): void 
 
     try {
       const transcriptDir = getProjectDir(getOriginalCwd())
+      const prune = isMemoryHygieneEnabled()
       // The decision sources (plans, session prompts, impactful commits) are
       // read here, in the harness, so the fork judges with data instead of
       // grepping transcripts — and never runs git itself.
@@ -233,7 +253,11 @@ export function initAutoDream(deps: AutoDreamDeps = defaultAutoDreamDeps): void 
       // would be misleading there.
       const extra = `
 
-**Tool constraints for this run:** Bash is restricted to read-only commands (\`ls\`, \`find\`, \`grep\`, \`cat\`, \`stat\`, \`wc\`, \`head\`, \`tail\`, and similar). Anything that writes, redirects to a file, or modifies state will be denied. Plan your exploration with this in mind — no need to probe.
+**Tool constraints for this run:** Bash is restricted to read-only commands (\`ls\`, \`find\`, \`grep\`, \`cat\`, \`stat\`, \`wc\`, \`head\`, \`tail\`, and similar). Anything that writes, redirects to a file, or modifies state will be denied. Plan your exploration with this in mind — no need to probe.${
+        prune
+          ? ' A memory file is deleted with a Patch `*** Delete File:` section, after a Read of it; the gate refuses one that deletes an index, touches the global dir other than by adding, or deletes a private memory without writing its survivor in the same Patch.'
+          : ''
+      }
 
 Sessions since last consolidation (${sessionIds.length}):
 ${sessionIds.map(id => `- ${id}`).join('\n')}
@@ -245,7 +269,7 @@ ${digest}`
         promptMessages: [createUserMessage({ content: prompt })],
         cacheSafeParams: createCacheSafeParams(context),
         // One project's run cannot judge the global dir stale: it may only add to it.
-        canUseTool: createMemoryCanUseTool(['global']),
+        canUseTool: createMemoryCanUseTool(['global'], { patch: prune ? 'prune' : 'none' }),
         querySource: 'auto_dream',
         forkLabel: 'auto_dream',
         skipTranscript: true,
@@ -271,6 +295,16 @@ ${digest}`
           verb: 'Improved',
         } as ReturnType<typeof createMemorySavedMessage> & { verb?: string })
       }
+      // What only the user can settle, said whatever notifyMemorySaved says
+      const globalLine = globalFindingsLine(
+        await deps.hygieneFindings().catch(error => {
+          logError(error)
+          return []
+        }),
+      )
+      if (appendSystemMessage && globalLine) {
+        appendSystemMessage(createSystemMessage(globalLine, 'info'))
+      }
       logForDebugging(
         `[autoDream] completed — cache: read=${result.totalUsage.cache_read_input_tokens} created=${result.totalUsage.cache_creation_input_tokens}`,
       )
@@ -293,8 +327,9 @@ ${digest}`
 /**
  * Watch the forked agent's messages. For each assistant turn, extracts any
  * text blocks (the agent's reasoning/summary — what the user wants to see)
- * and collapses tool_use blocks to a count. Edit/Write file_paths are
- * collected for phase-flip + the inline completion message.
+ * and collapses tool_use blocks to a count. The paths an Edit, Write or
+ * Patch writes — a Patch's deletes included — are collected for phase-flip +
+ * the inline completion message.
  */
 function makeDreamProgressWatcher(
   taskId: string,
@@ -312,12 +347,10 @@ function makeDreamProgressWatcher(
         toolUseCount++
         if (
           block.name === FILE_EDIT_TOOL_NAME ||
-          block.name === FILE_WRITE_TOOL_NAME
+          block.name === FILE_WRITE_TOOL_NAME ||
+          block.name === APPLY_PATCH_TOOL_NAME
         ) {
-          const input = block.input as { file_path?: unknown }
-          if (typeof input.file_path === 'string') {
-            touchedPaths.push(input.file_path)
-          }
+          touchedPaths.push(...writtenPaths(block.input, getCwd()))
         }
       }
     }

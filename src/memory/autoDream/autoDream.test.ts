@@ -79,14 +79,16 @@ function fakeDeps(over: Partial<AutoDreamDeps> = {}) {
       onMessage(
         assistant([
           { type: 'text', text: 'merging two files' },
-          { type: 'tool_use', name: FILE_EDIT_TOOL_NAME, input: { file_path: '/mem/a.md' } },
-          { type: 'tool_use', name: FILE_WRITE_TOOL_NAME, input: { file_path: '/mem/b.md' } },
+          { type: 'tool_use', name: FILE_EDIT_TOOL_NAME, input: { file_path: '/mem/a.md', old_string: 'x', new_string: 'y' } },
+          { type: 'tool_use', name: FILE_WRITE_TOOL_NAME, input: { file_path: '/mem/b.md', content: 'z' } },
+          { type: 'tool_use', name: 'Patch', input: { patchText: '*** Begin Patch\n*** Delete File: /mem/d.md\n*** End Patch' } },
           { type: 'tool_use', name: 'Read', input: { file_path: '/mem/c.md' } },
         ]),
       )
       return { messages: [], totalUsage: { cache_read_input_tokens: 1, cache_creation_input_tokens: 2 } }
     }) as unknown as AutoDreamDeps['runForkedAgent'],
     notifyMemorySaved: () => true,
+    hygieneFindings: async () => [],
     ...over,
   }
   return { deps, calls }
@@ -271,8 +273,8 @@ describe('an auto-dream run', () => {
 
     const [dream] = h.dreams()
     expect(dream?.status).toBe('completed')
-    expect(dream?.filesTouched).toEqual(['/mem/a.md', '/mem/b.md'])
-    expect(dream?.turns.at(-1)).toEqual({ text: 'merging two files', toolUseCount: 3 })
+    expect(dream?.filesTouched).toEqual(['/mem/a.md', '/mem/b.md', '/mem/d.md'])
+    expect(dream?.turns.at(-1)).toEqual({ text: 'merging two files', toolUseCount: 4 })
     expect(calls.rollback).toEqual([])
   })
 
@@ -283,6 +285,48 @@ describe('an auto-dream run', () => {
 
     const off = await run(fakeDeps({ notifyMemorySaved: () => false }).deps)
     expect(off.appended).toHaveLength(0)
+  })
+
+  test('a dream that leaves global findings says so, whatever notifyMemorySaved says', async () => {
+    const finding = {
+      kind: 'near-duplicate' as const,
+      scope: 'global' as const,
+      path: '/g/a.md',
+      other: { scope: 'global' as const, path: '/g/b.md' },
+      score: 0.7,
+    }
+    const h = await run(fakeDeps({ notifyMemorySaved: () => false, hygieneFindings: async () => [finding] }).deps)
+    expect(h.appended).toHaveLength(1)
+    expect((h.appended[0] as { content?: string }).content).toContain('1 near-duplicate in the global memory need you')
+
+    const failing = await run(
+      fakeDeps({
+        notifyMemorySaved: () => false,
+        hygieneFindings: async () => {
+          throw new Error('EACCES')
+        },
+      }).deps,
+    )
+    expect(failing.appended).toHaveLength(0)
+    expect(failing.dreams()[0]?.status).toBe('completed')
+  })
+
+  test('the fork may prune with Patch, unless CLAUDIN_MEMORY_HYGIENE=0', async () => {
+    const saved = process.env.CLAUDIN_MEMORY_HYGIENE
+    const promptOf = (calls: ReturnType<typeof fakeDeps>['calls']) => JSON.stringify(calls.forks[0]!.promptMessages)
+    try {
+      delete process.env.CLAUDIN_MEMORY_HYGIENE
+      const on = fakeDeps()
+      await run(on.deps)
+      expect(promptOf(on.calls)).toContain('*** Delete File:')
+      process.env.CLAUDIN_MEMORY_HYGIENE = '0'
+      const off = fakeDeps()
+      await run(off.deps)
+      expect(promptOf(off.calls)).not.toContain('*** Delete File:')
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
+      else process.env.CLAUDIN_MEMORY_HYGIENE = saved
+    }
   })
 
   test('a failed fork fails the task and rewinds the lock', async () => {

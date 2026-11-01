@@ -277,3 +277,31 @@ export function describeMemory(memory: { scope: MemoryScope; path: string }, dir
   const root = dirs.find(dir => dir.scope === memory.scope)?.root
   return `${memory.scope}:${root ? relative(root, memory.path) : memory.path}`
 }
+
+/**
+ * The findings no dream may act on: a near-duplicate inside the global dir,
+ * and a contradiction a global memory is marked with. One project's run may
+ * only add to the global dir, so these wait for the user (`/memory tidy`).
+ */
+export function globalOnlyFindings(findings: readonly HygieneFinding[]): HygieneFinding[] {
+  return findings.filter(
+    f =>
+      (f.kind === 'near-duplicate' && f.scope === 'global' && f.other.scope === 'global') ||
+      (f.kind === 'open-contradiction' && f.scope === 'global'),
+  )
+}
+
+/** The transcript line a dream leaves when global findings remain, or null. */
+export function globalFindingsLine(findings: readonly HygieneFinding[]): string | null {
+  const global = globalOnlyFindings(findings)
+  if (global.length === 0) return null
+  const duplicates = global.filter(f => f.kind === 'near-duplicate').length
+  const contradictions = global.length - duplicates
+  const what = [
+    duplicates > 0 ? `${duplicates} near-duplicate${duplicates === 1 ? '' : 's'}` : '',
+    contradictions > 0 ? `${contradictions} contradiction${contradictions === 1 ? '' : 's'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' and ')
+  return `Dream: ${what} in the global memory need you — a dream sees one project and may only add there. /memory tidy merges or settles them.`
+}

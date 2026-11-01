@@ -22,7 +22,10 @@
  * Beside them, from one scan of the memory dirs (memoryScan.ts, uncapped),
  * the memories changed in the period with no session to show for it, and
  * those past their `expires:` date, with what the dream does with one:
- * re-verify it.
+ * re-verify it. And, unless CLAUDIN_MEMORY_HYGIENE=0, what the hygiene pass
+ * of the audit finds (memoryHygiene.ts) — near-duplicates, user memories
+ * outside the global dir, open contradictions, indexes over their cap,
+ * oversized memories — each with what the dream does about it.
  *
  * buildDreamDigest is pure over injected inputs and capped so the digest stays
  * a few KB; collectDreamDigest is the I/O half, and each source that fails to
@@ -34,7 +37,9 @@ import { join } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { readMemoryWrites } from 'src/memory/autoDream/memoryWrites.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import { readMemoryFiles } from 'src/memory/memdir/memoryAudit.js'
 import { isExpired, localDay } from 'src/memory/memdir/memoryExpires.js'
+import { findHygieneFindings, type HygieneFinding, isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
 import { type MemoryHeader, scanMemoryFiles } from 'src/memory/memdir/memoryScan.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { relativeIfInside } from 'src/shared/fs/path.js'
@@ -68,6 +73,11 @@ export type DreamDigestInputs = {
   expired?: DigestExpired[]
   /** Memory files modified in the period (absolute), whoever wrote them. */
   changedMemories?: string[]
+  /**
+   * What the hygiene pass found, when memory hygiene is on; undefined when
+   * it is off, which also keeps the old rule for expired memories.
+   */
+  hygiene?: HygieneFinding[]
   /** What a memory path is shown relative to (relativeIfInside). */
   cwd: string
 }
@@ -82,6 +92,7 @@ export type DreamDigestCaps = {
   /** Memory files named per session before the rest are counted. */
   writesPerSession: number
   changedChars: number
+  hygieneChars: number
 }
 
 export const DEFAULT_DIGEST_CAPS: DreamDigestCaps = {
@@ -93,6 +104,7 @@ export const DEFAULT_DIGEST_CAPS: DreamDigestCaps = {
   expiredChars: 1_000,
   writesPerSession: 5,
   changedChars: 800,
+  hygieneChars: 2_500,
 }
 
 const SECTION_HEADING_RE = /^## +(.+?)\s*$/
@@ -298,7 +310,42 @@ export function buildDreamDigest(
       '',
       `## Memories past their \`expires:\` date (${expired.length})`,
       '',
-      'Re-verify each against what you see now. Still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone is never a reason to delete.',
+      inputs.hygiene === undefined
+        ? 'Re-verify each against what you see now. Still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone is never a reason to delete.'
+        : 'Re-verify each against what you see now. A dated measurement or status (a census, a bench, a PR): fold its conclusion into the decision or memory it supports, then delete it — outside the global dir; in the team dir git keeps it. Anything else still true: move its `expires:` forward, or drop the key if it no longer has an end. Contradicted: fix or delete it like any drifted fact (outside the global dir). Unsure: leave it as it is and name it in your summary. An expired date alone, on a memory that is not a snapshot, is never a reason to delete.',
+      ...kept,
+    )
+    if (left > 0) out.push(`…and ${left} more.`)
+  }
+
+  const hygiene = inputs.hygiene ?? []
+  if (hygiene.length > 0) {
+    const rel = (path: string) => `\`${relativeIfInside(path, inputs.cwd)}\``
+    const lines = hygiene.map(f => {
+      switch (f.kind) {
+        case 'near-duplicate':
+          return `- near-duplicate: ${rel(f.path)} (${f.scope}) reads like ${rel(f.other.path)} (${f.other.scope}, ${f.score})`
+        case 'misplaced-type':
+          return `- user memory outside the global dir: ${rel(f.path)} (${f.scope})`
+        case 'open-contradiction':
+          return `- contradiction: ${rel(f.path)} (${f.scope}) contradicts ${f.targets.map(t => `\`${t}\``).join(', ')}`
+        case 'index-over-cap':
+          return `- index over its cap: ${rel(f.path)}, ${f.lines} lines and ${f.bytes} bytes${f.shortened ? `, ${f.shortened} entries load without their hook` : ''}`
+        case 'oversize':
+          return `- oversized: ${rel(f.path)} (${f.scope}), ${Math.round(f.bytes / 1024)} KB read whole on every recall`
+      }
+    })
+    const { kept, left } = takeUnderCap(lines, caps.hygieneChars)
+    out.push(
+      '',
+      `## Memory hygiene (${hygiene.length})`,
+      '',
+      'What the audit found without judging it. For each, decide from the files and the code:',
+      '- A near-duplicate that is the same fact: merge into one survivor — the fuller, or the one in the broader scope — and delete the other. A private copy of a global memory: one Patch that adds what it has more to the global memory and deletes the private copy. Two facts that only look alike: link them with `[[name]]`. A team memory and a global one stay apart: teammates have no copy of the global dir.',
+      '- A user memory outside the global dir: write it into the global dir and delete it here, in one Patch.',
+      '- A contradiction: settle it from the code or the transcript, never from which file is newer. Settled: fix the wrong one and remove the key. Not settled: leave both as they are.',
+      '- An index over its cap: shorten the hooks to one line under ~150 chars, and retire what nothing needs any more.',
+      '- An oversized memory: keep its rule short, and move the history into a memory it links to.',
       ...kept,
     )
     if (left > 0) out.push(`…and ${left} more.`)
@@ -313,6 +360,8 @@ export type DreamDigestDeps = {
   commitSubjectsSince(sinceMs: number): Promise<string[]>
   /** Every memory file's header, across the memory dirs. */
   listMemoryHeaders(): Promise<MemoryHeader[]>
+  /** What the hygiene pass finds across the memory dirs; absent, none. */
+  listHygieneFindings?(): Promise<HygieneFinding[]>
 }
 
 async function listPlansOnDisk(sinceMs: number): Promise<DigestPlan[]> {
@@ -379,11 +428,17 @@ async function memoryHeadersOnDisk(): Promise<MemoryHeader[]> {
   return headers
 }
 
+async function hygieneFindingsOnDisk(): Promise<HygieneFinding[]> {
+  const dirs = getMemoryDirs()
+  return findHygieneFindings(await readMemoryFiles(dirs), dirs)
+}
+
 const defaultDreamDigestDeps: DreamDigestDeps = {
   listPlans: listPlansOnDisk,
   listSessions: listSessionsFromIndex,
   commitSubjectsSince: commitSubjectsFromGit,
   listMemoryHeaders: memoryHeadersOnDisk,
+  listHygieneFindings: hygieneFindingsOnDisk,
 }
 
 /**
@@ -404,16 +459,27 @@ export async function collectDreamDigest(
   sessionIds: readonly string[],
   deps: DreamDigestDeps = defaultDreamDigestDeps,
 ): Promise<string> {
-  const [plans, sessions, commitSubjects, headers] = await Promise.all([
+  const hygieneOn = isMemoryHygieneEnabled()
+  const [plans, sessions, commitSubjects, headers, hygiene] = await Promise.all([
     orEmpty(deps.listPlans(sinceMs)),
     orEmpty(deps.listSessions(sessionIds)),
     orEmpty(deps.commitSubjectsSince(sinceMs)),
     orEmpty(deps.listMemoryHeaders()),
+    hygieneOn && deps.listHygieneFindings ? orEmpty(deps.listHygieneFindings()) : Promise.resolve([]),
   ])
   const today = localDay()
   const expired = headers.flatMap(h =>
     h.expires !== null && isExpired(h.expires, today) ? [{ path: h.filePath, expires: h.expires }] : [],
   )
   const changedMemories = headers.filter(h => h.mtimeMs > sinceMs).map(h => h.filePath)
-  return buildDreamDigest({ sinceMs, plans, sessions, commitSubjects, expired, changedMemories, cwd: getOriginalCwd() })
+  return buildDreamDigest({
+    sinceMs,
+    plans,
+    sessions,
+    commitSubjects,
+    expired,
+    changedMemories,
+    ...(hygieneOn ? { hygiene } : {}),
+    cwd: getOriginalCwd(),
+  })
 }

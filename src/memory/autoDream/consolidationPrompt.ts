@@ -8,6 +8,7 @@ import {
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
 } from 'src/memory/memdir/memoryTypes.js'
+import { isMemoryHygieneEnabled } from 'src/memory/memdir/memoryHygiene.js'
 
 /**
  * The dream prompt, over the session's memory directories (memoryDirs.ts
@@ -20,6 +21,13 @@ import {
  * and what looks stale here may hold in another. autoDream.ts enforces that
  * in the fork's tool gate. `extra` carries the run-specific tail: the
  * decision-sources digest (dreamDigest.ts), the session list, tool constraints.
+ *
+ * With memory hygiene on (memoryHygiene.ts; off under
+ * CLAUDIN_MEMORY_HYGIENE=0, which leaves this prompt as it was) a dream also
+ * prunes: it deletes what it merged or retired — a team memory freely, git
+ * keeps it; a private one only beside its survivor — marks with
+ * `contradicts:` what nothing settles, and decides a disagreement from the
+ * code, never from which file is newer.
  */
 export function buildConsolidationPrompt(
   dirs: readonly MemoryDir[],
@@ -29,6 +37,7 @@ export function buildConsolidationPrompt(
   const { private: memoryRoot, team, global } = promptRoots(dirs)
   const sections = TEAM_CATEGORIES.map(c => `\`## ${c.section}\``).join(' / ')
   const notGlobal = global === null ? '' : ' (outside the global dir)'
+  const prune = isMemoryHygieneEnabled()
 
   const whereToWrite = `For each thing worth remembering, write or update a memory file in the directory its type's scope names — the \`# Memory\` section of your system prompt is the source of truth for that:
 
@@ -89,16 +98,29 @@ Focus on:
 - Merging new signal into existing topic files rather than creating near-duplicates
 - Converting relative dates ("yesterday", "last week") to absolute dates so they remain interpretable after time passes
 - Giving a fact with a natural end — a freeze, a deadline, a rotation, a temporary workaround — \`expires: YYYY-MM-DD\` in its frontmatter, the last day it holds
-- Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source
+- Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source${
+    prune
+      ? `
+- Two memories that disagree: settle it from the code or the transcript, never from which file is newer, and fix the wrong one. When nothing settles it, keep both and mark one with \`contradicts:\` and the other's \`name\` in its frontmatter, so the next session sees the conflict instead of picking a side
+- A dated measurement or status — a census, a bench, a PR's state — once its conclusion is what matters: fold that into the decision or memory it supports, then delete the snapshot${notGlobal}`
+      : ''
+  }
 ${teamSection}
 ## Phase 4 — Prune and index
 
 Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, only add lines.'}
 
-- Remove pointers to memories that are now stale, wrong, or superseded
+- Remove pointers to memories that are now stale, wrong, or superseded${
+    prune
+      ? `, and delete the files themselves with a Patch \`*** Delete File:\` (Bash cannot delete), the index line removed in the same Patch:
+  - in the team dir, any memory you merged or retired — git keeps it, and the user's commit is the review
+  - in the private dir, only a memory you merged into another, in the Patch that writes that survivor — nothing restores a private file
+  - never a \`${ENTRYPOINT_NAME}\`${global === null ? '' : ', and nothing in the global dir'}`
+      : ''
+  }
 - Demote verbose entries: if an index line is over ~200 chars, it's carrying content that belongs in the topic file — shorten the line, move the detail
 - Add pointers to newly important memories
-- Resolve contradictions — if two files disagree, fix the wrong one${global === null ? '' : ', unless it is a global memory: name that one in your summary'}
+- Resolve contradictions — if two files disagree, fix the wrong one${global === null ? '' : prune ? ', unless it is a global memory: add `contradicts:` to it instead (an Edit that only adds the key), and name it in your summary' : ', unless it is a global memory: name that one in your summary'}
 
 ---
 
