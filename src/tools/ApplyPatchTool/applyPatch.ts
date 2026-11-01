@@ -17,7 +17,9 @@
 // validation refuses only a patch in which nothing could apply. Killswitch:
 // CLAUDIN_PATCH_ALL_OR_NOTHING=1 — any change not applied fails the call with
 // nothing written, and validation refuses every file-level problem up front,
-// the never-read gate included (with its lines served).
+// the never-read gate included (with its lines served). A context with
+// `options.patchAllOrNothing` gets the same: the auto-dream, so a private
+// memory it deletes never outlives the failed write of its survivor.
 //
 // Read gate. Any read counts: the whole file, an outline, a symbol, a range,
 // an injected CLAUDE.md, a Read since clipped out of the transcript, a file
@@ -178,8 +180,8 @@ function servedSuffix(served: string): string {
 /** The tool-name prefix each single-problem message carries, dropped when several are listed. */
 const MESSAGE_PREFIX_RE = new RegExp(`^${APPLY_PATCH_TOOL_NAME}:?\\s*`)
 
-function isAllOrNothing(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)
+function isAllOrNothing(context: ToolUseContext): boolean {
+  return context.options?.patchAllOrNothing === true || isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)
 }
 
 const bullets = (messages: string[]): string =>
@@ -333,7 +335,7 @@ export function validateApplyPatchInput(
     return fail(`${APPLY_PATCH_TOOL_NAME}: the patch contains no file operations.`)
   }
 
-  const strict = isAllOrNothing()
+  const strict = isAllOrNothing(context)
   const plans = planPatch(hunks, context, strict)
   const problems = plans.flatMap(p => (p.kind === 'problem' ? [p] : []))
   if (problems.length === 0 || (!strict && problems.length < plans.length)) return { result: true }
@@ -624,7 +626,7 @@ export async function runApplyPatch(
   messageId: UUID,
 ): Promise<{ output: ApplyPatchOutput; newMessages: DiagnosticAttachment[] }> {
   const hunks = parsePatch(input.patchText).hunks
-  const strict = isAllOrNothing()
+  const strict = isAllOrNothing(context)
   const plans = planPatch(hunks, context, strict)
 
   const staged: StagedChange[] = []

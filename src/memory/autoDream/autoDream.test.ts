@@ -319,10 +319,16 @@ describe('an auto-dream run', () => {
       const on = fakeDeps()
       await run(on.deps)
       expect(promptOf(on.calls)).toContain('*** Delete File:')
+      // …and its Patch applies all or nothing, so a private delete never
+      // outlives a failed survivor write (applyPatch.ts isAllOrNothing)
+      const optionsOf = (calls: ReturnType<typeof fakeDeps>['calls']) =>
+        (calls.forks[0]!.overrides as { options?: { patchAllOrNothing?: boolean } } | undefined)?.options
+      expect(optionsOf(on.calls)?.patchAllOrNothing).toBe(true)
       process.env.CLAUDIN_MEMORY_HYGIENE = '0'
       const off = fakeDeps()
       await run(off.deps)
       expect(promptOf(off.calls)).not.toContain('*** Delete File:')
+      expect(optionsOf(off.calls)?.patchAllOrNothing).toBeUndefined()
     } finally {
       if (saved === undefined) delete process.env.CLAUDIN_MEMORY_HYGIENE
       else process.env.CLAUDIN_MEMORY_HYGIENE = saved

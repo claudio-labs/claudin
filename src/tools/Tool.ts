@@ -213,6 +213,12 @@ export type ToolUseContext = {
     querySource?: QuerySource
     /** Optional callback to get the latest tools (e.g., after MCP servers connect mid-query) */
     refreshTools?: () => Tools
+    /**
+     * A Patch in this context applies all or nothing, as under
+     * CLAUDIN_PATCH_ALL_OR_NOTHING: the auto-dream's, whose private delete is
+     * only sound beside the write of the memory it was merged into.
+     */
+    patchAllOrNothing?: boolean
   }
   abortController: AbortController
   readFileState: FileStateCache

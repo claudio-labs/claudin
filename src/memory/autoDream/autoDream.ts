@@ -273,7 +273,12 @@ ${digest}`
         querySource: 'auto_dream',
         forkLabel: 'auto_dream',
         skipTranscript: true,
-        overrides: { abortController },
+        // A prune Patch applies all or nothing: a private memory it deletes
+        // has no git history, so it must not outlive a failed survivor write.
+        overrides: {
+          abortController,
+          ...(prune && { options: { ...context.toolUseContext.options, patchAllOrNothing: true } }),
+        },
         onMessage: makeDreamProgressWatcher(taskId, setAppState),
       })
 

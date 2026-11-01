@@ -142,9 +142,11 @@ describe('the idle trigger', () => {
 })
 
 describe('the dream Patch gate', () => {
+  // The context the auto-dream's fork runs its Patch in (autoDream.ts overrides)
   function makeContext(): ToolUseContext {
     const toolPermissionContext = getEmptyToolPermissionContext()
     return {
+      options: { patchAllOrNothing: true },
       abortController: new AbortController(),
       readFileState: new FileStateCache(100, 10_000_000),
       updateFileHistoryState: () => {},
