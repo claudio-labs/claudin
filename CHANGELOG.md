@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.1.51 — 2026-11-03
+
+### ✨ Features
+
+- feat(permissions): comment on any option in AskUserQuestion (#335) (f8d8b60a)
+
+### 🐛 Bug Fixes
+
+- fix(providers): put ?beta=true back on the beta endpoints (#340) (01ad9260)
+- fix(tools): stream monitor output and correct stale tool texts (#337) (60fcc49d)
+- fix(providers): keep the sign-in url copyable inside padded panes (#334) (e243a09d)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 2 updates (#338) (0c984d59)
+- chore(deps): bump the production-dependencies group with 7 updates (#339) (164bd959)
+
+### 📚 Documentation
+
+- docs(memory): correct stale facts in ten team memories (#336) (82a322dd)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.50 — 2026-11-01
 
 ### ✨ Features
