@@ -1,0 +1,21 @@
+{
+  "test": ["src/providers/transport/client.test.ts"],
+  "source": "src/providers/transport/client.ts",
+  "probes": [
+    {
+      "name": "the beta endpoints lose ?beta=true",
+      "find": "      options.query = { ...options.query, beta: 'true' }\n",
+      "replace": ""
+    },
+    {
+      "name": "a path suffix doubles the marker on a retry",
+      "find": "      options.query = { ...options.query, beta: 'true' }\n",
+      "replace": "      options.path += '?beta=true'\n"
+    },
+    {
+      "name": "a non-beta endpoint gets the marker too",
+      "find": "if ((options as { __qualifiers?: { beta?: string } }).__qualifiers?.beta === 'true') {",
+      "replace": "if (options) {"
+    }
+  ]
+}

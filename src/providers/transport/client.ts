@@ -119,6 +119,17 @@ class AnthropicWithApiKeyHeader extends Anthropic {
     }
     return headers
   }
+
+  // SDK 1.3 marks a beta endpoint with an internal `__qualifiers` field where
+  // 1.2 put `?beta=true` in its path; Claude Code 2.1.316 still sends the query.
+  // A query rather than a path suffix, because this runs again on every retry.
+  protected override async prepareOptions(...args: Parameters<Anthropic['prepareOptions']>) {
+    await super.prepareOptions(...args)
+    const [options] = args
+    if ((options as { __qualifiers?: { beta?: string } }).__qualifiers?.beta === 'true') {
+      options.query = { ...options.query, beta: 'true' }
+    }
+  }
 }
 
 export async function getAnthropicClient({
