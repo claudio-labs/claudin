@@ -29,6 +29,15 @@ type VertexClient = {
   }
 }
 
+type BetaClient = {
+  beta: {
+    messages: {
+      create: (params: Record<string, unknown>) => Promise<unknown>
+      countTokens: (params: Record<string, unknown>) => Promise<unknown>
+    }
+  }
+}
+
 type CapturedRequest = { url: string; headers: Headers; body: string }
 
 const savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
@@ -575,6 +584,50 @@ describe('first-party Anthropic lane', () => {
     const request = await sendOne()
 
     expect(request.headers.get('anthropic-version')).toBe('2023-06-01')
+  })
+
+  test('marks the beta endpoints with ?beta=true, as Claude Code does', async () => {
+    const requests: CapturedRequest[] = []
+    globalThis.fetch = captureFetch(requests)
+    const client = (await getAnthropicClient({ maxRetries: 0 })) as unknown as BetaClient
+
+    await client.beta.messages.create({
+      model: 'claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+    })
+    await client.beta.messages.countTokens({
+      model: 'claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'hello' }],
+    })
+
+    expect(requests.map(r => r.url)).toEqual([
+      'https://api.anthropic.com/v1/messages?beta=true',
+      'https://api.anthropic.com/v1/messages/count_tokens?beta=true',
+    ])
+  })
+
+  test('a retried beta request still carries a single ?beta=true', async () => {
+    const requests: CapturedRequest[] = []
+    const capture = captureFetch(requests)
+    globalThis.fetch = (async (input, init) => {
+      const response = await capture(input, init)
+      return requests.length === 1
+        ? new Response('{}', { status: 500, headers: { 'retry-after-ms': '1' } })
+        : response
+    }) as FetchType
+    const client = (await getAnthropicClient({ maxRetries: 1 })) as unknown as BetaClient
+
+    await client.beta.messages.create({
+      model: 'claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+    })
+
+    expect(requests.map(r => r.url)).toEqual([
+      'https://api.anthropic.com/v1/messages?beta=true',
+      'https://api.anthropic.com/v1/messages?beta=true',
+    ])
   })
 
   test('fetchOverride receives the request instead of the global fetch', async () => {

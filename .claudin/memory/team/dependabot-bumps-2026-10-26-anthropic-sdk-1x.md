@@ -48,4 +48,5 @@ against the mocked fetch in `client.test.ts` — no accounts.
 **How to apply:** when Claude Code moves to 2026-10-21, drop the pins together
 and re-run the live proxy diff; before that, keep every lane on what CC sends.
 Related: [[dependabot-bumps-2026-10-19-undici-zstd-node-floor]],
-[[externalized-sdk-copies-instanceof-apierror]].
+[[externalized-sdk-copies-instanceof-apierror]],
+[[dependabot-bumps-2026-11-03-sdk-beta-query]] (the `?beta=true` override drops with these pins).
