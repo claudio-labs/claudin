@@ -344,6 +344,8 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'ctrl+down': 'diff:focusSectionDown',
       // Start / clear a visual line selection in the diff pane.
       v: 'diff:select',
+      // Revert the working-tree hunk under the diff cursor (asks first).
+      x: 'diff:revertHunk',
     },
   },
   // Model picker effort cycling (internal-only)

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { StructuredPatchHunk } from 'diff'
 import {
   buildRowLineIndex,
+  hunkAtRow,
   logicalLineNumbers,
   rangeFromScreenRows,
   selectionRange,
@@ -167,5 +168,41 @@ describe('rangeFromScreenRows', () => {
     expect(
       rangeFromScreenRows(index, { ...pane, fromRow: 19, toRow: 19 }),
     ).toBeNull()
+  })
+})
+
+describe('hunkAtRow', () => {
+  const second = hunk(40, ['  a', '-b', '+c'])
+  const segments: DiffSegment[] = [
+    ...SEGMENTS,
+    { kind: 'gap', id: 'g', startLine: 10, lineCount: 30 },
+    { kind: 'hunk', hunk: second },
+  ]
+  const rows = [
+    ...ROWS,
+    '··· 30 lines ────',
+    '   40   a',
+    '   41 - b',
+    '      continued',
+    '   41 + c',
+  ]
+
+  test('each row belongs to the hunk it renders, a wrap continuation included', () => {
+    expect(hunkAtRow(segments, rows, 0)).toBe((SEGMENTS[0] as { hunk: StructuredPatchHunk }).hunk)
+    expect(hunkAtRow(segments, rows, 4)).toBe((SEGMENTS[0] as { hunk: StructuredPatchHunk }).hunk)
+    expect(hunkAtRow(segments, rows, 6)).toBe(second)
+    expect(hunkAtRow(segments, rows, 8)).toBe(second)
+    expect(hunkAtRow(segments, rows, 9)).toBe(second)
+  })
+
+  test('a collapsed gap belongs to no hunk', () => {
+    expect(hunkAtRow(segments, rows, 5)).toBeNull()
+  })
+
+  test('null outside the rows, or when the rows run past the segments', () => {
+    expect(hunkAtRow(segments, rows, -1)).toBeNull()
+    expect(hunkAtRow(segments, rows, rows.length)).toBeNull()
+    expect(hunkAtRow(SEGMENTS, [...ROWS, '   10 + extra'], 5)).toBeNull()
+    expect(hunkAtRow(SEGMENTS, ['  header without a gutter'], 0)).toBeNull()
   })
 })

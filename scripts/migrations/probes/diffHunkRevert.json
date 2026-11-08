@@ -1,0 +1,63 @@
+{
+  "test": [
+    "src/vcs/diff/revertHunk.test.ts",
+    "src/vcs/diff/ui/rowLines.test.ts",
+    "src/vcs/diff/ui/DiffDialog.revertWiring.test.ts"
+  ],
+  "source": "src/vcs/diff/revertHunk.ts",
+  "probes": [
+    {
+      "name": "a file with staged changes is refused",
+      "find": "  if (staged.code !== 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the hunk must still be in a fresh diff",
+      "find": "  const fresh = diff.code === 0 ? parseRawHunks(diff.stdout).find(h => sameHunk(h, hunk)) : undefined\n",
+      "replace": "  const fresh = diff.code === 0 ? (parseRawHunks(diff.stdout)[0] ?? hunk) : hunk\n"
+    },
+    {
+      "name": "git apply -R --check gates the write",
+      "find": "  if (check.code !== 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the no-newline markers are kept",
+      "find": "const HUNK_LINE_RE = /^[ +\\-\\\\]/\n",
+      "replace": "const HUNK_LINE_RE = /^[ +\\-]/\n"
+    },
+    {
+      "name": "binary files are blocked",
+      "find": "  if (file.isBinary) return 'binary files cannot be reverted hunk by hunk'\n",
+      "replace": ""
+    },
+    {
+      "name": "a revealed context hunk is not revertable",
+      "find": "  if (!hunks.includes(atCursor)) return { kind: 'notice', text: ON_A_HUNK }\n",
+      "replace": ""
+    },
+    {
+      "name": "only the working-tree source reverts",
+      "find": "  if (source !== 'working') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "hunkAtRow: a gap marker is one logical line",
+      "source": "src/vcs/diff/ui/rowLines.ts",
+      "find": "    const lines = segment.kind === 'gap' ? 1 : segment.hunk.lines.length\n",
+      "replace": "    const lines = segment.kind === 'gap' ? 0 : segment.hunk.lines.length\n"
+    },
+    {
+      "name": "the DiffDialog keys stand down during the question",
+      "source": "src/vcs/diff/ui/DiffDialog.tsx",
+      "find": "    { context: 'DiffDialog', isActive: hasFocus && revertPrompt === null },\n",
+      "replace": "    { context: 'DiffDialog', isActive: hasFocus },\n"
+    },
+    {
+      "name": "x is bound",
+      "source": "src/terminal/keybindings/defaultBindings.ts",
+      "find": "      x: 'diff:revertHunk',\n",
+      "replace": ""
+    }
+  ]
+}
