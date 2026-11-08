@@ -8,8 +8,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { fetchGitDiffHunks } from 'src/vcs/git/gitDiff.js'
-import { resolveWorkspaceRoots, worktreeShadowedRoots } from 'src/vcs/git/git.js'
-import { planHunkRevert } from 'src/vcs/diff/revertHunk.js'
+import { resolveWorkspaceRoots } from 'src/vcs/git/git.js'
+import { planHunkRevert, worktreeShadowedRoots } from 'src/vcs/diff/revertHunk.js'
 
 const base = realpathSync(mkdtempSync(join(tmpdir(), 'wt-revert-')))
 const main = join(base, 'main')

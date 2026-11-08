@@ -157,11 +157,17 @@ export function hunkAtRow(
     for (let k = 0; k < lines; k++) owners.push(i)
   })
   let logicalIndex = -1
-  for (let r = 0; r <= row; r++) {
+  let atRow = -1
+  for (let r = 0; r < rows.length; r++) {
     const plain = rows[r]!.replace(ANSI_RE, '')
     if (plain.trimStart().startsWith(GAP_PREFIX) || GUTTER_RE.test(plain)) logicalIndex += 1
+    if (r === row) atRow = logicalIndex
   }
-  const owner = logicalIndex < 0 ? undefined : owners[logicalIndex]
+  // Every row counted must land on exactly the segments' logical lines: a
+  // wrapped line whose continuation looks like a gutter shifts every row after
+  // it, and a guess there would revert a hunk the cursor is not on.
+  if (logicalIndex !== owners.length - 1) return null
+  const owner = atRow < 0 ? undefined : owners[atRow]
   const segment = owner === undefined ? undefined : segments[owner]
   return segment?.kind === 'hunk' ? segment.hunk : null
 }

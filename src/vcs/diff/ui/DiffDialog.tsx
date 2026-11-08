@@ -50,7 +50,13 @@ import {
 } from 'src/vcs/diff/ui/DiffFileList.js'
 import { DiffPane, renderDiffRows } from 'src/vcs/diff/ui/DiffPane.js'
 import { buildRowLineIndex, hunkAtRow, selectionRange } from 'src/vcs/diff/ui/rowLines.js'
-import { planHunkRevert, revertHunk } from 'src/vcs/diff/revertHunk.js'
+import {
+  hasStagedChanges,
+  planHunkRevert,
+  revertHunk,
+  stagedRefusal,
+  worktreeShadowedRoots,
+} from 'src/vcs/diff/revertHunk.js'
 import {
   reselect,
   type SelectedFileKey,
@@ -217,6 +223,9 @@ export function DiffDialog({
     () => [getCwd(), ...additionalWorkingDirectories.keys()],
     [additionalWorkingDirectories],
   )
+  // Roots a worktree in scope resolved to its main checkout: their hunks are
+  // shown, but `x` must not write into that other checkout.
+  const shadowedRoots = useMemo(() => worktreeShadowedRoots(scanBases), [scanBases])
 
   // ── data ────────────────────────────────────────────────────────────────
   const workspace = useWorkspaceDiff(roots, scanBases)
@@ -284,6 +293,7 @@ export function DiffDialog({
     question: string
   } | null>(null)
   const [revertNotice, setRevertNotice] = useState<string | null>(null)
+  const keepRevertNoticeRef = useRef(false)
   const [theme] = useTheme()
   // The side panel paints its own background, and the pre-rendered diff rows
   // have to carry it themselves — see DiffPane's `backgroundSgr`.
@@ -730,8 +740,16 @@ export function DiffDialog({
     setCursorRow(0)
     setVisualAnchor(null)
     setRevertPrompt(null)
-    setRevertNotice(null)
+    // A revert's own refresh can move the selection off a file it emptied;
+    // its outcome outlives that one move (keepRevertNoticeRef).
+    if (keepRevertNoticeRef.current) keepRevertNoticeRef.current = false
+    else setRevertNotice(null)
   }, [selectedKey])
+  // Declared after the reset above: the refresh a revert started has landed by
+  // the time the groups change, so the next file change clears the notice.
+  useEffect(() => {
+    keepRevertNoticeRef.current = false
+  }, [currentGroups])
 
   // Initialize / keep the log selection on a commit row.
   useEffect(() => {
@@ -896,22 +914,29 @@ export function DiffDialog({
     else onDone('Diff dialog dismissed', { display: 'system' })
   }
 
-  const askToRevertHunk = (): void => {
+  const askToRevertHunk = async (): Promise<void> => {
     const intent = planHunkRevert(
       currentSource.type,
       selected?.file ?? null,
       selected?.hunks ?? [],
       hunkAtRow(segments, diffRows, cursorRowClamped),
+      { shadowedRoot: !!selected && shadowedRoots.has(selected.root) },
     )
     if (intent.kind === 'notice' || !selected) {
       setRevertNotice(intent.kind === 'notice' ? intent.text : null)
+      return
+    }
+    const root = selected.root || getCwd()
+    // Refused before the question rather than after the y.
+    if (await hasStagedChanges(root, selected.file.path)) {
+      setRevertNotice(`Not reverted: ${stagedRefusal(selected.file.path)}`)
       return
     }
     setRevertNotice(null)
     setRevertPrompt({
       hunk: intent.hunk,
       file: selected.file,
-      root: selected.root || getCwd(),
+      root,
       question: intent.question,
     })
   }
@@ -926,6 +951,7 @@ export function DiffDialog({
       return
     }
     setRevertNotice('Hunk reverted')
+    keepRevertNoticeRef.current = true
     // The same re-read a finished turn triggers, keeping the selected file.
     if (pendingReselectRef.current === null) {
       pendingReselectRef.current = {
@@ -1104,8 +1130,16 @@ export function DiffDialog({
       },
       // x: revert the working-tree hunk under the cursor, after a y/n.
       'diff:revertHunk': () => {
-        if (activeTab !== 'local' || focus !== 'content' || visualAnchor !== null) return false
-        askToRevertHunk()
+        if (activeTab !== 'local') return false
+        if (focus !== 'content') {
+          setRevertNotice('x reverts a hunk in the diff: ctrl+↓ to move into it')
+          return
+        }
+        if (visualAnchor !== null) {
+          setRevertNotice('close the selection (v) before reverting a hunk')
+          return
+        }
+        void askToRevertHunk()
       },
       // ctrl+← steps back out to the prompt. It needs its own action in the
       // DiffDialog context: a `Chat` binding is unreachable from here, since

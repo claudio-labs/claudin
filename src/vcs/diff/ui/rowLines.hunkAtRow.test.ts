@@ -44,8 +44,10 @@ describe('hunkAtRow on a wrapped context line', () => {
     const gapRow = plain.findIndex(r => r.trimStart().startsWith('···'))
     expect(gapRow).toBeGreaterThan(0)
     expect(hunkAtRow(segments, rows, gapRow)).toBeNull()
-    // And the '+new' row of hunk A must resolve to hunk A.
+    // Fail closed for the whole file, the way selection does: even the '+new'
+    // row of hunk A names nothing rather than a guess.
     const newRow = plain.findIndex(r => r.includes('+') && r.includes('new'))
-    expect(hunkAtRow(segments, rows, newRow)).toBe(hunkA)
+    expect(newRow).toBeGreaterThan(0)
+    expect(hunkAtRow(segments, rows, newRow)).toBeNull()
   })
 })

@@ -13,7 +13,7 @@
 // the shapes a single hunk cannot carry: new, deleted, renamed and binary
 // files, and diffs cut at the line cap.
 import type { StructuredPatchHunk } from 'diff'
-import { gitExe } from 'src/vcs/git/git.js'
+import { findCanonicalGitRoot, findGitRoot, gitExe } from 'src/vcs/git/git.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import type { DiffFile } from 'src/vcs/diff/hooks/useDiffData.js'
 
@@ -67,22 +67,43 @@ export function revertBlocker(
   return null
 }
 
+/**
+ * The canonical roots in `paths` that stand in for a worktree: a path inside a
+ * worktree resolves to its main checkout (resolveWorkspaceRoots), so /diff
+ * shows — and must not write to — that checkout on its behalf.
+ */
+export function worktreeShadowedRoots(paths: string[]): Set<string> {
+  const shadowed = new Set<string>()
+  for (const path of paths) {
+    const own = findGitRoot(path)
+    const canonical = findCanonicalGitRoot(path)
+    if (own && canonical && own !== canonical) shadowed.add(canonical)
+  }
+  return shadowed
+}
+
 const ON_A_HUNK = 'move the cursor onto a changed hunk to revert it'
 
 /**
  * The decision behind `x`: `source` is the active /diff source, `hunks` the
  * selected file's real hunks, `atCursor` the hunk segment under the cursor
  * (rowLines.hunkAtRow) — a context hunk a gap reveal synthesized is not one
- * of `hunks`, and is not revertable.
+ * of `hunks`, and is not revertable. `shadowedRoot`: the file's repo is the
+ * main checkout a worktree session's view resolved to (worktreeShadowedRoots),
+ * whose hunks are not this session's to revert.
  */
 export function planHunkRevert(
   source: 'working' | 'turn' | 'stash',
   file: RevertableFile | null,
   hunks: readonly StructuredPatchHunk[],
   atCursor: StructuredPatchHunk | null,
+  options: { shadowedRoot?: boolean } = {},
 ): RevertIntent {
   if (source !== 'working') {
     return { kind: 'notice', text: 'switch the source to the working tree to revert a hunk' }
+  }
+  if (options.shadowedRoot) {
+    return { kind: 'notice', text: "can't revert: /diff shows the main checkout here, not this worktree" }
   }
   if (!file || !atCursor) return { kind: 'notice', text: ON_A_HUNK }
   const blocker = revertBlocker(file, atCursor)
@@ -165,6 +186,19 @@ function firstLine(stderr: string): string {
 
 const MOVED = 'the file changed since the diff was taken'
 
+/** Whether `path` has staged changes in `repoRoot`: a revert of the working tree alone would leave them. */
+export async function hasStagedChanges(
+  repoRoot: string,
+  path: string,
+  run: RunGit = runGit,
+): Promise<boolean> {
+  const staged = await run(['diff', '--cached', '--quiet', '--', path], repoRoot)
+  return staged.code !== 0
+}
+
+/** The refusal for a file with staged changes, before the question and after it. */
+export const stagedRefusal = (path: string): string => `${path} has staged changes — unstage it first`
+
 /**
  * Takes `hunk` back out of `file` in the working tree of `repoRoot`. The hunk
  * must still be in the file's diff, and `git apply -R --check` must accept it,
@@ -180,9 +214,8 @@ export async function revertHunk(
   const blocker = revertBlocker(file, hunk)
   if (blocker) return { ok: false, reason: blocker }
 
-  const staged = await run(['diff', '--cached', '--quiet', '--', file.path], repoRoot)
-  if (staged.code !== 0) {
-    return { ok: false, reason: `${file.path} has staged changes — unstage it first` }
+  if (await hasStagedChanges(repoRoot, file.path, run)) {
+    return { ok: false, reason: stagedRefusal(file.path) }
   }
 
   const diff = await run(

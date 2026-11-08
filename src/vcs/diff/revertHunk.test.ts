@@ -7,6 +7,7 @@ import { join } from 'path'
 import type { StructuredPatchHunk } from 'diff'
 import { parseGitDiff } from 'src/vcs/git/gitDiff.js'
 import {
+  hasStagedChanges,
   parseRawHunks,
   planHunkRevert,
   type RevertableFile,
@@ -14,6 +15,7 @@ import {
   revertBlocker,
   revertHunk,
   singleHunkPatch,
+  stagedRefusal,
 } from 'src/vcs/diff/revertHunk.js'
 
 const roots: string[] = []
@@ -276,5 +278,18 @@ describe('planHunkRevert', () => {
       kind: 'notice',
       text: "can't revert: a new file has no earlier version to go back to",
     })
+  })
+})
+
+describe('hasStagedChanges', () => {
+  test('asks git for a quiet cached diff of the one path', async () => {
+    const { run, calls } = fakeGit({ 0: { code: 1 } })
+    expect(await hasStagedChanges('/repo', 'src/x.ts', run)).toBe(true)
+    expect(calls.map(c => c.args)).toEqual([['diff', '--cached', '--quiet', '--', 'src/x.ts']])
+    expect(await hasStagedChanges('/repo', 'src/x.ts', fakeGit().run)).toBe(false)
+  })
+
+  test('the refusal names the file', () => {
+    expect(stagedRefusal('a.ts')).toBe('a.ts has staged changes — unstage it first')
   })
 })
