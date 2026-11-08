@@ -1,6 +1,6 @@
 ---
 name: claude-code-2.1.316-tool-prompt-diff
-description: Claude Code 2.1.316 vs Claudin tool prompts on the wire (2026-11-01) — adopted on fix/tool-texts-match-tools (Monitor streaming + timeout_ms, TaskStop by name, five stale texts, AskUserQuestion/@name/Bash-description lines, cron next run); the untrusted-downloads bullet and three A/B-only levers stay follow-ups
+description: Claude Code 2.1.316 vs Claudin tool prompts on the wire (2026-11-01) — adopted in #337, v1.1.51 (Monitor streaming + timeout_ms, TaskStop by name, five stale texts, AskUserQuestion/@name/Bash-description lines, cron next run); the untrusted-downloads bullet and three A/B-only levers stay follow-ups
 type: project
 ---
 
@@ -13,7 +13,7 @@ surrounding code" line is gone; the env message gained an untrusted-downloads bu
 download, Python with `-I`); AskUserQuestion gained a "make each question stand on its own"
 paragraph. Still 26 tools, env still in a `role: "system"` message.
 
-**Adopted** (branch `fix/tool-texts-match-tools`, one PR, one commit per area):
+**Adopted** in #337 (`fix/tool-texts-match-tools`, released in v1.1.51 on 2026-11-03; one commit per area):
 - Monitor never streamed since the fork's first commit: `generateTaskAttachments` drops the bytes,
   and the `exec` timeout dies in `background()`. `monitorStream.ts` now polls ~1 s, caps an event at
   20 lines / 2 KB, stops a monitor after 20 events in 60 s, and owns `timeout_ms` (default 5 min,

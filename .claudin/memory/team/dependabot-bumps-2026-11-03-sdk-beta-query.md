@@ -14,7 +14,7 @@ change is on the wire, where no test looked:
   `messages?beta=true` (5 hits in its binary, no `__qualifiers`).
   `client.test.ts` only called the non-beta `client.messages.create`, so nothing
   pinned the beta URL.
-- **Fix (branch `fix/sdk-beta-query`, unmerged as of 2026-11-03):**
+- **Fix (#340, released in v1.1.51 on 2026-11-03):**
   `AnthropicWithApiKeyHeader.prepareOptions` sets `query.beta = 'true'` when the
   qualifier is there. A query, not a path suffix: `prepareOptions` runs again on
   every retry, and a suffix doubles (`?beta=true%3Fbeta%3Dtrue`). Pins in

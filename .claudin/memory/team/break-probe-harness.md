@@ -43,7 +43,8 @@ the gate, and **add a control arm** asserting the main thread still gets it. See
 [[attachment-producers-leak-parent-state]].
 
 Related: [[characterization-net-before-deletion]],
-[[tier3-file-split-roadmap]] §5 — a break-probe pass also surfaces
-genuinely **unreachable** lines, which are a documentation job, not a test defect.
+[[tier3-file-split-roadmap]] — a break-probe pass also surfaces
+genuinely **unreachable** lines, which are a documentation job, not a test defect
+(the 09-20 examples are in [[tier3-file-split-history]]).
 
 **Trap (2026-10-10):** a `replace` that leaves a syntax error (deleting the `if` before an `else`) can hang `bun test` instead of failing it, and break-probe has no timeout: the run sat 20 min until the child was killed by hand. Keep every replacement parseable (`if (x) void 0`, not an empty line), and wrap long runs in `timeout`.

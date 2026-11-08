@@ -18,7 +18,7 @@ type: project
 - **bedrock-sdk and vertex-sdk 1.x copy the `anthropic-version` header into the
   body's `anthropic_version`**; 0.x hardcoded `bedrock-2023-05-31` /
   `vertex-2023-10-16`. So **#325 (bedrock-sdk 1.1.0 on core 0.135) already sent
-  `"2023-06-01"` to Bedrock on main**, unreleased (v1.1.49 predates it).
+  `"2023-06-01"` to Bedrock on main**, never released (v1.1.50 shipped it with the #326 fix).
 - The SDK's no-credential error stopped naming `X-Api-Key`, so `errors.ts`
   showed the raw SDK text instead of "Not logged in · Please run /login".
 - Types: `BetaMessageParam` gained `role: 'system'` (optional `content`);
@@ -27,7 +27,7 @@ type: project
 - foundry-sdk 0.6 / vertex-sdk 0.21 declare `sdk <1`; the `overrides` forced 1.x
   under them. Both have a 1.1.0 (`sdk >=1 <2`), bumped with it.
 
-**Fix (landed with #326 on main, d82ac0ac; unreleased as of 2026-10-27):** `client.ts` pins `anthropic-version` per lane
+**Fix (landed with #326, d82ac0ac; released in v1.1.50, 2026-11-01):** `client.ts` pins `anthropic-version` per lane
 (2023-06-01; `bedrock-2023-05-31` and `vertex-2023-10-16` for those two) and
 builds the first-party client as a subclass whose `apiKeyAuth` sends
 `X-Api-Key`; `errors.ts` also matches "Could not resolve authentication method".

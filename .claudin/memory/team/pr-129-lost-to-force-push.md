@@ -12,7 +12,7 @@ built on that and cemented it. Nobody noticed for three weeks, because the
 commit that survived was the *memory file recording the split* — so the docs
 described 5,100 lines of work whose code no longer existed.
 
-Recovered and re-landed on 2026-09-14 (see [[tier3-file-split-roadmap]]).
+Recovered and re-landed on 2026-09-14 (see [[tier3-file-split-history]]).
 
 ## How to detect this class of problem
 
