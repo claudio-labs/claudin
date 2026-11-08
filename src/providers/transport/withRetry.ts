@@ -216,14 +216,41 @@ export class CannotRetryError extends Error {
   }
 }
 
+/** What made the primary model give way: the warning the loop prints names it. */
+export type FallbackReason = 'overloaded' | 'server_error' | 'rate_limited'
+
 export class FallbackTriggeredError extends Error {
   constructor(
     public readonly originalModel: string,
     public readonly fallbackModel: string,
+    public readonly reason: FallbackReason = 'overloaded',
   ) {
     super(`Model fallback triggered: ${originalModel} -> ${fallbackModel}`)
     this.name = 'FallbackTriggeredError'
   }
+}
+
+/**
+ * Why a configured fallback model should take over from `error` where the
+ * loop gives up on it — `exhausted` when the retries are spent, otherwise the
+ * error was not worth retrying. Overload, server and connection errors
+ * qualify, and a rate limit that is long or outlasted every retry (limits are
+ * per model). Auth, bad requests, billing exhaustion and aborts never do:
+ * another model behind the same key would fail the same way.
+ */
+export function fallbackReasonFor(
+  error: unknown,
+  exhausted: boolean,
+): FallbackReason | null {
+  if (is529Error(error)) return 'overloaded'
+  if (isSdkApiConnectionError(error)) return 'server_error'
+  if (!isSdkApiError(error)) return null
+  if (error.status === 429) {
+    return exhausted || isLongRateLimit(error) ? 'rate_limited' : null
+  }
+  return error.status !== undefined && error.status >= 500
+    ? 'server_error'
+    : null
 }
 
 // Thrown internally when a 401 force-refresh for an OAuth-web provider
@@ -415,9 +442,12 @@ export async function* withRetry<T>(
       // Track consecutive 529 errors
       if (
         is529Error(error) &&
-        // If FALLBACK_FOR_ALL_PRIMARY_MODELS is not set, fall through only if the primary model is a non-custom Opus model.
+        // A configured fallback counts the streak for any model. Without one,
+        // only when FALLBACK_FOR_ALL_PRIMARY_MODELS is set or the primary model
+        // is a non-custom Opus model (the REPEATED_529 stop below).
         // TODO: Revisit if the isNonCustomOpusModel check should still exist, or if isNonCustomOpusModel is a stale artifact of when Claude Code was hardcoded on Opus.
-        (process.env.FALLBACK_FOR_ALL_PRIMARY_MODELS ||
+        (options.fallbackModel ||
+          process.env.FALLBACK_FOR_ALL_PRIMARY_MODELS ||
           (!isClaudeAISubscriber() && isNonCustomOpusModel(options.model)))
       ) {
         consecutive529Errors++
@@ -443,6 +473,10 @@ export async function* withRetry<T>(
 
       // Only retry if the error indicates we should
       if (attempt > maxRetries) {
+        const reason = options.fallbackModel ? fallbackReasonFor(error, true) : null
+        if (reason) {
+          throw new FallbackTriggeredError(options.model, options.fallbackModel!, reason)
+        }
         throw new CannotRetryError(error, retryContext)
       }
 
@@ -453,6 +487,10 @@ export async function* withRetry<T>(
         !handledCloudAuthError &&
         (!isSdkApiError(error) || !shouldRetry(error, attempt))
       ) {
+        const reason = options.fallbackModel ? fallbackReasonFor(error, false) : null
+        if (reason) {
+          throw new FallbackTriggeredError(options.model, options.fallbackModel!, reason)
+        }
         throw new CannotRetryError(error, retryContext)
       }
 

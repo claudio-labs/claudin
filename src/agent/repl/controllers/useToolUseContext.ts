@@ -54,6 +54,7 @@ import { type SetAppState, removeByFilter } from 'src/agent/messageQueueManager.
 import { startBackgroundSession } from 'src/agent/tasks/LocalMainSessionTask.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/agent/attachments/attachments.js';
+import { getFallbackModel } from 'src/providers/model/fallbackModel.js';
 
 export interface UseToolUseContextDeps {
   // --- static-ish session inputs
@@ -385,7 +386,8 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
           systemContext,
           canUseTool,
           toolUseContext,
-          querySource: getQuerySourceForREPL()
+          querySource: getQuerySourceForREPL(),
+          fallbackModel: getFallbackModel(toolUseContext.options.mainLoopModel)
         },
         description: terminalTitle,
         setAppState,

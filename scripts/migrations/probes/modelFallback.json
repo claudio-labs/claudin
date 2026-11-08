@@ -1,0 +1,79 @@
+{
+  "test": [
+    "src/providers/transport/withRetry.loop.test.ts",
+    "src/providers/transport/withRetry.classify.test.ts",
+    "src/agent/query.loop.test.ts",
+    "src/providers/model/fallbackModel.test.ts",
+    "src/providers/model/fallbackHold.test.ts"
+  ],
+  "source": "src/providers/transport/withRetry.ts",
+  "probes": [
+    {
+      "name": "a configured fallback counts the 529 streak for any model",
+      "find": "        (options.fallbackModel ||\n",
+      "replace": "        (false ||\n"
+    },
+    {
+      "name": "spent retries fall back",
+      "find": "        const reason = options.fallbackModel ? fallbackReasonFor(error, true) : null\n",
+      "replace": "        const reason = null\n"
+    },
+    {
+      "name": "an error not worth retrying falls back",
+      "find": "        const reason = options.fallbackModel ? fallbackReasonFor(error, false) : null\n",
+      "replace": "        const reason = null\n"
+    },
+    {
+      "name": "a rate limit that outlasted the retries qualifies",
+      "find": "    return exhausted || isLongRateLimit(error) ? 'rate_limited' : null\n",
+      "replace": "    return isLongRateLimit(error) ? 'rate_limited' : null\n"
+    },
+    {
+      "name": "a bad request never falls back",
+      "find": "  return error.status !== undefined && error.status >= 500\n",
+      "replace": "  return error.status !== undefined && error.status >= 400\n"
+    },
+    {
+      "name": "the loop starts on a held fallback",
+      "source": "src/agent/query.ts",
+      "find": "    if (fallbackModel && isFallbackHeld(currentModel, fallbackModel)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a request on the fallback carries none",
+      "source": "src/agent/query.ts",
+      "find": "                currentModel === fallbackModel ? undefined : fallbackModel,\n",
+      "replace": "                fallbackModel,\n"
+    },
+    {
+      "name": "a switch starts the hold",
+      "source": "src/agent/query.ts",
+      "find": "            holdFallback(currentModel, fallbackModel)\n",
+      "replace": ""
+    },
+    {
+      "name": "no switch from the fallback onto itself",
+      "source": "src/agent/query.ts",
+      "find": "            currentModel !== fallbackModel\n",
+      "replace": "            true\n"
+    },
+    {
+      "name": "the flag wins over the setting",
+      "source": "src/providers/model/fallbackModel.ts",
+      "find": "  const raw = (deps.flag() ?? deps.setting())?.trim()\n",
+      "replace": "  const raw = (deps.setting() ?? deps.flag())?.trim()\n"
+    },
+    {
+      "name": "no fallback onto the model in use",
+      "source": "src/providers/model/fallbackModel.ts",
+      "find": "  return fallback && fallback !== primary ? fallback : undefined\n",
+      "replace": "  return fallback\n"
+    },
+    {
+      "name": "the hold ends at ten minutes",
+      "source": "src/providers/model/fallbackHold.ts",
+      "find": "  if (now < until) return true\n",
+      "replace": "  if (now <= until) return true\n"
+    }
+  ]
+}

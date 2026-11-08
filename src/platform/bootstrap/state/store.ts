@@ -90,6 +90,7 @@ export function getInitialState(): State {
     cwd: resolvedCwd,
     modelUsage: {},
     mainLoopModelOverride: undefined,
+    fallbackModelOverride: undefined,
     initialMainLoopModel: null,
     modelStrings: null,
     isInteractive: false,

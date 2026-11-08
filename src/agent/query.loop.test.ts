@@ -45,7 +45,12 @@ import {
 import { addFunctionHook, addSessionHook } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { renderModelName } from 'src/providers/model/model.js'
 import { PROMPT_TOO_LONG_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
-import { FallbackTriggeredError } from 'src/providers/transport/withRetry.js'
+import { type FallbackReason, FallbackTriggeredError } from 'src/providers/transport/withRetry.js'
+import {
+  _resetFallbackHoldsForTesting,
+  FALLBACK_HOLD_MS,
+  holdFallback,
+} from 'src/providers/model/fallbackHold.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
@@ -1006,12 +1011,24 @@ describe('query loop: streaming fallback', () => {
 // ---------------------------------------------------------------------------
 
 describe('query loop: FallbackTriggeredError', () => {
-  function overloadedOnce(originalModel = MODEL, fallbackModel = FALLBACK, toolId = 'toolu_fb_1'): Step {
+  // The hold is process-wide: every test starts with none.
+  beforeEach(() => _resetFallbackHoldsForTesting())
+  afterAll(() => _resetFallbackHoldsForTesting())
+
+  function overloadedOnce(
+    originalModel = MODEL,
+    fallbackModel = FALLBACK,
+    toolId = 'toolu_fb_1',
+    reason: FallbackReason = 'overloaded',
+  ): Step {
     return async function* () {
       yield* assistant([text('thinking about it'), toolUse('Probe', toolId)])
-      throw new FallbackTriggeredError(originalModel, fallbackModel)
+      throw new FallbackTriggeredError(originalModel, fallbackModel, reason)
     }
   }
+
+  const warning = (primary: string, why: string) =>
+    `Switched to ${renderModelName(FALLBACK)}: ${renderModelName(primary)} ${why}. Staying on it for 10 minutes.`
 
   test('the request is retried on the fallback model with a warning', async () => {
     const probe = probeTool('Probe')
@@ -1025,15 +1042,26 @@ describe('query loop: FallbackTriggeredError', () => {
     // The retry is the same request: one stream_request_start, same history.
     expect(ofType(run.events, 'stream_request_start')).toHaveLength(1)
     expect(run.requests[1]!.messages).toEqual(run.requests[0]!.messages)
-    expect(run.requests[1]!.options.fallbackModel).toBe(FALLBACK)
+    expect(run.requests[0]!.options.fallbackModel).toBe(FALLBACK)
+    // One hop: the retry on the fallback carries none.
+    expect(run.requests[1]!.options.fallbackModel).toBeUndefined()
     // The first attempt's tool never runs.
     expect(probe.calls).toBe(0)
     const warnings = ofType(run.events, 'system')
-    expect(warnings.map(e => e.content)).toEqual([
-      `Switched to ${renderModelName(FALLBACK)} due to high demand for ${renderModelName(MODEL)}`,
-    ])
+    expect(warnings.map(e => e.content)).toEqual([warning(MODEL, 'is overloaded')])
     expect(warnings[0]!.level).toBe('warning')
-    expect(String(warnings[0]!.content)).toContain('due to high demand for')
+  })
+
+  test.each([
+    ['server_error', 'kept failing with server errors'],
+    ['rate_limited', 'hit a rate limit'],
+  ] as const)('a %s fallback says why', async (reason, why) => {
+    const run = await drive({
+      steps: [overloadedOnce(MODEL, FALLBACK, 'toolu_fb_why', reason), reply(text('All finished.'))],
+      tools: [probeTool('Probe')],
+      params: { fallbackModel: FALLBACK },
+    })
+    expect(systemTexts(run.events)).toEqual([warning(MODEL, why)])
   })
 
   test('the first attempt\'s tool_uses get "Model fallback triggered" results', async () => {
@@ -1074,7 +1102,7 @@ describe('query loop: FallbackTriggeredError', () => {
     expect(run.context.options.mainLoopModel).toBe(FALLBACK)
   })
 
-  test('the follow-up request after a tool stays on the fallback model', async () => {
+  test('the follow-up request after a tool stays on the fallback model, held', async () => {
     const probe = probeTool('Probe')
     const run = await drive({
       steps: [
@@ -1089,26 +1117,44 @@ describe('query loop: FallbackTriggeredError', () => {
       params: { fallbackModel: FALLBACK },
     })
     expect(run.terminal).toEqual({ reason: 'completed' })
-    // The session model in app state is unchanged, so the next loop
-    // iteration resolves the primary again (current behavior).
-    expect(run.requests.map(r => r.options.model)).toEqual([MODEL, FALLBACK, MODEL])
+    // The session model in app state is unchanged; the hold is what keeps the
+    // next iteration off the primary.
+    expect(run.requests.map(r => r.options.model)).toEqual([MODEL, FALLBACK, FALLBACK])
+    expect(run.requests[2]!.options.fallbackModel).toBeUndefined()
     expect(probe.calls).toBe(1)
+    expect(systemTexts(run.events)).toHaveLength(1)
   })
 
-  test('the warning names the models the error carries, not the configured ones', async () => {
+  test('the next query starts on a held fallback, and on the primary once the hold is over', async () => {
+    holdFallback(MODEL, FALLBACK)
+    const held = await drive({ steps: [reply(text('On the fallback.'))], params: { fallbackModel: FALLBACK } })
+    expect(held.requests.map(r => r.options.model)).toEqual([FALLBACK])
+    expect(systemTexts(held.events)).toEqual([])
+
+    holdFallback(MODEL, FALLBACK, Date.now() - FALLBACK_HOLD_MS - 1)
+    const released = await drive({ steps: [reply(text('Back.'))], params: { fallbackModel: FALLBACK } })
+    expect(released.requests.map(r => r.options.model)).toEqual([MODEL])
+    expect(released.requests[0]!.options.fallbackModel).toBe(FALLBACK)
+  })
+
+  test('a hold means nothing to a query with no fallback configured', async () => {
+    holdFallback(MODEL, FALLBACK)
+    const run = await drive({ steps: [reply(text('Primary.'))] })
+    expect(run.requests.map(r => r.options.model)).toEqual([MODEL])
+  })
+
+  test('the warning names the configured fallback and the model that gave way', async () => {
     const run = await drive({
       steps: [overloadedOnce('claude-opus-4-1', 'claude-haiku-4-5'), reply(text('All finished.'))],
       tools: [probeTool('Probe')],
       params: { fallbackModel: FALLBACK },
     })
-    expect(systemTexts(run.events)).toEqual([
-      `Switched to ${renderModelName('claude-haiku-4-5')} due to high demand for ${renderModelName('claude-opus-4-1')}`,
-    ])
+    expect(systemTexts(run.events)).toEqual([warning('claude-opus-4-1', 'is overloaded')])
     // The retry uses the configured fallback, whatever the error says.
     expect(run.requests[1]!.options.model).toBe(FALLBACK)
   })
 
-  test('a second FallbackTriggeredError retries again on the fallback (current behavior: no one-hop cap here)', async () => {
+  test('one hop: a FallbackTriggeredError on the fallback ends the turn instead of retrying it', async () => {
     const run = await drive({
       steps: [
         overloadedOnce(MODEL, FALLBACK, 'toolu_fb_a'),
@@ -1118,9 +1164,9 @@ describe('query loop: FallbackTriggeredError', () => {
       tools: [probeTool('Probe')],
       params: { fallbackModel: FALLBACK },
     })
-    expect(run.terminal).toEqual({ reason: 'completed' })
-    expect(run.requests.map(r => r.options.model)).toEqual([MODEL, FALLBACK, FALLBACK])
-    expect(systemTexts(run.events)).toHaveLength(2)
+    expect(run.terminal.reason).toBe('model_error')
+    expect(run.requests.map(r => r.options.model)).toEqual([MODEL, FALLBACK])
+    expect(systemTexts(run.events)).toHaveLength(1)
   })
 
   test('without a fallbackModel the error ends the turn as a model error', async () => {

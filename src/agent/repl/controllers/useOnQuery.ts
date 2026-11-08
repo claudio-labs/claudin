@@ -75,6 +75,7 @@ import type { EffortValue } from 'src/providers/effort/effort.js';
 import { checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
+import { getFallbackModel } from 'src/providers/model/fallbackModel.js';
 
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
@@ -377,7 +378,8 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       systemContext,
       canUseTool,
       toolUseContext,
-      querySource: getQuerySourceForREPL()
+      querySource: getQuerySourceForREPL(),
+      fallbackModel: getFallbackModel(toolUseContext.options.mainLoopModel)
     })) {
       onQueryEvent(event);
     }

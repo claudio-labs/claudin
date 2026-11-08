@@ -341,6 +341,12 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe('Override the default model used by Claudin'),
+      fallbackModel: z
+        .string()
+        .optional()
+        .describe(
+          'Model the main loop switches to when its own is overloaded, keeps failing with server errors, or is rate-limited for long; it stays on it for 10 minutes. "default" names the default model. The --fallback-model flag overrides it.',
+        ),
       // Enterprise allowlist of models
       availableModels: z
         .array(z.string())

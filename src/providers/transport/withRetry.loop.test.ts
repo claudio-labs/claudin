@@ -452,33 +452,66 @@ describe('withRetry - the 529 streak', () => {
     expect(r.error).toBeInstanceOf(FallbackTriggeredError)
   })
 
-  test('the gate: a non-Opus primary without FALLBACK_FOR_ALL_PRIMARY_MODELS never falls back', async () => {
+  test('a configured fallback counts the streak for any primary, without FALLBACK_FOR_ALL_PRIMARY_MODELS', async () => {
+    const r = await run([overloaded(), overloaded(), overloaded()], { model: 'gpt-5', fallbackModel: 'gpt-5-mini', maxRetries: 4 })
+    expect(r.calls).toHaveLength(3)
+    expect(r.error).toBeInstanceOf(FallbackTriggeredError)
+    expect((r.error as FallbackTriggeredError).reason).toBe('overloaded')
+  })
+
+  test('the gate without a fallback: a non-Opus primary retries all the way, no REPEATED_529', async () => {
     const steps = [overloaded(), overloaded(), overloaded(), overloaded(), overloaded()]
-    const r = await run(steps, { model: 'gpt-5', fallbackModel: 'gpt-5-mini', maxRetries: 4 })
-    // Plain retries all the way: no fallback, no REPEATED_529.
+    const r = await run(steps, { model: 'gpt-5', maxRetries: 4 })
     expect(r.calls).toHaveLength(5)
     expect(r.yielded).toHaveLength(4)
     expect(originalOf(r.error)).toBe(steps[4])
   })
 
-  test('the gate: a non-custom Opus primary falls back for a non-subscriber', async () => {
+  test('the gate without a fallback: a non-custom Opus primary stops at REPEATED_529 for a non-subscriber', async () => {
     const opus = getModelStrings().opus47
     expect(isNonCustomOpusModel(opus)).toBe(true)
-    const r = await run([overloaded(), overloaded(), overloaded(), overloaded()], {
-      model: opus,
-      fallbackModel: 'gpt-5-mini',
-      maxRetries: 3,
-    })
+    const steps = [overloaded(), overloaded(), overloaded(), overloaded()]
+    const r = await run(steps, { model: opus, maxRetries: 3 })
     if (isClaudeAISubscriber()) {
       // Only reachable when another suite has mock.module'd auth.js to a
       // subscriber: the gate stays shut and the loop just runs out.
       expect(r.calls).toHaveLength(4)
-      expect(r.error).toBeInstanceOf(CannotRetryError)
+      expect(originalOf(r.error)).toBe(steps[3])
     } else {
       expect(r.calls).toHaveLength(3)
-      expect(r.error).toBeInstanceOf(FallbackTriggeredError)
-      expect((r.error as FallbackTriggeredError).originalModel).toBe(opus)
+      expect((originalOf(r.error) as Error).message).toBe(REPEATED_529_ERROR_MESSAGE)
     }
+  })
+
+  test('server errors that outlast every retry fall back, naming the reason', async () => {
+    const r = await run([apiError(503, 'a'), apiError(502, 'b'), apiError(500, 'c')], { fallbackModel: 'gpt-5-mini', maxRetries: 2 })
+    expect(r.calls).toHaveLength(3)
+    expect(r.yielded).toHaveLength(2)
+    expect(r.error).toBeInstanceOf(FallbackTriggeredError)
+    expect((r.error as FallbackTriggeredError).reason).toBe('server_error')
+  })
+
+  test('a 5xx the server says not to retry falls back at once', async () => {
+    const r = await run([apiError(500, 'no', { ...ZERO_DELAY, 'x-should-retry': 'false' })], { fallbackModel: 'gpt-5-mini' })
+    expect(r.calls).toHaveLength(1)
+    expect((r.error as FallbackTriggeredError).reason).toBe('server_error')
+  })
+
+  test('a rate limit with a distant reset falls back instead of ending the turn', async () => {
+    const r = await run([apiError(429, 'rate limited', { 'retry-after': '7200' })], { fallbackModel: 'gpt-5-mini' })
+    expect(r.calls).toHaveLength(1)
+    expect(r.error).toBeInstanceOf(FallbackTriggeredError)
+    expect((r.error as FallbackTriggeredError).reason).toBe('rate_limited')
+  })
+
+  test('auth, bad requests and billing exhaustion never fall back', async () => {
+    for (const e of [apiError(400, 'messages: invalid role "system"'), apiError(429, 'You exceeded your current quota')]) {
+      const r = await run([e], { fallbackModel: 'gpt-5-mini' })
+      expect(originalOf(r.error)).toBe(e)
+    }
+    const forbidden = apiError(403, 'forbidden')
+    const r = await run([forbidden, forbidden, forbidden, forbidden], { fallbackModel: 'gpt-5-mini' })
+    expect(r.error).not.toBeInstanceOf(FallbackTriggeredError)
   })
 
   test('a background query source bails on the first 529, fallback or not', async () => {

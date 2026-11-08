@@ -9,6 +9,7 @@ import {
   BASE_DELAY_MS,
   CannotRetryError,
   FallbackTriggeredError,
+  fallbackReasonFor,
   getDefaultMaxRetries,
   getRetryDelay,
   is529Error,
@@ -235,5 +236,35 @@ describe('the error classes', () => {
     expect(e.originalModel).toBe('a')
     expect(e.fallbackModel).toBe('b')
     expect(e.message).toBe('Model fallback triggered: a -> b')
+  })
+})
+
+describe('fallbackReasonFor', () => {
+  test('overload, at any point', () => {
+    expect(fallbackReasonFor(apiError(529, 'Overloaded'), false)).toBe('overloaded')
+  })
+
+  test('server and connection errors', () => {
+    expect(fallbackReasonFor(apiError(503, 'unavailable'), true)).toBe('server_error')
+    expect(fallbackReasonFor(apiError(500, 'no'), false)).toBe('server_error')
+    expect(fallbackReasonFor(new APIConnectionError({ message: 'Connection error.' }), true)).toBe('server_error')
+  })
+
+  test('a rate limit only when it is long or outlasted the retries', () => {
+    expect(fallbackReasonFor(apiError(429, 'slow down', { 'retry-after': '7200' }), false)).toBe('rate_limited')
+    expect(fallbackReasonFor(apiError(429, 'slow down', { 'retry-after': '1' }), true)).toBe('rate_limited')
+    expect(fallbackReasonFor(apiError(429, 'slow down', { 'retry-after': '1' }), false)).toBeNull()
+  })
+
+  test('never auth, a bad request, a status-less error or a non-SDK error', () => {
+    expect(fallbackReasonFor(apiError(401, 'unauthorized'), true)).toBeNull()
+    expect(fallbackReasonFor(apiError(400, 'bad'), true)).toBeNull()
+    expect(fallbackReasonFor(apiError(undefined, 'odd'), true)).toBeNull()
+    expect(fallbackReasonFor(new Error('boom'), true)).toBeNull()
+  })
+
+  test('the error carries its reason, overloaded by default', () => {
+    expect(new FallbackTriggeredError('a', 'b').reason).toBe('overloaded')
+    expect(new FallbackTriggeredError('a', 'b', 'rate_limited').reason).toBe('rate_limited')
   })
 })
