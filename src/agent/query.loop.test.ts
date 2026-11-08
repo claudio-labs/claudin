@@ -1028,7 +1028,7 @@ describe('query loop: FallbackTriggeredError', () => {
   }
 
   const warning = (primary: string, why: string) =>
-    `Switched to ${renderModelName(FALLBACK)}: ${renderModelName(primary)} ${why}. Staying on it for 10 minutes.`
+    `Switched to ${renderModelName(FALLBACK)}: ${renderModelName(primary)} ${why}. Staying on it for 10 minutes (/model to switch back).`
 
   test('the request is retried on the fallback model with a warning', async () => {
     const probe = probeTool('Probe')
@@ -1054,6 +1054,7 @@ describe('query loop: FallbackTriggeredError', () => {
 
   test.each([
     ['server_error', 'kept failing with server errors'],
+    ['unreachable', 'could not be reached'],
     ['rate_limited', 'hit a rate limit'],
   ] as const)('a %s fallback says why', async (reason, why) => {
     const run = await drive({
@@ -1108,7 +1109,7 @@ describe('query loop: FallbackTriggeredError', () => {
       steps: [
         async function* () {
           yield* []
-          throw new FallbackTriggeredError(MODEL, FALLBACK)
+          throw new FallbackTriggeredError(MODEL, FALLBACK, 'overloaded')
         },
         reply(toolUse('Probe')),
         reply(text('All finished.')),

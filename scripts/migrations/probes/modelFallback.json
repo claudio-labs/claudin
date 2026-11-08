@@ -4,10 +4,34 @@
     "src/providers/transport/withRetry.classify.test.ts",
     "src/agent/query.loop.test.ts",
     "src/providers/model/fallbackModel.test.ts",
+    "src/providers/model/fallbackModel.allowlist.test.ts",
     "src/providers/model/fallbackHold.test.ts"
   ],
   "source": "src/providers/transport/withRetry.ts",
   "probes": [
+    {
+      "name": "review B3: a fallback outside availableModels is ignored",
+      "source": "src/providers/model/fallbackModel.ts",
+      "find": "  return deps.isAllowed(raw) ? deps.parse(raw) : undefined\n",
+      "replace": "  return deps.parse(raw)\n"
+    },
+    {
+      "name": "review: /model ends the hold",
+      "source": "src/providers/model/fallbackHold.ts",
+      "find": "export function clearFallbackHolds(): void {\n  holds.clear()\n}\n",
+      "replace": "export function clearFallbackHolds(): void {}\n"
+    },
+    {
+      "name": "review: an unreachable endpoint has its own reason",
+      "find": "  if (isSdkApiConnectionError(error)) return 'unreachable'\n",
+      "replace": "  if (isSdkApiConnectionError(error)) return 'server_error'\n"
+    },
+    {
+      "name": "review: the warning says how to go back",
+      "source": "src/agent/query.ts",
+      "find": " minutes (/model to switch back).`,\n",
+      "replace": " minutes.`,\n"
+    },
     {
       "name": "a configured fallback counts the 529 streak for any model",
       "find": "        (options.fallbackModel ||\n",
@@ -15,13 +39,13 @@
     },
     {
       "name": "spent retries fall back",
-      "find": "        const reason = options.fallbackModel ? fallbackReasonFor(error, true) : null\n",
-      "replace": "        const reason = null\n"
+      "find": "        const fallback = fallbackSwitchFor(error, options, true)\n",
+      "replace": "        const fallback = null\n"
     },
     {
       "name": "an error not worth retrying falls back",
-      "find": "        const reason = options.fallbackModel ? fallbackReasonFor(error, false) : null\n",
-      "replace": "        const reason = null\n"
+      "find": "        const fallback = fallbackSwitchFor(error, options, false)\n",
+      "replace": "        const fallback = null\n"
     },
     {
       "name": "a rate limit that outlasted the retries qualifies",

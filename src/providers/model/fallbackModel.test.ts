@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { SettingsSchema } from 'src/platform/settings/types.js'
 import { getFallbackModelOverride, setFallbackModelOverride } from 'src/platform/bootstrap/state.js'
 import {
   type FallbackModelDeps,
@@ -8,12 +9,13 @@ import {
   getFallbackModel,
 } from 'src/providers/model/fallbackModel.js'
 
-function deps(flag?: string, setting?: string): FallbackModelDeps {
+function deps(flag?: string, setting?: string, allowed: (model: string) => boolean = () => true): FallbackModelDeps {
   return {
     flag: () => flag,
     setting: () => setting,
     defaultModel: () => 'claude-opus-5-5',
     parse: model => (model === 'sonnet' ? 'claude-sonnet-5-5' : model),
+    isAllowed: allowed,
   }
 }
 
@@ -34,6 +36,13 @@ describe('getConfiguredFallbackModel', () => {
   test('"default" names the default main model', () => {
     expect(getConfiguredFallbackModel(deps('default'))).toBe('claude-opus-5-5')
     expect(getConfiguredFallbackModel(deps(undefined, ' default '))).toBe('claude-opus-5-5')
+  })
+
+  test('one outside the availableModels allowlist is ignored; "default" always passes', () => {
+    const onlySonnet = (model: string) => model === 'sonnet'
+    expect(getConfiguredFallbackModel(deps('opus', undefined, onlySonnet))).toBeUndefined()
+    expect(getConfiguredFallbackModel(deps(undefined, 'sonnet', onlySonnet))).toBe('claude-sonnet-5-5')
+    expect(getConfiguredFallbackModel(deps('default', undefined, () => false))).toBe('claude-opus-5-5')
   })
 })
 
@@ -79,5 +88,13 @@ describe('wiring', () => {
 
   test('sub-agents get no fallback', () => {
     expect(src('tools/AgentTool/runAgent.ts')).not.toContain('fallbackModel')
+  })
+})
+
+describe('the fallbackModel setting', () => {
+  test('survives settings parsing: a key the schema lacks would be stripped', () => {
+    const parsed = SettingsSchema().safeParse({ fallbackModel: 'sonnet' })
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.fallbackModel).toBe('sonnet')
   })
 })

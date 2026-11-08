@@ -217,13 +217,17 @@ export class CannotRetryError extends Error {
 }
 
 /** What made the primary model give way: the warning the loop prints names it. */
-export type FallbackReason = 'overloaded' | 'server_error' | 'rate_limited'
+export type FallbackReason =
+  | 'overloaded'
+  | 'server_error'
+  | 'unreachable'
+  | 'rate_limited'
 
 export class FallbackTriggeredError extends Error {
   constructor(
     public readonly originalModel: string,
     public readonly fallbackModel: string,
-    public readonly reason: FallbackReason = 'overloaded',
+    public readonly reason: FallbackReason,
   ) {
     super(`Model fallback triggered: ${originalModel} -> ${fallbackModel}`)
     this.name = 'FallbackTriggeredError'
@@ -233,23 +237,36 @@ export class FallbackTriggeredError extends Error {
 /**
  * Why a configured fallback model should take over from `error` where the
  * loop gives up on it — `exhausted` when the retries are spent, otherwise the
- * error was not worth retrying. Overload, server and connection errors
- * qualify, and a rate limit that is long or outlasted every retry (limits are
- * per model). Auth, bad requests, billing exhaustion and aborts never do:
- * another model behind the same key would fail the same way.
+ * error was not worth retrying. Overload, server errors and an unreachable
+ * endpoint qualify, and a rate limit that is long or outlasted every retry
+ * (limits are per model). Auth, bad requests, billing exhaustion and aborts
+ * never do: another model behind the same key would fail the same way.
  */
 export function fallbackReasonFor(
   error: unknown,
   exhausted: boolean,
 ): FallbackReason | null {
   if (is529Error(error)) return 'overloaded'
-  if (isSdkApiConnectionError(error)) return 'server_error'
+  if (isSdkApiConnectionError(error)) return 'unreachable'
   if (!isSdkApiError(error)) return null
   if (error.status === 429) {
     return exhausted || isLongRateLimit(error) ? 'rate_limited' : null
   }
   return error.status !== undefined && error.status >= 500
     ? 'server_error'
+    : null
+}
+
+/** The switch to the configured fallback for `error`, or null when there is none or it does not qualify. */
+function fallbackSwitchFor(
+  error: unknown,
+  options: RetryOptions,
+  exhausted: boolean,
+): FallbackTriggeredError | null {
+  const fallback = options.fallbackModel
+  const reason = fallback ? fallbackReasonFor(error, exhausted) : null
+  return fallback && reason
+    ? new FallbackTriggeredError(options.model, fallback, reason)
     : null
 }
 
@@ -459,6 +476,7 @@ export async function* withRetry<T>(
             throw new FallbackTriggeredError(
               options.model,
               options.fallbackModel,
+              'overloaded',
             )
           }
 
@@ -473,10 +491,8 @@ export async function* withRetry<T>(
 
       // Only retry if the error indicates we should
       if (attempt > maxRetries) {
-        const reason = options.fallbackModel ? fallbackReasonFor(error, true) : null
-        if (reason) {
-          throw new FallbackTriggeredError(options.model, options.fallbackModel!, reason)
-        }
+        const fallback = fallbackSwitchFor(error, options, true)
+        if (fallback) throw fallback
         throw new CannotRetryError(error, retryContext)
       }
 
@@ -487,10 +503,8 @@ export async function* withRetry<T>(
         !handledCloudAuthError &&
         (!isSdkApiError(error) || !shouldRetry(error, attempt))
       ) {
-        const reason = options.fallbackModel ? fallbackReasonFor(error, false) : null
-        if (reason) {
-          throw new FallbackTriggeredError(options.model, options.fallbackModel!, reason)
-        }
+        const fallback = fallbackSwitchFor(error, options, false)
+        if (fallback) throw fallback
         throw new CannotRetryError(error, retryContext)
       }
 

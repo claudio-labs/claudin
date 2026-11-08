@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import {
   _resetFallbackHoldsForTesting,
+  clearFallbackHolds,
   FALLBACK_HOLD_MS,
   holdFallback,
   isFallbackHeld,
@@ -38,5 +41,23 @@ describe('the fallback hold', () => {
   test('the default clock is now', () => {
     holdFallback('opus', 'sonnet')
     expect(isFallbackHeld('opus', 'sonnet')).toBe(true)
+  })
+})
+
+describe('/model ends the hold', () => {
+  test('clearFallbackHolds releases every pair', () => {
+    holdFallback('opus', 'sonnet', 0)
+    holdFallback('gpt-5', 'gpt-5-mini', 0)
+    clearFallbackHolds()
+    expect(isFallbackHeld('opus', 'sonnet', 1)).toBe(false)
+    expect(isFallbackHeld('gpt-5', 'gpt-5-mini', 1)).toBe(false)
+  })
+
+  test('both /model paths clear it right after setting the model', () => {
+    const source = readFileSync(join(import.meta.dir, '..', '..', 'commands', 'model', 'model.tsx'), 'utf8')
+    const after = (field: string) =>
+      `        ${field},\n        mainLoopModelForSession: null\n      }));\n      // A model the user picks is the one the loop runs on (fallbackHold.ts).\n      clearFallbackHolds();\n`
+    expect(source).toContain(after('mainLoopModel: model'))
+    expect(source).toContain(after('mainLoopModel: modelValue'))
   })
 })

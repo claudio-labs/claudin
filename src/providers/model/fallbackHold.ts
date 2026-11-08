@@ -38,3 +38,11 @@ export function isFallbackHeld(
 export function _resetFallbackHoldsForTesting(): void {
   holds.clear()
 }
+
+/**
+ * The user picked a model (/model): whatever they chose is what the loop
+ * runs on, the primary they gave up on included, so every hold ends.
+ */
+export function clearFallbackHolds(): void {
+  holds.clear()
+}

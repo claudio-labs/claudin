@@ -232,7 +232,7 @@ describe('the error classes', () => {
   })
 
   test('FallbackTriggeredError names both models', () => {
-    const e = new FallbackTriggeredError('a', 'b')
+    const e = new FallbackTriggeredError('a', 'b', 'overloaded')
     expect(e.originalModel).toBe('a')
     expect(e.fallbackModel).toBe('b')
     expect(e.message).toBe('Model fallback triggered: a -> b')
@@ -244,10 +244,10 @@ describe('fallbackReasonFor', () => {
     expect(fallbackReasonFor(apiError(529, 'Overloaded'), false)).toBe('overloaded')
   })
 
-  test('server and connection errors', () => {
+  test('server errors, and an endpoint that cannot be reached', () => {
     expect(fallbackReasonFor(apiError(503, 'unavailable'), true)).toBe('server_error')
     expect(fallbackReasonFor(apiError(500, 'no'), false)).toBe('server_error')
-    expect(fallbackReasonFor(new APIConnectionError({ message: 'Connection error.' }), true)).toBe('server_error')
+    expect(fallbackReasonFor(new APIConnectionError({ message: 'Connection error.' }), true)).toBe('unreachable')
   })
 
   test('a rate limit only when it is long or outlasted the retries', () => {
@@ -263,8 +263,8 @@ describe('fallbackReasonFor', () => {
     expect(fallbackReasonFor(new Error('boom'), true)).toBeNull()
   })
 
-  test('the error carries its reason, overloaded by default', () => {
-    expect(new FallbackTriggeredError('a', 'b').reason).toBe('overloaded')
+  test('the error carries the reason it was thrown with', () => {
+    expect(new FallbackTriggeredError('a', 'b', 'unreachable').reason).toBe('unreachable')
     expect(new FallbackTriggeredError('a', 'b', 'rate_limited').reason).toBe('rate_limited')
   })
 })

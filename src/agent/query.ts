@@ -147,6 +147,7 @@ const MAX_CONTINUATION_NUDGES = 3
 const FALLBACK_REASON_TEXT: Record<FallbackReason, string> = {
   overloaded: 'is overloaded',
   server_error: 'kept failing with server errors',
+  unreachable: 'could not be reached',
   rate_limited: 'hit a rate limit',
 }
 
@@ -673,7 +674,7 @@ async function* queryLoop(
             // Yield system message about fallback — use 'warning' level so
             // users see the notification without needing verbose mode
             yield createSystemMessage(
-              `Switched to ${renderModelName(fallbackModel)}: ${renderModelName(innerError.originalModel)} ${FALLBACK_REASON_TEXT[innerError.reason]}. Staying on it for ${FALLBACK_HOLD_MS / 60_000} minutes.`,
+              `Switched to ${renderModelName(fallbackModel)}: ${renderModelName(innerError.originalModel)} ${FALLBACK_REASON_TEXT[innerError.reason]}. Staying on it for ${FALLBACK_HOLD_MS / 60_000} minutes (/model to switch back).`,
               'warning',
             )
 
