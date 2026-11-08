@@ -1,0 +1,75 @@
+{
+  "test": [
+    "src/tools/shared/elisionGuard.test.ts",
+    "src/tools/FileEditTool/FileEditTool.elisionGuard.test.ts"
+  ],
+  "source": "src/tools/shared/elisionGuard.ts",
+  "probes": [
+    {
+      "name": "guard: a bare ellipsis comment counts",
+      "find": "  if (BARE_ELLIPSIS_RE.test(body)) return true\n",
+      "replace": "  if (false) return true\n"
+    },
+    {
+      "name": "guard: an edge ellipsis needs a placeholder word",
+      "find": "  return EDGE_ELLIPSIS_RE.test(body) && PLACEHOLDER_WORD_RE.test(body)\n",
+      "replace": "  return EDGE_ELLIPSIS_RE.test(body)\n"
+    },
+    {
+      "name": "guard: code after a closer is not comment-only",
+      "find": "  if (body.includes('*/') || body.includes('-->')) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: a line the old text holds is kept",
+      "find": "    if (oldLines.has(line.trim())) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: prose files are skipped",
+      "find": "  if (PROSE_EXTENSIONS.has(extname(filePath).toLowerCase())) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: the killswitch",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_ELISION_GUARD)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "Edit refuses with the guard",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "    const elision = findElisionPlaceholder(new_string, old_string, fullFilePath)\n",
+      "replace": "    const elision = null as ReturnType<typeof findElisionPlaceholder>\n"
+    },
+    {
+      "name": "Write refuses an existing file's elision",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "    return elisionVerdict(content, fileText, fullFilePath)\n",
+      "replace": "    return { result: true }\n"
+    },
+    {
+      "name": "Write refuses a new file's elision",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "        return elisionVerdict(content, '', fullFilePath)\n",
+      "replace": "        return { result: true }\n"
+    },
+    {
+      "name": "Patch refuses the file that carries it",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  if (elision) return problem(elisionRefusal(`${APPLY_PATCH_TOOL_NAME}: an added line of ${rel}`, elision))\n",
+      "replace": ""
+    },
+    {
+      "name": "Patch checks an Add File against nothing",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "      const found = findElisionPlaceholder(hunk.contents, '', absPath)\n",
+      "replace": "      const found = findElisionPlaceholder(hunk.contents, hunk.contents, absPath)\n"
+    },
+    {
+      "name": "Patch checks an Update chunk against its old side",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "        const found = findElisionPlaceholder(chunk.newLines.join('\\n'), chunk.oldLines.join('\\n'), absPath)\n",
+      "replace": "        const found = findElisionPlaceholder(chunk.newLines.join('\\n'), chunk.newLines.join('\\n'), absPath)\n"
+    }
+  ]
+}
