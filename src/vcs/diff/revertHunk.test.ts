@@ -242,6 +242,13 @@ describe('planHunkRevert', () => {
     })
   })
 
+  test('names the line of the first change, past the leading context', () => {
+    const hunk = { oldStart: 32, oldLines: 7, newStart: 32, newLines: 7, lines: [' a', ' b', ' c', '-d', '+e', ' f', ' g'] }
+    expect(planHunkRevert('working', tracked('x.ts'), [hunk], hunk)).toMatchObject({
+      question: 'Revert the hunk at line 35 (+1 -1)?',
+    })
+  })
+
   test.each(['turn', 'stash'] as const)('points a %s source at the working tree', source => {
     expect(planHunkRevert(source, tracked('x.ts'), [HUNK], HUNK)).toEqual({
       kind: 'notice',

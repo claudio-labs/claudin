@@ -93,8 +93,18 @@ export function planHunkRevert(
   return {
     kind: 'confirm',
     hunk: atCursor,
-    question: `Revert the hunk at line ${atCursor.newStart} (+${added} -${removed})?`,
+    question: `Revert the hunk at line ${firstChangedLine(atCursor)} (+${added} -${removed})?`,
   }
+}
+
+/** The new-file line of the hunk's first change: its leading context skipped. */
+function firstChangedLine(hunk: StructuredPatchHunk): number {
+  let line = hunk.newStart
+  for (const raw of hunk.lines) {
+    if (raw.startsWith('+') || raw.startsWith('-')) break
+    line += 1
+  }
+  return line
 }
 
 /** One file's hunks as git prints them, `\ No newline at end of file` markers kept. */
