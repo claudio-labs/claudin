@@ -156,6 +156,27 @@ describe('commitStagedChanges', () => {
     expect(backups['to.txt']?.backupFileName).toBeNull()
   })
 
+  test('fingerprints what each change left, for the rewind conflict check: null where no file remains', async () => {
+    const a = file('a.txt', 'one\n')
+    const gone = file('gone.txt', 'bye\n')
+    const from = file('from.txt', 'body\n')
+    await commitStagedChanges(
+      [
+        stageContentReplacement(a, 'two\n'),
+        change('delete', gone, 'bye\n', ''),
+        change('move', from, 'body\n', 'body\n', join(dir, 'to.txt')),
+      ],
+      ctx,
+      randomUUID(),
+    )
+    const lastWrites = history.lastWrites ?? {}
+    expect(Object.keys(lastWrites).sort()).toEqual(['a.txt', 'from.txt', 'gone.txt', 'to.txt'])
+    expect(lastWrites['a.txt']).toMatch(/^[0-9a-f]{64}$/)
+    expect(lastWrites['to.txt']).toMatch(/^[0-9a-f]{64}$/)
+    expect(lastWrites['gone.txt']).toBeNull()
+    expect(lastWrites['from.txt']).toBeNull()
+  })
+
   test('takes no backup with file history off', async () => {
     process.env.CLAUDIN_DISABLE_FILE_CHECKPOINTING = '1'
     const a = file('a.txt', 'one\n')

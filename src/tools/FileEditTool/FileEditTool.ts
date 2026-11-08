@@ -41,6 +41,7 @@ import {
 } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
+  fileHistoryRecordWrite,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
 import {
@@ -645,6 +646,7 @@ export const FileEditTool = buildTool({
 
     // 5. Write to disk
     writeTextContent(absoluteFilePath, updatedFile, encoding, endings)
+    await fileHistoryRecordWrite(updateFileHistoryState, absoluteFilePath)
 
     // Notify LSP servers about file modification (didChange) and save (didSave)
     const lspManager = getLspServerManager()

@@ -48,6 +48,12 @@ export type FileHistoryState = {
   // old snapshots are evicted.  Used by useGitDiffStats as an activity signal
   // (snapshots.length plateaus once the cap is reached).
   snapshotSequence: number
+  // What the agent's tools left on disk, per tracking path: the sha256 of the
+  // file right after its last write (null: the write deleted it). A rewind
+  // compares the disk against it to find the files someone else changed since
+  // (fileHistoryFindConflicts). Kept in memory only, so after a resume no file
+  // has one and a rewind overwrites as it always did.
+  lastWrites?: Record<string, string | null>
 }
 
 const MAX_SNAPSHOTS = 100
@@ -182,6 +188,36 @@ export async function fileHistoryTrackEdit(
       return state
     }
   })
+}
+
+/**
+ * Records what an agent write left on disk, so a later rewind can tell the
+ * file apart from one someone changed since. Call it after the write, beside
+ * the fileHistoryTrackEdit that preceded it; a file that is not tracked is
+ * ignored.
+ */
+export async function fileHistoryRecordWrite(
+  updateFileHistoryState: (
+    updater: (prev: FileHistoryState) => FileHistoryState,
+  ) => void,
+  filePath: string,
+): Promise<void> {
+  if (!fileHistoryEnabled()) {
+    return
+  }
+  let fingerprint: string | null
+  try {
+    fingerprint = await diskFingerprint(filePath)
+  } catch (error) {
+    logError(error)
+    return
+  }
+  const trackingPath = maybeShortenFilePath(filePath)
+  updateFileHistoryState(state =>
+    state.trackedFiles.has(trackingPath)
+      ? { ...state, lastWrites: { ...state.lastWrites, [trackingPath]: fingerprint } }
+      : state,
+  )
 }
 
 /**
@@ -326,19 +362,26 @@ export async function fileHistoryMakeSnapshot(
 
 /**
  * Rewinds the file system to a previous snapshot.
+ *
+ * `keep` holds absolute paths left as they are — the conflicts the user chose
+ * to keep (fileHistoryFindConflicts). A file the rewind rewrites gets its
+ * write fingerprint refreshed, so rewinding again does not take the rewind's
+ * own result for someone else's change.
  */
 export async function fileHistoryRewind(
   updateFileHistoryState: (
     updater: (prev: FileHistoryState) => FileHistoryState,
   ) => void,
   messageId: UUID,
+  options: { keep?: ReadonlySet<string> } = {},
 ): Promise<void> {
   if (!fileHistoryEnabled()) {
     return
   }
 
-  // Rewind is a pure filesystem side-effect and does not mutate
-  // FileHistoryState. Capture state with a no-op updater, then do IO async.
+  // Rewind is a filesystem side-effect; the only state it touches is the
+  // fingerprints of the files it rewrote. Capture state with a no-op updater,
+  // then do IO async.
   let captured: FileHistoryState | undefined
   updateFileHistoryState(state => {
     captured = state
@@ -358,7 +401,30 @@ export async function fileHistoryRewind(
     logForDebugging(
       `FileHistory: [Rewind] Rewinding to snapshot for ${messageId}`,
     )
-    const filesChanged = await applySnapshot(captured, targetSnapshot)
+    const filesChanged = await applySnapshot(
+      captured,
+      targetSnapshot,
+      options.keep,
+    )
+    const lastWrites = captured.lastWrites
+    if (lastWrites) {
+      const refreshed: Record<string, string | null> = {}
+      for (const filePath of filesChanged) {
+        const trackingPath = maybeShortenFilePath(filePath)
+        if (!(trackingPath in lastWrites)) continue
+        try {
+          refreshed[trackingPath] = await diskFingerprint(filePath)
+        } catch (error) {
+          logError(error)
+        }
+      }
+      if (Object.keys(refreshed).length > 0) {
+        updateFileHistoryState(state => ({
+          ...state,
+          lastWrites: { ...state.lastWrites, ...refreshed },
+        }))
+      }
+    }
 
     logForDebugging(`FileHistory: [Rewind] Finished rewinding to ${messageId}`)
   } catch (error) {
@@ -376,6 +442,53 @@ export function fileHistoryCanRestore(
   }
 
   return state.snapshots.some(snapshot => snapshot.messageId === messageId)
+}
+
+/**
+ * The files a rewind to `messageId` would overwrite although they changed
+ * since the agent last wrote them — by hand, a formatter, git, a Bash command.
+ * Absolute paths, for the confirmation to list and fileHistoryRewind's `keep`.
+ * A file with no write fingerprint (written before a resume, or never written
+ * through a tool) is not a conflict.
+ */
+export async function fileHistoryFindConflicts(
+  state: FileHistoryState,
+  messageId: UUID,
+): Promise<string[]> {
+  const lastWrites = state.lastWrites
+  if (!fileHistoryEnabled() || !lastWrites) {
+    return []
+  }
+  const targetSnapshot = state.snapshots.findLast(
+    snapshot => snapshot.messageId === messageId,
+  )
+  if (!targetSnapshot) {
+    return []
+  }
+  const conflicts: string[] = []
+  for (const trackingPath of state.trackedFiles) {
+    if (!(trackingPath in lastWrites)) continue
+    try {
+      const filePath = maybeExpandFilePath(trackingPath)
+      const onDisk = await diskFingerprint(filePath)
+      if (onDisk === lastWrites[trackingPath]) continue
+      // Only a file the rewind would actually change: the same choice
+      // applySnapshot makes.
+      const targetBackup = targetSnapshot.trackedFileBackups[trackingPath]
+      const backupFileName: BackupFileName | undefined = targetBackup
+        ? targetBackup.backupFileName
+        : getBackupFileNameFirstVersion(trackingPath, state)
+      if (backupFileName === undefined) continue
+      const rewindChangesIt =
+        backupFileName === null
+          ? onDisk !== null
+          : await checkOriginFileChanged(filePath, backupFileName)
+      if (rewindChangesIt) conflicts.push(filePath)
+    } catch (error) {
+      logError(error)
+    }
+  }
+  return conflicts
 }
 
 /**
@@ -502,11 +615,13 @@ export async function fileHistoryHasAnyChanges(
 async function applySnapshot(
   state: FileHistoryState,
   targetSnapshot: FileHistorySnapshot,
+  keep?: ReadonlySet<string>,
 ): Promise<string[]> {
   const filesChanged: string[] = []
   for (const trackingPath of state.trackedFiles) {
     try {
       const filePath = maybeExpandFilePath(trackingPath)
+      if (keep?.has(filePath)) continue
       const targetBackup = targetSnapshot.trackedFileBackups[trackingPath]
 
       const backupFileName: BackupFileName | undefined = targetBackup
@@ -1051,6 +1166,16 @@ async function readFileAsyncOrNull(path: string): Promise<string | null> {
     return await readFile(path, 'utf-8')
   } catch {
     return null
+  }
+}
+
+/** sha256 of the file's bytes, or null when it does not exist. */
+async function diskFingerprint(filePath: string): Promise<string | null> {
+  try {
+    return createHash('sha256').update(await readFile(filePath)).digest('hex')
+  } catch (e: unknown) {
+    if (isENOENT(e)) return null
+    throw e
   }
 }
 

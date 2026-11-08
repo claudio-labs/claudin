@@ -5,7 +5,7 @@ import figures from 'figures';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppState } from 'src/terminal/state/AppState.js';
-import { type DiffStats, fileHistoryCanRestore, fileHistoryEnabled, fileHistoryGetDiffStats } from 'src/shared/fs/fileHistory.js';
+import { type DiffStats, fileHistoryCanRestore, fileHistoryEnabled, fileHistoryFindConflicts, fileHistoryGetDiffStats } from 'src/shared/fs/fileHistory.js';
 import { logError } from 'src/shared/log.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Text } from 'src/terminal/ink.js';
@@ -28,6 +28,7 @@ import { count } from 'src/shared/data/array.js';
 import { formatRelativeTimeAgo, truncate } from 'src/shared/text/format.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
+import { type RewindConflictChoice, RewindConflictStep } from 'src/agent/ui/RewindConflictStep.js';
 type RestoreOption = 'both' | 'conversation' | 'code' | 'summarize' | 'summarize_up_to' | 'nevermind';
 function isSummarizeOption(option: RestoreOption | null): option is 'summarize' | 'summarize_up_to' {
   return option === 'summarize' || option === 'summarize_up_to';
@@ -36,7 +37,8 @@ type Props = {
   messages: Message[];
   onPreRestore: () => void;
   onRestoreMessage: (message: UserMessage) => Promise<void>;
-  onRestoreCode: (message: UserMessage) => Promise<void>;
+  /** `keep`: absolute paths the rewind leaves as they are (the conflicts the user kept). */
+  onRestoreCode: (message: UserMessage, keep?: ReadonlySet<string>) => Promise<void>;
   onSummarize: (message: UserMessage, feedback?: string, direction?: PartialCompactDirection) => Promise<void>;
   onClose: () => void;
   /** Skip pick-list, land on confirm. Caller ran skip-check first. Esc closes fully (no back-to-list). */
@@ -71,11 +73,18 @@ export function MessageSelector({
   const hasMessagesToSelect = messageOptions.length > 1;
   const [messageToRestore, setMessageToRestore] = useState<UserMessage | undefined>(preselectedMessage);
   const [diffStatsForRestore, setDiffStatsForRestore] = useState<DiffStats | undefined>(undefined);
+  // Files restoring the code would overwrite although they changed since
+  // Claudin last wrote them (fileHistoryFindConflicts), and the code option
+  // waiting on the conflict step that asks about them.
+  const [conflictsForRestore, setConflictsForRestore] = useState<string[]>([]);
+  const [pendingCodeOption, setPendingCodeOption] = useState<'both' | 'code' | null>(null);
   useEffect(() => {
     if (!preselectedMessage || !isFileHistoryEnabled) return;
     let cancelled = false;
-    void fileHistoryGetDiffStats(fileHistory, preselectedMessage.uuid).then(stats => {
-      if (!cancelled) setDiffStatsForRestore(stats);
+    void Promise.all([fileHistoryGetDiffStats(fileHistory, preselectedMessage.uuid), fileHistoryFindConflicts(fileHistory, preselectedMessage.uuid)]).then(([stats, conflicts]) => {
+      if (cancelled) return;
+      setDiffStatsForRestore(stats);
+      setConflictsForRestore(conflicts);
     });
     return () => {
       cancelled = true;
@@ -152,9 +161,11 @@ export function MessageSelector({
       await restoreConversationDirectly(message_0);
       return;
     }
-    const diffStats = await fileHistoryGetDiffStats(fileHistory, message_0.uuid);
+    const [diffStats, conflicts] = await Promise.all([fileHistoryGetDiffStats(fileHistory, message_0.uuid), fileHistoryFindConflicts(fileHistory, message_0.uuid)]);
     setMessageToRestore(message_0);
     setDiffStatsForRestore(diffStats);
+    setConflictsForRestore(conflicts);
+    setPendingCodeOption(null);
   }
   async function onSelectRestoreOption(option: RestoreOption) {
     if (!messageToRestore) {
@@ -187,6 +198,28 @@ export function MessageSelector({
       }
       return;
     }
+    // Restoring code over files changed since Claudin's last edit asks first.
+    if ((option === 'code' || option === 'both') && conflictsForRestore.length > 0) {
+      setPendingCodeOption(option);
+      return;
+    }
+    await runRestore(option);
+  }
+  async function onConflictChoice(choice: RewindConflictChoice) {
+    const option = pendingCodeOption;
+    if (!option) return;
+    if (choice === 'back') {
+      setPendingCodeOption(null);
+      return;
+    }
+    await runRestore(option, choice === 'keep' ? new Set(conflictsForRestore) : undefined);
+    setPendingCodeOption(null);
+  }
+  async function runRestore(option: 'both' | 'conversation' | 'code', keep?: ReadonlySet<string>) {
+    if (!messageToRestore) {
+      setError('Message not found.');
+      return;
+    }
     onPreRestore();
     setIsRestoring(true);
     setError(undefined);
@@ -194,7 +227,7 @@ export function MessageSelector({
     let conversationError: Error | null = null;
     if (option === 'code' || option === 'both') {
       try {
-        await onRestoreCode(messageToRestore);
+        await onRestoreCode(messageToRestore, keep);
       } catch (error_2) {
         codeError = error_2 as Error;
         logError(codeError);
@@ -316,14 +349,14 @@ export function MessageSelector({
               </Text>
             </Box>
             <RestoreOptionDescription selectedRestoreOption={selectedRestoreOption} canRestoreCode={!!canRestoreCode_0} diffStatsForRestore={diffStatsForRestore} />
-            {isRestoring && isSummarizeOption(restoringOption) ? <Box flexDirection="row" gap={1}>
+            {pendingCodeOption !== null ? <RewindConflictStep files={conflictsForRestore} isDisabled={isRestoring} onChoose={choice => void onConflictChoice(choice)} /> : isRestoring && isSummarizeOption(restoringOption) ? <Box flexDirection="row" gap={1}>
                 <Spinner />
                 <Text>Summarizing…</Text>
               </Box> : <Select isDisabled={isRestoring} options={getRestoreOptions(!!canRestoreCode_0)} defaultFocusValue={canRestoreCode_0 ? 'both' : 'conversation'} onFocus={value => setSelectedRestoreOption(value as RestoreOption)} onChange={value_0 => onSelectRestoreOption(value_0 as RestoreOption)} onCancel={() => preselectedMessage ? onClose() : setMessageToRestore(undefined)} />}
             {canRestoreCode_0 && <Box marginBottom={1}>
                 <Text dimColor>
-                  {figures.warning} Rewinding does not affect files edited
-                  manually or via bash.
+                  {figures.warning} Rewinding restores only files Claudin's edit
+                  tools changed; a file edited only by hand or via bash is left alone.
                 </Text>
               </Box>}
           </>}

@@ -1,7 +1,7 @@
 import type { AssistantMessage } from 'src/shared/types/message.js';
 import { isENOENT } from 'src/shared/errors.js';
 import { detectFileEncoding, detectLineEndings, getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js';
-import { fileHistoryEnabled, fileHistoryTrackEdit } from 'src/shared/fs/fileHistory.js';
+import { fileHistoryEnabled, fileHistoryRecordWrite, fileHistoryTrackEdit } from 'src/shared/fs/fileHistory.js';
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
 import { expandPath } from 'src/shared/fs/path.js';
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js';
@@ -57,6 +57,7 @@ export async function applySedEdit(simulatedEdit: {
   // Detect line endings and write new content
   const endings = detectLineEndings(absoluteFilePath);
   writeTextContent(absoluteFilePath, newContent, encoding, endings);
+  await fileHistoryRecordWrite(toolUseContext.updateFileHistoryState, absoluteFilePath);
 
   // Notify VS Code about the file change
   notifyVscodeFileUpdated(absoluteFilePath, originalContent, newContent);

@@ -34,6 +34,7 @@ import { isENOENT } from 'src/shared/errors.js'
 import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
+  fileHistoryRecordWrite,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
@@ -410,6 +411,7 @@ export const FileWriteTool = buildTool({
     // files), which silently corrupted e.g. bash scripts with \r on Linux when
     // overwriting a CRLF file or when binaries in cwd poisoned the repo sample.
     writeTextContent(fullFilePath, content, enc, 'LF')
+    await fileHistoryRecordWrite(updateFileHistoryState, fullFilePath)
 
     // Notify LSP servers about file modification (didChange) and save (didSave)
     const lspManager = getLspServerManager()

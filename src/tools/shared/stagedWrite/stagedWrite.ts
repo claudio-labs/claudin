@@ -32,6 +32,7 @@ import { AbortError, isENOENT } from 'src/shared/errors.js'
 import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
+  fileHistoryRecordWrite,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
 import {
@@ -313,6 +314,12 @@ export async function commitStagedChanges(
       change.structuredPatch,
       change.type === 'add' ? change.newContent : undefined,
     )
+    // What the batch left on disk, for a later rewind's conflict check: a
+    // delete or a move's source leaves no file, which is recorded too.
+    await fileHistoryRecordWrite(updateFileHistoryState, change.absPath)
+    if (change.type === 'move') {
+      await fileHistoryRecordWrite(updateFileHistoryState, change.movePath!)
+    }
 
     if (change.type === 'delete') {
       readFileState.delete(change.absPath)
