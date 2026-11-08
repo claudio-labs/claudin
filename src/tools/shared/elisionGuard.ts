@@ -6,11 +6,15 @@
 // Edit, Write and Patch refuse it and the model sends the full code.
 //
 // A line counts only when it is a comment and nothing else, and its body is a
-// bare ellipsis or opens/closes with one while naming what it stands for — and
-// the old text does not already hold that line. A kept comment, a string
-// literal holding the marker (a test fixture) and prose files never trip it;
-// a literal comment gets through without its ellipsis, which the refusal says.
-// Killswitch: CLAUDIN_ELISION_GUARD=0.
+// bare ellipsis or opens/closes with one around a placeholder phrase
+// (`existing code`, `rest of the file`, `methods unchanged`, `same as before`,
+// `other functions` …) — and the old text does not already hold that line.
+// Single words do not count: `// Retry against the other replicas...` is
+// prose. Neither do doc-comment continuations (` *`, `///`, `//!`), where an
+// ellipsis is an example's body, string literals holding the marker (a test
+// fixture), kept comments or prose files. A literal comment gets through
+// without its ellipsis, which the refusal says. Killswitch:
+// CLAUDIN_ELISION_GUARD=0.
 import { extname } from 'path'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
@@ -30,14 +34,19 @@ const PROSE_EXTENSIONS = new Set([
   '.org',
 ])
 
-/** A line that is a comment and nothing else; group 1 is the comment's body. */
-const COMMENT_ONLY_RE = /^\s*(?:\/\/+|#+|--|;+|\/\*+|\*|<!--|\{\s*\/\*+)(.*)$/
+/** A line that is a comment and nothing else — not a doc-comment continuation; group 1 is its body. */
+const COMMENT_ONLY_RE = /^\s*(?:\/\/(?![/!])|#+|--|;+|\/\*+|<!--|\{\s*\/\*+)(.*)$/
 /** Comment closers trailing the body: `*\/`, `-->`, `*\/}`. */
 const COMMENT_CLOSER_RE = /\s*(?:\*+\/\s*\}?|-->)\s*$/
 const BARE_ELLIPSIS_RE = /^(?:\.{3,}|…)(?:\s*(?:\.{3,}|…))*$/
 const EDGE_ELLIPSIS_RE = /^(?:\.{3,}|…)|(?:\.{3,}|…)\)?$/
-const PLACEHOLDER_WORD_RE =
-  /\b(?:existing|rest of|remaining|unchanged|same|previous|other|omitted|elided|as before|etc)\b/i
+/** What a placeholder stands for: code, or a kind of member or part of a file. */
+const STANDS_FOR =
+  '(?:code|implementation|logic|content|jsx|markup|elements|methods|functions|helpers|imports|exports|tests|cases|fields|properties|props|columns|rows|keys|entries|options|styles|rules|sections|lines|handlers|routes|components|body|file|class|module|function|method|component|test|script|config|template|query|schema)'
+const PLACEHOLDER_PHRASE_RE = new RegExp(
+  `\\b(?:(?:existing|remaining|other|previous) ${STANDS_FOR}|rest of (?:the )?${STANDS_FOR}|${STANDS_FOR} unchanged|(?:remains?|stays?|is|are|left) unchanged|same as before)\\b`,
+  'i',
+)
 
 function isPlaceholderComment(line: string): boolean {
   const comment = COMMENT_ONLY_RE.exec(line)
@@ -46,14 +55,14 @@ function isPlaceholderComment(line: string): boolean {
   // A closer before the end means code follows the comment on this line.
   if (body.includes('*/') || body.includes('-->')) return false
   if (BARE_ELLIPSIS_RE.test(body)) return true
-  return EDGE_ELLIPSIS_RE.test(body) && PLACEHOLDER_WORD_RE.test(body)
+  return EDGE_ELLIPSIS_RE.test(body) && PLACEHOLDER_PHRASE_RE.test(body)
 }
 
 /**
  * The first line of `newText` that is an elision placeholder `oldText` does
  * not already hold, or `null`. `oldText` may be a thunk, read only when a
- * candidate line turns up. `filePath` only decides whether the file is prose,
- * which is never checked.
+ * candidate line turns up. `filePath` only says whether the file is prose;
+ * prose is never checked.
  */
 export function findElisionPlaceholder(
   newText: string,

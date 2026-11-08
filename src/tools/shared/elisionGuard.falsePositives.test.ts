@@ -1,9 +1,7 @@
-// the elision guard refuses ordinary comments. The agreed rule
-// (plan, "Guard de elisão") needs a placeholder PHRASE on the line — `existing`,
-// `rest of`, `remaining`, `unchanged`, `same as before`, `previous`,
-// `other … (methods|functions|code)`. The module fires on a bare `...` and on
-// the lone words `other`, `same`, `previous`, `etc`, so narrative comments
-// that end with an ellipsis and doc-comment examples are refused.
+// Comments the elision guard must let through (review, 2026-11-08): a lone
+// word (`other`, `previous`, `same`, `etc`) next to an ellipsis is prose, not a
+// placeholder phrase, and a doc-comment continuation's ellipsis is an
+// example's body. Before the fix all six were refused.
 import { describe, expect, test } from 'bun:test'
 import { findElisionPlaceholder } from 'src/tools/shared/elisionGuard.js'
 

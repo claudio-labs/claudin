@@ -1,10 +1,23 @@
 {
   "test": [
     "src/tools/shared/elisionGuard.test.ts",
-    "src/tools/FileEditTool/FileEditTool.elisionGuard.test.ts"
+    "src/tools/shared/elisionGuard.falsePositives.test.ts",
+    "src/tools/FileEditTool/FileEditTool.elisionGuard.test.ts",
+    "src/tools/FileWriteTool/FileWriteTool.elisionGuard.test.ts",
+    "src/tools/ApplyPatchTool/applyPatch.elisionGuard.test.ts"
   ],
   "source": "src/tools/shared/elisionGuard.ts",
   "probes": [
+    {
+      "name": "review B5: a lone word is not a placeholder phrase",
+      "find": "  `\\\\b(?:(?:existing|remaining|other|previous) ${STANDS_FOR}|",
+      "replace": "  `\\\\b(?:(?:existing|remaining|other|previous)|"
+    },
+    {
+      "name": "review B5: doc-comment continuations are left out",
+      "find": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/(?![/!])|#+|--|;+|\\/\\*+|<!--|\\{\\s*\\/\\*+)(.*)$/\n",
+      "replace": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/+|#+|--|;+|\\/\\*+|\\*|<!--|\\{\\s*\\/\\*+)(.*)$/\n"
+    },
     {
       "name": "guard: a bare ellipsis comment counts",
       "find": "  if (BARE_ELLIPSIS_RE.test(body)) return true\n",
@@ -12,7 +25,7 @@
     },
     {
       "name": "guard: an edge ellipsis needs a placeholder word",
-      "find": "  return EDGE_ELLIPSIS_RE.test(body) && PLACEHOLDER_WORD_RE.test(body)\n",
+      "find": "  return EDGE_ELLIPSIS_RE.test(body) && PLACEHOLDER_PHRASE_RE.test(body)\n",
       "replace": "  return EDGE_ELLIPSIS_RE.test(body)\n"
     },
     {

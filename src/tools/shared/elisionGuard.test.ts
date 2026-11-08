@@ -19,12 +19,14 @@ describe('findElisionPlaceholder', () => {
     ['-- other columns ...'],
     ['; ... same as before'],
     ['/* ... existing helpers ... */'],
-    [' * ... previous cases'],
     ['<!-- ... -->'],
     ['{/* ... existing JSX ... */}'],
     ['// …'],
     ['// ...'],
-    ['    # ... (omitted)'],
+    ['# ...'],
+    ['// ... previous implementation'],
+    ['// rest of the module unchanged...'],
+    ['// ... other functions stay unchanged'],
   ])('flags %p', line => {
     const found = findElisionPlaceholder(`function a() {\n${line}\n}`, 'function a() {\n  return 1\n}', 'a.ts')
     expect(found).toEqual({ line: 2, text: line.trim() })
@@ -40,8 +42,17 @@ describe('findElisionPlaceholder', () => {
     ["expect(out).toContain('// ... existing code ...')"],
     ['// TODO: wire the cache'],
     ['/* ... */ foo()'],
-    ['/* ... existing */ foo()'],
-    ['<!-- ... existing --> <div/>'],
+    ['/* ... existing code */ foo()'],
+    ['<!-- ... existing markup --> <div/>'],
+    // A lone word is prose, not a placeholder phrase.
+    ['// Retry against the other replicas...'],
+    ['    # ... (omitted)'],
+    ['// ... previous value is kept'],
+    // Doc-comment continuations: an ellipsis there is an example's body.
+    [' * ... previous cases'],
+    [' *   ...'],
+    ['///     ...'],
+    ['//! ... existing code ...'],
   ])('leaves %p alone', line => {
     expect(findElisionPlaceholder(`${line}\n`, '', 'a.ts')).toBeNull()
   })
