@@ -1,0 +1,31 @@
+{
+  "test": ["src/tools/shared/stagedWrite/stagedWrite.commit.test.ts"],
+  "source": "src/tools/shared/stagedWrite/stagedWrite.ts",
+  "probes": [
+    {
+      "name": "a failed batch rolls back what it wrote",
+      "find": "      rollbackChange(committed[i])\n",
+      "replace": "      void committed[i]\n"
+    },
+    {
+      "name": "a move backs up both ends",
+      "find": "          ? [change.absPath, change.movePath!]\n",
+      "replace": "          ? [change.absPath]\n"
+    },
+    {
+      "name": "markReadStatePartial reaches the read state",
+      "find": "      ...(options.markReadStatePartial ? { isPartialView: true } : {}),\n",
+      "replace": ""
+    },
+    {
+      "name": "a move drops the source's read state",
+      "find": "    if (change.type === 'move') {\n      readFileState.delete(change.absPath)\n    }\n",
+      "replace": ""
+    },
+    {
+      "name": "an abort stops the batch",
+      "find": "      if (abortController.signal.aborted) {\n",
+      "replace": "      if (false) {\n"
+    }
+  ]
+}
