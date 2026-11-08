@@ -13,6 +13,7 @@ import {
 import { setOriginalFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   copyFileHistoryForResume,
+  fileHistoryFindConflicts,
   fileHistoryRestoreStateFromLog,
   type FileHistoryBackup,
   type FileHistorySnapshot,
@@ -123,6 +124,15 @@ describe('fileHistoryRestoreStateFromLog', () => {
     const sibling = `${project}-other/x.ts`
     const state = restore([snap({ [sibling]: bk('x@v1') })])!
     expect([...state.trackedFiles]).toEqual([`../${basename(project)}-other/x.ts`])
+  })
+
+  test('a resumed session carries no write fingerprints, so a rewind flags nothing', async () => {
+    const abs = join(project, 'a.ts')
+    writeFileSync(abs, 'edited by hand after the resume\n')
+    const logged = [snap({ [abs]: bk('a@v1') })]
+    const state = restore(logged)!
+    expect(state.lastWrites).toBeUndefined()
+    expect(await fileHistoryFindConflicts(state, logged[0]!.messageId)).toEqual([])
   })
 
   test('disabled: the callback is never called', () => {

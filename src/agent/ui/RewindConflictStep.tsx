@@ -7,6 +7,21 @@ import { type OptionWithDescription, Select } from 'src/terminal/custom-select/s
 
 export type RewindConflictChoice = 'keep' | 'overwrite' | 'back';
 
+/** Whether restoring with `option` has to ask about `conflicts` first: only a restore that writes code does. */
+export function needsConflictStep(option: string, conflicts: readonly string[]): option is 'code' | 'both' {
+  return (option === 'code' || option === 'both') && conflicts.length > 0;
+}
+
+/** The files the rewind leaves as they are: the conflicts when kept, none when overwritten. */
+export function keepFor(choice: 'keep' | 'overwrite', conflicts: readonly string[]): ReadonlySet<string> | undefined {
+  return choice === 'keep' ? new Set(conflicts) : undefined;
+}
+
+/** Whether `keep` covers every file the rewind would change, so restoring code does nothing. */
+export function restoresNothing(changed: readonly string[] | undefined, keep: ReadonlySet<string> | undefined): boolean {
+  return keep !== undefined && (changed ?? []).every(file => keep.has(file));
+}
+
 /** How many conflicting files are listed by name before the rest are counted. */
 const MAX_LISTED = 8;
 

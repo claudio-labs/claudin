@@ -190,6 +190,9 @@ export async function fileHistoryTrackEdit(
   })
 }
 
+/** Marks the updaters fileHistoryRecordWrite sends, the only ones a sub-agent forwards. */
+const WRITE_FINGERPRINT = Symbol('fileHistoryWriteFingerprint')
+
 /**
  * Records what an agent write left on disk, so a later rewind can tell the
  * file apart from one someone changed since. Call it after the write, beside
@@ -213,11 +216,28 @@ export async function fileHistoryRecordWrite(
     return
   }
   const trackingPath = maybeShortenFilePath(filePath)
-  updateFileHistoryState(state =>
+  const updater = (state: FileHistoryState): FileHistoryState =>
     state.trackedFiles.has(trackingPath)
       ? { ...state, lastWrites: { ...state.lastWrites, [trackingPath]: fingerprint } }
-      : state,
-  )
+      : state
+  updateFileHistoryState(Object.assign(updater, { [WRITE_FINGERPRINT]: true }))
+}
+
+/**
+ * The file-history updater for a sub-agent. Its edits are not checkpointed —
+ * snapshots belong to the parent's messages, so trackEdit and makeSnapshot
+ * stay no-ops there — but what they leave on disk is Claudin's own write: the
+ * write fingerprints reach the parent, or a rewind would list a delegated Edit
+ * as a change made outside Claudin.
+ */
+export function fileHistoryForwardWritesOnly(
+  updateFileHistoryState: (
+    updater: (prev: FileHistoryState) => FileHistoryState,
+  ) => void,
+): (updater: (prev: FileHistoryState) => FileHistoryState) => void {
+  return updater => {
+    if (WRITE_FINGERPRINT in updater) updateFileHistoryState(updater)
+  }
 }
 
 /**

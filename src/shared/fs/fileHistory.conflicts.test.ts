@@ -7,6 +7,7 @@ import { getIsInteractive, getOriginalCwd, setIsInteractive, setOriginalCwd } fr
 import { setOriginalFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   fileHistoryFindConflicts,
+  fileHistoryForwardWritesOnly,
   fileHistoryMakeSnapshot,
   fileHistoryRecordWrite,
   fileHistoryRewind,
@@ -220,6 +221,25 @@ describe('fileHistoryFindConflicts', () => {
     const { h, m1 } = await session({ [abs]: 'agent\n' })
     unlinkSync(abs)
     mkdirSync(abs)
+    expect(await fileHistoryFindConflicts(h.state, m1)).toEqual([])
+  })
+})
+
+describe('fileHistoryForwardWritesOnly', () => {
+  test("forwards a write's fingerprint and nothing else: a sub-agent's edits are not checkpointed", async () => {
+    const abs = file('a.ts', 'v0\n')
+    const { h, m1 } = await session({ [abs]: 'main\n' })
+    const backupsBefore = h.state.snapshots.at(-1)!.trackedFileBackups
+    const forward = fileHistoryForwardWritesOnly(h.update)
+
+    const other = file('other.ts', 'v0\n')
+    await fileHistoryTrackEdit(forward, other, m1)
+    await fileHistoryMakeSnapshot(forward, randomUUID())
+    expect([...h.state.trackedFiles]).toEqual(['a.ts'])
+    expect(h.state.snapshots.at(-1)!.trackedFileBackups).toBe(backupsBefore)
+
+    writeFileSync(abs, 'sub-agent\n')
+    await fileHistoryRecordWrite(forward, abs)
     expect(await fileHistoryFindConflicts(h.state, m1)).toEqual([])
   })
 })

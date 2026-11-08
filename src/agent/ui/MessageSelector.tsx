@@ -28,7 +28,7 @@ import { count } from 'src/shared/data/array.js';
 import { formatRelativeTimeAgo, truncate } from 'src/shared/text/format.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
-import { type RewindConflictChoice, RewindConflictStep } from 'src/agent/ui/RewindConflictStep.js';
+import { keepFor, needsConflictStep, restoresNothing, type RewindConflictChoice, RewindConflictStep } from 'src/agent/ui/RewindConflictStep.js';
 type RestoreOption = 'both' | 'conversation' | 'code' | 'summarize' | 'summarize_up_to' | 'nevermind';
 function isSummarizeOption(option: RestoreOption | null): option is 'summarize' | 'summarize_up_to' {
   return option === 'summarize' || option === 'summarize_up_to';
@@ -75,13 +75,17 @@ export function MessageSelector({
   const [diffStatsForRestore, setDiffStatsForRestore] = useState<DiffStats | undefined>(undefined);
   // Files restoring the code would overwrite although they changed since
   // Claudin last wrote them (fileHistoryFindConflicts), and the code option
-  // waiting on the conflict step that asks about them.
-  const [conflictsForRestore, setConflictsForRestore] = useState<string[]>([]);
+  // waiting on the conflict step that asks about them. null while they load:
+  // the preselected path shows the options first, and a code restore picked
+  // before the list arrives would skip the step.
+  const [conflictsForRestore, setConflictsForRestore] = useState<string[] | null>(preselectedMessage && isFileHistoryEnabled ? null : []);
   const [pendingCodeOption, setPendingCodeOption] = useState<'both' | 'code' | null>(null);
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
+  const loadRestoreInfo = (uuid: UUID) => Promise.all([fileHistoryGetDiffStats(fileHistory, uuid), fileHistoryFindConflicts(fileHistory, uuid)]);
   useEffect(() => {
     if (!preselectedMessage || !isFileHistoryEnabled) return;
     let cancelled = false;
-    void Promise.all([fileHistoryGetDiffStats(fileHistory, preselectedMessage.uuid), fileHistoryFindConflicts(fileHistory, preselectedMessage.uuid)]).then(([stats, conflicts]) => {
+    void loadRestoreInfo(preselectedMessage.uuid).then(([stats, conflicts]) => {
       if (cancelled) return;
       setDiffStatsForRestore(stats);
       setConflictsForRestore(conflicts);
@@ -161,11 +165,12 @@ export function MessageSelector({
       await restoreConversationDirectly(message_0);
       return;
     }
-    const [diffStats, conflicts] = await Promise.all([fileHistoryGetDiffStats(fileHistory, message_0.uuid), fileHistoryFindConflicts(fileHistory, message_0.uuid)]);
+    const [diffStats, conflicts] = await loadRestoreInfo(message_0.uuid);
     setMessageToRestore(message_0);
     setDiffStatsForRestore(diffStats);
     setConflictsForRestore(conflicts);
     setPendingCodeOption(null);
+    setRestoreNotice(null);
   }
   async function onSelectRestoreOption(option: RestoreOption) {
     if (!messageToRestore) {
@@ -199,7 +204,8 @@ export function MessageSelector({
       return;
     }
     // Restoring code over files changed since Claudin's last edit asks first.
-    if ((option === 'code' || option === 'both') && conflictsForRestore.length > 0) {
+    setRestoreNotice(null);
+    if (needsConflictStep(option, conflictsForRestore ?? [])) {
       setPendingCodeOption(option);
       return;
     }
@@ -212,7 +218,15 @@ export function MessageSelector({
       setPendingCodeOption(null);
       return;
     }
-    await runRestore(option, choice === 'keep' ? new Set(conflictsForRestore) : undefined);
+    const keep = keepFor(choice, conflictsForRestore ?? []);
+    // Keeping every file a code-only restore would change leaves it nothing to
+    // do: say so instead of closing as if it had restored something.
+    if (option === 'code' && restoresNothing(diffStatsForRestore?.filesChanged, keep)) {
+      setPendingCodeOption(null);
+      setRestoreNotice('Nothing to restore: every changed file is one you chose to keep.');
+      return;
+    }
+    await runRestore(option, keep);
     setPendingCodeOption(null);
   }
   async function runRestore(option: 'both' | 'conversation' | 'code', keep?: ReadonlySet<string>) {
@@ -349,10 +363,11 @@ export function MessageSelector({
               </Text>
             </Box>
             <RestoreOptionDescription selectedRestoreOption={selectedRestoreOption} canRestoreCode={!!canRestoreCode_0} diffStatsForRestore={diffStatsForRestore} />
-            {pendingCodeOption !== null ? <RewindConflictStep files={conflictsForRestore} isDisabled={isRestoring} onChoose={choice => void onConflictChoice(choice)} /> : isRestoring && isSummarizeOption(restoringOption) ? <Box flexDirection="row" gap={1}>
+            {restoreNotice && <Text color="warning">{restoreNotice}</Text>}
+            {pendingCodeOption !== null ? <RewindConflictStep files={conflictsForRestore ?? []} isDisabled={isRestoring} onChoose={choice => void onConflictChoice(choice)} /> : isRestoring && isSummarizeOption(restoringOption) ? <Box flexDirection="row" gap={1}>
                 <Spinner />
                 <Text>Summarizing…</Text>
-              </Box> : <Select isDisabled={isRestoring} options={getRestoreOptions(!!canRestoreCode_0)} defaultFocusValue={canRestoreCode_0 ? 'both' : 'conversation'} onFocus={value => setSelectedRestoreOption(value as RestoreOption)} onChange={value_0 => onSelectRestoreOption(value_0 as RestoreOption)} onCancel={() => preselectedMessage ? onClose() : setMessageToRestore(undefined)} />}
+              </Box> : <Select isDisabled={isRestoring || conflictsForRestore === null} options={getRestoreOptions(!!canRestoreCode_0)} defaultFocusValue={canRestoreCode_0 ? 'both' : 'conversation'} onFocus={value => setSelectedRestoreOption(value as RestoreOption)} onChange={value_0 => onSelectRestoreOption(value_0 as RestoreOption)} onCancel={() => preselectedMessage ? onClose() : setMessageToRestore(undefined)} />}
             {canRestoreCode_0 && <Box marginBottom={1}>
                 <Text dimColor>
                   {figures.warning} Rewinding restores only files Claudin's edit

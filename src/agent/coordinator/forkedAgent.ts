@@ -22,6 +22,7 @@ import type { Message } from 'src/shared/types/message.js'
 import { createChildAbortController } from 'src/shared/abortController.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { cloneFileStateCache } from 'src/shared/fs/fileStateCache.js'
+import { fileHistoryForwardWritesOnly } from 'src/shared/fs/fileHistory.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
@@ -410,7 +411,11 @@ export function createSubagentContext(
     pushApiMetricsEntry: overrides?.shareSetResponseLength
       ? parentContext.pushApiMetricsEntry
       : undefined,
-    updateFileHistoryState: () => {},
+    // Only the write fingerprints reach the parent (fileHistory.ts): a
+    // sub-agent's edits are not checkpointed, but they are Claudin's writes.
+    updateFileHistoryState: fileHistoryForwardWritesOnly(
+      parentContext.updateFileHistoryState,
+    ),
     // Attribution is scoped and functional (prev => next) — safe to share even
     // when setAppState is stubbed. Concurrent calls compose via React's state queue.
     updateAttributionState: parentContext.updateAttributionState,

@@ -7,7 +7,36 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import React from 'react'
 import { renderToString } from 'src/terminal/render/staticRender.js'
-import { conflictLabel, conflictLines, RewindConflictStep } from 'src/agent/ui/RewindConflictStep.js'
+import {
+  conflictLabel,
+  conflictLines,
+  keepFor,
+  needsConflictStep,
+  restoresNothing,
+  RewindConflictStep,
+} from 'src/agent/ui/RewindConflictStep.js'
+
+describe('the decisions behind the step', () => {
+  test('only a restore that writes code, with conflicts, stops at the step', () => {
+    expect(needsConflictStep('both', ['/p/a'])).toBe(true)
+    expect(needsConflictStep('code', ['/p/a'])).toBe(true)
+    expect(needsConflictStep('conversation', ['/p/a'])).toBe(false)
+    expect(needsConflictStep('summarize', ['/p/a'])).toBe(false)
+    expect(needsConflictStep('both', [])).toBe(false)
+  })
+
+  test('keep leaves the conflicts alone; overwrite leaves nothing alone', () => {
+    expect(keepFor('keep', ['/p/a', '/p/b'])).toEqual(new Set(['/p/a', '/p/b']))
+    expect(keepFor('overwrite', ['/p/a'])).toBeUndefined()
+  })
+
+  test('a keep set covering every changed file restores nothing', () => {
+    expect(restoresNothing(['/p/a'], new Set(['/p/a']))).toBe(true)
+    expect(restoresNothing(['/p/a', '/p/b'], new Set(['/p/a']))).toBe(false)
+    expect(restoresNothing(['/p/a'], undefined)).toBe(false)
+    expect(restoresNothing(undefined, new Set(['/p/a']))).toBe(true)
+  })
+})
 
 describe('conflictLabel', () => {
   test('a path inside the cwd is shown relative to it, one outside as it is', () => {
@@ -58,26 +87,38 @@ const repl = readFileSync(join(import.meta.dir, '..', 'repl', 'REPL.tsx'), 'utf8
 describe('MessageSelector wiring', () => {
   test('both confirmation entry points load the conflicts beside the diff stats', () => {
     expect(selector).toContain(
-      'Promise.all([fileHistoryGetDiffStats(fileHistory, preselectedMessage.uuid), fileHistoryFindConflicts(fileHistory, preselectedMessage.uuid)])',
+      'const loadRestoreInfo = (uuid: UUID) => Promise.all([fileHistoryGetDiffStats(fileHistory, uuid), fileHistoryFindConflicts(fileHistory, uuid)]);',
     )
+    expect(selector).toContain('    void loadRestoreInfo(preselectedMessage.uuid).then(([stats, conflicts]) => {')
+    expect(selector).toContain('    const [diffStats, conflicts] = await loadRestoreInfo(message_0.uuid);')
+  })
+
+  test('the options wait for the conflicts on the preselected path', () => {
     expect(selector).toContain(
-      'Promise.all([fileHistoryGetDiffStats(fileHistory, message_0.uuid), fileHistoryFindConflicts(fileHistory, message_0.uuid)])',
+      'useState<string[] | null>(preselectedMessage && isFileHistoryEnabled ? null : []);',
     )
+    expect(selector).toContain('<Select isDisabled={isRestoring || conflictsForRestore === null}')
   })
 
   test('a code restore with conflicts stops at the conflict step', () => {
     expect(selector).toContain(
-      "    if ((option === 'code' || option === 'both') && conflictsForRestore.length > 0) {\n      setPendingCodeOption(option);\n      return;\n    }",
+      '    if (needsConflictStep(option, conflictsForRestore ?? [])) {\n      setPendingCodeOption(option);\n      return;\n    }',
     )
-    expect(selector).toContain('{pendingCodeOption !== null ? <RewindConflictStep files={conflictsForRestore}')
+    expect(selector).toContain('{pendingCodeOption !== null ? <RewindConflictStep files={conflictsForRestore ?? []}')
   })
 
   test('keep restores with the conflicts kept, overwrite without, back returns', () => {
-    expect(selector).toContain(
-      "    await runRestore(option, choice === 'keep' ? new Set(conflictsForRestore) : undefined);",
-    )
+    expect(selector).toContain('    const keep = keepFor(choice, conflictsForRestore ?? []);\n')
+    expect(selector).toContain('    await runRestore(option, keep);\n')
     expect(selector).toContain("    if (choice === 'back') {\n      setPendingCodeOption(null);\n      return;\n    }")
     expect(selector).toContain('        await onRestoreCode(messageToRestore, keep);')
+  })
+
+  test('a code-only restore that keeps everything says so instead of closing', () => {
+    expect(selector).toContain(
+      "    if (option === 'code' && restoresNothing(diffStatsForRestore?.filesChanged, keep)) {\n      setPendingCodeOption(null);\n      setRestoreNotice('Nothing to restore: every changed file is one you chose to keep.');\n      return;\n    }",
+    )
+    expect(selector).toContain('{restoreNotice && <Text color="warning">{restoreNotice}</Text>}')
   })
 
   test('the REPL hands the kept set to the rewind', () => {
