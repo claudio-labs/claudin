@@ -85,7 +85,7 @@ describe('several paths in one `path`', () => {
 
   test('2b5c3f37 11-08: validateInput takes three paths that each exist', async () => {
     const verdict = await runWithCwdOverride(root, () =>
-      GrepTool.validateInput!(census() as never, contextWith()),
+      GrepTool.validateInput!(census() as never),
     )
     expect(verdict).toEqual({ result: true })
   })
@@ -111,10 +111,10 @@ describe('several paths in one `path`', () => {
   test('30177640 11-09: one missing piece is named as the one that does not exist', async () => {
     const missing = join(root, 'src/tools/NopeTool')
     const verdict = await runWithCwdOverride(root, () =>
-      GrepTool.validateInput!(
-        { pattern: 'enabled', path: `${pieces('src/tools/BuildTool', 'src/tools/GitTool')} ${missing}` } as never,
-        contextWith(),
-      ),
+      GrepTool.validateInput!({
+        pattern: 'enabled',
+        path: `${pieces('src/tools/BuildTool', 'src/tools/GitTool')} ${missing}`,
+      } as never),
     )
     expect(verdict.result).toBe(false)
     if (verdict.result === false) expect(verdict.message).toContain(`Path does not exist: ${missing}.`)
@@ -152,7 +152,7 @@ describe('several paths in one `path`', () => {
 
     test('a single missing path keeps its message', async () => {
       const verdict = await runWithCwdOverride(root, () =>
-        GrepTool.validateInput!({ pattern: 'x', path: join(root, 'gone') } as never, contextWith()),
+        GrepTool.validateInput!({ pattern: 'x', path: join(root, 'gone') } as never),
       )
       expect(verdict.result).toBe(false)
       if (verdict.result === false) expect(verdict.message).toContain(`Path does not exist: ${join(root, 'gone')}.`)

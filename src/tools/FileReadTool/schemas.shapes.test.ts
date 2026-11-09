@@ -70,7 +70,7 @@ describe('Read output schema', () => {
 
   for (const [type, result] of Object.entries(results)) {
     test(`a ${type} result parses whole`, () => {
-      expect(output().parse(result)).toEqual(result)
+      expect(output().parse(result) as unknown).toEqual(result)
     })
   }
 
