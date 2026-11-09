@@ -36,8 +36,10 @@ export class AbortError extends Error {
  * These guards keep the fast instanceof path (covers the bundled copy,
  * whose class names may be minified) and fall back to walking the
  * prototype chain by constructor name — intact on the node_modules copies,
- * which ship unminified. The SDK never sets `this.name`, so `e.name`
- * cannot be used instead.
+ * which ship unminified. Since SDK 1.6 `e.name` is set from a static
+ * `_errorName` and survives minification, but it names only the leaf class
+ * (a RateLimitError's is 'RateLimitError', not 'APIError'), so it cannot
+ * replace the chain walk.
  */
 function hasConstructorNamed(e: unknown, className: string): boolean {
   if (!(e instanceof Error)) return false
