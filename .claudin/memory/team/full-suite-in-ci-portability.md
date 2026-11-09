@@ -116,8 +116,36 @@ order simply differs from CI's. What worked, cheapest first:
 3. Replay CI's order: scrape the `src/**/*.test.ts` group headers out of
    `gh run view <id> --log-failed` in order, then `CI=1 bun test $(that slice)`.
    A 186-file window around the leaker reproduced the worktree failure and went
-   1 fail → 0 with the fix.
+   1 fail → 0 with the fix. **Caveat (11-08): bun does not run files in argument
+   order**, so this replays nothing reliably — see the 11-08 section.
 
 **Before blaming your PR:** compare failure NAMES against main's own latest run
 (`gh run list --branch main`). Here main and the PR both had the identical 16,
 which said "pre-existing" in one command.
+
+## 2026-11-08 — #341: a provider-scoped cache, and bun ignores argument order
+
+12 red in CI, 0 locally; main's last run was green on the same base, so the PR owned them.
+- **Bun picks its own file order.** `bun test a m z` ran `z` first; files in one directory ran
+  reverse-alphabetically, across directories in some other order. A full in-order "replay" of CI's
+  1171 files reproduced 0 of the 12. What proved it: force the precondition instead of the order —
+  a probe that resets the shared state named to run first (`zzz…` beside the suspect, same dir),
+  then a copy of the suspect suite (`mmm…`) with an appended `afterAll` printing the state.
+- **The leak:** `STATE.modelStrings` (`bootstrap/state/cost.ts`) is filled once per process from
+  whichever provider is active at the first `getModelStrings()` read; no config listener resets it.
+  `withRetry.loop.test.ts` read it under an OpenAI profile, so `opus` → gpt-4o and `haiku` →
+  gpt-4o-mini for every later file (ModelPicker ×6, opus55 ×2, haiku55 ×2). Fix: save it in
+  `beforeAll`, restore in `afterAll` (`setModelStrings` / `resetModelStringsForTestingOnly`). Any
+  suite that activates a non-Anthropic profile must restore the model strings with the config.
+- `BuildTool/detect` "node wins over go" needed a global `tsc` on PATH (a mise shim here, none on
+  the runner); the fixture now carries `node_modules/.bin/tsc`. Check a PATH dependence with
+  `env PATH=/usr/bin:/bin $(which bun) test <file>`.
+- Round 2: with withRetry.loop restoring the table, opus55/haiku55 got **Bedrock** ids
+  (`anthropic.claude-opus-5-5`) from a suite never identified (no direct writer in that range;
+  the provider suites run locally never cached Bedrock). Their `mock.module` pin of
+  `getAPIProvider` does not reach a table already cached, so they now also clear it in
+  `beforeEach`/`afterAll`. Proved red→green with a copy of opus55 whose appended `beforeAll`
+  caches Bedrock ids (`ensureModelStringsInitialized` under a Bedrock profile, then resets the
+  config): the exact 2 CI failures before the fix, 0 after.
+- `WaitForTool` "settle" asserted ≥3 polls; failed twice on the loaded runner with 2. Two is the
+  floor (one read opens the stable window, the next closes it), so the test asserts ≥2.

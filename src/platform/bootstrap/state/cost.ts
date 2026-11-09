@@ -379,6 +379,15 @@ export function setMainLoopModelOverride(
   STATE.mainLoopModelOverride = model
 }
 
+/** The `--fallback-model` flag, as given (fallbackModel.ts resolves it). */
+export function getFallbackModelOverride(): string | undefined {
+  return STATE.fallbackModelOverride
+}
+
+export function setFallbackModelOverride(model: string | undefined): void {
+  STATE.fallbackModelOverride = model
+}
+
 export function setInitialMainLoopModel(model: ModelSetting): void {
   STATE.initialMainLoopModel = model
 }

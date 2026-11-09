@@ -24,7 +24,7 @@ src/
 │   │                              (accounting), terminal/contexts/ (React providers)
 │   ├── prompts/ (31)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (38)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
-│   ├── ui/ (166)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
+│   ├── ui/ (183)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (37)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
 │   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
@@ -161,7 +161,7 @@ src/
 ├── sessions/ (104)              ← persistence/, resume/, indexing/, conversationRecovery, ui/,
 │                                  peers/ (the cross-session inbox SendMessage and ListAgents
 │                                  reach other local sessions through; docs/features/cross-session-messaging.md)
-├── vcs/ (77)                    ← git/ (wrapper, gh PR status) + diff/ (the /diff reviewer).
+├── vcs/ (85)                    ← git/ (wrapper, gh PR status) + diff/ (the /diff reviewer).
 │                                  git/worktree.ts is a BARREL over worktree/ (slugNaming,
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)

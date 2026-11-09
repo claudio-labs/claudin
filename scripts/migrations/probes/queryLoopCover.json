@@ -1,0 +1,76 @@
+{
+  "test": ["src/agent/query.loop.test.ts"],
+  "source": "src/agent/query.ts",
+  "probes": [
+    {
+      "name": "fallback: the retry stays on the primary model",
+      "find": "            currentModel = fallbackModel\n",
+      "replace": "            currentModel = currentModel\n"
+    },
+    {
+      "name": "fallback: toolUseContext.options.mainLoopModel is not switched",
+      "find": "            toolUseContext.options.mainLoopModel = fallbackModel\n",
+      "replace": "            void fallbackModel\n"
+    },
+    {
+      "name": "fallback: the 'Switched to …' warning is not yielded",
+      "find": "            yield createSystemMessage(\n              `Switched to",
+      "replace": "            void createSystemMessage(\n              `Switched to"
+    },
+    {
+      "name": "fallback: the first attempt's tool_uses get no filler results",
+      "find": "            yield* yieldMissingToolResultBlocks(\n              assistantMessages,\n              'Model fallback triggered',\n",
+      "replace": "            void yieldMissingToolResultBlocks(\n              assistantMessages,\n              'Model fallback triggered',\n"
+    },
+    {
+      "name": "blocking limit: the preflight falls through to the model",
+      "find": "        return { reason: 'blocking_limit' }\n      }\n    }\n\n    // Safety net",
+      "replace": "      }\n    }\n\n    // Safety net"
+    },
+    {
+      "name": "circuit breaker: an exhausted compaction falls through to the model",
+      "find": "        return { reason: 'blocking_limit' }\n      }\n    }\n\n    let attemptWithFallback",
+      "replace": "      }\n    }\n\n    let attemptWithFallback"
+    },
+    {
+      "name": "max turns: the limit is never checked before recursing",
+      "find": "    if (maxTurns && nextTurnCount > maxTurns) {\n",
+      "replace": "    if (false && maxTurns && nextTurnCount > maxTurns) {\n"
+    },
+    {
+      "name": "abort: a streaming abort does not end the turn",
+      "find": "      return { reason: 'aborted_streaming' }\n",
+      "replace": "      void 'aborted_streaming'\n"
+    },
+    {
+      "name": "abort: the turn limit is not reported on an abort during tools",
+      "find": "      if (maxTurns && nextTurnCountOnAbort > maxTurns) {\n",
+      "replace": "      if (false && maxTurns && nextTurnCountOnAbort > maxTurns) {\n"
+    },
+    {
+      "name": "tool follow-up: a tool_use does not trigger tool execution",
+      "find": "                needsFollowUp = true\n",
+      "replace": "                needsFollowUp = false\n"
+    },
+    {
+      "name": "error completion: an API error message runs the stop hooks",
+      "find": "        return { reason: 'completed' }\n      }\n\n      const stopHookResult",
+      "replace": "      }\n\n      const stopHookResult"
+    },
+    {
+      "name": "model error: the terminal drops the error",
+      "find": "      return { reason: 'model_error', error }\n",
+      "replace": "      return { reason: 'model_error' } as never\n"
+    },
+    {
+      "name": "streaming fallback: the signal is not re-armed",
+      "find": "              streamingFallbackOccured = false\n            }\n",
+      "replace": "            }\n"
+    },
+    {
+      "name": "max_output_tokens: the truncated reply is not withheld",
+      "find": "              withheld = true\n",
+      "replace": "              withheld = false\n"
+    }
+  ]
+}

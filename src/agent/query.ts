@@ -4,7 +4,15 @@ import type {
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import { FallbackTriggeredError } from 'src/providers/transport/withRetry.js'
+import {
+  type FallbackReason,
+  FallbackTriggeredError,
+} from 'src/providers/transport/withRetry.js'
+import {
+  FALLBACK_HOLD_MS,
+  holdFallback,
+  isFallbackHeld,
+} from 'src/providers/model/fallbackHold.js'
 import {
   calculateTokenWarningState,
   isAutoCompactEnabled,
@@ -134,6 +142,14 @@ function* yieldMissingToolResultBlocks(
  */
 const MAX_OUTPUT_TOKENS_RECOVERY_LIMIT = 3
 const MAX_CONTINUATION_NUDGES = 3
+
+/** The fallback warning's reason, after the primary model's name. */
+const FALLBACK_REASON_TEXT: Record<FallbackReason, string> = {
+  overloaded: 'is overloaded',
+  server_error: 'kept failing with server errors',
+  unreachable: 'could not be reached',
+  rate_limited: 'hit a rate limit',
+}
 
 /**
  * Is this a max_output_tokens error message? If so, the streaming loop should
@@ -443,6 +459,12 @@ async function* queryLoop(
         permissionMode === 'plan' &&
         doesMostRecentAssistantMessageExceed200k(messagesForQuery),
     })
+    // A primary that gave way within the hold (fallbackHold.ts) is not tried
+    // again: the request starts on the fallback instead of re-spending the
+    // retries on a model that was just failing.
+    if (fallbackModel && isFallbackHeld(currentModel, fallbackModel)) {
+      currentModel = fallbackModel
+    }
 
     queryCheckpoint('query_setup_end')
 
@@ -532,7 +554,10 @@ async function* queryLoop(
               toolChoice: undefined,
               isNonInteractiveSession:
                 toolUseContext.options.isNonInteractiveSession,
-              fallbackModel,
+              // One hop: a request already on the fallback has none, so its
+              // errors surface instead of falling back onto itself.
+              fallbackModel:
+                currentModel === fallbackModel ? undefined : fallbackModel,
               onStreamingFallback: () => {
                 streamingFallbackOccured = true
               },
@@ -618,8 +643,13 @@ async function* queryLoop(
           }
           queryCheckpoint('query_api_streaming_end')
         } catch (innerError) {
-          if (innerError instanceof FallbackTriggeredError && fallbackModel) {
+          if (
+            innerError instanceof FallbackTriggeredError &&
+            fallbackModel &&
+            currentModel !== fallbackModel
+          ) {
             // Fallback was triggered - switch model and retry
+            holdFallback(currentModel, fallbackModel)
             currentModel = fallbackModel
             attemptWithFallback = true
 
@@ -644,7 +674,7 @@ async function* queryLoop(
             // Yield system message about fallback — use 'warning' level so
             // users see the notification without needing verbose mode
             yield createSystemMessage(
-              `Switched to ${renderModelName(innerError.fallbackModel)} due to high demand for ${renderModelName(innerError.originalModel)}`,
+              `Switched to ${renderModelName(fallbackModel)}: ${renderModelName(innerError.originalModel)} ${FALLBACK_REASON_TEXT[innerError.reason]}. Staying on it for ${FALLBACK_HOLD_MS / 60_000} minutes (/model to switch back).`,
               'warning',
             )
 

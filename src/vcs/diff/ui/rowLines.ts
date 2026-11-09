@@ -1,3 +1,4 @@
+import type { StructuredPatchHunk } from 'diff'
 import type { DiffSegment } from 'src/vcs/diff/ui/types.js'
 
 /**
@@ -136,4 +137,37 @@ export function rangeFromScreenRows(
     scrollOffset + (lo - firstContentRow),
     scrollOffset + (hi - firstContentRow),
   )
+}
+
+/**
+ * The hunk segment rendered row `row` belongs to — what `x` in /diff reverts.
+ * A wrap continuation belongs to the line it continues; a collapsed-gap marker
+ * belongs to no hunk. `null` too when the rows and the segments disagree, the
+ * same fail-closed rule `buildRowLineIndex` follows.
+ */
+export function hunkAtRow(
+  segments: DiffSegment[],
+  rows: string[],
+  row: number,
+): StructuredPatchHunk | null {
+  if (row < 0 || row >= rows.length) return null
+  const owners: number[] = []
+  segments.forEach((segment, i) => {
+    const lines = segment.kind === 'gap' ? 1 : segment.hunk.lines.length
+    for (let k = 0; k < lines; k++) owners.push(i)
+  })
+  let logicalIndex = -1
+  let atRow = -1
+  for (let r = 0; r < rows.length; r++) {
+    const plain = rows[r]!.replace(ANSI_RE, '')
+    if (plain.trimStart().startsWith(GAP_PREFIX) || GUTTER_RE.test(plain)) logicalIndex += 1
+    if (r === row) atRow = logicalIndex
+  }
+  // Every row counted must land on exactly the segments' logical lines: a
+  // wrapped line whose continuation looks like a gutter shifts every row after
+  // it, and a guess there would revert a hunk the cursor is not on.
+  if (logicalIndex !== owners.length - 1) return null
+  const owner = atRow < 0 ? undefined : owners[atRow]
+  const segment = owner === undefined ? undefined : segments[owner]
+  return segment?.kind === 'hunk' ? segment.hunk : null
 }

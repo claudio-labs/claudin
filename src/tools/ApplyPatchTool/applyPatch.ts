@@ -46,6 +46,11 @@ import {
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
+import {
+  type ElisionPlaceholder,
+  elisionRefusal,
+  findElisionPlaceholder,
+} from 'src/tools/shared/elisionGuard.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getPatchFromContents } from 'src/vcs/git/diff.js'
@@ -208,6 +213,25 @@ function addContent(hunk: Extract<Hunk, { type: 'add' }>): string {
 }
 
 /**
+ * An elision placeholder the patch adds to a file (elisionGuard.ts): an Add's
+ * content against nothing, an Update chunk's new side against its old side.
+ */
+function elisionIn(hunks: Hunk[], absPath: string): ElisionPlaceholder | null {
+  for (const hunk of hunks) {
+    if (hunk.type === 'add') {
+      const found = findElisionPlaceholder(hunk.contents, '', absPath)
+      if (found) return found
+    } else if (hunk.type === 'update') {
+      for (const chunk of hunk.chunks) {
+        const found = findElisionPlaceholder(chunk.newLines.join('\n'), chunk.oldLines.join('\n'), absPath)
+        if (found) return found
+      }
+    }
+  }
+  return null
+}
+
+/**
  * Every hunk's old side sits in the file exactly and in one place — enough to
  * apply to a file never read: the model wrote those lines, so it has seen them.
  * A pure insertion localizes nothing and rides along; one hunk must localize.
@@ -273,6 +297,8 @@ function planFile(group: FileGroup, context: ToolUseContext, strict: boolean): P
   if (extname(absPath) === '.ipynb') {
     return problem(`${APPLY_PATCH_TOOL_NAME} cannot edit Jupyter notebooks. Use the NotebookEdit tool for ${rel}.`)
   }
+  const elision = elisionIn(hunks, absPath)
+  if (elision) return problem(elisionRefusal(`${APPLY_PATCH_TOOL_NAME}: an added line of ${rel}`, elision))
   if (first.type === 'add') {
     if (!fs.existsSync(absPath)) return { kind: 'stage', group, unread: false }
     if (!strict && readFileForStaging(absPath).content === addContent(first)) {

@@ -142,6 +142,9 @@ describe('probe order agrees with the other two detect-and-run tools', () => {
       {
         'package.json': JSON.stringify({ scripts: { build: 'tsc', test: 'vitest' } }),
         'tsconfig.json': '{}',
+        // Project-local, so detecting tsc does not depend on a global one on
+        // PATH: CI's runner had none, and the probe order is what is tested.
+        'node_modules/.bin/tsc': '',
         'go.mod': 'module x',
       },
       'node',

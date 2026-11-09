@@ -21,6 +21,8 @@ Roadmap decided 2026-07-17. Method: 3 web-research passes (coding-CLI tool lands
 ### R1 — Cost routing per task (effort S, quick win)
 `getSmallFastModel()` (`src/providers/model/model.ts:47`) already routes ~15 internal call sites, but there is no user-configurable `compactModel` nor a provider fallback chain. Both are already identified Tier-1 ports from the openclaude sibling fork (`openclaude-sibling-fork-reference.md`). Implements the 2026 cost playbook (routing after caching, which we already lead on). First step: port `compactModel` setting + `providerFallbackChain` from `../openclaude`.
 
+Still open 2026-11-08: neither name exists in `src/`, and the model fallback fires only after repeated 529s on a non-custom Opus (`src/providers/transport/withRetry.ts`). Second prior art, read 2026-11-08: `../plandex` (Go) falls back on any non-retriable error to a per-role `ErrorFallback`, then to a second provider (`app/shared/ai_models_errors.go:73-111`), and on context overflow to a `LargeContextFallback` (`app/shared/ai_models_large_context.go:49-76`).
+
 ### R2 — Real sandbox backend (effort M, strategic unlock)
 The full sandbox adapter EXISTS (`src/platform/sandbox/sandbox-adapter.ts`, ~994 lines, wired into BashTool via `shouldUseSandbox.ts`), but `scripts/build/build.ts` (~lines 383–420) stubs `@anthropic-ai/sandbox-runtime` with a no-op Proxy — net effect today is permission-prompts only. Writing a real Linux backend (bubblewrap/landlock) reuses all existing plumbing. This is Codex CLI's headline differentiator and the autonomy unlocker both research passes point at (guardrail gap = biggest quantified whitespace).
 
@@ -42,13 +44,13 @@ We are already MCP client AND server (`mcp serve` in `src/platform/main/lifecycl
 
 ## Não fazer (with recorded reasons)
 - **Session observability/telemetry export for third parties** — conflicts with the no-telemetry positioning; local `/stats`/`/usage` covers the user's own need.
-- **Semantic/embedding repo search** — research confirmed absent from every major CLI and unmissed; grep+outline won empirically. (Also: vector memory skip from old roadmap — LLM-ranked retrieval already exists in `findRelevantMemories.ts`, scale tiny, native deps bundle-stubbed.)
+- **Semantic/embedding repo search** — research confirmed absent from every major CLI and unmissed; grep+outline won empirically. (Also: vector memory skip from old roadmap — scale tiny, native deps bundle-stubbed; `findRelevantMemories.ts` was deleted 2026-09-21 for `paths:` on-demand loading.)
 - **LSP beyond current read-only tool** — usage measured ~zero pre-removal; opencode-style *diagnostics-after-edit as a hook* is the only form worth revisiting, NOT more LSP tool surface.
 - **Standalone vector DB / RAG infra** — market absorbed into pgvector; not our layer.
 - Condensed carry-over SKIPs from the token-efficiency roadmap (full reasons in git history of `token-efficiency-roadmap.md`): tree-sitter code compression (bundle conflict — use `scanSymbols.ts`), ML prose compression / ONNX (bundle), per-turn effort routing (openaiShim binds effort at construction; misclassification risk), BM25/relevance reordering (breaks clip-frontier cache; no query at summarizer call site), cross-agent memory sharing (team/ dir covers it), live dashboards (fabricated CIs; `/usage` line is the right form).
 
 ## Open follow-ups inherited from the old roadmap
-Project-aggregate persistence of tokens-saved (/usage), runs=3 median A/B for verbosity steering magnitude, 50KB threshold tuning for tool-result persistence, SmartCrusher lossless-first compaction renderer (defer), `scanSymbols` cheap code-outline side-bet: PR #95 was open as of 2026-06-29.
+Project-aggregate persistence of tokens-saved (/usage), runs=3 median A/B for verbosity steering magnitude, 50KB threshold tuning for tool-result persistence. The SmartCrusher renderer and the `scanSymbols` code-outline (PR #95) went with the compression deleted 2026-10-10 ([[summarizer-lossless]]).
 
 ## Cross-cutting invariant
 Any new marker/stub/injection MUST sit behind the clip-frontier or it breaks prompt-cache work (`.claudin/rules/cache.md` §1 — the invariant that the 2026-06-11 break audit produced).

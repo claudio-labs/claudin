@@ -1,0 +1,80 @@
+{
+  "test": [
+    "src/providers/transport/withRetry.loop.test.ts",
+    "src/providers/transport/withRetry.classify.test.ts",
+    "src/providers/transport/withRetry.test.ts"
+  ],
+  "source": "src/providers/transport/withRetry.ts",
+  "probes": [
+    {
+      "name": "the 529 streak never counts",
+      "find": "        consecutive529Errors++",
+      "replace": ""
+    },
+    {
+      "name": "the streak needs one 529 more than MAX_529_RETRIES",
+      "find": "if (consecutive529Errors >= MAX_529_RETRIES) {",
+      "replace": "if (consecutive529Errors > MAX_529_RETRIES) {"
+    },
+    {
+      "name": "a configured fallback is never thrown",
+      "find": "if (options.fallbackModel) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the streak gate opens for every primary model",
+      "find": "          process.env.FALLBACK_FOR_ALL_PRIMARY_MODELS ||\n",
+      "replace": "          true ||\n"
+    },
+    {
+      "name": "a background query source retries 529s",
+      "find": "if (is529Error(error) && !shouldRetry529(options.querySource)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "exhausted retries do not throw at attempt > maxRetries",
+      "find": "if (attempt > maxRetries) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "shouldRetry no longer decides",
+      "find": "(!isSdkApiError(error) || !shouldRetry(error, attempt))",
+      "replace": "(!isSdkApiError(error))"
+    },
+    {
+      "name": "a thinking mismatch does not set the strip flag",
+      "find": "retryContext.stripThinkingFromHistory = true",
+      "replace": "retryContext.stripThinkingFromHistory = false"
+    },
+    {
+      "name": "a context overflow does not lower max_tokens",
+      "find": "          retryContext.maxTokensOverride = adjustedMaxTokens",
+      "replace": ""
+    },
+    {
+      "name": "the retry notice is not yielded",
+      "find": "yield createSystemAPIErrorMessage(error, delayMs, attempt, maxRetries)",
+      "replace": "void 0"
+    },
+    {
+      "name": "a long rate limit is retried",
+      "find": "  if (isLongRateLimit(error)) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "x-should-retry: false is ignored",
+      "find": "if (shouldRetryHeader === 'false') {",
+      "replace": "if (shouldRetryHeader === 'never') {"
+    },
+    {
+      "name": "a 429 is retried for a subscriber",
+      "find": "return !account.isSubscriber() || account.isEnterprise()",
+      "replace": "return true"
+    },
+    {
+      "name": "5xx is not retried",
+      "find": "if (error.status && error.status >= 500) return true",
+      "replace": "if (error.status && error.status >= 500) return false"
+    }
+  ]
+}

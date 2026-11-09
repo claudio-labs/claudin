@@ -1,0 +1,93 @@
+{
+  "test": [
+    "src/vcs/diff/revertHunk.test.ts",
+    "src/vcs/diff/revertHunk.worktree.test.ts",
+    "src/vcs/diff/ui/rowLines.test.ts",
+    "src/vcs/diff/ui/rowLines.hunkAtRow.test.ts",
+    "src/vcs/diff/ui/DiffDialog.revertWiring.test.ts"
+  ],
+  "source": "src/vcs/diff/revertHunk.ts",
+  "probes": [
+    {
+      "name": "review B1: a worktree's main checkout is not reverted",
+      "find": "  if (options.shadowedRoot) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "review B1: only a worktree shadows its canonical root",
+      "find": "    if (own && canonical && own !== canonical) shadowed.add(canonical)\n",
+      "replace": "    if (own && canonical) shadowed.add(canonical)\n"
+    },
+    {
+      "name": "review B4: hunkAtRow fails closed when rows and segments disagree",
+      "source": "src/vcs/diff/ui/rowLines.ts",
+      "find": "  if (logicalIndex !== owners.length - 1) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "review UX: staged is refused before the question",
+      "source": "src/vcs/diff/ui/DiffDialog.tsx",
+      "find": "    if (await hasStagedChanges(root, selected.file.path)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "review UX: the revert outcome survives its own refresh",
+      "source": "src/vcs/diff/ui/DiffDialog.tsx",
+      "find": "    keepRevertNoticeRef.current = true\n",
+      "replace": ""
+    },
+    {
+      "name": "a file with staged changes is refused",
+      "find": "  if (await hasStagedChanges(repoRoot, file.path, run)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the hunk must still be in a fresh diff",
+      "find": "  const fresh = diff.code === 0 ? parseRawHunks(diff.stdout).find(h => sameHunk(h, hunk)) : undefined\n",
+      "replace": "  const fresh = diff.code === 0 ? (parseRawHunks(diff.stdout)[0] ?? hunk) : hunk\n"
+    },
+    {
+      "name": "git apply -R --check gates the write",
+      "find": "  if (check.code !== 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the no-newline markers are kept",
+      "find": "const HUNK_LINE_RE = /^[ +\\-\\\\]/\n",
+      "replace": "const HUNK_LINE_RE = /^[ +\\-]/\n"
+    },
+    {
+      "name": "binary files are blocked",
+      "find": "  if (file.isBinary) return 'binary files cannot be reverted hunk by hunk'\n",
+      "replace": ""
+    },
+    {
+      "name": "a revealed context hunk is not revertable",
+      "find": "  if (!hunks.includes(atCursor)) return { kind: 'notice', text: ON_A_HUNK }\n",
+      "replace": ""
+    },
+    {
+      "name": "only the working-tree source reverts",
+      "find": "  if (source !== 'working') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "hunkAtRow: a gap marker is one logical line",
+      "source": "src/vcs/diff/ui/rowLines.ts",
+      "find": "    const lines = segment.kind === 'gap' ? 1 : segment.hunk.lines.length\n",
+      "replace": "    const lines = segment.kind === 'gap' ? 0 : segment.hunk.lines.length\n"
+    },
+    {
+      "name": "the DiffDialog keys stand down during the question",
+      "source": "src/vcs/diff/ui/DiffDialog.tsx",
+      "find": "    { context: 'DiffDialog', isActive: hasFocus && revertPrompt === null },\n",
+      "replace": "    { context: 'DiffDialog', isActive: hasFocus },\n"
+    },
+    {
+      "name": "x is bound",
+      "source": "src/terminal/keybindings/defaultBindings.ts",
+      "find": "      x: 'diff:revertHunk',\n",
+      "replace": ""
+    }
+  ]
+}

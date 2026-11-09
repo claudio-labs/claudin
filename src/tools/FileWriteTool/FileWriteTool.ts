@@ -17,11 +17,15 @@ import {
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
+  elisionRefusal,
+  findElisionPlaceholder,
+} from 'src/tools/shared/elisionGuard.js'
+import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,
   discoverSkillDirsForPaths,
 } from 'src/skills/loadSkillsDir.js'
-import type { ToolUseContext } from 'src/tools/Tool.js'
+import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -30,6 +34,7 @@ import { isENOENT } from 'src/shared/errors.js'
 import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
+  fileHistoryRecordWrite,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
@@ -117,6 +122,21 @@ const MERGE = 'it changed since you read it, so merge your change into it before
 function withServedFile(message: string, served: string | null, next: string): string {
   if (served === null) return message
   return `${message} Its current content is shown below and now counts as read — ${next}:\n${served}`
+}
+
+/** Refuses content carrying an elision placeholder the file does not already hold (elisionGuard.ts). */
+function elisionVerdict(
+  content: string,
+  original: string | (() => string),
+  fullFilePath: string,
+): ValidationResult {
+  const elision = findElisionPlaceholder(content, original, fullFilePath)
+  if (!elision) return { result: true }
+  return {
+    result: false,
+    message: elisionRefusal(`Write refused: content line ${elision.line}`, elision),
+    errorCode: 5,
+  }
 }
 
 export const FileWriteTool = buildTool({
@@ -226,7 +246,7 @@ export const FileWriteTool = buildTool({
       fileSize = fileStat.size
     } catch (e) {
       if (isENOENT(e)) {
-        return { result: true }
+        return elisionVerdict(content, '', fullFilePath)
       }
       throw e
     }
@@ -292,7 +312,7 @@ export const FileWriteTool = buildTool({
       }
     }
 
-    return { result: true }
+    return elisionVerdict(content, fileText, fullFilePath)
   },
   advise({ file_path, content }, context) {
     // The index line a new memory needs, and the hygiene notes
@@ -391,6 +411,7 @@ export const FileWriteTool = buildTool({
     // files), which silently corrupted e.g. bash scripts with \r on Linux when
     // overwriting a CRLF file or when binaries in cwd poisoned the repo sample.
     writeTextContent(fullFilePath, content, enc, 'LF')
+    await fileHistoryRecordWrite(updateFileHistoryState, fullFilePath)
 
     // Notify LSP servers about file modification (didChange) and save (didSave)
     const lspManager = getLspServerManager()

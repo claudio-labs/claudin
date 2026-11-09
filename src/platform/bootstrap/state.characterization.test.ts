@@ -127,8 +127,11 @@ describe('the module export surface', () => {
   //
   // 199 with `getIsOneShotPrint` and `setIsOneShotPrint`: a `-p` run with one
   // prompt writes its main thread at the 5m cache tier (cacheControl.ts).
-  test('still exports 199 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(199)
+  //
+  // 201 with `getFallbackModelOverride` and `setFallbackModelOverride`: the
+  // `--fallback-model` flag reaches the interactive loop (fallbackModel.ts).
+  test('still exports 201 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(201)
   })
 
   test('exports at least one symbol from every planned cluster', () => {

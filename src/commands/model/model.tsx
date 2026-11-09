@@ -11,6 +11,7 @@ import { getCurrentProjectConfig } from 'src/platform/config/config.js';
 import type { EffortLevel } from 'src/providers/effort/effort.js';
 import { isBilledAsExtraUsage } from 'src/providers/usage/extraUsage.js';
 import { clearFastModeCooldown, isFastModeAvailable, isFastModeEnabled, isFastModeSupportedByModel } from 'src/providers/fastMode.js';
+import { clearFallbackHolds } from 'src/providers/model/fallbackHold.js';
 import { MODEL_ALIASES } from 'src/providers/model/aliases.js';
 import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/providers/model/check1mAccess.js';
 import type { ModelOption } from 'src/providers/model/modelOptions.js';
@@ -56,6 +57,8 @@ function ModelPickerWrapper(t0: {
         mainLoopModel: model,
         mainLoopModelForSession: null
       }));
+      // A model the user picks is the one the loop runs on (fallbackHold.ts).
+      clearFallbackHolds();
       let message = `Set model to ${chalk.bold(renderModelLabel(model))}`;
       if (effort !== undefined) {
         message = message + ` with ${chalk.bold(effort)} effort`;
@@ -202,6 +205,8 @@ function SetModelAndClose({
         mainLoopModel: modelValue,
         mainLoopModelForSession: null
       }));
+      // A model the user picks is the one the loop runs on (fallbackHold.ts).
+      clearFallbackHolds();
       // `/model` is project-scoped: a concrete pick binds to this project only,
       // while "default" (null) clears the pin and inherits the global default.
       const scopeSuffix = modelValue ? chalk.dim(' · for this project') : '';

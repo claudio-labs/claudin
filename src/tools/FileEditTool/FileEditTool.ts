@@ -15,6 +15,10 @@ import {
   notesToAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
+import {
+  elisionRefusal,
+  findElisionPlaceholder,
+} from 'src/tools/shared/elisionGuard.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
 import {
   activateConditionalSkillsForPaths,
@@ -37,6 +41,7 @@ import {
 } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
+  fileHistoryRecordWrite,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
 import {
@@ -225,6 +230,17 @@ export const FileEditTool = buildTool({
         message:
           'No changes to make: old_string and new_string are exactly the same.',
         errorCode: 1,
+      }
+    }
+    const elision = findElisionPlaceholder(new_string, old_string, fullFilePath)
+    if (elision) {
+      return {
+        result: false,
+        message: elisionRefusal(
+          `Edit refused: new_string line ${elision.line}`,
+          elision,
+        ),
+        errorCode: 11,
       }
     }
 
@@ -630,6 +646,7 @@ export const FileEditTool = buildTool({
 
     // 5. Write to disk
     writeTextContent(absoluteFilePath, updatedFile, encoding, endings)
+    await fileHistoryRecordWrite(updateFileHistoryState, absoluteFilePath)
 
     // Notify LSP servers about file modification (didChange) and save (didSave)
     const lspManager = getLspServerManager()

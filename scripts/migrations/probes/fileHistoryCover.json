@@ -1,0 +1,71 @@
+{
+  "test": [
+    "src/shared/fs/fileHistory.test.ts",
+    "src/shared/fs/fileHistory.rewind.test.ts",
+    "src/shared/fs/fileHistory.resume.test.ts"
+  ],
+  "source": "src/shared/fs/fileHistory.ts",
+  "probes": [
+    {
+      "name": "rewind: a changed file is not restored",
+      "find": "      if (await checkOriginFileChanged(filePath, backupFileName)) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "rewind: an unchanged file is rewritten too",
+      "find": "      if (await checkOriginFileChanged(filePath, backupFileName)) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "rewind: a file absent at the target is not deleted",
+      "find": "          await unlink(filePath)\n",
+      "replace": "          await Promise.resolve(filePath)\n"
+    },
+    {
+      "name": "trackEdit: a second edit in the same snapshot overwrites the v1 backup",
+      "find": "  if (mostRecent.trackedFileBackups[trackingPath]) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "makeSnapshot: an unchanged file is backed up again instead of reused",
+      "find": "            trackedFileBackups[trackingPath] = latestBackup\n            return\n",
+      "replace": ""
+    },
+    {
+      "name": "makeSnapshot: snapshots grow past MAX_SNAPSHOTS",
+      "find": "            ? allSnapshots.slice(-MAX_SNAPSHOTS)\n",
+      "replace": "            ? allSnapshots\n"
+    },
+    {
+      "name": "diff stats: insertions are not summed across files",
+      "find": "    insertions += r.stats?.insertions || 0\n",
+      "replace": "    insertions = r.stats?.insertions || 0\n"
+    },
+    {
+      "name": "hasAnyChanges: a changed file does not report a change",
+      "find": "      if (await checkOriginFileChanged(filePath, backupFileName)) return true\n",
+      "replace": "      if (await checkOriginFileChanged(filePath, backupFileName)) continue\n"
+    },
+    {
+      "name": "restore from log: trackedFiles is not rebuilt",
+      "find": "      trackedFiles.add(trackingPath)\n",
+      "replace": ""
+    },
+    {
+      "name": "compare: the mtime shortcut is dropped (content always compared)",
+      "find": "  if (originalStats.mtimeMs < backupStats.mtimeMs) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "rewind: a file first tracked after the target has no v1 to fall back on",
+      "find": "    if (backup !== undefined && backup.version === 1) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "control: a comment in trackEdit",
+      "expect": "green",
+      "find": "    // Already tracked in the most recent snapshot; next makeSnapshot will\n",
+      "replace": "    // Tracked already in the latest snapshot; the next makeSnapshot will\n"
+    }
+  ]
+}

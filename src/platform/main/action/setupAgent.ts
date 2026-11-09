@@ -13,7 +13,7 @@
 //
 // Each helper performs no checkpointing.
 
-import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType } from 'src/platform/bootstrap/state.js';
+import { getInitialMainLoopModel, setFallbackModelOverride, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType } from 'src/platform/bootstrap/state.js';
 import { getCommands } from 'src/commands/commands.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
@@ -25,6 +25,7 @@ import { logError } from 'src/shared/log.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, parseUserSpecifiedModel } from 'src/providers/model/model.js';
 import { ensureModelStringsInitialized } from 'src/providers/model/modelStrings.js';
+import { getConfiguredFallbackModel } from 'src/providers/model/fallbackModel.js';
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { cacheSessionTitle, saveAgentSetting } from 'src/sessions/sessionStorage.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
@@ -138,7 +139,10 @@ export async function runActionPostSetup(input: RunActionPostSetupInput): Promis
 
   // Special case the default model with the null keyword.
   const userSpecifiedModel = options.model === 'default' ? getDefaultMainLoopModel() : options.model;
-  const userSpecifiedFallbackModel = fallbackModel === 'default' ? getDefaultMainLoopModel() : fallbackModel;
+  // The flag reaches the interactive loop through bootstrap state; -p gets the
+  // resolved value (flag, else the fallbackModel setting) directly.
+  setFallbackModelOverride(fallbackModel);
+  const userSpecifiedFallbackModel = getConfiguredFallbackModel();
 
   // Reuse preSetupCwd unless setup() chdir'd (worktreeEnabled).
   const currentCwd = ctx.worktreeEnabled ? getCwd() : preSetupCwd;

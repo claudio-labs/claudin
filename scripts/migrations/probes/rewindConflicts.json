@@ -1,0 +1,125 @@
+{
+  "test": [
+    "src/shared/fs/fileHistory.conflicts.test.ts",
+    "src/shared/fs/fileHistory.subagent.test.ts",
+    "src/shared/fs/fileHistory.resume.test.ts",
+    "src/shared/fs/fileHistory.rewind.test.ts",
+    "src/tools/shared/stagedWrite/stagedWrite.commit.test.ts",
+    "src/tools/FileEditTool/FileEditTool.writeFingerprint.test.ts",
+    "src/agent/ui/RewindConflictStep.test.tsx"
+  ],
+  "source": "src/shared/fs/fileHistory.ts",
+  "probes": [
+    {
+      "name": "review B2: a sub-agent forwards only write fingerprints",
+      "find": "    if (WRITE_FINGERPRINT in updater) updateFileHistoryState(updater)\n",
+      "replace": "    updateFileHistoryState(updater)\n"
+    },
+    {
+      "name": "review B2: a sub-agent's write fingerprint reaches the parent",
+      "find": "    if (WRITE_FINGERPRINT in updater) updateFileHistoryState(updater)\n",
+      "replace": "    void updater\n"
+    },
+    {
+      "name": "review B2: sub-agent contexts get the forwarder",
+      "source": "src/agent/coordinator/forkedAgent.ts",
+      "find": "    updateFileHistoryState: fileHistoryForwardWritesOnly(\n      parentContext.updateFileHistoryState,\n    ),\n",
+      "replace": "    updateFileHistoryState: () => {},\n"
+    },
+    {
+      "name": "review Q1: a code-only restore asks too",
+      "source": "src/agent/ui/RewindConflictStep.tsx",
+      "find": "  return (option === 'code' || option === 'both') && conflicts.length > 0;\n",
+      "replace": "  return option === 'both' && conflicts.length > 0;\n"
+    },
+    {
+      "name": "review Q1: keep keeps the conflicts",
+      "source": "src/agent/ui/RewindConflictStep.tsx",
+      "find": "  return choice === 'keep' ? new Set(conflicts) : undefined;\n",
+      "replace": "  return undefined;\n"
+    },
+    {
+      "name": "review UX: nothing restored needs every changed file kept",
+      "source": "src/agent/ui/RewindConflictStep.tsx",
+      "find": "  return keep !== undefined && (changed ?? []).every(file => keep.has(file));\n",
+      "replace": "  return keep !== undefined && (changed ?? []).some(file => keep.has(file));\n"
+    },
+    {
+      "name": "review F1: the options wait for the conflicts",
+      "source": "src/agent/ui/MessageSelector.tsx",
+      "find": "<Select isDisabled={isRestoring || conflictsForRestore === null}",
+      "replace": "<Select isDisabled={isRestoring}"
+    },
+    {
+      "name": "only a tracked file gets a fingerprint",
+      "find": "    state.trackedFiles.has(trackingPath)\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "a file still as the agent left it is no conflict",
+      "find": "      if (onDisk === lastWrites[trackingPath]) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "no fingerprint, no conflict",
+      "find": "    if (!(trackingPath in lastWrites)) continue\n    try {\n      const filePath = maybeExpandFilePath(trackingPath)\n",
+      "replace": "    try {\n      const filePath = maybeExpandFilePath(trackingPath)\n"
+    },
+    {
+      "name": "a created file someone removed is no conflict",
+      "find": "          ? onDisk !== null\n",
+      "replace": "          ? true\n"
+    },
+    {
+      "name": "a file the rewind would not change is no conflict",
+      "find": "          : await checkOriginFileChanged(filePath, backupFileName)\n",
+      "replace": "          : true\n"
+    },
+    {
+      "name": "kept files are left alone",
+      "find": "      if (keep?.has(filePath)) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "the rewind refreshes what it rewrote",
+      "find": "          refreshed[trackingPath] = await diskFingerprint(filePath)\n",
+      "replace": ""
+    },
+    {
+      "name": "Edit records its write",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "    await fileHistoryRecordWrite(updateFileHistoryState, absoluteFilePath)\n",
+      "replace": ""
+    },
+    {
+      "name": "Write records its write",
+      "source": "src/tools/FileWriteTool/FileWriteTool.ts",
+      "find": "    await fileHistoryRecordWrite(updateFileHistoryState, fullFilePath)\n",
+      "replace": ""
+    },
+    {
+      "name": "the sed edit records its write",
+      "source": "src/tools/BashTool/applySedEdit.ts",
+      "find": "  await fileHistoryRecordWrite(toolUseContext.updateFileHistoryState, absoluteFilePath);\n",
+      "replace": ""
+    },
+    {
+      "name": "a batch records a move's destination",
+      "source": "src/tools/shared/stagedWrite/stagedWrite.ts",
+      "find": "      await fileHistoryRecordWrite(updateFileHistoryState, change.movePath!)\n",
+      "replace": ""
+    },
+    {
+      "name": "a code restore with conflicts stops at the step",
+      "source": "src/agent/ui/MessageSelector.tsx",
+      "find": "    if (needsConflictStep(option, conflictsForRestore ?? [])) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "the step lists files past the heading",
+      "source": "src/agent/ui/RewindConflictStep.tsx",
+      "find": "    ...listed,\n",
+      "replace": ""
+    }
+  ]
+}

@@ -63,6 +63,8 @@ export type State = {
   cwd: string
   modelUsage: { [modelName: string]: ModelUsage }
   mainLoopModelOverride: ModelSetting | undefined
+  /** The raw `--fallback-model` value; src/providers/model/fallbackModel.ts resolves it. */
+  fallbackModelOverride: string | undefined
   initialMainLoopModel: ModelSetting
   modelStrings: ModelStrings | null
   isInteractive: boolean

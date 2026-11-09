@@ -22,7 +22,7 @@ Options:
   --disable-slash-commands                          Disable all skills
   --disallowedTools, --disallowed-tools <tools...>  Comma or space-separated list of tool names to deny (e.g. "Bash(git:*) Edit")
   --effort <level>                                  Effort level for the current session (low, medium, high, xhigh, max)
-  --fallback-model <model>                          Enable automatic fallback to specified model when default model is overloaded (only works with --print)
+  --fallback-model <model>                          Switch to this model when the default one is overloaded, keeps failing or is rate-limited for long (overrides the fallbackModel setting)
   --file <specs...>                                 File resources to download at startup. Format: file_id:relative_path (e.g., --file file_abc:doc.txt file_def:img.png)
   --fork-session                                    When resuming, create a new session ID instead of reusing the original (use with --resume or --continue)
   --from-pr [value]                                 Resume a session linked to a PR by PR number/URL, or open interactive picker with optional search term

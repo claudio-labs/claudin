@@ -1,456 +1,105 @@
 ---
 name: tier3-file-split-roadmap
-description: The giant-file split programme — round 2 landed 2026-09-20 (summarizer, claudemd, theme, a narrow compact cut, plus auth/claudemd characterization suites); carries the live barrels, the md5 split gate, the feature() fold gate, and the traps a split hits here, including that verify:rules does NOT check prose symbol attributions
+description: How to split a giant file here — rank by size × churn × shape, cover first, move byte-identical and prove it by md5, the four traps (text-reading tests, bench fixtures, prose rules, ratchet paths), the feature() fold gate; the cheap splits are done (09-14..09-20), numbers in tier3-file-split-history
 type: project
 ---
 
-The plan that drove every `src/<area>/` barrel-plus-siblings cluster in this
-repo is **ROADMAP item 11**, and it is not in the working tree: `ROADMAP.md` was
-deleted in `367058c2`. Recover it with `git show cbf3325d:ROADMAP.md` if you
-ever need the original grades. **The ROADMAP-11 list is exhausted — measure the
-tree, do not work from it.**
+**Status (2026-09-20):** ROADMAP item 11's list is exhausted — measure the tree, don't work from it
+(`git show cbf3325d:ROADMAP.md` has the original grades). Every high-churn relocatable file is a
+barrel now; the live list is `code-design.md` §1. What each round moved and cost:
+[[tier3-file-split-history]].
 
-## What is a barrel today (2026-09-19)
+**What is left:**
+- **Group B — high churn but monolithic** (`REPL.tsx`, `PromptInput.tsx`, `claude/streaming.ts`,
+  `Config.tsx`, `AgentTool.tsx`, `query.ts`, `QueryEngine.ts`, `ManagePlugins.tsx`, each 74–91% one
+  symbol): extract hooks/subcomponents into a composition root + siblings (`repl/controllers/`,
+  `repl/hooks/`), never a barrel. `REPL.tsx` (3 exports) and `PromptInput.tsx` (1) must not become
+  barrels — a barrel is for a wide surface, and `REPL.hooksOrder.test.ts` reads `REPL.tsx` as text.
+- **Group C — big but frozen, don't start here:** `pluginLoader.ts`, `marketplaceManager.ts`,
+  `normalize.ts`, `bridgeMain.ts`, `replBridge.ts`, `coreSchemas.ts` (codegen's `SCHEMA_FILE`),
+  `native-ts/yoga-layout` (mirrors upstream). The Bash/PowerShell read-only-validation quartet is not
+  duplication: a shared base over disjoint vocabularies.
+- **Eight giants have zero characterization**, a risk without any split: `marketplaceManager.ts`
+  (runs `gitClone`/`gitPull`, pinned only as TEXT) and `PowerShellTool/readOnlyValidation.ts` are
+  next — both security surfaces.
 
-| barrel | was | now | siblings |
-|---|---|---|---|
-| `src/tools/shared/codeOutline/scanSymbols.ts` | 3911 | 193 | 18 |
-| `src/platform/headless/print/runHeadless.ts` | 4197 | 590 | 9 |
-| `src/providers/shims/claude.ts` | — | 66 | `claude/` |
-| `src/providers/shims/openaiShim.ts` | — | 51 | `openaiShim/` |
-| `src/mcp/client.ts` | — | 66 | `client/` |
-| `src/tools/BashTool/bashPermissions.ts` | 2528 | 68 | 7 |
-| `src/tools/BashTool/bashSecurity.ts` | 2608 | 22 | 13 |
-| `src/platform/config/config.ts` | 2276 | 101 | 7 |
-| `src/platform/bootstrap/state.ts` | 1896 | 278 | 11 |
-| `src/commands/insights.ts` | 2832 | 47 | 9 |
-| `src/tools/PowerShellTool/pathValidation.ts` | 2055 | 19 | 6 |
-| `src/mcp/auth.ts` | 1971 | 40 | 8 |
-| `src/permissions/permissionSetup.ts` | 1454 | 60 | 10 |
-| `src/vcs/git/worktree.ts` | 1544 | 54 | 8 |
-| `src/agent/tools/toolResultSummarizer.ts` | 1396 | 259 | 11 |
-| `src/memory/instructions/claudemd.ts` † | 1405 | 482 | 8 |
-| `src/terminal/theme/theme.ts` † | 1282 | 82 | 14 |
-| `src/agent/compact/compact.ts` † | 1540 | 1050 | 2 |
-
-† not a pure barrel — see below. The last four landed on
-`refactor/split-group-a-round-2`, 2026-09-20 (#217); the four above them
-(`pathValidation`, `auth`, `permissionSetup`, `worktree`) on branch
-`refactor/split-remaining-giants`, 2026-09-19 (#216); the four above those on
-`refactor/split-giant-modules`, 2026-09-14.
-**The BashTool pair is a RE-land, not a first one** — PR #129 merged in August
-and its code was then dropped from `main` by a non-fast-forward push; see
-[[pr-129-lost-to-force-push]] for the detection recipe and the
-`refs/pull/N/head` recovery.
-
-## Re-measurement 2026-09-19 — Group A is not empty, it moved down the list
-
-Re-ranked the 45 largest non-test files after `refactor/split-remaining-giants`
-landed. The finding that matters: **size no longer predicts anything.** The four
-biggest files in the tree are all Group C (frozen) — `pluginLoader.ts` 3274×**6**,
-`marketplaceManager.ts` 2610×7, `normalize.ts` 2455×8, `bridgeMain.ts` 2411×8 —
-while every remaining cheap target sits in the 1.2–1.8k band. Rank by shape ×
-churn or you will split the wrong file.
-
-The six that are still relocatable AND churning:
-
-**Four of the six are DONE** on `refactor/split-group-a-round-2` (2026-09-20),
-`auth.ts` got a characterization suite instead of a split, and `errors.ts` was
-dropped — its table row is misleading, see the footnote.
-
-| file | lines | commits | syms | largest | coverage |
-|---|---|---|---|---|---|
-| `agent/tools/toolResultSummarizer.ts` | 1396 | 20 | 87 | 13% | 1377 + 982-line tests |
-| `providers/auth/auth.ts` | 1775 | 11 | 78 | 8% | **none** (8 tests mock it away) |
-| `agent/compact/compact.ts` | 1540 | 10 | 36 | 19% | yes |
-| `memory/instructions/claudemd.ts` | 1405 | 11 | 39 | 20% | yes |
-| `providers/transport/errors.ts` | 1295 | 15 | 36 | 40%¹ | yes |
-| `terminal/theme/theme.ts` | 1282 | 11 | 22 | 8% | yes |
-
-¹ 35 of 36 symbols are small message constants; the 40% is one dispatcher.
-
-The "coverage: yes" column was **wrong for two of them** and that is the lesson
-of the round: a file is not covered because some test mentions it.
-`claudemd.ts` had **no colocated test at all** — the suites that name it import
-`MemoryFileInfo` as a type or `mock.module` it away — and `compact.ts`'s 101-line
-suite covered 2 of its 36 symbols, none of them in the blocks a split would
-move. Check for a colocated `*.test.ts` that imports the module's FUNCTIONS
-before costing a split.
-
-## What round 2 cost, and the five things it taught
-
-`toolResultSummarizer.ts` 1396 → **259** (11 siblings), `claudemd.ts` 1405 →
-**482** (8), `theme.ts` 1282 → **82** (14), `compact.ts` 1540 → **1050** (2, a
-deliberately narrow cut). Plus two characterization suites written from scratch:
-26 tests for `claudemd.ts`, 54 for `auth.ts`.
-
-**1. `verify:rules` does NOT check symbol attributions in prose.** An earlier
-draft of this memory claimed it did, on the strength of `SymbolAttributionClaim`
-in `rulesClaims.ts:34`. Measured: that parser only fires on the parenthesised
-module-map form, `file.ts (symA, symB)`. A prose claim —
-`` `summarizeGrepOutput` in `src/agent/tools/toolResultSummarizer.ts` `` — passes
-the check for as long as the *path* exists, so it goes stale silently. Four such
-lines across three rules needed hand-editing. What `--fix` heals is directory
-counts, nothing else — the original wording of this memory was right.
-
-**2. Normalized-content md5 is the split gate, and it is cheap.** For each side:
-strip a leading `export `, drop every line containing `" from '"`, drop blanks,
-sort, `md5sum`. `theme.ts` and `toolResultSummarizer.ts` came back byte-identical
-on the first try. `compact.ts` and `claudemd.ts` left a residue of *import member
-lines* (`  basename,`) and block openers, which the filter cannot see because
-they are continuation lines — diff those by eye and confirm every one is an
-import member. Anything else is a real edit.
-
-**3. Keeping a constant "up top" creates a back-edge.** The first cut of
-`compact.ts` left the `POST_COMPACT_*` budgets in the root because one of their
-readers stayed, so the sibling imported them back and the two files imported each
-other. Build, typecheck and the full suite all passed — which is exactly why it
-would have survived review. The fix is always to move the constant DOWN into the
-sibling and re-export it from the root. Same rule caught
-`MAX_MEMORY_CHARACTER_COUNT` in the claudemd split.
-
-**4. The `mock.module` whole-run leak does not reproduce under Bun 1.3.11** for a
-namespace import. `testing.md` says Bun pre-applies every `mock.module()`
-specifier for the whole run, which is why nobody had ever tested `auth.ts` — it
-is mocked by eight suites. Measured 16 pairings (each of the eight before and
-after a new real-exports suite, both orders): all green. Seven of the eight
-re-install the real module in `afterAll` anyway. **The real blocker was ambient
-machine state**: run alone, `isMaxSubscriber()` returned `true` from the
-developer's own `~/.claudin` credentials. Pin `CLAUDIN_CONFIG_DIR` and the
-original cwd to temp dirs.
-
-**5. A break-probe pass finds unguarded lines, not just untested ones.** Three
-came out of this round and none is a test defect: the `code`/`codespan` skip in
-`extractIncludePathsFromTokens` is unreachable (a `code` token has no text-typed
-child); the `isAnthropicAuthEnabled` gates inside `getSubscriptionType` and
-`getRateLimitTier` cannot be reached machine-independently; and
-`!Number.isNaN(parsed)` in `calculateApiKeyHelperTTL` is redundant because
-`NaN >= 0` is already false. Document them in the test rather than writing an
-assertion that pretends to cover them.
-
-`toolResultSummarizer.ts` is the best target left — per-tool strategies
-(`summarizeBashOutput` / `summarizeGrepOutput` + ~14 grep helpers /
-`summarizeWebFetch` / `summarizeGlob` / head-tail) each with private constants,
-`dispatch` as the barrel, and the only A candidate with real characterization
-coverage already written. `auth.ts` has the best shape and is the worst
-risk-adjusted pick: nothing exercises it.
-
-**The Read outline understates the largest symbol** when a function has a long
-multi-line parameter list — it reports only the signature range. Three files
-were materially wrong before correcting by hand: `errors.ts` 15%→40%,
-`toolExecution.ts` 11%→**56%**, `render-node-to-output.ts` 8%→58%. Verify the
-body extent of the top symbol before calling a file relocatable.
-
-**Two bench defaults are already dead paths**, both victims of the 2026-08
-reorg, so this bench had been measuring nothing since — **FIXED 2026-09-20**,
-with an existence guard beside the `jq` check so the next move fails loudly:
-`scripts/bench/tokens/cache-progression.sh:40` reads `src/screens/REPL.tsx`
-(now `src/agent/repl/REPL.tsx`) and `:41` edits `src/bridge/bridgeEnabled.ts`
-(now `src/platform/bridge/bridgeEnabled.ts`).
-
-Nine giants have **zero** characterization, which is a standalone risk, not just
-a split blocker — `marketplaceManager.ts` (2610, and it runs `gitClone`/`gitPull`,
-pinned only as TEXT by `security-hardening.test.ts`),
-`PowerShellTool/readOnlyValidation.ts` (1818, a security surface),
-`Config.tsx`, `coreSchemas.ts`, `bridgeMain.ts`, `replBridge.ts`,
-`ManagePlugins.tsx`, `PromptInput.tsx`. `auth.ts` came off this list on
-2026-09-20; the other eight are still open, and `marketplaceManager.ts` and
-`PowerShellTool/readOnlyValidation.ts` are the two worth doing next — both are
-security surfaces, and neither needs a split to be worth covering.
-
-## Re-measurement 2026-09-18 — the cheap splits are DONE
-
-Ranked the 45 largest non-test files by size × churn (`git log --follow`, which
-is mandatory: the 2026-08 reorg makes plain `git log -- <path>` undercount) ×
-**shape**. Shape is the axis that was missing before, and it reorders
-everything: a file of many independent top-level symbols relocates
-byte-identical, a file that is one 2k-line function does not.
-
-The repo history is 2026-04-29 → now, so "all time" and "last 6 months" are the
-same number.
-
-### Group A — high churn AND relocatable (the only cheap targets left)
-
-**DONE — branch `refactor/split-group-a`, 2026-09-19.** All four are barrels
-now; see "What Group A actually cost" below. The table is the state that
-justified the work.
-
-| file | lines | commits | shape | net |
-|---|---|---|---|---|
-| `src/agent/compact/stableStubState.ts` | 1529 | 21 | 77 syms, largest 5% | 2153-line test |
-| `src/permissions/yoloClassifier.ts` | 1688 | 18 | 65 syms, largest 18% | 3 tests |
-| `src/permissions/filesystem.ts` | 1860 | 15 | 46 syms, largest 11% | via permissions |
-| `src/permissions/permissions.ts` | 1450 | 18 | mixed, ~430 lines out | 295-line test |
-
-## What Group A actually cost, and the four things it taught
-
-Result: `stableStubState.ts` 1529 → **66**, `filesystem.ts` 1860 →
-`filePermissions.ts` **23**, `yoloClassifier.ts` 1688 → **19**,
-`permissions.ts` 1450 → **822** (re-exports plus the decision core, which
-stayed on purpose — it is the security hot path).
-
-**1. Run the ownership check BEFORE the split, not after.** Screaming
-Architecture + Vertical Slice asks whether a symbol lives in the slice that
-owns the behavior. Three of the four passed. `filesystem.ts` did not: 10 of its
-30 exports, with 21 importers across six slices, were paths belonging to
-memory/, skills/, agent/ and the host. Splitting first would have built a tidy
-barrel around symbols that should not have been in the slice at all. They moved
-to `memory/session/paths.ts`, `skills/bundledSkillsRoot.ts`,
-`agent/scratchpad.ts`, `platform/tmpdir.ts` and `shared/fs/path.ts` first, and
-the barrel that remained was less than half the size.
-
-Caller count is NOT the ownership test. `toPosixPath`'s only importer was in
-permissions/, and it still belongs in `shared/fs/path.ts` — "convert a path to
-POSIX on this platform" has no domain owner.
-
-**2. Order the ownership moves by dependency.** Moving the bundled-skills root
-or the scratchpad before the temp dir would have left skills/ and agent/
-importing permissions/ while permissions/ imported them back. Temp dir first,
-then everything built on it.
-
-**3. Verify a "byte-identical" move mechanically, not by reading.** For each
-module: strip import/export lines from the pre-split file and from the
-concatenated siblings, sort both, diff. A correct relocation shows an empty
-diff. This caught the only two real deltas across ~5,500 relocated lines —
-the `./` → `../` retarget of the classifier `.txt` requires, and one dropped
-section-header comment — and it is far cheaper than reviewing the diff by eye.
-
-**4. A barrel makes knip count an unused export twice.** A re-exported symbol
-nothing imports is reported at the barrel AND at the sibling, so
-`deadcode:exports` gains a finding for a pure relocation. Refresh with
-`bun run deadcode:baseline` and check the diff is only the relocation.
-
-### The bundle gate this rule got WRONG
-
-An earlier draft of this memory said to prove the `TRANSCRIPT_CLASSIFIER` fold
-with `grep -ro "require('src/permissions/classifierDecision" dist/chunks/ | wc -l`
-and expect **0**. Both halves are wrong:
-
-- The flag is `true` in `build.ts`, so the fold KEEPS the require and the
-  bundler inlines the module. Absence would mean the fold went the wrong way.
-  Assert the module's code is PRESENT — grep a symbol from it
-  (`isAutoModeAllowlistedReadOnlyToolUse`), not the require string.
-- `dist/chunks/` holds `.mjs.map` sourcemaps carrying the original source text,
-  so an unfiltered grep matches the map and reports a phantom hit. Scope it
-  with `--include=*.mjs` / `glob: "*.mjs"`.
-
-The gate that IS right, and the one that matters after moving a `.txt` require:
-
-    rm -rf dist/chunks && bun run build
-    # then grep dist/chunks/*.mjs for a distinctive line of the template
-    # 'You are a security classifier for an autonomous coding agent' → must be found
-
-Nothing else can see that failure: a missing `.txt` is silently stubbed to `''`,
-auto mode degrades to auto-allow with no error, and under `bun test` both
-templates read `''` anyway because `feature()` is always false there.
-
-### Two traps that only the full suite or a rename pass finds
-
-- **An import with a `.ts` extension is invisible to a path codemod.**
-  `claudinUiSurfaces.test.ts` imported `'src/permissions/filesystem.ts'`, not
-  `.js`, and survived a `sed` over every `.js` specifier. Grep both extensions.
-- **`verify:rules --fix` heals counts, never prose.** The barrel list in
-  `code-design.md` and the module map in `search-strategy.md` are hand-edited.
-
-### Group B — high churn but MONOLITHIC (a rewrite, not a relocation)
-
-`REPL.tsx` 3082×**54** (`REPL` = 89%), `PromptInput.tsx` 2603×41 (91%, and it has
-**no test of its own**), `claude/streaming.ts` 2279×39 (`queryModel` 80%),
-`Config.tsx` 1929×29 (91%, React-Compiler output), `AgentTool.tsx` 1412×22
-(84%), `query.ts` 1480×15 (`queryLoop` 85%), `QueryEngine.ts` 1384×12
-(`submitMessage` 74%), `ManagePlugins.tsx` 2218×8 (82%, **no test at all**).
-The path for these is hook/subcomponent extraction (`repl/controllers/`,
-`repl/hooks/` already are that), never a barrel.
-
-Two members of this class came out on `refactor/split-remaining-giants`
-(2026-09-19), both as **composition root + siblings** — their export surface is
-far too narrow for a barrel:
-
-- `ProviderManager.tsx` 3156 → **1851**. The three OAuth setup screens went to
-  `OAuthSetup.tsx`, four screens to `screens/`, and the pure helpers to
-  `providerDrafts.ts` / `providerLookups.ts` / `providerManagerConstants.ts` /
-  `ProviderManager.types.ts` — `.ts`, not `.tsx`, deliberately, so they stay
-  importable under `bun test` instead of dragging in `src/terminal/ink.js`. The
-  ~40 useState and every handler stayed on the root; the real cost was passing
-  props, not moving lines. `renderMenu` **deliberately stayed**: it closes over
-  16 members of the component's state, so extracting it would have bought a
-  16-prop interface that is just the component turned inside out.
-- `BashTool.tsx` 1366 → **507** (`bashCommandClassification.ts`,
-  `bashSchemas.ts`, `applySedEdit.ts`, `runShellCommand.tsx`). The
-  `buildTool({…})` object, `validateInput` included, stays in the root file
-  because two suites read it as TEXT (trap 1 below).
-
-### Group C — big but frozen; do NOT start here
-
-`pluginLoader.ts` 3274×**6**, `marketplaceManager.ts` 2610×7,
-`agent/messages/normalize.ts` 2455×8, `bridgeMain.ts` 2411×8,
-`replBridge.ts` 2327×9 (`initBridgeCore` 66%), `coreSchemas.ts` 1901×14 (136
-exports, purely mechanical — but it is `scripts/codegen/generate-sdk-types.ts`'s
-`SCHEMA_FILE` source of truth), `providers/auth/auth.ts` 1775×11,
-`native-ts/yoga-layout/index.ts` 2578 (a port that must mirror upstream —
-do not touch).
-
-The Bash/PowerShell read-only-validation quartet (~7.7k lines total) is **not
-duplication**: `platform/shell/readOnlyCommandValidation.ts` is the shared base
-that both `readOnlyValidation.ts` import, over disjoint vocabularies (POSIX
-binaries vs cmdlets) and different tokenizers. Much of the bulk is data
-literals (`COMMAND_ALLOWLIST` is 52% of one file), which split trivially but buy
-little at 5 commits.
-
-### The three biggest files in the repo were orphaned TESTS — DONE
-
-Split on `refactor/split-remaining-giants`, 2026-09-19, together with
-`FileReadTool.test.ts` (2177, and the highest churn of the four at 18 commits).
-Best effort-to-risk ratio available, because splitting a test cannot break
-runtime; in all four the production side was already split and the test never
-followed.
-
-- `providers/shims/openaiShim.test.ts` 4756 → **ten topic suites** under
-  `shims/openaiShim/`, over `__testutils__/shimHarness.ts`.
-- `outputFilter/Bash/bashFilter.test.ts` 4233 → **per-family suites** under
-  `Bash/filters/`, plus `Bash/structural.test.ts` and appends to
-  `registry`/`pipeline`/`compoundBody`.
-- `codeOutline/scanSymbols.test.ts` 3322 → **15 siblings** under `codeOutline/`
-  (`clike/`, `langs/`, `mask/`, `detectLang`, `renderOutline`).
-- `FileReadTool/FileReadTool.test.ts` 2177 → **eight suites** over
-  `__testutils__/fileReadHarness.ts`.
-
-The one part of this that is NOT relocation is **process-global state**. Two of
-the four set it at module scope and restored it in a module-scope `afterAll` —
-correct in one file, wrong in eight, because the first shard to finish restores
-on behalf of all the others (openaiShim's `mock.module` of `activeProvider`,
-FileReadTool's `CLAUDIN_SIMPLE` + `CLAUDIN_DISABLE_TOOL_RESULT_CACHE`, which
-un-disables the very cache that masks the dedup paths). Both now arm and restore
-through a harness function each shard calls at its OWN top level
-(`useShimHarness()`, `useFileReadEnv()`); for the shim's module mock the
-override is installed once and the factory reads a module flag, so restoration
-is order-independent and the module graph is not re-evaluated per test. The only
-proof is empirical: run the shards in different orders, then alongside a file
-that uses the real resolver.
-
-### Four more production barrels — DONE, same branch
-
-| file | was | barrel | siblings | what the split had to respect |
-|---|---|---|---|---|
-| `src/tools/PowerShellTool/pathValidation.ts` | 2055 | **19** | 6 | had **zero** tests — written from scratch first |
-| `src/mcp/auth.ts` | 1971 | **40** | 8 | 1 of 8 groups covered; state is per-instance, no module mutable |
-| `src/permissions/permissionSetup.ts` | 1454 | **60** | 10 | 1 of 9 groups covered; one gated require read by five groups |
-| `src/vcs/git/worktree.ts` | 1544 | **54** | 8 | the only one with a module mutable AND two `mock.module` consumers |
-
-Four decisions worth keeping:
-
-- **`pathValidation` carried a private copy of `formatDirectoryList`**,
-  duplicating `src/permissions/pathValidation.ts:38`. A split is the moment that
-  surfaces: it was **deleted**, not moved. Relocating a duplicate into a tidy
-  sibling makes it look intentional.
-- **`permissionSetup`'s `feature('TRANSCRIPT_CLASSIFIER')` require is read by
-  five groups.** It lives once, in `autoModeStateBridge`; no sibling repeats the
-  `feature()` block, because repeating it would fold five copies. The fold gate
-  at the bottom of this file is the only thing that can check that — under
-  `bun test` every flag reads `false`.
-- **`worktree`'s siblings import each other by SIBLING path, never through the
-  barrel.** `resumeSession.test.ts` and `useReplExit.test.tsx` `mock.module` only
-  `getCurrentWorktreeSession` on the barrel path, so routing an internal call
-  back through the barrel would have made those mocks miss.
-- **Coverage goes in a SEPARATE, EARLIER commit than the split**, written
-  against the pre-split file and kept byte-identical across every extraction. A
-  test born with the divided version proves the divided version is consistent
-  with itself, not that behavior was preserved. Where the surface is OAuth I/O
-  (`ClaudeAuthProvider`, `performMCPOAuthFlow`, `startupContext`) the honest
-  answer is a **pin of the exported surface** plus unit tests for the separable
-  pure parts — and saying which is which, rather than calling it all verified.
-
-### Two files that must not become barrels
-
-`REPL.tsx` exports 3 symbols and `PromptInput.tsx` exports 1. A barrel exists
-for a WIDE surface (`claude.ts` re-exports ~20 names); what those two
-directories already use is **composition root + siblings**
-(`repl/controllers/`, `repl/hooks/`, the flat files in `prompt-input/`), and
-that is what to continue. On top of that, `src/agent/repl/REPL.hooksOrder.test.ts:29`
-`readFileSync`s `REPL.tsx` and asserts the literal `"if (screen === 'transcript') {"`
-— a barrel fails that on its first assertion.
-
-## The four traps a split hits here that a normal refactor does not
-
-- **Some tests read source files as TEXT.** Re-scanned 2026-09-18:
-  `REPL.hooksOrder.test.ts` → `REPL.tsx`; `configGroups.test.ts:167` →
-  `Config.tsx`; `lspDeferLatch.test.ts:53` and `deferredToolsDelta.test.ts:284`
-  → `streaming.ts`; `autoBackground.test.ts:65,83`, `prompts.test.ts:529` and
-  `__tests__/bugfixes.test.ts:286` → `AgentTool.tsx`; `toolRedirect.test.ts` and
-  `RunTestsTool/redirect.test.ts` (both `readFileSync` the BashTool root — line
-  pins deliberately omitted, they rotted twice in one branch) → `BashTool.tsx`;
-  `__tests__/bugfixes.test.ts:101,114,122,310` → `agent/query.ts`;
-  `security-hardening.test.ts:72,82,91` → `marketplaceManager.ts`;
-  `deferredToolsDelta.test.ts:291` → `compact.ts`;
-  `toolRedirect.test.ts:18` needs `platform/bash/commands.ts` to exist on disk;
-  `exploreAgentRemoved.test.ts` → `scripts/build/build.ts`.
-  They stay green under a scoped run and break on the full one. Grep the
-  filename repo-wide before believing a scoped run.
-- **Benches use giants as "large file" fixtures, and a barrel makes them measure
-  nothing — silently.** `cache-ab-bench.ts` names REPL.tsx, streaming.ts,
-  query.ts, QueryEngine.ts, normalize.ts and stableStubState.ts;
-  `outline-symbols-ab.ts` names REPL.tsx and PromptInput.tsx;
-  `measure-outline-tokens.ts` names pluginLoader.ts, providers/auth/auth.ts and
-  bridgeMain.ts; `repomap/05-ranking-variants.ts` and `read-strategy-ab.ts` name
-  more. No error, no empty result, just numbers for a file that is 4% of what
-  the bench thinks it is. Repoint them in the same commit (`6c574def` is the
-  worked example). `measure-outline-tokens.ts` samples by size TIER, so it needs
-  a same-tier replacement, not a rename.
-- **`verify:rules` goes yellow and the prose goes wrong.** Directory counts heal
-  with `bun run verify:rules --fix`, but the list of example barrels in
-  `code-design.md` and the module-map lines in `search-strategy.md` are prose
-  and do not. Update them in the branch (`b21c20b5`).
-- **The typecheck ratchet fingerprints include the file path**, so a split shows
-  as N new + N fixed. Prove it is a relocation (diff the *path-normalized
-  message multisets*) before refreshing. Since the backlog reached zero this is
-  usually moot — the Typecheck tool reports plain zero-new.
+**Ranking:** size × churn (`git log --follow`, mandatory since the 2026-08 reorg) × **shape**. Size
+alone predicts nothing: on 2026-09-19 the four biggest files were all frozen. "Covered" means a
+colocated `*.test.ts` that imports the module's FUNCTIONS — `claudemd.ts` and `compact.ts` were costed
+as covered and were not. The Read outline reports only a signature's range when its parameter list
+is long, so check the top symbol's body (`toolExecution.ts` read 11%, was 56%).
 
 ## The recipe, as executed four times
 
 1. Grep the filename repo-wide (trap 1).
-2. **Write the characterization suite FIRST and keep it byte-identical** across
-   every extraction commit. Make one test pin the **exact export surface** —
-   that is the only thing that catches an over-trimmed barrel re-export, and it
-   is the failure the build and tsc both pass over. Break-and-restore every
-   assertion that guards a shared mutable.
+2. **Write the characterization suite FIRST, in its own earlier commit, against the pre-split file,
+   and keep it byte-identical** across every extraction. One test pins the **exact export surface** —
+   the only thing that catches an over-trimmed barrel re-export, which build and tsc both pass. For
+   OAuth I/O, pin the surface, unit-test the pure parts, and say which is which. Pin
+   `CLAUDIN_CONFIG_DIR` and cwd to temp dirs: ambient `~/.claudin` credentials made
+   `isMaxSubscriber()` return true.
 3. Move bodies and comments byte-identical; only import/export lines are new.
-4. Module-level `let`/Map/cache goes in exactly ONE module. Where two clusters
-   share one (`config`'s `lastReadFileStats` + `globalConfigWriteCount`,
-   `state`'s three turn-token vars), the owner exports a narrow accessor — that
-   is the only place new code is allowed.
+4. Module-level `let`/Map/cache goes in exactly ONE module; where two clusters share one, the owner
+   exports a narrow accessor.
 5. One commit per extraction, suite green at each.
 
-Worked proof that step 2 pays: during #129 an extraction over-trimmed a
-`checkPathConstraints` import — `bun run build` passed, typecheck passed, four
-characterization tests failed with `ReferenceError`.
+Worked proof: during #129 an extraction over-trimmed a `checkPathConstraints` import — build and
+typecheck passed, four characterization tests failed with `ReferenceError`.
 
-## The `feature()` fold gate
+**Before moving:** run the ownership check first — does each symbol live in the slice that owns the
+behavior? `filesystem.ts` had 10 of 30 exports belonging elsewhere; moving them first halved the
+barrel. Caller count is not the test (`toPosixPath` belongs in `shared/fs/path.ts`). Order those
+moves by dependency. A split surfaces duplicates: delete one, never relocate it into a tidy sibling.
 
-If you need to prove a fold went the right way after moving `feature()` code:
+**While moving:**
+- Move a constant DOWN into the sibling and re-export it from the root. Keeping it "up top" for one
+  remaining reader makes the two files import each other, and build, typecheck and the suite all pass.
+- Siblings import each other by sibling path, never through the barrel: suites that `mock.module` the
+  barrel path would otherwise miss internal calls (`worktree`).
+- A `feature()` require read by several groups lives once (`autoModeStateBridge`); repeating it
+  folds N copies.
+- Splitting a TEST: process-global state restored in a module-scope `afterAll` is wrong once split —
+  the first shard to finish restores for all. Arm and restore through a harness function each shard
+  calls (`useShimHarness()`, `useFileReadEnv()`), then run the shards in different orders.
+
+## The gates
+
+**md5 split gate.** For each side: strip a leading `export `, drop every line containing
+`" from '"`, drop blanks, sort, `md5sum`. A residue of import-member lines (`  basename,`) and block
+openers is expected — confirm each by eye; anything else is a real edit.
+
+**feature() fold gate** (no test can be it — under `bun test` every flag reads `false`):
 
     rm -rf dist/chunks && bun run build
     grep -o 'pendingClassifierCheck:buildPendingClassifierCheck' dist/chunks/*.mjs | wc -l   # 8
 
-`grep -c` is WRONG here — it counts files-with-a-match and reports `1` on a
-healthy build. The `rm -rf` matters (3 generations are kept), and `dist/cli.mjs`
-is not the bundle. **No test can be this gate**: under `bun test` every flag
-reads `false`.
+`grep -c` is wrong (it counts files). `rm -rf` matters (3 generations are kept); `dist/cli.mjs` is not
+the bundle; scope to `*.mjs`, since `.mjs.map` carries source text. A flag that is `true` KEEPS its
+require, so assert the module's code is present, not the require string absent. After moving a `.txt`
+require, grep the bundle for a template line (`You are a security classifier for an autonomous coding
+agent`): a missing `.txt` is stubbed to `''` and auto mode silently auto-allows. The old "DCE
+complexity cliff" was false — `preProcessSources` folds `feature()` by regex over source text.
 
-The old "DCE complexity cliff" constraint that blocked the BashTool split for
-months was **false and is disproven** — `preProcessSources`
-(`scripts/build/build.ts`) folds `feature()` with a regex over the source text,
-not Bun's evaluator, so file size and import count cannot affect the fold.
+**knip** counts a re-exported unused symbol at the barrel AND the sibling; refresh
+`bun run deadcode:baseline` and check the diff is only the relocation.
 
-Two more things worth keeping from that split:
+## The four traps a split hits here
 
-- **`bashCommandIsSafeAsync_DEPRECATED`'s body never executes under `bun test`.**
-  `ParsedCommand.parse` returns no tree-sitter analysis in the runner, so it
-  always takes the `if (!tsAnalysis)` fallback — deleting a validator from the
-  async array changes no test outcome.
-- **Prefer deleting a footgun over testing it.** A `replacesInputs?: boolean`
-  that defaulted to the leaking behavior had no test at any of its three call
-  sites; splitting it into `mergeReplacingLiveCache` removed the argument a
-  caller could forget.
+- **Tests read source files as TEXT** (`REPL.hooksOrder.test.ts` → `REPL.tsx`, `toolRedirect.test.ts`
+  → `BashTool.tsx`, `bugfixes.test.ts` → `query.ts`/`AgentTool.tsx`; full 09-18 list in the history).
+  They stay green scoped and break on the full run. An import written with `.ts` is invisible to a
+  `.js` path codemod — grep both extensions.
+- **Benches use giants as "large file" fixtures** and silently measure a 4%-size barrel. Repoint them
+  in the same commit; `measure-outline-tokens.ts` needs a same-size-tier replacement.
+- **`verify:rules --fix` heals directory counts, never prose.** The barrel list in `code-design.md`
+  and the module map in `search-strategy.md` are hand-edited. It does NOT check a prose symbol
+  attribution (`` `summarizeGrepOutput` in `src/…` ``) — only the `file.ts (symA, symB)` form — so
+  those go stale silently while the path exists.
+- **The typecheck ratchet fingerprints include the path**, so a split shows N new + N fixed; diff the
+  path-normalized message multisets. Moot while the backlog is zero.
+
+A break-probe pass also finds unguarded lines, not only untested ones; document them in the test
+rather than writing an assertion that pretends to cover them ([[break-probe-harness]]).
 
 See also [[coding-gotchas-go-in-rules-not-memory]], [[typecheck-backlog-shape]],
 [[pr-129-lost-to-force-push]].

@@ -1,6 +1,6 @@
 ---
 name: Live-verifying TUI mouse click/hover under tmux
-description: How to drive and confirm TUI behavior in claudindev under tmux — fullscreen env + SGR mouse injection, a scratchpad CLAUDIN_CONFIG_DIR for seeded state (tasks) with no ~/.claudin writes and no rule-map rewrite, and Claude subscription limit alerts through a local ANTHROPIC_BASE_URL mock
+description: How to drive and confirm TUI behavior in claudindev under tmux — fullscreen env + SGR mouse injection, a scratchpad CLAUDIN_CONFIG_DIR for seeded state (tasks) with no ~/.claudin writes and no rule-map rewrite, Claude subscription limit alerts through a local ANTHROPIC_BASE_URL mock, and model outages/fallback through a --bare stub
 type: reference
 ---
 
@@ -140,3 +140,19 @@ Side effects and limits:
 - A Codex profile cannot be mocked this way (see [[codex-0.162-wire-diff]]).
 - After a live check in the repo cwd, end with `kill -9 <pane pid>` when that session's cost must
   not be folded into the project totals on exit.
+
+## Driving a model outage (fallback) with a hermetic stub (2026-11-08)
+
+The model-fallback check (#341) needed a primary that keeps failing. A `Bun.serve` stub answered
+`/v1/messages` with 529 or 503 for the primary model id and a minimal SSE reply ("fallback ok") for
+any other, appending each request's `model` to a log file, so routing is counted rather than inferred:
+- `CLAUDIN_CONFIG_DIR=<scratch>/cfg ANTHROPIC_BASE_URL=http://127.0.0.1:<port> claudindev --bare
+  --settings '{"apiKeyHelper":"echo sk-ant-stub","fallbackModel":"claude-sonnet-5-5"}' --model
+  claude-opus-5-5` — works for `-p` and, under tmux, the REPL. `--bare` keeps auth hermetic (a
+  profile apiKey or an apiKeyHelper from `--settings`), so the real login and `~/.claudin` are never
+  touched, unlike the 10-22 recipe. A fresh config dir opens a startup picker: `Escape`.
+- `CLAUDIN_MAX_RETRIES=1|2` shortens a 5xx-exhaustion run; a run without `fallbackModel` is the control
+  (the API error must still surface).
+- Expect one `claude-haiku-5-5` request per turn in the log: a side query, not a routing bug.
+- `-p` never prints the "Switched to …" warning (headless drops those system messages); read the model
+  log, or check the warning in the REPL.

@@ -3,6 +3,7 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
+- [Plandex ports (11-08)](decisions/plandex-ports.md) — elision guard, rewind conflicts, /diff `x`, fallback
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
 - [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
@@ -27,8 +28,7 @@
 - [Edit takes Patch's any-read rule (10-12)](decisions/edit-any-read.md) — Write keeps the full gate
 - [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — 6 `CLAUDIN_*` killswitches
-- [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%
-- [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — classifier 20→11
+- 09-25 levers ON: [Patch/Edit `then` + path-keeping Bash cap](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14% · [path globs read-only](decisions/readonly-path-globs-default-on.md) — classifier 20→11
 - [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md)
 - [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets
 - [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — `CLAUDIN_READ_MULTI=0`
@@ -60,8 +60,8 @@
 
 ## Bugs
 - [ContainerTool background timeout never fires](bugs/container-background-timeout-never-fires.md) — not fixed
-- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red from Claudin's Bash, CI green; 3 load flakes
-- [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — cache read is 0.1x; 3-arm A/B owed before flipping to retain
+- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red from Claudin's Bash, CI green
+- [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — 3-arm A/B owed before flipping to retain
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code
 - FIXED #302: [Image blocks pinned the clip frontier](bugs/clip-frontier-stalls-on-image-blocks.md) — "mutated at 14" still open
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
@@ -123,16 +123,16 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09, rewrites 39%](weekly-token-census-2026-10-09.md) · [09-28 fan-out](token-census-2026-09-28.md) · [09-10 rule injections](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool error censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev tools 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 +cache/perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30 clean](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [own writes PASSED](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
 - [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines; rounds r2–r5 linked inside
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
-- [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20
+- [Giant-file split recipe](tier3-file-split-roadmap.md) — done 09-20 · [history](tier3-file-split-history.md)
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%
-- [Product roadmap 2026-07](roadmap-2026-07.md) — R1..R5, R3 bg agent done · [tokens](token-efficiency-roadmap.md)
+- [Product roadmap 2026-07](roadmap-2026-07.md) — R1–R5; R3 done · [tokens](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3, D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
@@ -148,9 +148,9 @@
 - Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
-- [Session cache A/B vs Claude Code (09-23..10-15)](session-cache-ab-bench-2026-09-23.md) — Opus +7%, Sonnet 5.5 −18% vs CC
+- [Session cache A/B vs Claude Code (09-23..10-15)](session-cache-ab-bench-2026-09-23.md) — Opus +7%, Sonnet 5.5 −18%
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal
-- Thinking vs CC: [round 3, effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [bash-first edits cost-neutral 10-21](edit-method-census-2026-10-21.md) · [2x is Opus-only, Patch-shaped (10-22)](thinking-gap-is-patch-shape-2026-10-21.md)
+- Thinking vs CC: [effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [bash-first edits neutral 10-21](edit-method-census-2026-10-21.md) · [2x is Opus-only, Patch-shaped](thinking-gap-is-patch-shape-2026-10-21.md)
 - [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
 - Prefix levers 09-23/24: [prefix breakdown, eager tools ≈20k](request-prefix-size-2026-09-23.md) · [dev tools deferred, −3.3k](dev-tools-deferred-advice-ab-2026-09-24.md) · [Build `directory` −7.7%](build-tool-ab-directory-gap.md)
 - Read/request A/Bs: [batch Read ties CC](cat-read-and-batch-read-ab-2026-09-24.md) · [read-files failed](read-files-ab-2026-09-29.md) · [`then` + cap promoted](request-count-levers-2026-09-24.md) · [cuts ~0.3%](cut-results-request-cost-2026-09-25.md)

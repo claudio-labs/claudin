@@ -171,6 +171,7 @@ export type KnownKeybindingAction =
   | 'diff:select'
   | 'diff:focusSectionUp'
   | 'diff:focusSectionDown'
+  | 'diff:revertHunk'
   // Model picker actions (internal-only)
   | 'modelPicker:decreaseEffort'
   | 'modelPicker:increaseEffort'

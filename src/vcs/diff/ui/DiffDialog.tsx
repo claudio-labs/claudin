@@ -14,7 +14,7 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
 import { type TurnDiff, useTurnDiffs } from 'src/vcs/diff/hooks/useTurnDiffs.js'
 import { useWorkspaceDiff } from 'src/vcs/diff/hooks/useWorkspaceDiff.js'
 import { Box, type DOMElement, Text, useInput, useTheme } from 'src/terminal/ink.js'
-import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
+import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js'
 import {
   getAheadBehind,
@@ -49,7 +49,14 @@ import {
   type TreeRow,
 } from 'src/vcs/diff/ui/DiffFileList.js'
 import { DiffPane, renderDiffRows } from 'src/vcs/diff/ui/DiffPane.js'
-import { buildRowLineIndex, selectionRange } from 'src/vcs/diff/ui/rowLines.js'
+import { buildRowLineIndex, hunkAtRow, selectionRange } from 'src/vcs/diff/ui/rowLines.js'
+import {
+  hasStagedChanges,
+  planHunkRevert,
+  revertHunk,
+  stagedRefusal,
+  worktreeShadowedRoots,
+} from 'src/vcs/diff/revertHunk.js'
 import {
   reselect,
   type SelectedFileKey,
@@ -216,6 +223,9 @@ export function DiffDialog({
     () => [getCwd(), ...additionalWorkingDirectories.keys()],
     [additionalWorkingDirectories],
   )
+  // Roots a worktree in scope resolved to its main checkout: their hunks are
+  // shown, but `x` must not write into that other checkout.
+  const shadowedRoots = useMemo(() => worktreeShadowedRoots(scanBases), [scanBases])
 
   // ── data ────────────────────────────────────────────────────────────────
   const workspace = useWorkspaceDiff(roots, scanBases)
@@ -274,6 +284,16 @@ export function DiffDialog({
     dirty: number
   } | null>(null)
   const [statusNonce, setStatusNonce] = useState(0)
+  // `x` on a working-tree hunk: the hunk waiting for y/n, and the one-line
+  // outcome the footer shows until the cursor or the file moves.
+  const [revertPrompt, setRevertPrompt] = useState<{
+    hunk: StructuredPatchHunk
+    file: DiffFile
+    root: string
+    question: string
+  } | null>(null)
+  const [revertNotice, setRevertNotice] = useState<string | null>(null)
+  const keepRevertNoticeRef = useRef(false)
   const [theme] = useTheme()
   // The side panel paints its own background, and the pre-rendered diff rows
   // have to carry it themselves — see DiffPane's `backgroundSgr`.
@@ -633,6 +653,7 @@ export function DiffDialog({
 
   /** Move the cursor by `delta` rows, scrolling the viewport to keep it in view. */
   const moveCursor = (delta: number): void => {
+    setRevertNotice(null)
     const next = Math.max(
       0,
       Math.min(diffRows.length - 1, cursorRowClamped + delta),
@@ -718,7 +739,17 @@ export function DiffDialog({
     setDiffScroll(0)
     setCursorRow(0)
     setVisualAnchor(null)
+    setRevertPrompt(null)
+    // A revert's own refresh can move the selection off a file it emptied;
+    // its outcome outlives that one move (keepRevertNoticeRef).
+    if (keepRevertNoticeRef.current) keepRevertNoticeRef.current = false
+    else setRevertNotice(null)
   }, [selectedKey])
+  // Declared after the reset above: the refresh a revert started has landed by
+  // the time the groups change, so the next file change clears the notice.
+  useEffect(() => {
+    keepRevertNoticeRef.current = false
+  }, [currentGroups])
 
   // Initialize / keep the log selection on a commit row.
   useEffect(() => {
@@ -868,7 +899,12 @@ export function DiffDialog({
   }
 
   const handleCancel = (): void => {
-    // Esc peels one layer at a time; an active selection is the innermost.
+    // Esc peels one layer at a time; a pending revert is the innermost, then
+    // an active selection.
+    if (revertPrompt !== null) {
+      setRevertPrompt(null)
+      return
+    }
     if (visualAnchor !== null) {
       setVisualAnchor(null)
       return
@@ -877,6 +913,63 @@ export function DiffDialog({
     else if (focus === 'content') setFocus('list')
     else onDone('Diff dialog dismissed', { display: 'system' })
   }
+
+  const askToRevertHunk = async (): Promise<void> => {
+    const intent = planHunkRevert(
+      currentSource.type,
+      selected?.file ?? null,
+      selected?.hunks ?? [],
+      hunkAtRow(segments, diffRows, cursorRowClamped),
+      { shadowedRoot: !!selected && shadowedRoots.has(selected.root) },
+    )
+    if (intent.kind === 'notice' || !selected) {
+      setRevertNotice(intent.kind === 'notice' ? intent.text : null)
+      return
+    }
+    const root = selected.root || getCwd()
+    // Refused before the question rather than after the y.
+    if (await hasStagedChanges(root, selected.file.path)) {
+      setRevertNotice(`Not reverted: ${stagedRefusal(selected.file.path)}`)
+      return
+    }
+    setRevertNotice(null)
+    setRevertPrompt({
+      hunk: intent.hunk,
+      file: selected.file,
+      root,
+      question: intent.question,
+    })
+  }
+
+  const confirmRevert = async (): Promise<void> => {
+    const prompt = revertPrompt
+    if (!prompt) return
+    setRevertPrompt(null)
+    const result = await revertHunk(prompt.root, prompt.file, prompt.hunk)
+    if (!result.ok) {
+      setRevertNotice(`Not reverted: ${result.reason}`)
+      return
+    }
+    setRevertNotice('Hunk reverted')
+    keepRevertNoticeRef.current = true
+    // The same re-read a finished turn triggers, keeping the selected file.
+    if (pendingReselectRef.current === null) {
+      pendingReselectRef.current = {
+        key: selectedFileKey(treeRows, selectedIndex),
+        groups: currentGroups,
+      }
+    }
+    workspace.refresh()
+    setStatusNonce(n => n + 1)
+  }
+
+  // y / Enter answer the revert question; n / Esc reach handleCancel through
+  // the Dialog's own confirm:no. The DiffDialog bindings stand down meanwhile,
+  // so Enter cannot also grow a gap.
+  useKeybinding('confirm:yes', () => void confirmRevert(), {
+    context: 'Confirmation',
+    isActive: hasFocus && revertPrompt !== null,
+  })
 
   useKeybindings(
     {
@@ -1035,6 +1128,19 @@ export function DiffDialog({
         if (activeTab !== 'local' || focus !== 'content') return false
         setVisualAnchor(a => (a === null ? cursorRowClamped : null))
       },
+      // x: revert the working-tree hunk under the cursor, after a y/n.
+      'diff:revertHunk': () => {
+        if (activeTab !== 'local') return false
+        if (focus !== 'content') {
+          setRevertNotice('x reverts a hunk in the diff: ctrl+↓ to move into it')
+          return
+        }
+        if (visualAnchor !== null) {
+          setRevertNotice('close the selection (v) before reverting a hunk')
+          return
+        }
+        void askToRevertHunk()
+      },
       // ctrl+← steps back out to the prompt. It needs its own action in the
       // DiffDialog context: a `Chat` binding is unreachable from here, since
       // nothing registers `Chat` as an *active* context.
@@ -1043,7 +1149,7 @@ export function DiffDialog({
         sidePanel.setFocus('prompt')
       },
     },
-    { context: 'DiffDialog', isActive: hasFocus },
+    { context: 'DiffDialog', isActive: hasFocus && revertPrompt === null },
   )
 
   // Paging for whichever pane has focus, in BOTH layouts. Line-by-line ↑/↓ is
@@ -1097,7 +1203,7 @@ export function DiffDialog({
     else if (down) moveLogFile(page)
     else if (home) setLogFileIndex(0)
     else setLogFileIndex(Math.max(0, commitFileCount - 1))
-  }, { isActive: hasFocus })
+  }, { isActive: hasFocus && revertPrompt === null })
 
   // ── render helpers ────────────────────────────────────────────────────────
   // No repo at all only once the scan has settled with zero groups — a nested
@@ -1168,6 +1274,7 @@ export function DiffDialog({
                 'Tab tabs',
                 '↑/↓ move',
                 ...(canSelectLines ? ['v select'] : []),
+                ...(currentSource.type === 'working' ? ['x revert hunk'] : []),
                 ...(canSelectLines ? ['drag to attach'] : []),
                 'ctrl+↑ files',
                 ...(sidePanel ? ['ctrl+← chat'] : []),
@@ -1194,11 +1301,18 @@ export function DiffDialog({
   const closeHint = visualAnchor !== null || !hasFocus ? '' : 'Esc close'
   const hints = fitHints(hintParts, footerWidth, closeHint)
   const footerGap = footerWidth - statusText.length - hints.length
-  const footer = (
-    <Text dimColor wrap="truncate-end">
-      {footerGap >= 2 ? `${statusText}${' '.repeat(footerGap)}${hints}` : hints}
-    </Text>
-  )
+  const footer =
+    revertPrompt !== null ? (
+      <Text color="warning" wrap="truncate-end">
+        {fitHints([revertPrompt.question], footerWidth, 'y/Enter revert · n/Esc cancel')}
+      </Text>
+    ) : revertNotice !== null ? (
+      <Text wrap="truncate-end">{revertNotice}</Text>
+    ) : (
+      <Text dimColor wrap="truncate-end">
+        {footerGap >= 2 ? `${statusText}${' '.repeat(footerGap)}${hints}` : hints}
+      </Text>
+    )
 
   const localEmptyMessage = workspace.loading
     ? 'Loading diff…'

@@ -13,8 +13,9 @@ type: project
 
 **Evidence:** by reading. The same path made Monitor's 30-minute timeout dead; the red test
 `MonitorTool.call > timeout_ms kills the monitor and says it expired` proved it before Monitor got
-its own deadline in `monitorStream.ts` (branch `fix/tool-texts-match-tools`).
+its own deadline in `monitorStream.ts` (#337).
 
-**Status:** open (2026-11-01). Found while fixing Monitor, out of that PR's scope. A fix must not
+**Status:** open (2026-11-01; re-checked 2026-11-08 — `spawnBackground` still hands `timeout` to
+`exec`). Found while fixing Monitor, out of that PR's scope. A fix must not
 reuse `monitorStream` as is: it streams output lines, which a docker build would flood — only the
 deadline part applies.
