@@ -66,6 +66,53 @@ export function extractGlobBaseDirectory(pattern: string): {
   return { baseDir, relativePattern }
 }
 
+/**
+ * Where an anchored relative pattern lets ripgrep start walking: below the
+ * directories it names literally. `migrations/*.sql` can only match inside
+ * `migrations/`, so walking from the root first walked everything else — the
+ * 101G `target/` of a Rust repo, three 20 s timeouts in the 2026-11-08/09
+ * census for patterns whose answer was a handful of files.
+ *
+ * The rest of the pattern stays anchored at the new root (`/*.sql`). maxDepth
+ * still counts from the caller's root, so the base's own depth comes off it,
+ * and an exclude written from the root loses the base prefix. Returns null —
+ * walk from the root, as before — for a pattern with no `/`, no literal
+ * directory to start from, a `..` in the base, or an anchored exclude this
+ * cannot re-anchor.
+ */
+export function rebaseAnchoredPattern(
+  pattern: string,
+  { maxDepth, exclude }: { maxDepth?: number; exclude?: string[] },
+): {
+  baseDir: string
+  pattern: string
+  maxDepth?: number
+  exclude?: string[]
+  /** maxDepth stops above the base: nothing can match. */
+  empty: boolean
+} | null {
+  if (!pattern.includes('/')) return null
+  const { baseDir, relativePattern } = extractGlobBaseDirectory(pattern)
+  if (baseDir === '' || baseDir === '.' || baseDir === '/') return null
+  const baseSegments = baseDir.split('/')
+  if (baseSegments.includes('..')) return null
+  const prefix = `${baseDir}/`
+  const rebasedExclude: string[] = []
+  for (const e of exclude ?? []) {
+    if (e.startsWith(prefix)) rebasedExclude.push(e.slice(prefix.length))
+    else if (!e.includes('/') || e.startsWith('**/')) rebasedExclude.push(e)
+    else return null
+  }
+  const rebasedDepth = maxDepth === undefined ? undefined : maxDepth - baseSegments.length
+  return {
+    baseDir,
+    pattern: relativePattern,
+    ...(rebasedDepth !== undefined && { maxDepth: rebasedDepth }),
+    ...(exclude !== undefined && { exclude: rebasedExclude }),
+    empty: rebasedDepth !== undefined && rebasedDepth < 1,
+  }
+}
+
 /** Ordering ripgrep applies to the walk. `path` is what `find … | sort` asked for. */
 export type GlobSort = 'modified' | 'path'
 
@@ -176,8 +223,21 @@ export async function glob(
   }
   // ripgrep never matches a glob written with a leading `./`; its spelling of
   // "at the search root" is a leading `/`, which the walk below uses.
-  const rootAnchored = LEADING_DOT_SLASH_RE.test(searchPattern)
+  let rootAnchored = LEADING_DOT_SLASH_RE.test(searchPattern)
   searchPattern = searchPattern.replace(LEADING_DOT_SLASH_RE, '')
+  // A relative pattern that names its first directories literally is walked
+  // from them (rebaseAnchoredPattern); what it matches does not change.
+  if (!isAbsolute(filePattern)) {
+    const rebased = rebaseAnchoredPattern(searchPattern, { maxDepth, exclude })
+    if (rebased) {
+      if (rebased.empty) return { files: [], truncated: false, incomplete: null }
+      searchDir = join(searchDir, rebased.baseDir)
+      searchPattern = rebased.pattern
+      rootAnchored = true
+      maxDepth = rebased.maxDepth
+      exclude = rebased.exclude
+    }
+  }
   const rgPattern = rootAnchored ? `/${searchPattern}` : searchPattern
 
   // ripgrep runs IN the search directory below, and cannot start in one that
@@ -210,12 +270,12 @@ export async function glob(
   // .gitignore'd src/gen.ts. Honoring .gitignore therefore walks WITHOUT the
   // caller's glob and keeps the paths it matches here, as ripgrep reads it:
   // anchored at the search root when rooted or holding a `/`, the bare name at
-  // any depth otherwise. An anchored pattern with no `**` or braces reaches no
-  // deeper than its own segments, which bounds the walk.
+  // any depth otherwise. An anchored file pattern with no `**` or braces
+  // reaches no deeper than its own segments, which bounds the walk either way.
   const matchHere = respectGitignore && type === 'file'
   const anchored = rootAnchored || searchPattern.includes('/')
   const reach =
-    matchHere && anchored && !UNBOUNDED_DEPTH_RE.test(searchPattern)
+    type === 'file' && anchored && !UNBOUNDED_DEPTH_RE.test(searchPattern)
       ? searchPattern.split('/').length
       : undefined
   const depth =

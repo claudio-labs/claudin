@@ -5,7 +5,7 @@ import { dirname, join } from 'path'
 
 import * as ripgrep from 'src/shared/fs/ripgrep.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import { glob, type GlobOptions } from 'src/shared/fs/glob.js'
+import { glob, type GlobOptions, rebaseAnchoredPattern } from 'src/shared/fs/glob.js'
 
 // How far ripgrep walks for an anchored pattern. The cases are the three
 // Globs that timed out after 20 s in ferrous-dns sub-agents (2026-11-08/09):
@@ -143,5 +143,43 @@ describe('what must not change', () => {
 
   test('a base that does not exist matches nothing', async () => {
     expect(await run('crates/nope/*.rs')).toEqual([])
+  })
+})
+
+describe('rebaseAnchoredPattern', () => {
+  test('the census patterns start at their literal directories', () => {
+    expect(rebaseAnchoredPattern('migrations/*.sql', {})).toEqual({
+      baseDir: 'migrations',
+      pattern: '*.sql',
+      empty: false,
+    })
+    expect(
+      rebaseAnchoredPattern('crates/infrastructure/src/repositories/query_log_repository/**/*.rs', {}),
+    ).toEqual({
+      baseDir: 'crates/infrastructure/src/repositories/query_log_repository',
+      pattern: '**/*.rs',
+      empty: false,
+    })
+  })
+
+  test('walks from the root when there is nothing literal to start from', () => {
+    expect(rebaseAnchoredPattern('*.ts', {})).toBeNull()
+    expect(rebaseAnchoredPattern('**/node_modules/x', {})).toBeNull()
+    expect(rebaseAnchoredPattern('*/src/*.ts', {})).toBeNull()
+    expect(rebaseAnchoredPattern('../sibling/*.ts', {})).toBeNull()
+  })
+
+  test('maxDepth loses the base, and stops being reachable at zero', () => {
+    expect(rebaseAnchoredPattern('crates/a/*.rs', { maxDepth: 4 })).toMatchObject({ maxDepth: 2, empty: false })
+    expect(rebaseAnchoredPattern('crates/a/*.rs', { maxDepth: 2 })).toMatchObject({ maxDepth: 0, empty: true })
+  })
+
+  test('excludes are re-anchored, kept, or make it decline', () => {
+    expect(
+      rebaseAnchoredPattern('crates/**/*.rs', { exclude: ['crates/application/**', 'target', '**/gen/**'] }),
+    ).toMatchObject({ exclude: ['application/**', 'target', '**/gen/**'] })
+    // An exclude anchored somewhere else might still have matched under the
+    // base (`*/application/**`): this declines rather than guess.
+    expect(rebaseAnchoredPattern('crates/**/*.rs', { exclude: ['*/application/**'] })).toBeNull()
   })
 })
