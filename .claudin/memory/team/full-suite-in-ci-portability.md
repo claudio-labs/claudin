@@ -140,5 +140,12 @@ which said "pre-existing" in one command.
 - `BuildTool/detect` "node wins over go" needed a global `tsc` on PATH (a mise shim here, none on
   the runner); the fixture now carries `node_modules/.bin/tsc`. Check a PATH dependence with
   `env PATH=/usr/bin:/bin $(which bun) test <file>`.
-- `WaitForTool` "settle" (≥3 polls at 0.2 s inside a 0.6 s settle) failed once on the loaded runner:
-  timing, not order.
+- Round 2: with withRetry.loop restoring the table, opus55/haiku55 got **Bedrock** ids
+  (`anthropic.claude-opus-5-5`) from a suite never identified (no direct writer in that range;
+  the provider suites run locally never cached Bedrock). Their `mock.module` pin of
+  `getAPIProvider` does not reach a table already cached, so they now also clear it in
+  `beforeEach`/`afterAll`. Proved red→green with a copy of opus55 whose appended `beforeAll`
+  caches Bedrock ids (`ensureModelStringsInitialized` under a Bedrock profile, then resets the
+  config): the exact 2 CI failures before the fix, 0 after.
+- `WaitForTool` "settle" asserted ≥3 polls; failed twice on the loaded runner with 2. Two is the
+  floor (one read opens the stable window, the next closes it), so the test asserts ≥2.
