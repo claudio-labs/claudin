@@ -1104,6 +1104,50 @@ function rescope(skill: Command, name: string, note: string): Command {
   } as Command
 }
 
+const MAX_VARIANT_SCAN_DIRS = 100
+
+/**
+ * What the model is told when it calls a skill that has directory-scoped
+ * variants — `apps/web:deploy` beside `deploy` — or null when there are none.
+ * The directories with uncommitted changes (up to 100, from `changedFiles`,
+ * paths relative to `cwd`, a trailing `/` for an untracked directory) are
+ * searched first, so a variant shows up even when no file under it was read
+ * yet. `invoked` is the skill being run, which is never its own variant; the
+ * variants are named as getCommands names them beside it (nameScopedSkills).
+ */
+export async function scopedVariantNote(
+  name: string,
+  invoked: Command | undefined,
+  cwd: string,
+  changedFiles: () => Promise<string[]>,
+): Promise<string | null> {
+  let files: string[] = []
+  try {
+    files = await changedFiles()
+  } catch (e) {
+    logError(e)
+  }
+  const dirs = [...new Set(files.map(f => (f.endsWith('/') ? join(cwd, f) : dirname(join(cwd, f)))))]
+  const found = await discoverSkillDirsForPaths(
+    dirs.slice(0, MAX_VARIANT_SCAN_DIRS).map(d => join(d, '_')),
+    cwd,
+  )
+  if (found.length > 0) await addSkillDirectories(found, cwd)
+
+  const invokedRoot = invoked?.type === 'prompt' ? invoked.skillRoot : undefined
+  const offered = new Set(getDynamicSkills(new Set([name])).map(c => c.name))
+  const variants = [...dynamicSkills.values()].filter(
+    ({ skill, scope }) =>
+      scope &&
+      skill.name === name &&
+      (skill.type !== 'prompt' || skill.skillRoot !== invokedRoot) &&
+      offered.has(`${scope}:${name}`),
+  )
+  if (variants.length === 0) return null
+  const lines = variants.map(({ scope }) => `- \`${scope}:${name}\` — for files under ${scope}/`)
+  return `Directory-scoped variants of the "${name}" skill exist in this repository:\n${lines.join('\n')}\n"${name}" is the unscoped one; call a variant by its exact name to use it instead.`
+}
+
 /**
  * Activates conditional skills (skills with paths frontmatter) whose path
  * patterns match the given file paths. Activated skills are added to the

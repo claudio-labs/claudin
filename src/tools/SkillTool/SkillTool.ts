@@ -53,6 +53,9 @@ import {
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
+import { scopedVariantNote } from 'src/skills/loadSkillsDir.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getFileStatus } from 'src/vcs/git/git.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
@@ -218,6 +221,10 @@ export const outputSchema = lazySchema(() => {
       .describe('Tools allowed by this skill'),
     model: z.string().optional().describe('Model override if specified'),
     status: z.literal('inline').optional().describe('Execution status'),
+    variantsNote: z
+      .string()
+      .optional()
+      .describe('The directory-scoped variants of this skill, when it has any'),
   })
 
   // Output schema for forked skills
@@ -511,6 +518,14 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     const model = processedCommand.model
     const effort = command?.type === 'prompt' ? command.effort : undefined
 
+    // `deploy` with an `apps/web:deploy` beside it: say so before the model
+    // follows the unscoped one (scopedVariantNote, loadSkillsDir.ts).
+    const cwd = getCwd()
+    const variantsNote = await scopedVariantNote(commandName, command, cwd, async () => {
+      const status = await getFileStatus(cwd)
+      return [...status.tracked, ...status.untracked]
+    })
+
     const isBuiltIn = builtInCommandNames().has(commandName)
     const isBundled = command?.type === 'prompt' && command.source === 'bundled'
     const isOfficialSkill =
@@ -569,6 +584,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
         commandName,
         allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
         model,
+        ...(variantsNote && { variantsNote }),
       },
       newMessages,
       contextModifier(ctx) {
@@ -656,7 +672,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     return {
       type: 'tool_result' as const,
       tool_use_id: toolUseID,
-      content: `Launching skill: ${result.commandName}`,
+      content: `Launching skill: ${result.commandName}${'variantsNote' in result && result.variantsNote ? `\n\n${result.variantsNote}` : ''}`,
     }
   },
 

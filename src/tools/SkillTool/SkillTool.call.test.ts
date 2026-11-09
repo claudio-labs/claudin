@@ -117,6 +117,7 @@ describe('SkillTool.call — inline', () => {
       message: { id: 'msg_2', content: [] },
     } as never)
     expect(result.data).toMatchObject({ success: true, commandName: 'zz-plain-skill', allowedTools: undefined })
+    expect(result.data).not.toHaveProperty('variantsNote')
     expect(result.contextModifier!(ctx)).toBe(ctx)
   })
 })
@@ -132,6 +133,12 @@ describe('SkillTool result and labels', () => {
         'u2',
       ).content,
     ).toBe('Skill "deploy" completed (forked execution).\n\nResult:\nshipped')
+    expect(
+      SkillTool.mapToolResultToToolResultBlockParam(
+        { success: true, commandName: 'deploy', variantsNote: 'Directory-scoped variants of the "deploy" skill …' },
+        'u3',
+      ).content,
+    ).toBe('Launching skill: deploy\n\nDirectory-scoped variants of the "deploy" skill …')
   })
 
   test('description and classifier input name the skill', async () => {

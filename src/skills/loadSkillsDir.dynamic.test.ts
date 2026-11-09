@@ -21,6 +21,7 @@ import {
   nameScopedSkills,
   onDynamicSkillsLoaded,
   parseSkillFrontmatterFields,
+  scopedVariantNote,
   transformSkillFiles,
   type ScopedSkill,
 } from 'src/skills/loadSkillsDir.js'
@@ -324,5 +325,43 @@ describe('nameScopedSkills', () => {
   test('a qualified name that is already taken is not offered', () => {
     const named = nameScopedSkills([scoped('deploy', 'web'), scoped('lint', 'web')], new Set(['deploy', 'web:deploy']))
     expect(named.map(c => c.name)).toEqual(['lint'])
+  })
+})
+
+describe('scopedVariantNote', () => {
+  const rootDeploy = { type: 'prompt', name: 'deploy', skillRoot: '/repo/.claudin/skills/deploy' } as Command
+
+  test('finds variants under changed directories no Read discovered, and names them qualified', async () => {
+    const cwd = join(root, 'variants')
+    mkdirSync(cwd, { recursive: true })
+    spawnSync('git', ['init', '-q'], { cwd })
+    skill(join(cwd, 'apps', 'web'), 'deploy', 'description: web deploy')
+    skill(join(cwd, 'tools'), 'deploy', 'description: tools deploy')
+    skill(join(cwd, 'apps', 'api'), 'deploy', 'description: api deploy')
+
+    const note = await scopedVariantNote('deploy', rootDeploy, cwd, async () => ['apps/web/src/page.tsx', 'tools/', 'README.md'])
+    expect(note).toBe(
+      'Directory-scoped variants of the "deploy" skill exist in this repository:\n' +
+        '- `apps/web:deploy` — for files under apps/web/\n' +
+        '- `tools:deploy` — for files under tools/\n' +
+        '"deploy" is the unscoped one; call a variant by its exact name to use it instead.',
+    )
+    // apps/api had no change and no Read, so it was never looked at.
+    expect(note).not.toContain('apps/api')
+  })
+
+  test('none, a failing status, or only the skill itself: no note', async () => {
+    const cwd = join(root, 'novariants')
+    mkdirSync(cwd, { recursive: true })
+    expect(await scopedVariantNote('deploy', rootDeploy, cwd, async () => [])).toBeNull()
+    const failing = async (): Promise<string[]> => {
+      throw new Error('not a git repository')
+    }
+    expect(await scopedVariantNote('deploy', rootDeploy, cwd, failing)).toBeNull()
+
+    const only = join(root, 'onlyone')
+    const dir = skill(join(only, 'apps', 'web'), 'release', 'description: web release')
+    const self = { type: 'prompt', name: 'release', skillRoot: dir } as Command
+    expect(await scopedVariantNote('release', self, only, async () => ['apps/web/a.ts'])).toBeNull()
   })
 })
