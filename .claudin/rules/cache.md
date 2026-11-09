@@ -33,6 +33,7 @@ invalidates the whole prefix and silently rebills `cache_creation`.
   | you add / change | guard |
   |---|---|
   | a message the loop yields, a tool's `newMessages`, the REPL's append rules | `src/agent/cache/loopPrefix.invariant.test.ts` — the real `query()` with a scripted model, next turn via REPL array, transcript and raw history |
+  | when a turn's messages land relative to the next turn's (Esc, the queue, a resubmit) | the same suite's "a turn cancelled mid-tool" scenarios (`runCancelledTurnSession`), `src/agent/repl/controllers/cancelledTurn.test.ts`, and `useOnQuery.wiring.test.ts` for the hook's calls |
   | an attachment type | `src/agent/attachments/__testutils__/attachmentFixtures.ts` won't compile without a payload; `renderStability.invariant.test.ts` + the loop suite then check it |
   | a tool, or a tool description | `src/tools/toolSchemaStability.invariant.test.ts` — same pool and text in every permission mode |
   | a system prompt section, or a call to `clearSystemPromptSections()` | `src/agent/prompts/systemPromptStability.invariant.test.ts` — callers limited to /compact and /resume; the bundle's prompt equal in every mode |
@@ -63,6 +64,15 @@ invalidates the whole prefix and silently rebills `cache_creation`.
   detector and the wire suite leave it out. A string `content` and its one text
   block are the same prompt (count_tokens); comparisons use
   `canonicalWireMessage`.
+- **A cancelled turn is still yielding when the next one starts.** onCancel
+  frees the guard at once, but the aborted tool answers on its own schedule,
+  and query.ts then yields its tool_result and the interrupt marker. A prompt
+  appended first went out against a placeholder result, and the late messages
+  landed after it, so the next turn rendered that message differently
+  (660bb320, 2026-11-09: 138k rewritten, 7 thinking blocks dropped). `onQuery`
+  settles older turns before appending (`cancelledTurn.ts`, ≤5 s, then the
+  late messages are dropped). Anything new that starts a turn goes through
+  `onQuery`, or settles the same way.
 - **Render once: the turn reads what the REPL keeps.** The in-turn request is
   built from `toolResults` (`query.ts`), the next turn's from the REPL array
   and the transcript. Both must hold the same messages, unrendered, because
@@ -603,7 +613,10 @@ transcript must be able to render again.
   the tie: 2 of 3 resumed sessions re-sent a batch reordered and missed the
   cache from there (2026-09-23). Recovered entries now sort by JSONL write
   order ONLY — keep any new re-linearization keyed to it, never to timestamps
-  or tool_use order.
+  or tool_use order. The same pass recovers a prompt written beside an aborted
+  tool_result (the queue sent it before the Esc'd tool answered), when nothing
+  hangs off it; a rewound or edited prompt has its own turn below it and stays
+  dropped.
 - A tool's run is more than its result. PreToolUse output is written between
   the `tool_use` and the result but chained off the walk; PostToolUse output and
   a tool's extra messages hang off a result the walk may not take (with
