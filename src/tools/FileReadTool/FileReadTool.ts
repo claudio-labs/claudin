@@ -943,7 +943,7 @@ export const FileReadTool = buildTool({
           context.dynamicSkillDirTriggers?.add(dir)
         }
         // Don't await - let skill loading happen in the background
-        addSkillDirectories(newSkillDirs).catch(() => {})
+        addSkillDirectories(newSkillDirs, cwd).catch(() => {})
       }
 
       // Activate conditional skills whose path patterns match this file

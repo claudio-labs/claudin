@@ -365,20 +365,21 @@ const loadAllCommands = memoize(async (cwd: string): Promise<Command[]> => {
 export async function getCommands(cwd: string): Promise<Command[]> {
   const allCommands = await loadAllCommands(cwd)
 
-  // Get dynamic skills discovered during file operations
-  const dynamicSkills = getDynamicSkills()
-
   // Build base commands without dynamic skills
   const baseCommands = allCommands.filter(
     _ => meetsAvailabilityRequirement(_) && isCommandEnabled(_),
   )
+
+  // Dynamic skills discovered during file operations, named around the
+  // commands already offered (a colliding scoped skill gets `<scope>:<name>`)
+  const baseCommandNames = new Set(baseCommands.map(c => c.name))
+  const dynamicSkills = getDynamicSkills(baseCommandNames)
 
   if (dynamicSkills.length === 0) {
     return baseCommands
   }
 
   // Dedupe dynamic skills - only add if not already present
-  const baseCommandNames = new Set(baseCommands.map(c => c.name))
   const uniqueDynamicSkills = dynamicSkills.filter(
     s =>
       !baseCommandNames.has(s.name) &&

@@ -18,9 +18,11 @@ import {
   getSkillCommandName,
   getSkillDirCommands,
   getSkillsPath,
+  nameScopedSkills,
   onDynamicSkillsLoaded,
   parseSkillFrontmatterFields,
   transformSkillFiles,
+  type ScopedSkill,
 } from 'src/skills/loadSkillsDir.js'
 
 // Characterization net for the dynamic (nested-directory) and conditional
@@ -119,8 +121,8 @@ describe('parseSkillFrontmatterFields', () => {
         when_to_use: 'on release',
         version: '2',
         model: 'inherit',
-        'disable-model-invocation': true,
-        'user-invocable': false,
+        'disable-model-invocation': 'true',
+        'user-invocable': 'false',
         context: 'fork',
         agent: 'Code',
         effort: 'high',
@@ -149,7 +151,8 @@ describe('parseSkillFrontmatterFields', () => {
   })
 
   test('falls back on the markdown for a description, and drops invalid effort and hooks', () => {
-    const parsed = parseSkillFrontmatterFields({ effort: 'loud', hooks: { PreToolUse: 'nope' } }, 'First line of the body', 'x')
+    const frontmatter = { effort: 'loud', hooks: { PreToolUse: 'nope' } } as unknown as Parameters<typeof parseSkillFrontmatterFields>[0]
+    const parsed = parseSkillFrontmatterFields(frontmatter, 'First line of the body', 'x')
     expect(parsed.hasUserSpecifiedDescription).toBe(false)
     expect(parsed.description).toContain('First line of the body')
     expect(parsed.effort).toBeUndefined()
@@ -175,7 +178,7 @@ describe('createSkillCommand', () => {
     if (command.type !== 'prompt') return
     const [block] = await command.getPromptForCommand('staging', {} as ToolUseContext)
     expect(block).toEqual({ type: 'text', text: 'Deploy staging from ${CLAUDIN_SKILL_DIR}' })
-    expect(command.userFacingName()).toBe('remote')
+    expect(command.userFacingName?.()).toBe('remote')
   })
 
   test('a file skill names its base directory and substitutes it', async () => {
@@ -195,7 +198,7 @@ describe('createSkillCommand', () => {
     } as unknown as ToolUseContext
     const [block] = await command.getPromptForCommand('', context)
     expect(block).toEqual({ type: 'text', text: 'Base directory for this skill: /skills/local\n\nRun /skills/local/go.sh' })
-    expect(command.userFacingName()).toBe('Local One')
+    expect(command.userFacingName?.()).toBe('Local One')
   })
 })
 
@@ -261,7 +264,7 @@ describe('nested skill directories', () => {
     expect(dirs).toEqual([])
   })
 
-  test('addSkillDirectories loads them as dynamic skills; on a shared name the deeper one wins today', async () => {
+  test('addSkillDirectories keeps a skill per directory; a shared name is offered qualified by each', async () => {
     const cwd = repo('add')
     skill(join(cwd, 'apps', 'web'), 'deploy', 'description: web deploy')
     skill(join(cwd, 'apps'), 'deploy', 'description: apps deploy')
@@ -273,14 +276,53 @@ describe('nested skill directories', () => {
       emitted++
     })
     try {
-      await addSkillDirectories(dirs)
-      await addSkillDirectories([])
+      await addSkillDirectories(dirs, cwd)
+      await addSkillDirectories([], cwd)
     } finally {
       unsubscribe()
     }
     expect(emitted).toBe(1)
     const byName = new Map(getDynamicSkills().map(c => [c.name, c]))
-    expect([...byName.keys()].sort()).toEqual(['deploy', 'lint'])
-    expect(byName.get('deploy')?.description).toBe('web deploy')
+    expect([...byName.keys()].sort()).toEqual(['apps/web:deploy', 'apps:deploy', 'lint'])
+    expect(byName.get('apps/web:deploy')?.description).toBe('(apps/web/ variant: for files under apps/web/) web deploy')
+    expect(byName.get('lint')?.description).toBe('(from apps/, for files under it) apps lint')
+
+    // Next to a root `deploy`, the bare name stays the root one's.
+    const beside = new Map(getDynamicSkills(new Set(['deploy'])).map(c => [c.name, c]))
+    expect(beside.get('apps/web:deploy')?.description).toBe(
+      '(apps/web/ variant of "deploy": use it for files under apps/web/) web deploy',
+    )
+    expect(beside.has('deploy')).toBe(false)
+  })
+})
+
+describe('nameScopedSkills', () => {
+  const scoped = (name: string, scope: string): ScopedSkill => ({
+    skill: {
+      type: 'prompt',
+      name,
+      description: `${name} things`,
+      userFacingName: () => name,
+    } as Command,
+    scope,
+  })
+
+  test('a unique scoped skill keeps its bare name; an unscoped one passes through untouched', () => {
+    const unscoped = scoped('reacty', '')
+    const [web, root] = nameScopedSkills([scoped('deploy', 'apps/web'), unscoped], new Set())
+    expect(web?.name).toBe('deploy')
+    expect(web?.description).toBe('(from apps/web/, for files under it) deploy things')
+    expect(root).toBe(unscoped.skill)
+  })
+
+  test('a collision qualifies it, and the qualified name is what it answers to', () => {
+    const [web] = nameScopedSkills([scoped('deploy', 'apps/web')], new Set(['deploy']))
+    expect(web?.name).toBe('apps/web:deploy')
+    expect(web?.userFacingName?.()).toBe('apps/web:deploy')
+  })
+
+  test('a qualified name that is already taken is not offered', () => {
+    const named = nameScopedSkills([scoped('deploy', 'web'), scoped('lint', 'web')], new Set(['deploy', 'web:deploy']))
+    expect(named.map(c => c.name)).toEqual(['lint'])
   })
 })

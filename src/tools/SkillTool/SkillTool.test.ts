@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import type { Command } from 'src/commands/commands.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
+import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
 import { renderToolUseMessage } from 'src/tools/SkillTool/UI.js'
 
 function createPromptCommand(
@@ -94,5 +95,15 @@ describe('SkillTool renderToolUseMessage', () => {
         },
       ),
     ).toBe('/legacy-command')
+  })
+})
+
+describe('SkillTool prompt', () => {
+  test('both texts explain a directory-scoped name', async () => {
+    for (const text of [COMPACT_SKILL_PROMPT, await getPrompt('/repo')]) {
+      expect(text).toContain('listed with that directory as a prefix')
+      expect(text).toContain('apps/web:deploy')
+      expect(text).toContain('the bare name runs the other one')
+    }
   })
 })
