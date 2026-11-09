@@ -94,11 +94,20 @@ export const MonitorTool = buildTool({
   },
 
   async prompt() {
-    return `Run a shell command in the background and get its output while it runs: about once a second, the lines that arrived (stdout and stderr together) reach you as a notification. Use it for "tell me each time X happens" — a log tail, a build or test watch, a poll loop. For "tell me when X is done", use Bash with run_in_background and a command that exits when the condition holds (e.g. \`until grep -q Ready app.log; do sleep 1; done\`): one notification, no expiry.
+    return `Run a shell command in the background and get its output while it runs: about once a second, the lines that arrived (stdout and stderr together) reach you as a notification, and you keep working meanwhile. A notification is the command's output, not a reply from the user, even when one lands while you wait for the user to answer.
 
-- Filter to the lines you would act on, and make every pipe stage flush per line, or matches wait in its buffer: \`tail -f app.log | grep --line-buffered -E "ERROR|FAILED|Traceback"\`. Match the failure signatures too, not only success: silence looks the same as "still running".
+Pick by how many notifications you need:
+- One ("tell me when the server is ready", "when the build finishes"): use Bash with run_in_background and a command that exits when the condition holds, e.g. \`until grep -q Ready app.log; do sleep 1; done\`. One notification, no expiry.
+- One per occurrence, until the monitor expires ("tell me every time an ERROR line appears"): Monitor with a command that never ends on its own (\`tail -f\`, \`inotifywait -m\`, a \`while true\` loop).
+- One per occurrence, until a known end ("report each CI check as it lands, stop when the run completes"): Monitor with a command that prints and then exits.
+
+- Don't use a never-ending command for a single notification: it stays armed until it expires, long after the event. \`tail -f app.log | grep -m 1 Ready\` does not fix that — if the log goes quiet after the match, \`tail\` never learns the pipe closed and the pipeline hangs.
+- Filter to the lines you would act on, and make every pipe stage flush per line, or matches wait in its buffer: \`grep --line-buffered\`, \`awk\` with \`fflush()\`. \`| head -N\` cannot flush: nothing arrives until N lines matched.
+- Match the failure signatures too, not only success. A filter that greps only for the success marker stays silent through a crash or a hang, and silence looks the same as "still running": \`tail -f run.log | grep --line-buffered -E "done|Traceback|Error|FAILED|Killed"\`. When polling a job's state, print every terminal state (succeeded, failed, cancelled, timed out).
+- In a poll loop, let one failed request pass (\`curl … || true\`) instead of ending the monitor. Poll remote APIs every 30 s or more, local checks every second or so.
+- Write a specific \`description\` ("errors in deploy.log", not "watching logs"): every notification is titled with it.
 - A notification carries at most ${MONITOR_EVENT_MAX_LINES} lines; the rest stays in the output file. A monitor that sends ${MONITOR_FLOOD_EVENTS} notifications within a minute is stopped; call Monitor again with a tighter filter.
-- It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching; TaskStop ends it early.`
+- It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching — for a long watch, set the maximum and re-arm on each expiry; TaskStop ends it early.`
   },
 
   get inputSchema(): InputSchema {

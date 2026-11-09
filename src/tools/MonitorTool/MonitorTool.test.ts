@@ -148,6 +148,20 @@ describe('MonitorTool', () => {
     expect(prompt).toContain('run_in_background')
   })
 
+  test('the prompt carries the choice table and the pipeline traps', async () => {
+    const prompt = await MonitorTool.prompt()
+    expect(prompt).toContain('Pick by how many notifications you need:')
+    expect(prompt).toContain('One per occurrence, until a known end')
+    expect(prompt).toContain('`tail -f app.log | grep -m 1 Ready` does not fix that')
+    expect(prompt).toContain('`| head -N` cannot flush')
+    expect(prompt).toContain('print every terminal state')
+    expect(prompt).toContain('`curl … || true`')
+    expect(prompt).toContain('every notification is titled with it')
+    // Claudin's stream carries stderr; Claude Code's "only stdout" advice is not true here.
+    expect(prompt).toContain('stdout and stderr together')
+    expect(prompt).not.toContain('Only stdout')
+  })
+
   test('renderToolUseMessage joins description and command, else shows whichever is set', () => {
     const render = (input: object) => MonitorTool.renderToolUseMessage(input as never)
     expect(render({ command: 'tail -f a.log', description: 'app log' })).toBe(
