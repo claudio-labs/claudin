@@ -219,7 +219,10 @@ describe('WaitForTool', () => {
     expect(data.reason).toBe('settled')
     expect(data.matched).toBe(false)
     expect(data.output).toContain('stable')
-    expect(data.polls).toBeGreaterThanOrEqual(3)
+    // The first read opens the stable window and a later identical one closes
+    // it, so two is the floor; a third depends on how fast `echo` runs, and a
+    // loaded CI runner closed the window on the second poll.
+    expect(data.polls).toBeGreaterThanOrEqual(2)
   })
 
   test('timeout: returns the last output with reason timeout', async () => {
