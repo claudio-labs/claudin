@@ -27,6 +27,7 @@ describe('findElisionPlaceholder', () => {
     ['// ... previous implementation'],
     ['// rest of the module unchanged...'],
     ['// ... other functions stay unchanged'],
+    ['<!-- ... existing markup --!>'],
   ])('flags %p', line => {
     const found = findElisionPlaceholder(`function a() {\n${line}\n}`, 'function a() {\n  return 1\n}', 'a.ts')
     expect(found).toEqual({ line: 2, text: line.trim() })
@@ -44,6 +45,7 @@ describe('findElisionPlaceholder', () => {
     ['/* ... */ foo()'],
     ['/* ... existing code */ foo()'],
     ['<!-- ... existing markup --> <div/>'],
+    ['<!-- ... existing markup --!> <div/>'],
     // A lone word is prose, not a placeholder phrase.
     ['// Retry against the other replicas...'],
     ['    # ... (omitted)'],
@@ -55,6 +57,19 @@ describe('findElisionPlaceholder', () => {
     ['//! ... existing code ...'],
   ])('leaves %p alone', line => {
     expect(findElisionPlaceholder(`${line}\n`, '', 'a.ts')).toBeNull()
+  })
+
+  test('a CRLF file is checked like an LF one: the trailing \\r is not code', () => {
+    const text = 'function a() {\r\n  // ... existing code ...\r\n}\r\n'
+    expect(findElisionPlaceholder(text, 'function a() {\r\n  return 1\r\n}\r\n', 'a.ts')).toEqual({
+      line: 2,
+      text: '// ... existing code ...',
+    })
+  })
+
+  test('a placeholder the old text holds is kept whatever its line endings', () => {
+    const old = 'class A {\r\n  // ... existing code ...\r\n}\r\n'
+    expect(findElisionPlaceholder('class A {\n  // ... existing code ...\n}\n', old, 'a.ts')).toBeNull()
   })
 
   test('a placeholder the old text already holds is kept, not flagged', () => {

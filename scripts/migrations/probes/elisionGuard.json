@@ -15,8 +15,23 @@
     },
     {
       "name": "review B5: doc-comment continuations are left out",
-      "find": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/(?![/!])|#+|--|;+|\\/\\*+|<!--|\\{\\s*\\/\\*+)(.*)$/\n",
-      "replace": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/+|#+|--|;+|\\/\\*+|\\*|<!--|\\{\\s*\\/\\*+)(.*)$/\n"
+      "find": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/(?![/!])|#+|--|;+|\\/\\*+|<!--|\\{\\s*\\/\\*+)([\\s\\S]*)$/\n",
+      "replace": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/+|#+|--|;+|\\/\\*+|\\*|<!--|\\{\\s*\\/\\*+)([\\s\\S]*)$/\n"
+    },
+    {
+      "name": "CodeQL #42: a CRLF line's body still matches",
+      "find": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/(?![/!])|#+|--|;+|\\/\\*+|<!--|\\{\\s*\\/\\*+)([\\s\\S]*)$/\n",
+      "replace": "const COMMENT_ONLY_RE = /^\\s*(?:\\/\\/(?![/!])|#+|--|;+|\\/\\*+|<!--|\\{\\s*\\/\\*+)(.*)$/\n"
+    },
+    {
+      "name": "CodeQL #43: --!> closes an HTML comment too",
+      "find": "const COMMENT_CLOSER_RE = /\\s*(?:\\*+\\/\\s*\\}?|--!?>)\\s*$/\n",
+      "replace": "const COMMENT_CLOSER_RE = /\\s*(?:\\*+\\/\\s*\\}?|-->)\\s*$/\n"
+    },
+    {
+      "name": "CodeQL #43: code after a --!> closer is not comment-only",
+      "find": "const INNER_CLOSER_RE = /\\*\\/|--!?>/\n",
+      "replace": "const INNER_CLOSER_RE = /\\*\\/|-->/\n"
     },
     {
       "name": "guard: a bare ellipsis comment counts",
@@ -30,7 +45,7 @@
     },
     {
       "name": "guard: code after a closer is not comment-only",
-      "find": "  if (body.includes('*/') || body.includes('-->')) return false\n",
+      "find": "  if (INNER_CLOSER_RE.test(body)) return false\n",
       "replace": ""
     },
     {

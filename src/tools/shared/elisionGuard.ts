@@ -34,10 +34,16 @@ const PROSE_EXTENSIONS = new Set([
   '.org',
 ])
 
-/** A line that is a comment and nothing else — not a doc-comment continuation; group 1 is its body. */
-const COMMENT_ONLY_RE = /^\s*(?:\/\/(?![/!])|#+|--|;+|\/\*+|<!--|\{\s*\/\*+)(.*)$/
-/** Comment closers trailing the body: `*\/`, `-->`, `*\/}`. */
-const COMMENT_CLOSER_RE = /\s*(?:\*+\/\s*\}?|-->)\s*$/
+/**
+ * A line that is a comment and nothing else — not a doc-comment continuation;
+ * group 1 is its body. The body is `[\s\S]*`, not `.*`: a CRLF line keeps its
+ * `\r`, which `.` does not match, so `.*` let every CRLF placeholder through.
+ */
+const COMMENT_ONLY_RE = /^\s*(?:\/\/(?![/!])|#+|--|;+|\/\*+|<!--|\{\s*\/\*+)([\s\S]*)$/
+/** Comment closers trailing the body: `*\/`, `-->` (or `--!>`, which HTML also ends a comment on), `*\/}`. */
+const COMMENT_CLOSER_RE = /\s*(?:\*+\/\s*\}?|--!?>)\s*$/
+/** A closer left in the body means code follows the comment on its line. */
+const INNER_CLOSER_RE = /\*\/|--!?>/
 const BARE_ELLIPSIS_RE = /^(?:\.{3,}|…)(?:\s*(?:\.{3,}|…))*$/
 const EDGE_ELLIPSIS_RE = /^(?:\.{3,}|…)|(?:\.{3,}|…)\)?$/
 /** What a placeholder stands for: code, or a kind of member or part of a file. */
@@ -52,8 +58,7 @@ function isPlaceholderComment(line: string): boolean {
   const comment = COMMENT_ONLY_RE.exec(line)
   if (!comment) return false
   const body = comment[1]!.replace(COMMENT_CLOSER_RE, '').trim()
-  // A closer before the end means code follows the comment on this line.
-  if (body.includes('*/') || body.includes('-->')) return false
+  if (INNER_CLOSER_RE.test(body)) return false
   if (BARE_ELLIPSIS_RE.test(body)) return true
   return EDGE_ELLIPSIS_RE.test(body) && PLACEHOLDER_PHRASE_RE.test(body)
 }
