@@ -7,15 +7,20 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'fs'
-import { tmpdir } from 'os'
+import { homedir, tmpdir } from 'os'
 import path from 'path'
 
 import {
   classifyRipgrepFailure,
+  countFilesRoundedRg,
   createRipgrepOutputBuffer,
+  getRipgrepStatus,
   resolveRipgrepConfig,
   resolveVendoredRipgrepPath,
+  RipgrepTimeoutError,
+  ripGrep,
   ripgrepCommand,
+  ripGrepStream,
   ripGrepWithStatus,
   wrapRipgrepUnavailableError,
 } from 'src/shared/fs/ripgrep.js'
@@ -347,4 +352,90 @@ test('ripGrepWithStatus leaves a completed search unmarked', async () => {
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }
+})
+
+test('ripGrepWithStatus strips the CR a CRLF file leaves on each line', async () => {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'rg-crlf-'))
+  try {
+    writeFileSync(path.join(tmp, 'win.txt'), 'one ZQPROBE\r\ntwo ZQPROBE\r\n')
+    const { lines } = await ripGrepWithStatus(
+      ['--no-filename', 'ZQPROBE'],
+      path.join(tmp, 'win.txt'),
+      new AbortController().signal,
+    )
+    expect(lines).toEqual(['one ZQPROBE', 'two ZQPROBE'])
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('ripGrepWithStatus throws a timeout error for a search stopped before any line', async () => {
+  // An aborted run and a timed-out one both read "did not finish"; with no
+  // line to show, the caller has to hear that rather than "no matches".
+  const controller = new AbortController()
+  controller.abort()
+  const error = await ripGrepWithStatus(['-l', 'ZQPROBE'], process.cwd(), controller.signal).catch(
+    (e: unknown) => e,
+  )
+  expect(error).toBeInstanceOf(RipgrepTimeoutError)
+  expect((error as RipgrepTimeoutError).name).toBe('RipgrepTimeoutError')
+  expect((error as RipgrepTimeoutError).partialResults).toEqual([])
+})
+
+test('ripGrep returns the lines alone', async () => {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'rg-lines-'))
+  try {
+    writeFileSync(path.join(tmp, 'a.txt'), 'ZQPROBE\n')
+    expect(await ripGrep(['-c', 'ZQPROBE'], path.join(tmp, 'a.txt'), new AbortController().signal)).toEqual(['1'])
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('ripGrepStream hands over every line, the last one without its newline too', async () => {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'rg-stream-'))
+  try {
+    for (let i = 0; i < 3; i++) writeFileSync(path.join(tmp, `f${i}.txt`), 'x')
+    const seen: string[] = []
+    await ripGrepStream(['--files', '--sort=path'], tmp, new AbortController().signal, lines =>
+      seen.push(...lines),
+    )
+    expect(seen.map(l => path.basename(l))).toEqual(['f0.txt', 'f1.txt', 'f2.txt'])
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('ripGrepStream rejects an invocation ripgrep refuses', async () => {
+  await expect(
+    ripGrepStream(['[a-'], process.cwd(), new AbortController().signal, () => {}),
+  ).rejects.toThrow('ripgrep exited with code 2')
+})
+
+test('countFilesRoundedRg keeps one significant digit, and skips the home directory', async () => {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'rg-count-'))
+  const empty = mkdtempSync(path.join(tmpdir(), 'rg-count-empty-'))
+  try {
+    for (let i = 0; i < 40; i++) writeFileSync(path.join(tmp, `f${i}.txt`), 'x')
+    mkdirSync(path.join(tmp, 'skip'))
+    for (let i = 0; i < 5; i++) writeFileSync(path.join(tmp, 'skip', `s${i}.txt`), 'x')
+    const signal = new AbortController().signal
+    expect(await countFilesRoundedRg(tmp, signal)).toBe(50)
+    // The ignore list is part of the cache key, so this is a second count.
+    expect(await countFilesRoundedRg(tmp, signal, ['skip'])).toBe(40)
+    expect(await countFilesRoundedRg(empty, signal)).toBe(0)
+    expect(await countFilesRoundedRg(homedir(), signal)).toBeUndefined()
+    // A path ripgrep cannot walk is logged and counts as unknown.
+    expect(await countFilesRoundedRg(path.join(tmp, 'missing'), signal)).toBeUndefined()
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+    rmSync(empty, { recursive: true, force: true })
+  }
+})
+
+test('getRipgrepStatus reports the resolved binary', () => {
+  const status = getRipgrepStatus()
+  expect(status.path).toBe(ripgrepCommand().rgPath)
+  expect(['system', 'builtin', 'embedded']).toContain(status.mode)
+  expect(status.working === null || typeof status.working === 'boolean').toBe(true)
 })
