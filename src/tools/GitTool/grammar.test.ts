@@ -705,6 +705,14 @@ describe('an operator inside an argument names the quoting fix', () => {
       }
     })
 
+    test('an operator that ends its word, or a word that already holds a quote, keeps the list advice', () => {
+      for (const cmd of ['git status&', "git log --grep='fix'(x", 'git diff HEAD~1&&git status']) {
+        const parsed = parseGitCommand(cmd)
+        expect(parsed.ok).toBe(false)
+        if (!parsed.ok) expect(parsed.reason).toContain('one plain command per list element')
+      }
+    })
+
     test('command substitution keeps its own message', () => {
       const parsed = parseGitCommand('git log --oneline $(git merge-base HEAD origin/main)..origin/main')
       expect(parsed.ok).toBe(false)

@@ -140,6 +140,10 @@ function scanShellHazards(command: string): string | null {
       return `\`${shown}\` has a backtick outside single quotes, which bash would run as a command. Put that argument in single quotes ('…') — inside them a backtick is literal, which is what a PR body needs.`
     }
     if (!inDouble && UNQUOTED_OPERATORS.has(c)) {
+      const word = argumentAround(command, i)
+      if (word !== null) {
+        return `\`${shown}\` has \`${c}\` inside the argument \`${word}\`, and bash reads it as an operator there. Put that argument in single quotes: '${word}'.`
+      }
       const named = c === '\n' || c === '\r' ? 'a newline' : `\`${c}\``
       return `\`${shown}\` contains a shell operator (${named}) outside quotes. Send one plain command per list element — several commands go in the list, not in one string — or run it with Bash if it genuinely needs a shell.`
     }
@@ -149,6 +153,32 @@ function scanShellHazards(command: string): string | null {
     return `\`${shown}\` has an unterminated quote.`
   }
   return null
+}
+
+const WORD_BREAK_RE = /\s/
+const QUOTE_RE = /['"]/
+
+/**
+ * The argument around a `(`, `)` or lone `&` written inside it — `--grep=(web)`,
+ * `issues?milestone=2&state=open` — where the fix is quotes, not another list
+ * element (b40b178b sent `(` three times over, 2026-11-08). Null when the
+ * operator starts its word, as a subshell or a background `&` does, when it is
+ * part of `&&`, and when the word already holds a quote.
+ */
+function argumentAround(command: string, at: number): string | null {
+  const c = command[at]
+  if (c !== '(' && c !== ')' && c !== '&') return null
+  const before = command[at - 1]
+  const after = command[at + 1]
+  if (before === undefined || WORD_BREAK_RE.test(before)) return null
+  if (c === '&' && (before === '&' || after === '&' || before === '>' || after === '>')) return null
+  if (c === '&' && (after === undefined || WORD_BREAK_RE.test(after))) return null
+  let start = at
+  while (start > 0 && !WORD_BREAK_RE.test(command[start - 1]!)) start--
+  let end = at + 1
+  while (end < command.length && !WORD_BREAK_RE.test(command[end]!)) end++
+  const word = command.slice(start, end)
+  return QUOTE_RE.test(word) ? null : word
 }
 
 /**
