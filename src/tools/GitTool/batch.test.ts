@@ -5,7 +5,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
-import { GitTool, MAX_COMMANDS } from 'src/tools/GitTool/GitTool.js'
+import { GitTool } from 'src/tools/GitTool/GitTool.js'
 import { batchFailed, formatGitBatchResult, RULE_MAP_SET_ASIDE_NOTE, runGitBatch } from 'src/tools/GitTool/run.js'
 import { RULE_MAP_KILLSWITCH, syncProjectRuleMap } from 'src/memory/instructions/ruleMapAutoSync.js'
 
@@ -100,14 +100,6 @@ describe('isReadOnly is the AND over the list', () => {
 describe('input schema', () => {
   test('rejects an empty list', () => {
     expect(GitTool.inputSchema.safeParse({ commands: [] }).success).toBe(false)
-  })
-
-  test('accepts exactly the cap and rejects one more', () => {
-    const at = Array.from({ length: MAX_COMMANDS }, () => 'git status')
-    expect(GitTool.inputSchema.safeParse({ commands: at }).success).toBe(true)
-    expect(
-      GitTool.inputSchema.safeParse({ commands: [...at, 'git status'] }).success,
-    ).toBe(false)
   })
 
   test('67e6e961 11-07: an 11-command batch is taken, like a Bash chain of 11', () => {

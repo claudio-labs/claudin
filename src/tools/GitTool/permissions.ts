@@ -1,7 +1,10 @@
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { PermissionResult } from 'src/shared/types/permissions.js'
+import { createPermissionRequestMessage } from 'src/permissions/permissions.js'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
+import { MAX_SUBCOMMANDS_FOR_SECURITY_CHECK } from 'src/tools/BashTool/bashPermissions/decide.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 
 /**
  * Permission delegation.
@@ -16,6 +19,11 @@ import { quote } from 'src/platform/bash/shellQuote.js'
  *
  * The whole batch is decided BEFORE anything runs: one denied element refuses
  * the call outright rather than letting the earlier commands land first.
+ *
+ * The batch has no length cap of its own: like a Bash chain, a batch longer
+ * than MAX_SUBCOMMANDS_FOR_SECURITY_CHECK asks instead of being judged element
+ * by element. It used to be refused at 10 by the schema (67e6e961, 2026-11-07,
+ * an 11-command status/add/commit batch).
  */
 export async function checkGitBatchPermission(
   input: { commands: string[]; cwd?: string },
@@ -24,6 +32,17 @@ export async function checkGitBatchPermission(
   // With a `cwd` the command that runs is `cd <cwd> && git …`, so that is
   // the command Bash's pipeline judges — its cd+git guard and path rules
   // see the same shape a model typing it into Bash would have produced.
+  if (input.commands.length > MAX_SUBCOMMANDS_FOR_SECURITY_CHECK) {
+    const decisionReason = {
+      type: 'other' as const,
+      reason: `Batch has ${input.commands.length} commands, too many to safety-check individually`,
+    }
+    return {
+      behavior: 'ask',
+      message: createPermissionRequestMessage(GIT_TOOL_NAME, decisionReason),
+      decisionReason,
+    }
+  }
   const shaped = (command: string): string =>
     input.cwd === undefined ? command : `cd ${quote([input.cwd])} && ${command}`
   const decisions = await Promise.all(
