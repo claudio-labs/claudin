@@ -135,6 +135,14 @@ describe('SkillTool result and labels', () => {
     ).toBe('Skill "deploy" completed (forked execution).\n\nResult:\nshipped')
     expect(
       SkillTool.mapToolResultToToolResultBlockParam(
+        { success: true, commandName: 'nightly', status: 'background', agentId: 'a9' },
+        'u4',
+      ).content,
+    ).toBe(
+      'Skill "nightly" launched in the background as agent a9. Its result arrives as a task notification: don\'t wait on it or invoke it again meanwhile.',
+    )
+    expect(
+      SkillTool.mapToolResultToToolResultBlockParam(
         { success: true, commandName: 'deploy', variantsNote: 'Directory-scoped variants of the "deploy" skill …' },
         'u3',
       ).content,

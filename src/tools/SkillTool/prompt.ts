@@ -150,12 +150,13 @@ export function formatCommandsWithinBudget(
 /**
  * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density.
  * Outside the memoized getPrompt on purpose: the switch is read per call.
- * Forked skills (`context: fork`) are the "run in a sub-agent" case; the
- * directory-scoped line follows nameScopedSkills (loadSkillsDir.ts).
+ * Forked skills (`context: fork`) are the "run in a sub-agent" case, and the
+ * background line is backgroundSkill.ts; the directory-scoped line follows
+ * nameScopedSkills (loadSkillsDir.ts).
  */
 export const COMPACT_SKILL_PROMPT = `Invoke a skill.
 
-A skill is a packaged set of instructions the user or project has set up for a particular kind of task (deploy steps, a review checklist, a repo-specific workflow). Available skills appear in a system-reminder listing with one-line descriptions. When the task at hand is one a listed skill covers, call this tool first — the skill's instructions load into the turn for you to follow in place of your default approach; some skills instead run in a sub-agent and return the finished result. Users may also ask for one by name (\`/<name>\`, or "slash command"); that's a request to invoke it.
+A skill is a packaged set of instructions the user or project has set up for a particular kind of task (deploy steps, a review checklist, a repo-specific workflow). Available skills appear in a system-reminder listing with one-line descriptions. When the task at hand is one a listed skill covers, call this tool first — the skill's instructions load into the turn for you to follow in place of your default approach; some skills instead run in a sub-agent and return the finished result. A skill that runs in the background returns only its agent's id — its result arrives later as a task notification, so don't wait on it or invoke it again meanwhile. Users may also ask for one by name (\`/<name>\`, or "slash command"); that's a request to invoke it.
 
 - \`skill\`: exact name from the listing, no leading slash. Plugin skills use \`plugin:skill\`. A skill from a subdirectory's \`.claudin/skills\` is listed with that directory as a prefix (\`apps/web:deploy\`) when another skill has its name, and the bare name runs the other one: pick the one whose directory holds the files you are working on.
 - \`args\`: optional arguments to pass through.
@@ -182,6 +183,7 @@ Important:
 - When a skill matches the user's request, this is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about the task
 - NEVER mention a skill without actually calling this tool
 - Do not invoke a skill that is already running
+- A skill that runs in the background returns only its agent's id; its result arrives later as a task notification, so don't wait on it or invoke it again meanwhile
 - A skill from a subdirectory's .claudin/skills is listed with that directory as a prefix (e.g. \`apps/web:deploy\`) when another skill has its name, and the bare name runs the other one — pick the one whose directory holds the files you are working on
 - Do not use this tool for built-in CLI commands (like /help, /clear, etc.)
 - If you see a <${COMMAND_NAME_TAG}> tag in the current conversation turn, the skill has ALREADY been loaded - follow the instructions directly instead of calling this tool again

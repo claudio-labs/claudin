@@ -56,6 +56,8 @@ import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
 import { scopedVariantNote } from 'src/skills/loadSkillsDir.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getFileStatus } from 'src/vcs/git/git.js'
+import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
+import { launchSkillInBackground, shouldRunSkillInBackground } from 'src/tools/SkillTool/backgroundSkill.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
@@ -238,7 +240,15 @@ export const outputSchema = lazySchema(() => {
     result: z.string().describe('The result from the forked skill execution'),
   })
 
-  return z.union([inlineOutputSchema, forkedOutputSchema])
+  // Output schema for a forked skill launched in the background
+  const backgroundOutputSchema = z.object({
+    success: z.boolean().describe('Whether the skill was launched'),
+    commandName: z.string().describe('The name of the skill'),
+    status: z.literal('background').describe('Execution status'),
+    agentId: z.string().describe('The ID of the background agent running the skill'),
+  })
+
+  return z.union([inlineOutputSchema, forkedOutputSchema, backgroundOutputSchema])
 })
 type OutputSchema = ReturnType<typeof outputSchema>
 
@@ -485,6 +495,12 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     // Track skill usage for ranking
     recordSkillUsage(commandName)
 
+    // A forked skill marked `background: true` (backgroundSkill.ts)
+    if (command?.type === 'prompt' && shouldRunSkillInBackground(command, context.agentId, isRunInBackgroundHidden())) {
+      const { agentId } = await launchSkillInBackground(command, commandName, args, context, canUseTool)
+      return { data: { success: true, commandName, status: 'background', agentId } }
+    }
+
     // Check if skill should run as a forked sub-agent
     if (command?.type === 'prompt' && command.context === 'fork') {
       return executeForkedSkill(
@@ -668,6 +684,14 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
       }
     }
 
+    if ('status' in result && result.status === 'background') {
+      return {
+        type: 'tool_result' as const,
+        tool_use_id: toolUseID,
+        content: `Skill "${result.commandName}" launched in the background as agent ${result.agentId}. Its result arrives as a task notification: don't wait on it or invoke it again meanwhile.`,
+      }
+    }
+
     // Inline skill result (default)
     return {
       type: 'tool_result' as const,
@@ -701,6 +725,7 @@ const SAFE_SKILL_PROPERTIES = new Set([
   'skillRoot',
   'context',
   'agent',
+  'background',
   'getPromptForCommand',
   'frontmatterKeys',
   // CommandBase properties

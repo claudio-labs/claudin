@@ -161,6 +161,17 @@ describe('frontmatter that the loader loses', () => {
     ])
   })
 
+  test('background: a value read as false is an error, and without context: fork it does nothing', async () => {
+    const { findings } = await lint({
+      '.claudin/skills/a/SKILL.md': skill('description: x\ncontext: fork\nbackground: yes'),
+      '.claudin/skills/b/SKILL.md': skill('description: x\nbackground: true'),
+      '.claudin/skills/c/SKILL.md': skill('description: x\ncontext: fork\nbackground: true'),
+    })
+    expect(kinds(findings)).toEqual(['bad_boolean', 'bad_value'])
+    expect(findings[0]?.message).toContain('`background: yes` is read as false — the skill runs in the foreground')
+    expect(findings[1]?.message).toContain('`background` is only used with `context: fork`')
+  })
+
   test('values the loader ignores or degrades are reported', async () => {
     const { findings } = await lint({
       '.claudin/skills/a/SKILL.md': skill(

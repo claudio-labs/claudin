@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
 
 import type { Command } from 'src/commands/commands.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
@@ -105,5 +106,21 @@ describe('SkillTool prompt', () => {
       expect(text).toContain('apps/web:deploy')
       expect(text).toContain('the bare name runs the other one')
     }
+  })
+
+  test("both texts say a background skill's result comes as a notification", async () => {
+    for (const text of [COMPACT_SKILL_PROMPT, await getPrompt('/repo')]) {
+      expect(text).toContain('A skill that runs in the background returns only its agent')
+      expect(text).toContain("don't wait on it or invoke it again meanwhile")
+    }
+  })
+
+  // call() reaches the background path only with a live agent run; pin the wiring.
+  test('call launches a background fork before the foreground fork path', () => {
+    const source = readFileSync(new URL('./SkillTool.ts', import.meta.url), 'utf8')
+    const background = source.indexOf("command?.type === 'prompt' && shouldRunSkillInBackground(command, context.agentId, isRunInBackgroundHidden())")
+    const foreground = source.indexOf("if (command?.type === 'prompt' && command.context === 'fork') {")
+    expect(background).toBeGreaterThan(-1)
+    expect(foreground).toBeGreaterThan(background)
   })
 })

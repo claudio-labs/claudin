@@ -126,6 +126,7 @@ describe('parseSkillFrontmatterFields', () => {
         'user-invocable': 'false',
         context: 'fork',
         agent: 'Code',
+        background: 'true',
         effort: 'high',
         hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'true' }] }] },
       },
@@ -146,6 +147,7 @@ describe('parseSkillFrontmatterFields', () => {
       userInvocable: false,
       executionContext: 'fork',
       agent: 'Code',
+      background: true,
       effort: 'high',
     })
     expect(parsed.hooks?.PreToolUse).toHaveLength(1)
@@ -160,6 +162,7 @@ describe('parseSkillFrontmatterFields', () => {
     expect(parsed.hooks).toBeUndefined()
     expect(parsed.userInvocable).toBe(true)
     expect(parsed.executionContext).toBeUndefined()
+    expect(parsed.background).toBeUndefined()
   })
 })
 

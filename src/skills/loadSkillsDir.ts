@@ -198,6 +198,7 @@ export function parseSkillFrontmatterFields(
   hooks: HooksSettings | undefined
   executionContext: 'fork' | undefined
   agent: string | undefined
+  background: boolean | undefined
   effort: EffortValue | undefined
   shell: FrontmatterShell | undefined
 } {
@@ -255,6 +256,10 @@ export function parseSkillFrontmatterFields(
     hooks: parseHooksFromFrontmatter(frontmatter, resolvedName),
     executionContext: frontmatter.context === 'fork' ? 'fork' : undefined,
     agent: frontmatter.agent as string | undefined,
+    background:
+      frontmatter.background === undefined
+        ? undefined
+        : parseBooleanFrontmatter(frontmatter.background),
     effort,
     shell: parseShellFrontmatter(frontmatter.shell, resolvedName),
   }
@@ -283,6 +288,7 @@ export function createSkillCommand({
   hooks,
   executionContext,
   agent,
+  background,
   paths,
   effort,
   shell,
@@ -306,6 +312,7 @@ export function createSkillCommand({
   hooks: HooksSettings | undefined
   executionContext: 'inline' | 'fork' | undefined
   agent: string | undefined
+  background?: boolean
   paths: string[] | undefined
   effort: EffortValue | undefined
   shell: FrontmatterShell | undefined
@@ -325,6 +332,7 @@ export function createSkillCommand({
     userInvocable,
     context: executionContext,
     agent,
+    background,
     effort,
     paths,
     contentLength: markdownContent.length,

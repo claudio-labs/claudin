@@ -46,6 +46,9 @@ export type PromptCommand = {
   // Agent type to use when forked (e.g., 'Bash', 'code')
   // Only applicable when context is 'fork'
   agent?: string
+  // Run the fork as a background agent (`background: true`); only applicable
+  // when context is 'fork'. See src/tools/SkillTool/backgroundSkill.ts.
+  background?: boolean
   effort?: EffortValue
   // Glob patterns for file paths this skill applies to
   // When set, the skill is only visible after the model touches matching files

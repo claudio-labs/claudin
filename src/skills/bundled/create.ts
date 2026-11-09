@@ -121,6 +121,7 @@ Instructions for the model...
 | \`effort\` | Effort level (\`low\`/\`medium\`/\`high\`/...) or an integer |
 | \`context\` | \`fork\` = run in a forked subagent instead of inline |
 | \`agent\` | Named agent to run the skill in (with \`context: fork\`) |
+| \`background\` | \`true\` = run the fork as a background agent; the result arrives as a notification (with \`context: fork\`) |
 | \`paths\` | Globs — makes the skill conditional, loaded when matching files are touched |
 | \`hooks\` | Skill-scoped hooks (same schema as settings.json hooks) |
 | \`version\` | Informational version string |

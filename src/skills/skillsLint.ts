@@ -133,6 +133,7 @@ const SUPPORTED_KEYS = new Set([
   'effort',
   'context',
   'agent',
+  'background',
   'paths',
   'hooks',
   'version',
@@ -391,7 +392,7 @@ function checkFrontmatter(
     })
   }
 
-  for (const key of ['user-invocable', 'disable-model-invocation']) {
+  for (const key of ['user-invocable', 'disable-model-invocation', 'background']) {
     const value = frontmatter[key]
     if (value === undefined || value === true || value === false) continue
     if (value === 'true' || value === 'false') continue
@@ -402,7 +403,9 @@ function checkFrontmatter(
       message:
         key === 'user-invocable'
           ? `\`user-invocable: ${show(value)}\` is read as false — the skill is hidden from the / menu`
-          : `\`disable-model-invocation: ${show(value)}\` is read as false — the model can still invoke it`,
+          : key === 'background'
+            ? `\`background: ${show(value)}\` is read as false — the skill runs in the foreground`
+            : `\`disable-model-invocation: ${show(value)}\` is read as false — the model can still invoke it`,
       fix: 'Write `true` or `false`; nothing else is read as true.',
     })
   }
@@ -436,6 +439,15 @@ function checkFrontmatter(
       severity: 'warning',
       message: '`agent` is only used with `context: fork`; as written the skill runs inline in the current agent',
       fix: 'Add `context: fork`, or remove `agent`.',
+    })
+  }
+  if (frontmatter.background !== undefined && frontmatter.context !== 'fork') {
+    findings.push({
+      file,
+      kind: 'bad_value',
+      severity: 'warning',
+      message: '`background` is only used with `context: fork`; as written the skill runs inline in the current agent',
+      fix: 'Add `context: fork`, or remove `background`.',
     })
   }
   if (frontmatter.effort !== undefined && parseEffortValue(frontmatter.effort) === undefined) {
