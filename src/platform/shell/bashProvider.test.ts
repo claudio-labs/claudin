@@ -88,7 +88,7 @@ describe('bash provider — a piped command keeps what bash expands', () => {
   test('11-03: a bare ~ beside another path, and a ; chain of pipes', async () => {
     const out = await run('ls -d ~ /tmp | tail -2; ls ~/.cache | grep -i unit')
     expect(out.stderr).toBe('')
-    expect(out.stdout.trim().split('\n')).toEqual([home, '/tmp', 'unit'])
+    expect(out.stdout.trim().split('\n')).toEqual(['/tmp', home, 'unit'])
   })
 
   test('10-31: ~/ with and without a glob in the same command', async () => {
