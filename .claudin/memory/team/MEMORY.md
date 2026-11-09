@@ -123,7 +123,7 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09, rewrites 39%](weekly-token-census-2026-10-09.md) · [09-28 fan-out](token-census-2026-09-28.md) · [09-10 rule injections](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit/Write 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [own writes](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
@@ -138,7 +138,7 @@
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
 - Read censuses: [Bash as reader](bash-file-read-census-and-redirect-reach.md) · [outline cap false](auto-outline-pivot-false-cap-claim.md)
 - [Feature usage census 09-15/16](feature-usage-census-2026-09-15.md) — floor cap re-asks 33%; outlines 82/82 usable
-- Bench traps: [token-bench `--allowedTools`](token-bench-measurement-traps.md) · [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
+- Bench traps: [`--allowedTools`](token-bench-measurement-traps.md) · [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
 - [R3 background agent — IMPLEMENTED 07-17](r3-background-agent-implemented.md) — workflow run|watch, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas
 - Agent A/Bs: [fork vs fresh 09-09, fresh −44%](fork-vs-fresh-ab-2026-09-09.md) · [delegation 09-23, lean text held](delegation-steer-ab-2026-09-23.md)
@@ -173,10 +173,10 @@
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits: [3 Aug no-ops](dependabot-bumps-2026-08-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md)
+- Dependabot audits: [Aug](dependabot-bumps-2026-08-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 undici](dependabot-bumps-2026-09-28-audited.md) · [11-09 knip](dependabot-bumps-2026-11-09-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
-- [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310: undici zstd + SDK 0.135 OTel binary crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
-- SDK wire pins: [1.x (#326)](dependabot-bumps-2026-10-26-anthropic-sdk-1x.md) · [1.3 ?beta=true (#339)](dependabot-bumps-2026-11-03-sdk-beta-query.md)
+- [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310 zstd, OTel crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
+- SDK pins: [1.x #326](dependabot-bumps-2026-10-26-anthropic-sdk-1x.md) · [1.3 ?beta=true #339](dependabot-bumps-2026-11-03-sdk-beta-query.md)
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md)
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — the Gitea + tea flow is gone
