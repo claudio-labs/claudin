@@ -59,7 +59,7 @@ import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel, type AgentModelAlias } from 'src/providers/model/agent.js'
-import { getDefaultEffortForModel, modelSupportsEffort } from 'src/providers/effort/effort.js'
+import { getDefaultEffortForModel, modelSupportsEffort, type EffortLevel } from 'src/providers/effort/effort.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -276,6 +276,7 @@ export async function* runAgent({
   worktreePath,
   description,
   readOnly,
+  effort,
   toolFilter = isAsync ? 'async' : 'sync',
   transcriptSubdir,
   onQueryProgress,
@@ -337,6 +338,8 @@ export async function* runAgent({
   description?: string
   /** The spawn's `readOnly`, persisted so a resume re-applies it. */
   readOnly?: boolean
+  /** The spawn's `effort`, persisted so a resume re-applies it. */
+  effort?: EffortLevel
   /** The filter that picks this run's tools; defaults to how it runs. A resume
    * passes its first run's, persisted here — see toolFilter.ts. */
   toolFilter?: ToolFilter
@@ -859,6 +862,7 @@ export async function* runAgent({
     ...(worktreePath && { worktreePath }),
     ...(description && { description }),
     ...(readOnly && { readOnly }),
+    ...(effort && { effort }),
     toolFilter,
   }).catch(_err => logForDebugging(`Failed to write agent metadata: ${_err}`))
 

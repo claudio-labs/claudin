@@ -36,6 +36,7 @@ import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import {
   EFFORT_LEVELS,
   isEffortLevel,
+  type EffortLevel,
   type EffortValue,
 } from 'src/providers/effort/effort.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
@@ -96,4 +97,17 @@ export function resolveSubagentEffort({
 }): EffortValue | undefined {
   if (defined !== undefined) return defined
   return subagentEffort(parent, { useExactTools, parentDefault })
+}
+
+/**
+ * The Agent call's own `effort` replaces the definition's, so it wins in
+ * resolveSubagentEffort — except for a fork, which keeps the parent's effort
+ * because its requests must match the parent's prefix.
+ */
+export function withRequestedEffort<T extends { effort?: EffortValue }>(
+  agent: T,
+  requested: EffortLevel | undefined,
+  isFork: boolean,
+): T {
+  return requested === undefined || isFork ? agent : { ...agent, effort: requested }
 }

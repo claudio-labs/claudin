@@ -31,6 +31,12 @@ describe('resumedAgentDefinition — a resume runs as the agent that was launche
     )
   })
 
+  test('an effort the spawn asked for comes back over the definition', () => {
+    const { selectedAgent } = resumedAgentDefinition({ agentType: 'Code', effort: 'low' }, active)
+    expect(selectedAgent.effort).toBe('low')
+    expect(selectedAgent.agentType).toBe('Code')
+  })
+
   test('a fork resumes as a fork; no metadata, or an unknown type, as Code', () => {
     expect(resumedAgentDefinition({ agentType: FORK_AGENT.agentType }, active)).toEqual({
       selectedAgent: FORK_AGENT,
@@ -52,6 +58,16 @@ describe('readOnly reaches the metadata a resume reads', () => {
     expect(agentTool).toContain('readOnly: readOnly === true && !isForkPath,')
     expect(runAgent).toContain('...(readOnly && { readOnly }),')
     expect(resume).toContain('readOnly: meta?.readOnly,')
+  })
+
+  test('so does the effort the spawn asked for, and the call applies it to the agent', () => {
+    const agentTool = readFileSync(new URL('./AgentTool.tsx', import.meta.url), 'utf8')
+    const runAgent = readFileSync(new URL('./runAgent.ts', import.meta.url), 'utf8')
+    const resume = readFileSync(new URL('./resumeAgent.ts', import.meta.url), 'utf8')
+    expect(agentTool).toContain('selectedAgent = withRequestedEffort(selectedAgent, requestedEffort, isForkPath);')
+    expect(agentTool).toContain('effort: isForkPath ? undefined : requestedEffort,')
+    expect(runAgent).toContain('...(effort && { effort }),')
+    expect(resume).toContain('effort: meta?.effort,')
   })
 })
 

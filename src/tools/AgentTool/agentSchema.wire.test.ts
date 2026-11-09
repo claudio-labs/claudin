@@ -70,6 +70,15 @@ describe('Agent tool schema on the wire', () => {
     expect(properties.name?.description).toContain('TaskStop')
   })
 
+  test('effort takes the five levels and says to set it only when asked', () => {
+    const { properties } = zodToJsonSchema(AgentTool.inputSchema) as {
+      properties: Record<string, { description?: string; enum?: string[] }>
+    }
+    expect(properties.effort?.enum).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(properties.effort?.description).toContain('ONLY when the user')
+    expect(properties.effort?.description).toContain('A fork ignores it')
+  })
+
   test('an interactive session is offered run_in_background and name, not the team fields', async () => {
     setIsInteractive(true)
     const fields = await wireFields()

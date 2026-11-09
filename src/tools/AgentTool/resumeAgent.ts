@@ -36,6 +36,7 @@ import { FORK_AGENT, isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubag
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { applyReadOnly } from 'src/tools/AgentTool/readOnlyAgent.js'
+import { withRequestedEffort } from 'src/tools/AgentTool/subagentThinking.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import type { AgentMetadata } from 'src/sessions/indexing/agents.js'
 
@@ -47,9 +48,9 @@ export type ResumeAgentResult = {
 
 /**
  * The definition a resumed agent runs under: the one it was launched as, by
- * the agentType its metadata recorded, with the `readOnly` it was launched
- * with re-applied. Resume skips filterDeniedAgents re-gating — the original
- * spawn already passed the permission checks.
+ * the agentType its metadata recorded, with the `readOnly` and `effort` it was
+ * launched with re-applied. Resume skips filterDeniedAgents re-gating — the
+ * original spawn already passed the permission checks.
  */
 export function resumedAgentDefinition(
   meta: AgentMetadata | null,
@@ -62,7 +63,7 @@ export function resumedAgentDefinition(
     (meta?.agentType && activeAgents.find(a => a.agentType === meta.agentType)) ||
     GENERAL_PURPOSE_AGENT
   return {
-    selectedAgent: applyReadOnly(launchedAs, meta?.readOnly, false),
+    selectedAgent: withRequestedEffort(applyReadOnly(launchedAs, meta?.readOnly, false), meta?.effort, false),
     isResumedFork: false,
   }
 }
@@ -222,6 +223,7 @@ export async function resumeAgentBackground({
     worktreePath: resumedWorktreePath,
     description: meta?.description,
     readOnly: meta?.readOnly,
+    effort: meta?.effort,
   }
 
   // Skip name-registry write — original entry persists from the initial spawn

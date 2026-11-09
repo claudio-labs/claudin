@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
-import { resolveSubagentEffort, subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
+import type { EffortValue } from 'src/providers/effort/effort.js'
+import {
+  resolveSubagentEffort,
+  subagentEffort,
+  subagentThinkingConfig,
+  withRequestedEffort,
+} from 'src/tools/AgentTool/subagentThinking.js'
 
 const ADAPTIVE: ThinkingConfig = { type: 'adaptive' }
 const OFF: ThinkingConfig = { type: 'disabled' }
@@ -104,5 +110,21 @@ describe('resolveSubagentEffort', () => {
 
   test('a fork with no defined effort keeps the parent', () => {
     expect(resolveSubagentEffort({ ...base, defined: undefined, useExactTools: true })).toBe('xhigh')
+  })
+})
+
+describe("withRequestedEffort — the Agent call's own effort", () => {
+  const agent: { agentType: string; effort?: EffortValue } = { agentType: 'Code', effort: 'high' }
+
+  test('replaces the definition effort, so it wins in resolveSubagentEffort', () => {
+    const requested = withRequestedEffort(agent, 'low', false)
+    expect(requested).toEqual({ agentType: 'Code', effort: 'low' })
+    expect(agent.effort).toBe('high')
+    expect(resolveSubagentEffort({ defined: requested.effort, parent: 'xhigh', useExactTools: false, parentDefault: 'medium' })).toBe('low')
+  })
+
+  test('leaves the agent as it is when none was asked for, and for a fork', () => {
+    expect(withRequestedEffort(agent, undefined, false)).toBe(agent)
+    expect(withRequestedEffort(agent, 'max', true)).toBe(agent)
   })
 })

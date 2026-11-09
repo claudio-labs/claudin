@@ -58,6 +58,8 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { getPrompt, isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js';
 import { applyReadOnly, READ_ONLY_INPUT_DESCRIPTION } from 'src/tools/AgentTool/readOnlyAgent.js';
+import { withRequestedEffort } from 'src/tools/AgentTool/subagentThinking.js';
+import { EFFORT_LEVELS } from 'src/providers/effort/effort.js';
 import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
 
@@ -117,7 +119,8 @@ const baseInputSchema = lazySchema(() => z.object({
   subagent_type: z.string().optional().describe('The type of specialized agent to use for this task'),
   model: z.enum(['sonnet', 'opus', 'haiku', 'inherit']).optional().describe("Optional model for this agent: haiku (cheaper), sonnet, opus (stronger), or inherit (the same model as you). If omitted, uses the agent type's default model, or inherits yours."),
   run_in_background: z.boolean().optional().describe('Set to true to run this agent in the background. You will be notified when it completes.'),
-  readOnly: z.boolean().optional().describe(READ_ONLY_INPUT_DESCRIPTION)
+  readOnly: z.boolean().optional().describe(READ_ONLY_INPUT_DESCRIPTION),
+  effort: z.enum(EFFORT_LEVELS).optional().describe("Reasoning effort for this agent. Set it ONLY when the user, or instructions such as AGENTS.md or a skill, ask for a level for this agent or for delegated work — never on your own judgment; otherwise omit it and the agent runs at its usual effort. A fork ignores it and runs at yours.")
 }));
 
 // Full schema combining base + multi-agent params + isolation
@@ -287,6 +290,7 @@ export const AgentTool = buildTool({
     model: modelParam,
     run_in_background: requestedBackground,
     readOnly,
+    effort: requestedEffort,
     name,
     team_name,
     mode: spawnMode,
@@ -418,6 +422,7 @@ export const AgentTool = buildTool({
     // A read-only brief: Plan's omissions and denylist on top of whatever
     // agent was picked. No-op for a fork (see readOnlyAgent.ts).
     selectedAgent = applyReadOnly(selectedAgent, readOnly, isForkPath);
+    selectedAgent = withRequestedEffort(selectedAgent, requestedEffort, isForkPath);
 
     // Same lifecycle constraint as the run_in_background guard above, but for
     // agent definitions that force background via `background: true`. Checked
@@ -680,6 +685,8 @@ export const AgentTool = buildTool({
       description,
       // A fork ignores readOnly, so there is nothing to re-apply on its resume.
       readOnly: readOnly === true && !isForkPath,
+      // Nor effort: a fork runs at the parent's.
+      effort: isForkPath ? undefined : requestedEffort,
       agentName: name,
     };
 
