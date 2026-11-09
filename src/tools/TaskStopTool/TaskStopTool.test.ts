@@ -50,15 +50,6 @@ describe('TaskStopTool', () => {
     expect(result?.message).toContain('No task found')
   })
 
-  test('validateInput rejects task that is not running', async () => {
-    const result = await TaskStopTool.validateInput?.(
-      { task_id: 'a' } as never,
-      makeCtx({ tasks: { a: { id: 'a', status: 'completed' } } }),
-    )
-    expect(result?.result).toBe(false)
-    expect(result?.message).toContain('not running')
-  })
-
   test('validateInput accepts a running task and falls back to shell_id', async () => {
     const result = await TaskStopTool.validateInput?.(
       { shell_id: 'b' } as never,

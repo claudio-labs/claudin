@@ -263,12 +263,30 @@ export async function scanFile(
   return { lines, source, entries, mtimeMs, truncated }
 }
 
+// A markdown backslash escape: `\`` for a backtick, `\*` for an asterisk.
+const MARKDOWN_ESCAPE_RE = /\\([\\`*_{}[\]()#+\-.!|<>~])/g
+
 /**
  * Exact symbol lookup. On a name collision prefers the shallowest (top-level);
  * on a depth tie prefers the widest line span — for overloaded TS functions
  * this picks the implementation (which has a body) over the bare signatures.
+ *
+ * With no exact match, the name is tried again with its markdown escapes
+ * undone: a heading such as "6. Some committed `.tsx` are…" was asked for as
+ * "6. Some committed \`.tsx\` are…" and reported not found beside its own
+ * listing (2b5c3f37, 2026-11-08).
  */
 export function findSymbolEntry(
+  entries: SymbolEntry[],
+  name: string,
+): SymbolEntry | null {
+  const exact = findExactSymbolEntry(entries, name)
+  if (exact) return exact
+  const unescaped = name.replace(MARKDOWN_ESCAPE_RE, '$1')
+  return unescaped === name ? null : findExactSymbolEntry(entries, unescaped)
+}
+
+function findExactSymbolEntry(
   entries: SymbolEntry[],
   name: string,
 ): SymbolEntry | null {

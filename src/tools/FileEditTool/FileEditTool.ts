@@ -325,6 +325,9 @@ export const FileEditTool = buildTool({
       } else if (similarFilename) {
         message += ` Did you mean ${similarFilename}?`
       }
+      // b40b178b 2026-11-08: two Edits of a PR body never written, both told
+      // only that it was missing.
+      message += ' To create it, use Write, or Edit with an empty old_string.'
 
       return {
         result: false,

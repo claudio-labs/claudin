@@ -25,15 +25,24 @@ const READ_GLOBS = readGlobsEnabledAtLoad()
  * CLAUDIN_READ_GLOBS field was not part of that A/B and keeps its text.
  */
 
+/**
+ * `limit: 0` read as "no limit" (b40b178b, 2026-11-08, a Haiku sub-agent).
+ * The schema the model sees still says positive: a preprocess renders as the
+ * schema inside it.
+ */
+function absentIfZero(value: unknown): unknown {
+  return value === 0 || value === '0' ? undefined : value
+}
+
 /** The fields both shapes share, built fresh per schema. */
 function sharedFields() {
   return {
     offset: semanticNumber(z.number().int().nonnegative().optional()).describe(
       'Line number to start reading from.',
     ),
-    limit: semanticNumber(z.number().int().positive().optional()).describe(
-      'Number of lines to read.',
-    ),
+    limit: z
+      .preprocess(absentIfZero, semanticNumber(z.number().int().positive().optional()))
+      .describe('Number of lines to read.'),
     pages: z
       .string()
       .optional()
