@@ -114,6 +114,41 @@ describe('TaskStopTool', () => {
     }
   })
 
+  // 32d3ba9c 2026-11-04T18:57: the model stopped a task that had already been
+  // killed and got an error back for a task that was, in fact, stopped.
+  test('validateInput takes a task that already stopped', async () => {
+    const result = await TaskStopTool.validateInput?.(
+      { task_id: 'b07njd8is' } as never,
+      makeCtx({ tasks: { b07njd8is: { id: 'b07njd8is', status: 'killed' } } }),
+    )
+    expect(result?.result).toBe(true)
+  })
+
+  test('call() on a stopped task says so and changes nothing', async () => {
+    const task = {
+      id: 'b07njd8is',
+      type: 'local_bash',
+      status: 'killed',
+      command: 'cargo bench -p ferrous-dns-infrastructure',
+      description: 'bench',
+    }
+    let state = { tasks: { b07njd8is: task } }
+    const result = await TaskStopTool.call({ task_id: 'b07njd8is' } as never, {
+      getAppState: () => state,
+      setAppState: (f: (prev: typeof state) => typeof state) => {
+        state = f(state)
+      },
+      abortController: new AbortController(),
+    } as never)
+    expect(result.data).toEqual({
+      message: 'Task b07njd8is is already stopped (status: killed)',
+      task_id: 'b07njd8is',
+      task_type: 'local_bash',
+      command: 'cargo bench -p ferrous-dns-infrastructure',
+    })
+    expect(state.tasks.b07njd8is).toBe(task)
+  })
+
   test('call() throws when no id is provided', async () => {
     await expect(
       TaskStopTool.call({} as never, {

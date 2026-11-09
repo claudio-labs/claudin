@@ -110,6 +110,24 @@ describe('input schema', () => {
     ).toBe(false)
   })
 
+  test('67e6e961 11-07: an 11-command batch is taken, like a Bash chain of 11', () => {
+    // Refused as "Too big: expected array to have <=10 items" on 2026-11-07.
+    const commands = [
+      'git status --short -- crates docs web contrib',
+      'git add crates/infrastructure/src/tls/mod.rs',
+      'git add crates/infrastructure/tests/tls_test.rs',
+      'git add docs/guides/tls.md',
+      'git add web/static/settings.js',
+      'git add contrib/systemd/ferrous-dns.service',
+      'git commit -m "fix(tls): read the expiry from the leaf"',
+      'git log --oneline -3',
+      'git status --short',
+      'git diff --stat HEAD~1',
+      'git show --stat HEAD',
+    ]
+    expect(GitTool.inputSchema.safeParse({ commands }).success).toBe(true)
+  })
+
   test('takes a list, never a bare string', () => {
     // A `string | string[]` union becomes anyOf in JSON Schema, which strict
     // -schema transports mangle; the array is the only accepted shape.

@@ -18,13 +18,16 @@ import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
 import { _resetCacheProfileForTesting } from 'src/agent/cache/cacheProfile.js'
 import { type Attachment, createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { ATTACHMENT_FIXTURES } from 'src/agent/attachments/__testutils__/attachmentFixtures.js'
+import { SYNTHETIC_TOOL_RESULT_PLACEHOLDER } from 'src/agent/messages/constants.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { Tool } from 'src/tools/Tool.js'
 import {
+  abortableTool,
   type Consumer,
   type ModelStep,
+  runCancelledTurnSession,
   runSession,
   stubTool,
 } from 'src/agent/cache/__testutils__/loopHarness.js'
@@ -274,6 +277,44 @@ test('aggressive profile: the next turn sends a large result as its display stub
   const broken = findPrefixBreak(session.requests.map(r => r.wire))
   expect(broken).toMatchObject({ from: 1, to: 2, index: 2, role: 'user' })
   expect(broken?.after).toContain('[clipped')
+})
+
+// 660bb320 2026-11-09T16:06: Esc while WaitFor ran, with a prompt queued. The
+// queue submitted it before the cancelled query had yielded the aborted result,
+// so the turn went out with a placeholder result and the next turn with the
+// real one: 138k rewritten, 7 thinking blocks dropped.
+describe('a turn cancelled mid-tool, the next prompt sent at once', () => {
+  // Live, the aborted result landed 1.1 s after the prompt, while the new
+  // turn was on its first tool call (gh pr checks): the Probe stands for it.
+  const run = (abortLatencyMs: number) =>
+    runCancelledTurnSession({
+      prompts: ['watch the CI run', 'o security audit esta vermelho por que ?', 'pode abrir a issue'],
+      script: [
+        { tools: [call('WaitFor')] },
+        { tools: [call('Probe')] },
+        { text: 'the audit flags libsqlite3-sys' },
+        { text: 'opened' },
+      ],
+      blocking: abortableTool({ name: 'WaitFor', abortLatencyMs }),
+      tools: [stubTool({ name: 'Probe', result: 'checks: audit failing', delayMs: 300 })],
+    })
+
+  test('660bb320 11-09: every request re-sends the previous one', async () => {
+    const session = await run(100)
+    expect(
+      { requests: session.requests.length, unusedSteps: session.unusedSteps },
+      'scenario did not run as scripted',
+    ).toEqual({ requests: 4, unusedSteps: 0 })
+    const broken = findPrefixBreak(session.requests.map(r => r.wire))
+    expect(broken ? describePrefixBreak(broken) : null).toBeNull()
+  })
+
+  test('660bb320 11-09: the model is told the tool was aborted, never that its result went missing', async () => {
+    const session = await run(100)
+    const sent = session.requests.flatMap(r => r.wire).join('\n')
+    expect(sent).toContain('[WaitFor: aborted after 703.0s, 351 polls]')
+    expect(sent).not.toContain(SYNTHETIC_TOOL_RESULT_PLACEHOLDER)
+  })
 })
 
 describe('the harness itself', () => {

@@ -90,3 +90,25 @@ describe('Read output schema', () => {
     expect(schema.safeParse({ type: 'text', file: noContent }).success).toBe(false)
   })
 })
+
+describe('Read input schema — limit 0', () => {
+  // b40b178b 2026-11-08T05:07: a Haiku sub-agent sent `limit: 0` meaning "no
+  // limit" and got `Too small: expected number to be >0` back.
+  test('b40b178b 11-08: limit 0 reads as no limit, as a number or a string', () => {
+    const schema = inputSchema()
+    const path = '/repo/crates/infrastructure/src/repositories/query_log_repository/reader.rs'
+    expect(schema.parse({ file_path: path, limit: 0 })).toEqual({ file_path: path })
+    expect(schema.parse({ file_path: path, offset: 120, limit: '0' })).toEqual({
+      file_path: path,
+      offset: 120,
+    })
+  })
+
+  test('the schema the model sees still says positive', async () => {
+    const { zodToJsonSchema } = await import('src/shared/data/zodToJsonSchema.js')
+    const limit = (zodToJsonSchema(inputSchema()) as { properties: Record<string, Record<string, unknown>> })
+      .properties.limit!
+    expect(limit.type).toBe('integer')
+    expect(limit.exclusiveMinimum).toBe(0)
+  })
+})

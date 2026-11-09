@@ -642,3 +642,73 @@ describe('interactive forms are declined, not run', () => {
     })
   }
 })
+
+// An operator glued inside one argument is an argument that needs quotes, not
+// a second command: "one plain command per list element" was the wrong fix,
+// and the model sent the same shape again (b40b178b, 2026-11-08). The cases
+// are the refusals of the 2026-11-04..09 census.
+describe('an operator inside an argument names the quoting fix', () => {
+  for (const [session, cmd, word, fixed] of [
+    [
+      '32d3ba9c 11-04',
+      "gh api repos/ferrous-networking/ferrous-dns/issues?milestone=2&state=open --jq '.[] | {number,title}'",
+      'repos/ferrous-networking/ferrous-dns/issues?milestone=2&state=open',
+      "gh api 'repos/ferrous-networking/ferrous-dns/issues?milestone=2&state=open' --jq '.[] | {number,title}'",
+    ],
+    [
+      'b40b178b 11-08 05:13',
+      'git log --format=%s -60 --all --grep=^test(',
+      '--grep=^test(',
+      "git log --format=%s -60 --all '--grep=^test('",
+    ],
+    [
+      'b40b178b 11-08 05:25',
+      'git log --format=%s -300 origin/main --grep=(web) --grep=(dashboard) --grep=(ui)',
+      '--grep=(web)',
+      "git log --format=%s -300 origin/main '--grep=(web)' '--grep=(dashboard)' '--grep=(ui)'",
+    ],
+  ] as const) {
+    test(`${session}: quotes \`${word}\``, () => {
+      const parsed = parseGitCommand(cmd)
+      expect(parsed.ok).toBe(false)
+      if (parsed.ok) return
+      expect(parsed.reason).toContain(`'${word}'`)
+      expect(parsed.reason).toContain('single quotes')
+      expect(parsed.reason).not.toContain('one plain command per list element')
+      // The fix the message names is one the tool then accepts.
+      expect(parseGitCommand(fixed).ok).toBe(true)
+    })
+  }
+
+  test('a quoted --grep=(web) and its siblings parse', () => {
+    expect(
+      parseGitCommand("git log --format=%s -300 origin/main '--grep=(web)' '--grep=(dashboard)' '--grep=(ui)'")
+        .ok,
+    ).toBe(true)
+  })
+
+  describe('what must not change', () => {
+    test('a separator between commands keeps the list advice', () => {
+      for (const cmd of [
+        'git add -A && git commit -m x',
+        'git diff | grep "^+++"',
+        'git status; git diff',
+        'git log > out.txt',
+        'git status &',
+      ]) {
+        const parsed = parseGitCommand(cmd)
+        expect(parsed.ok).toBe(false)
+        if (!parsed.ok) {
+          expect(parsed.reason).toContain('shell operator')
+          expect(parsed.reason).toContain('one plain command per list element')
+        }
+      }
+    })
+
+    test('command substitution keeps its own message', () => {
+      const parsed = parseGitCommand('git log --oneline $(git merge-base HEAD origin/main)..origin/main')
+      expect(parsed.ok).toBe(false)
+      if (!parsed.ok) expect(parsed.reason).toContain('command substitution')
+    })
+  })
+})

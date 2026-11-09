@@ -148,6 +148,8 @@ export type StubToolSpec = {
   concurrencySafe?: boolean
   /** Wraps backfillObservableInput, to model a tool whose observable input grows. */
   backfillObservableInput?: (input: Record<string, unknown>) => void
+  /** How long the call takes, for a scenario where something lands meanwhile. */
+  delayMs?: number
 }
 
 /** A tool built with buildTool, so it takes the production execution path. */
@@ -181,6 +183,7 @@ export function stubTool(spec: StubToolSpec): Tool {
       for (const [i, data] of (spec.progress ?? []).entries()) {
         onProgress?.({ toolUseID: `progress_${spec.name}_${i}`, data })
       }
+      if (spec.delayMs) await new Promise(resolve => setTimeout(resolve, spec.delayMs))
       return {
         data: spec.result,
         ...(spec.newMessages ? { newMessages: spec.newMessages() } : {}),
@@ -319,4 +322,116 @@ export async function runSession(opts: {
     }
   }
   return { requests: model.requests, history, unusedSteps: model.remaining(), tools }
+}
+
+// ---------------------------------------------------------------------------
+// A turn cancelled while a tool runs, with the next prompt sent at once
+// ---------------------------------------------------------------------------
+
+/**
+ * A tool that runs until the turn is aborted, then answers after
+ * `abortLatencyMs` — WaitFor's poll ends on its next tick, about 1.1 s after
+ * the Esc in 660bb320 (2026-11-09). `started` resolves once it is running.
+ */
+export function abortableTool(spec: { name: string; abortLatencyMs: number }): {
+  tool: Tool
+  started: Promise<void>
+} {
+  let markStarted: () => void = () => {}
+  const started = new Promise<void>(resolve => {
+    markStarted = resolve
+  })
+  const tool = buildTool({
+    name: spec.name,
+    inputSchema: z.object({}).passthrough(),
+    maxResultSizeChars: 1_000_000,
+    async description() {
+      return `${spec.name} (stub)`
+    },
+    async prompt() {
+      return `${spec.name} (stub)`
+    },
+    isConcurrencySafe: () => false,
+    isReadOnly: () => true,
+    mapToolResultToToolResultBlockParam(data: unknown, toolUseId: string) {
+      return { type: 'tool_result' as const, tool_use_id: toolUseId, content: data as never }
+    },
+    renderToolUseMessage: () => null,
+    async call(_input: unknown, context: ToolUseContext) {
+      markStarted()
+      const signal = context.abortController.signal
+      await new Promise<void>(resolve => {
+        if (signal.aborted) resolve()
+        else signal.addEventListener('abort', () => resolve(), { once: true })
+      })
+      await new Promise(resolve => setTimeout(resolve, spec.abortLatencyMs))
+      return { data: `[${spec.name}: aborted after 703.0s, 351 polls]` }
+    },
+  } as never) as unknown as Tool
+  return { tool, started }
+}
+
+/**
+ * Three turns through the REPL consumer: the first runs `blocking` and is
+ * cancelled (Esc) while it runs; the second prompt is submitted at once, the
+ * way the queue processor submits a queued prompt the moment the guard goes
+ * idle; the third is an ordinary turn, whose request shows what the REPL array
+ * kept of the other two.
+ *
+ * The REPL array is shared by both queries, as it is live: the cancelled
+ * query's late messages (the aborted result, the interrupt marker) land in it
+ * whenever they arrive.
+ */
+export async function runCancelledTurnSession(opts: {
+  prompts: readonly [string, string, string]
+  script: readonly ModelStep[]
+  blocking: { tool: Tool; started: Promise<void> }
+  tools?: readonly Tool[]
+}): Promise<SessionResult> {
+  const tools = [opts.blocking.tool, ...(opts.tools ?? [])] as Tools
+  const model = scriptedModel(opts.script, tools)
+  const deps: QueryDeps = {
+    callModel: model.callModel,
+    microcompact: (async (messages: Message[]) => ({ messages })) as never,
+    autocompact: (async () => ({ compactionResult: undefined })) as never,
+    uuid: randomUUID,
+  }
+  const profile = getCacheProfile()
+  let repl: Message[] = []
+
+  async function runTurn(turn: number, context: ToolUseContext): Promise<void> {
+    model.setTurn(turn)
+    for await (const event of query({
+      messages: repl,
+      systemPrompt: asSystemPrompt(['You are a test agent.']),
+      userContext: {},
+      systemContext: {},
+      canUseTool: (async (_tool: unknown, input: unknown) => ({
+        behavior: 'allow',
+        updatedInput: input,
+      })) as never,
+      toolUseContext: context,
+      querySource: 'repl_main_thread',
+      deps,
+    })) {
+      if (isStored(event)) repl = appendQueryMessage(repl, event, profile)
+    }
+  }
+
+  repl = [...repl, createUserMessage({ content: opts.prompts[0] })]
+  const first = makeContext(tools)
+  const cancelled = runTurn(0, first)
+  await opts.blocking.started
+  first.abortController.abort('user-cancel')
+
+  // useOnQuery.onQuery: the guard is idle (forceEnd), so the next prompt is
+  // appended and its query starts right away.
+  repl = [...repl, createUserMessage({ content: opts.prompts[1] })]
+  await runTurn(1, makeContext(tools))
+  await cancelled
+  repl = settleTurnMessages(repl, profile)
+
+  repl = [...repl, createUserMessage({ content: opts.prompts[2] })]
+  await runTurn(2, makeContext(tools))
+  return { requests: model.requests, history: repl, unusedSteps: model.remaining(), tools }
 }

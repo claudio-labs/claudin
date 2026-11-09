@@ -157,3 +157,77 @@ test('hook output of parallel tools comes back in write order, not in creation o
 
   expect(resumedOrder(written)).toEqual(written.map(m => m.uuid))
 })
+
+// 660bb320 2026-11-09T16:06: Esc while a WaitFor ran, with a prompt in the
+// queue. The prompt was written first and parented to the WaitFor's assistant;
+// the aborted result and the interrupt marker came a second later on a branch
+// of their own, and the next reply hung off the marker. The walk from the leaf
+// took that branch and never saw the prompt.
+test('660bb320 11-09: a prompt written beside an aborted tool result comes back, in write order', () => {
+  const waitFor = entry(id(2), id(1), {
+    type: 'assistant',
+    message: { id: 'msg_wait', role: 'assistant', content: [{ type: 'tool_use', id: 'W', name: 'WaitFor', input: {} }] },
+  })
+  const queued = entry(id(3), id(2), {
+    type: 'user',
+    message: { role: 'user', content: 'o security audit esta vermelho por que ?' },
+  })
+  const aborted = entry(id(4), id(2), {
+    type: 'user',
+    message: {
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'W', content: '[WaitFor: aborted after 703.0s, 351 polls]' }],
+    },
+  })
+  const interrupt = entry(id(5), id(4), {
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user for tool use]' }] },
+  })
+  const next = reply(id(6), id(5))
+  expect(resumedOrder([prompt(), waitFor, queued, aborted, interrupt, next])).toEqual([
+    id(1),
+    id(2),
+    id(3),
+    id(4),
+    id(5),
+    id(6),
+  ])
+})
+
+test('a meta user message or one already on the chain is not recovered as a prompt', () => {
+  const waitFor = entry(id(2), id(1), {
+    type: 'assistant',
+    message: { id: 'msg_wait', role: 'assistant', content: [{ type: 'tool_use', id: 'W', name: 'WaitFor', input: {} }] },
+  })
+  const meta = entry(id(3), id(2), {
+    type: 'user',
+    isMeta: true,
+    message: { role: 'user', content: 'expanded skill body' },
+  })
+  const aborted = toolResult(id(4), id(2), 'W')
+  const next = reply(id(5), id(4))
+  expect(resumedOrder([prompt(), waitFor, meta, aborted, next])).toEqual([id(1), id(2), id(4), id(5)])
+})
+
+test('a prompt with a reply of its own is a branch, not a lost message', () => {
+  // /rewind and an edited prompt leave the old prompt and its whole turn
+  // beside the new one; resume follows the leaf and drops the other branch.
+  // Distinct message ids: replies sharing one would be recovered as the
+  // streamed blocks of a single response.
+  const answer = (uuid: UUID, parent: UUID, msgId: string) =>
+    entry(uuid, parent, {
+      type: 'assistant',
+      message: { id: msgId, role: 'assistant', content: [{ type: 'text', text: msgId }] },
+    })
+  const first = answer(id(2), id(1), 'msg_first')
+  const oldPrompt = entry(id(3), id(2), { type: 'user', message: { role: 'user', content: 'old ask' } })
+  const oldReply = answer(id(4), id(3), 'msg_old')
+  const newPrompt = entry(id(5), id(2), { type: 'user', message: { role: 'user', content: 'new ask' } })
+  const newReply = answer(id(6), id(5), 'msg_new')
+  expect(resumedOrder([prompt(), first, oldPrompt, oldReply, newPrompt, newReply])).toEqual([
+    id(1),
+    id(2),
+    id(5),
+    id(6),
+  ])
+})
