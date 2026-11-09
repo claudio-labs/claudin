@@ -1,20 +1,28 @@
 import { afterAll, beforeEach, expect, mock, test } from 'bun:test'
+import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 
 // Provider isolation — see sonnet5.test.ts for the full rationale. Pin
 // getAPIProvider to 'firstParty' so a cross-file mock.module leak can't collapse
 // the effort ladder to the OpenAI tiers.
+// The alias table is cached for the process from whichever provider was active
+// at its first read (modelStrings.ts), so the pin alone does not reach it: one
+// cached under a Bedrock profile made `opus` anthropic.claude-opus-5-5 here in
+// CI. Clearing it makes this file derive the first-party ids it pins.
 const realProviders = { ...(await import('src/providers/model/providers.js')) }
-const pinFirstParty = () =>
+const pinFirstParty = () => {
   mock.module('./providers.js', () => ({
     ...realProviders,
     getAPIProvider: () => 'firstParty',
   }))
+  resetModelStringsForTestingOnly()
+}
 pinFirstParty()
 
 beforeEach(pinFirstParty)
 
 afterAll(() => {
   mock.module('./providers.js', () => realProviders)
+  resetModelStringsForTestingOnly()
 })
 
 import {
