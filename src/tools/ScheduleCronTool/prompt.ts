@@ -1,6 +1,7 @@
 import { feature } from 'bun:bundle'
 import { DEFAULT_CRON_JITTER_CONFIG } from 'src/agent/tasks/cronTasks.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
 
 export const DEFAULT_MAX_AGE_DAYS =
   DEFAULT_CRON_JITTER_CONFIG.recurringMaxAgeMs / (24 * 60 * 60 * 1000)
@@ -51,6 +52,10 @@ When the request is approximate ("around 9am", "hourly"), pick a minute that is 
 ## Durability
 
 By default (durable: false) the job lives only in this Claudin session — nothing is written to disk, and the job is gone when Claudin exits. Pass durable: true to write to .claudin/scheduled_tasks.json so the job survives restarts. Only use durable: true when the user explicitly asks for the task to persist ("keep doing this every day", "set this up permanently"). Most "remind me in 5 minutes" / "check back in an hour" requests should stay session-only.
+
+## Not for live watching
+
+A cron job re-runs a prompt on the clock. To watch a log, a process or a command's output and hear the moment something changes, use ${MONITOR_TOOL_NAME} instead: it streams events as they happen, where cron only checks on a schedule.
 
 ## Runtime behavior
 

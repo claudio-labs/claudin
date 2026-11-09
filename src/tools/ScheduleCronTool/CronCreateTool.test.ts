@@ -10,6 +10,7 @@ import {
   setScheduledTasksEnabled,
 } from 'src/platform/bootstrap/state.js'
 import { CronCreateTool } from 'src/tools/ScheduleCronTool/CronCreateTool.js'
+import { buildCronCreatePrompt } from 'src/tools/ScheduleCronTool/prompt.js'
 
 let configDir: string
 let priorEnabled = false
@@ -32,6 +33,12 @@ afterEach(() => {
 })
 
 describe('CronCreateTool', () => {
+  test('the prompt hands live watching to Monitor', () => {
+    const prompt = buildCronCreatePrompt()
+    expect(prompt).toContain('## Not for live watching')
+    expect(prompt).toContain('use Monitor instead: it streams events as they happen')
+  })
+
   test('isEnabled() is true when cron is not disabled by env', () => {
     expect(CronCreateTool.isEnabled?.()).toBe(true)
   })
