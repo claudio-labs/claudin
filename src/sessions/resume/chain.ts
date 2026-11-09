@@ -98,6 +98,15 @@ export function buildConversationChain(
  *      survived. Live, that output was folded into the tool_result the model
  *      received, so resume re-sent the block with different bytes.
  *
+ *   4. A prompt submitted while a tool was still answering an Esc: the queue
+ *      sent it before the aborted tool_result was written, so both hang off
+ *      the tool's assistant, and the reply chains through the result and the
+ *      interrupt marker (660bb320, 2026-11-09). The prompt is recovered when it
+ *      sits beside a result of that assistant and nothing hangs off it — a
+ *      rewound or edited prompt has its own turn below it, or no result beside
+ *      it. useOnQuery now waits for the cancelled turn (cancelledTurn.ts), so
+ *      only transcripts written before that have this shape.
+ *
  * Read-side fix: the write topology is already on disk for old transcripts;
  * this recovery pass handles them.
  */
@@ -126,6 +135,7 @@ export function recoverOrphanedParallelToolResults(
   // run is reachable only through its parent.
   const siblingsByMsgId = new Map<string, TranscriptMessage[]>()
   const toolResultsByAsst = new Map<UUID, TranscriptMessage[]>()
+  const promptsByAsst = new Map<UUID, TranscriptMessage[]>()
   const hookOutputByToolUseId = new Map<string, TranscriptMessage[]>()
   const childrenByParent = new Map<UUID, TranscriptMessage[]>()
   const addTo = <K>(index: Map<K, TranscriptMessage[]>, key: K, m: TranscriptMessage) => {
@@ -148,6 +158,8 @@ export function recoverOrphanedParallelToolResults(
       m.message.content.some((b: { type: string }) => b.type === 'tool_result')
     ) {
       addTo(toolResultsByAsst, m.parentUuid, m)
+    } else if (m.type === 'user' && m.parentUuid && !m.isMeta) {
+      addTo(promptsByAsst, m.parentUuid, m)
     } else if (m.type === 'attachment' && 'toolUseID' in m.attachment) {
       addTo(hookOutputByToolUseId, m.attachment.toolUseID, m)
     }
@@ -178,9 +190,15 @@ export function recoverOrphanedParallelToolResults(
       orphanedRuns.push(m)
     }
     for (const member of group) {
-      for (const tr of toolResultsByAsst.get(member.uuid) ?? []) claim(tr)
+      const results = toolResultsByAsst.get(member.uuid) ?? []
+      for (const tr of results) claim(tr)
       for (const toolUseId of toolUseIdsOf(member)) {
         for (const hook of hookOutputByToolUseId.get(toolUseId) ?? []) claim(hook)
+      }
+      // Loss mode 4: a prompt beside an aborted result, with nothing below it.
+      if (results.length === 0) continue
+      for (const prompt of promptsByAsst.get(member.uuid) ?? []) {
+        if (!childrenByParent.has(prompt.uuid)) claim(prompt)
       }
     }
     // Then whatever was written after any of those before the next TR jumped

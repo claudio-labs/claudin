@@ -231,3 +231,20 @@ test('a prompt with a reply of its own is a branch, not a lost message', () => {
     id(6),
   ])
 })
+
+test('a submit rewound before any reply stays dropped', () => {
+  // Esc before the model answered: auto-restore puts the prompt back in the
+  // input, and the next submit is a sibling of the dropped one under the last
+  // reply, which has no tool result beside them.
+  const answer = entry(id(2), id(1), {
+    type: 'assistant',
+    message: { id: 'msg_first', role: 'assistant', content: [{ type: 'text', text: 'first' }] },
+  })
+  const rewound = entry(id(3), id(2), { type: 'user', message: { role: 'user', content: 'typo ask' } })
+  const resent = entry(id(4), id(2), { type: 'user', message: { role: 'user', content: 'fixed ask' } })
+  const next = entry(id(5), id(4), {
+    type: 'assistant',
+    message: { id: 'msg_next', role: 'assistant', content: [{ type: 'text', text: 'next' }] },
+  })
+  expect(resumedOrder([prompt(), answer, rewound, resent, next])).toEqual([id(1), id(2), id(4), id(5)])
+})
