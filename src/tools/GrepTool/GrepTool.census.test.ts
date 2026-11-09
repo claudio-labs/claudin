@@ -134,12 +134,19 @@ describe('several paths in one `path`', () => {
   })
 
   test('a piece outside the working directories asks, the others inside allow', async () => {
-    const inside = await runWithCwdOverride(root, () =>
-      GrepTool.checkPermissions(census() as never, contextWith()),
-    )
+    // The fixture root is a working directory the way an /add-dir makes one.
+    const working = () =>
+      contextWith({
+        ...emptyPermissionContext,
+        additionalWorkingDirectories: new Map([[root, { path: root, source: 'session' }]]),
+      })
+    const input = census()
+    const inside = await runWithCwdOverride(root, () => GrepTool.checkPermissions(input as never, working()))
     expect(inside.behavior).toBe('allow')
+    // The allow echoes the call's own input, every path in it.
+    if (inside.behavior === 'allow') expect(inside.updatedInput).toEqual(input)
     const mixed = await runWithCwdOverride(root, () =>
-      GrepTool.checkPermissions({ ...census(), path: `${census().path} ${outside}` } as never, contextWith()),
+      GrepTool.checkPermissions({ ...input, path: `${input.path} ${outside}` } as never, working()),
     )
     expect(mixed.behavior).toBe('ask')
   })

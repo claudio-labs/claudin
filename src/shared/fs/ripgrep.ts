@@ -386,7 +386,7 @@ export function wrapRipgrepUnavailableError(
 
 function ripGrepRaw(
   args: string[],
-  target: string,
+  target: string | readonly string[],
   abortSignal: AbortSignal,
   callback: (
     error: ExecFileException | null,
@@ -404,7 +404,7 @@ function ripGrepRaw(
 
   // Use single-threaded mode only if explicitly requested for this call's retry
   const threadArgs = singleThread ? ['-j', '1'] : []
-  const fullArgs = [...rgArgs, ...threadArgs, ...args, target]
+  const fullArgs = [...rgArgs, ...threadArgs, ...args, ...(typeof target === 'string' ? [target] : target)]
   // Allow timeout to be configured via env var (in seconds), otherwise use platform defaults
   // WSL has severe performance penalty for file reads (3-5x slower on WSL2)
   const defaultTimeout = getPlatform() === 'wsl' ? 60_000 : 20_000
@@ -640,10 +640,13 @@ export async function ripGrepStream(
  * anchors every `--glob` containing a `/` (and every leading-`/` exclusion) at
  * its own working directory, not at `target`. Unset, that is this process's
  * cwd, which is the wrong root for any search that is not rooted there.
+ *
+ * `target` may name several paths (a Grep over a list of directories); with
+ * more than one, ripgrep prints the file name on every line.
  */
 export async function ripGrepWithStatus(
   args: string[],
-  target: string,
+  target: string | readonly string[],
   abortSignal: AbortSignal,
   { cwd }: { cwd?: string } = {},
 ): Promise<RipgrepResult> {
