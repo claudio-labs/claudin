@@ -70,7 +70,7 @@ import {
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
-import { subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
+import { resolveSubagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -551,13 +551,12 @@ export async function* runAgent({
 
     // Override effort level if agent defines one; otherwise the parent's, one
     // level down when raised above its model's default (subagentThinking.ts).
-    const effortValue =
-      agentDefinition.effort !== undefined
-        ? agentDefinition.effort
-        : subagentEffort(state.effortValue, {
-            useExactTools: useExactTools === true,
-            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),
-          })
+    const effortValue = resolveSubagentEffort({
+      defined: agentDefinition.effort,
+      parent: state.effortValue,
+      useExactTools: useExactTools === true,
+      parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),
+    })
 
     if (
       toolPermissionContext === state.toolPermissionContext &&
