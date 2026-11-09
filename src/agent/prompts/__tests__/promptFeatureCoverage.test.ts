@@ -188,7 +188,7 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
   WaitFor: ['until', 'settle_s', 'timeout_s', 'setup'],
   Skill: ['skill', 'args', /slash command/i, /built-in CLI commands/i, 'already running', '<command-name>'],
   WebFetch: ['url', 'prompt', /markdown/i, /authenticated/i, 'HTTPS', /redirect/i, '15'],
-  WebSearch: ['query', 'allowed_domains', 'blocked_domains', 'Sources', /current month/i],
+  WebSearch: ['query', 'allowed_domains', 'blocked_domains', 'Sources', /today's date/i],
   ReportFindings: ['findings', 'failure_scenario', 'verdict', 'outcome', /most-severe/i, 'print the findings as text'],
 }
 

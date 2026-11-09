@@ -22,12 +22,3 @@ export function getLocalISODate(): string {
 // the tail (though simple mode disables attachments, so the trade-off there is:
 // stale date after midnight vs. ~entire-conversation cache bust — stale wins).
 export const getSessionStartDate = memoize(getLocalISODate)
-
-// Returns "Month YYYY" (e.g. "February 2026") in the user's local timezone.
-// Changes monthly, not daily — used in tool prompts to minimize cache busting.
-export function getLocalMonthYear(): string {
-  const date = process.env.CLAUDIN_OVERRIDE_DATE
-    ? new Date(process.env.CLAUDIN_OVERRIDE_DATE)
-    : new Date()
-  return date.toLocaleString('en-US', { month: 'long', year: 'numeric' })
-}
