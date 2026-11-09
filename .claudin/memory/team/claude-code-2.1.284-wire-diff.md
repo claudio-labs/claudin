@@ -90,6 +90,12 @@ so these are behavior levers, not size levers ([[prompts-v2-2026-09]]).
 --model=claude-opus-5-5 --out=<dir>`; for Claudin add `--bin=<checkout>/bin/claudin
 --config=<dir>` with a config.json whose anthropic profile has a fake apiKey AND a
 `baseUrl` (without one the profile is dropped and the TUI opens the provider wizard), and
-put that dir outside `<tmpdir>/cc-extract`, which every run deletes. The extracted text is
+put that dir outside `<tmpdir>/cc-extract`, which every run deletes. Both CLIs can be
+captured at once with a separate `TMPDIR` each (done 2026-11-09 on CC 2.1.321, ~2 min): the
+work dir is `<TMPDIR>/cc-extract/work`, so the Claudin config's
+`projects[…].hasTrustDialogAccepted` key must name that same TMPDIR, and
+`customApiKeyResponses.approved` takes `"for-local-extraction"` (the stub key's last 20
+chars). To size what the model reads, count only `request.json` tools without
+`defer_loading: true` — meta.json lists every tool sent. The extracted text is
 Anthropic's: keep it in a temp dir. Run the arms with
 `scripts/bench/ab/session-cache-ab.ts --variant=…` ([[session-cache-ab-bench-2026-09-23]]).

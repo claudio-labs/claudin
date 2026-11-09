@@ -1,0 +1,59 @@
+---
+name: claude-code-2.1.321-tool-diff
+description: Claude Code 2.1.321 vs Claudin (2026-11-09, branch feat/cc-2.1.321-tool-parity) — ported WebSearch date, CronCreate→Monitor, Monitor ws source + text, Agent effort input, directory-scoped and background skills; NOT ported: Agent "When to use" (A/B failed), per-turn-control/ultrathink (probe: a top-level effort change already keeps the cache), cron 50%/30 min jitter; real-wire facts the flagless stub capture misses
+type: project
+---
+
+Captured 2026-11-09: stub capture (`extract-claude-code-prompt.ts`, CC 2.1.321 vs main@e356d676,
+Opus 5.5) plus a real-wire capture through `wire-proxy.ts` (CC interactive, Sonnet 5.5, the
+user's OAuth and flags). Predecessor: [[claude-code-2.1.316-tool-prompt-diff]], whose three
+A/B follow-ups (Bash "don't poll", EnterWorktree honoring CLAUDE.md, the new intro line) are
+still open.
+
+**Ported** (one commit each, local branch `feat/cc-2.1.321-tool-parity`):
+- WebSearch names no month; it points at the conversation's `Today's date` (the cached
+  description had kept a stale month across a month boundary).
+- CronCreate "Not for live watching → Monitor". The jitter stays 10% / 15 min (the user's call;
+  CC moved to 50% / 30 min to spread load on its own API).
+- Monitor: the guidance rewritten in Claudin's terms, and a `ws: {url, protocols?}` source — a
+  `ShellCommand` adapter (`src/tools/MonitorTool/webSocketCommand.ts`) that appends frames to
+  the task output, so monitorStream, TaskStop and `timeout_ms` stay one path. SSRF uses the HTTP
+  hooks' `isBlockedAddress` (loopback allowed); every ws monitor is asked, with no rule offered.
+  Live-checked on Bun and Node against `wss://echo.websocket.org`.
+- Agent `effort` input: replaces the definition's effort, ignored for a fork, persisted in the
+  agent metadata for a resume.
+- Skills: a nested `.claudin/skills` skill whose name is taken used to vanish (getCommands
+  dropped it); it is now `apps/web:deploy`, and calling the bare one lists its variants
+  (uncommitted-change dirs scanned, ≤100). `background: true` on a `context: fork` skill runs it
+  as a background agent — opt-in, where CC defaults it on.
+
+**Not ported, measured:**
+- Agent "When to use" (CC's cost paragraph): delegation-steer-ab on Sonnet 5.5 high, N=3
+  (`/tmp/delegation-steer-ab/20261109-232035`) — correct answers 5 vs 6 (gate FAIL), cost −0%;
+  the placebo moved delegation +25 pp and cost −13%, so the bench's noise is larger than any
+  effect. Sonnet 5.5 delegated 0–1 of 4 multi-hop questions in every arm.
+- per-turn-control + a real ultrathink effort: `scripts/bench/tokens/per-turn-effort-probe.ts`
+  found both `mid-conversation-output-config-2026-07-01` and the alias `per-turn-control-2026-07-01`
+  accepted on Opus 5.5, Opus 5, Fable 5.1, Sonnet 5.5 and Haiku 5.5 (no header: 400 "Extra inputs
+  are not permitted"). But the control — today's wire, top-level effort changed with no system
+  message — read the whole previous prefix on Sonnet 5.5 and Opus 5.5, exactly like both per-turn
+  layouts. The docs' "a top-level change restarts the cache" did not hold. The user chose to send
+  neither (ultrathink stays a text reminder).
+- mid-conversation-tool-changes, and Fable 5.2 (CC's catalog has `claude-fable-5-2`; Claudin
+  has none).
+
+**Real wire vs the stub (CC 2.1.321, Sonnet 5.5, OAuth):** CC moves the top-level effort to the
+turn's AND adds `{role:"system", content:[], output_config:{effort}}` after the user turn;
+ultrathink is `setTurnEffort("xhigh")` plus a system message with its reminder text; the env
+system message carries `output_config` and the deferred tools as `tool_addition` blocks. Real
+flags add system-prompt rules the flagless stub misses (`<pasted_content>`, treat the user's
+details as private, `EndConversation`, WebSearch `mode`) and drop the "games" paragraph;
+ScheduleWakeup on OAuth says 1-hour TTL, like Claudin's.
+
+**Why:** parity only where it is true of Claudin's tools; behavior levers go through a placebo
+A/B ([[feedback-gates-need-a-placebo-arm]] is the private rule behind it).
+
+**How to apply:** re-capture both ways before a follow-up — the stub for byte-exact tool text,
+the proxy for flags and per-turn wire. A CC TUI driven on a pty in a new cwd now opens its trust
+dialog on "No, exit": send Down, then Enter. Live probes here run on the user's Max plan: read
+`/usage` first (tmux, throwaway cwd) and size the run.
