@@ -26,7 +26,7 @@
 //     block deliberately sits OUTSIDE that check for the same reason.
 
 import type { UUID } from 'crypto';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
@@ -76,6 +76,7 @@ import { checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissio
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
 import { getFallbackModel } from 'src/providers/model/fallbackModel.js';
+import { createCancelledTurns } from 'src/agent/repl/controllers/cancelledTurn.js';
 
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
@@ -200,6 +201,11 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     resetTimingRefs,
   } = deps;
 
+  // A turn cancelled with Esc goes on yielding after onCancel freed the guard;
+  // the next turn waits for it before appending (cancelledTurn.ts). Stable for
+  // the component's life, so it stays out of the dep arrays like the refs.
+  const [cancelledTurns] = useState(createCancelledTurns);
+
   const onQueryEvent = useCallback((event: Parameters<typeof handleMessageFromStream>[0]) => {
     handleMessageFromStream(event, newMessage => {
       // Apply any frame-coalesced streamingToolUses updates queued before this
@@ -241,7 +247,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       });
     }, onStreamingText);
   }, [setMessages, setResponseLength, setStreamMode, coalescedStreamingToolUses, setStreamingThinking, onStreamingText]);
-  const onQueryImpl = useCallback(async (messagesIncludingNewMessages: MessageType[], newMessages: MessageType[], abortController: AbortController, shouldQuery: boolean, additionalAllowedTools: string[], mainLoopModelParam: string, effort?: EffortValue) => {
+  const onQueryImpl = useCallback(async (messagesIncludingNewMessages: MessageType[], newMessages: MessageType[], abortController: AbortController, shouldQuery: boolean, additionalAllowedTools: string[], mainLoopModelParam: string, effort: EffortValue | undefined, generation: number) => {
     // Prepare IDE integration for new prompt. Read mcpClients fresh from
     // store — useManageMCPConnections may have populated it since the
     // render that captured this closure (same pattern as computeTools).
@@ -381,8 +387,13 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       querySource: getQuerySourceForREPL(),
       fallbackModel: getFallbackModel(toolUseContext.options.mainLoopModel)
     })) {
+      // A newer turn gave up waiting for this one: it went out without these.
+      if (cancelledTurns.isAbandoned(generation)) continue;
       onQueryEvent(event);
     }
+    // Every message this turn yields is in the array now; a turn waiting on it
+    // may append.
+    cancelledTurns.end(generation);
     // Free RSS from large tool_result payloads after each turn.
     // pruneOldToolResults: stubs results outside the rolling window (every
     //   turn; a no-op under retain, where keepTurns is Infinity).
@@ -444,7 +455,12 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       });
       return;
     }
+    cancelledTurns.begin(thisGeneration);
     try {
+      // A turn cancelled with Esc may still be yielding its aborted
+      // tool_result and interrupt marker: they belong in front of this turn's
+      // prompt, where the next request will render them (660bb320).
+      await cancelledTurns.settle(thisGeneration);
       // isLoading is derived from queryGuard — tryStart() above already
       // transitioned dispatching→running, so no setter call needed here.
       // Start the active-wall clock for this turn (frozen while idle so the
@@ -486,8 +502,9 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
           return;
         }
       }
-      await onQueryImpl(latestMessages, newMessages, abortController, shouldQuery, additionalAllowedTools, mainLoopModelParam, effort);
+      await onQueryImpl(latestMessages, newMessages, abortController, shouldQuery, additionalAllowedTools, mainLoopModelParam, effort, thisGeneration);
     } finally {
+      cancelledTurns.end(thisGeneration);
       // queryGuard.end() atomically checks generation and transitions
       // running→idle. Returns false if a newer query owns the guard
       // (cancel+resubmit race where the stale finally fires as a microtask).

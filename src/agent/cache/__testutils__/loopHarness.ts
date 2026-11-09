@@ -16,6 +16,7 @@ import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { query } from 'src/agent/query.js'
 import type { QueryDeps } from 'src/agent/query/deps.js'
+import { createCancelledTurns } from 'src/agent/repl/controllers/cancelledTurn.js'
 import { appendQueryMessage, settleTurnMessages } from 'src/agent/repl/queryMessages.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js'
@@ -380,13 +381,17 @@ export function abortableTool(spec: { name: string; abortLatencyMs: number }): {
  *
  * The REPL array is shared by both queries, as it is live: the cancelled
  * query's late messages (the aborted result, the interrupt marker) land in it
- * whenever they arrive.
+ * whenever they arrive. The turns are ordered the way useOnQuery orders them
+ * (cancelledTurn.ts): each registers its generation, a new one settles the
+ * older ones before appending its prompt, and what an abandoned one yields is
+ * dropped. `settleMs` stands in for CANCELLED_TURN_SETTLE_MS.
  */
 export async function runCancelledTurnSession(opts: {
   prompts: readonly [string, string, string]
   script: readonly ModelStep[]
   blocking: { tool: Tool; started: Promise<void> }
   tools?: readonly Tool[]
+  settleMs?: number
 }): Promise<SessionResult> {
   const tools = [opts.blocking.tool, ...(opts.tools ?? [])] as Tools
   const model = scriptedModel(opts.script, tools)
@@ -397,10 +402,13 @@ export async function runCancelledTurnSession(opts: {
     uuid: randomUUID,
   }
   const profile = getCacheProfile()
+  const turns = createCancelledTurns()
   let repl: Message[] = []
 
-  async function runTurn(turn: number, context: ToolUseContext): Promise<void> {
+  // Generations as QueryGuard counts them: tryStart and forceEnd each add one.
+  async function runTurn(turn: number, context: ToolUseContext, generation: number): Promise<void> {
     model.setTurn(turn)
+    turns.begin(generation)
     for await (const event of query({
       messages: repl,
       systemPrompt: asSystemPrompt(['You are a test agent.']),
@@ -414,24 +422,28 @@ export async function runCancelledTurnSession(opts: {
       querySource: 'repl_main_thread',
       deps,
     })) {
+      if (turns.isAbandoned(generation)) continue
       if (isStored(event)) repl = appendQueryMessage(repl, event, profile)
     }
+    turns.end(generation)
   }
 
   repl = [...repl, createUserMessage({ content: opts.prompts[0] })]
   const first = makeContext(tools)
-  const cancelled = runTurn(0, first)
+  const cancelled = runTurn(0, first, 1)
   await opts.blocking.started
+  // onCancel: forceEnd (generation 2) and the abort.
   first.abortController.abort('user-cancel')
 
-  // useOnQuery.onQuery: the guard is idle (forceEnd), so the next prompt is
-  // appended and its query starts right away.
+  // useOnQuery.onQuery: the guard is idle, so the queued prompt's turn starts
+  // (generation 3), settles the cancelled one, and only then appends.
+  await turns.settle(3, opts.settleMs)
   repl = [...repl, createUserMessage({ content: opts.prompts[1] })]
-  await runTurn(1, makeContext(tools))
+  await runTurn(1, makeContext(tools), 3)
   await cancelled
   repl = settleTurnMessages(repl, profile)
 
   repl = [...repl, createUserMessage({ content: opts.prompts[2] })]
-  await runTurn(2, makeContext(tools))
+  await runTurn(2, makeContext(tools), 4)
   return { requests: model.requests, history: repl, unusedSteps: model.remaining(), tools }
 }

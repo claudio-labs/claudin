@@ -286,8 +286,9 @@ test('aggressive profile: the next turn sends a large result as its display stub
 describe('a turn cancelled mid-tool, the next prompt sent at once', () => {
   // Live, the aborted result landed 1.1 s after the prompt, while the new
   // turn was on its first tool call (gh pr checks): the Probe stands for it.
-  const run = (abortLatencyMs: number) =>
+  const run = (abortLatencyMs: number, settleMs?: number) =>
     runCancelledTurnSession({
+      settleMs,
       prompts: ['watch the CI run', 'o security audit esta vermelho por que ?', 'pode abrir a issue'],
       script: [
         { tools: [call('WaitFor')] },
@@ -314,6 +315,19 @@ describe('a turn cancelled mid-tool, the next prompt sent at once', () => {
     const sent = session.requests.flatMap(r => r.wire).join('\n')
     expect(sent).toContain('[WaitFor: aborted after 703.0s, 351 polls]')
     expect(sent).not.toContain(SYNTHETIC_TOOL_RESULT_PLACEHOLDER)
+  })
+
+  test('a tool slower than the settle bound is abandoned, and the prefix still holds', async () => {
+    // A tool that ignores its abort for longer than the bound: the next turn
+    // goes out with the placeholder, and what the old turn yields later is
+    // dropped, so no later request contradicts it.
+    const session = await run(400, 50)
+    expect(session.requests.length).toBe(4)
+    const broken = findPrefixBreak(session.requests.map(r => r.wire))
+    expect(broken ? describePrefixBreak(broken) : null).toBeNull()
+    const sent = session.requests.flatMap(r => r.wire).join('\n')
+    expect(sent).toContain(SYNTHETIC_TOOL_RESULT_PLACEHOLDER)
+    expect(sent).not.toContain('[WaitFor: aborted after 703.0s')
   })
 })
 
