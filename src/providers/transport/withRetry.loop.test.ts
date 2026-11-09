@@ -13,6 +13,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { APIConnectionError, APIError, APIUserAbortError } from '@anthropic-ai/sdk'
 import type { SystemAPIErrorMessage } from 'src/shared/types/message.js'
+import {
+  getModelStrings as getModelStringsState,
+  resetModelStringsForTestingOnly,
+  setModelStrings,
+} from 'src/platform/bootstrap/state.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import { clearOAuthTokenCache, isClaudeAISubscriber } from 'src/providers/auth/auth.js'
@@ -48,9 +53,15 @@ const ENV_KEYS = [
 const savedEnv: Record<string, string | undefined> = {}
 let savedProfiles: ReturnType<typeof getGlobalConfig>['providerProfiles']
 let savedActiveProfileId: string | undefined
+// The model strings are cached for the process by whichever provider is active
+// the first time they are read (modelStrings.ts). Read here under the OpenAI
+// profile, they turned `opus` into gpt-4o for every later file in CI's order
+// (ModelPicker, opus55, haiku55), so they go back to what they were.
+let savedModelStrings: ReturnType<typeof getModelStringsState>
 
 beforeAll(() => {
   for (const key of ENV_KEYS) savedEnv[key] = process.env[key]
+  savedModelStrings = getModelStringsState()
   const global = getGlobalConfig()
   savedProfiles = global.providerProfiles
   savedActiveProfileId = global.activeProviderProfileId
@@ -87,6 +98,8 @@ afterAll(() => {
     activeProviderProfileId: savedActiveProfileId,
   }))
   invalidateActiveProviderCache()
+  if (savedModelStrings === null) resetModelStringsForTestingOnly()
+  else setModelStrings(savedModelStrings)
   clearProviderRateLimit()
   clearFastModeCooldown()
   _resetAdoptedBetaRejectionsForTesting()
