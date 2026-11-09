@@ -54,6 +54,10 @@ import {
 // What the texts below say of a flag only "content" mode reads.
 const CONTENT_ONLY = 'Ignored outside "content" mode.'
 
+// A `\n` escape that is not itself escaped (`\\n` is a backslash and an n).
+// ripgrep refuses it outside multiline mode, and the pattern means the newline.
+const UNESCAPED_NEWLINE_RE = /(?:^|[^\\])(?:\\\\)*\\n/
+
 /** relativizeRgLine against whichever search root the line's path is under. */
 function relativizeAcross(line: string, roots: readonly string[]): string {
   for (const root of roots) {
@@ -520,9 +524,14 @@ export const GrepTool = buildTool({
     // Limit line length to prevent base64/minified content from cluttering output
     args.push('--max-columns', '500')
 
-    // Only apply multiline flags when explicitly requested
+    // Only apply multiline flags when explicitly requested — or when the
+    // pattern spells a newline, which ripgrep otherwise rejects outright: two
+    // searches refused in the 2026-11-04..09 census (2b5c3f37). `-U` alone
+    // lets `\n` match; `.` keeps stopping at the end of a line.
     if (multiline) {
       args.push('-U', '--multiline-dotall')
+    } else if (UNESCAPED_NEWLINE_RE.test(pattern)) {
+      args.push('-U')
     }
 
     // Add optional flags
