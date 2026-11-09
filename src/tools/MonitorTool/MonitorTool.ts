@@ -68,7 +68,7 @@ type OutputSchema = ReturnType<typeof outputSchema>
 type Output = z.infer<OutputSchema>
 
 /** What the monitor watches, as the transcript, the classifier and the dialog show it. */
-export function monitorSource(input: { command?: string; ws?: { url: string } }): string {
+function monitorSource(input: { command?: string; ws?: { url: string } }): string {
   return input.ws ? `websocket ${input.ws.url}` : (input.command ?? '')
 }
 
