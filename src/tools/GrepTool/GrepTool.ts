@@ -25,6 +25,7 @@ import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
 import { globsForSearchPath, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
+import { resolveSearchTargets } from 'src/tools/GrepTool/searchTargets.js'
 import {
   BODIES_HEADER_SUFFIX,
   bodiesSchemaFields,
@@ -52,6 +53,31 @@ import {
 
 // What the texts below say of a flag only "content" mode reads.
 const CONTENT_ONLY = 'Ignored outside "content" mode.'
+
+// A `\n` escape that is not itself escaped (`\\n` is a backslash and an n).
+// ripgrep refuses it outside multiline mode, and the pattern means the newline.
+const UNESCAPED_NEWLINE_RE = /(?:^|[^\\])(?:\\\\)*\\n/
+
+/** relativizeRgLine against whichever search root the line's path is under. */
+function relativizeAcross(line: string, roots: readonly string[]): string {
+  for (const root of roots) {
+    const relative = relativizeRgLine(line, root)
+    if (relative !== line) return relative
+  }
+  return line
+}
+
+/**
+ * The absolute paths a `path` input searches: the cwd when there is none, the
+ * pieces of a space-separated list whose pieces all exist (searchTargets.ts),
+ * and the path itself otherwise.
+ */
+function searchRootsOf(path: string | undefined): string[] {
+  if (!path) return [getCwd()]
+  const fs = getFsImplementation()
+  const targets = resolveSearchTargets(path, piece => fs.existsSync(expandPath(piece)))
+  return targets.kind === 'many' ? targets.paths.map(piece => expandPath(piece)) : [expandPath(path)]
+}
 
 // Every parameter's default, limit, rg flag and alias is stated here, the only
 // place that says it; what the description already says (the retry past
@@ -297,8 +323,11 @@ export const GrepTool = buildTool({
         await fs.stat(absolutePath)
       } catch (e: unknown) {
         if (isENOENT(e)) {
-          const cwdSuggestion = await suggestPathUnderCwd(absolutePath)
-          let message = `Path does not exist: ${path}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
+          const targets = resolveSearchTargets(path, piece => fs.existsSync(expandPath(piece)))
+          if (targets.kind === 'many') return { result: true }
+          const missing = targets.kind === 'missing' ? targets.path : path
+          const cwdSuggestion = await suggestPathUnderCwd(expandPath(missing))
+          let message = `Path does not exist: ${missing}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
           if (cwdSuggestion) {
             message += ` Did you mean ${cwdSuggestion}?`
           }
@@ -316,11 +345,25 @@ export const GrepTool = buildTool({
   },
   async checkPermissions(input, context): Promise<PermissionDecision> {
     const appState = context.getAppState()
-    return checkReadPermissionForTool(
-      GrepTool,
-      input,
-      appState.toolPermissionContext,
+    const roots = searchRootsOf(input.path)
+    if (roots.length === 1) {
+      return checkReadPermissionForTool(
+        GrepTool,
+        input,
+        appState.toolPermissionContext,
+      )
+    }
+    // Several paths: each is judged as its own Grep would be. A deny anywhere
+    // refuses the call, then the first one that asks; an allow echoes THIS
+    // input, never the one-path input the check was handed.
+    const decisions = roots.map(root =>
+      checkReadPermissionForTool(GrepTool, { ...input, path: root }, appState.toolPermissionContext),
     )
+    const denied = decisions.find(d => d.behavior === 'deny')
+    if (denied) return denied
+    const asks = decisions.find(d => d.behavior !== 'allow')
+    if (asks) return asks
+    return { ...decisions[0]!, updatedInput: input } as PermissionDecision
   },
   async prompt() {
     return isCompactToolPromptsEnabled() ? getCompactDescription() : getDescription()
@@ -461,7 +504,9 @@ export const GrepTool = buildTool({
     },
     { abortController, getAppState, readFileState },
   ) {
-    const absolutePath = path ? expandPath(path) : getCwd()
+    const searchRoots = searchRootsOf(path)
+    const absolutePath = searchRoots[0]!
+    const target = searchRoots.length === 1 ? absolutePath : searchRoots
     const args = ['--hidden']
 
     // Off by default: including .gitignore'd files means walking node_modules
@@ -479,9 +524,14 @@ export const GrepTool = buildTool({
     // Limit line length to prevent base64/minified content from cluttering output
     args.push('--max-columns', '500')
 
-    // Only apply multiline flags when explicitly requested
+    // Only apply multiline flags when explicitly requested — or when the
+    // pattern spells a newline, which ripgrep otherwise rejects outright: two
+    // searches refused in the 2026-11-04..09 census (2b5c3f37). `-U` alone
+    // lets `\n` match; `.` keeps stopping at the end of a line.
     if (multiline) {
       args.push('-U', '--multiline-dotall')
+    } else if (UNESCAPED_NEWLINE_RE.test(pattern)) {
+      args.push('-U')
     }
 
     // Add optional flags
@@ -574,11 +624,13 @@ export const GrepTool = buildTool({
       // A glob with a `/` is also read from the search path, not only from
       // where ripgrep runs (globAnchor.ts). ripgrep applies no glob to a file
       // named on its command line, so a file path needs no special case.
+      const globs = new Set<string>()
       for (const pattern of splitGlobInput(glob)) {
-        for (const g of globsForSearchPath(pattern, absolutePath, rgCwd ?? process.cwd())) {
-          args.push('--glob', g)
+        for (const root of searchRoots) {
+          for (const g of globsForSearchPath(pattern, root, rgCwd ?? process.cwd())) globs.add(g)
         }
       }
+      for (const g of globs) args.push('--glob', g)
     }
 
     // Add ignore patterns
@@ -600,11 +652,11 @@ export const GrepTool = buildTool({
     }
 
     // Exclude orphaned plugin version directories
-    for (const exclusion of await getGlobExclusionsForPluginCache(
-      absolutePath,
-    )) {
-      args.push('--glob', exclusion)
+    const exclusions = new Set<string>()
+    for (const root of searchRoots) {
+      for (const exclusion of await getGlobExclusionsForPluginCache(root)) exclusions.add(exclusion)
     }
+    for (const exclusion of exclusions) args.push('--glob', exclusion)
 
     // WSL has severe performance penalty for file reads (3-5x slower on WSL2)
     // The timeout is handled by ripgrep itself via execFile timeout option
@@ -613,7 +665,7 @@ export const GrepTool = buildTool({
     // so Claude knows the search didn't complete (rather than thinking there were no matches)
     const search = await ripGrepWithStatus(
       args,
-      absolutePath,
+      target,
       abortController.signal,
       { cwd: rgCwd },
     )
@@ -642,7 +694,7 @@ export const GrepTool = buildTool({
     ) {
       const fallback = await ripGrepWithStatus(
         [...args, '--no-ignore'],
-        absolutePath,
+        target,
         abortController.signal,
         { cwd: rgCwd },
       )
@@ -676,9 +728,7 @@ export const GrepTool = buildTool({
         offset,
       )
 
-      const finalLines = limitedResults.map(line =>
-        relativizeRgLine(line, absolutePath),
-      )
+      const finalLines = limitedResults.map(line => relativizeAcross(line, searchRoots))
       const contentText = finalLines.join('\n')
 
       // A search wide enough that its first N lines are an arbitrary slice

@@ -1,0 +1,166 @@
+{
+  "test": [
+    "src/platform/shell/bashProvider.test.ts",
+    "src/platform/bash/bashPipeCommand.test.ts",
+    "src/agent/repl/controllers/cancelledTurn.test.ts",
+    "src/agent/repl/controllers/useOnQuery.wiring.test.ts",
+    "src/agent/cache/loopPrefix.invariant.test.ts",
+    "src/sessions/resume/chain.test.ts",
+    "src/shared/fs/glob.walk.test.ts",
+    "src/tools/GitTool/batch.test.ts",
+    "src/tools/GitTool/grammar.test.ts",
+    "src/tools/GitTool/permissions.test.ts",
+    "src/tools/GrepTool/GrepTool.census.test.ts",
+    "src/tools/GrepTool/searchTargets.test.ts",
+    "src/tools/TaskStopTool/TaskStopTool.test.ts",
+    "src/tools/FileReadTool/outlineView.test.ts",
+    "src/tools/FileReadTool/schemas.shapes.test.ts",
+    "src/tools/FileEditTool/FileEditTool.call.test.ts"
+  ],
+  "source": "src/platform/bash/bashPipeCommand.ts",
+  "probes": [
+    {
+      "name": "bash: a piped command's ~ and braces escaped again",
+      "find": "  return singleQuoteForEval(command) + ' < /dev/null'\n",
+      "replace": "  return singleQuoteForEval(command.replace(/[~{},]/g, c => '\\\\' + c)) + ' < /dev/null'\n"
+    },
+    {
+      "name": "bash: the stdin redirect back on the last command of the pipe",
+      "source": "src/platform/shell/bashProvider.ts",
+      "find": "        quotedCommand = rearrangePipeCommand(normalizedCommand)\n",
+      "replace": "        quotedCommand = quoteShellCommand(normalizedCommand, addStdinRedirect)\n"
+    },
+    {
+      "name": "esc: onQuery appends without settling the cancelled turn",
+      "source": "src/agent/repl/controllers/useOnQuery.ts",
+      "find": "      await cancelledTurns.settle(thisGeneration);\n",
+      "replace": "      void cancelledTurns;\n"
+    },
+    {
+      "name": "esc: an abandoned turn's late messages still land",
+      "source": "src/agent/repl/controllers/useOnQuery.ts",
+      "find": "      if (cancelledTurns.isAbandoned(generation)) continue;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "esc: the harness appends the queued prompt at once, as the REPL did",
+      "source": "src/agent/cache/__testutils__/loopHarness.ts",
+      "find": "  await turns.settle(3, opts.settleMs)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "esc: a turn past the bound is never abandoned",
+      "source": "src/agent/repl/controllers/cancelledTurn.ts",
+      "find": "        if (draining.has(g)) abandoned.add(g)\n",
+      "replace": "        void g\n"
+    },
+    {
+      "name": "resume: the prompt beside an aborted result is not recovered",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "        if (!childrenByParent.has(prompt.uuid)) claim(prompt)\n",
+      "replace": "        void prompt\n"
+    },
+    {
+      "name": "resume: a rewound prompt with no result beside it comes back",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "      if (results.length === 0) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "glob: an anchored pattern walks from the root again",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  if (!isAbsolute(filePattern)) {\n    const rebased",
+      "replace": "  if (false) {\n    const rebased"
+    },
+    {
+      "name": "glob: the depth bound only under respectGitignore",
+      "source": "src/shared/fs/glob.ts",
+      "find": "    type === 'file' && anchored && !UNBOUNDED_DEPTH_RE.test(searchPattern)\n",
+      "replace": "    matchHere && anchored && !UNBOUNDED_DEPTH_RE.test(searchPattern)\n"
+    },
+    {
+      "name": "glob: maxDepth keeps counting from the base it no longer starts at",
+      "source": "src/shared/fs/glob.ts",
+      "find": "maxDepth === undefined ? undefined : maxDepth - baseSegments.length",
+      "replace": "maxDepth === undefined ? undefined : maxDepth"
+    },
+    {
+      "name": "glob: an exclude written from the root is not re-anchored",
+      "source": "src/shared/fs/glob.ts",
+      "find": "    if (e.startsWith(prefix)) rebasedExclude.push(e.slice(prefix.length))\n",
+      "replace": "    if (e.startsWith(prefix)) rebasedExclude.push(e)\n"
+    },
+    {
+      "name": "git: the batch refused past 10 again",
+      "source": "src/tools/GitTool/GitTool.ts",
+      "find": "      .min(1)\n      .describe(\n        'Verbatim shell commands",
+      "replace": "      .min(1)\n      .max(10)\n      .describe(\n        'Verbatim shell commands"
+    },
+    {
+      "name": "git: a batch past 50 is judged element by element",
+      "source": "src/tools/GitTool/permissions.ts",
+      "find": "  if (input.commands.length > MAX_SUBCOMMANDS_FOR_SECURITY_CHECK) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "git: an operator inside an argument gets the list advice",
+      "source": "src/tools/GitTool/grammar.ts",
+      "find": "      if (word !== null) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "grep: a space-separated path is one missing path again",
+      "source": "src/tools/GrepTool/searchTargets.ts",
+      "find": "  return { kind: 'many', paths: pieces }\n",
+      "replace": "  return { kind: 'missing', path }\n"
+    },
+    {
+      "name": "grep: a denied piece does not refuse the call",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    const denied = decisions.find(d => d.behavior === 'deny')\n    if (denied) return denied\n",
+      "replace": "\n"
+    },
+    {
+      "name": "grep: the allow hands back the one-path input",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    return { ...decisions[0]!, updatedInput: input } as PermissionDecision\n",
+      "replace": "    return decisions[0]!\n"
+    },
+    {
+      "name": "grep: lines are relativized against the first path only",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "      const finalLines = limitedResults.map(line => relativizeAcross(line, searchRoots))\n",
+      "replace": "      const finalLines = limitedResults.map(line => relativizeRgLine(line, absolutePath))\n"
+    },
+    {
+      "name": "grep: a \\n in the pattern no longer turns on -U",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    } else if (UNESCAPED_NEWLINE_RE.test(pattern)) {\n",
+      "replace": "    } else if (false) {\n"
+    },
+    {
+      "name": "taskstop: a stopped task reaches stopTask and errors",
+      "source": "src/tools/TaskStopTool/TaskStopTool.ts",
+      "find": "    if (task && task.status !== 'running') {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "read: an escaped markdown heading is not found",
+      "source": "src/tools/FileReadTool/outlineView.ts",
+      "find": "  return unescaped === name ? null : findExactSymbolEntry(entries, unescaped)\n",
+      "replace": "  return null\n"
+    },
+    {
+      "name": "read: limit 0 refused again",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "  return value === 0 || value === '0' ? undefined : value\n",
+      "replace": "  return value\n"
+    },
+    {
+      "name": "edit: a missing file's refusal stops at 'does not exist'",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "      message += ' To create it, use Write, or Edit with an empty old_string.'\n",
+      "replace": "\n"
+    }
+  ]
+}

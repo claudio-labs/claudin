@@ -16,6 +16,7 @@ import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { query } from 'src/agent/query.js'
 import type { QueryDeps } from 'src/agent/query/deps.js'
+import { createCancelledTurns } from 'src/agent/repl/controllers/cancelledTurn.js'
 import { appendQueryMessage, settleTurnMessages } from 'src/agent/repl/queryMessages.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js'
@@ -148,6 +149,8 @@ export type StubToolSpec = {
   concurrencySafe?: boolean
   /** Wraps backfillObservableInput, to model a tool whose observable input grows. */
   backfillObservableInput?: (input: Record<string, unknown>) => void
+  /** How long the call takes, for a scenario where something lands meanwhile. */
+  delayMs?: number
 }
 
 /** A tool built with buildTool, so it takes the production execution path. */
@@ -181,6 +184,7 @@ export function stubTool(spec: StubToolSpec): Tool {
       for (const [i, data] of (spec.progress ?? []).entries()) {
         onProgress?.({ toolUseID: `progress_${spec.name}_${i}`, data })
       }
+      if (spec.delayMs) await new Promise(resolve => setTimeout(resolve, spec.delayMs))
       return {
         data: spec.result,
         ...(spec.newMessages ? { newMessages: spec.newMessages() } : {}),
@@ -319,4 +323,127 @@ export async function runSession(opts: {
     }
   }
   return { requests: model.requests, history, unusedSteps: model.remaining(), tools }
+}
+
+// ---------------------------------------------------------------------------
+// A turn cancelled while a tool runs, with the next prompt sent at once
+// ---------------------------------------------------------------------------
+
+/**
+ * A tool that runs until the turn is aborted, then answers after
+ * `abortLatencyMs` — WaitFor's poll ends on its next tick, about 1.1 s after
+ * the Esc in 660bb320 (2026-11-09). `started` resolves once it is running.
+ */
+export function abortableTool(spec: { name: string; abortLatencyMs: number }): {
+  tool: Tool
+  started: Promise<void>
+} {
+  let markStarted: () => void = () => {}
+  const started = new Promise<void>(resolve => {
+    markStarted = resolve
+  })
+  const tool = buildTool({
+    name: spec.name,
+    inputSchema: z.object({}).passthrough(),
+    maxResultSizeChars: 1_000_000,
+    async description() {
+      return `${spec.name} (stub)`
+    },
+    async prompt() {
+      return `${spec.name} (stub)`
+    },
+    isConcurrencySafe: () => false,
+    isReadOnly: () => true,
+    mapToolResultToToolResultBlockParam(data: unknown, toolUseId: string) {
+      return { type: 'tool_result' as const, tool_use_id: toolUseId, content: data as never }
+    },
+    renderToolUseMessage: () => null,
+    async call(_input: unknown, context: ToolUseContext) {
+      markStarted()
+      const signal = context.abortController.signal
+      await new Promise<void>(resolve => {
+        if (signal.aborted) resolve()
+        else signal.addEventListener('abort', () => resolve(), { once: true })
+      })
+      await new Promise(resolve => setTimeout(resolve, spec.abortLatencyMs))
+      return { data: `[${spec.name}: aborted after 703.0s, 351 polls]` }
+    },
+  } as never) as unknown as Tool
+  return { tool, started }
+}
+
+/**
+ * Three turns through the REPL consumer: the first runs `blocking` and is
+ * cancelled (Esc) while it runs; the second prompt is submitted at once, the
+ * way the queue processor submits a queued prompt the moment the guard goes
+ * idle; the third is an ordinary turn, whose request shows what the REPL array
+ * kept of the other two.
+ *
+ * The REPL array is shared by both queries, as it is live: the cancelled
+ * query's late messages (the aborted result, the interrupt marker) land in it
+ * whenever they arrive. The turns are ordered the way useOnQuery orders them
+ * (cancelledTurn.ts): each registers its generation, a new one settles the
+ * older ones before appending its prompt, and what an abandoned one yields is
+ * dropped. `settleMs` stands in for CANCELLED_TURN_SETTLE_MS.
+ */
+export async function runCancelledTurnSession(opts: {
+  prompts: readonly [string, string, string]
+  script: readonly ModelStep[]
+  blocking: { tool: Tool; started: Promise<void> }
+  tools?: readonly Tool[]
+  settleMs?: number
+}): Promise<SessionResult> {
+  const tools = [opts.blocking.tool, ...(opts.tools ?? [])] as Tools
+  const model = scriptedModel(opts.script, tools)
+  const deps: QueryDeps = {
+    callModel: model.callModel,
+    microcompact: (async (messages: Message[]) => ({ messages })) as never,
+    autocompact: (async () => ({ compactionResult: undefined })) as never,
+    uuid: randomUUID,
+  }
+  const profile = getCacheProfile()
+  const turns = createCancelledTurns()
+  let repl: Message[] = []
+
+  // Generations as QueryGuard counts them: tryStart and forceEnd each add one.
+  async function runTurn(turn: number, context: ToolUseContext, generation: number): Promise<void> {
+    model.setTurn(turn)
+    turns.begin(generation)
+    for await (const event of query({
+      messages: repl,
+      systemPrompt: asSystemPrompt(['You are a test agent.']),
+      userContext: {},
+      systemContext: {},
+      canUseTool: (async (_tool: unknown, input: unknown) => ({
+        behavior: 'allow',
+        updatedInput: input,
+      })) as never,
+      toolUseContext: context,
+      querySource: 'repl_main_thread',
+      deps,
+    })) {
+      if (turns.isAbandoned(generation)) continue
+      if (isStored(event)) repl = appendQueryMessage(repl, event, profile)
+    }
+    turns.end(generation)
+  }
+
+  repl = [...repl, createUserMessage({ content: opts.prompts[0] })]
+  const first = makeContext(tools)
+  const cancelled = runTurn(0, first, 1)
+  await opts.blocking.started
+  // onCancel: forceEnd (generation 2) and the abort.
+  first.abortController.abort('user-cancel')
+
+  // useOnQuery.onQuery: the guard is idle, so the queued prompt's turn starts
+  // (generation 3), settles the cancelled one, and only then appends.
+  await turns.settle(3, opts.settleMs)
+  repl = [...repl, createUserMessage({ content: opts.prompts[1] })]
+  await runTurn(1, makeContext(tools), 3)
+  await cancelled
+  repl = settleTurnMessages(repl, profile)
+
+  repl = [...repl, createUserMessage({ content: opts.prompts[2] })]
+  await runTurn(2, makeContext(tools), 4)
+  return { requests: model.requests, history: repl, unusedSteps: model.remaining(), tools }
 }

@@ -5,7 +5,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
-import { GitTool, MAX_COMMANDS } from 'src/tools/GitTool/GitTool.js'
+import { GitTool } from 'src/tools/GitTool/GitTool.js'
 import { batchFailed, formatGitBatchResult, RULE_MAP_SET_ASIDE_NOTE, runGitBatch } from 'src/tools/GitTool/run.js'
 import { RULE_MAP_KILLSWITCH, syncProjectRuleMap } from 'src/memory/instructions/ruleMapAutoSync.js'
 
@@ -102,12 +102,22 @@ describe('input schema', () => {
     expect(GitTool.inputSchema.safeParse({ commands: [] }).success).toBe(false)
   })
 
-  test('accepts exactly the cap and rejects one more', () => {
-    const at = Array.from({ length: MAX_COMMANDS }, () => 'git status')
-    expect(GitTool.inputSchema.safeParse({ commands: at }).success).toBe(true)
-    expect(
-      GitTool.inputSchema.safeParse({ commands: [...at, 'git status'] }).success,
-    ).toBe(false)
+  test('67e6e961 11-07: an 11-command batch is taken, like a Bash chain of 11', () => {
+    // Refused as "Too big: expected array to have <=10 items" on 2026-11-07.
+    const commands = [
+      'git status --short -- crates docs web contrib',
+      'git add crates/infrastructure/src/tls/mod.rs',
+      'git add crates/infrastructure/tests/tls_test.rs',
+      'git add docs/guides/tls.md',
+      'git add web/static/settings.js',
+      'git add contrib/systemd/ferrous-dns.service',
+      'git commit -m "fix(tls): read the expiry from the leaf"',
+      'git log --oneline -3',
+      'git status --short',
+      'git diff --stat HEAD~1',
+      'git show --stat HEAD',
+    ]
+    expect(GitTool.inputSchema.safeParse({ commands }).success).toBe(true)
   })
 
   test('takes a list, never a bare string', () => {

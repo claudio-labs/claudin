@@ -69,19 +69,11 @@ const MAX_TIMEOUT_MS = 1_800_000
 /** Each progress message needs its own id; the renderer keeps only the last. */
 let progressCounter = 0
 
-/**
- * Batch cap, mirroring Bash's `MAX_SUBCOMMANDS_FOR_SECURITY_CHECK`. Every
- * element costs a full permission evaluation, so an unbounded list is both a
- * latency and a review-surface problem.
- */
-export const MAX_COMMANDS = 10
-
 const inputSchema = lazySchema(() =>
   z.strictObject({
     commands: z
       .array(z.string().min(1))
       .min(1)
-      .max(MAX_COMMANDS)
       .describe(
         'Verbatim shell commands, each starting with "git" or "gh" — e.g. ["git status", "git diff"]. One command per element: no pipes, &&, ; or redirects.',
       ),

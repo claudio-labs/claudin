@@ -23,7 +23,7 @@ src/
 │   │                              this name: agent/context.ts (prompt blocks), agent/context/
 │   │                              (accounting), terminal/contexts/ (React providers)
 │   ├── prompts/ (31)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
-│   ├── repl/ (38)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
+│   ├── repl/ (42)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
 │   ├── ui/ (183)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (37)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
 │   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
@@ -184,7 +184,7 @@ src/
 ├── shared/ (162)                ← cross-cutting primitives ONLY — a subsystem here is a bug.
 │   │                              moduleBoundaries.test.ts pins how many imports reach UP from
 │   │                              here into a slice (131) — a ceiling that only goes down
-│   ├── fs/ (33)                 ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
+│   ├── fs/ (37)                 ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
 │   ├── data/ proc/ text/        ← pure data helpers, Shell.ts/execFileNoThrow, string/format
 │   ├── constants/ types/        ← the genuinely shared ones; feature constants live in their slice
 │   ├── schemas/                 ← shared zod schemas

@@ -80,3 +80,30 @@ test('a multi-line commit message still matches the Bash rule for its command', 
   )
   expect(result.behavior).toBe('allow')
 })
+
+// The batch has no length cap of its own any more (2026-11-09): like Bash,
+// past MAX_SUBCOMMANDS_FOR_SECURITY_CHECK the call asks instead of judging each
+// element, and below it every element is judged as before.
+test('past the subcommand cap a batch asks, with the reason Bash gives', async () => {
+  const commands = Array.from({ length: 51 }, () => 'git status')
+  const result = await checkGitBatchPermission(
+    { commands },
+    contextWith({ allow: ['Bash(git status:*)'] }),
+  )
+  expect(result.behavior).toBe('ask')
+  expect(result.decisionReason).toEqual({
+    type: 'other',
+    reason: 'Batch has 51 commands, too many to safety-check individually',
+  })
+})
+
+test('at the cap every element is still judged on its own', async () => {
+  const commands = Array.from({ length: 50 }, () => 'git status')
+  const allowed = await checkGitBatchPermission({ commands }, contextWith({ allow: ['Bash(git status:*)'] }))
+  expect(allowed.behavior).toBe('allow')
+  const denied = await checkGitBatchPermission(
+    { commands: [...commands.slice(1), 'git push'] },
+    contextWith({ allow: ['Bash(git status:*)'], deny: ['Bash(git push:*)'] }),
+  )
+  expect(denied.behavior).toBe('deny')
+})

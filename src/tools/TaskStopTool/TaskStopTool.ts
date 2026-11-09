@@ -3,6 +3,7 @@ import type { TaskStateBase } from 'src/agent/Task.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { stopTask } from 'src/agent/tasks/stopTask.js'
+import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { DESCRIPTION, TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
@@ -87,14 +88,9 @@ export const TaskStopTool = buildTool({
       }
     }
 
-    if (task.status !== 'running') {
-      return {
-        result: false,
-        message: `Task ${id} is not running (status: ${task.status})`,
-        errorCode: 3,
-      }
-    }
-
+    // A task that already stopped is what the caller asked for, and call()
+    // says so: an error here was sent for a task that was, in fact, stopped
+    // (32d3ba9c, 2026-11-04: `status: killed`).
     return { result: true }
   },
   async description() {
@@ -122,7 +118,20 @@ export const TaskStopTool = buildTool({
       throw new Error('Missing required parameter: task_id')
     }
 
-    const result = await stopTask(resolveTaskId(id, getAppState()), {
+    const taskId = resolveTaskId(id, getAppState())
+    const task = getAppState().tasks?.[taskId] as TaskStateBase | undefined
+    if (task && task.status !== 'running') {
+      return {
+        data: {
+          message: `Task ${taskId} is already stopped (status: ${task.status})`,
+          task_id: taskId,
+          task_type: task.type,
+          command: isLocalShellTask(task) ? task.command : task.description,
+        },
+      }
+    }
+
+    const result = await stopTask(taskId, {
       getAppState,
       setAppState,
     })

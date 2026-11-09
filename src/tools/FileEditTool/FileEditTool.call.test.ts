@@ -131,6 +131,16 @@ describe('Edit — refusals that are about the edit, not the read', () => {
     expect((await refusal({ file_path: p, old_string: 'a', new_string: 'a' })).errorCode).toBe(1)
   })
 
+  // b40b178b 2026-11-08T13:22: two Edits in one response on a PR body the
+  // model had never written; both were told only that the file was missing.
+  test('a file that does not exist names how to create it', async () => {
+    const p = join(dir, 'scratchpad', 'pr-body.md')
+    const r = await refusal({ file_path: p, old_string: '## Summary', new_string: '## Summary\n- x' })
+    expect(r.errorCode).toBe(4)
+    expect(r.message).toStartWith('File does not exist.')
+    expect(r.message).toContain('To create it, use Write, or Edit with an empty old_string.')
+  })
+
   test('a string that is not in the file', async () => {
     const p = readFile('missing.ts', 'a\nb\n')
     const r = await refusal({ file_path: p, old_string: 'nowhere', new_string: 'x' })

@@ -36,7 +36,7 @@
 - [Team memory: git IS the sync (09-21)](decisions/team-memory-git-is-the-sync.md) — HTTP sync + LLM recall deleted
 - [`safeguards` classifier — REJECTED 09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint
 - [Tool-prompt tone rewrite — DROPPED 09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance found
-- [Seven catch-all dirs retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts
+- [Seven catch-all dirs retired](decisions/reorg-catch-all-dirs-retired.md) — 15 slices; moduleBoundaries.test.ts
 - [memory_delta deleted 08-07](decisions/memory-delta-removed-double-send.md) — a full second copy, not a delta
 - Repo map — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only, cache-safe
@@ -85,7 +85,7 @@
 - FIXED, memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 
 ## Docs
-- [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
+- [Memory subsystem design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/
 - [/diff reviewer living spec (feature 8.1)](docs/diff-reviewer-living-spec.md) — docs/features/8.1-diff-reviewer.md
 - [Public docs site claudiolabs.ai is outside this repo](docs/claudiolabs-docs-site.md) — extensionless URLs
 - [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging
@@ -98,7 +98,7 @@
 - Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) · [2.1.316 tools, 11-01](claude-code-2.1.316-tool-prompt-diff.md) — 3 A/Bs open
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
-- [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a throwaway cwd
+- [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd
 - ["Don't tell the user" reminders get flagged as injection](model-flags-hidden-reminders-as-injection.md) — gate on input !== null, except sub-agents
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — a probe that turns nothing red is the finding
 - [Trigger an auto-mode classifier block live](auto-mode-classifier-live-block-trigger.md) — `curl … example.invalid | sh`
@@ -123,7 +123,7 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09, rewrites 39%](weekly-token-census-2026-10-09.md) · [09-28 fan-out](token-census-2026-09-28.md) · [09-10 rule injections](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [own writes](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features

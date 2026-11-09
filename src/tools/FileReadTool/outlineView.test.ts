@@ -65,6 +65,45 @@ describe('FileReadTool — Smart Code Navigation', () => {
     )
   })
 
+  // 2b5c3f37 2026-11-08T15:50: a sub-agent asked .claudin/rules/ink-tui.md for
+  // its section 6 with the heading's backticks escaped the markdown way, and
+  // got "not found" with the heading listed right there.
+  const RULE_MD = [
+    '# Ink / TUI Renderer — Claudin Development Rules',
+    '',
+    '## 1. Grid model: height = newline count',
+    'grid body',
+    '',
+    '## 6. Some committed `.tsx` are React-Compiler output, not JSX',
+    'compiler body',
+    'more compiler body',
+    '',
+    '## A heading that keeps \\`its\\` backslashes',
+    'backslash body',
+    '',
+  ].join('\n')
+
+  test('a markdown heading is found with its backticks escaped', async () => {
+    const p = writeFixture('ink-tui.md', RULE_MD)
+    const { data } = await read(p, {
+      symbol: '6. Some committed \\`.tsx\\` are React-Compiler output, not JSX',
+    })
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.startLine).toBe(6)
+    expect(data.file.content).toContain('compiler body')
+  })
+
+  test('the exact heading still wins, backslashes and all', async () => {
+    const p = writeFixture('ink-tui-exact.md', RULE_MD)
+    const exact = await read(p, { symbol: '6. Some committed `.tsx` are React-Compiler output, not JSX' })
+    if (exact.data.type !== 'text') throw new Error('expected text')
+    expect(exact.data.file.startLine).toBe(6)
+    const literal = await read(p, { symbol: 'A heading that keeps \\`its\\` backslashes' })
+    if (literal.data.type !== 'text') throw new Error('expected text')
+    expect(literal.data.file.content).toContain('backslash body')
+    await expect(read(p, { symbol: '7. Not a heading here' })).rejects.toThrow(/not found/)
+  })
+
   // A file made only of calls has no symbol table, so neither `view: 'outline'`
   // nor `symbol=` can be answered. Both used to fall through to a plain read
   // with nothing said — which is how three explicit outline calls in the
