@@ -23,7 +23,7 @@
 /** How long a new turn waits for a cancelled one to drain. */
 export const CANCELLED_TURN_SETTLE_MS = 5_000
 
-export type SettleOutcome = 'idle' | 'settled' | 'timedOut'
+type SettleOutcome = 'idle' | 'settled' | 'timedOut'
 
 export type CancelledTurns = {
   /** Registers a turn that owns the query guard. */

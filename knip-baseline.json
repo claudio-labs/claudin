@@ -3,8 +3,8 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-11-09",
-  "capturedFrom": "c2a1caeb73746aa6a87d9243329c730963d6cbdf",
-  "count": 1149,
+  "capturedFrom": "3ef4ed6c258ea008fd922dcecb3d0b4907d5f1c2",
+  "count": 1148,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -512,7 +512,6 @@
     "exports src/shared/fs/lockfile.ts#unlock",
     "exports src/shared/fs/pdfUtils.ts#DOCUMENT_EXTENSIONS",
     "exports src/shared/fs/readEditContext.ts#MAX_SCAN_BYTES",
-    "exports src/shared/fs/ripgrep.ts#RipgrepTimeoutError",
     "exports src/shared/proc/Shell.ts#findSuitableShell",
     "exports src/shared/proc/Shell.ts#getPsProvider",
     "exports src/shared/proc/Shell.ts#getShellConfig",
