@@ -13,11 +13,18 @@ import {
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { exec } from 'src/shared/proc/Shell.js'
+import type { ShellCommand } from 'src/shared/proc/ShellCommand.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   bashToolHasPermission,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
+import {
+  createWebSocketCommand,
+  WS_MAX_FRAME_BYTES,
+  wsInputError,
+  wsTargetRefusal,
+} from 'src/tools/MonitorTool/webSocketCommand.js'
 
 const minutes = (ms: number): number => ms / 60_000
 
@@ -25,7 +32,15 @@ const inputSchema = lazySchema(() =>
   z.strictObject({
     command: z
       .string()
-      .describe('The shell command to run and monitor'),
+      .optional()
+      .describe('The shell command to run and monitor. Exactly one of `command` and `ws`.'),
+    ws: z
+      .strictObject({
+        url: z.string().describe('A ws:// or wss:// URL'),
+        protocols: z.array(z.string()).optional().describe('WebSocket subprotocols to offer'),
+      })
+      .optional()
+      .describe('Open this WebSocket and stream its incoming frames instead of running a command. Exactly one of `command` and `ws`.'),
     description: z
       .string()
       .describe(
@@ -52,6 +67,11 @@ type OutputSchema = ReturnType<typeof outputSchema>
 
 type Output = z.infer<OutputSchema>
 
+/** What the monitor watches, as the transcript, the classifier and the dialog show it. */
+export function monitorSource(input: { command?: string; ws?: { url: string } }): string {
+  return input.ws ? `websocket ${input.ws.url}` : (input.command ?? '')
+}
+
 export const MonitorTool = buildTool({
   name: MONITOR_TOOL_NAME,
   searchHint: 'stream shell output as notifications',
@@ -63,7 +83,7 @@ export const MonitorTool = buildTool({
   },
 
   toAutoClassifierInput(input) {
-    return input.command
+    return monitorSource(input)
   },
 
   // Every `if` condition on a Monitor hook matches. The per-subcommand matcher
@@ -77,10 +97,26 @@ export const MonitorTool = buildTool({
     return (_pattern: string) => true
   },
 
+  async validateInput(input) {
+    if ((input.command === undefined) === (input.ws === undefined)) {
+      return { result: false, message: 'Pass exactly one of `command` and `ws`.', errorCode: 1 }
+    }
+    const wsError = input.ws ? wsInputError(input.ws) : null
+    return wsError ? { result: false, message: wsError, errorCode: 2 } : { result: true }
+  },
+
   async checkPermissions(input, context) {
+    // A socket runs no code, so the Bash rules say nothing about it, and no
+    // rule is offered either: each one is asked for.
+    if (input.ws) {
+      return {
+        behavior: 'ask',
+        message: `Monitor will open a WebSocket to ${input.ws.url}${input.ws.protocols?.length ? ` (subprotocols: ${input.ws.protocols.join(', ')})` : ''}`,
+      }
+    }
     // Delegate to the bash permission system — Monitor runs shell commands
     // just like Bash does, so the same permission rules apply.
-    const bashDecision = await bashToolHasPermission({ command: input.command }, context)
+    const bashDecision = await bashToolHasPermission({ command: input.command ?? '' }, context)
     // Bash's verdict, never its `updatedInput`: the harness applies it
     // verbatim, and its Bash-shaped `{ command }` would drop `description`.
     if (bashDecision.behavior === 'allow') {
@@ -107,7 +143,8 @@ Pick by how many notifications you need:
 - In a poll loop, let one failed request pass (\`curl … || true\`) instead of ending the monitor. Poll remote APIs every 30 s or more, local checks every second or so.
 - Write a specific \`description\` ("errors in deploy.log", not "watching logs"): every notification is titled with it.
 - A notification carries at most ${MONITOR_EVENT_MAX_LINES} lines; the rest stays in the output file. A monitor that sends ${MONITOR_FLOOD_EVENTS} notifications within a minute is stopped; call Monitor again with a tighter filter.
-- It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching — for a long watch, set the maximum and re-arm on each expiry; TaskStop ends it early.`
+- It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching — for a long watch, set the maximum and re-arm on each expiry; TaskStop ends it early.
+- \`ws\` instead of \`command\` opens a WebSocket (\`{url: "wss://…", protocols?: […]}\`) and streams each incoming frame as output lines: no shell, no polling. A binary frame shows as \`[binary frame, N bytes]\`, a frame over ${WS_MAX_FRAME_BYTES / (1024 * 1024)} MiB closes the socket, and the close (code and reason) is the last line. Private and link-local addresses are refused, and every \`ws\` monitor asks the user first. Prefer it over \`websocat\`; use a command when the frames need shell tools to filter them.`
   },
 
   get inputSchema(): InputSchema {
@@ -124,7 +161,7 @@ Pick by how many notifications you need:
 
   getToolUseSummary(input) {
     if (!input?.description) {
-      return input?.command ?? null
+      return input ? monitorSource(input) || null : null
     }
     return input.description
   },
@@ -139,7 +176,7 @@ Pick by how many notifications you need:
   renderToolUseMessage(
     input: Partial<z.infer<InputSchema>>,
   ): React.ReactNode {
-    const cmd = input.command ?? ''
+    const cmd = monitorSource(input)
     const desc = input.description ?? ''
     if (desc && cmd) {
       return `${desc}: ${cmd}`
@@ -161,20 +198,29 @@ Pick by how many notifications you need:
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: `Monitor task started with ID: ${output.taskId}. New output lines reach you as notifications about once a second until the command exits or the monitor expires; all output also goes to ${outputPath}. Use TaskStop to end it early.`,
+      content: `Monitor task started with ID: ${output.taskId}. New output lines reach you as notifications about once a second until the source ends or the monitor expires; all output also goes to ${outputPath}. Use TaskStop to end it early.`,
     }
   },
 
   async call(input, toolUseContext) {
-    const { command, description, timeout_ms } = input
+    const { description, timeout_ms } = input
     const { abortController, setAppState } = toolUseContext
+    const command = monitorSource(input)
 
-    // Create the shell command — uses the same Shell.exec() as BashTool.
-    // This is intentionally a shell execution (not execFile) because
-    // MonitorTool needs full shell features (pipes, redirects, etc.)
-    // just like BashTool does. No exec timeout: backgrounding clears it, so
-    // the deadline is the stream's (monitorStream.ts).
-    const shellCommand = await exec(command, abortController.signal, 'bash')
+    let shellCommand: ShellCommand
+    if (input.ws) {
+      // Checked here rather than at the permission step, so no mode skips it.
+      const refusal = await wsTargetRefusal(input.ws.url)
+      if (refusal) throw new Error(`Monitor will not open ${input.ws.url}: ${refusal}`)
+      shellCommand = createWebSocketCommand(input.ws)
+    } else {
+      // Create the shell command — uses the same Shell.exec() as BashTool.
+      // This is intentionally a shell execution (not execFile) because
+      // MonitorTool needs full shell features (pipes, redirects, etc.)
+      // just like BashTool does. No exec timeout: backgrounding clears it, so
+      // the deadline is the stream's (monitorStream.ts).
+      shellCommand = await exec(command, abortController.signal, 'bash')
+    }
 
     // Spawn as a background task with kind='monitor' — identical to
     // BashTool's run_in_background path but always monitor-flavored.
