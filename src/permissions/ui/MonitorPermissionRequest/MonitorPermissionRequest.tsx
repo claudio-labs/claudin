@@ -10,6 +10,7 @@ import {
 } from 'src/permissions/ui/PermissionPrompt.js'
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
+import { monitorSource } from 'src/tools/MonitorTool/monitorSource.js'
 
 type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
 
@@ -117,7 +118,7 @@ export function MonitorPermissionRequest({
     <PermissionDialog title={label} workerBadge={workerBadge}>
       <Box flexDirection="column" paddingX={2} paddingY={1}>
         <Text>
-          {label}({ws ? `websocket ${ws.url}` : (command ?? '')})
+          {label}({monitorSource({ command, ws })})
         </Text>
         {description ? (
           <Text dimColor>{description}</Text>

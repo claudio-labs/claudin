@@ -10,7 +10,7 @@ import { isIP } from 'node:net'
 import { generateTaskId } from 'src/agent/Task.js'
 import { appendTaskOutput, evictTaskOutput } from 'src/agent/tasks/diskOutput.js'
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
-import { isBlockedAddress } from 'src/platform/lifecycleHooks/ssrfGuard.js'
+import { isBlockedAddress, ssrfGuardedNetLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'
 import { openWebSocket, type WebSocketHandle } from 'src/providers/transport/webSocket.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
@@ -38,6 +38,8 @@ export type MonitorWsInput = { url: string; protocols?: string[] }
 /** Why `ws` cannot be opened as given, or null. Checks the shape only — no network. */
 export function wsInputError(ws: MonitorWsInput): string | null {
   if (!WS_URL_RE.test(ws.url)) return 'ws.url must be a ws:// or wss:// URL written in printable ASCII'
+  // ws's constructor rejects a fragment; an empty one (`…/#`) parses to no hash.
+  if (ws.url.includes('#')) return 'ws.url must not carry a #fragment'
   let url: URL
   try {
     url = new URL(ws.url)
@@ -60,7 +62,10 @@ const resolveHost: ResolveHost = async host => (await dnsLookup(host, { all: tru
  * Why the URL's host must not be reached, or null. The ranges are the HTTP
  * hooks' (`isBlockedAddress`): private, link-local and cloud-metadata
  * addresses are refused, loopback is allowed. Every resolved address counts,
- * so a name with one private record is refused.
+ * so a name with one private record is refused. On Node the connection
+ * resolves the name again through ssrfGuardedNetLookup (createWebSocketCommand),
+ * so a record that changed in between is refused there too; Bun's client has
+ * no lookup hook.
  */
 export async function wsTargetRefusal(rawUrl: string, resolve: ResolveHost = resolveHost): Promise<string | null> {
   const host = new URL(rawUrl).hostname.replace(IPV6_BRACKETS_RE, '')
@@ -85,15 +90,15 @@ export async function wsTargetRefusal(rawUrl: string, resolve: ResolveHost = res
 export type WebSocketCommandDeps = {
   open?: typeof openWebSocket
   append?: (taskId: string, text: string) => void
-  /** Settles once everything appended is on disk. */
-  flush?: (taskId: string) => Promise<void>
+  /** Settles once everything appended is on disk, and lets the task's writer go. */
+  evict?: (taskId: string) => Promise<void>
 }
 
 /** A ShellCommand whose "process" is the socket: it ends when the socket closes. */
 export function createWebSocketCommand(ws: MonitorWsInput, deps: WebSocketCommandDeps = {}): ShellCommand {
   const open = deps.open ?? openWebSocket
   const append = deps.append ?? appendTaskOutput
-  const flush = deps.flush ?? evictTaskOutput
+  const evict = deps.evict ?? evictTaskOutput
   const taskOutput = new TaskOutput(generateTaskId('local_bash'), null, true)
   const taskId = taskOutput.taskId
 
@@ -111,7 +116,7 @@ export function createWebSocketCommand(ws: MonitorWsInput, deps: WebSocketComman
     if (finished) return
     finished = true
     if (status !== 'killed') status = 'completed'
-    void flush(taskId)
+    void evict(taskId)
       .catch(logError)
       .finally(() => settle({ code, stdout: '', stderr: '', interrupted: status === 'killed' }))
   }
@@ -126,15 +131,15 @@ export function createWebSocketCommand(ws: MonitorWsInput, deps: WebSocketComman
 
   const socket: WebSocketHandle = open(ws.url, {
     ...(ws.protocols?.length ? { protocols: ws.protocols } : {}),
+    lookup: ssrfGuardedNetLookup,
     handlers: {
-      onMessage(data, isBinary) {
-        const bytes = Buffer.byteLength(data)
-        if (bytes > WS_MAX_FRAME_BYTES) {
-          line(`[Dropped a ${bytes}-byte frame (over ${WS_MAX_FRAME_BYTES} bytes); closing]`)
+      onMessage(data, isBinary, byteLength) {
+        if (byteLength > WS_MAX_FRAME_BYTES) {
+          line(`[Dropped a ${byteLength}-byte frame (over ${WS_MAX_FRAME_BYTES} bytes); closing]`)
           close(CLOSE_TOO_BIG, 'frame too large')
           return
         }
-        line(isBinary ? `[binary frame, ${bytes} bytes]` : data)
+        line(isBinary ? `[binary frame, ${byteLength} bytes]` : data)
       },
       onRefused(httpStatus) {
         refused = true

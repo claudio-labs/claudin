@@ -19,6 +19,7 @@ import {
   bashToolHasPermission,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
+import { monitorSource } from 'src/tools/MonitorTool/monitorSource.js'
 import {
   createWebSocketCommand,
   WS_MAX_FRAME_BYTES,
@@ -67,11 +68,6 @@ type OutputSchema = ReturnType<typeof outputSchema>
 
 type Output = z.infer<OutputSchema>
 
-/** What the monitor watches, as the transcript, the classifier and the dialog show it. */
-function monitorSource(input: { command?: string; ws?: { url: string } }): string {
-  return input.ws ? `websocket ${input.ws.url}` : (input.command ?? '')
-}
-
 export const MonitorTool = buildTool({
   name: MONITOR_TOOL_NAME,
   searchHint: 'stream shell output as notifications',
@@ -101,13 +97,20 @@ export const MonitorTool = buildTool({
     if ((input.command === undefined) === (input.ws === undefined)) {
       return { result: false, message: 'Pass exactly one of `command` and `ws`.', errorCode: 1 }
     }
-    const wsError = input.ws ? wsInputError(input.ws) : null
-    return wsError ? { result: false, message: wsError, errorCode: 2 } : { result: true }
+    if (!input.ws) return { result: true }
+    const wsError = wsInputError(input.ws)
+    if (wsError) return { result: false, message: wsError, errorCode: 2 }
+    // Before the permission step, which every mode passes through after this,
+    // so the user is never asked about a URL that would then be refused.
+    const refusal = await wsTargetRefusal(input.ws.url)
+    if (refusal) return { result: false, message: `Monitor will not open ${input.ws.url}: ${refusal}`, errorCode: 3 }
+    return { result: true }
   },
 
   async checkPermissions(input, context) {
     // A socket runs no code, so the Bash rules say nothing about it, and no
-    // rule is offered either: each one is asked for.
+    // rule is offered either. A plain ask, as for any tool: a mode that
+    // allows without asking (bypass, a tool-wide rule, auto) allows this too.
     if (input.ws) {
       return {
         behavior: 'ask',
@@ -144,7 +147,7 @@ Pick by how many notifications you need:
 - Write a specific \`description\` ("errors in deploy.log", not "watching logs"): every notification is titled with it.
 - A notification carries at most ${MONITOR_EVENT_MAX_LINES} lines; the rest stays in the output file. A monitor that sends ${MONITOR_FLOOD_EVENTS} notifications within a minute is stopped; call Monitor again with a tighter filter.
 - It expires after \`timeout_ms\` (default ${minutes(MONITOR_DEFAULT_TIMEOUT_MS)} minutes, at most ${minutes(MONITOR_MAX_TIMEOUT_MS)}): the command is killed and you get one notice with its event count. Call Monitor again to keep watching — for a long watch, set the maximum and re-arm on each expiry; TaskStop ends it early.
-- \`ws\` instead of \`command\` opens a WebSocket (\`{url: "wss://…", protocols?: […]}\`) and streams each incoming frame as output lines: no shell, no polling. A binary frame shows as \`[binary frame, N bytes]\`, a frame over ${WS_MAX_FRAME_BYTES / (1024 * 1024)} MiB closes the socket, and the close (code and reason) is the last line. Private and link-local addresses are refused, and every \`ws\` monitor asks the user first. Prefer it over \`websocat\`; use a command when the frames need shell tools to filter them.`
+- \`ws\` instead of \`command\` opens a WebSocket (\`{url: "wss://…", protocols?: […]}\`) and streams each incoming frame as output lines: no shell, no polling. A binary frame shows as \`[binary frame, N bytes]\`, a frame over ${WS_MAX_FRAME_BYTES / (1024 * 1024)} MiB closes the socket, and the close (code and reason) is the last line. Private and link-local addresses are refused, and a \`ws\` monitor asks the user first unless the permission mode already allows it. Prefer it over \`websocat\`; use a command when the frames need shell tools to filter them.`
   },
 
   get inputSchema(): InputSchema {
@@ -209,9 +212,6 @@ Pick by how many notifications you need:
 
     let shellCommand: ShellCommand
     if (input.ws) {
-      // Checked here rather than at the permission step, so no mode skips it.
-      const refusal = await wsTargetRefusal(input.ws.url)
-      if (refusal) throw new Error(`Monitor will not open ${input.ws.url}: ${refusal}`)
       shellCommand = createWebSocketCommand(input.ws)
     } else {
       // Create the shell command — uses the same Shell.exec() as BashTool.

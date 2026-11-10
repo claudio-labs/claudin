@@ -362,20 +362,7 @@ describe('MonitorTool ws source', () => {
     expect(prompt).toContain('`ws` instead of `command` opens a WebSocket')
     expect(prompt).toContain('`[binary frame, N bytes]`')
     expect(prompt).toContain('a frame over 1 MiB closes the socket')
-    expect(prompt).toContain('every `ws` monitor asks the user first')
-  })
-
-  test('call refuses a private address before opening anything', async () => {
-    const harness = makeStateHarness()
-    const context = {
-      abortController: new AbortController(),
-      setAppState: harness.setAppState,
-      toolUseId: 'toolu_monitor_ws_private',
-    } as unknown as ToolUseContext
-    await expect(
-      MonitorTool.call({ ws: { url: 'ws://10.1.2.3:9000/feed' }, description: 'internal feed' }, context),
-    ).rejects.toThrow('Monitor will not open ws://10.1.2.3:9000/feed: 10.1.2.3 is in a private')
-    expect(Object.keys(harness.getState().tasks)).toHaveLength(0)
+    expect(prompt).toContain('a `ws` monitor asks the user first unless the permission mode already allows it')
   })
 
   test('streams frames from a local socket and ends with the close', async () => {

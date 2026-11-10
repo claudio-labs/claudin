@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ssrfGuardedLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'
+import { ssrfGuardedNetLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'
 import type { WebSocketHandle, WebSocketHandlers, WebSocketOpenOptions } from 'src/providers/transport/webSocket.js'
 import {
   createWebSocketCommand,
@@ -84,10 +84,10 @@ type FakeSocket = {
 
 function harness(
   ws: { url: string; protocols?: string[] } = { url: 'wss://events.example.com/stream' },
-  flush: () => Promise<void> = async () => {},
+  evict: () => Promise<void> = async () => {},
 ) {
   const lines: string[] = []
-  let flushes = 0
+  let evictions = 0
   let socket: FakeSocket | undefined
   const command = createWebSocketCommand(ws, {
     open: (url, options = {}) => {
@@ -112,12 +112,12 @@ function harness(
     append: (_taskId, text) => {
       lines.push(text)
     },
-    flush: async () => {
-      flushes++
-      await flush()
+    evict: async () => {
+      evictions++
+      await evict()
     },
   })
-  return { command, lines, socket: () => socket!, flushes: () => flushes }
+  return { command, lines, socket: () => socket!, evictions: () => evictions }
 }
 
 describe('createWebSocketCommand', () => {
@@ -132,7 +132,7 @@ describe('createWebSocketCommand', () => {
   // validateInput checked the name once; this checks the address the
   // connection actually uses, so a re-resolve cannot land somewhere private.
   test('resolves the host through the SSRF guard at connect time', () => {
-    expect(harness().socket().options.lookup).toBe(ssrfGuardedLookup)
+    expect(harness().socket().options.lookup).toBe(ssrfGuardedNetLookup)
   })
 
   test('writes each text frame as a line, and a frame that ends in a newline as is', () => {
@@ -161,14 +161,14 @@ describe('createWebSocketCommand', () => {
     expect(h.socket().closed).toEqual([{ code: 1009, reason: 'frame too large' }])
   })
 
-  test('a normal close is the last line and ends the command with exit 0, after the flush', async () => {
+  test('a normal close is the last line and ends the command with exit 0, after the output is evicted', async () => {
     const h = harness()
     h.socket().handlers.onMessage?.('one', false, 3)
     h.socket().handlers.onClose?.(1000, 'done')
     const result = await h.command.result
     expect(h.lines).toEqual(['one\n', '[WebSocket closed: 1000 done]\n'])
     expect(result).toMatchObject({ code: 0, interrupted: false })
-    expect(h.flushes()).toBe(1)
+    expect(h.evictions()).toBe(1)
     expect(h.command.status).toBe('completed')
   })
 
@@ -219,7 +219,7 @@ describe('createWebSocketCommand', () => {
     expect(h.socket().detached).toBe(1)
     // A close event after the kill changes nothing.
     h.socket().handlers.onClose?.(1000, 'monitor stopped')
-    expect(h.flushes()).toBe(1)
+    expect(h.evictions()).toBe(1)
   })
 
   test('kill after the socket closed on its own is a no-op', async () => {
