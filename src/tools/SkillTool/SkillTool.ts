@@ -1,6 +1,5 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { join } from 'path'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   builtInCommandNames,
@@ -57,7 +56,7 @@ import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
 import { loadSkillsInChangedDirs } from 'src/skills/loadSkillsDir.js'
 import { scopedVariantNote } from 'src/skills/scopedSkills.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { getFileStatus } from 'src/vcs/git/git.js'
+import { getChangedPaths } from 'src/vcs/git/git.js'
 import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
 import { launchSkillInBackground, shouldRunSkillInBackground } from 'src/tools/SkillTool/backgroundSkill.js'
 import {
@@ -540,8 +539,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     // follows this one. The directories with uncommitted changes are searched
     // first, so a variant counts before any file under it was read.
     const cwd = getCwd()
-    const status = await getFileStatus(cwd)
-    await loadSkillsInChangedDirs([...status.tracked, ...status.untracked].map(p => join(cwd, p)), cwd)
+    await loadSkillsInChangedDirs(await getChangedPaths(cwd), cwd)
     const variantsNote = scopedVariantNote(commandName, command, await getAllCommands(context))
 
     const isBuiltIn = builtInCommandNames().has(commandName)

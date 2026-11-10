@@ -910,6 +910,8 @@ const dynamicSkillDirs = new Set<string>()
 // Keyed by scopedSkillKey, so two directories can offer the same name without
 // one replacing the other; getDynamicSkills names them (scopedSkills.ts).
 const dynamicSkills = new Map<string, ScopedSkill>()
+// Which dynamic skill each bare name went to, kept for the session.
+const bareNameGrants = new Map<string, string>()
 
 // --- Conditional skills (path-filtered) ---
 
@@ -1060,7 +1062,7 @@ export function getDynamicSkills(
   taken: ReadonlySet<string> = new Set(),
   root: string = getProjectRoot(),
 ): Command[] {
-  return nameScopedSkills([...dynamicSkills.values()], taken, root)
+  return nameScopedSkills([...dynamicSkills.values()], taken, root, bareNameGrants)
 }
 
 const MAX_VARIANT_SCAN_DIRS = 100
@@ -1154,6 +1156,7 @@ export function activateConditionalSkillsForPaths(
 export function clearDynamicSkills(): void {
   dynamicSkillDirs.clear()
   dynamicSkills.clear()
+  bareNameGrants.clear()
   conditionalSkills.clear()
   activatedConditionalSkillNames.clear()
 }

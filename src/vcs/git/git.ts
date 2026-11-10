@@ -485,6 +485,40 @@ export const getFileStatus = async (cwd?: string): Promise<GitFileStatus> => {
   return { tracked, untracked }
 }
 
+/**
+ * Every path `git status` reports — changed, staged or untracked — as an
+ * absolute path. Porcelain paths are relative to the repository root whatever
+ * the cwd, so they are resolved against it; `-z` keeps them unquoted and puts
+ * a rename's original path in a field of its own, which is skipped. An
+ * untracked directory keeps its trailing `/`. Empty outside a repository.
+ */
+export const getChangedPaths = async (cwd: string): Promise<string[]> => {
+  const root = findGitRoot(cwd)
+  if (!root) return []
+  const { stdout } = await execFileNoThrowWithCwd(gitExe(), ['--no-optional-locks', 'status', '--porcelain', '-z'], {
+    cwd,
+    timeout: 5000,
+    preserveOutputOnError: false,
+  })
+  return parsePorcelainZ(stdout).map(path => join(root, path))
+}
+
+const RENAMED_OR_COPIED = new Set(['R', 'C'])
+
+/** The paths of `git status --porcelain -z` output, as git prints them. */
+export function parsePorcelainZ(stdout: string): string[] {
+  const fields = stdout.split('\0')
+  const paths: string[] = []
+  for (let i = 0; i < fields.length; i++) {
+    const entry = fields[i]!
+    // `XY path`: two status letters and a space.
+    if (entry.length < 4) continue
+    paths.push(entry.slice(3))
+    if (RENAMED_OR_COPIED.has(entry[0]!) || RENAMED_OR_COPIED.has(entry[1]!)) i++
+  }
+  return paths
+}
+
 export const getWorktreeCount = async (): Promise<number> => {
   return getWorktreeCountFromFs()
 }
