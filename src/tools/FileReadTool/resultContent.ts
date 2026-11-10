@@ -51,6 +51,8 @@ const MITIGATION_EXEMPT_MODELS = new Set([
   'claude-opus-5',
   'claude-opus-5-5',
   'claude-fable-5-1',
+  // Claude Code 2.1.322 sends no cyber-risk read reminder to any model.
+  'claude-fable-5-2',
 ])
 
 /** Exported for tests — the model gate as a pure function of the short name. */

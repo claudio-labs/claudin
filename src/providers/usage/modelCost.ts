@@ -6,6 +6,7 @@ import {
   CLAUDE_3_5_V2_SONNET_CONFIG,
   CLAUDE_3_7_SONNET_CONFIG,
   CLAUDE_FABLE_5_1_CONFIG,
+  CLAUDE_FABLE_5_2_CONFIG,
   CLAUDE_HAIKU_4_5_CONFIG,
   CLAUDE_HAIKU_5_5_CONFIG,
   CLAUDE_OPUS_4_1_CONFIG,
@@ -91,7 +92,6 @@ export const COST_TIER_5_25 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
-// Pricing tier for Claude Fable 5.1: $10 input / $50 output per Mtok.
 // Pricing tier for Claude Opus 5.5: $4 input / $20 output per Mtok — 20% under
 // Opus 5. The cache read is the second irregular number in this table: 0.05x
 // the base input price ($0.20), where the standard multiplier is 0.1x ($0.40)
@@ -132,6 +132,19 @@ export const COST_TIER_10_50 = {
   promptCacheWriteTokens: 12.5,
   promptCacheWrite1hTokens: 20,
   promptCacheReadTokens: 0.25,
+  webSearchRequests: 0.01,
+} as const satisfies ModelCosts
+
+// Pricing tier for Claude Fable 5.2: $8 input / $40 output per Mtok, 20% under
+// Fable 5.1, with 5.1's irregular 0.025x cache read ($0.20, not the standard
+// $0.80). Claude Code's catalog calls it tier_8_40_cache_read_0_20. Not the
+// Opus 5.5 fast tier above, which shares $8/$40 but reads at $0.40.
+export const COST_TIER_8_40_CACHE_READ_0_20 = {
+  inputTokens: 8,
+  outputTokens: 40,
+  promptCacheWriteTokens: 10,
+  promptCacheWrite1hTokens: 16,
+  promptCacheReadTokens: 0.2,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
@@ -363,6 +376,8 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
   [firstPartyNameToCanonical(CLAUDE_OPUS_5_5_CONFIG.firstParty)]: COST_TIER_4_20,
   [firstPartyNameToCanonical(CLAUDE_FABLE_5_1_CONFIG.firstParty)]:
     COST_TIER_10_50,
+  [firstPartyNameToCanonical(CLAUDE_FABLE_5_2_CONFIG.firstParty)]:
+    COST_TIER_8_40_CACHE_READ_0_20,
   // Retired, and deliberately not derived from a config: Fable 5 is gone from
   // ALL_MODEL_CONFIGS, but an agent frontmatter pin still canonicalizes here.
   'claude-fable-5': COST_TIER_10_50_FABLE_5,

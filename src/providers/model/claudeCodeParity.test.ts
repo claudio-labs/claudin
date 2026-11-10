@@ -37,6 +37,7 @@ import {
   COST_HAIKU_55,
   COST_TIER_2_10,
   COST_TIER_4_20,
+  COST_TIER_8_40_CACHE_READ_0_20,
   MODEL_COSTS,
   type ModelCosts,
 } from 'src/providers/usage/modelCost.js'
@@ -78,6 +79,7 @@ const TIERS: Record<string, ModelCosts> = {
   haiku_55: COST_HAIKU_55,
   tier_2_10: COST_TIER_2_10,
   tier_4_20_cache_read_0_20: COST_TIER_4_20,
+  tier_8_40_cache_read_0_20: COST_TIER_8_40_CACHE_READ_0_20,
 }
 
 test('the capture is on disk (an empty fixture dir would pass every check below)', () => {

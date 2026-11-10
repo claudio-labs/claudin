@@ -147,6 +147,46 @@ test('the haiku entry is Haiku 5.5, and Haiku 4.5 is gone', async () => {
   expect(options.some((o: { description: string }) => o.description.includes('Haiku 4.5'))).toBe(false)
 })
 
+// Fable 5.2 is the 'fable' alias on first party, the value the 5.1 pin
+// migration writes, so a migrated user sees their pick selected. Fable 5.1
+// stays listed as the previous generation, pinned to its explicit string.
+const fableEntries = (options: { value: string | null; label: string; description: string }[]) =>
+  options.filter(o => o.label.startsWith('Fable'))
+
+test('the Max picker lists Fable 5.2 as the fable alias and Fable 5.1 as the previous one', async () => {
+  const { getModelOptions } = await importMaxPicker({
+    mergeEnabled: true,
+    opusAccess: true,
+    sonnetAccess: true,
+  })
+  const fable = fableEntries(getModelOptions())
+  expect(fable.map(o => [o.value, o.label])).toEqual([
+    ['fable', 'Fable 5.2'],
+    ['claude-fable-5-1', 'Fable 5.1'],
+  ])
+  expect(fable[0]!.description).toContain('$8/$40')
+  expect(fable[1]!.description).toContain('Previous Fable')
+})
+
+test('the first-party PAYG picker lists the same two Fable entries', async () => {
+  mock.module('./providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => 'firstParty',
+  }))
+  mock.module('src/providers/auth/auth.js', () => ({
+    ...realAuth,
+    isClaudeAISubscriber: () => false,
+  }))
+  resetModelStringsForTestingOnly()
+  const { getModelOptions } = await import(`./modelOptions.js?ts=${Date.now()}-${Math.random()}`)
+  const fable = fableEntries(getModelOptions())
+  expect(fable.map(o => [o.value, o.label])).toEqual([
+    ['fable', 'Fable 5.2'],
+    ['claude-fable-5-1', 'Fable 5.1'],
+  ])
+  expect(fable[0]!.description).toContain('$8/$40')
+})
+
 // A Vertex PAYG picker: Haiku 4.5 stays the 'haiku' default there, with Haiku
 // 5.5 as an explicit opt-in. `haikuDefault` stands in for a future 3P default.
 async function import3PPicker(haikuDefault?: string) {

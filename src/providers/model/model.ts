@@ -441,10 +441,15 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   name = name.toLowerCase()
   // Special cases for Claude 4+ models to differentiate versions
   // Order matters: check more specific versions first (4-8 before 4-7 before 4-6 before 4)
-  // Order matters twice over here: 'claude-fable-5-1' CONTAINS 'claude-fable-5',
-  // so the 5.1 branch has to come first or every 5.1 request canonicalizes to
-  // Fable 5 and gets billed at its 4x-higher cache-read rate.
-  if (name.includes('claude-fable-5-1')) {
+  // Order matters twice over here: 'claude-fable-5-2' and 'claude-fable-5-1'
+  // CONTAIN 'claude-fable-5', so their branches have to come first or every
+  // request canonicalizes to Fable 5 and gets billed at its cache-read rate.
+  // Gateways write the version dotted ('anthropic/claude-fable-5.2'), which
+  // contains 'claude-fable-5' and neither hyphenated id — see Opus 5.5 below.
+  if (name.includes('claude-fable-5-2') || name.includes('claude-fable-5.2')) {
+    return 'claude-fable-5-2'
+  }
+  if (name.includes('claude-fable-5-1') || name.includes('claude-fable-5.1')) {
     return 'claude-fable-5-1'
   }
   // Fable 5 is retired from ALL_MODEL_CONFIGS, but stays canonicalizable on
@@ -647,6 +652,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
       return 'GPT-5.4'
     case 'gpt-5.3-codex-spark':
       return 'GPT-5.3 Codex Spark'
+    case getModelStrings().fable52:
+      // 1M context is the default on Fable 5.2 — no [1m] variant needed.
+      return 'Fable 5.2'
     case getModelStrings().fable51:
       // 1M context is the default on Fable 5.1 — no [1m] variant needed.
       return 'Fable 5.1'
@@ -780,16 +788,19 @@ export function parseUserSpecifiedModel(
     return 'gpt-5.3-codex-spark'
   }
 
-  // 'fable' shortcut — resolves to Claude Fable 5.1. Not a family alias in
-  // MODEL_ALIASES (single-version tier, no [1m] variant: 1M is the default).
-  // 'fable5' lands here too rather than on the retired Fable 5: pointing it at
-  // a dead string would undo migrateFable5ToFable51, whose whole purpose is
-  // moving pins off that generation.
+  // 'fable' shortcut — resolves to the latest Fable, Claude Fable 5.2, as
+  // Claude Code's alias does. Not in the switch above: single-version tier, no
+  // [1m] variant (1M is the default). 'fable5' follows it rather than the
+  // retired Fable 5: pointing it at a dead string would undo
+  // migrateFable5ToFable51. 'fable51' is the way to stay on 5.1.
   if (
     modelString === 'fable' ||
     modelString === 'fable5' ||
-    modelString === 'fable51'
+    modelString === 'fable52'
   ) {
+    return getModelStrings().fable52
+  }
+  if (modelString === 'fable51') {
     return getModelStrings().fable51
   }
 
@@ -883,7 +894,11 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   const has1m = modelId.toLowerCase().includes('[1m]')
   const canonical = getCanonicalName(modelId)
 
-  // Before the Fable 5 branch: 'claude-fable-5-1' contains 'claude-fable-5'.
+  // Before the Fable 5 branch: 'claude-fable-5-2' and 'claude-fable-5-1'
+  // contain 'claude-fable-5'.
+  if (canonical.includes('claude-fable-5-2')) {
+    return 'Fable 5.2'
+  }
   if (canonical.includes('claude-fable-5-1')) {
     return 'Fable 5.1'
   }

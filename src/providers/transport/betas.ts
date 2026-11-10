@@ -202,19 +202,21 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
  * Haiku 5.5 is listed on that replay alone (all four arms 200, Claude Code
  * 2.1.293): whether it enforces preserved thinking is unmeasured, because the
  * account the capture ran on predates 2026-08-31. The field is accepted, so
- * sending it costs nothing where enforcement is absent.
+ * sending it costs nothing where enforcement is absent. Fable 5.2 is listed on
+ * the same evidence (Claude Code 2.1.322, all four arms 200).
  */
 export function modelSupportsThinkingBlockBinding(model: string): boolean {
   if (getAPIProvider() !== 'firstParty') {
     return false
   }
   const canonical = getCanonicalName(model)
-  // 'claude-fable-5-1' and not 'claude-fable-5': the retired Fable 5 predates
-  // preserved thinking, and its id is a prefix of 5.1's. Same for Sonnet 5.5
-  // against Sonnet 5.
+  // 'claude-fable-5-1'/'-5-2' and not 'claude-fable-5': the retired Fable 5
+  // predates preserved thinking, and its id is a prefix of the newer ones. Same
+  // for Sonnet 5.5 against Sonnet 5.
   return (
     canonical.includes('claude-opus-5-5') ||
     canonical.includes('claude-fable-5-1') ||
+    canonical.includes('claude-fable-5-2') ||
     canonical.includes('claude-sonnet-5-5') ||
     canonical.includes('claude-haiku-5-5')
   )

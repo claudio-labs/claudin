@@ -106,7 +106,7 @@ export function withoutSystemPromptMarkers(
 
 // @[MODEL LAUNCH]: Update the model family IDs below to the latest in each tier.
 const CLAUDE_LATEST_MODEL_IDS = {
-  fable: 'claude-fable-5-1',
+  fable: 'claude-fable-5-2',
   opus: 'claude-opus-5-5',
   sonnet: 'claude-sonnet-5-5',
   haiku: 'claude-haiku-5-5',
@@ -730,7 +730,7 @@ export async function computeSimpleEnvInfo(
     // references. Family resolution depends on provider — hence the
     // provider-qualified section cache key at the call site.
     isAnthropicFamily
-      ? `The most recent Claude models are the Claude 5 family. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 5.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
+      ? `The most recent Claude models are the Claude 5 family. Model IDs — Fable 5.2: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 5.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
       : null,
     // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with
     // isFastModeSupportedByModel / FAST_MODE_MODEL_DISPLAY (src/providers/fastMode.ts).
@@ -750,8 +750,9 @@ export async function computeSimpleEnvInfo(
 // Exported for claudeCodeParity.test.ts, which checks it against Claude Code's catalog.
 export function getKnowledgeCutoff(modelId: string): string | null {
   const canonical = getCanonicalName(modelId)
-  // Before the Fable 5 branch: 'claude-fable-5-1' contains 'claude-fable-5'.
-  if (canonical.includes('claude-fable-5-1')) {
+  // Before the Fable 5 branch: 'claude-fable-5-2' and 'claude-fable-5-1'
+  // contain 'claude-fable-5'.
+  if (canonical.includes('claude-fable-5-2') || canonical.includes('claude-fable-5-1')) {
     return 'June 2026'
   } else if (canonical.includes('claude-fable-5')) {
     return 'January 2026'

@@ -983,13 +983,19 @@ export function getAssistantMessageFromError(
 /**
  * For 3P users, suggest a fallback model when the selected model is unavailable.
  * Returns a model name suggestion, or undefined if no suggestion is applicable.
+ * Exported for fable52.test.ts.
  */
-function get3PModelFallbackSuggestion(model: string): string | undefined {
+export function get3PModelFallbackSuggestion(model: string): string | undefined {
   if (getAPIProvider() === 'firstParty') {
     return undefined
   }
   // @[MODEL LAUNCH]: Add a fallback suggestion chain for the new model → previous version for 3P
   const m = model.toLowerCase()
+  // Fable 5.2 falls back one generation, to Fable 5.1 (Claude Code's
+  // fallback_3p). Must precede the fable-5 branch, which matches it by substring.
+  if (m.includes('fable-5-2') || m.includes('fable_5_2')) {
+    return getModelStrings().fable51
+  }
   // If the failing model looks like a Fable 5 variant, fall back to Opus 4.8
   if (m.includes('fable-5') || m.includes('fable_5')) {
     return getModelStrings().opus48

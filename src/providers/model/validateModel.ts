@@ -196,12 +196,18 @@ function handleValidationError(
 // @[MODEL LAUNCH]: Add a fallback suggestion chain for the new model → previous version
 /**
  * Suggest a fallback model for 3P users when the selected model is unavailable.
+ * Exported for fable52.test.ts.
  */
-function get3PFallbackSuggestion(model: string): string | undefined {
+export function get3PFallbackSuggestion(model: string): string | undefined {
   if (getAPIProvider() === 'firstParty') {
     return undefined
   }
   const lowerModel = model.toLowerCase()
+  // Before the fable-5 branch — 'fable-5-2' contains it. One generation back is
+  // Fable 5.1, Claude Code's fallback_3p.
+  if (lowerModel.includes('fable-5-2') || lowerModel.includes('fable_5_2')) {
+    return getModelStrings().fable51
+  }
   if (lowerModel.includes('fable-5') || lowerModel.includes('fable_5')) {
     return getModelStrings().opus48
   }

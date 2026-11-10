@@ -48,10 +48,14 @@ import {
   getAvailableEffortLevels,
   getDefaultEffortForModel,
 } from 'src/providers/effort/effort.js'
-import { MODEL_COSTS } from 'src/providers/usage/modelCost.js'
+import { COST_TIER_8_40_CACHE_READ_0_20, MODEL_COSTS } from 'src/providers/usage/modelCost.js'
+import { CLAUDE_FABLE_5_2_CONFIG } from 'src/providers/model/configs.js'
+import { get3PFallbackSuggestion } from 'src/providers/model/validateModel.js'
+import { get3PModelFallbackSuggestion } from 'src/providers/transport/errors.js'
 import { modelSupportsThinkingBlockBinding } from 'src/providers/transport/betas.js'
 import { getKnowledgeCutoff } from 'src/agent/prompts/prompts.js'
 import { isMitigationExemptModel } from 'src/tools/FileReadTool/resultContent.js'
+import { getVertexRegionForModel } from 'src/shared/envUtils.js'
 import { sanitizeModelName } from 'src/vcs/git/commitAttribution.js'
 
 // Claude Fable 5.2 (2026-11-09, Claude Code 2.1.322) is the latest Fable. Its
@@ -80,6 +84,14 @@ test('dotted gateway ids resolve to Fable 5.1, not to Fable 5', () => {
 test('dotted gateway ids resolve to Fable 5.2', () => {
   expect(firstPartyNameToCanonical('anthropic/claude-fable-5.2')).toBe('claude-fable-5-2')
   expect(firstPartyNameToCanonical('claude-fable-5.2')).toBe('claude-fable-5-2')
+})
+
+test('config uses the dateless pinned-snapshot IDs', () => {
+  expect(CLAUDE_FABLE_5_2_CONFIG.firstParty).toBe('claude-fable-5-2')
+  // Bedrock uses the Messages-API id, like Fable 5.1.
+  expect(CLAUDE_FABLE_5_2_CONFIG.bedrock).toBe('anthropic.claude-fable-5-2')
+  expect(CLAUDE_FABLE_5_2_CONFIG.vertex).toBe('claude-fable-5-2')
+  expect(CLAUDE_FABLE_5_2_CONFIG.foundry).toBe('claude-fable-5-2')
 })
 
 test('keeps the Fable request shape: 1M native, adaptive only, no sampling params', () => {
@@ -114,6 +126,7 @@ test('bills at the $8/$40 tier with the $0.20 cache read', () => {
     promptCacheReadTokens: 0.2,
     webSearchRequests: 0.01,
   })
+  expect(MODEL_COSTS['claude-fable-5-2']).toBe(COST_TIER_8_40_CACHE_READ_0_20)
   expect(MODEL_COSTS['claude-fable-5-1']?.promptCacheReadTokens).toBe(0.25)
 })
 
@@ -148,4 +161,39 @@ test('is exempt from the cyber-risk read reminder, like Fable 5.1', () => {
 test('commit trailers name 5.2', () => {
   expect(sanitizeModelName('claude-fable-5-2')).toBe('claude-fable-5-2')
   expect(sanitizeModelName('claude-fable-5-1')).toBe('claude-fable-5-1')
+})
+
+// Claude Code's catalog: fallback_3p claude-fable-5-1. Fable 5.1 keeps Opus 4.8.
+test('a 3P Fable 5.2 that is unavailable suggests Fable 5.1 in both places', () => {
+  provider = 'vertex'
+  pinProvider()
+  for (const suggest of [get3PModelFallbackSuggestion, get3PFallbackSuggestion]) {
+    expect(suggest('claude-fable-5-2')).toBe('claude-fable-5-1')
+    expect(suggest('claude-fable-5-1')).toBe('claude-opus-4-8')
+  }
+})
+
+test('first party gets no 3P fallback suggestion', () => {
+  expect(get3PModelFallbackSuggestion('claude-fable-5-2')).toBeUndefined()
+  expect(get3PFallbackSuggestion('claude-fable-5-2')).toBeUndefined()
+})
+
+// Claude Code 2.1.322 reads one Vertex region variable per Fable version.
+test('each Fable version reads its own Vertex region override', () => {
+  const saved = {
+    v52: process.env.VERTEX_REGION_CLAUDE_FABLE_5_2,
+    v51: process.env.VERTEX_REGION_CLAUDE_FABLE_5_1,
+  }
+  process.env.VERTEX_REGION_CLAUDE_FABLE_5_2 = 'europe-west4'
+  // Neither is the default region, so a missing table row cannot pass.
+  process.env.VERTEX_REGION_CLAUDE_FABLE_5_1 = 'asia-southeast1'
+  try {
+    expect(getVertexRegionForModel('claude-fable-5-2')).toBe('europe-west4')
+    expect(getVertexRegionForModel('claude-fable-5-1')).toBe('asia-southeast1')
+  } finally {
+    if (saved.v52 === undefined) delete process.env.VERTEX_REGION_CLAUDE_FABLE_5_2
+    else process.env.VERTEX_REGION_CLAUDE_FABLE_5_2 = saved.v52
+    if (saved.v51 === undefined) delete process.env.VERTEX_REGION_CLAUDE_FABLE_5_1
+    else process.env.VERTEX_REGION_CLAUDE_FABLE_5_1 = saved.v51
+  }
 })

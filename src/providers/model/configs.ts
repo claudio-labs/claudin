@@ -299,6 +299,30 @@ export const CLAUDE_FABLE_5_1_CONFIG = {
   mistral: 'devstral-latest',
 } as const satisfies ModelConfig
 
+// Claude Fable 5.2 (2026-11-09) — the latest Fable, with 5.1 kept as the
+// previous generation. Fable 5.1's request shape (1M native, adaptive thinking
+// only, sampling params rejected, effort low→max) with three differences from
+// Claude Code 2.1.322's catalog and wire: max output is 128K by default, the
+// default effort is medium, and it costs $8/$40 (COST_TIER_8_40_CACHE_READ_0_20).
+// It enforces preserved thinking like 5.1 (modelSupportsThinkingBlockBinding).
+// src/providers/model/__fixtures__/claude-code-wire/2.1.322/ is the reference.
+//
+// The ID CONTAINS 'claude-fable-5', so every site that RESOLVES a version needs
+// a 5.2 branch placed before the 5.1 and Fable 5 ones.
+export const CLAUDE_FABLE_5_2_CONFIG = {
+  firstParty: 'claude-fable-5-2',
+  bedrock: 'anthropic.claude-fable-5-2',
+  vertex: 'claude-fable-5-2',
+  foundry: 'claude-fable-5-2',
+  openai: 'gpt-4o',
+  gemini: GEMINI_FLAGSHIP_MODEL,
+  github: 'github:copilot',
+  codex: CODEX_DEFAULT_MODEL,
+  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',
+  minimax: 'MiniMax-M2.5',
+  mistral: 'devstral-latest',
+} as const satisfies ModelConfig
+
 export const CLAUDE_SONNET_4_6_CONFIG = {
   firstParty: 'claude-sonnet-4-6',
   bedrock: 'us.anthropic.claude-sonnet-4-6',
@@ -381,6 +405,7 @@ export const ALL_MODEL_CONFIGS = {
   opus5: CLAUDE_OPUS_5_CONFIG,
   opus55: CLAUDE_OPUS_5_5_CONFIG,
   fable51: CLAUDE_FABLE_5_1_CONFIG,
+  fable52: CLAUDE_FABLE_5_2_CONFIG,
 } as const satisfies Record<string, ModelConfig>
 
 export type ModelKey = keyof typeof ALL_MODEL_CONFIGS
