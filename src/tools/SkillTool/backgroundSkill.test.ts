@@ -26,17 +26,17 @@ function forked(overrides: Partial<PromptCommand> = {}): Command & PromptCommand
 }
 
 describe('shouldRunSkillInBackground', () => {
+  const gates = { ownsBackgroundAgents: true, backgroundHidden: false }
+
   test('a forked skill marked background, called from the main thread with background agents on', () => {
-    expect(shouldRunSkillInBackground(forked(), undefined, false)).toBe(true)
+    expect(shouldRunSkillInBackground(forked(), gates)).toBe(true)
   })
 
-  test('inline otherwise: not forked, not marked, a sub-agent caller, or background agents unavailable', () => {
-    expect(shouldRunSkillInBackground(forked({ context: undefined }), undefined, false)).toBe(false)
-    expect(shouldRunSkillInBackground(forked({ background: false }), undefined, false)).toBe(false)
-    expect(shouldRunSkillInBackground(forked({ background: undefined }), undefined, false)).toBe(false)
-    expect(shouldRunSkillInBackground(forked(), 'agent-123', false)).toBe(false)
-    expect(shouldRunSkillInBackground(forked(), undefined, true)).toBe(false)
-    expect(shouldRunSkillInBackground(undefined, undefined, false)).toBe(false)
+  test('in the foreground otherwise: not marked, a caller that owns no background agents, or background agents unavailable', () => {
+    expect(shouldRunSkillInBackground(forked({ background: false }), gates)).toBe(false)
+    expect(shouldRunSkillInBackground(forked({ background: undefined }), gates)).toBe(false)
+    expect(shouldRunSkillInBackground(forked(), { ...gates, ownsBackgroundAgents: false })).toBe(false)
+    expect(shouldRunSkillInBackground(forked(), { ...gates, backgroundHidden: true })).toBe(false)
   })
 })
 
@@ -67,6 +67,7 @@ describe('launchSkillInBackground', () => {
 
   test('registers a background agent for the fork and runs it there, returning at once', async () => {
     const setAppStateForTasks = () => {}
+    const canUseTool = (async () => ({})) as never
     const context = {
       agentId: undefined,
       toolUseId: 'toolu_bg_1',
@@ -80,7 +81,8 @@ describe('launchSkillInBackground', () => {
       },
     } as unknown as ToolUseContext
 
-    const { agentId } = await launchSkillInBackground(forked({ effort: 'low' }), 'nightly', 'for today', context, (async () => ({})) as never, deps())
+    const command = forked({ effort: 'low', model: 'sonnet', allowedTools: ['Bash(make:*)'] })
+    const { agentId } = await launchSkillInBackground(command, 'nightly', 'for today', context, canUseTool, deps())
     expect(agentId).toBe('skill-agent-1')
 
     const [registered] = calls.register as [Record<string, unknown>]
@@ -99,8 +101,15 @@ describe('launchSkillInBackground', () => {
       description: '/nightly',
       metadata: { isAsync: true, prompt: 'Write the nightly report for today' },
     })
+    expect(lifecycle.rootSetAppState).toBe(setAppStateForTasks)
     const [streamed] = calls.streamInput as [Record<string, unknown>]
-    expect(streamed).toMatchObject({ isAsync: true, querySource: 'agent:custom', description: '/nightly' })
+    expect(streamed).toMatchObject({ isAsync: true, querySource: 'agent:custom', description: '/nightly', model: 'sonnet' })
+    expect(streamed.canUseTool).toBe(canUseTool)
     expect((streamed.override as { agentId: string }).agentId).toBe('skill-agent-1')
+    expect(JSON.stringify(streamed.promptMessages)).toContain('Write the nightly report for today')
+    // The fork runs with the tools the skill grants, through the prepared getAppState.
+    const forkContext = streamed.toolUseContext as ToolUseContext
+    expect(forkContext).toBe(lifecycle.toolUseContext as ToolUseContext)
+    expect(forkContext.getAppState().toolPermissionContext.alwaysAllowRules.command).toContain('Bash(make:*)')
   })
 })

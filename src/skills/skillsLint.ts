@@ -404,7 +404,7 @@ function checkFrontmatter(
         key === 'user-invocable'
           ? `\`user-invocable: ${show(value)}\` is read as false — the skill is hidden from the / menu`
           : key === 'background'
-            ? `\`background: ${show(value)}\` is read as false — the skill runs in the foreground`
+            ? `\`background: ${show(value)}\` is read as false — the Skill tool runs the fork in the foreground`
             : `\`disable-model-invocation: ${show(value)}\` is read as false — the model can still invoke it`,
       fix: 'Write `true` or `false`; nothing else is read as true.',
     })

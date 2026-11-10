@@ -7,7 +7,9 @@
 //
 // It stays inline whenever nothing could drain a background agent: a
 // sub-agent's call (only main owns background agents, autoBackground.ts),
-// `-p`, and CLAUDIN_DISABLE_BACKGROUND_TASKS — isRunInBackgroundHidden.
+// `-p`, and CLAUDIN_DISABLE_BACKGROUND_TASKS — isRunInBackgroundHidden. A
+// `/skill` the user types runs its fork in the foreground either way
+// (processSlashCommand.tsx), as in Claude Code.
 
 import { runWithAgentContext } from 'src/agent/coordinator/agentContext.js'
 import { prepareForkedCommandContext } from 'src/agent/coordinator/forkedAgent.js'
@@ -20,23 +22,20 @@ import { createAgentId } from 'src/shared/data/uuid.js'
 import type { Command, PromptCommand } from 'src/shared/types/command.js'
 import { asAgentId } from 'src/shared/types/ids.js'
 import { runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js'
-import { ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 
-/** Whether this Skill call launches the skill as a background agent. */
-export function shouldRunSkillInBackground(
-  command: Command | undefined,
-  callerAgentId: string | undefined,
-  backgroundHidden: boolean,
-): boolean {
-  return (
-    command?.type === 'prompt' &&
-    command.context === 'fork' &&
-    command.background === true &&
-    ownsBackgroundAgents(callerAgentId) &&
-    !backgroundHidden
-  )
+/** What decides whether a background agent can run at all, read by the caller. */
+export type BackgroundGates = {
+  /** ownsBackgroundAgents(caller): only main does. */
+  ownsBackgroundAgents: boolean
+  /** isRunInBackgroundHidden(): `-p`, or background tasks turned off. */
+  backgroundHidden: boolean
+}
+
+/** Whether a forked skill's Skill call launches it as a background agent. */
+export function shouldRunSkillInBackground(command: PromptCommand, gates: BackgroundGates): boolean {
+  return command.background === true && gates.ownsBackgroundAgents && !gates.backgroundHidden
 }
 
 export type BackgroundSkillDeps = {

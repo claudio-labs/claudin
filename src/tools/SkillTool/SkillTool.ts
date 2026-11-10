@@ -58,6 +58,7 @@ import { scopedVariantNote } from 'src/skills/scopedSkills.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getChangedPaths } from 'src/vcs/git/git.js'
 import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
+import { ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js'
 import { launchSkillInBackground, shouldRunSkillInBackground } from 'src/tools/SkillTool/backgroundSkill.js'
 import {
   renderToolResultMessage,
@@ -496,14 +497,16 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     // Track skill usage for ranking
     recordSkillUsage(commandName)
 
-    // A forked skill marked `background: true` (backgroundSkill.ts)
-    if (command?.type === 'prompt' && shouldRunSkillInBackground(command, context.agentId, isRunInBackgroundHidden())) {
-      const { agentId } = await launchSkillInBackground(command, commandName, args, context, canUseTool)
-      return { data: { success: true, commandName, status: 'background', agentId } }
-    }
-
     // Check if skill should run as a forked sub-agent
     if (command?.type === 'prompt' && command.context === 'fork') {
+      // `background: true` runs the fork as a background agent (backgroundSkill.ts)
+      if (shouldRunSkillInBackground(command, {
+        ownsBackgroundAgents: ownsBackgroundAgents(context.agentId),
+        backgroundHidden: isRunInBackgroundHidden(),
+      })) {
+        const { agentId } = await launchSkillInBackground(command, commandName, args, context, canUseTool)
+        return { data: { success: true, commandName, status: 'background', agentId } }
+      }
       return executeForkedSkill(
         command,
         commandName,

@@ -168,7 +168,7 @@ describe('frontmatter that the loader loses', () => {
       '.claudin/skills/c/SKILL.md': skill('description: x\ncontext: fork\nbackground: true'),
     })
     expect(kinds(findings)).toEqual(['bad_boolean', 'bad_value'])
-    expect(findings[0]?.message).toContain('`background: yes` is read as false — the skill runs in the foreground')
+    expect(findings[0]?.message).toContain('`background: yes` is read as false — the Skill tool runs the fork in the foreground')
     expect(findings[1]?.message).toContain('`background` is only used with `context: fork`')
   })
 

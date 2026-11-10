@@ -116,11 +116,15 @@ describe('SkillTool prompt', () => {
   })
 
   // call() reaches the background path only with a live agent run; pin the wiring.
-  test('call launches a background fork before the foreground fork path', () => {
+  test('call decides on the background inside the fork branch, before running the fork', () => {
     const source = readFileSync(new URL('./SkillTool.ts', import.meta.url), 'utf8')
-    const background = source.indexOf("command?.type === 'prompt' && shouldRunSkillInBackground(command, context.agentId, isRunInBackgroundHidden())")
-    const foreground = source.indexOf("if (command?.type === 'prompt' && command.context === 'fork') {")
-    expect(background).toBeGreaterThan(-1)
+    const fork = source.indexOf("if (command?.type === 'prompt' && command.context === 'fork') {")
+    const background = source.indexOf('if (shouldRunSkillInBackground(command, {')
+    const foreground = source.indexOf('return executeForkedSkill(')
+    expect(fork).toBeGreaterThan(-1)
+    expect(background).toBeGreaterThan(fork)
     expect(foreground).toBeGreaterThan(background)
+    expect(source).toContain('ownsBackgroundAgents: ownsBackgroundAgents(context.agentId)')
+    expect(source).toContain('backgroundHidden: isRunInBackgroundHidden()')
   })
 })

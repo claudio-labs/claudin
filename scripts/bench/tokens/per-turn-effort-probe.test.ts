@@ -15,6 +15,12 @@ describe('layoutRequest', () => {
     expect(layoutRequest('B', 0).topEffort).toBe('medium')
   })
 
+  test('C, the control, changes only the top level and sends no system message', () => {
+    const { topEffort, messages } = layoutRequest('C', 2)
+    expect(topEffort).toBe('xhigh')
+    expect(messages.some(m => m.role === 'system')).toBe(false)
+  })
+
   test('the earlier turns render the same in every later request, and only the last user turn is marked', () => {
     const third = layoutRequest('A', 2).messages
     const fourth = layoutRequest('A', 3).messages
