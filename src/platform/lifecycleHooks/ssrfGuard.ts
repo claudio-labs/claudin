@@ -1,6 +1,6 @@
 import type { AddressFamily, LookupAddress as AxiosLookupAddress } from 'axios'
 import { lookup as dnsLookup } from 'dns'
-import { isIP } from 'net'
+import { isIP, type LookupFunction } from 'net'
 
 /**
  * SSRF guard for HTTP hooks.
@@ -281,6 +281,14 @@ export function ssrfGuardedLookup(
     }
   })
 }
+
+/**
+ * ssrfGuardedLookup typed as `net.connect`'s `lookup` (the Monitor `ws`
+ * source passes it to the WebSocket opener). It only ever calls back with an
+ * address string, or an `{address, family}` list when `all` is set — what
+ * net expects; the axios type it is declared with is wider.
+ */
+export const ssrfGuardedNetLookup = ssrfGuardedLookup as unknown as LookupFunction
 
 function ssrfError(hostname: string, address: string): NodeJS.ErrnoException {
   const err = new Error(

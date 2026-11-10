@@ -1212,7 +1212,8 @@ async function dryRun(args: Args): Promise<void> {
   } catch {
     // Left empty: both gates below then fail and print what came back.
   }
-  const want = ['CLAUDIN_LEAN_AGENT_PROMPT', 'CLAUDIN_DISABLE_BACKGROUND_TASKS', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS']
+  // armEnv also pins CLAUDIN_MAIN_CACHE_TTL=1h on purpose (session-cache-ab.ts says why).
+  const want = ['CLAUDIN_LEAN_AGENT_PROMPT', 'CLAUDIN_DISABLE_BACKGROUND_TASKS', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS', 'CLAUDIN_MAIN_CACHE_TTL']
   const leaked = seen.keys.filter(k => HOST_ENV_RE.test(k) && !want.includes(k))
   gates.push([
     'variant env reaches the child; host CLAUDECODE/CLAUDE_CODE_*/CLAUDIN_* do not',

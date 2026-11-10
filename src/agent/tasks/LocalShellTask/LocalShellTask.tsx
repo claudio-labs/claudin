@@ -139,7 +139,8 @@ function enqueueShellNotification(taskId: string, description: string, status: '
         summary = `Monitor "${description}" stream ended`;
         break;
       case 'failed':
-        summary = `Monitor "${description}" script failed${exitCode !== undefined ? ` (exit ${exitCode})` : ''}`;
+        // "source": a monitor runs a command or opens a socket.
+        summary = `Monitor "${description}" source failed${exitCode !== undefined ? ` (exit ${exitCode})` : ''}`;
         break;
       case 'killed':
         summary = `Monitor "${description}" stopped`;

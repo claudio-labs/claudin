@@ -59,7 +59,7 @@ import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel, type AgentModelAlias } from 'src/providers/model/agent.js'
-import { getDefaultEffortForModel, modelSupportsEffort } from 'src/providers/effort/effort.js'
+import { getDefaultEffortForModel, modelSupportsEffort, type EffortLevel } from 'src/providers/effort/effort.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -70,7 +70,7 @@ import {
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
-import { subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
+import { resolveSubagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -276,6 +276,7 @@ export async function* runAgent({
   worktreePath,
   description,
   readOnly,
+  effort,
   toolFilter = isAsync ? 'async' : 'sync',
   transcriptSubdir,
   onQueryProgress,
@@ -337,6 +338,8 @@ export async function* runAgent({
   description?: string
   /** The spawn's `readOnly`, persisted so a resume re-applies it. */
   readOnly?: boolean
+  /** The spawn's `effort`, persisted so a resume re-applies it. */
+  effort?: EffortLevel
   /** The filter that picks this run's tools; defaults to how it runs. A resume
    * passes its first run's, persisted here — see toolFilter.ts. */
   toolFilter?: ToolFilter
@@ -551,13 +554,12 @@ export async function* runAgent({
 
     // Override effort level if agent defines one; otherwise the parent's, one
     // level down when raised above its model's default (subagentThinking.ts).
-    const effortValue =
-      agentDefinition.effort !== undefined
-        ? agentDefinition.effort
-        : subagentEffort(state.effortValue, {
-            useExactTools: useExactTools === true,
-            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),
-          })
+    const effortValue = resolveSubagentEffort({
+      defined: agentDefinition.effort,
+      parent: state.effortValue,
+      useExactTools: useExactTools === true,
+      parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),
+    })
 
     if (
       toolPermissionContext === state.toolPermissionContext &&
@@ -860,6 +862,7 @@ export async function* runAgent({
     ...(worktreePath && { worktreePath }),
     ...(description && { description }),
     ...(readOnly && { readOnly }),
+    ...(effort && { effort }),
     toolFilter,
   }).catch(_err => logForDebugging(`Failed to write agent metadata: ${_err}`))
 

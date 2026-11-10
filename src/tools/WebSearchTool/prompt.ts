@@ -1,9 +1,6 @@
-import { getLocalMonthYear } from 'src/shared/constants/common.js'
-
 export const WEB_SEARCH_TOOL_NAME = 'WebSearch'
 
 export function getWebSearchPrompt(): string {
-  const currentMonthYear = getLocalMonthYear()
   return `
 - Allows Claude to search the web and use the results to inform responses
 - Provides up-to-date information for current events and recent data
@@ -28,7 +25,7 @@ Usage notes:
   - Web search is only available in the US
 
 IMPORTANT - Use the correct year in search queries:
-  - The current month is ${currentMonthYear}. You MUST use this year when searching for recent information, documentation, or current events.
+  - Today's date is given in the conversation. You MUST use its year when searching for recent information, documentation, or current events.
   - Example: If the user asks for "latest React docs", search for "React documentation" with the current year, NOT last year
 `
 }
@@ -37,11 +34,15 @@ IMPORTANT - Use the correct year in search queries:
  * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density.
  * `usOnly` is false on the adapter and Codex backends, which have no region
  * limit — the full text strips that line with a regex instead.
+ *
+ * Neither text names the month: the description is cached for the session, so
+ * a baked-in month went stale in a session that crossed one. The date the
+ * model reads is the "Today's date" line, which a date change updates.
  */
 export function getCompactWebSearchPrompt(usOnly: boolean): string {
   return `Search the web. Returns result blocks with titles and URLs.${usOnly ? ' US-only.' : ''}
 
-- The current month is ${getLocalMonthYear()} — use this when searching for recent information.
+- Today's date is given in the conversation — use it when searching for recent information.
 - \`allowed_domains\` / \`blocked_domains\` filter results.
 - After answering from results, end with a "Sources:" list of the URLs you used as markdown links.`
 }

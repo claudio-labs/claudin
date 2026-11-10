@@ -95,7 +95,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
-- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) · [2.1.316 tools, 11-01](claude-code-2.1.316-tool-prompt-diff.md) — 3 A/Bs open
+- Claude Code prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321, 11-09](claude-code-2.1.321-tool-diff.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd

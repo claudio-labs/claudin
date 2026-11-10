@@ -11,6 +11,7 @@ import {
 } from 'path'
 import {
   getAdditionalDirectoriesForClaudeMd,
+  getProjectRoot,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
@@ -59,6 +60,7 @@ import { isRestrictedToPluginOnly } from 'src/platform/settings/pluginOnlyPolicy
 import { HooksSchema, type HooksSettings } from 'src/platform/settings/types.js'
 import { createSignal } from 'src/shared/signal.js'
 import { registerMCPSkillBuilders } from 'src/skills/mcpSkillBuilders.js'
+import { nameScopedSkills, scopedSkillKey, type ScopedSkill } from 'src/skills/scopedSkills.js'
 
 export type LoadedFrom =
   | 'commands_DEPRECATED'
@@ -198,6 +200,7 @@ export function parseSkillFrontmatterFields(
   hooks: HooksSettings | undefined
   executionContext: 'fork' | undefined
   agent: string | undefined
+  background: boolean | undefined
   effort: EffortValue | undefined
   shell: FrontmatterShell | undefined
 } {
@@ -255,6 +258,10 @@ export function parseSkillFrontmatterFields(
     hooks: parseHooksFromFrontmatter(frontmatter, resolvedName),
     executionContext: frontmatter.context === 'fork' ? 'fork' : undefined,
     agent: frontmatter.agent as string | undefined,
+    background:
+      frontmatter.background === undefined
+        ? undefined
+        : parseBooleanFrontmatter(frontmatter.background),
     effort,
     shell: parseShellFrontmatter(frontmatter.shell, resolvedName),
   }
@@ -283,6 +290,7 @@ export function createSkillCommand({
   hooks,
   executionContext,
   agent,
+  background,
   paths,
   effort,
   shell,
@@ -306,6 +314,7 @@ export function createSkillCommand({
   hooks: HooksSettings | undefined
   executionContext: 'inline' | 'fork' | undefined
   agent: string | undefined
+  background?: boolean
   paths: string[] | undefined
   effort: EffortValue | undefined
   shell: FrontmatterShell | undefined
@@ -325,6 +334,7 @@ export function createSkillCommand({
     userInvocable,
     context: executionContext,
     agent,
+    background,
     effort,
     paths,
     contentLength: markdownContent.length,
@@ -897,7 +907,11 @@ export { transformSkillFiles }
 
 // State for dynamically discovered skills
 const dynamicSkillDirs = new Set<string>()
-const dynamicSkills = new Map<string, Command>()
+// Keyed by scopedSkillKey, so two directories can offer the same name without
+// one replacing the other; getDynamicSkills names them (scopedSkills.ts).
+const dynamicSkills = new Map<string, ScopedSkill>()
+// Which dynamic skill each bare name went to, kept for the session.
+const bareNameGrants = new Map<string, string>()
 
 // --- Conditional skills (path-filtered) ---
 
@@ -994,9 +1008,9 @@ export async function discoverSkillDirsForPaths(
 
 /**
  * Loads skills from the given directories and merges them into the dynamic skills map.
- * Skills from directories closer to the file (deeper paths) take precedence.
+ * Each keeps the directory it came from (ScopedSkill); getDynamicSkills names them.
  *
- * @param dirs Array of skill directories to load from (should be sorted deepest first)
+ * @param dirs `<dir>/.claudin/skills` directories, as discoverSkillDirsForPaths returns them
  */
 export async function addSkillDirectories(dirs: string[]): Promise<void> {
   if (
@@ -1012,27 +1026,22 @@ export async function addSkillDirectories(dirs: string[]): Promise<void> {
     return
   }
 
-  const previousSkillNamesForLogging = new Set(dynamicSkills.keys())
-
   // Load skills from all directories
   const loadedSkills = await Promise.all(
     dirs.map(dir => loadSkillsFromSkillsDir(dir, 'projectSettings')),
   )
 
-  // Process in reverse order (shallower first) so deeper paths override
-  for (let i = loadedSkills.length - 1; i >= 0; i--) {
+  for (const [i, skillsDir] of dirs.entries()) {
+    const dir = dirname(dirname(skillsDir))
     for (const { skill } of loadedSkills[i] ?? []) {
       if (skill.type === 'prompt') {
-        dynamicSkills.set(skill.name, skill)
+        dynamicSkills.set(scopedSkillKey({ skill, dir }), { skill, dir })
       }
     }
   }
 
   const newSkillCount = loadedSkills.flat().length
   if (newSkillCount > 0) {
-    const addedSkills = [...dynamicSkills.keys()].filter(
-      n => !previousSkillNamesForLogging.has(n),
-    )
     logForDebugging(
       `[skills] Dynamically discovered ${newSkillCount} skills from ${dirs.length} directories`,
     )
@@ -1045,9 +1054,32 @@ export async function addSkillDirectories(dirs: string[]): Promise<void> {
 /**
  * Gets all dynamically discovered skills.
  * These are skills discovered from file paths during the session.
+ * `taken` holds the names already offered (the root, user, plugin and
+ * built-in commands), and the scopes are relative to `root`; see
+ * nameScopedSkills.
  */
-export function getDynamicSkills(): Command[] {
-  return Array.from(dynamicSkills.values())
+export function getDynamicSkills(
+  taken: ReadonlySet<string> = new Set(),
+  root: string = getProjectRoot(),
+): Command[] {
+  return nameScopedSkills([...dynamicSkills.values()], taken, root, bareNameGrants)
+}
+
+const MAX_VARIANT_SCAN_DIRS = 100
+
+/**
+ * Loads the skills of the directories with uncommitted changes (up to 100),
+ * so a directory-scoped variant is offered — and named by scopedVariantNote —
+ * before any file under it was read. `changedPaths` are absolute, a trailing
+ * `/` marking an untracked directory; discovery stops at `cwd`, as for a Read.
+ */
+export async function loadSkillsInChangedDirs(changedPaths: readonly string[], cwd: string): Promise<void> {
+  const dirs = [...new Set(changedPaths.map(p => (p.endsWith('/') ? p : dirname(p))))]
+  const found = await discoverSkillDirsForPaths(
+    dirs.slice(0, MAX_VARIANT_SCAN_DIRS).map(d => join(d, '_')),
+    cwd,
+  )
+  if (found.length > 0) await addSkillDirectories(found)
 }
 
 /**
@@ -1096,7 +1128,7 @@ export function activateConditionalSkillsForPaths(
 
       if (skillIgnore.ignores(relativePath)) {
         // Activate this skill by moving it to dynamic skills
-        dynamicSkills.set(name, skill)
+        dynamicSkills.set(scopedSkillKey({ skill }), { skill })
         conditionalSkills.delete(name)
         activatedConditionalSkillNames.add(name)
         activated.push(name)
@@ -1124,6 +1156,7 @@ export function activateConditionalSkillsForPaths(
 export function clearDynamicSkills(): void {
   dynamicSkillDirs.clear()
   dynamicSkills.clear()
+  bareNameGrants.clear()
   conditionalSkills.clear()
   activatedConditionalSkillNames.clear()
 }

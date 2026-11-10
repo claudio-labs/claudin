@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
 
 import type { Command } from 'src/commands/commands.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
+import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
 import { renderToolUseMessage } from 'src/tools/SkillTool/UI.js'
 
 function createPromptCommand(
@@ -94,5 +96,35 @@ describe('SkillTool renderToolUseMessage', () => {
         },
       ),
     ).toBe('/legacy-command')
+  })
+})
+
+describe('SkillTool prompt', () => {
+  test('both texts explain a directory-scoped name', async () => {
+    for (const text of [COMPACT_SKILL_PROMPT, await getPrompt('/repo')]) {
+      expect(text).toContain('listed with that directory as a prefix')
+      expect(text).toContain('apps/web:deploy')
+      expect(text).toContain('the bare name runs the other one')
+    }
+  })
+
+  test("both texts say a background skill's result comes as a notification", async () => {
+    for (const text of [COMPACT_SKILL_PROMPT, await getPrompt('/repo')]) {
+      expect(text).toContain('A skill that runs in the background returns only its agent')
+      expect(text).toContain("don't wait on it or invoke it again meanwhile")
+    }
+  })
+
+  // call() reaches the background path only with a live agent run; pin the wiring.
+  test('call decides on the background inside the fork branch, before running the fork', () => {
+    const source = readFileSync(new URL('./SkillTool.ts', import.meta.url), 'utf8')
+    const fork = source.indexOf("if (command?.type === 'prompt' && command.context === 'fork') {")
+    const background = source.indexOf('if (shouldRunSkillInBackground(command, {')
+    const foreground = source.indexOf('return executeForkedSkill(')
+    expect(fork).toBeGreaterThan(-1)
+    expect(background).toBeGreaterThan(fork)
+    expect(foreground).toBeGreaterThan(background)
+    expect(source).toContain('ownsBackgroundAgents: ownsBackgroundAgents(context.agentId)')
+    expect(source).toContain('backgroundHidden: isRunInBackgroundHidden()')
   })
 })

@@ -26,6 +26,13 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
         </Text>
       </MessageResponse>;
   }
+  if ('status' in output && output.status === 'background') {
+    return <MessageResponse height={1}>
+        <Text>
+          <Byline>{['Running in the background']}</Byline>
+        </Text>
+      </MessageResponse>;
+  }
   const parts: string[] = ['Successfully loaded skill'];
 
   // Show tools count (only for inline skills)

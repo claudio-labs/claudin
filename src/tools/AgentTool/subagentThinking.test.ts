@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
-import { subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
+import type { EffortValue } from 'src/providers/effort/effort.js'
+import {
+  resolveSubagentEffort,
+  subagentEffort,
+  subagentThinkingConfig,
+  withRequestedEffort,
+} from 'src/tools/AgentTool/subagentThinking.js'
 
 const ADAPTIVE: ThinkingConfig = { type: 'adaptive' }
 const OFF: ThinkingConfig = { type: 'disabled' }
@@ -82,10 +88,43 @@ describe('subagentEffort — one level below a raised parent', () => {
 
   // runAgent builds the agent's app state inside a closure no unit test
   // drives; the wiring is pinned on the source.
-  test("runAgent applies it with the parent model's default when the agent definition sets no effort", () => {
+  test("runAgent resolves the agent's effort with the parent model's default", () => {
     const source = readFileSync(`${import.meta.dir}/runAgent.ts`, 'utf8')
     expect(source).toContain(
-      ': subagentEffort(state.effortValue, {\n            useExactTools: useExactTools === true,\n            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),\n          })',
+      'const effortValue = resolveSubagentEffort({\n      defined: agentDefinition.effort,\n      parent: state.effortValue,\n      useExactTools: useExactTools === true,\n      parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),\n    })',
     )
+  })
+})
+
+describe('resolveSubagentEffort', () => {
+  const base = { parent: 'xhigh' as const, useExactTools: false, parentDefault: 'medium' as const }
+
+  test("an agent definition's effort wins over the parent's", () => {
+    expect(resolveSubagentEffort({ ...base, defined: 'low' })).toBe('low')
+    expect(resolveSubagentEffort({ ...base, defined: 'max' })).toBe('max')
+  })
+
+  test('without one, the parent steps down', () => {
+    expect(resolveSubagentEffort({ ...base, defined: undefined })).toBe('high')
+  })
+
+  test('a fork with no defined effort keeps the parent', () => {
+    expect(resolveSubagentEffort({ ...base, defined: undefined, useExactTools: true })).toBe('xhigh')
+  })
+})
+
+describe("withRequestedEffort — the Agent call's own effort", () => {
+  const agent: { agentType: string; effort?: EffortValue } = { agentType: 'Code', effort: 'high' }
+
+  test('replaces the definition effort, so it wins in resolveSubagentEffort', () => {
+    const requested = withRequestedEffort(agent, 'low', false)
+    expect(requested).toEqual({ agentType: 'Code', effort: 'low' })
+    expect(agent.effort).toBe('high')
+    expect(resolveSubagentEffort({ defined: requested.effort, parent: 'xhigh', useExactTools: false, parentDefault: 'medium' })).toBe('low')
+  })
+
+  test('leaves the agent as it is when none was asked for, and for a fork', () => {
+    expect(withRequestedEffort(agent, undefined, false)).toBe(agent)
+    expect(withRequestedEffort(agent, 'max', true)).toBe(agent)
   })
 })

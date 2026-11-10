@@ -104,10 +104,15 @@ export type WireProxy = {
   url(label: string): string
   /** Whether a CLI already sent a /v1/messages request under this label (its headers are held). */
   hasHeaders(label: string): boolean
-  /** Sends `body` upstream with the headers `fromLabel` used, recording it under `asLabel`. Streamed unless `stream: false`. */
-  replay(fromLabel: string, asLabel: string, body: Json, options?: { stream?: boolean }): Promise<ReplayResult>
+  /**
+   * Sends `body` upstream with the headers `fromLabel` used, recording it under `asLabel`.
+   * Streamed unless `stream: false`; `betas` replaces the captured `anthropic-beta` list.
+   */
+  replay(fromLabel: string, asLabel: string, body: Json, options?: ReplayOptions): Promise<ReplayResult>
   close(): Promise<void>
 }
+
+export type ReplayOptions = { stream?: boolean; betas?: string[] }
 
 /** The environment that points a CLI at the proxy without leaving the first-party path. */
 export function proxyEnv(url: string): Record<string, string> {
@@ -358,9 +363,10 @@ export function startWireProxy(logDir: string, options: WireProxyOptions = {}): 
     })
   }
 
-  const replay = (fromLabel: string, asLabel: string, body: Json, options: { stream?: boolean } = {}): Promise<ReplayResult> => {
-    const from = captured.get(fromLabel)
-    if (!from) return Promise.reject(new Error(`wire-proxy: no /v1/messages request seen under ${fromLabel} yet`))
+  const replay = (fromLabel: string, asLabel: string, body: Json, options: ReplayOptions = {}): Promise<ReplayResult> => {
+    const seen = captured.get(fromLabel)
+    if (!seen) return Promise.reject(new Error(`wire-proxy: no /v1/messages request seen under ${fromLabel} yet`))
+    const from = options.betas ? { ...seen, 'anthropic-beta': options.betas.join(',') } : seen
     const payload = Buffer.from(JSON.stringify({ ...body, stream: options.stream ?? true }))
     const { n, dir } = nextSlot(asLabel)
     const reqFile = `req-${String(n).padStart(3, '0')}.json.gz`

@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
-import { dedupeCanonicalRoots, findNestedGitRoots } from 'src/vcs/git/git.js'
+import { dedupeCanonicalRoots, findNestedGitRoots, parsePorcelainZ } from 'src/vcs/git/git.js'
 
 describe('dedupeCanonicalRoots', () => {
   test('drops nulls and keeps first occurrence order', () => {
@@ -73,5 +73,16 @@ describe('findNestedGitRoots', () => {
 
   test('returns [] for a non-existent base', async () => {
     expect(await findNestedGitRoots(join(base, 'nope'))).toEqual([])
+  })
+})
+
+describe('parsePorcelainZ', () => {
+  test('takes each path as printed, a rename or copy by its new path only', () => {
+    const out = [' M src/a.ts', 'R  apps/web/release notes.txt', 'notes.txt', '?? tools/', 'C  b.ts', 'a.ts', 'A  "odd".ts', ''].join('\0')
+    expect(parsePorcelainZ(out)).toEqual(['src/a.ts', 'apps/web/release notes.txt', 'tools/', 'b.ts', '"odd".ts'])
+  })
+
+  test('nothing to report is no paths', () => {
+    expect(parsePorcelainZ('')).toEqual([])
   })
 })

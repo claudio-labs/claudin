@@ -10,6 +10,7 @@ import {
 } from 'src/permissions/ui/PermissionPrompt.js'
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
+import { monitorSource } from 'src/tools/MonitorTool/monitorSource.js'
 
 type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
 
@@ -19,8 +20,9 @@ export function MonitorPermissionRequest({
   onReject,
   workerBadge,
 }: PermissionRequestProps) {
-  const { command, description } = toolUseConfirm.input as {
+  const { command, ws, description } = toolUseConfirm.input as {
     command?: string
+    ws?: { url: string }
     description?: string
   }
   // Shared by Monitor and WaitFor — both delegate to the Bash rules — so the
@@ -75,7 +77,9 @@ export function MonitorPermissionRequest({
     onDone()
   }
 
-  const showAlwaysAllow = shouldShowAlwaysAllowOptions()
+  // A Monitor `ws` source is asked for every time: there is no Bash rule
+  // that could stand for a socket.
+  const showAlwaysAllow = !ws && shouldShowAlwaysAllowOptions()
   const originalCwd = getOriginalCwd()
 
   const options: PermissionPromptOption<OptionValue>[] = [
@@ -114,7 +118,7 @@ export function MonitorPermissionRequest({
     <PermissionDialog title={label} workerBadge={workerBadge}>
       <Box flexDirection="column" paddingX={2} paddingY={1}>
         <Text>
-          {label}({command ?? ''})
+          {label}({monitorSource({ command, ws })})
         </Text>
         {description ? (
           <Text dimColor>{description}</Text>

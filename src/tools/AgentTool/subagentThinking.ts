@@ -36,6 +36,7 @@ import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import {
   EFFORT_LEVELS,
   isEffortLevel,
+  type EffortLevel,
   type EffortValue,
 } from 'src/providers/effort/effort.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
@@ -76,4 +77,37 @@ export function subagentEffort(
   if (typeof parentDefault !== 'string' || !isEffortLevel(parentDefault)) return parent
   const at = EFFORT_LEVELS.indexOf(parent)
   return at > EFFORT_LEVELS.indexOf(parentDefault) ? EFFORT_LEVELS[at - 1]! : parent
+}
+
+/**
+ * The effort a sub-agent runs at: the agent definition's `effort` when it sets
+ * one, else the parent's through subagentEffort's step-down. Levels a model
+ * lacks are clamped on the wire (resolveAppliedEffort), not here.
+ */
+export function resolveSubagentEffort({
+  defined,
+  parent,
+  useExactTools,
+  parentDefault,
+}: {
+  defined: EffortValue | undefined
+  parent: EffortValue | undefined
+  useExactTools: boolean
+  parentDefault: EffortValue | undefined
+}): EffortValue | undefined {
+  if (defined !== undefined) return defined
+  return subagentEffort(parent, { useExactTools, parentDefault })
+}
+
+/**
+ * The Agent call's own `effort` replaces the definition's, so it wins in
+ * resolveSubagentEffort — except for a fork, which keeps the parent's effort
+ * because its requests must match the parent's prefix.
+ */
+export function withRequestedEffort<T extends { effort?: EffortValue }>(
+  agent: T,
+  requested: EffortLevel | undefined,
+  isFork: boolean,
+): T {
+  return requested === undefined || isFork ? agent : { ...agent, effort: requested }
 }

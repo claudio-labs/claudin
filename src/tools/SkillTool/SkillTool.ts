@@ -53,6 +53,13 @@ import {
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
+import { loadSkillsInChangedDirs } from 'src/skills/loadSkillsDir.js'
+import { scopedVariantNote } from 'src/skills/scopedSkills.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getChangedPaths } from 'src/vcs/git/git.js'
+import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
+import { ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js'
+import { launchSkillInBackground, shouldRunSkillInBackground } from 'src/tools/SkillTool/backgroundSkill.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
@@ -218,6 +225,10 @@ export const outputSchema = lazySchema(() => {
       .describe('Tools allowed by this skill'),
     model: z.string().optional().describe('Model override if specified'),
     status: z.literal('inline').optional().describe('Execution status'),
+    variantsNote: z
+      .string()
+      .optional()
+      .describe('The directory-scoped variants of this skill, when it has any'),
   })
 
   // Output schema for forked skills
@@ -231,7 +242,15 @@ export const outputSchema = lazySchema(() => {
     result: z.string().describe('The result from the forked skill execution'),
   })
 
-  return z.union([inlineOutputSchema, forkedOutputSchema])
+  // Output schema for a forked skill launched in the background
+  const backgroundOutputSchema = z.object({
+    success: z.boolean().describe('Whether the skill was launched'),
+    commandName: z.string().describe('The name of the skill'),
+    status: z.literal('background').describe('Execution status'),
+    agentId: z.string().describe('The ID of the background agent running the skill'),
+  })
+
+  return z.union([inlineOutputSchema, forkedOutputSchema, backgroundOutputSchema])
 })
 type OutputSchema = ReturnType<typeof outputSchema>
 
@@ -480,6 +499,14 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
     // Check if skill should run as a forked sub-agent
     if (command?.type === 'prompt' && command.context === 'fork') {
+      // `background: true` runs the fork as a background agent (backgroundSkill.ts)
+      if (shouldRunSkillInBackground(command, {
+        ownsBackgroundAgents: ownsBackgroundAgents(context.agentId),
+        backgroundHidden: isRunInBackgroundHidden(),
+      })) {
+        const { agentId } = await launchSkillInBackground(command, commandName, args, context, canUseTool)
+        return { data: { success: true, commandName, status: 'background', agentId } }
+      }
       return executeForkedSkill(
         command,
         commandName,
@@ -510,6 +537,13 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     const allowedTools = processedCommand.allowedTools || []
     const model = processedCommand.model
     const effort = command?.type === 'prompt' ? command.effort : undefined
+
+    // `deploy` with an `apps/web:deploy` beside it: say so before the model
+    // follows this one. The directories with uncommitted changes are searched
+    // first, so a variant counts before any file under it was read.
+    const cwd = getCwd()
+    await loadSkillsInChangedDirs(await getChangedPaths(cwd), cwd)
+    const variantsNote = scopedVariantNote(commandName, command, await getAllCommands(context))
 
     const isBuiltIn = builtInCommandNames().has(commandName)
     const isBundled = command?.type === 'prompt' && command.source === 'bundled'
@@ -569,6 +603,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
         commandName,
         allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
         model,
+        ...(variantsNote && { variantsNote }),
       },
       newMessages,
       contextModifier(ctx) {
@@ -652,11 +687,19 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
       }
     }
 
+    if ('status' in result && result.status === 'background') {
+      return {
+        type: 'tool_result' as const,
+        tool_use_id: toolUseID,
+        content: `Skill "${result.commandName}" launched in the background as agent ${result.agentId}. Its result arrives as a task notification: don't wait on it or invoke it again meanwhile.`,
+      }
+    }
+
     // Inline skill result (default)
     return {
       type: 'tool_result' as const,
       tool_use_id: toolUseID,
-      content: `Launching skill: ${result.commandName}`,
+      content: `Launching skill: ${result.commandName}${'variantsNote' in result && result.variantsNote ? `\n\n${result.variantsNote}` : ''}`,
     }
   },
 
@@ -685,6 +728,8 @@ const SAFE_SKILL_PROPERTIES = new Set([
   'skillRoot',
   'context',
   'agent',
+  'background',
+  'scope',
   'getPromptForCommand',
   'frontmatterKeys',
   // CommandBase properties

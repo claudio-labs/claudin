@@ -17,6 +17,7 @@ import {
   getSessionProjectDir,
 } from 'src/platform/bootstrap/state.js'
 import type { AgentId } from 'src/shared/types/ids.js'
+import type { EffortLevel } from 'src/providers/effort/effort.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
@@ -41,6 +42,8 @@ export type AgentMetadata = {
    * is looked up again by agentType, which alone would hand a research agent
    * its write tools back. */
   readOnly?: boolean
+  /** The spawn's `effort`. Resume re-applies it over the definition's. */
+  effort?: EffortLevel
   /** The filter that picked the first run's tools. A resume always runs in the
    * background, and keeps this filter instead of the background allowlist.
    * Absent in metadata written before 2026-10-11, which resumes as before. */

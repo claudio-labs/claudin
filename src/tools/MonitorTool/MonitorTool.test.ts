@@ -148,6 +148,20 @@ describe('MonitorTool', () => {
     expect(prompt).toContain('run_in_background')
   })
 
+  test('the prompt carries the choice table and the pipeline traps', async () => {
+    const prompt = await MonitorTool.prompt()
+    expect(prompt).toContain('Pick by how many notifications you need:')
+    expect(prompt).toContain('One per occurrence, until a known end')
+    expect(prompt).toContain('`tail -f app.log | grep -m 1 Ready` does not fix that')
+    expect(prompt).toContain('`| head -N` cannot flush')
+    expect(prompt).toContain('print every terminal state')
+    expect(prompt).toContain('`curl … || true`')
+    expect(prompt).toContain('every notification is titled with it')
+    // Claudin's stream carries stderr; Claude Code's "only stdout" advice is not true here.
+    expect(prompt).toContain('stdout and stderr together')
+    expect(prompt).not.toContain('Only stdout')
+  })
+
   test('renderToolUseMessage joins description and command, else shows whichever is set', () => {
     const render = (input: object) => MonitorTool.renderToolUseMessage(input as never)
     expect(render({ command: 'tail -f a.log', description: 'app log' })).toBe(
@@ -290,4 +304,111 @@ describe('MonitorTool.call', () => {
       stopCommand(harness.getState(), taskId)
     }
   }, 15_000)
+})
+
+describe('MonitorTool ws source', () => {
+  beforeEach(() => resetCommandQueue())
+  afterEach(() => resetCommandQueue())
+
+  const validate = (input: object) => MonitorTool.validateInput!(input as never)
+
+  test('validateInput wants exactly one of command and ws, and a well-formed ws', async () => {
+    expect(await validate({ description: 'd' })).toMatchObject({ result: false, message: 'Pass exactly one of `command` and `ws`.' })
+    expect(await validate({ command: 'ls', ws: { url: 'wss://a.example' }, description: 'd' })).toMatchObject({ result: false })
+    expect(await validate({ ws: { url: 'https://a.example' }, description: 'd' })).toMatchObject({ result: false, errorCode: 2 })
+    expect(await validate({ ws: { url: 'wss://a.example/feed#x' }, description: 'd' })).toMatchObject({ result: false, errorCode: 2 })
+    expect(await validate({ ws: { url: 'wss://93.184.216.34', protocols: ['v1'] }, description: 'd' })).toEqual({ result: true })
+    expect(await validate({ command: 'ls', description: 'd' })).toEqual({ result: true })
+  })
+
+  // Before the permission step, so the user is never asked about a URL that
+  // would then be refused.
+  test('validateInput refuses a private address', async () => {
+    expect(await validate({ ws: { url: 'ws://10.1.2.3:9000/feed' }, description: 'internal feed' })).toEqual({
+      result: false,
+      message: 'Monitor will not open ws://10.1.2.3:9000/feed: 10.1.2.3 is in a private, link-local or cloud-metadata range',
+      errorCode: 3,
+    })
+    expect(await validate({ ws: { url: 'ws://127.0.0.1:9000/feed' }, description: 'local feed' })).toEqual({ result: true })
+  })
+
+  test('the schema takes a ws object and nothing else beside it', () => {
+    expect(MonitorTool.inputSchema.safeParse({ ws: { url: 'wss://a.example' }, description: 'd' }).success).toBe(true)
+    expect(MonitorTool.inputSchema.safeParse({ ws: { url: 'wss://a.example', extra: 1 }, description: 'd' }).success).toBe(false)
+  })
+
+  test('a ws source is always asked for, naming the URL and subprotocols, with no rule offered', async () => {
+    const result = await MonitorTool.checkPermissions(
+      { ws: { url: 'wss://events.example.com/stream', protocols: ['v1'] }, description: 'deploy events' },
+      {} as ToolUseContext,
+    )
+    expect(result).toEqual({
+      behavior: 'ask',
+      message: 'Monitor will open a WebSocket to wss://events.example.com/stream (subprotocols: v1)',
+    })
+  })
+
+  test('the classifier, the summary and the transcript line name the socket', () => {
+    const input = { ws: { url: 'wss://events.example.com/stream' }, description: '' }
+    expect(MonitorTool.toAutoClassifierInput?.(input as never)).toBe('websocket wss://events.example.com/stream')
+    expect(MonitorTool.getToolUseSummary?.(input as never)).toBe('websocket wss://events.example.com/stream')
+    expect(MonitorTool.renderToolUseMessage({ ...input, description: 'deploy events' } as never)).toBe(
+      'deploy events: websocket wss://events.example.com/stream',
+    )
+  })
+
+  test('the prompt describes the ws source', async () => {
+    const prompt = await MonitorTool.prompt()
+    expect(prompt).toContain('`ws` instead of `command` opens a WebSocket')
+    expect(prompt).toContain('`[binary frame, N bytes]`')
+    expect(prompt).toContain('a frame over 1 MiB closes the socket')
+    expect(prompt).toContain('a `ws` monitor asks the user first unless the permission mode already allows it')
+  })
+
+  test('streams frames from a local socket and ends with the close', async () => {
+    let peer: { send(data: string | Uint8Array): void; close(code?: number, reason?: string): void } | undefined
+    const server = Bun.serve({
+      port: 0,
+      fetch(req, srv) {
+        return srv.upgrade(req) ? undefined : new Response('no', { status: 400 })
+      },
+      websocket: {
+        open(ws) {
+          peer = ws
+        },
+        message() {},
+      },
+    })
+    const harness = makeStateHarness()
+    const context = {
+      abortController: new AbortController(),
+      setAppState: harness.setAppState,
+      toolUseId: 'toolu_monitor_ws_local',
+    } as unknown as ToolUseContext
+    try {
+      const result = await MonitorTool.call(
+        { ws: { url: `ws://127.0.0.1:${server.port}/feed` }, description: 'local feed' },
+        context,
+      )
+      const { taskId } = result.data
+      expect(harness.getState().tasks[taskId]).toMatchObject({ kind: 'monitor', command: `websocket ws://127.0.0.1:${server.port}/feed` })
+      const deadline = Date.now() + 5_000
+      while (!peer && Date.now() < deadline) await new Promise(r => setTimeout(r, 20))
+      peer!.send('build 42 passed')
+      // Not valid UTF-8: decoded, these four bytes would count as ten.
+      peer!.send(new Uint8Array([0xff, 0xfe, 0x00, 0x80]))
+      const event = await waitForNotification(n => n.includes('build 42 passed'), 5_000)
+      expect(event).toContain(taskId)
+      expect(event).toContain('Monitor "local feed" output')
+
+      peer!.close(1000, 'bye')
+      const exit = await waitForNotification(n => n.includes(taskId) && n.includes('<status>'), 8_000)
+      expect(exit).toContain('<status>completed</status>')
+      const all = getCommandQueue().map(c => String(c.value)).join('\n')
+      expect(all).toContain('[binary frame, 4 bytes]')
+      expect(all).toContain('[WebSocket closed: 1000 bye]')
+    } finally {
+      server.stop(true)
+    }
+  }, 20_000)
 })
