@@ -18,14 +18,26 @@ still open.
 - Monitor: the guidance rewritten in Claudin's terms, and a `ws: {url, protocols?}` source — a
   `ShellCommand` adapter (`src/tools/MonitorTool/webSocketCommand.ts`) that appends frames to
   the task output, so monitorStream, TaskStop and `timeout_ms` stay one path. SSRF uses the HTTP
-  hooks' `isBlockedAddress` (loopback allowed); every ws monitor is asked, with no rule offered.
+  hooks' `isBlockedAddress` (loopback allowed) in `validateInput`, before the ask, and on Node the
+  connection resolves through `ssrfGuardedNetLookup` (skipped behind a proxy, as for HTTP hooks);
+  Bun's client has no lookup hook. A ws monitor gets a plain ask with no rule offered, so a mode
+  that allows without asking (bypass, a tool-wide rule, auto) allows it — the user's call.
   Live-checked on Bun and Node against `wss://echo.websocket.org`.
 - Agent `effort` input: replaces the definition's effort, ignored for a fork, persisted in the
   agent metadata for a resume.
 - Skills: a nested `.claudin/skills` skill whose name is taken used to vanish (getCommands
-  dropped it); it is now `apps/web:deploy`, and calling the bare one lists its variants
-  (uncommitted-change dirs scanned, ≤100). `background: true` on a `context: fork` skill runs it
-  as a background agent — opt-in, where CC defaults it on.
+  dropped it); it is now `apps/web:deploy` (`src/skills/scopedSkills.ts`), and calling the bare
+  one lists its variants (`git status -z` dirs from the repo root, ≤100). Unlike CC, a bare name
+  once offered stays with its skill for the session (the listing never re-announces a name).
+  `background: true` on a `context: fork` skill runs it as a background agent when the Skill tool
+  calls it — opt-in, where CC defaults it on; a typed `/skill` stays foreground in both.
+
+**Review round (11-09, 3 agents):** six real bugs after a green 17.8k suite and live checks — a
+`#fragment` hung the Node opener (ws throws in the load's `.then`), binary frames were sized after
+UTF-8 decoding, `detach()` dropped the error listener ws still needs, git status paths are
+repo-root relative, scoped names changed mid-session, a conditional skill and a nested one both
+came out bare. Plus one Agreed Decision of the plan never built (the Node lookup pin). Each got a
+red test commit, then its fix.
 
 **Not ported, measured:**
 - Agent "When to use" (CC's cost paragraph): delegation-steer-ab on Sonnet 5.5 high, N=3
@@ -41,6 +53,11 @@ still open.
   neither (ultrathink stays a text reminder).
 - mid-conversation-tool-changes, and Fable 5.2 (CC's catalog has `claude-fable-5-2`; Claudin
   has none).
+
+**Left open by the 11-09 review round (pre-existing, not this branch's):** the review's bug agent
+reported that `isBlockedAddress` (`src/platform/lifecycleHooks/ssrfGuard.ts`, shared by HTTP
+hooks and the ws source) lets NAT64 (`64:ff9b::/96`) and IPv4-compatible IPv6 addresses through;
+not re-verified, not fixed.
 
 **Real wire vs the stub (CC 2.1.321, Sonnet 5.5, OAuth):** CC moves the top-level effort to the
 turn's AND adds `{role:"system", content:[], output_config:{effort}}` after the user turn;
