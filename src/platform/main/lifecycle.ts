@@ -12,6 +12,7 @@ import { migrateAutoUpdatesToSettings } from 'src/platform/migrations/migrateAut
 import { migrateBypassPermissionsAcceptedToSettings } from 'src/platform/migrations/migrateBypassPermissionsAcceptedToSettings.js';
 import { migrateEnableAllProjectMcpServersToSettings } from 'src/platform/migrations/migrateEnableAllProjectMcpServersToSettings.js';
 import { migrateFable5ToFable51 } from 'src/platform/migrations/migrateFable5ToFable51.js';
+import { migrateFable51ToFableAlias } from 'src/platform/migrations/migrateFable51ToFableAlias.js';
 import { migrateFennecToOpus } from 'src/platform/migrations/migrateFennecToOpus.js';
 import { migrateLegacyOpusToCurrent } from 'src/platform/migrations/migrateLegacyOpusToCurrent.js';
 import { migrateOpusToOpus1m } from 'src/platform/migrations/migrateOpusToOpus1m.js';
@@ -29,7 +30,7 @@ import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from 'src/platform/m
 
 // @[MODEL LAUNCH]: Consider any migrations you may need for model strings. See migrateSonnet1mToSonnet45.ts for an example.
 // Bump this when adding a new sync migration so existing users re-run the set.
-const CURRENT_MIGRATION_VERSION = 13;
+const CURRENT_MIGRATION_VERSION = 14;
 
 export function runMigrations(): void {
   if (getGlobalConfig().migrationVersion !== CURRENT_MIGRATION_VERSION) {
@@ -49,6 +50,8 @@ export function runMigrations(): void {
     // Independent of the Opus/Sonnet chain above: rewrites the retired
     // 'claude-fable-5' pin to 'claude-fable-5-1' wherever it is persisted.
     migrateFable5ToFable51();
+    // After it, so a Fable 5 pin moves 5 → 5.1 → 'fable' in one startup.
+    migrateFable51ToFableAlias();
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       resetAutoModeOptInForDefaultOffer();
     }
