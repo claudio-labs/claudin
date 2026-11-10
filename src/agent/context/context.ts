@@ -213,12 +213,18 @@ export function getModelMaxOutputTokens(model: string): {
 
   const m = getCanonicalName(model)
 
-  // Before the opus-5/sonnet-5 branch: 'claude-opus-5-5' and 'claude-sonnet-5-5'
-  // contain those ids and would otherwise inherit their 64K DEFAULT. Claude Code
-  // sends max_tokens: 128000 for all three 5.5 models — docs/tech/opus-5-5/
+  // Before the opus-5/sonnet-5/fable-5 branch: 'claude-opus-5-5',
+  // 'claude-sonnet-5-5' and 'claude-fable-5-2' contain those ids and would
+  // otherwise inherit their 64K DEFAULT. Claude Code sends max_tokens: 128000
+  // for all three 5.5 models and Fable 5.2 — docs/tech/opus-5-5/
   // wire-capture.md and src/providers/model/__fixtures__/claude-code-wire/.
   // Haiku 5.5 would otherwise fall to Haiku 4.5's 32K/64K below.
-  if (m.includes('opus-5-5') || m.includes('sonnet-5-5') || m.includes('haiku-5-5')) {
+  if (
+    m.includes('opus-5-5') ||
+    m.includes('sonnet-5-5') ||
+    m.includes('haiku-5-5') ||
+    m.includes('fable-5-2')
+  ) {
     defaultTokens = 128_000
     upperLimit = 128_000
   } else if (

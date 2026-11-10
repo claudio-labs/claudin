@@ -15,7 +15,8 @@ import { getCanonicalName, type ModelName } from 'src/providers/model/model.js'
  */
 export function sanitizeModelName(shortName: string): string {
   // Map internal variants to public equivalents based on model family
-  // Before the fable-5 branch: 'fable-5-1' contains 'fable-5'.
+  // Before the fable-5 branch: 'fable-5-2' and 'fable-5-1' contain 'fable-5'.
+  if (shortName.includes('fable-5-2')) return 'claude-fable-5-2'
   if (shortName.includes('fable-5-1')) return 'claude-fable-5-1'
   if (shortName.includes('fable-5')) return 'claude-fable-5'
   // Same containment trap one tier down: 'opus-5-5' contains 'opus-5'.

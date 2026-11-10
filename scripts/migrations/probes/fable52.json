@@ -1,0 +1,155 @@
+{
+  "test": [
+    "src/providers/model/claudeCodeParity.test.ts",
+    "src/providers/model/fable52.test.ts",
+    "src/providers/model/fable51.test.ts",
+    "src/providers/model/modelOptions.dualcontext.test.ts",
+    "src/platform/migrations/migrateFable51ToFableAlias.test.ts"
+  ],
+  "source": "src/providers/model/model.ts",
+  "probes": [
+    {
+      "name": "canonical: fable 5.2 branch removed",
+      "find": "if (name.includes('claude-fable-5-2') || name.includes('claude-fable-5.2')) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "canonical: dotted fable 5.2 dropped",
+      "find": "name.includes('claude-fable-5-2') || name.includes('claude-fable-5.2')",
+      "replace": "name.includes('claude-fable-5-2')"
+    },
+    {
+      "name": "canonical: dotted fable 5.1 dropped",
+      "find": "name.includes('claude-fable-5-1') || name.includes('claude-fable-5.1')",
+      "replace": "name.includes('claude-fable-5-1')"
+    },
+    {
+      "name": "display name: fable 5.2 case removed",
+      "find": "    case getModelStrings().fable52:\n      // 1M context is the default on Fable 5.2 — no [1m] variant needed.\n      return 'Fable 5.2'\n",
+      "replace": ""
+    },
+    {
+      "name": "alias: fable still resolves to 5.1",
+      "find": "    return getModelStrings().fable52\n",
+      "replace": "    return getModelStrings().fable51\n"
+    },
+    {
+      "name": "alias: fable52 not recognized",
+      "find": "    modelString === 'fable52'\n",
+      "replace": "    modelString === 'fable-none'\n"
+    },
+    {
+      "name": "marketing name: fable 5.2 branch removed",
+      "find": "  if (canonical.includes('claude-fable-5-2')) {\n    return 'Fable 5.2'\n  }\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/usage/modelCost.ts",
+      "name": "billing: fable 5.2 has no price row",
+      "find": "  [firstPartyNameToCanonical(CLAUDE_FABLE_5_2_CONFIG.firstParty)]:\n    COST_TIER_8_40_CACHE_READ_0_20,\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/usage/modelCost.ts",
+      "name": "billing: fable 5.2 cache read at the opus fast rate",
+      "find": "  promptCacheWrite1hTokens: 16,\n  promptCacheReadTokens: 0.2,\n",
+      "replace": "  promptCacheWrite1hTokens: 16,\n  promptCacheReadTokens: 0.4,\n"
+    },
+    {
+      "source": "src/providers/effort/effort.ts",
+      "name": "effort: fable 5.2 back to high",
+      "find": "  if (lowerModel.includes('fable-5-2') && getAPIProvider() === 'firstParty') {\n    return 'medium'\n  }\n",
+      "replace": ""
+    },
+    {
+      "source": "src/agent/context/context.ts",
+      "name": "max output: fable 5.2 at 64K",
+      "find": "    m.includes('haiku-5-5') ||\n    m.includes('fable-5-2')\n",
+      "replace": "    m.includes('haiku-5-5')\n"
+    },
+    {
+      "source": "src/providers/transport/betas.ts",
+      "name": "betas: fable 5.2 without thinking binding",
+      "find": "    canonical.includes('claude-fable-5-2') ||\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/transport/errors.ts",
+      "name": "3P fallback (errors): fable 5.2 to opus 4.8",
+      "find": "  if (m.includes('fable-5-2') || m.includes('fable_5_2')) {\n    return getModelStrings().fable51\n  }\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/model/validateModel.ts",
+      "name": "3P fallback (validate): fable 5.2 to opus 4.8",
+      "find": "  if (lowerModel.includes('fable-5-2') || lowerModel.includes('fable_5_2')) {\n    return getModelStrings().fable51\n  }\n",
+      "replace": ""
+    },
+    {
+      "source": "src/vcs/git/commitAttribution.ts",
+      "name": "commit trailer: fable 5.2 branch removed",
+      "find": "  if (shortName.includes('fable-5-2')) return 'claude-fable-5-2'\n",
+      "replace": ""
+    },
+    {
+      "source": "src/tools/FileReadTool/resultContent.ts",
+      "name": "read reminder: fable 5.2 not exempt",
+      "find": "  'claude-fable-5-2',\n",
+      "replace": ""
+    },
+    {
+      "source": "src/agent/prompts/prompts.ts",
+      "name": "cutoff: fable 5.2 falls to January 2026",
+      "find": "canonical.includes('claude-fable-5-2') || canonical.includes('claude-fable-5-1')",
+      "replace": "canonical.includes('claude-fable-5-1')"
+    },
+    {
+      "source": "src/providers/model/modelOptions.ts",
+      "name": "picker (PAYG): fable 5.2 not offered",
+      "find": "    payg1POptions.push(getFable52Option())\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/model/modelOptions.ts",
+      "name": "picker (PAYG): fable 5.2 pinned instead of the alias",
+      "find": "    value: is3P ? getModelStrings().fable52 : 'fable',",
+      "replace": "    value: getModelStrings().fable52,"
+    },
+    {
+      "source": "src/providers/model/modelOptions.ts",
+      "name": "picker (Max): fable 5.2 pinned instead of the alias",
+      "find": "    value: getAPIProvider() !== 'firstParty' ? ms.fable52 : 'fable',",
+      "replace": "    value: ms.fable52,"
+    },
+    {
+      "source": "src/shared/envUtils.ts",
+      "name": "vertex region: fable 5.2 variable removed",
+      "find": "  ['claude-fable-5-2', 'VERTEX_REGION_CLAUDE_FABLE_5_2'],\n",
+      "replace": ""
+    },
+    {
+      "source": "src/shared/envUtils.ts",
+      "name": "vertex region: fable 5.1 variable removed",
+      "find": "  ['claude-fable-5-1', 'VERTEX_REGION_CLAUDE_FABLE_5_1'],\n",
+      "replace": ""
+    },
+    {
+      "source": "src/platform/migrations/migrateFable51ToFableAlias.ts",
+      "name": "migration: the [1m] pin is not moved",
+      "find": "  'claude-fable-5-1[1m]',\n",
+      "replace": ""
+    },
+    {
+      "source": "src/platform/migrations/migrateFable51ToFableAlias.ts",
+      "name": "migration: 3P project pins moved too",
+      "find": "      isFirstPartyPin(project.activeModelForProjectProfileId),",
+      "replace": "      true,"
+    },
+    {
+      "source": "src/platform/migrations/migrateFable51ToFableAlias.ts",
+      "name": "migration: pins written as an explicit id",
+      "find": "? 'fable' : undefined",
+      "replace": "? 'claude-fable-5-2' : undefined"
+    }
+  ]
+}

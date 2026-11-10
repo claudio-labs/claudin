@@ -11,6 +11,7 @@ import {
   COST_TIER_2_10,
   COST_TIER_3_15,
   COST_TIER_10_50,
+  COST_TIER_8_40_CACHE_READ_0_20,
   COST_HAIKU_35,
   COST_HAIKU_45,
   COST_HAIKU_55,
@@ -226,16 +227,28 @@ function getOpus48Option(fastMode = false): ModelOption {
   }
 }
 
-// Claude Fable 5.1 — frontier tier above Opus. Pinned to the explicit model
-// string (no alias). 1M context is the default, so there is no [1m] variant.
+// Claude Fable 5.2 — frontier tier above Opus. On 1P the 'fable' alias resolves
+// to it (and is what the 5.1 pin migration writes); on 3P pin the explicit
+// string. 1M context is the default, so there is no [1m] variant.
+function getFable52Option(): ModelOption {
+  const is3P = getAPIProvider() !== 'firstParty'
+  return {
+    value: is3P ? getModelStrings().fable52 : 'fable',
+    label: 'Fable 5.2',
+    description: `Fable 5.2 · Frontier reasoning, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_8_40_CACHE_READ_0_20)}`}`,
+    descriptionForModel:
+      'Fable 5.2 - most capable frontier model for the hardest long-horizon work. 1M context by default. Higher cost than Opus.',
+  }
+}
+
+// Claude Fable 5.1 — the previous Fable, pinned to the explicit model string.
 function getFable51Option(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
     value: getModelStrings().fable51,
     label: 'Fable 5.1',
-    description: `Fable 5.1 · Frontier reasoning, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
-    descriptionForModel:
-      'Fable 5.1 - most capable frontier model for the hardest long-horizon work. 1M context by default. Higher cost than Opus.',
+    description: `Fable 5.1 · Previous Fable, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
+    descriptionForModel: 'Fable 5.1 - previous Fable version. 1M context by default.',
   }
 }
 
@@ -397,11 +410,18 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
     label: 'Sonnet 5',
     description: `Sonnet 5 · Previous Sonnet · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_2_10)}`}`,
   })
-  // Fable 5.1 is 1M by default — single entry, no [1m] pair.
+  // Fable 5.2 and 5.1 are 1M by default — single entries, no [1m] pair. On 1P
+  // the 'fable' alias resolves to 5.2; 5.1 stays listed as the previous
+  // generation, like Sonnet 5 above.
+  opts.push({
+    value: getAPIProvider() !== 'firstParty' ? ms.fable52 : 'fable',
+    label: 'Fable 5.2',
+    description: `Fable 5.2 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_8_40_CACHE_READ_0_20)}`}`,
+  })
   opts.push({
     value: ms.fable51,
     label: 'Fable 5.1',
-    description: `Fable 5.1 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
+    description: `Fable 5.1 · Previous Fable · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
   })
   // Opus 5.5 is 1M by default — single entry, no [1m] pair (like Sonnet/Fable
   // 5). On 1P the 'opus' alias resolves to Opus 5.5; on 3P (where the default
@@ -598,8 +618,9 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     return [getDefaultOptionForUser(fastMode), ...getCodexModelOptions(), ...profileModelOptions]
   }
 
-  // PAYG 1P API: Default (Sonnet 5.5) + Sonnet 5.5 + Sonnet 5 + Fable 5.1 +
-  // Opus 5.5 + Opus 5 + Haiku 5.5. The 5.x entries are 1M-native (no [1m] variant).
+  // PAYG 1P API: Default (Sonnet 5.5) + Sonnet 5.5 + Sonnet 5 + Fable 5.2 +
+  // Fable 5.1 + Opus 5.5 + Opus 5 + Haiku 5.5. The 5.x entries are 1M-native
+  // (no [1m] variant).
   // Sonnet 5 and Opus 5 are the legacy generations still listed — both are
   // current at Anthropic and only a generation old; the older ones (Opus
   // 4.6/4.7/4.8, Sonnet 4.5/4.6, Haiku 4.5) remain resolvable by explicit
@@ -608,6 +629,7 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
     payg1POptions.push(getSonnet55Option())
     payg1POptions.push(getSonnet5Option())
+    payg1POptions.push(getFable52Option())
     payg1POptions.push(getFable51Option())
     payg1POptions.push(getOpus55Option(fastMode))
     payg1POptions.push(getOpus5Option(fastMode))
