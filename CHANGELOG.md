@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.1.52 — 2026-11-10
+
+### ✨ Features
+
+- feat(providers): register claude fable 5.2 as the latest fable (#348) (b6d9c03e)
+- feat: elision guard, rewind conflicts, hunk revert, model fallback (#341) (9353b39a)
+
+### 🐛 Bug Fixes
+
+- fix(tools): expand piped ~ and settle esc before a queued prompt (#346) (e356d676)
+
+### 📦 Dependencies
+
+- docs(deps): correct two comments the 11-09 bumps made stale (#345) (f56fa0fa)
+- chore(deps): bump the production-dependencies group across 1 directory with 11 updates (#343) (2e877df1)
+- chore(deps): bump supports-hyperlinks from 4.6.0 to 5.0.0 (#344) (d939cae1)
+- chore(deps): bump knip from 6.44.0 to 6.44.1 in the dev-dependencies group (#342) (a00789a1)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.51 — 2026-11-03
 
 ### ✨ Features
