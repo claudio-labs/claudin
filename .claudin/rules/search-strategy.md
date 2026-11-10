@@ -53,7 +53,7 @@ src/
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
 │   ├── transport/ (49)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
 │   ├── oauth/ (37)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
-│   ├── model/ (57)              ← model.ts (getMainLoopModel, getSmallFastModel),
+│   ├── model/ (63)              ← model.ts (getMainLoopModel, getSmallFastModel),
 │   │                              providers.ts (getAPIProvider), modelOptions, catalogs.
 │   │                              getPrimaryModel is presets/providerModels.ts and
 │   │                              getContextWindowForModel is agent/context/context.ts
