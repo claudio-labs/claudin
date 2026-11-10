@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.0 — 2026-11-10
+
+### ✨ Features
+
+- feat(tools): port claude code 2.1.321 tool changes (#347) (a1659b18)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.52 — 2026-11-10
 
 ### ✨ Features
