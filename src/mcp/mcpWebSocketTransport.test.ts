@@ -94,9 +94,9 @@ function connect(url: string): RecordingHandle {
       ws.listenerLog.push('listen')
       inner.listen({
         ...handlers,
-        onMessage: (data, isBinary) => {
+        onMessage: (data, isBinary, byteLength) => {
           ws.frames.push(data)
-          handlers.onMessage?.(data, isBinary)
+          handlers.onMessage?.(data, isBinary, byteLength)
         },
       })
     },

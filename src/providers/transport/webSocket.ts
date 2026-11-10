@@ -19,6 +19,7 @@
  * passes `onBinary`, which then receives every frame as bytes.
  */
 import type { IncomingMessage } from 'node:http'
+import type { LookupFunction } from 'node:net'
 import type WsWebSocket from 'ws'
 import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/providers/transport/proxy.js'
 import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
@@ -31,8 +32,11 @@ export type WebSocketHandlers = {
   onOpen?(): void
   /** Node only: the headers of the 101 response, lower-cased. */
   onUpgrade?(headers: Record<string, string>): void
-  /** `isBinary` says the frame was binary, decoded here as UTF-8. */
-  onMessage?(data: string, isBinary: boolean): void
+  /**
+   * `isBinary` says the frame was binary, decoded here as UTF-8;
+   * `byteLength` is the frame's size on the wire, which decoding changes.
+   */
+  onMessage?(data: string, isBinary: boolean, byteLength: number): void
   /** When set, every frame arrives here as bytes and `onMessage` is skipped. */
   onBinary?(data: Uint8Array): void
   onError?(error: Error): void
@@ -47,6 +51,12 @@ export type WebSocketOpenOptions = {
   protocols?: string[]
   /** Offer permessage-deflate (both runtimes default to true). */
   perMessageDeflate?: boolean
+  /**
+   * Node only, and only when no proxy carries the upgrade: resolves the host
+   * for the connection itself (`net.connect`'s `lookup`), so a caller can
+   * refuse an address at connect time. Bun's client has no such hook.
+   */
+  lookup?: LookupFunction
   handlers?: WebSocketHandlers
 }
 
@@ -93,6 +103,8 @@ function toText(data: unknown): string {
   return new TextDecoder().decode(toBytes(data))
 }
 
+function ignoreError(): void {}
+
 function flatHeaders(headers: IncomingMessage['headers']): Record<string, string> {
   const out: Record<string, string> = {}
   for (const [name, value] of Object.entries(headers)) {
@@ -109,8 +121,13 @@ export function openWebSocket(
   const runtime = deps.runtime ?? (typeof Bun !== 'undefined' ? 'bun' : 'node')
   let handlers: WebSocketHandlers = options.handlers ?? {}
   const deliver = (data: unknown, isBinary: boolean): void => {
-    if (handlers.onBinary) handlers.onBinary(toBytes(data))
-    else handlers.onMessage?.(toText(data), isBinary)
+    if (handlers.onBinary) {
+      handlers.onBinary(toBytes(data))
+      return
+    }
+    const text = toText(data)
+    const byteLength = typeof data === 'string' ? Buffer.byteLength(data) : toBytes(data).byteLength
+    handlers.onMessage?.(text, isBinary, byteLength)
   }
   return runtime === 'bun'
     ? openBun(url, options, () => handlers, h => { handlers = h }, deliver)
@@ -229,6 +246,9 @@ function openNode(
     socket.off('close', onClose)
     socket.off('pong', onPong)
     socket.off('unexpected-response', onUnexpected)
+    // ws emits 'error' after close() on a socket still connecting (on the
+    // next tick), and an EventEmitter with no 'error' listener throws it.
+    socket.on('error', ignoreError)
   }
   void loadWs().then(
     WS => {
@@ -236,12 +256,23 @@ function openNode(
         if (closedEarly && !detached) current().onClose?.(closedEarly.code ?? 1000, closedEarly.reason ?? '')
         return
       }
-      ws = new WS(url, options.protocols ?? [], {
-        headers: options.headers ?? {},
-        agent: getWebSocketProxyAgent(url),
-        ...getWebSocketTLSOptions(),
-        ...(options.perMessageDeflate !== undefined && { perMessageDeflate: options.perMessageDeflate }),
-      })
+      const agent = getWebSocketProxyAgent(url)
+      try {
+        ws = new WS(url, options.protocols ?? [], {
+          headers: options.headers ?? {},
+          agent,
+          ...getWebSocketTLSOptions(),
+          ...(options.perMessageDeflate !== undefined && { perMessageDeflate: options.perMessageDeflate }),
+          // Behind a proxy, the proxy resolves the target; a lookup here would
+          // check the proxy's own address instead.
+          ...(options.lookup && !agent && { lookup: options.lookup }),
+        })
+      } catch (error) {
+        // ws throws on a URL it rejects (a #fragment, a bad scheme).
+        current().onError?.(error instanceof Error ? error : new Error(String(error)))
+        current().onClose?.(1006, '')
+        return
+      }
       attach(ws)
     },
     (error: unknown) => {
