@@ -18,13 +18,12 @@ import {
   getSkillCommandName,
   getSkillDirCommands,
   getSkillsPath,
-  nameScopedSkills,
+  loadSkillsInChangedDirs,
   onDynamicSkillsLoaded,
   parseSkillFrontmatterFields,
-  scopedVariantNote,
   transformSkillFiles,
-  type ScopedSkill,
 } from 'src/skills/loadSkillsDir.js'
+import { scopedVariantNote } from 'src/skills/scopedSkills.js'
 
 // Characterization net for the dynamic (nested-directory) and conditional
 // skill paths before directory-scoped names change them.
@@ -280,61 +279,41 @@ describe('nested skill directories', () => {
       emitted++
     })
     try {
-      await addSkillDirectories(dirs, cwd)
-      await addSkillDirectories([], cwd)
+      await addSkillDirectories(dirs)
+      await addSkillDirectories([])
     } finally {
       unsubscribe()
     }
     expect(emitted).toBe(1)
-    const byName = new Map(getDynamicSkills().map(c => [c.name, c]))
+    const byName = new Map(getDynamicSkills(new Set(), cwd).map(c => [c.name, c]))
     expect([...byName.keys()].sort()).toEqual(['apps/web:deploy', 'apps:deploy', 'lint'])
     expect(byName.get('apps/web:deploy')?.description).toBe('(apps/web/ variant: for files under apps/web/) web deploy')
     expect(byName.get('lint')?.description).toBe('(from apps/, for files under it) apps lint')
 
     // Next to a root `deploy`, the bare name stays the root one's.
-    const beside = new Map(getDynamicSkills(new Set(['deploy'])).map(c => [c.name, c]))
+    const beside = new Map(getDynamicSkills(new Set(['deploy']), cwd).map(c => [c.name, c]))
     expect(beside.get('apps/web:deploy')?.description).toBe(
       '(apps/web/ variant of "deploy": use it for files under apps/web/) web deploy',
     )
     expect(beside.has('deploy')).toBe(false)
   })
-})
 
-describe('nameScopedSkills', () => {
-  const scoped = (name: string, scope: string): ScopedSkill => ({
-    skill: {
-      type: 'prompt',
-      name,
-      description: `${name} things`,
-      userFacingName: () => name,
-    } as Command,
-    scope,
-  })
-
-  test('a unique scoped skill keeps its bare name; an unscoped one passes through untouched', () => {
-    const unscoped = scoped('reacty', '')
-    const [web, root] = nameScopedSkills([scoped('deploy', 'apps/web'), unscoped], new Set())
-    expect(web?.name).toBe('deploy')
-    expect(web?.description).toBe('(from apps/web/, for files under it) deploy things')
-    expect(root).toBe(unscoped.skill)
-  })
-
-  test('a collision qualifies it, and the qualified name is what it answers to', () => {
-    const [web] = nameScopedSkills([scoped('deploy', 'apps/web')], new Set(['deploy']))
-    expect(web?.name).toBe('apps/web:deploy')
-    expect(web?.userFacingName?.()).toBe('apps/web:deploy')
-  })
-
-  test('a qualified name that is already taken is not offered', () => {
-    const named = nameScopedSkills([scoped('deploy', 'web'), scoped('lint', 'web')], new Set(['deploy', 'web:deploy']))
-    expect(named.map(c => c.name)).toEqual(['lint'])
+  test('a directory found again, from another working directory, stays one skill', async () => {
+    const cwd = repo('twice')
+    skill(join(cwd, 'apps', 'web'), 'deploy', 'description: web deploy')
+    const skillsDir = join(cwd, 'apps', 'web', '.claudin', 'skills')
+    await addSkillDirectories([skillsDir])
+    await addSkillDirectories([skillsDir])
+    expect(getDynamicSkills(new Set(), cwd).map(c => c.name)).toEqual(['deploy'])
+    // The scope is derived from the directory when the skill is named.
+    expect(getDynamicSkills(new Set(['deploy']), join(cwd, 'apps')).map(c => c.name)).toEqual(['web:deploy'])
   })
 })
 
-describe('scopedVariantNote', () => {
+describe('loadSkillsInChangedDirs', () => {
   const rootDeploy = { type: 'prompt', name: 'deploy', skillRoot: '/repo/.claudin/skills/deploy' } as Command
 
-  test('finds variants under changed directories no Read discovered, and names them qualified', async () => {
+  test('loads the variants under changed directories no Read discovered', async () => {
     const cwd = join(root, 'variants')
     mkdirSync(cwd, { recursive: true })
     spawnSync('git', ['init', '-q'], { cwd })
@@ -342,7 +321,8 @@ describe('scopedVariantNote', () => {
     skill(join(cwd, 'tools'), 'deploy', 'description: tools deploy')
     skill(join(cwd, 'apps', 'api'), 'deploy', 'description: api deploy')
 
-    const note = await scopedVariantNote('deploy', rootDeploy, cwd, async () => ['apps/web/src/page.tsx', 'tools/', 'README.md'])
+    await loadSkillsInChangedDirs([join(cwd, 'apps', 'web', 'src', 'page.tsx'), `${join(cwd, 'tools')}/`, join(cwd, 'README.md')], cwd)
+    const note = scopedVariantNote('deploy', rootDeploy, getDynamicSkills(new Set(['deploy']), cwd))
     expect(note).toBe(
       'Directory-scoped variants of the "deploy" skill exist in this repository:\n' +
         '- `apps/web:deploy` — for files under apps/web/\n' +
@@ -353,18 +333,11 @@ describe('scopedVariantNote', () => {
     expect(note).not.toContain('apps/api')
   })
 
-  test('none, a failing status, or only the skill itself: no note', async () => {
+  test('no change, or a change outside any skill directory, loads nothing', async () => {
     const cwd = join(root, 'novariants')
     mkdirSync(cwd, { recursive: true })
-    expect(await scopedVariantNote('deploy', rootDeploy, cwd, async () => [])).toBeNull()
-    const failing = async (): Promise<string[]> => {
-      throw new Error('not a git repository')
-    }
-    expect(await scopedVariantNote('deploy', rootDeploy, cwd, failing)).toBeNull()
-
-    const only = join(root, 'onlyone')
-    const dir = skill(join(only, 'apps', 'web'), 'release', 'description: web release')
-    const self = { type: 'prompt', name: 'release', skillRoot: dir } as Command
-    expect(await scopedVariantNote('release', self, only, async () => ['apps/web/a.ts'])).toBeNull()
+    await loadSkillsInChangedDirs([], cwd)
+    await loadSkillsInChangedDirs([join(cwd, 'src', 'a.ts'), join(root, 'elsewhere', 'b.ts')], cwd)
+    expect(getDynamicSkills(new Set(), cwd)).toEqual([])
   })
 })

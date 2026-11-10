@@ -36,7 +36,7 @@ beforeAll(async () => {
   skill('zz-plain-skill', 'description: a plain skill')
   skill('zz-tooling-skill', 'description: needs tools\nallowed-tools: Bash(make:*)\nmodel: sonnet\neffort: low')
   skill('zz-hidden-skill', 'description: user only\ndisable-model-invocation: true')
-  await addSkillDirectories([join(root, 'pkg', '.claudin', 'skills')], root)
+  await addSkillDirectories([join(root, 'pkg', '.claudin', 'skills')])
 })
 
 afterAll(() => {

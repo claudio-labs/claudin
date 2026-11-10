@@ -373,7 +373,7 @@ export async function getCommands(cwd: string): Promise<Command[]> {
   // Dynamic skills discovered during file operations, named around the
   // commands already offered (a colliding scoped skill gets `<scope>:<name>`)
   const baseCommandNames = new Set(baseCommands.map(c => c.name))
-  const dynamicSkills = getDynamicSkills(baseCommandNames)
+  const dynamicSkills = getDynamicSkills(baseCommandNames, cwd)
 
   if (dynamicSkills.length === 0) {
     return baseCommands

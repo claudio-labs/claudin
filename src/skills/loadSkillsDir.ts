@@ -11,6 +11,7 @@ import {
 } from 'path'
 import {
   getAdditionalDirectoriesForClaudeMd,
+  getProjectRoot,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
@@ -59,6 +60,7 @@ import { isRestrictedToPluginOnly } from 'src/platform/settings/pluginOnlyPolicy
 import { HooksSchema, type HooksSettings } from 'src/platform/settings/types.js'
 import { createSignal } from 'src/shared/signal.js'
 import { registerMCPSkillBuilders } from 'src/skills/mcpSkillBuilders.js'
+import { nameScopedSkills, scopedSkillKey, type ScopedSkill } from 'src/skills/scopedSkills.js'
 
 export type LoadedFrom =
   | 'commands_DEPRECATED'
@@ -905,14 +907,8 @@ export { transformSkillFiles }
 
 // State for dynamically discovered skills
 const dynamicSkillDirs = new Set<string>()
-/**
- * A dynamically discovered skill and the directory it is scoped to: the one
- * holding its `.claudin/skills`, relative to the cwd and written with `/`
- * (`apps/web`). An activated conditional skill comes from a root directory
- * and has scope ''. Keyed `${scope}:${name}`, so two directories can offer the
- * same name without one replacing the other.
- */
-export type ScopedSkill = { skill: Command; scope: string }
+// Keyed by scopedSkillKey, so two directories can offer the same name without
+// one replacing the other; getDynamicSkills names them (scopedSkills.ts).
 const dynamicSkills = new Map<string, ScopedSkill>()
 
 // --- Conditional skills (path-filtered) ---
@@ -1013,9 +1009,8 @@ export async function discoverSkillDirsForPaths(
  * Each keeps the directory it came from (ScopedSkill); getDynamicSkills names them.
  *
  * @param dirs `<dir>/.claudin/skills` directories, as discoverSkillDirsForPaths returns them
- * @param cwd The directory the scopes are relative to
  */
-export async function addSkillDirectories(dirs: string[], cwd: string): Promise<void> {
+export async function addSkillDirectories(dirs: string[]): Promise<void> {
   if (
     !isSettingSourceEnabled('projectSettings') ||
     isRestrictedToPluginOnly('skills')
@@ -1034,11 +1029,11 @@ export async function addSkillDirectories(dirs: string[], cwd: string): Promise<
     dirs.map(dir => loadSkillsFromSkillsDir(dir, 'projectSettings')),
   )
 
-  for (const [i, dir] of dirs.entries()) {
-    const scope = relative(cwd, dirname(dirname(dir))).split(pathSep).join('/')
+  for (const [i, skillsDir] of dirs.entries()) {
+    const dir = dirname(dirname(skillsDir))
     for (const { skill } of loadedSkills[i] ?? []) {
       if (skill.type === 'prompt') {
-        dynamicSkills.set(`${scope}:${skill.name}`, { skill, scope })
+        dynamicSkills.set(scopedSkillKey({ skill, dir }), { skill, dir })
       }
     }
   }
@@ -1058,102 +1053,31 @@ export async function addSkillDirectories(dirs: string[], cwd: string): Promise<
  * Gets all dynamically discovered skills.
  * These are skills discovered from file paths during the session.
  * `taken` holds the names already offered (the root, user, plugin and
- * built-in commands); see nameScopedSkills.
+ * built-in commands), and the scopes are relative to `root`; see
+ * nameScopedSkills.
  */
-export function getDynamicSkills(taken: ReadonlySet<string> = new Set()): Command[] {
-  return nameScopedSkills([...dynamicSkills.values()], taken)
-}
-
-/**
- * The names a directory-scoped skill is offered under, as Claude Code 2.1.321
- * offers them. A scoped skill keeps its bare name while nothing else has it,
- * with its directory said in the description. On a collision — with a name in
- * `taken`, or with another scoped skill — it is offered as `<scope>:<name>`
- * (`apps/web:deploy`) and the bare name keeps resolving to the other skill. A
- * qualified name that is itself taken is not offered. The scope goes at the
- * front of the description because the listing cuts descriptions from the end.
- */
-export function nameScopedSkills(entries: readonly ScopedSkill[], taken: ReadonlySet<string>): Command[] {
-  const scopedCount = new Map<string, number>()
-  for (const { skill, scope } of entries) {
-    if (scope) scopedCount.set(skill.name, (scopedCount.get(skill.name) ?? 0) + 1)
-  }
-  const used = new Set(taken)
-  const named: Command[] = []
-  for (const { skill, scope } of entries) {
-    if (!scope) {
-      named.push(skill)
-      continue
-    }
-    if (!taken.has(skill.name) && scopedCount.get(skill.name) === 1) {
-      named.push(rescope(skill, skill.name, `(from ${scope}/, for files under it)`))
-      continue
-    }
-    const qualified = `${scope}:${skill.name}`
-    if (used.has(qualified)) {
-      logForDebugging(`[skills] ${qualified} is not offered: another skill already has that name`)
-      continue
-    }
-    used.add(qualified)
-    const note = taken.has(skill.name)
-      ? `(${scope}/ variant of "${skill.name}": use it for files under ${scope}/)`
-      : `(${scope}/ variant: for files under ${scope}/)`
-    named.push(rescope(skill, qualified, note))
-  }
-  return named
-}
-
-function rescope(skill: Command, name: string, note: string): Command {
-  return {
-    ...skill,
-    name,
-    description: `${note} ${skill.description}`,
-    ...(name !== skill.name && { userFacingName: () => name }),
-  } as Command
+export function getDynamicSkills(
+  taken: ReadonlySet<string> = new Set(),
+  root: string = getProjectRoot(),
+): Command[] {
+  return nameScopedSkills([...dynamicSkills.values()], taken, root)
 }
 
 const MAX_VARIANT_SCAN_DIRS = 100
 
 /**
- * What the model is told when it calls a skill that has directory-scoped
- * variants — `apps/web:deploy` beside `deploy` — or null when there are none.
- * The directories with uncommitted changes (up to 100, from `changedFiles`,
- * paths relative to `cwd`, a trailing `/` for an untracked directory) are
- * searched first, so a variant shows up even when no file under it was read
- * yet. `invoked` is the skill being run, which is never its own variant; the
- * variants are named as getCommands names them beside it (nameScopedSkills).
+ * Loads the skills of the directories with uncommitted changes (up to 100),
+ * so a directory-scoped variant is offered — and named by scopedVariantNote —
+ * before any file under it was read. `changedPaths` are absolute, a trailing
+ * `/` marking an untracked directory; discovery stops at `cwd`, as for a Read.
  */
-export async function scopedVariantNote(
-  name: string,
-  invoked: Command | undefined,
-  cwd: string,
-  changedFiles: () => Promise<string[]>,
-): Promise<string | null> {
-  let files: string[] = []
-  try {
-    files = await changedFiles()
-  } catch (e) {
-    logError(e)
-  }
-  const dirs = [...new Set(files.map(f => (f.endsWith('/') ? join(cwd, f) : dirname(join(cwd, f)))))]
+export async function loadSkillsInChangedDirs(changedPaths: readonly string[], cwd: string): Promise<void> {
+  const dirs = [...new Set(changedPaths.map(p => (p.endsWith('/') ? p : dirname(p))))]
   const found = await discoverSkillDirsForPaths(
     dirs.slice(0, MAX_VARIANT_SCAN_DIRS).map(d => join(d, '_')),
     cwd,
   )
-  if (found.length > 0) await addSkillDirectories(found, cwd)
-
-  const invokedRoot = invoked?.type === 'prompt' ? invoked.skillRoot : undefined
-  const offered = new Set(getDynamicSkills(new Set([name])).map(c => c.name))
-  const variants = [...dynamicSkills.values()].filter(
-    ({ skill, scope }) =>
-      scope &&
-      skill.name === name &&
-      (skill.type !== 'prompt' || skill.skillRoot !== invokedRoot) &&
-      offered.has(`${scope}:${name}`),
-  )
-  if (variants.length === 0) return null
-  const lines = variants.map(({ scope }) => `- \`${scope}:${name}\` — for files under ${scope}/`)
-  return `Directory-scoped variants of the "${name}" skill exist in this repository:\n${lines.join('\n')}\n"${name}" is the unscoped one; call a variant by its exact name to use it instead.`
+  if (found.length > 0) await addSkillDirectories(found)
 }
 
 /**
@@ -1202,7 +1126,7 @@ export function activateConditionalSkillsForPaths(
 
       if (skillIgnore.ignores(relativePath)) {
         // Activate this skill by moving it to dynamic skills
-        dynamicSkills.set(`:${name}`, { skill, scope: '' })
+        dynamicSkills.set(scopedSkillKey({ skill }), { skill })
         conditionalSkills.delete(name)
         activatedConditionalSkillNames.add(name)
         activated.push(name)

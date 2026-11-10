@@ -1,5 +1,6 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import uniqBy from 'lodash-es/uniqBy.js'
+import { join } from 'path'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   builtInCommandNames,
@@ -53,7 +54,8 @@ import {
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
-import { scopedVariantNote } from 'src/skills/loadSkillsDir.js'
+import { loadSkillsInChangedDirs } from 'src/skills/loadSkillsDir.js'
+import { scopedVariantNote } from 'src/skills/scopedSkills.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getFileStatus } from 'src/vcs/git/git.js'
 import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
@@ -535,12 +537,12 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     const effort = command?.type === 'prompt' ? command.effort : undefined
 
     // `deploy` with an `apps/web:deploy` beside it: say so before the model
-    // follows the unscoped one (scopedVariantNote, loadSkillsDir.ts).
+    // follows this one. The directories with uncommitted changes are searched
+    // first, so a variant counts before any file under it was read.
     const cwd = getCwd()
-    const variantsNote = await scopedVariantNote(commandName, command, cwd, async () => {
-      const status = await getFileStatus(cwd)
-      return [...status.tracked, ...status.untracked]
-    })
+    const status = await getFileStatus(cwd)
+    await loadSkillsInChangedDirs([...status.tracked, ...status.untracked].map(p => join(cwd, p)), cwd)
+    const variantsNote = scopedVariantNote(commandName, command, await getAllCommands(context))
 
     const isBuiltIn = builtInCommandNames().has(commandName)
     const isBundled = command?.type === 'prompt' && command.source === 'bundled'
@@ -726,6 +728,7 @@ const SAFE_SKILL_PROPERTIES = new Set([
   'context',
   'agent',
   'background',
+  'scope',
   'getPromptForCommand',
   'frontmatterKeys',
   // CommandBase properties
