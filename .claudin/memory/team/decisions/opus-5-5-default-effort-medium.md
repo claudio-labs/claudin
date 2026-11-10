@@ -10,8 +10,13 @@ paths:
 
 **Decision:** `getDefaultEffortForModel` (`src/providers/effort/effort.ts`) returns `medium` for
 Opus 5.5 on the first-party provider, ahead of the flagship branch whose `includes('opus-5')`
-also matches `opus-5-5`. Opus 4.8, Opus 5 and Fable 5.x keep `high`; Opus 5.5 on Bedrock, Vertex
+also matches `opus-5-5`. Opus 4.8, Opus 5 and Fable 5/5.1 keep `high`; Opus 5.5 on Bedrock, Vertex
 or Foundry is untouched. Taken by the user on 2026-09-24, committed on `perf/prompts-v2`.
+
+**Extended 2026-11-10 to Fable 5.2** (user's pick, `feat/fable-5-2`): Claude Code 2.1.322's catalog
+moved 5.2 to `medium` from 5.1's `high`, so a `fable-5-2` branch sits beside the Opus 5.5 one.
+Taken for parity alone — no session A/B was run for Fable. Wire check with a dummy Anthropic
+profile and no pin: `fable` → `claude-fable-5-2` at `medium`, Fable 5.1 at `high`.
 
 **Why:** Claude Code 2.1.280's model catalog carries `default_effort: "medium"` for Opus 5.5
 (`docs/tech/anthropic-betas/wire-matrix.md`). In the proxy-recorded session A/Bs

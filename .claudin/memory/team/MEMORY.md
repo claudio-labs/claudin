@@ -89,7 +89,7 @@
 - [/diff reviewer living spec (feature 8.1)](docs/diff-reviewer-living-spec.md) — docs/features/8.1-diff-reviewer.md
 - [Public docs site claudiolabs.ai is outside this repo](docs/claudiolabs-docs-site.md) — extensionless URLs
 - [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging
-- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267 templates, model-launch-capture.ts
+- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267/Fable 5.2 templates, launch capture
 
 ## Conventions
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs

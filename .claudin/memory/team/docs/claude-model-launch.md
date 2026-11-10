@@ -9,8 +9,9 @@ paths:
 
 **Doc:** `scripts/bench/ab/model-launch-capture.ts` (header: the three-turn capture, the four
 thinking replays, the harness traps) and `docs/tech/opus-5-5/wire-capture.md` (the first launch
-capture). Templates: #237 (`e93a66cc`, Opus 5 → 5.5) and #267 (`accf40ee`, Sonnet 5.5 as the
-default Sonnet, 2026-09-29).
+capture). Templates: #237 (`e93a66cc`, Opus 5 → 5.5), #267 (`accf40ee`, Sonnet 5.5 as the
+default Sonnet, 2026-09-29), and `feat/fable-5-2` (Fable 5.2, 2026-11-10, Claude Code 2.1.322 —
+`docs/tech/fable-5-2/wire-capture.md`, the closest template for a version bump inside a tier).
 
 **Covers:**
 - The sites: 41 `@[MODEL LAUNCH]` markers across 23 files (2026-09-29).
@@ -34,6 +35,20 @@ default Sonnet, 2026-09-29).
   `modelRejectsSamplingParams`. First tiered price: `ModelCosts.longPrompt` (>100K prompt).
   To capture against a Claude Code newer than the installed one, `npm pack` its
   `-linux-x64` package and put it first on PATH.
+- Fable 5.2 (2026-11-10) added three traps:
+  - **mise.** `which claude` resolves to `/usr/bin/mise`, so the catalog read came out
+    empty. The capture now refuses to run. Use
+    `PATH=~/.local/share/mise/installs/claude/latest:$PATH`.
+  - **The user's `settings.json` pins `effortLevel: "high"`.** A live wire check of a
+    model's default effort needs a throwaway `CLAUDIN_CONFIG_DIR` with a dummy Anthropic
+    profile, run with `--bare`. The 401 does not matter; the proxy keeps the body.
+  - **Do not run `codegen:reasoning-catalog` inside a launch PR.** On 2026-11-10 it brought
+    about 300 lines of unrelated models.dev drift, dropped endpoints included. The runtime
+    refresh already lists new models.
+- Claude Code also migrates pins between versions (`fable51ToFableAlias`). Grep the
+  binary for `migration_` before deciding whether Claudin needs one.
+- `claudeCodeParity.test.ts` lists the fixture models and the `TIERS` names by hand. A new
+  fixture means editing both.
 
 **Start here when:** a new Claude model ships.
 
