@@ -44,11 +44,26 @@ test.skipIf(!node)('a refused upgrade reports its status and body, then closes, 
 
 test.skipIf(!node)('detach removes every listener and drops every later event', () => {
   expect((report.listenersBeforeDetach as number[]).every(n => n >= 1)).toBe(true)
-  expect(report.listenersAfterDetach).toEqual([0, 0, 0, 0, 0, 0, 0])
+  // The one left is a no-op 'error' sink (webSocket.test.ts says why).
+  expect(report.listenersAfterDetach).toEqual([0, 0, 0, 1, 0, 0, 0])
   expect(report.detachEvents).toEqual(['open'])
 })
 
 test.skipIf(!node)('the upgrade goes through HTTPS_PROXY', () => {
   expect((report.proxyConnects as string[]).length).toBe(1)
   expect(report.proxiedMessage).toBe('hello')
+})
+
+test.skipIf(!node)('a URL the ws constructor rejects (a #fragment) is an error and a 1006 close, not a hang', () => {
+  expect(report.fragmentEvents).toEqual(['error:The URL contains a fragment identifier', 'close:1006'])
+  expect(report.fragmentUnhandled).toEqual([])
+})
+
+test.skipIf(!node)('closing and detaching a socket still connecting raises nothing uncaught', () => {
+  expect(report.stopWhileConnectingUncaught).toEqual([])
+})
+
+test.skipIf(!node)('lookup resolves the host at connect time, and its refusal ends the socket', () => {
+  expect(report.lookupAsked).toEqual(['localhost'])
+  expect(report.lookupEvents).toEqual(['error:refused localhost', 'close:1006'])
 })

@@ -179,15 +179,92 @@ async function proxied(report: Report): Promise<void> {
   http.close()
 }
 
+const settleWithin = (ms: number, done: Promise<void>): Promise<void> =>
+  Promise.race([done, new Promise<void>(resolve => setTimeout(resolve, ms))])
+
+/** A URL ws's constructor rejects: it must end in an error and a close, not hang. */
+async function fragment(report: Report): Promise<void> {
+  const unhandled: string[] = []
+  const onUnhandled = (e: unknown): void => void unhandled.push(e instanceof Error ? e.message : String(e))
+  process.on('unhandledRejection', onUnhandled)
+  const events: string[] = []
+  await settleWithin(1000, new Promise<void>(resolve => {
+    openWebSocket('ws://127.0.0.1:9/feed#x', {
+      handlers: {
+        onError: e => events.push(`error:${e.message}`),
+        onClose: code => {
+          events.push(`close:${code}`)
+          resolve()
+        },
+      },
+    })
+  }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  process.off('unhandledRejection', onUnhandled)
+  report.fragmentEvents = events
+  report.fragmentUnhandled = unhandled
+}
+
+/** close() then detach() while the upgrade is pending: ws emits an error on the next tick. */
+async function stopWhileConnecting(report: Report): Promise<void> {
+  const held: Socket[] = []
+  const silent = createNetServer(socket => held.push(socket))
+  const port = await listen(silent)
+  const uncaught: string[] = []
+  const onUncaught = (e: Error): void => void uncaught.push(e.message)
+  process.on('uncaughtException', onUncaught)
+  const handle = openWebSocket(`ws://127.0.0.1:${port}/`, {})
+  await new Promise(resolve => setTimeout(resolve, 200))
+  handle.close(1000, 'stop')
+  handle.detach()
+  await new Promise(resolve => setTimeout(resolve, 200))
+  process.off('uncaughtException', onUncaught)
+  report.stopWhileConnectingUncaught = uncaught
+  for (const s of held) s.destroy()
+  silent.close()
+}
+
+/** `lookup` resolves the host for the connection, so its refusal is the socket's end. */
+async function lookup(report: Report): Promise<void> {
+  const http = createHttpServer()
+  const wss = new WebSocketServer({ server: http })
+  const port = await listen(http)
+  const asked: string[] = []
+  const events: string[] = []
+  await settleWithin(1000, new Promise<void>(resolve => {
+    openWebSocket(`ws://localhost:${port}/`, {
+      lookup: (hostname, _options, callback) => {
+        asked.push(hostname)
+        callback(new Error(`refused ${hostname}`), '', 4)
+      },
+      handlers: {
+        onOpen: () => events.push('open'),
+        onError: e => events.push(`error:${e.message}`),
+        onClose: code => {
+          events.push(`close:${code}`)
+          resolve()
+        },
+      },
+    })
+  }))
+  report.lookupAsked = asked
+  report.lookupEvents = events
+  wss.close()
+  http.close()
+}
+
 const report: Report = {}
 const watchdog = setTimeout(() => {
   process.stdout.write(`${JSON.stringify({ ...report, timedOut: true })}\n`)
   process.exit(1)
-}, 10_000)
+}, 15_000)
 await roundTrip(report)
 await refused(report)
 await detach(report)
 await proxied(report)
+await fragment(report)
+await stopWhileConnecting(report)
+await lookup(report)
 clearTimeout(watchdog)
 process.stdout.write(`${JSON.stringify(report)}\n`)
 process.exit(0)

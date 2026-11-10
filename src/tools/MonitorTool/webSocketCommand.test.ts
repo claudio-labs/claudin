@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { ssrfGuardedLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'
 import type { WebSocketHandle, WebSocketHandlers, WebSocketOpenOptions } from 'src/providers/transport/webSocket.js'
 import {
   createWebSocketCommand,
@@ -24,6 +25,12 @@ describe('wsInputError', () => {
     expect(wsInputError({ url: 'wss://[::1' })).toContain('not a valid URL')
     expect(wsInputError({ url: 'wss://user:secret@example.com' })).toContain('credentials')
     expect(wsInputError({ url: 'wss://token@example.com' })).toContain('credentials')
+  })
+
+  // ws refuses a fragment in its constructor (Node), so it is refused here first.
+  test('refuses a URL with a #fragment, an empty one included', () => {
+    expect(wsInputError({ url: 'wss://example.com/feed#x' })).toBe('ws.url must not carry a #fragment')
+    expect(wsInputError({ url: 'wss://example.com/#' })).toBe('ws.url must not carry a #fragment')
   })
 
   test('refuses a subprotocol that is not a token, and a repeated one', () => {
@@ -75,7 +82,10 @@ type FakeSocket = {
   detached: number
 }
 
-function harness(ws: { url: string; protocols?: string[] } = { url: 'wss://events.example.com/stream' }) {
+function harness(
+  ws: { url: string; protocols?: string[] } = { url: 'wss://events.example.com/stream' },
+  flush: () => Promise<void> = async () => {},
+) {
   const lines: string[] = []
   let flushes = 0
   let socket: FakeSocket | undefined
@@ -104,6 +114,7 @@ function harness(ws: { url: string; protocols?: string[] } = { url: 'wss://event
     },
     flush: async () => {
       flushes++
+      await flush()
     },
   })
   return { command, lines, socket: () => socket!, flushes: () => flushes }
@@ -118,35 +129,62 @@ describe('createWebSocketCommand', () => {
     expect(harness({ url: 'wss://x.example', protocols: ['v1'] }).socket().options.protocols).toEqual(['v1'])
   })
 
+  // validateInput checked the name once; this checks the address the
+  // connection actually uses, so a re-resolve cannot land somewhere private.
+  test('resolves the host through the SSRF guard at connect time', () => {
+    expect(harness().socket().options.lookup).toBe(ssrfGuardedLookup)
+  })
+
   test('writes each text frame as a line, and a frame that ends in a newline as is', () => {
     const h = harness()
-    h.socket().handlers.onMessage?.('deploy started', false)
-    h.socket().handlers.onMessage?.('step 1\nstep 2\n', false)
+    h.socket().handlers.onMessage?.('deploy started', false, 14)
+    h.socket().handlers.onMessage?.('step 1\nstep 2\n', false, 14)
     expect(h.lines).toEqual(['deploy started\n', 'step 1\nstep 2\n'])
   })
 
-  test('names a binary frame by its size instead of passing it through', () => {
+  test('names a binary frame by its size on the wire, not by its decoded text', () => {
     const h = harness()
-    h.socket().handlers.onMessage?.('\u0000\u0001\u0002', true)
-    expect(h.lines).toEqual(['[binary frame, 3 bytes]\n'])
+    // [ff fe 00 80] decoded as UTF-8: three U+FFFD of 3 bytes each, plus NUL.
+    h.socket().handlers.onMessage?.('\ufffd\ufffd\u0000\ufffd', true, 4)
+    expect(h.lines).toEqual(['[binary frame, 4 bytes]\n'])
   })
 
-  test('drops a frame over the cap and closes the socket', () => {
+  test('keeps a frame of exactly the cap, drops one over it and closes the socket', () => {
     const h = harness()
-    h.socket().handlers.onMessage?.('x'.repeat(WS_MAX_FRAME_BYTES + 1), false)
-    expect(h.lines).toEqual([`[Dropped a ${WS_MAX_FRAME_BYTES + 1}-byte frame (over ${WS_MAX_FRAME_BYTES} bytes); closing]\n`])
+    h.socket().handlers.onMessage?.('\ufffd', true, WS_MAX_FRAME_BYTES)
+    expect(h.socket().closed).toEqual([])
+    h.socket().handlers.onMessage?.('\ufffd', true, WS_MAX_FRAME_BYTES + 1)
+    expect(h.lines).toEqual([
+      `[binary frame, ${WS_MAX_FRAME_BYTES} bytes]\n`,
+      `[Dropped a ${WS_MAX_FRAME_BYTES + 1}-byte frame (over ${WS_MAX_FRAME_BYTES} bytes); closing]\n`,
+    ])
     expect(h.socket().closed).toEqual([{ code: 1009, reason: 'frame too large' }])
   })
 
   test('a normal close is the last line and ends the command with exit 0, after the flush', async () => {
     const h = harness()
-    h.socket().handlers.onMessage?.('one', false)
+    h.socket().handlers.onMessage?.('one', false, 3)
     h.socket().handlers.onClose?.(1000, 'done')
     const result = await h.command.result
     expect(h.lines).toEqual(['one\n', '[WebSocket closed: 1000 done]\n'])
     expect(result).toMatchObject({ code: 0, interrupted: false })
     expect(h.flushes()).toBe(1)
     expect(h.command.status).toBe('completed')
+  })
+
+  // The exit notice follows the result, so a result that settled first could
+  // announce the end before the close line is on disk.
+  test('the result waits for the output to be on disk', async () => {
+    let release: () => void = () => {}
+    const h = harness(undefined, () => new Promise<void>(resolve => (release = resolve)))
+    let settled = false
+    void h.command.result.then(() => (settled = true))
+    h.socket().handlers.onClose?.(1000, '')
+    await Bun.sleep(10)
+    expect(settled).toBe(false)
+    release()
+    await h.command.result
+    expect(settled).toBe(true)
   })
 
   test('an abnormal close or a refused upgrade ends it with exit 1', async () => {

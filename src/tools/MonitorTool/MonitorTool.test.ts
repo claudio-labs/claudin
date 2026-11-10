@@ -316,8 +316,20 @@ describe('MonitorTool ws source', () => {
     expect(await validate({ description: 'd' })).toMatchObject({ result: false, message: 'Pass exactly one of `command` and `ws`.' })
     expect(await validate({ command: 'ls', ws: { url: 'wss://a.example' }, description: 'd' })).toMatchObject({ result: false })
     expect(await validate({ ws: { url: 'https://a.example' }, description: 'd' })).toMatchObject({ result: false, errorCode: 2 })
-    expect(await validate({ ws: { url: 'wss://a.example', protocols: ['v1'] }, description: 'd' })).toEqual({ result: true })
+    expect(await validate({ ws: { url: 'wss://a.example/feed#x' }, description: 'd' })).toMatchObject({ result: false, errorCode: 2 })
+    expect(await validate({ ws: { url: 'wss://93.184.216.34', protocols: ['v1'] }, description: 'd' })).toEqual({ result: true })
     expect(await validate({ command: 'ls', description: 'd' })).toEqual({ result: true })
+  })
+
+  // Before the permission step, so the user is never asked about a URL that
+  // would then be refused.
+  test('validateInput refuses a private address', async () => {
+    expect(await validate({ ws: { url: 'ws://10.1.2.3:9000/feed' }, description: 'internal feed' })).toEqual({
+      result: false,
+      message: 'Monitor will not open ws://10.1.2.3:9000/feed: 10.1.2.3 is in a private, link-local or cloud-metadata range',
+      errorCode: 3,
+    })
+    expect(await validate({ ws: { url: 'ws://127.0.0.1:9000/feed' }, description: 'local feed' })).toEqual({ result: true })
   })
 
   test('the schema takes a ws object and nothing else beside it', () => {
@@ -396,7 +408,8 @@ describe('MonitorTool ws source', () => {
       const deadline = Date.now() + 5_000
       while (!peer && Date.now() < deadline) await new Promise(r => setTimeout(r, 20))
       peer!.send('build 42 passed')
-      peer!.send(new Uint8Array([1, 2, 3, 4]))
+      // Not valid UTF-8: decoded, these four bytes would count as ten.
+      peer!.send(new Uint8Array([0xff, 0xfe, 0x00, 0x80]))
       const event = await waitForNotification(n => n.includes('build 42 passed'), 5_000)
       expect(event).toContain(taskId)
       expect(event).toContain('Monitor "local feed" output')

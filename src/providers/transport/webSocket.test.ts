@@ -61,6 +61,8 @@ beforeEach(() => {
         seen.at(-1)?.frames.push(typeof message === 'string' ? message : new Uint8Array(message))
         if (message === 'echo') ws.send('echo:ok')
         if (message === 'bytes') ws.send(new Uint8Array([1, 2, 3]))
+        if (message === 'raw') ws.send(new Uint8Array([0xff, 0xfe, 0x00, 0x80]))
+        if (message === 'wide') ws.send('é€')
         if (message === 'bye') ws.close(4001, 'bye now')
       },
     },
@@ -134,6 +136,25 @@ describe.each(RUNTIMES)('openWebSocket (%s branch)', (_name, deps) => {
       open('/', deps, { onOpen: () => void handles[0]!.send('echo'), onMessage: (_data, isBinary) => resolve(isBinary) })
     })
     expect(await got).toBe(false)
+  })
+
+  // Decoding a binary frame as UTF-8 turns each invalid byte into U+FFFD
+  // (3 bytes), so the size has to come from the frame itself.
+  test('onMessage gets the size the frame had on the wire', async () => {
+    const sizes: Array<[boolean, number]> = []
+    await waitFor<void>(resolve => {
+      open('/', deps, {
+        onOpen: () => {
+          void handles[0]!.send('raw')
+          void handles[0]!.send('wide')
+        },
+        onMessage: (_data, isBinary, byteLength) => {
+          sizes.push([isBinary, byteLength])
+          if (sizes.length === 2) resolve()
+        },
+      })
+    })
+    expect(sizes).toEqual([[true, 4], [false, 5]])
   })
 
   test('sends bytes', async () => {
@@ -259,7 +280,11 @@ describe('detach removes every listener the opener attached', () => {
     })
     expect(events.map(e => instance!.listenerCount(e)).every(n => n >= 1)).toBe(true)
     handles[0]!.detach()
-    expect(events.map(e => instance!.listenerCount(e))).toEqual(events.map(() => 0))
+    // Every handler is gone; one no-op 'error' listener stays, because ws
+    // emits an error after close() on a socket still connecting, and an
+    // EventEmitter with no 'error' listener throws it.
+    expect(events.map(e => instance!.listenerCount(e))).toEqual(events.map(e => (e === 'error' ? 1 : 0)))
+    expect(() => instance!.emit('error', new Error('late'))).not.toThrow()
   })
 })
 
@@ -314,6 +339,29 @@ describe('openWebSocket (node branch, before ws has loaded)', () => {
     })
     await closed
     expect(events).toEqual(['error:no ws here', 'close:1006'])
+  })
+
+  // ws throws from its constructor on a URL it rejects (a #fragment), inside
+  // the load's `.then`: uncaught, that was an unhandled rejection and a socket
+  // that never closed.
+  test('a constructor that throws reports an error and a 1006 close', async () => {
+    class Throwing {
+      constructor() {
+        throw new SyntaxError('The URL contains a fragment identifier')
+      }
+    }
+    const events: string[] = []
+    const closed = waitFor<void>(resolve => {
+      open('/', { runtime: 'node', loadWs: async () => Throwing as never }, {
+        onError: e => events.push(`error:${e.message}`),
+        onClose: code => {
+          events.push(`close:${code}`)
+          resolve()
+        },
+      })
+    })
+    await closed
+    expect(events).toEqual(['error:The URL contains a fragment identifier', 'close:1006'])
   })
 })
 
