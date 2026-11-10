@@ -49,7 +49,7 @@ import {
 //
 // Written before Sonnet 5.5 was registered, so it went red on Sonnet 5.5 and
 // stayed green on Opus 5.5 — the control that shows the harness can pass.
-// Haiku 5.5 (Claude Code 2.1.293) took the same route.
+// Haiku 5.5 (Claude Code 2.1.293) and Fable 5.2 (2.1.322) took the same route.
 
 type Fixture = {
   model: string
@@ -82,6 +82,7 @@ const TIERS: Record<string, ModelCosts> = {
 
 test('the capture is on disk (an empty fixture dir would pass every check below)', () => {
   expect(fixtures.map(f => f.model).sort()).toEqual([
+    'claude-fable-5-2',
     'claude-haiku-5-5',
     'claude-opus-5-5',
     'claude-sonnet-5-5',
