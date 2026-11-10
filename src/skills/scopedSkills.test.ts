@@ -45,6 +45,41 @@ describe('nameScopedSkills', () => {
     const named = nameScopedSkills([scoped('deploy', 'web'), scoped('lint', 'web')], new Set(['deploy', 'web:deploy']), ROOT)
     expect(named.map(c => c.name)).toEqual(['lint'])
   })
+
+  // The listing announces only names it has not sent, so a `deploy` renamed to
+  // `apps/web:deploy` would leave the model calling a name that is gone.
+  test('a bare name, once offered, stays with its skill when another variant turns up', () => {
+    const grants = new Map<string, string>()
+    const web = scoped('deploy', 'apps/web')
+    expect(nameScopedSkills([web], new Set(), ROOT, grants).map(c => c.name)).toEqual(['deploy'])
+    const later = nameScopedSkills([web, scoped('deploy', 'apps/api')], new Set(), ROOT, grants)
+    expect(later.map(c => c.name)).toEqual(['deploy', 'apps/api:deploy'])
+    expect(later[0]?.scope).toBe('apps/web')
+    expect(later[1]?.description).toBe('(apps/api/ variant of "deploy": use it for files under apps/api/) deploy things')
+  })
+
+  test('a name the root takes later still wins over a bare grant', () => {
+    const grants = new Map<string, string>()
+    const web = scoped('deploy', 'apps/web')
+    nameScopedSkills([web], new Set(), ROOT, grants)
+    expect(nameScopedSkills([web], new Set(['deploy']), ROOT, grants).map(c => c.name)).toEqual(['apps/web:deploy'])
+  })
+
+  test('an activated conditional skill holds the bare name against a scoped one', () => {
+    const conditional = unscoped('deploy')
+    const named = nameScopedSkills([conditional, scoped('deploy', 'apps/web')], new Set(), ROOT, new Map())
+    expect(named.map(c => c.name)).toEqual(['deploy', 'apps/web:deploy'])
+    expect(named[0]).toBe(conditional.skill)
+  })
+
+  test('a conditional skill that activates after a scoped one got the bare name is not offered beside it', () => {
+    const grants = new Map<string, string>()
+    const web = scoped('deploy', 'apps/web')
+    nameScopedSkills([web], new Set(), ROOT, grants)
+    const named = nameScopedSkills([web, unscoped('deploy')], new Set(), ROOT, grants)
+    expect(named.map(c => c.name)).toEqual(['deploy'])
+    expect(named[0]?.scope).toBe('apps/web')
+  })
 })
 
 describe('scopedVariantNote', () => {

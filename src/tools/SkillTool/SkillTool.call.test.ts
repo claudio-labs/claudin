@@ -1,22 +1,41 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { addSkillDirectories, clearDynamicSkills } from 'src/skills/loadSkillsDir.js'
+import { getCommands } from 'src/commands/commands.js'
+import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { addSkillDirectories, clearDynamicSkills, clearSkillCaches } from 'src/skills/loadSkillsDir.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { getEmptyToolPermissionContext, type ToolPermissionContext, type ToolUseContext } from 'src/tools/Tool.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
 
 // Drives validateInput, checkPermissions and the inline call path against
 // skills loaded the way a session discovers nested ones, so the lookup is the
-// real getCommands one.
+// real getCommands one. The config dir, the project root and the cwd are all
+// temporary, so neither ~/.claudin's skills nor this checkout's git status
+// reach the tests.
 
+const ENV_KEYS = ['CLAUDIN_CONFIG_DIR', 'CLAUDIN_DISABLE_POLICY_SKILLS'] as const
+const savedEnv = Object.fromEntries(ENV_KEYS.map(k => [k, process.env[k]]))
+const savedProjectRoot = getProjectRoot()
 let root: string
 
-function skill(name: string, frontmatter: string, body = `Do the ${name} thing.`): void {
-  const dir = join(root, 'pkg', '.claudin', 'skills', name)
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'SKILL.md'), `---\n${frontmatter}\n---\n${body}\n`)
+function skillAt(dir: string, name: string, frontmatter: string, body = `Do the ${name} thing.`): string {
+  const skillDir = join(dir, '.claudin', 'skills', name)
+  mkdirSync(skillDir, { recursive: true })
+  writeFileSync(join(skillDir, 'SKILL.md'), `---\n${frontmatter}\n---\n${body}\n`)
+  return join(dir, '.claudin', 'skills')
+}
+
+function skill(name: string, frontmatter: string, body?: string): void {
+  skillAt(join(root, 'pkg'), name, frontmatter, body)
+}
+
+function git(cwd: string, ...args: string[]): void {
+  const run = spawnSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args], { cwd })
+  if (run.status !== 0) throw new Error(`git ${args.join(' ')}: ${run.stderr}`)
 }
 
 function context(permissions: Partial<ToolPermissionContext> = {}): ToolUseContext {
@@ -31,8 +50,29 @@ function context(permissions: Partial<ToolPermissionContext> = {}): ToolUseConte
   } as unknown as ToolUseContext
 }
 
+/** SkillTool.call with `projectRoot` as the project and `cwd` as the working directory. */
+async function call(input: { skill: string; args?: string }, opts: { projectRoot?: string; cwd?: string; ctx?: ToolUseContext } = {}) {
+  const projectRoot = opts.projectRoot ?? root
+  setProjectRoot(projectRoot)
+  try {
+    return await runWithCwdOverride(opts.cwd ?? projectRoot, () =>
+      SkillTool.call(input, opts.ctx ?? context(), undefined as never, {
+        message: { id: 'msg_1', content: [{ type: 'tool_use', id: 'toolu_skill_1', name: 'Skill', input: {} }] },
+      } as never),
+    )
+  } finally {
+    setProjectRoot(root)
+  }
+}
+
 beforeAll(async () => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'claudin-skilltool-')))
+  mkdirSync(join(root, 'config'))
+  process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
+  process.env.CLAUDIN_DISABLE_POLICY_SKILLS = '1'
+  setProjectRoot(root)
+  clearSkillCaches()
+  clearDynamicSkills()
   skill('zz-plain-skill', 'description: a plain skill')
   skill('zz-tooling-skill', 'description: needs tools\nallowed-tools: Bash(make:*)\nmodel: sonnet\neffort: low')
   skill('zz-hidden-skill', 'description: user only\ndisable-model-invocation: true')
@@ -40,6 +80,12 @@ beforeAll(async () => {
 })
 
 afterAll(() => {
+  for (const key of ENV_KEYS) {
+    if (savedEnv[key] === undefined) delete process.env[key]
+    else process.env[key] = savedEnv[key]
+  }
+  setProjectRoot(savedProjectRoot)
+  clearSkillCaches()
   clearDynamicSkills()
   rmSync(root, { recursive: true, force: true })
 })
@@ -92,9 +138,7 @@ describe('SkillTool.checkPermissions', () => {
 describe('SkillTool.call — inline', () => {
   test("loads the skill's text into the turn and hands back what it grants", async () => {
     const ctx = context()
-    const result = await SkillTool.call({ skill: 'zz-tooling-skill', args: 'now' }, ctx, undefined as never, {
-      message: { id: 'msg_1', content: [{ type: 'tool_use', id: 'toolu_skill_1', name: 'Skill', input: {} }] },
-    } as never)
+    const result = await call({ skill: 'zz-tooling-skill', args: 'now' }, { ctx })
     expect(result.data).toMatchObject({
       success: true,
       commandName: 'zz-tooling-skill',
@@ -113,12 +157,66 @@ describe('SkillTool.call — inline', () => {
 
   test('a skill that grants nothing leaves the context alone', async () => {
     const ctx = context()
-    const result = await SkillTool.call({ skill: '/zz-plain-skill' }, ctx, undefined as never, {
-      message: { id: 'msg_2', content: [] },
-    } as never)
+    const result = await call({ skill: '/zz-plain-skill' }, { ctx })
     expect(result.data).toMatchObject({ success: true, commandName: 'zz-plain-skill', allowedTools: undefined })
     expect(result.data).not.toHaveProperty('variantsNote')
     expect(result.contextModifier!(ctx)).toBe(ctx)
+  })
+})
+
+describe('directory-scoped skills beside a root one', () => {
+  /** A repository whose project root has a `deploy` skill, with another under apps/web. */
+  function repoWithVariant(name: string, project = ''): { repo: string; projectRoot: string } {
+    const repo = join(root, name)
+    const projectRoot = join(repo, project)
+    mkdirSync(join(projectRoot, 'apps', 'web', 'src'), { recursive: true })
+    skillAt(projectRoot, 'deploy', 'description: ship the project')
+    skillAt(join(projectRoot, 'apps', 'web'), 'deploy', 'description: ship the web app')
+    writeFileSync(join(projectRoot, 'apps', 'web', 'src', 'page.tsx'), 'one')
+    git(repo, 'init', '-q')
+    git(repo, 'add', '.')
+    git(repo, 'commit', '-qm', 'init')
+    return { repo, projectRoot }
+  }
+
+  const VARIANT_LINE = '- `apps/web:deploy` — for files under apps/web/'
+
+  // The wiring in getCommands: without the root's names as `taken`, the
+  // nested skill would be named `deploy` and then dropped as a duplicate.
+  test('getCommands offers the root skill under its name and the nested one qualified', async () => {
+    const { projectRoot } = repoWithVariant('wiring')
+    await addSkillDirectories([join(projectRoot, 'apps', 'web', '.claudin', 'skills')])
+    const names = (await getCommands(projectRoot)).map(c => c.name)
+    expect(names).toContain('deploy')
+    expect(names).toContain('apps/web:deploy')
+  })
+
+  test('calling the root skill names a variant under a changed directory', async () => {
+    const { projectRoot } = repoWithVariant('changed')
+    writeFileSync(join(projectRoot, 'apps', 'web', 'src', 'page.tsx'), 'two')
+    const result = await call({ skill: 'deploy' }, { projectRoot })
+    const note = (result.data as { variantsNote?: string }).variantsNote
+    expect(note).toContain(VARIANT_LINE)
+    expect(note).toContain('"deploy" is the unscoped one')
+  })
+
+  // git status prints paths relative to the repository root, not the cwd.
+  test('from a project inside a larger repository', async () => {
+    const { projectRoot } = repoWithVariant('monorepo', 'pkg')
+    writeFileSync(join(projectRoot, 'apps', 'web', 'src', 'page.tsx'), 'two')
+    const result = await call({ skill: 'deploy' }, { projectRoot })
+    expect((result.data as { variantsNote?: string }).variantsNote).toContain(VARIANT_LINE)
+  })
+
+  // Without -z, a rename reads `R  old -> "new"`, quoted when it has a space.
+  test('through a renamed file whose new name has a space', async () => {
+    const { repo, projectRoot } = repoWithVariant('renamed')
+    writeFileSync(join(repo, 'notes.txt'), 'n')
+    git(repo, 'add', 'notes.txt')
+    git(repo, 'commit', '-qm', 'notes')
+    git(repo, 'mv', 'notes.txt', 'apps/web/release notes.txt')
+    const result = await call({ skill: 'deploy' }, { projectRoot })
+    expect((result.data as { variantsNote?: string }).variantsNote).toContain(VARIANT_LINE)
   })
 })
 
