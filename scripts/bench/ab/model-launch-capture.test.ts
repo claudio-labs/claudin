@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { buildFixture, parseCatalogEntry, requestFacts, stripOldestThinking, withThinking } from './model-launch-capture.ts'
+import { buildFixture, hasModelCatalog, parseCatalogEntry, requestFacts, stripOldestThinking, withThinking } from './model-launch-capture.ts'
 import type { ProxyRecord } from './wire-proxy.ts'
 
 type Json = Record<string, unknown>
@@ -26,6 +26,11 @@ test('a field the entry lacks is null, never read from the next entry', () => {
   expect(parseCatalogEntry(BUNDLE, 'claude-sonnet-5-5')?.default_effort).toBeNull()
   expect(parseCatalogEntry(BUNDLE, 'claude-sonnet-5-5')?.display_name).toBe('Sonnet 5.5')
   expect(parseCatalogEntry(BUNDLE, 'claude-fable-9')).toBeNull()
+})
+
+test('a version manager shim is not a bundle with a catalog', () => {
+  expect(hasModelCatalog(BUNDLE)).toBe(true)
+  expect(hasModelCatalog('\x7fELF mise shim: claude is not installed for this directory')).toBe(false)
 })
 
 const thinking = (s: string): Json => ({ type: 'thinking', thinking: '', signature: s })

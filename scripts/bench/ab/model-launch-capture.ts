@@ -59,6 +59,7 @@ const CATALOG_FIELD_RES = {
   pricing: /pricing:"([^"]+)"/,
 } as const
 const CATALOG_ENTRY_SPAN = 2000
+const CATALOG_ENTRY_RE = /\{id:"claude-[^"]+",family:/
 const TURN_TIMEOUT_MS = 240_000
 const BINS: Record<string, string> = { claude: 'claude', claudindev: join(REPO_ROOT, 'bin', 'claudin') }
 
@@ -80,6 +81,15 @@ const blocksOf = (m: Json): Json[] => (Array.isArray(m.content) ? m.content.filt
 const isThinking = (b: Json): boolean => b.type === 'thinking' || b.type === 'redacted_thinking'
 
 export type CatalogEntry = { [K in keyof typeof CATALOG_FIELD_RES]: string | null }
+
+/**
+ * Whether a file is a Claude Code bundle with its model catalog. `which claude`
+ * can resolve to a version manager's shim (mise links it to /usr/bin/mise),
+ * whose bytes hold no catalog: every fixture would then carry `catalog: null`.
+ */
+export function hasModelCatalog(bundle: string): boolean {
+  return CATALOG_ENTRY_RE.test(bundle)
+}
 
 /** A model's entry in Claude Code's baked model catalog, read out of the bundle text. */
 export function parseCatalogEntry(bundle: string, model: string): CatalogEntry | null {
@@ -246,11 +256,13 @@ async function main(): Promise<void> {
   const a = parseArgs(process.argv.slice(2))
   const prompts = a.hard ? HARD_PROMPTS : TRIVIAL_PROMPTS
   const proxyDir = join(a.out, 'proxy')
-  const proxy = await startWireProxy(proxyDir)
   const claudeVersion = VERSION_RE.exec(spawnSync('claude', ['--version'], { encoding: 'utf8' }).stdout ?? '')?.[1] ?? 'unknown'
-  const claudeBundle = a.bins.includes('claude')
-    ? readFileSync(realpathSync(spawnSync('which', ['claude'], { encoding: 'utf8' }).stdout.trim()), 'latin1')
-    : ''
+  const claudePath = a.bins.includes('claude') ? realpathSync(spawnSync('which', ['claude'], { encoding: 'utf8' }).stdout.trim()) : ''
+  const claudeBundle = claudePath ? readFileSync(claudePath, 'latin1') : ''
+  if (a.fixtures && claudePath && !hasModelCatalog(claudeBundle)) {
+    throw new Error(`${claudePath} holds no Claude Code model catalog: put the real claude binary's directory first on PATH`)
+  }
+  const proxy = await startWireProxy(proxyDir)
   const report: Json = {}
   try {
     for (const bin of a.bins) {
