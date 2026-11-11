@@ -63,6 +63,16 @@ NPM_TOKEN.**
   (v1.1.47, 2026-10-23). Re-running with `bump: none` reuses that tag, and
   `build`/`publish` check out the TAG, not main — so a fix merged since is not
   in the rerun. Re-run with `bump: patch` instead.
+  It happened twice more on 2026-11-10: v1.1.52 and v1.2.0 were tagged and got
+  notes-only GitHub releases, and npm stayed at 1.1.51. Both darwin legs died
+  in 0s because GitHub had retired the `macos-14` runner on 11-02 ("The
+  configuration 'macos-14-arm64-us-default' is not supported"). The fix moved
+  them to `macos-15`, and the release was re-run as v1.2.1. `bump: none` is also
+  wrong for a workflow-only fix: it inserts a second `## vX` section into
+  CHANGELOG.md and overwrites that release's notes with the fix commit alone.
+  A pinned `macos-N` label dies the same way when GitHub keeps only the newest
+  two macOS images, so check the runner-images retirement notices before a
+  release.
 - **Publish order is platform-first, wrapper-LAST** — the wrapper's
   `optionalDependencies` pin exact platform versions, so publishing it before its
   legs would point `latest` at a version whose binaries do not exist yet. A bad
