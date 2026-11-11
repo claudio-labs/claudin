@@ -440,6 +440,8 @@ describe('classifierTranscriptBudget, by the window (CLAUDIN_CLASSIFIER_WINDOW_B
     expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
     expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
     expect(classifierTranscriptBudget(0, 500_000)).toBe(400_000)
+    // A window larger than any today: the cap holds, not the share.
+    expect(classifierTranscriptBudget(0, 2_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
   })
 
   test('a window of 250k tokens or less keeps the base budget', () => {

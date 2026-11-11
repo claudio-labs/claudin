@@ -8,6 +8,10 @@ import {
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 import type { Message } from 'src/shared/types/message.js'
+import {
+  getCachedClaudeMdContent,
+  setCachedClaudeMdContent,
+} from 'src/platform/bootstrap/state.js'
 
 // The claude_md_delta attachment reads the CLAUDE.md family through
 // getMemoryFiles(), which discovers it from the cwd's CLAUDE.md/AGENTS.md.
@@ -186,6 +190,24 @@ describe('getAttachments — subagent context-omission gates', () => {
     if (fullDelta?.type !== 'claude_md_delta') throw new Error('expected delta')
     expect(fullDelta.addedContent).toContain(PROJECT_DOC)
     expect(fullDelta.addedContent).toContain(TEAM_INDEX)
+  })
+
+  // The auto-mode classifier judges with the body last announced
+  // (getCachedClaudeMdContent). Before 2026-11-11 only getUserContext's memo
+  // wrote it, so after a /cd the classifier kept the old directory's rules.
+  test('the announced body becomes the classifier’s copy; a slim agent’s filtered one does not', async () => {
+    const saved = getCachedClaudeMdContent()
+    try {
+      setCachedClaudeMdContent('STALE-BODY')
+      await getAttachments(null, makeSubagentContext(false), null, [])
+      expect(getCachedClaudeMdContent()).toContain(PROJECT_DOC)
+      expect(getCachedClaudeMdContent()).toContain(TEAM_INDEX)
+
+      await getAttachments(null, makeSubagentContext(false, true, true), null, [])
+      expect(getCachedClaudeMdContent()).toContain(TEAM_INDEX)
+    } finally {
+      setCachedClaudeMdContent(saved)
+    }
   })
 
   // The memory_index attachment is the render-only sibling of claude_md_delta:

@@ -94,6 +94,13 @@ describe('placeLagMarker', () => {
     expect(placeLagMarker(['User: go\n', 'Bash one\n'], 'Bash two\n', T0 + 1, remembered)).toBe(1)
   })
 
+  test('the same call again marks nothing: what it remembers is its action, never a transcript block', () => {
+    const remembered: RememberedPrefixes = new Map()
+    placeLagMarker(['User: go\n'], 'Bash one\n', T0, remembered)
+
+    expect(placeLagMarker(['User: go\n'], 'Bash one\n', T0 + 1, remembered)).toBeNull()
+  })
+
   test('a transcript whose front moved shares no prefix, so nothing is marked', () => {
     const remembered: RememberedPrefixes = new Map()
     placeLagMarker(['User: go\n', 'Read a\n'], 'Bash one\n', T0, remembered)

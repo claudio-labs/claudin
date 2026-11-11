@@ -1,0 +1,160 @@
+{
+  "test": [
+    "scripts/bench/tokens/session-census.test.ts",
+    "scripts/bench/ab/forkBench.test.ts",
+    "src/tools/GitTool/GitTool.test.ts",
+    "src/tools/FileReadTool/batch.test.ts",
+    "src/tools/FileReadTool/batchResult.test.ts",
+    "src/tools/GrepTool/GrepTool.test.ts",
+    "src/vcs/git/gitStatusDelta.test.ts",
+    "src/shared/fs/glob.walk.test.ts",
+    "src/sessions/rerootSession.test.ts",
+    "src/agent/attachments/attachments.orchestrator.test.ts",
+    "src/agent/attachments/injections.test.ts"
+  ],
+  "source": "src/tools/GitTool/GitTool.ts",
+  "probes": [
+    {
+      "name": "census: fable 5.2 falls to the fable 5 row again",
+      "source": "scripts/bench/tokens/session-census.ts",
+      "find": "  { pattern: /fable-5-2/, price: { input: 8, write5m: 10, write1h: 16, read: 0.2, output: 40 } },\n",
+      "replace": "\n"
+    },
+    {
+      "name": "fork bench: fable 5.2 has no row",
+      "source": "scripts/bench/ab/forkBench.ts",
+      "find": "  [/fable-5-2/, 'fable-5-2 (8/40, read 0.2)', { input: 8, write5m: 10, write1h: 16, read: 0.2, output: 40 }],\n",
+      "replace": "\n"
+    },
+    {
+      "name": "git: a refused batch names only the command at fault",
+      "find": "            ? `${parsed.reason} Nothing in this call ran: re-send every command, with this one corrected.`\n",
+      "replace": "            ? parsed.reason\n"
+    },
+    {
+      "name": "git: a single refused command is told to re-send every command",
+      "find": "          input.commands.length > 1\n",
+      "replace": "          input.commands.length > 0\n"
+    },
+    {
+      "name": "read: a batch miss no longer lists the file's symbols",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      missing.push(`${miss.symbol} in ${label}${last && miss.available ? ` (available: ${miss.available})` : ''}`)\n",
+      "replace": "      missing.push(`${miss.symbol} in ${label}`)\n"
+    },
+    {
+      "name": "read: the symbol list repeats on every miss of a file",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      const last = i === read.missing.length - 1\n",
+      "replace": "      const last = true\n"
+    },
+    {
+      "name": "read: the error carries no symbol list for the batch",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "            `Call Read(file_path, view='outline') to see the full structure.`,\n          available,\n",
+      "replace": "            `Call Read(file_path, view='outline') to see the full structure.`,\n"
+    },
+    {
+      "name": "grep: a cut page names no next offset",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    : `${info} — pass offset=${(appliedOffset ?? 0) + appliedLimit} for the next page`\n",
+      "replace": "    : info\n"
+    },
+    {
+      "name": "grep: the next offset forgets the page it is on",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    : `${info} — pass offset=${(appliedOffset ?? 0) + appliedLimit} for the next page`\n",
+      "replace": "    : `${info} — pass offset=${appliedLimit} for the next page`\n"
+    },
+    {
+      "name": "grep: an uncut page names an offset too",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "  return appliedLimit === undefined\n    ? info\n",
+      "replace": "  return info === ''\n    ? info\n"
+    },
+    {
+      "name": "glob: .git is listed again",
+      "source": "src/shared/fs/glob.ts",
+      "find": "    args.push('--glob', '!.git')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "glob: a pattern that names .git is pruned anyway",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  if (!DOT_GIT_SEGMENT_RE.test(filePattern)) {\n",
+      "replace": "  if (true) {\n"
+    },
+    {
+      "name": "context: the delta announces the body of the first load forever",
+      "source": "src/agent/context.ts",
+      "find": "  return disabled ? null : getClaudeMds(await getMemoryFiles(), filter)\n",
+      "replace": "  return disabled ? null : (((globalThis as Record<string, unknown>).__probeFirstClaudeMd ??= getClaudeMds(await getMemoryFiles(), filter)) as string)\n"
+    },
+    {
+      "name": "context: a slim sub-agent is announced the memory indexes",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "    (await loadClaudeMd(options.omitMemoryIndexes ? notMemoryIndex : undefined)) ?? ''\n",
+      "replace": "    (await loadClaudeMd(undefined)) ?? ''\n"
+    },
+    {
+      "name": "context: the classifier keeps the old directory's instructions",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "  if (!options.omitMemoryIndexes) setCachedClaudeMdContent(current || null)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "context: a slim sub-agent's filtered body becomes the classifier's",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "  if (!options.omitMemoryIndexes) setCachedClaudeMdContent(current || null)\n",
+      "replace": "  setCachedClaudeMdContent(current || null)\n"
+    },
+    {
+      "name": "reroot: the git status snapshot survives /cd",
+      "source": "src/sessions/rerootSession.ts",
+      "find": "  getGitStatus.cache.clear?.()\n  getSystemContext.cache.clear?.()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "reroot: the system context is rebuilt around the old git status",
+      "source": "src/sessions/rerootSession.ts",
+      "find": "  getGitStatus.cache.clear?.()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "git status: a snapshot of another directory is not announced",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "  if (last && (cwd === undefined || last.cwd === undefined || last.cwd === cwd)) {\n",
+      "replace": "  if (last) {\n"
+    },
+    {
+      "name": "git status: a transcript from before the field is announced again",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "  if (last && (cwd === undefined || last.cwd === undefined || last.cwd === cwd)) {\n",
+      "replace": "  if (last && (cwd === undefined || last.cwd === cwd)) {\n"
+    },
+    {
+      "name": "git status: the first announcement decides, not the last",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "    if (msg.attachment?.type === 'git_status_delta') last = msg.attachment\n",
+      "replace": "    if (msg.attachment?.type === 'git_status_delta') last ??= msg.attachment\n"
+    },
+    {
+      "name": "git status: the attachment does not record its directory",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "  return [{ type: 'git_status_delta', ...delta }]\n",
+      "replace": "  return [{ type: 'git_status_delta', content: delta.content }]\n"
+    },
+    {
+      "name": "git status: the producer does not say where the session is",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "    (messages ?? []) as Parameters<typeof getGitStatusDelta>[1],\n    getOriginalCwd(),\n",
+      "replace": "    (messages ?? []) as Parameters<typeof getGitStatusDelta>[1],\n"
+    },
+    {
+      "name": "control: the same refusal text built another way",
+      "expect": "green",
+      "find": "          input.commands.length > 1\n",
+      "replace": "          input.commands.length >= 2\n"
+    }
+  ]
+}

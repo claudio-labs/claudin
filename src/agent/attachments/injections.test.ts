@@ -11,10 +11,13 @@ import type { Message } from 'src/shared/types/message.js'
 import {
   getAgentListingDeltaAttachment,
   getCriticalSystemReminderAttachment,
+  getGitStatusDeltaAttachment,
   getMaxBudgetUsdAttachment,
   getTokenUsageAttachment,
   getUltrathinkEffortAttachment,
 } from 'src/agent/attachments/injections.js'
+import { getSystemContext } from 'src/agent/context.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
 function agent(agentType: string, extra: Partial<AgentDefinition> = {}): AgentDefinition {
   return {
@@ -150,5 +153,37 @@ describe('the one-line reminders', () => {
 
   test('no input means no ultrathink attachment', () => {
     expect(getUltrathinkEffortAttachment(null)).toEqual([])
+  })
+})
+
+describe('getGitStatusDeltaAttachment', () => {
+  afterEach(() => {
+    getSystemContext.cache.clear?.()
+  })
+
+  // getGitStatus answers null under NODE_ENV=test, so the snapshot is seeded
+  // where the producer reads it.
+  function seedGitStatus(gitStatus: string): void {
+    getSystemContext.cache.set(undefined, Promise.resolve({ gitStatus }))
+  }
+
+  function announcedIn(cwd: string): Message {
+    return {
+      type: 'attachment',
+      attachment: { type: 'git_status_delta', content: 'Current branch: old', cwd },
+    } as unknown as Message
+  }
+
+  test('the snapshot is announced with the directory the session is rooted in', async () => {
+    seedGitStatus('Current branch: main')
+    expect(await getGitStatusDeltaAttachment([])).toEqual([
+      { type: 'git_status_delta', content: 'Current branch: main', cwd: getOriginalCwd() },
+    ])
+  })
+
+  test('announced here it stays quiet; announced for another directory it speaks again', async () => {
+    seedGitStatus('Current branch: main')
+    expect(await getGitStatusDeltaAttachment([announcedIn(getOriginalCwd())])).toEqual([])
+    expect(await getGitStatusDeltaAttachment([announcedIn('/somewhere/else')])).toHaveLength(1)
   })
 })

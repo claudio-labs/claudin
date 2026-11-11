@@ -226,6 +226,16 @@ describe('batch Read — several files', () => {
     )
   })
 
+  test('several misses in one file name its symbols once, after the last of them', async () => {
+    const c = writeFixture('sym-twice.ts', OTHER_TS)
+    const result = await inFixtureDir(() =>
+      call(ReadOn, { file_path: c, symbol: ['nope', 'nada'] }, context()),
+    )
+    expect(textOf(result.data)).toBe(
+      'Symbol not found: nope in sym-twice.ts, nada in sym-twice.ts (available: gamma).',
+    )
+  })
+
   test('the stub stands in for a file already read at the same range', async () => {
     const a = writeFixture('stub-a.ts', SAMPLE_TS)
     const b = writeFixture('stub-b.ts', OTHER_TS)

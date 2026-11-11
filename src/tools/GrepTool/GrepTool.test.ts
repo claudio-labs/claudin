@@ -474,6 +474,13 @@ describe('GrepTool — count mode ranking', () => {
     const all = await countGrep({ head_limit: 0 })
     const whole = GrepTool.mapToolResultToToolResultBlockParam!(all as never, 'tool-use-3')
     expect(typeof whole.content === 'string' ? whole.content : '').not.toContain('next page')
+
+    // The last page: reached with an offset, and nothing was cut after it.
+    const tail = await countGrep({ head_limit: 0, offset: 2 })
+    const rest = GrepTool.mapToolResultToToolResultBlockParam!(tail as never, 'tool-use-4')
+    const restText = typeof rest.content === 'string' ? rest.content : ''
+    expect(restText).toContain('pagination = offset: 2')
+    expect(restText).not.toContain('next page')
   })
 })
 
