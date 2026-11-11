@@ -5,6 +5,7 @@
 // test file, so each test restores exactly what it moved.
 
 import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { spawnSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -35,6 +36,8 @@ import {
 } from 'src/sessions/rerootSession.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
+import { getBranch } from 'src/vcs/git/git.js'
+import { resetGitFileWatcher } from 'src/vcs/git/gitFilesystem.js'
 
 let target: string
 let restore: () => void
@@ -158,4 +161,26 @@ test('the git status snapshot is dropped with the directory it described', async
 
   expect(getSystemContext.cache.has(undefined)).toBe(false)
   expect(getGitStatus.cache.has(undefined)).toBe(false)
+})
+
+// The watcher caches the branch, HEAD, remote and default branch of the repo
+// it started on, and re-reads only when THAT repo's files change. After a /cd
+// the new directory's git status was announced under the old one's branch
+// (live, 2026-11-11: "BRAVO, alpha-branch"), and the footer kept it too.
+test('the branch is the new directory’s after the move', async () => {
+  const other = realpathSync(await mkdtemp(join(tmpdir(), 'reroot-other-')))
+  try {
+    spawnSync('git', ['init', '-q', '-b', 'alpha-branch'], { cwd: target })
+    spawnSync('git', ['init', '-q', '-b', 'bravo-branch'], { cwd: other })
+
+    rerootSession(target)
+    expect(await getBranch()).toBe('alpha-branch')
+
+    rerootSession(other)
+    expect(await getBranch()).toBe('bravo-branch')
+  } finally {
+    // Not left on a directory this test deletes.
+    resetGitFileWatcher()
+    await rm(other, { recursive: true, force: true })
+  }
 })
