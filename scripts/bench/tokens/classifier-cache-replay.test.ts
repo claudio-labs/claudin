@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { simulateCache, syntheticThread } from './classifier-cache-replay.ts'
+import { medianMs, replayArm, simulateCache, syntheticThread } from './classifier-cache-replay.ts'
 
 const block = (name: string) => name.padEnd(400, '.')
 const blocks = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => block(`b${from + i}`))
@@ -116,5 +116,35 @@ describe('syntheticThread', () => {
     expect(thread.decisions.map(d => d.history.length)).toEqual([0, 1, 2, 3])
     expect(thread.decisions[3]!.history[2]).toBe(thread.decisions[2]!.action)
     expect([...thread.toolNames]).toEqual(['Bash'])
+  })
+})
+
+describe('medianMs', () => {
+  test('the middle of the runs, so one slow call does not decide', () => {
+    // Five calls taking 2, 2, 40, 3 and 2 ms on a clock the test drives.
+    const durations = [2, 2, 40, 3, 2]
+    let clock = 0
+    let call = 0
+    const ms = medianMs(
+      () => {
+        clock += durations[call++]!
+      },
+      5,
+      () => clock,
+    )
+    expect(ms).toBe(2)
+    expect(call).toBe(5)
+  })
+})
+
+describe('replayArm', () => {
+  test('keeps the decision with the longest kept transcript, and can build it again', () => {
+    const thread = syntheticThread(6, 1_000)
+    const tools = [{ name: 'Bash', aliases: [], toAutoClassifierInput: (input: unknown) => input }] as never
+    const arm = replayArm(thread, tools, { stableCut: true, lag: true })
+
+    expect(arm.largest?.keptChars).toBe(Math.max(...arm.keptChars))
+    expect(arm.largest?.keptChars).toBe(arm.keptChars.at(-1)!)
+    expect(() => arm.largest!.rerun()).not.toThrow()
   })
 })

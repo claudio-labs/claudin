@@ -57,7 +57,10 @@
  *      most 0.8 × `stable`;
  *   4. a synthetic thread that outgrows the 800k cap writes no more per call
  *      than `stable` does on it;
- *   5. serializing and marking the largest decision takes under 10 ms.
+ *   5. serializing and marking the largest decision takes under 10 ms: the
+ *      decision with the longest kept transcript, run nine times, the median.
+ *      Until 2026-11-11 this was the slowest single call of the whole replay,
+ *      which a GC pause decides: 4.9 to 13.5 ms over four runs of one build.
  *
  * Run:
  *   bun scripts/bench/tokens/classifier-cache-replay.ts --since=2026-10-20
@@ -288,6 +291,8 @@ type ArmResult = {
   keptChars: number[]
   historyChars: number[]
   maxSerializeMs: number
+  /** The decision that kept the longest transcript, and a way to build its request again. */
+  largest: { keptChars: number; rerun: () => void } | null
 }
 
 /** One way of building the classifier's request: which cut, which budget, the lag marker or not. */
@@ -298,14 +303,29 @@ export type Arm = {
   lag: boolean
 }
 
-export function replayArm(thread: Thread, tools: Tools, arm: Arm, withHistory = false): ArmResult {
+function useArm(arm: Arm): void {
   if (arm.stableCut) delete process.env[KILLSWITCH]
   else process.env[KILLSWITCH] = '0'
   if (arm.windowTokens === undefined) delete process.env[WINDOW_BUDGET]
   else process.env[WINDOW_BUDGET] = '1'
+}
+
+/** The median wall time of `runs` calls of `fn`, in ms: one call's time is at the mercy of a GC pause. */
+export function medianMs(fn: () => void, runs = 9, now: () => number = () => performance.now()): number {
+  const samples: number[] = []
+  for (let i = 0; i < runs; i++) {
+    const started = now()
+    fn()
+    samples.push(now() - started)
+  }
+  return samples.sort((a, b) => a - b)[Math.floor(samples.length / 2)] ?? 0
+}
+
+export function replayArm(thread: Thread, tools: Tools, arm: Arm, withHistory = false): ArmResult {
+  useArm(arm)
   const lookup = buildToolLookup(tools)
   const remembered: RememberedPrefixes = new Map()
-  const out: ArmResult = { requests: [], keptChars: [], historyChars: [], maxSerializeMs: 0 }
+  const out: ArmResult = { requests: [], keptChars: [], historyChars: [], maxSerializeMs: 0, largest: null }
   for (const d of thread.decisions) {
     const action = toCompact(
       { role: 'assistant', content: (d.action.message.content as Array<{ name: string; input: unknown }>).map(u => ({ type: 'tool_use' as const, name: u.name, input: u.input })) },
@@ -322,7 +342,18 @@ export function replayArm(thread: Thread, tools: Tools, arm: Arm, withHistory = 
       atMs: d.atMs,
       ...(lagAt !== null && { lagBlocks: lagAt + 1 }),
     })
-    out.keptChars.push(blocks.reduce((s, b) => s + b.length, 0))
+    const kept = blocks.reduce((s, b) => s + b.length, 0)
+    out.keptChars.push(kept)
+    if (kept > (out.largest?.keptChars ?? -1)) {
+      out.largest = {
+        keptChars: kept,
+        rerun: () => {
+          useArm(arm)
+          const again = serializeTranscriptForClassifier(d.history, tools, classifierTranscriptBudget(action.length, arm.windowTokens))
+          if (arm.lag) placeLagMarker(again.userContentBlocks.map(b => b.text), action, d.atMs, new Map())
+        },
+      }
+    }
     if (withHistory) {
       out.historyChars.push(
         serializeTranscriptForClassifier(d.history, tools, Number.MAX_SAFE_INTEGER).userContentBlocks.reduce(
@@ -382,6 +413,7 @@ function main(): void {
   let baseWindowCalls = 0
   let baseWindowDiffering = 0
   let maxMarkMs = 0
+  let largest: ArmResult['largest'] = null
   let synthetic = { stable: 0, candidate: 0 }
 
   try {
@@ -413,6 +445,7 @@ function main(): void {
     }
     maxSerializeMs = Math.max(maxSerializeMs, newArm.maxSerializeMs)
     maxMarkMs = Math.max(maxMarkMs, candidateArm.maxSerializeMs)
+    if (candidateArm.largest && candidateArm.largest.keptChars > (largest?.keptChars ?? -1)) largest = candidateArm.largest
     // Sized for a 200k-token window the budget is the base one: same bytes.
     replayArm(thread, tools, { stableCut: true, windowTokens: BASE_WINDOW_TOKENS, lag: false }).requests.forEach((r, i) => {
       baseWindowCalls++
@@ -518,6 +551,7 @@ function main(): void {
   const candidate = total['window+lag']!
   const writeRatio = leverPast.stable > 0 ? leverPast.candidate / leverPast.stable : NaN
   const costRatio = usd(candidate, OPUS_5_5) / usd(stable, OPUS_5_5)
+  const largestMs = largest ? medianMs(largest.rerun) : 0
   const leverGates: Array<[string, boolean, string]> = [
     [
       `window+lag writes ≤ ${LEVER_GATE_WRITES} × stable in threads past the base budget (≥${GATE_MIN_DECISIONS} decisions)`,
@@ -539,7 +573,11 @@ function main(): void {
       synthetic.candidate <= synthetic.stable,
       `synthetic 1.6M thread: ${(synthetic.stable / 1000).toFixed(1)}k → ${(synthetic.candidate / 1000).toFixed(1)}k per call`,
     ],
-    [`serialize and mark under ${LEVER_GATE_MARK_MS} ms`, maxMarkMs < LEVER_GATE_MARK_MS, `max ${maxMarkMs.toFixed(1)} ms`],
+    [
+      `serialize and mark the largest decision under ${LEVER_GATE_MARK_MS} ms`,
+      largestMs < LEVER_GATE_MARK_MS,
+      `${((largest?.keptChars ?? 0) / 1000).toFixed(0)}k chars kept: median ${largestMs.toFixed(1)} ms of 9 (slowest single call of the replay ${maxMarkMs.toFixed(1)} ms)`,
+    ],
   ]
   console.log('\nlever gate (window+lag against stable):')
   for (const [name, ok, detail] of leverGates) console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name} — ${detail}`)

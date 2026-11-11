@@ -25,6 +25,13 @@
  * Prefixes are told apart by content, never by thread: the main thread and
  * every sub-agent share the one map, and a prefix one of them wrote cannot be
  * a prefix of another's unless the bytes are the same — which is a hit.
+ *
+ * A key is a fingerprint, not a proof: a block longer than two edges counts by
+ * its length and its two ends (`KEY_EDGE_CHARS`). Walking every char of a
+ * transcript near the 800k cap took 8.6 ms a call under Bun and 2 ms under
+ * node; this way it is about a quarter of that. A wrong match is harmless for
+ * the same reason a miss is: the marked block is then not a cached prefix, and
+ * the request writes what it would have written without the marker.
  */
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
@@ -34,7 +41,8 @@ export const LAG_MARKER_TTL_MS = 60 * 60 * 1000
 const MAX_REMEMBERED_PREFIXES = 64
 
 const DJB2_SEED = 5381
-const BLOCK_SEPARATOR = 0x1f
+/** How much of each end of a long block goes into its key. */
+export const KEY_EDGE_CHARS = 64
 
 export function isLagMarkerEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)
@@ -45,7 +53,8 @@ export type RememberedPrefixes = Map<string, number>
 
 /**
  * `keys[k]` names the prefix made of the first `k + 1` blocks: its block
- * count, its chars and a chained djb2 of its text, so two prefixes share a key
+ * count, its chars and a chained djb2 of each block's length and text (both
+ * ends of it, for a block longer than two edges), so two prefixes share a key
  * only when all three agree.
  */
 export function prefixKeys(blocks: readonly string[]): string[] {
@@ -53,9 +62,15 @@ export function prefixKeys(blocks: readonly string[]): string[] {
   let hash = DJB2_SEED
   let chars = 0
   for (const block of blocks) {
-    for (let i = 0; i < block.length; i++) hash = ((hash * 33) ^ block.charCodeAt(i)) >>> 0
-    hash = ((hash * 33) ^ BLOCK_SEPARATOR) >>> 0
-    chars += block.length
+    const length = block.length
+    const headEnd = length <= 2 * KEY_EDGE_CHARS ? length : KEY_EDGE_CHARS
+    for (let i = 0; i < headEnd; i++) hash = ((hash * 33) ^ block.charCodeAt(i)) >>> 0
+    for (let i = Math.max(headEnd, length - KEY_EDGE_CHARS); i < length; i++) {
+      hash = ((hash * 33) ^ block.charCodeAt(i)) >>> 0
+    }
+    // The length closes the block: where one ends is part of the key.
+    hash = ((hash * 33) ^ length) >>> 0
+    chars += length
     keys.push(`${keys.length + 1}:${chars}:${hash}`)
   }
   return keys

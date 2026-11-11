@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import {
   isLagMarkerEnabled,
+  KEY_EDGE_CHARS,
   LAG_MARKER_TTL_MS,
   pickLagMarker,
   placeLagMarker,
@@ -29,6 +30,27 @@ describe('prefixKeys', () => {
 
   test('a change anywhere before it changes a key', () => {
     expect(prefixKeys(['x', 'b', 'c'])[2]).not.toBe(prefixKeys(['a', 'b', 'c'])[2])
+  })
+
+  // A key is a fingerprint. Walking every char of an 800k-char transcript on
+  // each classifier call took 8.6 ms under Bun; a long block is told apart by
+  // its length and its two ends instead.
+  test('a long block is keyed by its length and both ends', () => {
+    const long = (head: string, middle: string, tail: string, fill = 400): string =>
+      `${head.padEnd(KEY_EDGE_CHARS, 'h')}${middle.padEnd(fill, 'm')}${tail.padStart(KEY_EDGE_CHARS, 't')}`
+    const base = prefixKeys([long('Write a', 'x', 'end')])[0]
+
+    expect(prefixKeys([long('Write b', 'x', 'end')])[0]).not.toBe(base)
+    expect(prefixKeys([long('Write a', 'x', 'END')])[0]).not.toBe(base)
+    expect(prefixKeys([long('Write a', 'x', 'end', 401)])[0]).not.toBe(base)
+    // The limit, on purpose: the same length and ends with another middle.
+    expect(prefixKeys([long('Write a', 'y', 'end')])[0]).toBe(base)
+  })
+
+  test('a block of up to two edges is keyed by every char', () => {
+    const block = 'a'.repeat(2 * KEY_EDGE_CHARS)
+    const changed = `${'a'.repeat(KEY_EDGE_CHARS)}b${'a'.repeat(KEY_EDGE_CHARS - 1)}`
+    expect(prefixKeys([changed])[0]).not.toBe(prefixKeys([block])[0])
   })
 })
 

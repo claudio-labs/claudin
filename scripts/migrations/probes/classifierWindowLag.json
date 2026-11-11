@@ -96,6 +96,21 @@
       "replace": "    if (nowMs - at > LAG_MARKER_TTL_MS) {\n"
     },
     {
+      "name": "a long block is walked whole for its key",
+      "find": "    const headEnd = length <= 2 * KEY_EDGE_CHARS ? length : KEY_EDGE_CHARS\n",
+      "replace": "    const headEnd = length\n"
+    },
+    {
+      "name": "the tail of a long block is left out of its key",
+      "find": "    for (let i = Math.max(headEnd, length - KEY_EDGE_CHARS); i < length; i++) {\n",
+      "replace": "    for (let i = length; i < length; i++) {\n"
+    },
+    {
+      "name": "where a block ends is not part of the key",
+      "find": "    hash = ((hash * 33) ^ length) >>> 0\n",
+      "replace": "\n"
+    },
+    {
       "name": "classify places the lag marker with the flag off",
       "source": "src/permissions/yoloClassifier/classify.ts",
       "find": "  const lagAt = isLagMarkerEnabled()\n",
