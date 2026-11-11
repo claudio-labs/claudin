@@ -125,7 +125,7 @@ export type GlobEntryType = 'file' | 'dir'
  * from the same strings and `.` came out as an ancestor of everything.
  */
 const LEADING_DOT_SLASH_RE = /^\.\//
-// `.git` as a whole path segment, in a pattern or in the directory searched.
+// `.git` as a whole path segment of a pattern.
 const DOT_GIT_SEGMENT_RE = /(?:^|[\\/])\.git(?:[\\/]|$)/
 
 export type GlobOptions = {
@@ -331,9 +331,10 @@ export async function glob(
   // A repository's own bookkeeping is never what a listing is after, and with
   // --no-ignore --hidden nothing else keeps it out: `**/HEAD` came back as
   // eight paths under .git. The bare name prunes the directory at any depth,
-  // and a linked worktree's `.git` file with it. A pattern or a search
-  // directory that names `.git` still reaches it.
-  if (!DOT_GIT_SEGMENT_RE.test(filePattern) && !DOT_GIT_SEGMENT_RE.test(searchDir)) {
+  // and a linked worktree's `.git` file with it. A pattern that names `.git`
+  // still reaches it, and so does a search that starts inside one: ripgrep
+  // runs in that directory, so no path it walks has a `.git` segment.
+  if (!DOT_GIT_SEGMENT_RE.test(filePattern)) {
     args.push('--glob', '!.git')
   }
 
