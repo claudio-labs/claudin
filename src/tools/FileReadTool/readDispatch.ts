@@ -64,12 +64,14 @@ import type { Output } from 'src/tools/FileReadTool/schemas.js'
 /**
  * `symbol=` named nothing the file declares. Its own class so the batch Read
  * can put every miss on one line instead of one error per file
- * (batchRead.ts); the message is the single Read's, byte for byte.
+ * (batchRead.ts); the message is the single Read's, byte for byte, and
+ * `available` is the list of symbols it names, for the batch's line.
  */
 export class SymbolNotFoundError extends Error {
   constructor(
     readonly symbol: string,
     message: string,
+    readonly available: string = '',
   ) {
     super(message)
   }
@@ -255,11 +257,13 @@ export async function callInner(
     if (scanned) {
       const entry = findSymbolEntry(scanned.entries, symbol)
       if (!entry) {
+        const available = formatSymbolList(scanned.entries.map(e => e.name))
         throw new SymbolNotFoundError(
           symbol,
           `Symbol '${symbol}' not found in ${file_path}. ` +
-            `Available symbols: ${formatSymbolList(scanned.entries.map(e => e.name))}. ` +
+            `Available symbols: ${available}. ` +
             `Call Read(file_path, view='outline') to see the full structure.`,
+          available,
         )
       }
       // A symbol big enough to trip the auto-pivot gets the same treatment the
