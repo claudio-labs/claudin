@@ -23,6 +23,8 @@ import {
   getCurrentTurnTokenBudget,
   getTotalOutputTokens,
   getTurnOutputTokens,
+  getOriginalCwd,
+  setCachedClaudeMdContent,
 } from 'src/platform/bootstrap/state.js'
 import { getCostSinceRestoreUSD } from 'src/agent/cost-tracker.js'
 import {
@@ -42,7 +44,6 @@ import { getMcpInstructionsDelta } from 'src/mcp/mcpInstructionsDelta.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
 import {
-  getClaudeMds,
   getMemoryFiles,
   type MemoryFileInfo,
 } from 'src/memory/instructions/claudemd.js'
@@ -58,7 +59,7 @@ import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getEnvDelta, getPromptEnv } from 'src/agent/prompts/envDelta.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
-import { getSystemContext, getUserContext } from 'src/agent/context.js'
+import { getSystemContext, loadClaudeMd } from 'src/agent/context.js'
 import {
   getAgentName,
   getAgentId,
@@ -257,11 +258,15 @@ export function getMcpInstructionsDeltaAttachment(
  * if it changed since the last turn, or nothing on a no-op.
  * See src/memory/instructions/claudeMdDelta.ts for the diff logic.
  *
+ * The body is the one on disk now (`loadClaudeMd`), not the one
+ * `getUserContext()` memoized when the session started: /cd, /memory, a
+ * worktree and a restore clear the file cache and nothing cleared that memo,
+ * so a session that moved kept the old directory's instructions until a
+ * compaction. The classifier's copy follows the announcement.
+ *
  * `omitMemoryIndexes` (a slim sub-agent, see AgentDefinition) announces the
- * family WITHOUT the auto-memory index files. The filter is applied here
- * rather than on `getUserContext()` because that one is memoized with no
- * arguments and shared with the main thread; `getMemoryFiles()` is memoized
- * too, so the re-concatenation is a string join per turn.
+ * family WITHOUT the auto-memory index files. `getMemoryFiles()` is
+ * memoized, so either reading is a string join per turn.
  */
 const notMemoryIndex = (type: MemoryType): boolean =>
   !isMemoryFileType(type)
@@ -270,16 +275,14 @@ export async function getClaudeMdDeltaAttachment(
   messages: Message[] | undefined,
   options: { omitMemoryIndexes?: boolean } = {},
 ): Promise<Attachment[]> {
-  const userContext = await getUserContext()
-  let current = userContext.claudeMd ?? ''
-  if (current && options.omitMemoryIndexes) {
-    current = getClaudeMds(await getMemoryFiles(), notMemoryIndex)
-  }
+  const current =
+    (await loadClaudeMd(options.omitMemoryIndexes ? notMemoryIndex : undefined)) ?? ''
   const delta = getClaudeMdDelta(
     current,
     (messages ?? []) as Parameters<typeof getClaudeMdDelta>[1],
   )
   if (!delta) return []
+  if (!options.omitMemoryIndexes) setCachedClaudeMdContent(current || null)
   return [
     {
       type: 'claude_md_delta',
@@ -353,10 +356,11 @@ export async function getMemoryIndexAttachment(
 }
 
 /**
- * gitStatus delta attachment — emits the snapshot only on the turn that
- * has no prior git_status_delta attachment. See
- * src/vcs/git/gitStatusDelta.ts for rationale (snapshot is immutable by
- * design per getGitStatus in src/agent/context.ts).
+ * gitStatus delta attachment — emits the snapshot on the turn that has no
+ * prior git_status_delta attachment, and again once the session re-roots
+ * (/cd clears the snapshot's memo). See src/vcs/git/gitStatusDelta.ts for
+ * rationale (snapshot is immutable by design per getGitStatus in
+ * src/agent/context.ts).
  */
 export async function getGitStatusDeltaAttachment(
   messages: Message[] | undefined,
@@ -365,9 +369,10 @@ export async function getGitStatusDeltaAttachment(
   const delta = getGitStatusDelta(
     systemContext.gitStatus,
     (messages ?? []) as Parameters<typeof getGitStatusDelta>[1],
+    getOriginalCwd(),
   )
   if (!delta) return []
-  return [{ type: 'git_status_delta', content: delta.content }]
+  return [{ type: 'git_status_delta', ...delta }]
 }
 
 /**

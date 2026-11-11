@@ -1,3 +1,4 @@
+import { getGitStatus, getSystemContext } from 'src/agent/context.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { invalidateAll as invalidateToolResultCache } from 'src/agent/tools/toolResultCache.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
@@ -102,6 +103,14 @@ function clearRerootedCaches(): void {
   // Memoized with no key at all: without this, moving between a repo and a
   // non-repo keeps the old answer for the rest of the process.
   getIsGit.cache?.clear?.()
+  // The git status snapshot of the directory left behind. Both are stripped
+  // from the system prompt and the first message (api.ts,
+  // filterStaticDedupKeys) and reach the model as a git_status_delta at the
+  // tail, so dropping them rewrites nothing cached. getUserContext stays:
+  // its date line IS in the cached prefix, and claude_md_delta reads the
+  // files again on its own.
+  getGitStatus.cache.clear?.()
+  getSystemContext.cache.clear?.()
   // Re-read hooks from the new directory's .claudin/settings.json.
   updateHooksConfigSnapshot()
 }

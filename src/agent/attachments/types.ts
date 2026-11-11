@@ -513,11 +513,13 @@ export type Attachment =
       indexes: MemoryIndexSummary[]
     }
   | {
-      // Phase 2 static-dedup: emit gitStatus on turn 1 only. The
-      // snapshot is immutable by design (see getGitStatus in
-      // src/agent/context.ts). See src/vcs/git/gitStatusDelta.ts.
+      // Phase 2 static-dedup: emit gitStatus on turn 1, and again after a
+      // /cd. The snapshot is immutable by design for the directory it was
+      // taken in (`cwd`, absent in older transcripts). See
+      // src/vcs/git/gitStatusDelta.ts.
       type: 'git_status_delta'
       content: string
+      cwd?: string
     }
   | {
       // Phase 2 static-dedup: todo/task reminder diff. See
