@@ -83,6 +83,26 @@ describe('GitTool.validateInput — refusals land before anything runs', () => {
     expect(result?.result).toBe(false)
   })
 
+  // 2026-11-10: `git add …; git commit -m "… $…"; git status` was refused for
+  // the `$`, the model corrected the commit and re-sent it WITHOUT the add,
+  // and got "Nothing to commit". The refusal has to say the add never ran.
+  test('a refused batch says that none of its commands ran', async () => {
+    const result = await GitTool.validateInput?.({
+      commands: ['git add a.ts', 'git commit -m "costs $5"', 'git status'],
+    })
+    expect(result?.result).toBe(false)
+    if (result && !result.result) {
+      expect(result.message).toContain('unescaped `$`')
+      expect(result.message).toContain('Nothing in this call ran')
+    }
+  })
+
+  test('a single refused command carries no batch note', async () => {
+    const result = await GitTool.validateInput?.({ commands: ['git commit -m "costs $5"'] })
+    expect(result?.result).toBe(false)
+    if (result && !result.result) expect(result.message).not.toContain('Nothing in this call ran')
+  })
+
   test('accepts a well-formed batch', async () => {
     const result = await GitTool.validateInput?.({
       commands: ['git status', 'git diff', 'git commit -m "x"'],

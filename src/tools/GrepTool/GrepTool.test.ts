@@ -461,7 +461,19 @@ describe('GrepTool — count mode ranking', () => {
 
     expect(text).toContain('Found 8 total occurrences across 4 files')
     expect(text).toContain('pagination = limit: 1')
+    // The page was cut, so the footer says how to ask for the next one.
+    expect(text).toContain('pass offset=1 for the next page')
     expect(text.split('\n').filter(l => /^\S+:\d+$/.test(l)).length).toBe(1)
+  })
+
+  test('a later page names the offset after it, and an uncut page names none', async () => {
+    const next = await countGrep({ head_limit: 1, offset: 2 })
+    const cut = GrepTool.mapToolResultToToolResultBlockParam!(next as never, 'tool-use-2')
+    expect(typeof cut.content === 'string' ? cut.content : '').toContain('limit: 1, offset: 2 — pass offset=3 for the next page')
+
+    const all = await countGrep({ head_limit: 0 })
+    const whole = GrepTool.mapToolResultToToolResultBlockParam!(all as never, 'tool-use-3')
+    expect(typeof whole.content === 'string' ? whole.content : '').not.toContain('next page')
   })
 })
 

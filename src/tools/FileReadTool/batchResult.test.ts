@@ -98,7 +98,7 @@ describe('splitBatchReadResult — round trips through the batch Read', () => {
     const a = writeFixture('rt-sym.ts', SAMPLE_TS)
     const input: Input = { file_path: a, symbol: ['alpha', 'beta', 'nope'] }
     const { text } = await runBatch(input, context())
-    expect(text).toContain('Symbol not found: nope in rt-sym.ts.')
+    expect(text).toContain('Symbol not found: nope in rt-sym.ts (available: alpha, ')
     expect(splitBatchReadResult(text, readPathsOf(input), fixtureDir())).toEqual([
       {
         path: a,

@@ -215,14 +215,14 @@ describe('batch Read — several files', () => {
     expect(ctx.readFileState.get(a)?.isPartialView).toBe(true)
   })
 
-  test('a symbol is looked up in every file; the misses share one line', async () => {
+  test('a symbol is looked up in every file; the misses share one line and name what the file has', async () => {
     const a = writeFixture('sym-a.ts', SAMPLE_TS)
     const c = writeFixture('sym-c.ts', OTHER_TS)
     const result = await inFixtureDir(() =>
       call(ReadOn, { file_paths: [a, c], symbol: 'alpha' }, context()),
     )
     expect(textOf(result.data)).toBe(
-      `==> sym-a.ts <==\n${await singleText(a, { symbol: 'alpha' })}\n\nSymbol not found: alpha in sym-c.ts.`,
+      `==> sym-a.ts <==\n${await singleText(a, { symbol: 'alpha' })}\n\nSymbol not found: alpha in sym-c.ts (available: gamma).`,
     )
   })
 

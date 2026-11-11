@@ -2,8 +2,12 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { ALL_MODEL_CONFIGS } from 'src/providers/model/configs.js'
 import { getModelCosts } from 'src/providers/usage/modelCost.js'
 import { callAfter, cost, ctx, fixture, loadSession, priceFor, spawnCall } from './forkBench.ts'
+
+// claude-opus-5, claude-sonnet-5-5, claude-fable-5-2 …: the 5.x family.
+const FIVE_X_RE = /-5(?:-\d)?$/
 
 const dirs: string[] = []
 afterEach(() => {
@@ -84,7 +88,10 @@ describe('cost', () => {
   })
 
   test('the 5.x rows match modelCost.ts', () => {
-    for (const model of ['claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1']) {
+    // Every registered 5.x model, so a launch without a row fails here.
+    const fiveX = Object.values(ALL_MODEL_CONFIGS).map(config => config.firstParty).filter(id => FIVE_X_RE.test(id))
+    expect(fiveX).toContain('claude-fable-5-2')
+    for (const model of fiveX) {
       const app = getModelCosts(model, { input_tokens: 1, output_tokens: 1 } as never)
       expect({ model, ...priceFor(model).price }).toEqual({
         model,

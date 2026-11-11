@@ -183,3 +183,45 @@ describe('rebaseAnchoredPattern', () => {
     expect(rebaseAnchoredPattern('crates/**/*.rs', { exclude: ['*/application/**'] })).toBeNull()
   })
 })
+
+// A repository's own .git directory. The walk is --no-ignore --hidden, so
+// `**/HEAD` used to come back as eight paths under .git and none the caller
+// wanted (2026-11-11). Its own root, so no other suite's walk sees a .git.
+describe('.git stays out of a listing that did not ask for it', () => {
+  let repo: string
+
+  beforeAll(() => {
+    repo = mkdtempSync(join(tmpdir(), 'glob-dotgit-'))
+    for (const file of ['.git/HEAD', '.git/logs/HEAD', '.git/refs/heads/main', 'docs/HEAD', 'vendor/lib/.git/HEAD', 'src/a.ts']) {
+      mkdirSync(dirname(join(repo, file)), { recursive: true })
+      writeFileSync(join(repo, file), 'x')
+    }
+  })
+
+  afterAll(() => rmSync(repo, { recursive: true, force: true }))
+
+  async function list(pattern: string, dir = repo): Promise<string[]> {
+    const { files } = await glob(
+      pattern,
+      dir,
+      { limit: 100, offset: 0, sort: 'path' },
+      new AbortController().signal,
+      permissionContext,
+    )
+    return files.map(f => f.slice(repo.length + 1))
+  }
+
+  test('a pattern that does not name .git lists nothing inside one', async () => {
+    expect(await list('**/HEAD')).toEqual(['docs/HEAD'])
+    expect(await list('**/*')).toEqual(['docs/HEAD', 'src/a.ts'])
+  })
+
+  test('a pattern that names .git still reaches it', async () => {
+    expect(await list('.git/HEAD')).toEqual(['.git/HEAD'])
+    expect(await list('**/.git/HEAD')).toEqual(['.git/HEAD', 'vendor/lib/.git/HEAD'])
+  })
+
+  test('a search that starts inside .git lists it', async () => {
+    expect(await list('**/HEAD', join(repo, '.git'))).toEqual(['.git/HEAD', '.git/logs/HEAD'])
+  })
+})
