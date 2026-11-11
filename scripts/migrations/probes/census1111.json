@@ -121,6 +121,12 @@
       "replace": "\n"
     },
     {
+      "name": "reroot: the git watcher keeps the repository the session left",
+      "source": "src/sessions/rerootSession.ts",
+      "find": "  resetGitFileWatcher()\n",
+      "replace": "\n"
+    },
+    {
       "name": "git status: a snapshot of another directory is not announced",
       "source": "src/vcs/git/gitStatusDelta.ts",
       "find": "  if (last && (cwd === undefined || last.cwd === undefined || last.cwd === cwd)) {\n",

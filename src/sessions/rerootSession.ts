@@ -17,6 +17,7 @@ import { getProjectDir } from 'src/sessions/sessionStoragePortable.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import { getIsGit } from 'src/vcs/git/git.js'
+import { resetGitFileWatcher } from 'src/vcs/git/gitFilesystem.js'
 
 export type RerootResult = {
   previousCwd: string
@@ -103,6 +104,13 @@ function clearRerootedCaches(): void {
   // Memoized with no key at all: without this, moving between a repo and a
   // non-repo keeps the old answer for the rest of the process.
   getIsGit.cache?.clear?.()
+  // The watcher behind getBranch, getHead, the remote URL and the default
+  // branch is started once, on the repo of the directory it was first asked
+  // in, and re-reads only when that repo's files change: the new directory's
+  // git status was announced under the old one's branch, and the footer's
+  // branch and PR pills kept it. Before the snapshot below is dropped, so the
+  // next one is built from the new repo.
+  resetGitFileWatcher()
   // The git status snapshot of the directory left behind. Both are stripped
   // from the system prompt and the first message (api.ts,
   // filterStaticDedupKeys) and reach the model as a git_status_delta at the

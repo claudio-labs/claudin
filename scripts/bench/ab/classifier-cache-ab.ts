@@ -9,6 +9,7 @@
  *   bun scripts/bench/ab/classifier-cache-ab.ts --only=candidate --reps=1 --turns=8 --wide-every=4   # plumbing probe
  *   bun scripts/bench/ab/classifier-cache-ab.ts --reps=2 --budget-usd=45  # the run
  *   bun scripts/bench/ab/classifier-cache-ab.ts --report=/tmp/classifier-cache-ab/<stamp>   # recount a finished run
+ *   bun scripts/bench/ab/classifier-cache-ab.ts --report=<run 1>,<run 2>  # two one-rep runs as one, reps renumbered in that order
  *
  * Arms, one headless `--permission-mode auto --debug` session each per rep, in
  * a throwaway git repo of its own, the arms of a rep side by side:
@@ -561,9 +562,20 @@ async function main(): Promise<void> {
   if (args.dryRun) return dryRun(args)
 
   if (args.report) {
-    const saved: Saved = JSON.parse(readFileSync(join(args.report, 'run.json'), 'utf8'))
-    const stats = saved.sessions.map(s => readSession(join(args.report!, `${s.arm}-r${s.rep}`), s.arm, s.rep, s.turnsDone, s.sessionId))
-    console.log(report(stats, saved.meta))
+    // Several runs read as one: a rep at a time leaves room to check the
+    // account's quota between them.
+    const stats: SessionStats[] = []
+    const metas: Json[] = []
+    let repOffset = 0
+    for (const dir of args.report.split(',')) {
+      const saved: Saved = JSON.parse(readFileSync(join(dir, 'run.json'), 'utf8'))
+      for (const s of saved.sessions) {
+        stats.push(readSession(join(dir, `${s.arm}-r${s.rep}`), s.arm, s.rep + repOffset, s.turnsDone, s.sessionId))
+      }
+      repOffset += Math.max(0, ...saved.sessions.map(s => s.rep))
+      metas.push(saved.meta)
+    }
+    console.log(report(stats, metas.length === 1 ? metas[0]! : { runs: metas }))
     return
   }
 
