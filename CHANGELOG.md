@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.1 — 2026-11-11
+
+### 👷 CI/CD
+
+- ci(release): build the darwin legs on macos-15 (#349) (d1a7c1be)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.2.0 — 2026-11-10
 
 ### ✨ Features
