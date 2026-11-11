@@ -1,6 +1,6 @@
 ---
 name: census-2026-11-09-tilde-pipes-interrupt-break
-description: Census 11-04..09 (claudin + ferrous-dns + infra-home-lab) — piped Bash never expands `~` since the 07-13 shell-quote bump (54 visible failures since 07-14); one new client-side cache break from Esc + a queued prompt during a running tool; Glob timeouts on a 101G target/; tools 1.27%; WaitFor and slash-glob fixes held; all fixed on fix/census-11-09-tool-errors
+description: Census 11-04..09 (claudin + ferrous-dns + infra-home-lab) — piped Bash never expands `~` since the 07-13 shell-quote bump (54 visible failures since 07-14); one new client-side cache break from Esc + a queued prompt during a running tool; Glob timeouts on a 101G target/; tools 1.27%; WaitFor and slash-glob fixes held; all fixed in #346 (v1.1.52, 11-10)
 type: project
 expires: 2027-01-08
 ---
@@ -74,7 +74,7 @@ Silent failures (`2>/dev/null`, `| head`) are not in that count. One artifact is
   (1/8).
 - The lane kept 0 of 56 caps whole.
 
-**Fixed on `fix/census-11-09-tool-errors` (2026-11-09).** There is a red commit with 37
+**Fixed in #346 (`fix/census-11-09-tool-errors`, released in v1.1.52 on 2026-11-10).** There is a red commit with 37
 census-input tests, then one fix per cause. Every fix line is probed in
 `scripts/migrations/probes/census1109.json` (24/24 red).
 - **Bash:** a piped command now runs as `eval '<cmd>' < /dev/null`, the path the

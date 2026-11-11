@@ -3,11 +3,11 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
-- [Plandex ports (11-08)](decisions/plandex-ports.md) — elision guard, rewind conflicts, /diff `x`, fallback
+- Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind conflicts, /diff `x`, fallback · [CC 2.1.321 limits (#347)](decisions/cc-2-1-321-parity-limits.md) — per-turn effort, bg skills, ws ask
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
-- [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
-- [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
+- [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
+- [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS)
 - [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%
 - [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
@@ -55,12 +55,12 @@
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
 - [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md) — the other levers stay opt-in
 - [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, call forms](decisions/tool-repeat-calls.md) — forms kept inside placebo noise
-- [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — `CLAUDIN_DEFERRED_CALL_FORMS=0`, `CLAUDIN_MAIN_CACHE_TTL=1h`
+- [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — both with killswitches
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
 ## Bugs
 - [ContainerTool background timeout never fires](bugs/container-background-timeout-never-fires.md) — not fixed
-- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red from Claudin's Bash, CI green
+- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red 11-01, no repro 11-10; CI green
 - [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — 3-arm A/B owed before flipping to retain
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code
 - FIXED #302: [Image blocks pinned the clip frontier](bugs/clip-frontier-stalls-on-image-blocks.md) — "mutated at 14" still open
@@ -78,24 +78,22 @@
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — retries never cap
 - [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md)
-- FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md)
+- FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md) · memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 - FIXED, tools: [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md)
-- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md)
-- FIXED, other: [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md)
-- FIXED, memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
+- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md)
 
 ## Docs
 - [Memory subsystem design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/
 - [/diff reviewer living spec (feature 8.1)](docs/diff-reviewer-living-spec.md) — docs/features/8.1-diff-reviewer.md
 - [Public docs site claudiolabs.ai is outside this repo](docs/claudiolabs-docs-site.md) — extensionless URLs
 - [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging
-- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267/Fable 5.2 templates, launch capture
+- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267/#348 templates, launch capture
 
 ## Conventions
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
-- Claude Code prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321, 11-09](claude-code-2.1.321-tool-diff.md)
+- Claude Code prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321 #347](claude-code-2.1.321-tool-diff.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd
