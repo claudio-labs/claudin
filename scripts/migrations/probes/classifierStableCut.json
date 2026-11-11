@@ -22,7 +22,7 @@
     },
     {
       "name": "a chunk closes once it reaches the chunk size",
-      "find": "    if (chunkChars >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0\n",
+      "find": "    if (chunkChars >= chunk) chunkChars = 0\n",
       "replace": "    if (chunkChars >= 1) chunkChars = 0\n"
     },
     {
@@ -53,19 +53,19 @@
     {
       "name": "classify asks transcript.ts for the budget",
       "source": "src/permissions/yoloClassifier/classify.ts",
-      "find": "    classifierTranscriptBudget(actionCompact.length),\n",
-      "replace": "    200_000 - actionCompact.length,\n"
+      "find": "    transcriptBudget,\n    earlierCalls,\n",
+      "replace": "    200_000 - actionCompact.length,\n    earlierCalls,\n"
     },
     {
       "name": "control: an equivalent budget expression changes nothing",
       "source": "src/permissions/yoloClassifier/classify.ts",
       "expect": "green",
-      "find": "    classifierTranscriptBudget(actionCompact.length),\n",
-      "replace": "    classifierTranscriptBudget(actionCompact.length + 0),\n"
+      "find": "    actionCompact.length,\n    getClassifierWindowTokens(getClassifierModel()),\n",
+      "replace": "    actionCompact.length + 0,\n    getClassifierWindowTokens(getClassifierModel()),\n"
     },
     {
       "name": "a chunk-sized entry opens its own chunk",
-      "find": "    if (sizes[i]! >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0\n",
+      "find": "    if (sizes[i]! >= chunk) chunkChars = 0\n",
       "replace": "\n"
     }
   ]
