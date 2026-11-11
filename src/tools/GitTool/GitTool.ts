@@ -173,7 +173,14 @@ export const GitTool = buildTool({
     for (const command of input.commands) {
       const parsed = parseGitCommand(command)
       if (!parsed.ok) {
-        return { result: false, message: parsed.reason, errorCode: 1 }
+        // A refusal here is of the whole call. Said, because a model that
+        // fixes the one command and re-sends only it has dropped the `git add`
+        // before it (2026-11-10: "Nothing to commit").
+        const message =
+          input.commands.length > 1
+            ? `${parsed.reason} Nothing in this call ran: re-send every command, with this one corrected.`
+            : parsed.reason
+        return { result: false, message, errorCode: 1 }
       }
     }
     if (input.cwd !== undefined) {
