@@ -261,13 +261,15 @@ jobs:
           # "JavaScript Actions in Alpine containers are only supported on x64".
           # It gets its own job below that keeps JS actions on the glibc host and
           # compiles inside the musl container via `docker run`.
-          # darwin-x64 is cross-compiled on an arm64 mac (macos-14): the Intel
+          # darwin-x64 is cross-compiled on an arm64 mac (macos-15): the Intel
           # macos-13 runners are being retired and queue for hours. Bun cross-
           # compiles the binary and vendor-ripgrep.ts fetches the x64 rg. The
           # x64 binary can't be run on the arm64 host, so its smoke test is
           # skipped (matrix.cross); darwin-arm64's native smoke covers the code.
-          - { platform: darwin-x64, runner: macos-14, target: bun-darwin-x64, cross: true }
-          - { platform: darwin-arm64, runner: macos-14, target: bun-darwin-arm64 }
+          # macos-14 was retired on 2026-11-02; its legs fail in 0s with "The
+          # configuration 'macos-14-arm64-us-default' is not supported".
+          - { platform: darwin-x64, runner: macos-15, target: bun-darwin-x64, cross: true }
+          - { platform: darwin-arm64, runner: macos-15, target: bun-darwin-arm64 }
           - { platform: win32-x64, runner: windows-latest, target: bun-windows-x64 }
           # win32-arm64 is NOT built: on windows-11-arm its binary hangs in
           # smoke:binary without reaching the mock (run 39890672575). Windows on
