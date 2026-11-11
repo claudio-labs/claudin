@@ -68,6 +68,9 @@ type Rates = { input: number; write5m: number; write1h: number; read: number; ou
 type Price = Rates & { longPrompt?: Rates & { above: number } }
 
 const PRICES: ReadonlyArray<{ pattern: RegExp; price: Price }> = [
+  // Fable 5.2 is 20% under 5.1 and reads at 0.025x its input. Before the
+  // `fable-5\b` row, which matches its id too.
+  { pattern: /fable-5-2/, price: { input: 8, write5m: 10, write1h: 16, read: 0.2, output: 40 } },
   { pattern: /fable-5-1/, price: { input: 10, write5m: 12.5, write1h: 20, read: 0.25, output: 50 } },
   { pattern: /fable-5\b/, price: { input: 10, write5m: 12.5, write1h: 20, read: 1, output: 50 } },
   { pattern: /opus-4(-1)?(-\d{8})?$/, price: { input: 15, write5m: 18.75, write1h: 30, read: 1.5, output: 75 } },

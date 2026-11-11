@@ -23,6 +23,7 @@ export type Price = { input: number; write5m: number; write1h: number; read: num
 const SONNET_5_PRICE: Price = { input: 2, write5m: 2.5, write1h: 4, read: 0.2, output: 10 }
 const SONNET_5: [RegExp, string, Price] = [/sonnet-5/, 'sonnet-5 (2/10)', SONNET_5_PRICE]
 const PRICES: Array<[RegExp, string, Price]> = [
+  [/fable-5-2/, 'fable-5-2 (8/40, read 0.2)', { input: 8, write5m: 10, write1h: 16, read: 0.2, output: 40 }],
   [/fable-5-1/, 'fable-5-1 (10/50, read 0.25)', { input: 10, write5m: 12.5, write1h: 20, read: 0.25, output: 50 }],
   [/opus-5-5/, 'opus-5-5 (4/20, cache read 0.2, write 5/8)', { input: 4, write5m: 5, write1h: 8, read: 0.2, output: 20 }],
   [/opus-5/, 'opus-5 (5/25)', { input: 5, write5m: 6.25, write1h: 10, read: 0.5, output: 25 }],
