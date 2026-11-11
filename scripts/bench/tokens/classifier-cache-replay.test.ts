@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { simulateCache } from './classifier-cache-replay.ts'
+import { simulateCache, syntheticThread } from './classifier-cache-replay.ts'
 
 const block = (name: string) => name.padEnd(400, '.')
 const blocks = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => block(`b${from + i}`))
@@ -58,5 +58,63 @@ describe('simulateCache', () => {
     expect(expired.reads).toBe(0)
     expect(refreshed.reads).toBe(2 * (4 * 400) / 4)
     expect(refreshed.writes).toBe((4 * 400) / 4)
+  })
+
+  test('a second breakpoint on the previous prefix brings a far request back into reach', () => {
+    const far = [
+      { blocks: blocks(0, 5), atMs: 0 },
+      { blocks: blocks(0, 26), atMs: MIN },
+    ]
+    const marked = simulateCache([far[0]!, { ...far[1]!, lagBlocks: 5 }])
+
+    expect(simulateCache(far).reads).toBe(0)
+    expect(marked.reads).toBe((5 * 400) / 4)
+    expect(marked.writes).toBe((5 * 400 + 21 * 400) / 4)
+    expect(marked.fullMisses).toBe(0)
+  })
+
+  test('a marker on a prefix nothing wrote finds nothing, and costs nothing more', () => {
+    const unmarked = simulateCache([
+      { blocks: blocks(0, 5), atMs: 0 },
+      { blocks: blocks(1, 30), atMs: MIN },
+    ])
+    const marked = simulateCache([
+      { blocks: blocks(0, 5), atMs: 0 },
+      { blocks: blocks(1, 30), atMs: MIN, lagBlocks: 4 },
+    ])
+
+    expect(marked.writes).toBe(unmarked.writes)
+    expect(marked.reads).toBe(0)
+  })
+
+  test('a full miss is filed under why the prefix was not found', () => {
+    const lookback = simulateCache([
+      { blocks: blocks(0, 5), atMs: 0 },
+      { blocks: blocks(0, 26), atMs: MIN },
+    ])
+    const front = simulateCache([
+      { blocks: blocks(0, 10), atMs: 0 },
+      { blocks: blocks(1, 11), atMs: MIN },
+    ])
+    const idle = simulateCache([
+      { blocks: blocks(0, 4), atMs: 0 },
+      { blocks: blocks(0, 4), atMs: 61 * MIN },
+    ])
+
+    expect(lookback.misses).toEqual({ lookback: 1, front: 0, idle: 0 })
+    expect(lookback.written.lookback).toBe((26 * 400) / 4)
+    expect(front.misses).toEqual({ lookback: 0, front: 1, idle: 0 })
+    expect(idle.misses).toEqual({ lookback: 0, front: 0, idle: 1 })
+    expect(idle.written.idle).toBe((4 * 400) / 4)
+  })
+})
+
+describe('syntheticThread', () => {
+  test('each step judges one call with every earlier one as its history', () => {
+    const thread = syntheticThread(4, 100)
+
+    expect(thread.decisions.map(d => d.history.length)).toEqual([0, 1, 2, 3])
+    expect(thread.decisions[3]!.history[2]).toBe(thread.decisions[2]!.action)
+    expect([...thread.toolNames]).toEqual(['Bash'])
   })
 })

@@ -37,6 +37,28 @@
  *      entries, or the one entry that was a chunk of its own;
  *   4. serializing the largest decision takes under 50 ms.
  *
+ * Since 2026-11-11 it also replays the two levers of that week's census, as
+ * the `window+lag` arm against `stable` (today):
+ *   - the budget sized by the model's window (`CLAUDIN_CLASSIFIER_WINDOW_BUDGET`,
+ *     `--window-tokens=` picks the window, 1M by default), so the cut stops
+ *     moving;
+ *   - the lag marker (`CLAUDIN_CLASSIFIER_LAG_MARKER`, lagMarker.ts), placed
+ *     by the production function and modelled as a second breakpoint.
+ * Every full miss is filed under why the prefix was not found: `lookback`
+ * (a live entry sits more than 20 blocks back), `front` (the transcript's
+ * start changed: a chunk move) or `idle` (the entry expired).
+ *
+ * Gate for the levers (pre-registered 2026-11-11, printed after the first):
+ *   1. threads past the base budget with ≥30 decisions: `window+lag` writes
+ *      at most 0.6 × `stable`;
+ *   2. sized for a 200k-token window, the window budget sends the blocks
+ *      `stable` sends on every call of every thread;
+ *   3. writes and reads together, at Opus 5.5 prices, `window+lag` costs at
+ *      most 0.8 × `stable`;
+ *   4. a synthetic thread that outgrows the 800k cap writes no more per call
+ *      than `stable` does on it;
+ *   5. serializing and marking the largest decision takes under 10 ms.
+ *
  * Run:
  *   bun scripts/bench/tokens/classifier-cache-replay.ts --since=2026-10-20
  *   bun scripts/bench/tokens/classifier-cache-replay.ts --since=2026-10-20 --session=4c2d912b
@@ -47,17 +69,20 @@ import { readFileSync } from 'fs'
 import { basename, dirname } from 'path'
 import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
+import { placeLagMarker, type RememberedPrefixes } from 'src/permissions/yoloClassifier/lagMarker.js'
 import {
   buildToolLookup,
   CLASSIFIER_TRANSCRIPT_CHUNK_CHARS,
   classifierTranscriptBudget,
   MAX_CLASSIFIER_TRANSCRIPT_CHARS,
+  MAX_WINDOW_TRANSCRIPT_CHARS,
   serializeTranscriptForClassifier,
   toCompact,
 } from 'src/permissions/yoloClassifier/transcript.js'
 import { pad, padLeft, projectDirs, transcriptFiles } from './transcriptCorpus.js'
 
 const KILLSWITCH = 'CLAUDIN_CLASSIFIER_STABLE_CUT'
+const WINDOW_BUDGET = 'CLAUDIN_CLASSIFIER_WINDOW_BUDGET'
 const CHARS_PER_TOKEN = 4
 const LOOKBACK_BLOCKS = 20
 const TTL_MS = 60 * 60 * 1000
@@ -65,6 +90,14 @@ const GATE_MIN_DECISIONS = 30
 const GATE_WRITE_DROP = 0.6
 const GATE_IDENTICAL_BELOW_CHARS = 150_000
 const GATE_SERIALIZE_MS = 50
+const LEVER_GATE_WRITES = 0.6
+const LEVER_GATE_COST = 0.8
+const LEVER_GATE_MARK_MS = 10
+const BASE_WINDOW_TOKENS = 200_000
+const DEFAULT_WINDOW_TOKENS = 1_000_000
+/** $ per Mtok: 1h cache write and cache read. */
+const OPUS_5_5 = { write: 8, read: 0.2 }
+const FABLE_5_2 = { write: 16, read: 0.2 }
 
 // ---------------------------------------------------------------------------
 // Cache model (pure; tested in classifier-cache-replay.test.ts)
@@ -74,9 +107,33 @@ export type CacheRequest = {
   /** Block texts in order; the breakpoint is after the last one. */
   readonly blocks: readonly string[]
   readonly atMs: number
+  /** How many leading blocks a second breakpoint closes (the lag marker), if any. */
+  readonly lagBlocks?: number
 }
 
-export type CacheTotals = { writes: number; reads: number; calls: number; fullMisses: number }
+/** Why a request found nothing of its prefix in the cache. */
+export type MissCause = 'lookback' | 'front' | 'idle'
+
+export type CacheTotals = {
+  writes: number
+  reads: number
+  calls: number
+  fullMisses: number
+  /** Full misses by cause, and the tokens each cause wrote. */
+  misses: Record<MissCause, number>
+  written: Record<MissCause, number>
+}
+
+export function emptyTotals(): CacheTotals {
+  return {
+    writes: 0,
+    reads: 0,
+    calls: 0,
+    fullMisses: 0,
+    misses: { lookback: 0, front: 0, idle: 0 },
+    written: { lookback: 0, front: 0, idle: 0 },
+  }
+}
 
 /** djb2 over a block, chained: each prefix gets its own key. */
 function prefixKeys(blocks: readonly string[]): number[] {
@@ -93,25 +150,45 @@ function prefixKeys(blocks: readonly string[]): number[] {
 /** Replays requests in order and returns the token totals they cost. */
 export function simulateCache(requests: readonly CacheRequest[]): CacheTotals {
   const live = new Map<number, number>()
-  const totals: CacheTotals = { writes: 0, reads: 0, calls: 0, fullMisses: 0 }
+  const totals = emptyTotals()
   for (const req of requests) {
     const keys = prefixKeys(req.blocks)
     const lens = [0]
     for (const block of req.blocks) lens.push(lens[lens.length - 1]! + block.length)
     const bp = req.blocks.length
-    let hit = 0
-    for (let k = bp; k >= Math.max(1, bp - LOOKBACK_BLOCKS); k--) {
+    const alive = (k: number): boolean => {
       const lastUse = live.get(keys[k]!)
-      if (lastUse !== undefined && req.atMs - lastUse <= TTL_MS) {
-        hit = k
-        live.set(keys[k]!, req.atMs)
-        break
-      }
+      return lastUse !== undefined && req.atMs - lastUse <= TTL_MS
     }
-    if (hit === 0 && totals.calls > 0) totals.fullMisses++
+    // Each breakpoint looks back 20 blocks from where it sits; the request
+    // reads the longest prefix either of them finds.
+    const lookBackFrom = (from: number): number => {
+      for (let k = from; k >= Math.max(1, from - LOOKBACK_BLOCKS); k--) if (alive(k)) return k
+      return 0
+    }
+    const lag = req.lagBlocks !== undefined && req.lagBlocks >= 1 && req.lagBlocks < bp ? req.lagBlocks : 0
+    const hit = Math.max(lookBackFrom(bp), lag > 0 ? lookBackFrom(lag) : 0)
+    const written = (lens[bp]! - lens[hit]!) / CHARS_PER_TOKEN
+    if (hit === 0 && totals.calls > 0) {
+      totals.fullMisses++
+      // A live entry further back than the lookback; else one that was written
+      // and has expired; else the prefix was never written: its front changed.
+      let cause: MissCause = 'front'
+      for (let k = bp; k >= 1; k--) {
+        if (alive(k)) {
+          cause = 'lookback'
+          break
+        }
+        if (cause === 'front' && live.has(keys[k]!)) cause = 'idle'
+      }
+      totals.misses[cause]++
+      totals.written[cause] += written
+    }
     totals.reads += lens[hit]! / CHARS_PER_TOKEN
-    totals.writes += (lens[bp]! - lens[hit]!) / CHARS_PER_TOKEN
+    totals.writes += written
     totals.calls++
+    if (hit > 0) live.set(keys[hit]!, req.atMs)
+    if (lag > 0) live.set(keys[lag]!, req.atMs)
     live.set(keys[bp]!, req.atMs)
   }
   return totals
@@ -121,20 +198,22 @@ export function simulateCache(requests: readonly CacheRequest[]): CacheTotals {
 // Corpus
 // ---------------------------------------------------------------------------
 
-type Args = { since: number; session: string | null }
+type Args = { since: number; session: string | null; windowTokens: number }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { since: Date.now() - 7 * 24 * 60 * 60 * 1000, session: null }
+  const a: Args = { since: Date.now() - 7 * 24 * 60 * 60 * 1000, session: null, windowTokens: DEFAULT_WINDOW_TOKENS }
   for (const s of argv) {
     if (s.startsWith('--since=')) a.since = Date.parse(`${s.slice(8)}T00:00:00Z`)
     else if (s.startsWith('--session=')) a.session = s.slice(10)
+    else if (s.startsWith('--window-tokens=')) a.windowTokens = Number(s.slice(16))
   }
   if (Number.isNaN(a.since)) throw new Error('--since must be YYYY-MM-DD')
+  if (!(a.windowTokens > 0)) throw new Error('--window-tokens must be a positive number')
   return a
 }
 
-type Decision = { atMs: number; history: Message[]; action: Message }
-type Thread = { id: string; decisions: Decision[]; toolNames: Set<string> }
+export type Decision = { atMs: number; history: Message[]; action: Message }
+export type Thread = { id: string; decisions: Decision[]; toolNames: Set<string> }
 
 type Rec = {
   type?: string
@@ -211,10 +290,21 @@ type ArmResult = {
   maxSerializeMs: number
 }
 
-function replayArm(thread: Thread, tools: Tools, stable: boolean): ArmResult {
-  if (stable) delete process.env[KILLSWITCH]
+/** One way of building the classifier's request: which cut, which budget, the lag marker or not. */
+export type Arm = {
+  stableCut: boolean
+  /** The window the budget is sized for; absent for the fixed base budget. */
+  windowTokens?: number
+  lag: boolean
+}
+
+export function replayArm(thread: Thread, tools: Tools, arm: Arm, withHistory = false): ArmResult {
+  if (arm.stableCut) delete process.env[KILLSWITCH]
   else process.env[KILLSWITCH] = '0'
+  if (arm.windowTokens === undefined) delete process.env[WINDOW_BUDGET]
+  else process.env[WINDOW_BUDGET] = '1'
   const lookup = buildToolLookup(tools)
+  const remembered: RememberedPrefixes = new Map()
   const out: ArmResult = { requests: [], keptChars: [], historyChars: [], maxSerializeMs: 0 }
   for (const d of thread.decisions) {
     const action = toCompact(
@@ -223,24 +313,48 @@ function replayArm(thread: Thread, tools: Tools, stable: boolean): ArmResult {
     )
     if (action === '') continue
     const started = performance.now()
-    const t = serializeTranscriptForClassifier(d.history, tools, classifierTranscriptBudget(action.length))
-    out.maxSerializeMs = Math.max(out.maxSerializeMs, performance.now() - started)
+    const t = serializeTranscriptForClassifier(d.history, tools, classifierTranscriptBudget(action.length, arm.windowTokens))
     const blocks = t.userContentBlocks.map(b => b.text)
-    out.requests.push({ blocks: [...blocks, action], atMs: d.atMs })
+    const lagAt = arm.lag ? placeLagMarker(blocks, action, d.atMs, remembered) : null
+    out.maxSerializeMs = Math.max(out.maxSerializeMs, performance.now() - started)
+    out.requests.push({
+      blocks: [...blocks, action],
+      atMs: d.atMs,
+      ...(lagAt !== null && { lagBlocks: lagAt + 1 }),
+    })
     out.keptChars.push(blocks.reduce((s, b) => s + b.length, 0))
-    out.historyChars.push(
-      serializeTranscriptForClassifier(d.history, tools, Number.MAX_SAFE_INTEGER).userContentBlocks.reduce(
-        (s, b) => s + b.text.length,
-        0,
-      ),
-    )
+    if (withHistory) {
+      out.historyChars.push(
+        serializeTranscriptForClassifier(d.history, tools, Number.MAX_SAFE_INTEGER).userContentBlocks.reduce(
+          (s, b) => s + b.text.length,
+          0,
+        ),
+      )
+    }
   }
   return out
 }
 
+/**
+ * A thread that outgrows any budget: one 10k-char call judged per step, each
+ * with every earlier one as its history. What a move costs past the cap.
+ */
+export function syntheticThread(decisions: number, entryChars: number): Thread {
+  const use = (i: number) => ({ type: 'tool_use', id: `syn-${i}`, name: 'Bash', input: { command: `e${i}:`.padEnd(entryChars, 'x') } })
+  const message = (i: number) => ({ type: 'assistant', message: { role: 'assistant', content: [use(i)] } }) as unknown as Message
+  const all = Array.from({ length: decisions }, (_, i) => message(i))
+  return {
+    id: 'synthetic',
+    toolNames: new Set(['Bash']),
+    decisions: all.map((action, i) => ({ atMs: i * 1000, history: all.slice(0, i), action })),
+  }
+}
+
+const sameBlocks = (a: CacheRequest, b: CacheRequest): boolean => a.blocks.join('\u0000') === b.blocks.join('\u0000')
+
 function main(): void {
   const args = parseArgs(process.argv.slice(2))
-  const saved = process.env[KILLSWITCH]
+  const saved = { [KILLSWITCH]: process.env[KILLSWITCH], [WINDOW_BUDGET]: process.env[WINDOW_BUDGET] }
   const seen = new Set<string>()
   const files = transcriptFiles(projectDirs(null), (Date.now() - args.since) / 86_400_000 + 1)
     .filter(f => !basename(dirname(f.path)).startsWith('-tmp') && !f.path.includes('/-tmp'))
@@ -256,7 +370,19 @@ function main(): void {
   let minKeptPast = Infinity
   let maxEntryPast = 0
   let maxSerializeMs = 0
-  const total = { old: { writes: 0, reads: 0, calls: 0 }, stable: { writes: 0, reads: 0, calls: 0 } }
+  const ARMS: Record<string, Arm> = {
+    old: { stableCut: false, lag: false },
+    stable: { stableCut: true, lag: false },
+    'stable+lag': { stableCut: true, lag: true },
+    window: { stableCut: true, windowTokens: args.windowTokens, lag: false },
+    'window+lag': { stableCut: true, windowTokens: args.windowTokens, lag: true },
+  }
+  const total: Record<string, CacheTotals> = Object.fromEntries(Object.keys(ARMS).map(name => [name, emptyTotals()]))
+  const leverPast = { stable: 0, candidate: 0, calls: 0, threads: 0 }
+  let baseWindowCalls = 0
+  let baseWindowDiffering = 0
+  let maxMarkMs = 0
+  let synthetic = { stable: 0, candidate: 0 }
 
   try {
   for (const f of files) {
@@ -264,16 +390,34 @@ function main(): void {
     const thread = readThread(f.path, args.since, seen)
     if (thread.decisions.length === 0) continue
     const tools = identityTools(thread.toolNames)
-    const oldArm = replayArm(thread, tools, false)
-    const newArm = replayArm(thread, tools, true)
+    const oldArm = replayArm(thread, tools, ARMS.old!)
+    const newArm = replayArm(thread, tools, ARMS.stable!, true)
+    const candidateArm = replayArm(thread, tools, ARMS['window+lag']!)
     const o = simulateCache(oldArm.requests)
     const n = simulateCache(newArm.requests)
-    for (const [k, v] of [['old', o], ['stable', n]] as const) {
-      total[k].writes += v.writes
-      total[k].reads += v.reads
-      total[k].calls += v.calls
+    const c = simulateCache(candidateArm.requests)
+    const sims: Record<string, CacheTotals> = {
+      old: o,
+      stable: n,
+      'stable+lag': simulateCache(replayArm(thread, tools, ARMS['stable+lag']!).requests),
+      window: simulateCache(replayArm(thread, tools, ARMS.window!).requests),
+      'window+lag': c,
+    }
+    for (const [name, v] of Object.entries(sims)) {
+      const t = total[name]!
+      for (const k of ['writes', 'reads', 'calls', 'fullMisses'] as const) t[k] += v[k]
+      for (const cause of ['lookback', 'front', 'idle'] as const) {
+        t.misses[cause] += v.misses[cause]
+        t.written[cause] += v.written[cause]
+      }
     }
     maxSerializeMs = Math.max(maxSerializeMs, newArm.maxSerializeMs)
+    maxMarkMs = Math.max(maxMarkMs, candidateArm.maxSerializeMs)
+    // Sized for a 200k-token window the budget is the base one: same bytes.
+    replayArm(thread, tools, { stableCut: true, windowTokens: BASE_WINDOW_TOKENS, lag: false }).requests.forEach((r, i) => {
+      baseWindowCalls++
+      if (!sameBlocks(r, newArm.requests[i]!)) baseWindowDiffering++
+    })
     const maxHistory = Math.max(...newArm.historyChars)
     if (maxHistory > MAX_CLASSIFIER_TRANSCRIPT_CHARS) {
       newArm.historyChars.forEach((h, i) => {
@@ -292,36 +436,59 @@ function main(): void {
         pastNew += n.writes
         pastCalls += o.calls
         pastThreads++
+        leverPast.stable += n.writes
+        leverPast.candidate += c.writes
+        leverPast.calls += n.calls
+        leverPast.threads++
       }
     }
     if (maxHistory <= GATE_IDENTICAL_BELOW_CHARS) {
       oldArm.requests.forEach((r, i) => {
         belowCalls++
-        if (r.blocks.join('\u0000') !== newArm.requests[i]!.blocks.join('\u0000')) belowDiffering++
+        if (!sameBlocks(r, newArm.requests[i]!)) belowDiffering++
       })
     }
     const perCall = (v: CacheTotals) => (v.calls ? v.writes / v.calls / 1000 : 0).toFixed(1)
     rows.push(
       `${pad(thread.id, 18)} ${padLeft(String(o.calls), 5)} ${padLeft(`${(maxHistory / 1000).toFixed(0)}k`, 7)}  ` +
         `old ${padLeft(perCall(o), 5)}k/call miss ${padLeft(String(o.fullMisses), 3)}   ` +
-        `stable ${padLeft(perCall(n), 5)}k/call miss ${padLeft(String(n.fullMisses), 3)}`,
+        `stable ${padLeft(perCall(n), 5)}k/call miss ${padLeft(String(n.fullMisses), 3)}   ` +
+        `window+lag ${padLeft(perCall(c), 5)}k/call miss ${padLeft(String(c.fullMisses), 3)}`,
     )
   }
+  // Past the cap: 160 judged calls of 10k chars, 1.6M in all.
+  const longThread = syntheticThread(160, 10_000)
+  const longTools = identityTools(longThread.toolNames)
+  const pastCap = (arm: Arm): number => {
+    const requests = replayArm(longThread, longTools, arm).requests
+    const from = requests.findIndex(r => r.blocks.reduce((s, b) => s + b.length, 0) > MAX_WINDOW_TRANSCRIPT_CHARS - 20_000)
+    const tail = simulateCache(requests)
+    const head = simulateCache(requests.slice(0, Math.max(0, from)))
+    return (tail.writes - head.writes) / Math.max(1, requests.length - Math.max(0, from))
+  }
+  synthetic = { stable: pastCap(ARMS.stable!), candidate: pastCap(ARMS['window+lag']!) }
   } finally {
-    if (saved === undefined) delete process.env[KILLSWITCH]
-    else process.env[KILLSWITCH] = saved
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
   }
 
   console.log(`=== CLASSIFIER CACHE REPLAY since ${new Date(args.since).toISOString().slice(0, 10)} ===`)
   if (tornLines > 0) console.log(`(${tornLines} unparsable transcript lines skipped)`)
   console.log(`${pad('thread', 18)} ${padLeft('calls', 5)} ${padLeft('history', 7)}  writes per call (tokens) and full misses`)
   for (const r of rows) console.log(r)
-  const usd = (t: { writes: number; reads: number }) => (t.writes * 8 + t.reads * 0.2) / 1e6
-  console.log(
-    `\ntotal  old: ${(total.old.writes / 1e6).toFixed(2)}M written, ${(total.old.reads / 1e6).toFixed(2)}M read, ≈$${usd(total.old).toFixed(2)}` +
-      `   stable: ${(total.stable.writes / 1e6).toFixed(2)}M written, ${(total.stable.reads / 1e6).toFixed(2)}M read, ≈$${usd(total.stable).toFixed(2)}` +
-      '   (Opus 5.5: 1h write $8, read $0.20 per Mtok)',
-  )
+  const usd = (t: { writes: number; reads: number }, price: { write: number; read: number }) =>
+    (t.writes * price.write + t.reads * price.read) / 1e6
+  const m = (tokens: number) => `${(tokens / 1e6).toFixed(2)}M`
+  console.log(`\n${pad('arm', 11)} ${padLeft('written', 8)} ${padLeft('read', 8)} ${padLeft('Opus 5.5', 9)} ${padLeft('Fable 5.2', 10)}   written by full misses: lookback / front moved / idle>1h`)
+  for (const [name, t] of Object.entries(total)) {
+    const cause = (c: MissCause) => `${m(t.written[c])} in ${t.misses[c]}`
+    console.log(
+      `${pad(name, 11)} ${padLeft(m(t.writes), 8)} ${padLeft(m(t.reads), 8)} ${padLeft(`$${usd(t, OPUS_5_5).toFixed(2)}`, 9)} ${padLeft(`$${usd(t, FABLE_5_2).toFixed(2)}`, 10)}   ${cause('lookback')} / ${cause('front')} / ${cause('idle')}`,
+    )
+  }
+  console.log(`(window = budget sized for ${(args.windowTokens / 1000).toFixed(0)}k tokens; $ per Mtok: Opus 5.5 write $8 read $0.20, Fable 5.2 write $16 read $0.20)`)
 
   const drop = pastOld > 0 ? 1 - pastNew / pastOld : NaN
   const keptFloor = MAX_CLASSIFIER_TRANSCRIPT_CHARS - Math.max(2 * CLASSIFIER_TRANSCRIPT_CHUNK_CHARS, maxEntryPast)
@@ -346,6 +513,37 @@ function main(): void {
   console.log('\ngate:')
   for (const [name, ok, detail] of gates) console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name} — ${detail}`)
   console.log(gates.every(g => g[1]) ? '\nGATE PASS' : '\nGATE FAIL')
+
+  const stable = total.stable!
+  const candidate = total['window+lag']!
+  const writeRatio = leverPast.stable > 0 ? leverPast.candidate / leverPast.stable : NaN
+  const costRatio = usd(candidate, OPUS_5_5) / usd(stable, OPUS_5_5)
+  const leverGates: Array<[string, boolean, string]> = [
+    [
+      `window+lag writes ≤ ${LEVER_GATE_WRITES} × stable in threads past the base budget (≥${GATE_MIN_DECISIONS} decisions)`,
+      leverPast.threads > 0 && writeRatio <= LEVER_GATE_WRITES,
+      `${leverPast.threads} threads, ${leverPast.calls} calls: ${(leverPast.stable / Math.max(1, leverPast.calls) / 1000).toFixed(1)}k → ${(leverPast.candidate / Math.max(1, leverPast.calls) / 1000).toFixed(1)}k per call (× ${writeRatio.toFixed(2)})`,
+    ],
+    [
+      `sized for a ${BASE_WINDOW_TOKENS / 1000}k-token window, the blocks are stable's`,
+      baseWindowDiffering === 0,
+      `${baseWindowDiffering} of ${baseWindowCalls} calls differ`,
+    ],
+    [
+      `window+lag costs ≤ ${LEVER_GATE_COST} × stable at Opus 5.5 prices`,
+      costRatio <= LEVER_GATE_COST,
+      `$${usd(stable, OPUS_5_5).toFixed(2)} → $${usd(candidate, OPUS_5_5).toFixed(2)} (× ${costRatio.toFixed(2)}); Fable 5.2 $${usd(stable, FABLE_5_2).toFixed(2)} → $${usd(candidate, FABLE_5_2).toFixed(2)} (× ${(usd(candidate, FABLE_5_2) / usd(stable, FABLE_5_2)).toFixed(2)})`,
+    ],
+    [
+      'past the 800k cap, no more written per call than stable',
+      synthetic.candidate <= synthetic.stable,
+      `synthetic 1.6M thread: ${(synthetic.stable / 1000).toFixed(1)}k → ${(synthetic.candidate / 1000).toFixed(1)}k per call`,
+    ],
+    [`serialize and mark under ${LEVER_GATE_MARK_MS} ms`, maxMarkMs < LEVER_GATE_MARK_MS, `max ${maxMarkMs.toFixed(1)} ms`],
+  ]
+  console.log('\nlever gate (window+lag against stable):')
+  for (const [name, ok, detail] of leverGates) console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name} — ${detail}`)
+  console.log(leverGates.every(g => g[1]) ? '\nLEVER GATE PASS' : '\nLEVER GATE FAIL')
 }
 
 if (import.meta.main) main()
