@@ -116,7 +116,7 @@ describe('posixPathToWindowsPath', () => {
   })
 })
 
-describe('checkPathExists (today: `dir "<path>"` through the shell)', () => {
+describe('checkPathExists', () => {
   test('an existing file is true', () => {
     expect(checkPathExists(existingFile)).toBe(true)
   })
@@ -129,14 +129,14 @@ describe('checkPathExists (today: `dir "<path>"` through the shell)', () => {
     expect(checkPathExists(missingPath)).toBe(false)
   })
 
-  test('the path is shell-interpreted: a $VAR inside it is expanded', () => {
-    // $PWD is set by the shell itself, so this does not depend on the env.
-    expect(checkPathExists('$PWD')).toBe(true)
-    expect(checkPathExists('$PWD/definitely-not-here-1f3a')).toBe(false)
+  // The path comes from CLAUDIN_GIT_BASH_PATH among others, and it used to go
+  // through `dir "<path>"` in a shell.
+  test('a $VAR inside the path is not expanded', () => {
+    expect(checkPathExists('$PWD')).toBe(false)
   })
 
-  test('the path is shell-interpreted: a quote can break out and make a missing path "exist"', () => {
-    expect(checkPathExists(`${missingPath}" || true "`)).toBe(true)
+  test('a quote cannot break out and make a missing path "exist"', () => {
+    expect(checkPathExists(`${missingPath}" || true "`)).toBe(false)
   })
 })
 

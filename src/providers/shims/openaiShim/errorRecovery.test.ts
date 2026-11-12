@@ -4,6 +4,10 @@
 import { expect, test } from 'bun:test'
 
 import {
+  getAssistantMessageFromError,
+  PROMPT_TOO_LONG_ERROR_MESSAGE,
+} from 'src/providers/transport/errors.js'
+import {
   createOpenAIShimClient,
   useShimHarness,
   type FetchType,
@@ -92,6 +96,155 @@ test('classifies chat-completions endpoint 404 failures with endpoint_not_found 
     }),
   ).rejects.toThrow('openai_category=endpoint_not_found')
 })
+// Most OpenAI-compatible servers answer an error with a JSON body. The SDK
+// builds the error's message from that body when it is handed one, which
+// dropped the category marker and the hint the shim wrote.
+test('keeps the category marker when the error body is JSON', async () => {
+  process.env.OPENAI_BASE_URL = 'http://localhost:8080/v1'
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        error: {
+          message: "This model's maximum context length is 8192 tokens.",
+          code: 'context_length_exceeded',
+        },
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    )) as unknown as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await expect(
+    client.beta.messages.create({
+      model: 'qwen2.5-coder:7b',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    }),
+  ).rejects.toThrow('openai_category=context_overflow')
+})
+
+// The compaction retry keys on PROMPT_TOO_LONG_ERROR_MESSAGE; an overflow from
+// an OpenAI-compatible server has to read as the same thing or /compact on a
+// local model fails instead of trimming and retrying.
+for (const [label, body] of [
+  ['an OpenAI-style overflow', "This model's maximum context length is 8192 tokens."],
+  ['a llama.cpp overflow', 'the request exceeds the available context size, try increasing it'],
+  ['a vLLM overflow', 'This model has a maximum context window of 4096 tokens. Please reduce the length of the messages.'],
+] as const) {
+  test(`${label} becomes the prompt-too-long message`, async () => {
+    process.env.OPENAI_BASE_URL = 'http://localhost:8080/v1'
+
+    globalThis.fetch = (async () =>
+      new Response(body, {
+        status: 400,
+        headers: { 'Content-Type': 'text/plain' },
+      })) as unknown as FetchType
+
+    const client = createOpenAIShimClient({}) as OpenAIShimClient
+    const error = await client.beta.messages
+      .create({
+        model: 'qwen2.5-coder:7b',
+        messages: [{ role: 'user', content: 'hello' }],
+        max_tokens: 64,
+        stream: false,
+      })
+      .then(
+        () => undefined,
+        (e: unknown) => e,
+      )
+
+    const message = getAssistantMessageFromError(error, 'qwen2.5-coder:7b')
+    const content = message.message.content as Array<{ text?: string }>
+    expect(content[0]?.text).toBe(PROMPT_TOO_LONG_ERROR_MESSAGE)
+  })
+}
+
+// Bedrock answers a throttle with "Too many tokens, please wait"; that is a
+// rate limit, not a context overflow.
+test('a "too many tokens, please wait" throttle is not an overflow', async () => {
+  process.env.OPENAI_BASE_URL = 'http://localhost:8080/v1'
+
+  globalThis.fetch = (async () =>
+    new Response('Too many tokens, please wait before trying again.', {
+      status: 400,
+      headers: { 'Content-Type': 'text/plain' },
+    })) as unknown as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await expect(
+    client.beta.messages.create({
+      model: 'qwen2.5-coder:7b',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    }),
+  ).rejects.not.toThrow('openai_category=context_overflow')
+})
+
+// A gateway that throttles with a 403 is told apart from a bad key only by a
+// structured signal: Retry-After, or a rate-limit code/type in the JSON error.
+// Prose alone is not enough — "rate limit" also appears in auth refusals.
+test('classifies a 403 carrying a rate-limit code as rate_limited', async () => {
+  process.env.OPENAI_BASE_URL = 'https://gateway.example.com/v1'
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({ error: { code: 'rate_limit_exceeded', message: 'Slow down' } }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    )) as unknown as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await expect(
+    client.beta.messages.create({
+      model: 'gpt-5',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    }),
+  ).rejects.toThrow('openai_category=rate_limited')
+})
+
+test('classifies a 403 with Retry-After as rate_limited', async () => {
+  process.env.OPENAI_BASE_URL = 'https://gateway.example.com/v1'
+
+  globalThis.fetch = (async () =>
+    new Response('Forbidden', {
+      status: 403,
+      headers: { 'Content-Type': 'text/plain', 'Retry-After': '1' },
+    })) as unknown as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await expect(
+    client.beta.messages.create({
+      model: 'gpt-5',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    }),
+  ).rejects.toThrow('openai_category=rate_limited')
+})
+
+test('a 403 that only says "rate limit" in prose stays auth_invalid', async () => {
+  process.env.OPENAI_BASE_URL = 'https://gateway.example.com/v1'
+
+  globalThis.fetch = (async () =>
+    new Response('API key not allowed: rate limit tier missing', {
+      status: 403,
+      headers: { 'Content-Type': 'text/plain' },
+    })) as unknown as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await expect(
+    client.beta.messages.create({
+      model: 'gpt-5',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    }),
+  ).rejects.toThrow('openai_category=auth_invalid')
+})
+
 test('self-heals localhost resolution failures by retrying local loopback base URL', async () => {
   process.env.OPENAI_BASE_URL = 'http://localhost:11434/v1'
 

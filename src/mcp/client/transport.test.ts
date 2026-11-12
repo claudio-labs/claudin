@@ -699,4 +699,36 @@ describe('createTransport — stdio', () => {
       },
     })
   })
+
+  // The SDK closes the connection on any single line over its 10 MiB default,
+  // so one large tool result (a screenshot, a big file) took the server down.
+  test('a message over 10 MiB arrives instead of closing the connection', async () => {
+    const child = join(tempDir(), 'big.js')
+    writeFileSync(
+      child,
+      `process.stdout.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/big', params: { blob: 'x'.repeat(11 * 1024 * 1024) } }) + '\\n')
+process.stdin.on('data', () => {})
+process.stdin.on('end', () => process.exit(0))
+`,
+    )
+
+    const transport = await build('big', {
+      type: 'stdio',
+      command: process.execPath,
+      args: [child],
+      scope: 'user',
+    })
+
+    const got = new Promise<JSONRPCMessage>((resolve, reject) => {
+      transport.onmessage = resolve
+      transport.onerror = reject
+      transport.onclose = () => reject(new Error('closed before a message'))
+    })
+    await transport.start()
+    const message = await got
+    expect(message).toMatchObject({ method: 'notifications/big' })
+    expect((message as { params?: { blob?: string } }).params?.blob).toHaveLength(
+      11 * 1024 * 1024,
+    )
+  })
 })

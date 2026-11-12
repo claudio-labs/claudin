@@ -364,8 +364,10 @@ describe('discoverOpenAICompatibleModelOptions — parsing /models', () => {
     expect(mod.getDiscoveredContextWindow('ctx-neg')).toBeUndefined()
   })
 
-  test('TODAY only context_length is read: context_window, max_context_length, max_model_len and meta.n_ctx_train are ignored', async () => {
-    // A later commit makes the parser read these too, and flips this test on purpose.
+  // Groq, LM Studio, vLLM and llama.cpp name the field differently; reading
+  // only context_length left them on the 128k fallback, so autocompact fired
+  // late or never and the server rejected the prompt first.
+  test('reads context_window, max_context_length, max_model_len and meta.n_ctx_train', async () => {
     useProfile('http://llm.test/v1')
     stubAxios({
       'http://llm.test/v1/models': {
@@ -379,17 +381,11 @@ describe('discoverOpenAICompatibleModelOptions — parsing /models', () => {
         },
       },
     })
-    const options = await mod.discoverOpenAICompatibleModelOptions()
-    expect(options.map(o => o.description)).toEqual([
-      'field-groq',
-      'field-llamacpp',
-      'field-lmstudio',
-      'field-vllm',
-    ])
-    expect(mod.getDiscoveredContextWindow('field-groq')).toBeUndefined()
-    expect(mod.getDiscoveredContextWindow('field-lmstudio')).toBeUndefined()
-    expect(mod.getDiscoveredContextWindow('field-vllm')).toBeUndefined()
-    expect(mod.getDiscoveredContextWindow('field-llamacpp')).toBeUndefined()
+    await mod.discoverOpenAICompatibleModelOptions()
+    expect(mod.getDiscoveredContextWindow('field-groq')).toBe(131_072)
+    expect(mod.getDiscoveredContextWindow('field-lmstudio')).toBe(32_768)
+    expect(mod.getDiscoveredContextWindow('field-vllm')).toBe(65_536)
+    expect(mod.getDiscoveredContextWindow('field-llamacpp')).toBe(262_144)
   })
 
   test('context_length wins even when other fields are present', async () => {

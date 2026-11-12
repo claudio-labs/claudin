@@ -358,17 +358,45 @@ describe('classifyOpenAIHttpFailure', () => {
       })
     })
 
-    // A later commit flips these to rate_limited on purpose.
+    // Prose is not a signal: "rate limit" also shows up in auth refusals.
+    test.each([['rate limit exceeded'], ['Too Many Requests'], ['throttled']])(
+      '403 whose body only says %p in prose stays auth_invalid',
+      body => {
+        const failure = classifyOpenAIHttpFailure({ status: 403, body })
+        expect(failure.category).toBe('auth_invalid')
+        expect(failure.retryable).toBe(false)
+      },
+    )
+
     test.each([
-      ['rate limit exceeded'],
       ['{"error":{"code":"rate_limit_exceeded","message":"slow down"}}'],
       ['{"error":{"type":"rate_limit_error"}}'],
-      ['Too Many Requests'],
-      ['throttled'],
-    ])('403 with a rate-limit body %p is still auth_invalid today', body => {
+      ['{"error":{"code":"too_many_requests"}}'],
+      ['{"code":"throttled"}'],
+    ])('403 with a structured rate-limit code %p is rate_limited', body => {
       const failure = classifyOpenAIHttpFailure({ status: 403, body })
-      expect(failure.category).toBe('auth_invalid')
-      expect(failure.retryable).toBe(false)
+      expect(failure.category).toBe('rate_limited')
+      expect(failure.retryable).toBe(true)
+    })
+
+    test('403 with Retry-After is rate_limited', () => {
+      expect(
+        classifyOpenAIHttpFailure({
+          status: 403,
+          body: 'Forbidden',
+          headers: new Headers({ 'retry-after': '2' }),
+        }).category,
+      ).toBe('rate_limited')
+    })
+
+    test('401 with a rate-limit code stays auth_invalid', () => {
+      expect(
+        classifyOpenAIHttpFailure({
+          status: 401,
+          body: '{"error":{"code":"rate_limit_exceeded"}}',
+          headers: new Headers({ 'retry-after': '2' }),
+        }).category,
+      ).toBe('auth_invalid')
     })
 
     test('401 with a context-overflow body is still auth_invalid', () => {
@@ -513,18 +541,29 @@ describe('classifyOpenAIHttpFailure', () => {
       expect(failure.retryable).toBe(false)
     })
 
+    // The phrases other servers use, from opencode's list.
     test.each([
       ['exceeds the context window of this model'],
       ['input token count exceeds the maximum'],
       ['reduce the length of the messages'],
       ['context_length_exceeded'],
-      ['maximum_context'],
-      ['too large'],
-    ])('400 %p is NOT recognized today', body => {
+      ['the request exceeds the available context size, try increasing it'],
+      ['prompt has 9,000 tokens, but the configured context size is 8,192 tokens'],
+      ['number of input tokens exceeds maximum length'],
+      ['`inputs` tokens + `max_new_tokens` must be <= 4096'],
+      ['model_context_window_exceeded'],
+      ['Request Entity Too Large'],
+    ])('400 %p', body => {
+      expect(classifyOpenAIHttpFailure({ status: 400, body }).category).toBe(
+        'context_overflow',
+      )
+    })
+
+    test.each([['maximum_context'], ['too large']])('400 %p is not an overflow', body => {
       expect(classifyOpenAIHttpFailure({ status: 400, body }).category).toBe('unknown')
     })
 
-    test('"max_tokens must be less than" is NOT overflow today', () => {
+    test('"max_tokens must be less than" is NOT overflow', () => {
       expect(
         classifyOpenAIHttpFailure({
           status: 400,
@@ -533,11 +572,17 @@ describe('classifyOpenAIHttpFailure', () => {
       ).toBe('unknown')
     })
 
-    test('a "please wait" throttle phrase on 400 IS overflow today (no exclusion)', () => {
-      expect(
-        classifyOpenAIHttpFailure({ status: 400, body: 'too many tokens, please wait' })
-          .category,
-      ).toBe('context_overflow')
+    // Bedrock words a throttle as "Too many tokens, please wait"; compacting
+    // cannot fix a throttle.
+    test.each([
+      ['too many tokens, please wait'],
+      ['Too many tokens per day, please wait before trying again.'],
+      ['Request too large: rate limit reached for tokens per minute'],
+      ['Too many requests: context length is fine, slow down'],
+    ])('a throttle %p on 400 is not an overflow', body => {
+      expect(classifyOpenAIHttpFailure({ status: 400, body }).category).not.toBe(
+        'context_overflow',
+      )
     })
 
     test('"input length" matches inside unrelated prose', () => {

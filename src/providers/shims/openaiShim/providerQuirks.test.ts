@@ -243,6 +243,65 @@ test('DeepSeek echoes reasoning_content on assistant tool-call messages', async 
   expect(assistantWithToolCall?.reasoning_content).toBe('thought')
 })
 
+// Strict-alternation servers make the converter merge two assistant messages
+// in a row; the tool-call half's reasoning has to survive the merge.
+test('DeepSeek keeps reasoning_content when two assistant messages merge', async () => {
+  process.env.OPENAI_BASE_URL = 'https://api.deepseek.com/v1'
+  process.env.OPENAI_API_KEY = 'sk-deepseek'
+
+  let requestBody: Record<string, unknown> | undefined
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'deepseek-v4-flash',
+        choices: [
+          { message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await client.beta.messages.create({
+    model: 'deepseek-v4-flash',
+    system: 'test',
+    messages: [
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: [{ type: 'text', text: 'checking' }] },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'second thought' },
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'ls' },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'call_1', content: 'files' },
+        ],
+      },
+    ],
+    max_tokens: 32,
+    stream: false,
+  })
+
+  const messages = requestBody?.messages as Array<Record<string, unknown>>
+  const assistants = messages.filter(m => m.role === 'assistant')
+  expect(assistants).toHaveLength(1)
+  expect(assistants[0]?.tool_calls).toBeDefined()
+  expect(assistants[0]?.reasoning_content).toBe('second thought')
+})
+
 test('generic OpenAI-compatible providers do not echo reasoning_content on assistant tool-call messages', async () => {
   process.env.OPENAI_BASE_URL = 'https://api.openai.com/v1'
   process.env.OPENAI_API_KEY = 'sk-openai-test'

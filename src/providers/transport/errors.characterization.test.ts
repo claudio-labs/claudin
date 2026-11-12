@@ -437,9 +437,9 @@ describe('getAssistantMessageFromError — 429', () => {
 })
 
 describe('getAssistantMessageFromError — OpenAI-compatibility category markers', () => {
-  // One row per category, as the marker branch maps it today. The marker wins
-  // over every later branch: a context_overflow marker never reaches the
-  // prompt-too-long check, even when the raw text says "prompt is too long".
+  // One row per category, as the marker branch maps it. A context_overflow is
+  // the prompt-too-long message, so the compaction retry that keys on it
+  // works for an OpenAI-compatible server too.
   const rows: Array<[string, number, string, string | undefined]> = [
     [
       'connection_refused',
@@ -477,12 +477,7 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
       'API Error: Provider request timed out. Local models may be loading or overloaded; retry shortly or increase API_TIMEOUT_MS.',
       'unknown',
     ],
-    [
-      'context_overflow',
-      400,
-      'The conversation exceeded the provider context limit. Run /compact or start a new session with /new.',
-      'invalid_request',
-    ],
+    ['context_overflow', 400, 'Prompt is too long', 'invalid_request'],
     [
       'tool_call_incompatible',
       400,
@@ -513,7 +508,7 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
     expect(msg.error).toBe(errorTag as AssistantMessage['error'])
   })
 
-  test('context_overflow with "prompt is too long" in the raw text still takes the marker branch', () => {
+  test('context_overflow is prompt-too-long, with the raw text as details for the token gap', () => {
     useProfile(OPENAI)
     const msg = fromError(
       apiError(
@@ -522,23 +517,19 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
       ),
       'qwen2.5-coder:7b',
     )
-    expect(textOf(msg)).toBe(
-      'The conversation exceeded the provider context limit. Run /compact or start a new session with /new.',
-    )
-    expect(isPromptTooLongMessage(msg)).toBe(false)
-    expect(msg.errorDetails).toBeUndefined()
-    expect(getPromptTooLongTokenGap(msg)).toBeUndefined()
+    expect(textOf(msg)).toBe('Prompt is too long')
+    expect(isPromptTooLongMessage(msg)).toBe(true)
+    expect(msg.errorDetails).toContain('140000 tokens > 131072 maximum')
+    expect(getPromptTooLongTokenGap(msg)).toBe(140000 - 131072)
   })
 
-  test('context_overflow, model_not_found and tool_call_incompatible switch their hint headless', () => {
+  test('model_not_found and tool_call_incompatible switch their hint headless; an overflow is prompt-too-long either way', () => {
     useProfile(OPENAI)
     nonInteractive()
     const overflow = fromError(apiError(400, 'x [openai_category=context_overflow]'), 'm')
     const missing = fromError(apiError(404, 'x [openai_category=model_not_found]'), 'm')
     const tools = fromError(apiError(400, 'x [openai_category=tool_call_incompatible]'), 'm')
-    expect(textOf(overflow)).toBe(
-      'The conversation exceeded the provider context limit. Reduce prompt size or start a new session.',
-    )
+    expect(textOf(overflow)).toBe('Prompt is too long')
     expect(textOf(missing)).toContain('Run --model to choose another model')
     expect(textOf(tools)).toContain('Try --model to pick a tool-capable model')
   })
