@@ -167,8 +167,10 @@ describe('isLagMarkerEnabled', () => {
     else process.env.CLAUDIN_CLASSIFIER_LAG_MARKER = saved
   })
 
-  test('off unless the env turns it on', () => {
+  test('on unless the env turns it off', () => {
     delete process.env.CLAUDIN_CLASSIFIER_LAG_MARKER
+    expect(isLagMarkerEnabled()).toBe(true)
+    process.env.CLAUDIN_CLASSIFIER_LAG_MARKER = '0'
     expect(isLagMarkerEnabled()).toBe(false)
     process.env.CLAUDIN_CLASSIFIER_LAG_MARKER = '1'
     expect(isLagMarkerEnabled()).toBe(true)

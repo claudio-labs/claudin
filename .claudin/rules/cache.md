@@ -415,9 +415,10 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   chunks under a 200k budget that was 62% of the classifier's writes
   (2026-11-11). And a prompt made of one block per entry meets the 20-block
   lookback as soon as entries arrive that no call marked (Reads the mode
-  accepted): 13%. Two opt-in levers answer them and only pay together — the
-  budget sized by the window (`CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1`) and a lag
-  breakpoint where the previous call ended (`CLAUDIN_CLASSIFIER_LAG_MARKER=1`,
+  accepted): 13%. Two levers answer them, on by default since 2026-11-12, and
+  only pay together — the budget sized by the window
+  (`CLAUDIN_CLASSIFIER_WINDOW_BUDGET=0` turns it off) and a lag breakpoint
+  where the previous call ended (`CLAUDIN_CLASSIFIER_LAG_MARKER=0`,
   `yoloClassifier/lagMarker.ts`, the request's fourth and last
   `cache_control`). The replay has both as arms and files every full miss
   under its cause; a chunk size is a trade between how often the cut moves

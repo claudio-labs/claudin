@@ -1,6 +1,6 @@
 ---
 name: token-bench-measurement-traps
-description: Traps that make a headless A/B token bench measure the wrong thing — the --allowedTools non-gate, per-content-block usage rows, arm-ordering cache warmth, metrics structurally zero in one arm, dropping cache-read from cost, a rounding median, and stream-json tool results counted twice
+description: Traps that make a headless A/B token bench measure the wrong thing — the --allowedTools non-gate, per-content-block usage rows, arm-ordering cache warmth, metrics structurally zero in one arm, dropping cache-read from cost, a rounding median, stream-json tool results counted twice, and a /tmp run dir lost before the next rep
 type: project
 ---
 
@@ -99,6 +99,15 @@ an hour earlier in the same directory: an earlier run had left an untracked `.cl
 there, and the gitStatus block in the first user message read `?? .claudin/` instead of
 `(clean)`. Session UUIDs already differ per run. Compare after normalizing both, or give
 every run a fresh git repo, and diff the two `main` runs against each other as the placebo.
+
+**A run directory under /tmp does not outlive the host.** The classifier A/B
+(`classifier-cache-ab.ts`, 2026-11-11/12) ran its two reps as two one-rep runs so the
+account's 5-hour window could reset between them; the host rebooted in between and took rep
+1's `/tmp/classifier-cache-ab/<stamp>` with it (the session scratchpad lives under /tmp too).
+`--report=<run 1>,<run 2>` could no longer merge them, the mean gates had to be worked out by
+hand from the two tables, and rep 2's new finding (which decisions went to the classifier's
+second stage) had no rep-1 counterpart. Commit each rep's report as soon as it finishes, and
+copy the raw run dir outside /tmp when a later rep will be compared against it.
 
 **Why:** every number this bench produced before the last fix was wrong, and not
 conservatively so — 2.01× and 2.35× both looked defensible and both died to a

@@ -783,7 +783,9 @@ describe('call() with both flags on — what reaches the result', () => {
       throw new Error(`call() probe failed (exit ${child.status})\nstdout: ${child.stdout}\nstderr: ${child.stderr}`)
     }
     ;[fits, overBudget, failed, afterCd, overBudgetAfterCd, failedSpill] = JSON.parse(child.stdout) as CallResult[]
-  })
+    // The child's own bound, not the runner's 5 s default: on a loaded CI
+    // runner the child took over 5 s (2026-11-12) and the suite failed.
+  }, 60_000)
 
   afterAll(() => {
     rmSync(dir, { recursive: true, force: true })

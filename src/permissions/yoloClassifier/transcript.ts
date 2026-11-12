@@ -13,11 +13,12 @@
  * response wrote is judged with the script in view.
  * Killswitch: `CLAUDIN_CLASSIFIER_RESPONSE_CALLS=0` leaves them out.
  *
- * Opt-in, `CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1`: the budget follows the
- * classifier model's window (`classifierTranscriptBudget`), so on a 1M model
- * the transcript stays whole and the cut stops moving. Off until the live A/B
- * decides (`scripts/bench/ab/classifier-cache-ab.ts`); it pays together with
- * the lag marker (`lagMarker.ts`).
+ * On by default since 2026-11-12: the budget follows the classifier model's
+ * window (`classifierTranscriptBudget`), so on a 1M model the transcript stays
+ * whole and the cut stops moving. It pays together with the lag marker
+ * (`lagMarker.ts`), and both passed a live A/B
+ * (`scripts/bench/ab/classifier-cache-ab.ts`).
+ * Killswitch: `CLAUDIN_CLASSIFIER_WINDOW_BUDGET=0` keeps the fixed 200k budget.
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
@@ -25,7 +26,7 @@ import type { Message, MessageOrigin } from 'src/shared/types/message.js'
 import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
 export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
@@ -84,7 +85,7 @@ function isStableCutEnabled(): boolean {
 }
 
 function isWindowBudgetEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)
 }
 
 function isResponseCallsEnabled(): boolean {

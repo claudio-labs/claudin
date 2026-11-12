@@ -8,7 +8,7 @@
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
 - [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
 - [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS)
-- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%; window budget + lag opt-in 11-11
+- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%; window budget + lag on 11-12
 - [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree

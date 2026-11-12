@@ -14,9 +14,9 @@
  * Arms, one headless `--permission-mode auto --debug` session each per rep, in
  * a throwaway git repo of its own, the arms of a rep side by side:
  *
- *   base       this checkout, both levers unset
+ *   base       this checkout, both levers off (`=0`; the default until 2026-11-12)
  *   placebo    base plus a variable nothing reads
- *   candidate  CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1 and CLAUDIN_CLASSIFIER_LAG_MARKER=1
+ *   candidate  CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1 and CLAUDIN_CLASSIFIER_LAG_MARKER=1 (the default since)
  *
  * Every arm runs with CLAUDIN_READ_MULTI=0, so a wide turn's reads are one
  * tool_use each rather than one batch.
@@ -67,9 +67,10 @@ const ARMS = ['base', 'placebo', 'candidate'] as const
 export type Arm = (typeof ARMS)[number]
 
 const COMMON_ENV = { CLAUDIN_READ_MULTI: '0' }
+const LEVERS_OFF = { CLAUDIN_CLASSIFIER_WINDOW_BUDGET: '0', CLAUDIN_CLASSIFIER_LAG_MARKER: '0' }
 const ARM_ENV: Record<Arm, Record<string, string>> = {
-  base: {},
-  placebo: { CLAUDIN_BENCH_PLACEBO: '1' },
+  base: LEVERS_OFF,
+  placebo: { ...LEVERS_OFF, CLAUDIN_BENCH_PLACEBO: '1' },
   candidate: { CLAUDIN_CLASSIFIER_WINDOW_BUDGET: '1', CLAUDIN_CLASSIFIER_LAG_MARKER: '1' },
 }
 

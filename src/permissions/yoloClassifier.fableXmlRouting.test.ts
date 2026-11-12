@@ -311,7 +311,7 @@ describe('a classifier request the API declines', () => {
 })
 
 // The two cache levers of the 11-11 census, on the request as sideQuery gets
-// it. Both are off unless their env turns them on.
+// it. Both are on unless their env is `=0`.
 describe('window budget and lag marker on the wire', () => {
   const LAG = 'CLAUDIN_CLASSIFIER_LAG_MARKER'
   const WINDOW = 'CLAUDIN_CLASSIFIER_WINDOW_BUDGET'
@@ -372,7 +372,6 @@ describe('window budget and lag marker on the wire', () => {
   for (const model of ['claude-opus-5-5', 'claude-fable-5']) {
     test(`${model}: the next call marks the block the previous one ended on`, async () => {
       mainLoopModel = model
-      process.env[LAG] = '1'
 
       expect(marked(await classifyWith(first, 'echo one'))).toEqual(['Bash echo one\n'])
       const next = await classifyWith(second, 'echo two')
@@ -382,8 +381,9 @@ describe('window budget and lag marker on the wire', () => {
     })
   }
 
-  test('without the env only the action is marked', async () => {
+  test('=0 marks only the action', async () => {
     mainLoopModel = 'claude-opus-5-5'
+    process.env[LAG] = '0'
     await classifyWith(first, 'echo one')
 
     expect(marked(await classifyWith(second, 'echo two'))).toEqual(['Bash echo two\n'])
@@ -394,17 +394,16 @@ describe('window budget and lag marker on the wire', () => {
   const firstEntry = (opts: Record<string, unknown>) =>
     /^Bash e(\d+):/.exec(transcriptBlocks(opts).find(b => b.text?.startsWith('Bash e'))?.text ?? '')?.[1]
 
-  test('a 1M model keeps a 300k transcript whole under the window budget', async () => {
+  test('a 1M model keeps a 300k transcript whole, and =0 cuts it at the base budget', async () => {
     mainLoopModel = 'claude-opus-5-5'
-    expect(firstEntry(await classifyWith(long, 'echo hi'))).not.toBe('0')
-
-    process.env[WINDOW] = '1'
     expect(firstEntry(await classifyWith(long, 'echo hi'))).toBe('0')
+
+    process.env[WINDOW] = '0'
+    expect(firstEntry(await classifyWith(long, 'echo hi'))).not.toBe('0')
   })
 
   test('a model billed at long-prompt rates past 100k keeps the base budget', async () => {
     mainLoopModel = 'claude-haiku-5-5'
-    process.env[WINDOW] = '1'
 
     expect(firstEntry(await classifyWith(long, 'echo hi'))).not.toBe('0')
   })

@@ -1,7 +1,8 @@
 /**
  * A second cache breakpoint for the classifier's transcript, where the previous
- * call's prompt ended — opt-in, `CLAUDIN_CLASSIFIER_LAG_MARKER=1`, off until
- * the live A/B decides (`scripts/bench/ab/classifier-cache-ab.ts`).
+ * call's prompt ended — on by default since 2026-11-12, after a live A/B
+ * (`scripts/bench/ab/classifier-cache-ab.ts`). Killswitch:
+ * `CLAUDIN_CLASSIFIER_LAG_MARKER=0`.
  *
  * The classifier caches its prompt up to the action it judges, and each
  * transcript entry is a block of its own. The API resolves a breakpoint by
@@ -33,7 +34,7 @@
  * the same reason a miss is: the marked block is then not a cached prefix, and
  * the request writes what it would have written without the marker.
  */
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 /** The classifier's cache TTL: a breakpoint older than this is not worth marking. */
 export const LAG_MARKER_TTL_MS = 60 * 60 * 1000
@@ -45,7 +46,7 @@ const DJB2_SEED = 5381
 export const KEY_EDGE_CHARS = 64
 
 export function isLagMarkerEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)
 }
 
 /** Prefix key → when a breakpoint last closed that prefix (ms). */

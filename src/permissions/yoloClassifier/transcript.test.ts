@@ -424,11 +424,11 @@ describe('classifierTranscriptBudget', () => {
   })
 })
 
-describe('classifierTranscriptBudget, by the window (CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1)', () => {
+describe('classifierTranscriptBudget, by the window (the default; CLAUDIN_CLASSIFIER_WINDOW_BUDGET=0 turns it off)', () => {
   const WINDOW_BUDGET = 'CLAUDIN_CLASSIFIER_WINDOW_BUDGET'
   const savedWindowBudget = process.env[WINDOW_BUDGET]
   beforeEach(() => {
-    process.env[WINDOW_BUDGET] = '1'
+    delete process.env[WINDOW_BUDGET]
   })
   afterEach(() => {
     restoreKillswitch()
@@ -451,13 +451,15 @@ describe('classifierTranscriptBudget, by the window (CLAUDIN_CLASSIFIER_WINDOW_B
     expect(classifierTranscriptBudget(0, 100_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
   })
 
-  test('off by default, without a window, and with the stable cut off', () => {
+  test('=0 turns it off, and so do no window and the stable cut being off', () => {
     expect(classifierTranscriptBudget(0)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
 
-    delete process.env[WINDOW_BUDGET]
+    process.env[WINDOW_BUDGET] = '0'
     expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
 
     process.env[WINDOW_BUDGET] = '1'
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+
     process.env[KILLSWITCH] = '0'
     expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 31_000)
   })

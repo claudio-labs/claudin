@@ -8,16 +8,16 @@
   "source": "src/permissions/yoloClassifier/lagMarker.ts",
   "probes": [
     {
-      "name": "the window budget is on without the flag",
+      "name": "the window budget is off by default",
       "source": "src/permissions/yoloClassifier/transcript.ts",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)\n",
-      "replace": "  return true\n"
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)\n",
+      "replace": "  return process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET === '1'\n"
     },
     {
-      "name": "the flag does not turn the window budget on",
+      "name": "=0 does not turn the window budget off",
       "source": "src/permissions/yoloClassifier/transcript.ts",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)\n",
-      "replace": "  return false\n"
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)\n",
+      "replace": "  return true\n"
     },
     {
       "name": "the window budget survives the stable cut being off",
@@ -56,14 +56,14 @@
       "replace": "  return window\n"
     },
     {
-      "name": "the lag marker is on without the flag",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)\n",
-      "replace": "  return true\n"
+      "name": "the lag marker is off by default",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)\n",
+      "replace": "  return process.env.CLAUDIN_CLASSIFIER_LAG_MARKER === '1'\n"
     },
     {
-      "name": "the flag does not turn the lag marker on",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)\n",
-      "replace": "  return false\n"
+      "name": "=0 does not turn the lag marker off",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)\n",
+      "replace": "  return true\n"
     },
     {
       "name": "the shortest remembered prefix is marked",
@@ -111,7 +111,7 @@
       "replace": "\n"
     },
     {
-      "name": "classify places the lag marker with the flag off",
+      "name": "classify places the lag marker with =0",
       "source": "src/permissions/yoloClassifier/classify.ts",
       "find": "  const lagAt = isLagMarkerEnabled()\n",
       "replace": "  const lagAt = true\n"
