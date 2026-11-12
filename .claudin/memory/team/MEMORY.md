@@ -4,7 +4,7 @@
 
 ## Decisions
 - Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind, /diff `x`, fallback · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills, ws ask
-- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule; what was dropped and why
+- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule, review's 9 fixes; what was dropped
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
 - [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k

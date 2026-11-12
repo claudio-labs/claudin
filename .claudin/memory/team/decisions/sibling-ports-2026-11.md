@@ -1,6 +1,6 @@
 ---
 name: sibling-ports-2026-11
-description: The 2026-11-12 round against opencode and openclaude (a838b670..2d98d107) — what was ported on fix/sibling-ports-2026-11 (10 inherited bugs, .env read ask, auto-mode ask-rule hole, JSON error marker) and every candidate dropped, with the measured reason
+description: The 2026-11-12 round against opencode and openclaude (a838b670..2d98d107) — what was ported on fix/sibling-ports-2026-11 (10 inherited bugs, .env read ask, auto-mode ask-rule hole, JSON error marker), the review round's 9 fixes, and every candidate dropped, with the measured reason
 type: project
 scope: providers, permissions, mcp, plugins, terminal
 impact: functional
@@ -24,7 +24,7 @@ Branch `fix/sibling-ports-2026-11`, one PR, one commit per area, red test commit
 - **The shim's JSON error bodies kept no `[openai_category=…]` marker** (since the first commit). `APIError.generate` builds its message from the parsed body, so `error.message` is now set back after generate.
 - 403 with a structured rate-limit signal: Retry-After, `x-should-retry: true`, or a rate-limit code or type in the body. It is retried like a 429. Prose alone does not count; openclaude spent 8 iterations on prose vetoes.
 - An OpenAI-compatible `context_overflow` becomes `PROMPT_TOO_LONG_ERROR_MESSAGE`, so the compaction retry works on shim providers. The phrases come from opencode, with throttle exclusions.
-- `/models` discovery reads `context_window`, `max_context_length`, `max_model_len` and `meta.n_ctx_train`.
+- `/models` discovery reads `context_window`, `max_context_length` and `max_model_len`, first positive number wins.
 - Auto mode: an ask from a rule or a `safetyCheck` no longer takes the allowlist or read-only fast path (`askMayTakeAllowlistFastPath`). A user's `Read(./secrets/**)` ask rule used to be a silent allow.
 - **.env read ask**, a non-approvable `safetyCheck`. It applies at all three read gates: `checkReadPermissionForTool` with the batch Read, the Bash `isPathAllowed`, and the PowerShell mirror. A batch binds the strictest reason. Templates (`.example`, `.sample`, `.template`, `.dist`) are free. **Only an allow rule whose pattern names a .env opts out** (`envFileReadAllowRule`). The first version honored any matching allow rule, and the live check under `/tmp` was silently allowed by a user `Read(//tmp/**)`.
 - `request-census` gained an InputValidationError-per-family table.
@@ -42,13 +42,26 @@ Branch `fix/sibling-ports-2026-11`, one PR, one commit per area, red test commit
 - **Tool-arg coercion:** the census of 2026-10-29..11-12 (5 projects, ~21k tool uses) found 12 InputValidationErrors, only 1 a wrong type. Re-run `request-census` before reopening.
 - Command palette, tabs, embedded terminal, ACP/Zed: no demand signal.
 
-**Evidence:** `scripts/migrations/probes/inheritedBugs20261112.json` (25 probes, all red on break).
+**Review round (3 agents, same day), 8 fixes the full suite and the live checks had missed:**
+- A rate_limited 403 skipped the long-reset stop and the quota check, both 429-only (`rateLimitInfo.ts` `isRateLimitStatus`). An 8 h Retry-After slept 8 h ×10.
+- Grep printed `.env` content: it checked only its root. A search now passes `!.env`, `!.env.*`, `!*.env`, and a glob naming one asks. Templates leave the sweep too: a positive rg glob turns every glob into a whitelist, so they cannot be re-included. Named as the path, they are still searched.
+- Bash `cat .env*` / `./*.env` were judged by the glob's base dir, and `tac` had no path check at all. `globCouldMatchEnvFile` (picomatch, `dot` per shell).
+- The opt-out regex matched `.env` anywhere in a rule (`Read(~/.envs/**)`): only the rule's last segment counts now. A `.env` directory (venv) and `.env.ts` no longer ask. The ask offers `Read(<file>)` (the Bash prompt offered a dir rule the guard ignores).
+- Overflow: "exceeds the limit of N" needs `tokens` (images and tool counts used it), and monthly/daily token-limit quotas are excluded. The `^throttling error:` exclusion never matched a JSON body.
+- Discovery: `??` stopped at a `0`/`-1`/string. `meta.n_ctx_train` is dropped: it is the trained context, not the server's `-c`.
+- The JSON marker fix hid the server's words behind per-category hints (`errorDetails` renders nowhere). The hint is now followed by the server's own message.
+- A PreToolUse hook with `args` failed open (status 1): it now exits 2 there, and 1 elsewhere, since 2 on Stop forces a continue.
+- Found by the live check after the fix round: the marked 403 stopped at its 8 h reset but said "no reset time reported". The marker branch now formats the `extractRateLimitInfo` a 429 gets.
+- Not fixed, by choice: wrap-ansi 9 splits ZWJ emoji and drops ANSI on wrap under Node, the same as Bun, and parity was the goal. A JSON 404 retried 2×: the design of the 404 retry.
+
+**Evidence:** `scripts/migrations/probes/inheritedBugs20261112.json` (41 probes, all red on break).
 
 Live on the built bundle:
 - A fake OpenAI server: a 403 with Retry-After, then a llama.cpp overflow, became a retry and then "Prompt is too long".
 - Haiku `-p`: `.env` Read and `cat .env` denied, `.env.example` read.
 - Auto mode `--debug` logged `[auto-mode] new action being classified: Read …secrets/key.txt`.
 - A Node-bundled Cursor driver measured a tab without throwing.
+- After the review round: a 403 with an 8 h Retry-After ended in 1 s with "resets in 8h"; a JSON 500 retried, then showed "CUDA out of memory"; a tool-count 400 was not prompt-too-long; Haiku's recursive Grep skipped `prod.env` and showed the template; `cat *.env` and a `*.env` Grep glob were denied; `ls .env` on a venv ran.
 
 **Traps hit:**
 - `fastMode.test.ts` mocked axios without re-pinning it, which broke `axios.create` only in the full run (fixed).
