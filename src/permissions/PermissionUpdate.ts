@@ -388,3 +388,23 @@ export function createReadRuleSuggestion(
     destination,
   }
 }
+
+/**
+ * A session rule allowing reads of one file. It is what the .env ask offers
+ * as "don't ask again": a directory rule would not opt the file out
+ * (envFileReadAllowRule only honors a rule that names it).
+ */
+export function createReadFileRuleSuggestion(filePath: string): PermissionUpdate {
+  const pathForPattern = toPosixPath(filePath)
+  return {
+    type: 'addRules',
+    rules: [
+      {
+        toolName: 'Read',
+        ruleContent: posix.isAbsolute(pathForPattern) ? `/${pathForPattern}` : pathForPattern,
+      },
+    ],
+    behavior: 'allow',
+    destination: 'session',
+  }
+}

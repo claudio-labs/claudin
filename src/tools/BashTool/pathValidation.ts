@@ -10,7 +10,11 @@ import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getDirectoryForPath } from 'src/shared/fs/path.js'
 import { allWorkingDirectories } from 'src/permissions/filePermissions.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
-import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
+import { isSensitiveEnvFile } from 'src/permissions/filePermissions/dangerousPaths.js'
+import {
+  createReadFileRuleSuggestion,
+  createReadRuleSuggestion,
+} from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   expandTilde,
@@ -758,7 +762,11 @@ export function createPathChecker(
 
       // Only suggest adding directory/rules if we have a blocked path
       if (result.blockedPath) {
-        if (operationType === 'read') {
+        if (operationType === 'read' && isSensitiveEnvFile(result.blockedPath)) {
+          // A directory rule would not opt a .env out (envFileReadAllowRule
+          // honors only a rule that names it), so offer one for the file.
+          suggestions.push(createReadFileRuleSuggestion(result.blockedPath))
+        } else if (operationType === 'read') {
           // For read operations, suggest a Read rule for the directory (only if it exists)
           const dirPath = getDirectoryForPath(result.blockedPath)
           const suggestion = createReadRuleSuggestion(dirPath, 'session')

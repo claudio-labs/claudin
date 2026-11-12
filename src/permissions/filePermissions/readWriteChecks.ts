@@ -8,14 +8,15 @@ import {
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
-import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
+import {
+  createReadFileRuleSuggestion,
+  createReadRuleSuggestion,
+} from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   checkPathSafetyForAutoEdit,
-  envFileReadAllowRule,
   hasSuspiciousWindowsPathPattern,
-  isSensitiveEnvFile,
-  sensitiveEnvFileReason,
+  sensitiveEnvFileAsk,
 } from 'src/permissions/filePermissions/dangerousPaths.js'
 import {
   checkEditableInternalPath,
@@ -130,12 +131,14 @@ export function checkReadPermissionForTool(
   // 4.5. A .env usually holds secrets, and a read sends them to the provider:
   // ask in every mode. After the read rules, so the user's own deny or ask
   // rule decides first; only an allow rule that names a .env stops the asking.
-  if (
-    pathsToCheck.some(isSensitiveEnvFile) &&
-    !envFileReadAllowRule(path, toolPermissionContext)
-  ) {
-    const decisionReason = sensitiveEnvFileReason(path)
-    return { behavior: 'ask', message: decisionReason.reason, decisionReason }
+  const envFileAsk = sensitiveEnvFileAsk(pathsToCheck, path, toolPermissionContext)
+  if (envFileAsk) {
+    return {
+      behavior: 'ask',
+      message: envFileAsk.reason,
+      decisionReason: envFileAsk,
+      suggestions: [createReadFileRuleSuggestion(path)],
+    }
   }
 
   // 5. Edit access implies read access (but only if no read-specific deny/ask rules exist)

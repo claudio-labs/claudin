@@ -21,11 +21,7 @@ import {
   matchingRuleForInput,
   pathInAllowedWorkingPath,
 } from 'src/permissions/filePermissions.js'
-import {
-  envFileReadAllowRule,
-  isSensitiveEnvFile,
-  sensitiveEnvFileReason,
-} from 'src/permissions/filePermissions/dangerousPaths.js'
+import { sensitiveEnvFileAsk } from 'src/permissions/filePermissions/dangerousPaths.js'
 import { isPathInSandboxWriteAllowlist } from 'src/permissions/pathValidation.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import type { FileOperationType } from 'src/tools/PowerShellTool/pathValidation/cmdletPathConfig.js'
@@ -85,12 +81,13 @@ function isPathAllowed(
   }
 
   // 1.5. A .env read asks, as it does through the Read tool and Bash.
-  if (
-    operationType === 'read' &&
-    [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&
-    !envFileReadAllowRule(resolvedPath, context)
-  ) {
-    return { allowed: false, decisionReason: sensitiveEnvFileReason(resolvedPath) }
+  if (operationType === 'read') {
+    const envFileAsk = sensitiveEnvFileAsk(
+      [resolvedPath, ...(precomputedPathsToCheck ?? [])],
+      resolvedPath,
+      context,
+    )
+    if (envFileAsk) return { allowed: false, decisionReason: envFileAsk }
   }
 
   // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
