@@ -12,7 +12,7 @@ import { getPlatform } from 'src/shared/proc/platform.js'
  * @param path - The path to check
  * @returns true if the path exists, false otherwise
  */
-function checkPathExists(path: string): boolean {
+export function checkPathExists(path: string): boolean {
   try {
     execSync_DEPRECATED(`dir "${path}"`, { stdio: 'pipe' })
     return true
