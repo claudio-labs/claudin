@@ -147,8 +147,10 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       // auto-approve paths: the acceptEdits fast-path, the safe-tool allowlist,
       // and the classifier. Step 1g only guards bypassPermissions; this guards
       // auto. classifierApprovable safetyChecks (sensitive-file paths) fall
-      // through to the classifier — the fast-paths below naturally don't fire
-      // because the tool's own checkPermissions still returns 'ask'.
+      // through to the classifier — the acceptEdits fast-path doesn't fire
+      // because the tool's own checkPermissions still returns 'ask', and the
+      // allowlist fast-paths skip any safetyCheck or rule ask
+      // (askMayTakeAllowlistFastPath).
       if (
         result.decisionReason?.type === 'safetyCheck' &&
         !result.decisionReason.classifierApprovable
@@ -266,10 +268,13 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       // This uses the safe-tool allowlist to skip unnecessary classifier API calls.
       // A tool may also be allowlisted for its READ-ONLY inputs only: a
       // `git status` batch skips the classifier while `git checkout -b` still
-      // goes through it.
+      // goes through it. An ask from a rule or a safety check never skips it.
+      const mayFastPath =
+        classifierDecisionModule!.askMayTakeAllowlistFastPath(result.decisionReason)
       const onSafeAllowlist =
-        classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)
+        mayFastPath && classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)
       const readsOnly =
+        mayFastPath &&
         !onSafeAllowlist &&
         classifierDecisionModule!.isAutoModeAllowlistedReadOnlyToolUse(
           tool.name,

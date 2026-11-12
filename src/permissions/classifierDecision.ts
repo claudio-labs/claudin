@@ -20,6 +20,7 @@ import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
 import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
 import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 import { YOLO_CLASSIFIER_TOOL_NAME } from 'src/permissions/yoloClassifier.js'
+import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 
 /**
  * Tools that are safe and don't need any classifier checking.
@@ -63,6 +64,18 @@ const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
 
 export function isAutoModeAllowlistedTool(toolName: string): boolean {
   return SAFE_YOLO_ALLOWLISTED_TOOLS.has(toolName)
+}
+
+/**
+ * Whether an `ask` may take the allowlist fast paths. They exist because an
+ * allowlisted tool usually only reads; an ask someone decided on — the user's
+ * own ask rule, or a safety check — is not that case, and goes to the
+ * classifier the way an ask rule on Bash does.
+ */
+export function askMayTakeAllowlistFastPath(
+  decisionReason: PermissionDecisionReason | undefined,
+): boolean {
+  return decisionReason?.type !== 'rule' && decisionReason?.type !== 'safetyCheck'
 }
 
 /**
