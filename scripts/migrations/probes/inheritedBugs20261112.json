@@ -1,0 +1,168 @@
+{
+  "test": [
+    "src/terminal/ink/wrapAnsi.test.ts",
+    "src/mcp/client/transport.test.ts",
+    "src/providers/transport/proxy.test.ts",
+    "src/plugins/marketplaceManager.hooks.test.ts",
+    "src/platform/lifecycleHooks/execCommandHook.args.test.ts",
+    "src/shared/fs/windowsPaths.test.ts",
+    "src/providers/shims/openaiShim/providerQuirks.test.ts",
+    "src/providers/shims/openaiShim/errorRecovery.test.ts",
+    "src/providers/transport/withRetry.loop.test.ts",
+    "src/providers/shims/openaiErrorClassification.characterization.test.ts",
+    "src/providers/transport/errors.characterization.test.ts",
+    "src/providers/model/openaiModelDiscovery.test.ts",
+    "src/permissions/classifierDecision.test.ts",
+    "src/permissions/filePermissions.test.ts",
+    "src/permissions/checkBatchReadPermission.test.ts",
+    "src/tools/BashTool/pathValidation.test.ts",
+    "src/tools/PowerShellTool/pathValidation.test.ts",
+    "scripts/bench/tokens/request-census.test.ts"
+  ],
+  "source": "src/mcp/client/transport.ts",
+  "probes": [
+    {
+      "name": "MCP: the stdio transport goes back to the SDK's 10 MiB cap",
+      "find": "      maxBufferSize: MCP_STDIO_MAX_MESSAGE_BYTES,\n",
+      "replace": ""
+    },
+    {
+      "name": "proxy: the target TLS loses the configured CA",
+      "source": "src/providers/transport/proxy.ts",
+      "find": "      ca: own.ca ?? this.targetTls.ca,",
+      "replace": "      ca: own.ca,"
+    },
+    {
+      "name": "marketplace: the sparse clone's checkout HEAD runs the user's hooks again",
+      "source": "src/plugins/marketplaceManager.ts",
+      "find": "        [...GIT_NO_HOOKS, 'checkout', 'HEAD'],",
+      "replace": "        ['checkout', 'HEAD'],"
+    },
+    {
+      "name": "marketplace: reconcileSparseCheckout's sparse-checkout set drops the flag",
+      "source": "src/plugins/marketplaceManager.ts",
+      "find": "\n      [...GIT_NO_HOOKS, 'sparse-checkout', 'set', '--cone', '--', ...sparsePaths],",
+      "replace": "\n      ['sparse-checkout', 'set', '--cone', '--', ...sparsePaths],"
+    },
+    {
+      "name": "hooks: the runner runs a hook that carries args",
+      "source": "src/platform/lifecycleHooks/runners.ts",
+      "find": "  if (hook.args !== undefined) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "hooks: the schema strips args again",
+      "source": "src/shared/schemas/hooks.ts",
+      "find": "    args: z\n      .unknown()",
+      "replace": "    argz: z\n      .unknown()"
+    },
+    {
+      "name": "windows: checkPathExists goes back through the shell",
+      "source": "src/shared/fs/windowsPaths.ts",
+      "find": "  return getFsImplementation().existsSync(path)",
+      "replace": "  try {\n    execSync_DEPRECATED(`dir \"${path}\"`, { stdio: 'pipe' })\n    return true\n  } catch {\n    return false\n  }"
+    },
+    {
+      "name": "reasoning: the merge drops reasoning_content again",
+      "source": "src/providers/shims/openaiShim/messageConverter.ts",
+      "find": "      if (msg.reasoning_content) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "JSON body: the SDK's body-derived message wins again",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "      error.message = `${status} ${message}`\n",
+      "replace": ""
+    },
+    {
+      "name": "403: the classifier ignores rate-limit signals",
+      "source": "src/providers/shims/openaiErrorClassification.ts",
+      "find": "    (options.status === 403 && hasRateLimitSignal(body, options.headers))",
+      "replace": "    false"
+    },
+    {
+      "name": "403: the chat-completions path stops handing the classifier its headers",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "        headers: response.headers as unknown as Headers,\n",
+      "replace": ""
+    },
+    {
+      "name": "403: withRetry stops retrying a rate_limited 403",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "      extractOpenAICategoryMarker(error.message ?? '') === 'rate_limited')",
+      "replace": "      false)"
+    },
+    {
+      "name": "overflow: context_overflow goes back to the provider-limit message",
+      "source": "src/providers/transport/errors.ts",
+      "find": "        content: PROMPT_TOO_LONG_ERROR_MESSAGE,\n        error: 'invalid_request',\n        errorDetails: options.rawMessage,",
+      "replace": "        content: 'The conversation exceeded the provider context limit.',\n        error: 'invalid_request',"
+    },
+    {
+      "name": "overflow: the throttle exclusions are dropped",
+      "source": "src/providers/shims/openaiErrorClassification.ts",
+      "find": "    !CONTEXT_OVERFLOW_EXCLUSIONS.some(pattern => pattern.test(body)) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "overflow: the llama.cpp phrase is dropped",
+      "source": "src/providers/shims/openaiErrorClassification.ts",
+      "find": "  /exceeds the available context size/i,\n",
+      "replace": ""
+    },
+    {
+      "name": "discovery: vLLM's max_model_len is ignored again",
+      "source": "src/providers/model/openaiModelDiscovery.ts",
+      "find": "    model.max_model_len ??\n",
+      "replace": ""
+    },
+    {
+      "name": "auto mode: the predicate lets every ask take the fast path",
+      "source": "src/permissions/classifierDecision.ts",
+      "find": "  return decisionReason?.type !== 'rule' && decisionReason?.type !== 'safetyCheck'",
+      "replace": "  return true"
+    },
+    {
+      "name": "auto mode: the allowlist fast path stops consulting the predicate",
+      "source": "src/permissions/permissions.ts",
+      "find": "        mayFastPath && classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)",
+      "replace": "        classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)"
+    },
+    {
+      "name": ".env: the Read gate stops asking",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "    pathsToCheck.some(isSensitiveEnvFile) &&",
+      "replace": "    false &&"
+    },
+    {
+      "name": ".env: a batch binds the first ask again",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "      asked.find(a => a.decision.decisionReason?.type === 'safetyCheck') ??\n",
+      "replace": ""
+    },
+    {
+      "name": ".env: the Bash path check stops asking",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "    [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&",
+      "replace": "    false &&"
+    },
+    {
+      "name": ".env: the PowerShell path check stops asking",
+      "source": "src/tools/PowerShellTool/pathValidation/pathAllowlist.ts",
+      "find": "    [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&",
+      "replace": "    false &&"
+    },
+    {
+      "name": ".env: templates ask too",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "  if (ENV_TEMPLATE_SUFFIXES.some(suffix => name.endsWith(suffix))) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "census: the InputValidationError table is gone",
+      "source": "scripts/bench/tokens/request-census.ts",
+      "find": "  log('## InputValidationError per model family')",
+      "replace": "  log('## x')"
+    }
+  ]
+}
