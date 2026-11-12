@@ -323,6 +323,39 @@ describe('labels and levers', () => {
 })
 
 // ---------------------------------------------------------------------------
+// InputValidationError per model family
+// ---------------------------------------------------------------------------
+
+describe('InputValidationError per model family', () => {
+  const wrongType =
+    '<tool_use_error>InputValidationError: Read failed due to the following issue:\nThe parameter `limit` type is expected as `number` but provided as `string`</tool_use_error>'
+  const missing =
+    '<tool_use_error>InputValidationError: Bash failed due to the following issue:\nThe required parameter `command` is missing</tool_use_error>'
+  const qwenReply = (id: string, calls: ToolStep[]): Rec[] => {
+    const [r, u] = step(id, calls)
+    ;(r!.message as Rec).model = 'qwen3-coder:30b'
+    return [r!, u!]
+  }
+
+  test('counts rejected tool input by family, kind and tool', () => {
+    const c = census([
+      threadFile('main', 'v1'),
+      [
+        prompt('go'),
+        ...qwenReply('q0', [['Read', { file_path: 'a.ts', limit: '20' }, wrongType, true]]),
+        ...qwenReply('q1', [['Read', { file_path: 'a.ts', limit: 20 }, '1→a']]),
+        ...step('o0', [['Bash', {}, missing, true]]),
+        ...step('o1', [['Bash', { command: 'ls' }, 'a.ts']]),
+      ],
+    ])
+    const report = renderReport(c, { since: '2026-09-14', projects: ['-work-app'], dirsWalked: 1, excluded: [] })
+    expect(report).toContain('## InputValidationError per model family')
+    expect(report).toContain('| qwen | 2 | 1 | 50.0% | 1 | 0 | 0 | 0 | Read 1 |')
+    expect(report).toContain('| opus-5.5 | 2 | 1 | 50.0% | 0 | 1 | 0 | 0 | Bash 1 |')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Model families
 // ---------------------------------------------------------------------------
 
