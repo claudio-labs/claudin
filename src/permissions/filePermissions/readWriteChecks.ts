@@ -13,6 +13,8 @@ import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js
 import {
   checkPathSafetyForAutoEdit,
   hasSuspiciousWindowsPathPattern,
+  isSensitiveEnvFile,
+  sensitiveEnvFileReason,
 } from 'src/permissions/filePermissions/dangerousPaths.js'
 import {
   checkEditableInternalPath,
@@ -122,6 +124,17 @@ export function checkReadPermissionForTool(
         },
       }
     }
+  }
+
+  // 4.5. A .env usually holds secrets, and a read sends them to the provider:
+  // ask in every mode. After the read rules, so the user's own deny or ask
+  // rule decides first, and a read allow rule for the file stops the asking.
+  if (
+    pathsToCheck.some(isSensitiveEnvFile) &&
+    !matchingRuleForInput(path, toolPermissionContext, 'read', 'allow')
+  ) {
+    const decisionReason = sensitiveEnvFileReason(path)
+    return { behavior: 'ask', message: decisionReason.reason, decisionReason }
   }
 
   // 5. Edit access implies read access (but only if no read-specific deny/ask rules exist)
@@ -581,8 +594,12 @@ export function checkBatchReadPermission(
 
   const [firstAsked] = asked
   if (firstAsked) {
+    // The batch is decided by one reason, so the strictest binds: a safety
+    // check (a .env) over a rule ask, over anything else.
     const binding =
-      asked.find(a => a.decision.decisionReason?.type === 'rule') ?? firstAsked
+      asked.find(a => a.decision.decisionReason?.type === 'safetyCheck') ??
+      asked.find(a => a.decision.decisionReason?.type === 'rule') ??
+      firstAsked
     return {
       behavior: 'ask',
       message: `Claude requested permissions to read ${asked.length} file${asked.length === 1 ? '' : 's'}:\n${asked

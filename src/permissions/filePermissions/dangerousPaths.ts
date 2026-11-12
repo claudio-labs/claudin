@@ -1,4 +1,5 @@
-import { sep } from 'path'
+import { basename, sep } from 'path'
+import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
 import { isClaudeConfigFilePath } from 'src/permissions/filePermissions/internalPaths.js'
 import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
@@ -34,6 +35,34 @@ const DANGEROUS_DIRECTORIES = [
   '.claude',
   '.claudin',
 ] as const
+
+// Dotenv templates ship without secrets.
+const ENV_TEMPLATE_SUFFIXES = ['.example', '.sample', '.template', '.dist'] as const
+
+/**
+ * Whether a path is a dotenv file — `.env`, `.env.<stage>` or `<name>.env` —
+ * which usually holds secrets that a read would send to the provider.
+ */
+export function isSensitiveEnvFile(path: string): boolean {
+  const name = basename(path).toLowerCase()
+  if (ENV_TEMPLATE_SUFFIXES.some(suffix => name.endsWith(suffix))) return false
+  return name.startsWith('.env.') || name.endsWith('.env')
+}
+
+/**
+ * What every read gate (the Read tool, the Bash and PowerShell path checks)
+ * answers for a dotenv file: a safety check no mode and no classifier may
+ * approve, so the user is asked even in bypass and auto mode.
+ */
+export function sensitiveEnvFileReason(
+  path: string,
+): Extract<PermissionDecisionReason, { type: 'safetyCheck' }> {
+  return {
+    type: 'safetyCheck',
+    reason: `${path} is a .env file, which usually holds secrets; reading it needs your approval.`,
+    classifierApprovable: false,
+  }
+}
 
 /**
  * Check if a file path is dangerous to auto-edit without explicit permission.

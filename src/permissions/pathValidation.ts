@@ -15,9 +15,11 @@ import {
   checkPathSafetyForAutoEdit,
   checkReadableInternalPath,
   checkShellEditableInternalPath,
+  isSensitiveEnvFile,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
   pathInWorkingPath,
+  sensitiveEnvFileReason,
 } from 'src/permissions/filePermissions.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 
@@ -161,6 +163,16 @@ export function isPathAllowed(
       allowed: false,
       decisionReason: { type: 'rule', rule: denyRule },
     }
+  }
+
+  // 1.5. A .env read asks, as it does through the Read tool
+  // (checkReadPermissionForTool); a read allow rule for the file stops it.
+  if (
+    operationType === 'read' &&
+    [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&
+    !matchingRuleForInput(resolvedPath, context, 'read', 'allow')
+  ) {
+    return { allowed: false, decisionReason: sensitiveEnvFileReason(resolvedPath) }
   }
 
   // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
