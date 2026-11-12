@@ -61,6 +61,33 @@ function stripOpenAICompatibilityMetadata(message: string): string {
     .trim()
 }
 
+// The server's own words in a shim error. Cut at the category marker (the
+// shim's hint follows it), drop the SDK's and the shim's status lead, and take
+// a JSON envelope's message rather than the envelope.
+const SHIM_STATUS_LEAD_RE = /^(?:\d{3}\s+)?(?:OpenAI API error \d{3}:\s*)?/
+const JSON_ERROR_MESSAGE_RE = /"message"\s*:\s*"((?:[^"\\]|\\.)*)"/
+const ESCAPED_QUOTE_RE = /\\"/g
+const MAX_PROVIDER_WORDING_CHARS = 300
+
+function providerWording(rawMessage: string): string {
+  const body = rawMessage
+    .split('[openai_category=')[0]!
+    .replace(SHIM_STATUS_LEAD_RE, '')
+    .trim()
+  const inner = JSON_ERROR_MESSAGE_RE.exec(body)?.[1]?.replace(ESCAPED_QUOTE_RE, '"')
+  const wording = (inner ?? body).trim()
+  return wording.length > MAX_PROVIDER_WORDING_CHARS
+    ? `${wording.slice(0, MAX_PROVIDER_WORDING_CHARS)}…`
+    : wording
+}
+
+// A category's hint, then what the server said: errorDetails is shown nowhere,
+// so the line is the only place the user can read why the request failed.
+function withProviderWording(hint: string, rawMessage: string): string {
+  const wording = providerWording(rawMessage)
+  return wording ? `${hint} · ${wording}` : hint
+}
+
 function mapOpenAICompatibilityFailureToAssistantMessage(options: {
   category: OpenAICompatibilityFailureCategory
   model: string
@@ -79,20 +106,28 @@ function mapOpenAICompatibilityFailureToAssistantMessage(options: {
 
     case 'endpoint_not_found':
       return createAssistantAPIErrorMessage({
-        content:
+        content: withProviderWording(
           'Provider endpoint was not found. Confirm OPENAI_BASE_URL targets an OpenAI-compatible /v1 endpoint (for Ollama: http://127.0.0.1:11434/v1).',
+          options.rawMessage,
+        ),
         error: 'invalid_request',
       })
 
     case 'model_not_found':
       return createAssistantAPIErrorMessage({
-        content: `The selected model (${options.model}) is not available on this provider. Run ${switchCmd} to choose another model, or verify installed local models (for Ollama: ollama list).`,
+        content: withProviderWording(
+          `The selected model (${options.model}) is not available on this provider. Run ${switchCmd} to choose another model, or verify installed local models (for Ollama: ollama list).`,
+          options.rawMessage,
+        ),
         error: 'invalid_request',
       })
 
     case 'auth_invalid':
       return createAssistantAPIErrorMessage({
-        content: `${API_ERROR_MESSAGE_PREFIX}: Authentication failed for your OpenAI-compatible provider. Verify OPENAI_API_KEY and endpoint-specific auth requirements.`,
+        content: withProviderWording(
+          `${API_ERROR_MESSAGE_PREFIX}: Authentication failed for your OpenAI-compatible provider. Verify OPENAI_API_KEY and endpoint-specific auth requirements.`,
+          options.rawMessage,
+        ),
         error: 'authentication_failed',
       })
 
@@ -126,7 +161,10 @@ function mapOpenAICompatibilityFailureToAssistantMessage(options: {
 
     case 'tool_call_incompatible':
       return createAssistantAPIErrorMessage({
-        content: `The selected provider/model rejected tool-calling payloads. Try ${switchCmd} to pick a tool-capable model or continue without tools.`,
+        content: withProviderWording(
+          `The selected provider/model rejected tool-calling payloads. Try ${switchCmd} to pick a tool-capable model or continue without tools.`,
+          options.rawMessage,
+        ),
         error: 'invalid_request',
       })
 
@@ -139,7 +177,10 @@ function mapOpenAICompatibilityFailureToAssistantMessage(options: {
 
     case 'provider_unavailable':
       return createAssistantAPIErrorMessage({
-        content: `${API_ERROR_MESSAGE_PREFIX}: Provider is temporarily unavailable. Retry in a moment.`,
+        content: withProviderWording(
+          `${API_ERROR_MESSAGE_PREFIX}: Provider is temporarily unavailable. Retry in a moment.`,
+          options.rawMessage,
+        ),
         error: 'unknown',
       })
 
