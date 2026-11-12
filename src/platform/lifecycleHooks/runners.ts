@@ -162,6 +162,13 @@ export async function execCommandHook(
   aborted?: boolean
   backgrounded?: boolean
 }> {
+  // Hooks written for tools that take `{ command, args }` would otherwise run
+  // the bare command — `sh` reading the hook's JSON input as a script.
+  if (hook.args !== undefined) {
+    const reason = `Hook "${hook.command}" has an args field, which command hooks do not support; put the arguments in command.`
+    return { stdout: '', stderr: reason, output: reason, status: 1 }
+  }
+
   // Gated to once-per-session events to keep diag_log volume bounded.
   // started/completed live inside the try/finally so setup-path throws
   // don't orphan a started marker — that'd be indistinguishable from a hang.
