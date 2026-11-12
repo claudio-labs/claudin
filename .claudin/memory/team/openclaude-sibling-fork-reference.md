@@ -1,6 +1,6 @@
 ---
 name: openclaude-sibling-fork-reference
-description: openclaude (@gitlawb) at ../openclaude is the fork claudin was cut from (9e23c2be, 2026-04-25; ~5.5% of lines still theirs; LICENSE attribution deferred by the user 2026-09-25); mine their fix( stream over inherited code, not their feature list — next audit starts at a838b670
+description: openclaude (@gitlawb) at ../openclaude is the fork claudin was cut from (9e23c2be, 2026-04-25; ~5.5% of lines still theirs; LICENSE attribution deferred by the user 2026-09-25); mine their fix( stream over inherited code, not their feature list — next audit starts at 2d98d107
 type: reference
 ---
 
@@ -22,6 +22,8 @@ bugs that way, and falsified 11 more that only matched by line number.
 **How to apply:** cross-check any candidate against claudin's tree first — several things converged independently (claudin already HAS: `/goal`, reasoned-denial permission prompts, per-agent model routing in `/agents`, bypassPermissions mode, 5xx/HTML-overload retry). Verify a claim by running the real regex or function and tracing its consumers, not by matching a line. The earlier audits, with the FALSIFIED list to read before reopening any old entry, are in [[openclaude-audit-history]].
 
 ## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; #319, v1.1.49)
+
+**Superseded start point:** the 2026-11-12 round covered `a838b670..2d98d107` (144 commits; 67 chore and similar, 58 fixes, 19 features). The next audit starts at `2d98d107`. Ported on `fix/sibling-ports-2026-11`: 87cbb5cb (wrap-ansi pin, MCP 128 MiB), df184fba (CONNECT target TLS), 2dddbb37 (sparse hooksPath), cb4a72bf (hook args, as a refusal and not their skip framework), 5e00ea45 (dir probe), 44d49522 (merge line only), and 8cab4d11 (as structured signals, not prose). Not ported: 6712d5a7 (dispatcher reset), 9bf1040e (LSP versions), 07e55212 (truncation notice), the gateway presets, the usage ledger and `/set-context-window`. Details and reasons are in [[sibling-ports-2026-11]].
 
 Next audit starts at openclaude `a838b670`. Of the 17 confirmed in the 09-10 audit, five
 were already fixed: #1 heredoc, `__proto__`, attribution block,
