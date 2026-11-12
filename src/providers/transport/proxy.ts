@@ -7,6 +7,7 @@ import type { LookupOptions } from 'dns'
 import type { Agent } from 'http'
 import { HttpsProxyAgent, type HttpsProxyAgentOptions } from 'https-proxy-agent'
 import memoize from 'lodash-es/memoize.js'
+import type { ConnectionOptions } from 'tls'
 import type * as undici from 'undici'
 import { getCACertificates } from 'src/providers/transport/caCerts.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -201,6 +202,42 @@ export function shouldBypassProxy(
   }
 }
 
+type TargetTlsOptions = Pick<
+  ConnectionOptions,
+  'ca' | 'cert' | 'key' | 'passphrase'
+>
+type ConnectOptions = Parameters<HttpsProxyAgent<string>['connect']>[1]
+
+/**
+ * HttpsProxyAgent dials the proxy with its constructor options but opens the
+ * TLS session to the target with the options handed to connect(), so a CA or
+ * client certificate given only to the constructor never reached the server
+ * the request was for. A request's own TLS options still win.
+ */
+class TargetTlsHttpsProxyAgent extends HttpsProxyAgent<string> {
+  constructor(
+    proxyUrl: string,
+    options: HttpsProxyAgentOptions<string>,
+    private readonly targetTls: TargetTlsOptions,
+  ) {
+    super(proxyUrl, options)
+  }
+
+  override connect(
+    req: Parameters<HttpsProxyAgent<string>['connect']>[0],
+    opts: ConnectOptions,
+  ): ReturnType<HttpsProxyAgent<string>['connect']> {
+    const own = opts as TargetTlsOptions
+    return super.connect(req, {
+      ...opts,
+      ca: own.ca ?? this.targetTls.ca,
+      cert: own.cert ?? this.targetTls.cert,
+      key: own.key ?? this.targetTls.key,
+      passphrase: own.passphrase ?? this.targetTls.passphrase,
+    } as ConnectOptions)
+  }
+}
+
 /**
  * Create an HttpsProxyAgent with optional mTLS configuration
  * Skips local DNS resolution to let the proxy handle it
@@ -212,7 +249,7 @@ function createHttpsProxyAgent(
   const mtlsConfig = getMTLSConfig()
   const caCerts = getCACertificates()
 
-  const agentOptions: HttpsProxyAgentOptions<string> = {
+  const targetTls: TargetTlsOptions = {
     ...(mtlsConfig && {
       cert: mtlsConfig.cert,
       key: mtlsConfig.key,
@@ -220,6 +257,7 @@ function createHttpsProxyAgent(
     }),
     ...(caCerts && { ca: caCerts }),
   }
+  const agentOptions: HttpsProxyAgentOptions<string> = { ...targetTls }
 
   if (isEnvTruthy(process.env.CLAUDIN_PROXY_RESOLVES_HOSTS)) {
     // Skip local DNS resolution - let the proxy resolve hostnames
@@ -230,7 +268,11 @@ function createHttpsProxyAgent(
     }
   }
 
-  return new HttpsProxyAgent(proxyUrl, { ...agentOptions, ...extra })
+  return new TargetTlsHttpsProxyAgent(
+    proxyUrl,
+    { ...agentOptions, ...extra },
+    targetTls,
+  )
 }
 
 /**
