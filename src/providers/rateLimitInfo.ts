@@ -42,7 +42,8 @@ const OPENAI_DURATION_RE =
 // RESOURCE_EXHAUSTED response rather than in a header.
 const GEMINI_RETRY_DELAY_RE = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/
 const OPENAI_CATEGORY_MARKER_RE = /\s*\[openai_category=[a-z_]+\]\s*/g
-const LEADING_STATUS_RE = /^429\s+/
+const LEADING_STATUS_RE = /^(?:429|403)\s+/
+const RATE_LIMITED_MARKER = '[openai_category=rate_limited]'
 const INNER_MESSAGE_RE = /"message"\s*:\s*"([^"]*)"/
 const COLLAPSE_SPACES_RE = /\s{2,}/g
 
@@ -359,12 +360,23 @@ function isBucketSpent(error: unknown, headerName: string): boolean {
 }
 
 /**
+ * A rate limit by its status: a 429, or a 403 the OpenAI-compatible shim
+ * marked rate_limited (it carried a Retry-After or a rate-limit code). withRetry
+ * retries both, so both stop at the same reset and quota checks.
+ */
+function isRateLimitStatus(error: unknown): boolean {
+  const { status, message } = error as { status?: unknown; message?: unknown }
+  if (status === 429) return true
+  return status === 403 && typeof message === 'string' && message.includes(RATE_LIMITED_MARKER)
+}
+
+/**
  * Billing exhaustion rather than a usage window: the account is out of credit
  * or the model has a zero quota. Waiting does not help, so this never carries a
  * reset instant.
  */
 export function isQuotaExhaustedError(error: unknown): boolean {
-  if ((error as { status?: unknown }).status !== 429) return false
+  if (!isRateLimitStatus(error)) return false
   const message = (error as { message?: unknown }).message
   if (typeof message !== 'string') return false
   const lower = message.toLowerCase()
@@ -402,7 +414,7 @@ export function extractRateLimitInfo(
   error: unknown,
   nowMs: number = Date.now(),
 ): RateLimitInfo | null {
-  if ((error as { status?: unknown }).status !== 429) return null
+  if (!isRateLimitStatus(error)) return null
 
   const detail = extractDetail(error)
 
