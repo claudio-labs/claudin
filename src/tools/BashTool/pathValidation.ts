@@ -38,6 +38,7 @@ export type PathCommand =
   | 'mv'
   | 'cp'
   | 'cat'
+  | 'tac'
   | 'head'
   | 'tail'
   | 'sort'
@@ -279,6 +280,7 @@ export const PATH_EXTRACTORS: Record<
   mv: filterOutFlags,
   cp: filterOutFlags,
   cat: filterOutFlags,
+  tac: filterOutFlags,
   head: filterOutFlags,
   tail: filterOutFlags,
   sort: filterOutFlags,
@@ -524,6 +526,7 @@ const ACTION_VERBS: Record<PathCommand, string> = {
   mv: 'move files to/from',
   cp: 'copy files to/from',
   cat: 'concatenate files from',
+  tac: 'read files in reverse from',
   head: 'read the beginning of files from',
   tail: 'read the end of files from',
   sort: 'sort contents of files from',
@@ -563,6 +566,7 @@ export const COMMAND_OPERATION_TYPE: Record<PathCommand, FileOperationType> = {
   mv: 'write',
   cp: 'write',
   cat: 'read',
+  tac: 'read',
   head: 'read',
   tail: 'read',
   sort: 'read',

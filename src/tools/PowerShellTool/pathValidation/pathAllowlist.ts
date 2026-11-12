@@ -21,7 +21,11 @@ import {
   matchingRuleForInput,
   pathInAllowedWorkingPath,
 } from 'src/permissions/filePermissions.js'
-import { sensitiveEnvFileAsk } from 'src/permissions/filePermissions/dangerousPaths.js'
+import {
+  globCouldMatchEnvFile,
+  sensitiveEnvFileAsk,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
 import { isPathInSandboxWriteAllowlist } from 'src/permissions/pathValidation.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import type { FileOperationType } from 'src/tools/PowerShellTool/pathValidation/cmdletPathConfig.js'
@@ -437,6 +441,12 @@ export function validatePath(
         resolvedPath,
         decisionReason: { type: 'rule', rule: denyRule },
       }
+    }
+    // PowerShell wildcards match a leading dot, so `.env*` and `*` alike can
+    // land on a .env; one that names it carries the .env check, which bypass
+    // mode cannot wave through the way it does the generic ask below.
+    if (operationType === 'read' && globCouldMatchEnvFile(normalizedPath, { dot: true })) {
+      return { allowed: false, resolvedPath, decisionReason: sensitiveEnvFileReason(normalizedPath) }
     }
     return {
       allowed: false,

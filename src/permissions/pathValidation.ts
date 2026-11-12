@@ -19,7 +19,11 @@ import {
   pathInAllowedWorkingPath,
   pathInWorkingPath,
 } from 'src/permissions/filePermissions.js'
-import { sensitiveEnvFileAsk } from 'src/permissions/filePermissions/dangerousPaths.js'
+import {
+  globCouldMatchEnvFile,
+  sensitiveEnvFileAsk,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 
 const MAX_DIRS_TO_LIST = 5
@@ -286,6 +290,17 @@ export function validateGlobPattern(
   toolPermissionContext: ToolPermissionContext,
   operationType: FileOperationType,
 ): ResolvedPathCheckResult {
+  // The shell expands `cat .env*` to a .env this check never sees by name, and
+  // the base directory alone says nothing, so such a read asks as the .env does.
+  if (operationType === 'read' && globCouldMatchEnvFile(cleanPath, { dot: false })) {
+    const absolutePattern = isAbsolute(cleanPath) ? cleanPath : resolve(cwd, cleanPath)
+    return {
+      allowed: false,
+      resolvedPath: absolutePattern,
+      decisionReason: sensitiveEnvFileReason(absolutePattern),
+    }
+  }
+
   if (containsPathTraversal(cleanPath)) {
     // For patterns with path traversal, resolve the full path
     const absolutePath = isAbsolute(cleanPath)
