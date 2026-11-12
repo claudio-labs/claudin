@@ -1,5 +1,6 @@
+import { join } from 'path'
 import { z } from 'zod/v4'
-import type { ValidationResult } from 'src/tools/Tool.js'
+import type { ToolPermissionContext, ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isENOENT } from 'src/shared/errors.js'
@@ -16,6 +17,12 @@ import {
   getFileReadIgnorePatterns,
   normalizePatternsToPath,
 } from 'src/permissions/filePermissions.js'
+import {
+  envFileReadAllowRule,
+  globCouldMatchEnvFile,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
+import { createReadFileRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { getGlobExclusionsForPluginCache } from 'src/plugins/orphanedPluginFilter.js'
@@ -58,6 +65,13 @@ const CONTENT_ONLY = 'Ignored outside "content" mode.'
 // ripgrep refuses it outside multiline mode, and the pattern means the newline.
 const UNESCAPED_NEWLINE_RE = /(?:^|[^\\])(?:\\\\)*\\n/
 
+// A search leaves dotenv files out, as the Read gate asks before one: ripgrep
+// prints content, so a match would hand over the secret. A template
+// (`.env.example`) goes with them, since ripgrep cannot re-include a file
+// without turning every glob into a whitelist; named as the path it is still
+// searched, because ripgrep applies no glob to a file on its command line.
+const ENV_FILE_EXCLUSION_GLOBS = ['!.env', '!.env.*', '!*.env'] as const
+
 /** relativizeRgLine against whichever search root the line's path is under. */
 function relativizeAcross(line: string, roots: readonly string[]): string {
   for (const root of roots) {
@@ -77,6 +91,38 @@ function searchRootsOf(path: string | undefined): string[] {
   const fs = getFsImplementation()
   const targets = resolveSearchTargets(path, piece => fs.existsSync(expandPath(piece)))
   return targets.kind === 'many' ? targets.paths.map(piece => expandPath(piece)) : [expandPath(path)]
+}
+
+/** Whether a glob of the Grep `glob` input could pick out a dotenv file. */
+function globNamesEnvFile(glob: string | undefined): boolean {
+  return !!glob && splitGlobInput(glob).some(pattern => globCouldMatchEnvFile(pattern, { dot: true }))
+}
+
+/**
+ * The .env ask for a glob that picks out a dotenv file under a search root,
+ * or null. The opt-out is a path's: an allow rule that names it.
+ */
+function envFileGlobAsk(
+  glob: string | undefined,
+  roots: readonly string[],
+  context: ToolPermissionContext,
+): PermissionDecision | null {
+  if (!glob) return null
+  for (const pattern of splitGlobInput(glob)) {
+    if (!globCouldMatchEnvFile(pattern, { dot: true })) continue
+    for (const root of roots) {
+      const target = join(root, pattern)
+      if (envFileReadAllowRule(target, context)) continue
+      const reason = sensitiveEnvFileReason(target)
+      return {
+        behavior: 'ask',
+        message: reason.reason,
+        decisionReason: reason,
+        suggestions: [createReadFileRuleSuggestion(target)],
+      }
+    }
+  }
+  return null
 }
 
 // Every parameter's default, limit, rg flag and alias is stated here, the only
@@ -349,23 +395,24 @@ export const GrepTool = buildTool({
     return { result: true }
   },
   async checkPermissions(input, context): Promise<PermissionDecision> {
-    const appState = context.getAppState()
+    const { toolPermissionContext } = context.getAppState()
     const roots = searchRootsOf(input.path)
-    if (roots.length === 1) {
-      return checkReadPermissionForTool(
-        GrepTool,
-        input,
-        appState.toolPermissionContext,
-      )
-    }
     // Several paths: each is judged as its own Grep would be. A deny anywhere
     // refuses the call, then the first one that asks; an allow echoes THIS
     // input, never the one-path input the check was handed.
     const decisions = roots.map(root =>
-      checkReadPermissionForTool(GrepTool, { ...input, path: root }, appState.toolPermissionContext),
+      checkReadPermissionForTool(
+        GrepTool,
+        roots.length === 1 ? input : { ...input, path: root },
+        toolPermissionContext,
+      ),
     )
     const denied = decisions.find(d => d.behavior === 'deny')
     if (denied) return denied
+    // A glob that names a .env picks it out as surely as a path does.
+    const envFileAsk = envFileGlobAsk(input.glob, roots, toolPermissionContext)
+    if (envFileAsk) return envFileAsk
+    if (roots.length === 1) return decisions[0]!
     const asks = decisions.find(d => d.behavior !== 'allow')
     if (asks) return asks
     return { ...decisions[0]!, updatedInput: input } as PermissionDecision
@@ -636,6 +683,12 @@ export const GrepTool = buildTool({
         }
       }
       for (const g of globs) args.push('--glob', g)
+    }
+
+    // A glob that names a .env was asked about in checkPermissions; every other
+    // search leaves .env files out, the --no-ignore retry included.
+    if (!globNamesEnvFile(glob)) {
+      for (const g of ENV_FILE_EXCLUSION_GLOBS) args.push('--glob', g)
     }
 
     // Add ignore patterns
