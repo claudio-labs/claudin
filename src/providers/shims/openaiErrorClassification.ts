@@ -120,7 +120,8 @@ const CONTEXT_OVERFLOW_PATTERNS: readonly RegExp[] = [
   /reduce the length of the messages/i,
   /exceeds (?:the )?maximum allowed input length/i,
   /is longer than the model'?s context length/i,
-  /exceeds the limit of \d+/i,
+  // Only a token count: an image size, an image or a tool count share the wording.
+  /exceeds the limit of [\d,]+ tokens/i,
   /exceeds the available context size/i,
   /`inputs` tokens \+ `max_new_tokens` must be <= \d+/i,
   /context window exceed/i,
@@ -134,13 +135,15 @@ const CONTEXT_OVERFLOW_PATTERNS: readonly RegExp[] = [
   /request_too_large/i,
 ]
 
-// A throttle that borrows overflow wording: compacting cannot fix it.
+// A throttle or a usage quota that borrows overflow wording: compacting cannot
+// fix it. Unanchored, since most bodies are a JSON envelope around the words.
 const CONTEXT_OVERFLOW_EXCLUSIONS: readonly RegExp[] = [
-  /^(?:throttling error|service unavailable):/i,
+  /(?:throttling error|service unavailable):/i,
   /rate limit/i,
   /too many requests/i,
   /max[_ ]tokens must be less than/i,
   /too many tokens(?: per day)?, please wait/i,
+  /(?:hourly|daily|weekly|monthly) token limit/i,
 ]
 
 function isContextOverflowMessage(body: string): boolean {
