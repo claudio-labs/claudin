@@ -18,11 +18,13 @@ import {
   checkPathSafetyForAutoEdit,
   checkReadableInternalPath,
   checkShellEditableInternalPath,
-  isSensitiveEnvFile,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
-  sensitiveEnvFileReason,
 } from 'src/permissions/filePermissions.js'
+import {
+  isSensitiveEnvFile,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
 import { isPathInSandboxWriteAllowlist } from 'src/permissions/pathValidation.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import type { FileOperationType } from 'src/tools/PowerShellTool/pathValidation/cmdletPathConfig.js'

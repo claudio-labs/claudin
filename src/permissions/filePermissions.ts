@@ -1,8 +1,4 @@
-export {
-  checkPathSafetyForAutoEdit,
-  isSensitiveEnvFile,
-  sensitiveEnvFileReason,
-} from 'src/permissions/filePermissions/dangerousPaths.js'
+export { checkPathSafetyForAutoEdit } from 'src/permissions/filePermissions/dangerousPaths.js'
 export {
   checkEditableInternalPath,
   checkReadableInternalPath,

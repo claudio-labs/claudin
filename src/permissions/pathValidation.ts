@@ -15,12 +15,14 @@ import {
   checkPathSafetyForAutoEdit,
   checkReadableInternalPath,
   checkShellEditableInternalPath,
-  isSensitiveEnvFile,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
   pathInWorkingPath,
-  sensitiveEnvFileReason,
 } from 'src/permissions/filePermissions.js'
+import {
+  isSensitiveEnvFile,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 
 const MAX_DIRS_TO_LIST = 5
