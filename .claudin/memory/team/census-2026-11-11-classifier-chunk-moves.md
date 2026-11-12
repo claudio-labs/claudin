@@ -72,5 +72,5 @@ and the avoided write doubles. Not implemented.
 **Open, read in the code and not reproduced:** EnterWorktree and ExitWorktree change directory
 without `resetGitFileWatcher()`, so the branch and PR pills there may be the main checkout's.
 
-Break-probes: `census1111.json` (25) and `classifierWindowLag.json` (20). The first pass turned
+Break-probes: `census1111.json` (25) and `classifierWindowLag.json` (23). The first pass turned
 nothing red on nine lines: eight got a test, and one was dead code and was removed.
