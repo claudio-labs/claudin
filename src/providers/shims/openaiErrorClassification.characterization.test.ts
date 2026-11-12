@@ -563,6 +563,32 @@ describe('classifyOpenAIHttpFailure', () => {
       expect(classifyOpenAIHttpFailure({ status: 400, body }).category).toBe('unknown')
     })
 
+    // "exceeds the limit of N" is an overflow only when N counts tokens: the
+    // same words cap images, tools and max_tokens, and "token limit
+    // exceeded" is also how a monthly quota reads.
+    test.each([
+      ['Image size exceeds the limit of 10MB'],
+      ['{"error":{"message":"The number of images in the request exceeds the limit of 5"}}'],
+      ['{"error":{"message":"Number of tools exceeds the limit of 128"}}'],
+      ['`max_tokens` exceeds the limit of 8192 for this model'],
+      ['Your monthly token limit exceeded. Upgrade your plan.'],
+      ['daily token limit exceeded'],
+    ])('400 %p is not an overflow', body => {
+      expect(classifyOpenAIHttpFailure({ status: 400, body }).category).not.toBe('context_overflow')
+    })
+
+    test('"exceeds the limit of N tokens" is an overflow', () => {
+      expect(
+        classifyOpenAIHttpFailure({ status: 400, body: 'The prompt exceeds the limit of 8192 tokens' })
+          .category,
+      ).toBe('context_overflow')
+    })
+
+    test('a throttle wrapped in a JSON envelope is not an overflow', () => {
+      const body = JSON.stringify({ error: { message: 'Throttling error: Too many tokens in flight' } })
+      expect(classifyOpenAIHttpFailure({ status: 503, body }).category).not.toBe('context_overflow')
+    })
+
     test('"max_tokens must be less than" is NOT overflow', () => {
       expect(
         classifyOpenAIHttpFailure({

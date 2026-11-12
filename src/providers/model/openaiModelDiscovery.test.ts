@@ -367,7 +367,7 @@ describe('discoverOpenAICompatibleModelOptions — parsing /models', () => {
   // Groq, LM Studio, vLLM and llama.cpp name the field differently; reading
   // only context_length left them on the 128k fallback, so autocompact fired
   // late or never and the server rejected the prompt first.
-  test('reads context_window, max_context_length, max_model_len and meta.n_ctx_train', async () => {
+  test('reads context_window, max_context_length and max_model_len', async () => {
     useProfile('http://llm.test/v1')
     stubAxios({
       'http://llm.test/v1/models': {
@@ -385,7 +385,30 @@ describe('discoverOpenAICompatibleModelOptions — parsing /models', () => {
     expect(mod.getDiscoveredContextWindow('field-groq')).toBe(131_072)
     expect(mod.getDiscoveredContextWindow('field-lmstudio')).toBe(32_768)
     expect(mod.getDiscoveredContextWindow('field-vllm')).toBe(65_536)
-    expect(mod.getDiscoveredContextWindow('field-llamacpp')).toBe(262_144)
+    // llama.cpp's n_ctx_train is the context the model was TRAINED with, not
+    // the -c the server runs with; taken as the window, it overstates it.
+    expect(mod.getDiscoveredContextWindow('field-llamacpp')).toBeUndefined()
+  })
+
+  // The first POSITIVE number wins: a 0 or -1 placeholder must not hide a real
+  // window behind it, and a string is not a window.
+  test('skips a placeholder or a string for the next field', async () => {
+    useProfile('http://llm.test/v1')
+    stubAxios({
+      'http://llm.test/v1/models': {
+        data: {
+          data: [
+            { id: 'pos-zero', context_length: 0, max_model_len: 32_768 },
+            { id: 'pos-neg', context_length: -1, max_context_length: 16_384 },
+            { id: 'pos-str', max_model_len: '32768' },
+          ],
+        },
+      },
+    })
+    await mod.discoverOpenAICompatibleModelOptions()
+    expect(mod.getDiscoveredContextWindow('pos-zero')).toBe(32_768)
+    expect(mod.getDiscoveredContextWindow('pos-neg')).toBe(16_384)
+    expect(mod.getDiscoveredContextWindow('pos-str')).toBeUndefined()
   })
 
   test('context_length wins even when other fields are present', async () => {

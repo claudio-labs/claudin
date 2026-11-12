@@ -20,7 +20,11 @@ describe('a command hook that carries args', () => {
     expect(parsed.args).toEqual(['-c', 'echo other'])
   })
 
-  test('is refused with a reason instead of running the command alone', async () => {
+  // A PreToolUse hook is a guard: a refusal that does not block would let the
+  // tool through. Exit 2 is the only status that blocks there. Elsewhere it
+  // means something else (a Stop hook's 2 keeps the model going), so other
+  // events get a plain failure.
+  test('blocks the tool call when it is a PreToolUse guard', async () => {
     const result = await execCommandHook(
       WITH_ARGS as HookCommand & { type: 'command' },
       'PreToolUse',
@@ -30,9 +34,23 @@ describe('a command hook that carries args', () => {
       'args-hook-id',
     )
 
-    expect(result.status).toBe(1)
+    expect(result.status).toBe(2)
     expect(result.stdout).not.toContain('RAN')
     expect(result.stderr).toContain('args')
+  })
+
+  test('fails without blocking on any other event', async () => {
+    for (const event of ['PostToolUse', 'Stop', 'SessionStart'] as const) {
+      const result = await execCommandHook(
+        WITH_ARGS as HookCommand & { type: 'command' },
+        event,
+        `${event}:test`,
+        '{}',
+        new AbortController().signal,
+        'args-hook-id',
+      )
+      expect([event, result.status, result.stdout.includes('RAN')]).toEqual([event, 1, false])
+    }
   })
 
   test('a hook without args still runs', async () => {

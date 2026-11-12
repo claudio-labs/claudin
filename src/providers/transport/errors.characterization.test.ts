@@ -439,7 +439,9 @@ describe('getAssistantMessageFromError — 429', () => {
 describe('getAssistantMessageFromError — OpenAI-compatibility category markers', () => {
   // One row per category, as the marker branch maps it. A context_overflow is
   // the prompt-too-long message, so the compaction retry that keys on it
-  // works for an OpenAI-compatible server too.
+  // works for an OpenAI-compatible server too. The HTTP categories keep the
+  // server's own words after the hint (here "raw text"): errorDetails is not
+  // shown anywhere, so the line is the only place the user can read them.
   const rows: Array<[string, number, string, string | undefined]> = [
     [
       'connection_refused',
@@ -456,19 +458,19 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
     [
       'endpoint_not_found',
       404,
-      'Provider endpoint was not found. Confirm OPENAI_BASE_URL targets an OpenAI-compatible /v1 endpoint (for Ollama: http://127.0.0.1:11434/v1).',
+      'Provider endpoint was not found. Confirm OPENAI_BASE_URL targets an OpenAI-compatible /v1 endpoint (for Ollama: http://127.0.0.1:11434/v1). · raw text',
       'invalid_request',
     ],
     [
       'model_not_found',
       404,
-      'The selected model (qwen2.5-coder:7b) is not available on this provider. Run /model to choose another model, or verify installed local models (for Ollama: ollama list).',
+      'The selected model (qwen2.5-coder:7b) is not available on this provider. Run /model to choose another model, or verify installed local models (for Ollama: ollama list). · raw text',
       'invalid_request',
     ],
     [
       'auth_invalid',
       401,
-      'API Error: Authentication failed for your OpenAI-compatible provider. Verify OPENAI_API_KEY and endpoint-specific auth requirements.',
+      'API Error: Authentication failed for your OpenAI-compatible provider. Verify OPENAI_API_KEY and endpoint-specific auth requirements. · raw text',
       'authentication_failed',
     ],
     [
@@ -481,7 +483,7 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
     [
       'tool_call_incompatible',
       400,
-      'The selected provider/model rejected tool-calling payloads. Try /model to pick a tool-capable model or continue without tools.',
+      'The selected provider/model rejected tool-calling payloads. Try /model to pick a tool-capable model or continue without tools. · raw text',
       'invalid_request',
     ],
     [
@@ -493,7 +495,7 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
     [
       'provider_unavailable',
       503,
-      'API Error: Provider is temporarily unavailable. Retry in a moment.',
+      'API Error: Provider is temporarily unavailable. Retry in a moment. · raw text',
       'unknown',
     ],
   ]

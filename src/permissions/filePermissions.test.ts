@@ -500,6 +500,65 @@ describe('checkReadPermissionForTool on .env files', () => {
     })
   })
 
+  // The rule has to name a .env in its LAST segment; ".env" anywhere else in
+  // the pattern is a directory that happens to contain the letters.
+  test('a broad rule on a directory whose name contains ".env" still asks', () => {
+    withTempDir(dir => {
+      for (const sub of ['proj.env-x', '.envs']) {
+        mkdirSync(join(dir, sub))
+        const file = join(dir, sub, '.env')
+        writeFileSync(file, 'SECRET=1')
+        const rule = `Read(/${dir}/${sub}/**)`
+        const decision = callRead(
+          FILE_TOOL,
+          file,
+          workingDirContext(dir, { alwaysAllowRules: { userSettings: [rule] } }),
+        )
+        expect([rule, decision.behavior]).toEqual([rule, 'ask'])
+      }
+    })
+  })
+
+  test('a .env DIRECTORY (a Python virtualenv) is not a .env file', () => {
+    withTempDir(dir => {
+      mkdirSync(join(dir, '.env', 'lib'), { recursive: true })
+      expect(callRead(FILE_TOOL, join(dir, '.env'), workingDirContext(dir)).behavior).toBe('allow')
+    })
+  })
+
+  test('code named after its env is not a .env file', () => {
+    withTempDir(dir => {
+      for (const name of ['.env.ts', '.env.d.ts', '.env.mjs']) {
+        const file = join(dir, name)
+        writeFileSync(file, 'export {}')
+        expect([name, callRead(FILE_TOOL, file, workingDirContext(dir)).behavior]).toEqual([name, 'allow'])
+      }
+    })
+  })
+
+  test('the .env ask offers a session rule naming the file, and that rule is honored', () => {
+    withTempDir(dir => {
+      const file = join(dir, '.env')
+      writeFileSync(file, 'SECRET=1')
+      const decision = callRead(FILE_TOOL, file, workingDirContext(dir))
+      if (decision.behavior !== 'ask') throw new Error('expected an ask decision')
+      expect(decision.suggestions).toEqual([
+        {
+          type: 'addRules',
+          rules: [{ toolName: 'Read', ruleContent: `/${file}` }],
+          behavior: 'allow',
+          destination: 'session',
+        },
+      ])
+      const granted = callRead(
+        FILE_TOOL,
+        file,
+        workingDirContext(dir, { alwaysAllowRules: { session: [`Read(/${file})`] } }),
+      )
+      expect(granted.behavior).toBe('allow')
+    })
+  })
+
   test('an allow rule that names the .env lets it be read', () => {
     withTempDir(dir => {
       const file = join(dir, '.env')
