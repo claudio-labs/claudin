@@ -28,8 +28,8 @@
  * `--reads` (24) Reads of small files, each its own call: Reads are accepted by
  * the mode, so they reach the classifier's transcript as 24 blocks no call
  * judged, more than the API's 20-block lookback. With 54 turns the transcript
- * passes the 200k-char base budget near turn 36 and the base cut moves about
- * four times after that. The first message of a session carries its tag, so
+ * passes the 200k-char base budget at turn 33 and the base cut moves
+ * five times after that. The first message of a session carries its tag, so
  * sessions running at once share no cached transcript; a one-turn warm-up
  * session writes the tools and the classifier's system prompt first, which
  * they do share.

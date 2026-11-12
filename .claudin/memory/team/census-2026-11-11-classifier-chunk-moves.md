@@ -1,6 +1,6 @@
 ---
 name: census-2026-11-11-classifier-chunk-moves
-description: Census 11-04..11 (claudin + ferrous-dns) — the main cache is clean (16 full rewrites, all explained); the classifier is 15% of spend and 62% of what it writes is the stable cut moving, 13% lookback misses; window budget + lag marker −32% in replay and all six live gates on rep 1 of 2, shipped opt-in; read-slice levers have no headroom (0.1% of calls); a 1h keep-alive nets +$1.5/week at Opus 5.5 prices, +$9 at Fable 5.2; /cd left instructions, git status and branch stale (fixed)
+description: Census 11-04..11 (claudin + ferrous-dns) — the main cache is clean (16 full rewrites, all explained); the classifier is 15% of spend and 62% of what it writes is the stable cut moving, 13% lookback misses; window budget + lag marker −32% in replay and all six live gates in both reps, shipped opt-in; read-slice levers have no headroom (0.1% of calls); a 1h keep-alive nets +$1.5/week at Opus 5.5 prices, +$9 at Fable 5.2; /cd left instructions, git status and branch stale (fixed)
 type: project
 expires: 2027-01-10
 ---

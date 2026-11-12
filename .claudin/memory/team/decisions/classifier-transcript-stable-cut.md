@@ -1,6 +1,6 @@
 ---
 name: classifier-transcript-stable-cut
-description: Since #321 (2026-10-24, v1.1.49) the auto-mode classifier's transcript is cut at 25k-char chunk boundaries counted from the first entry and gets the whole 200k budget, so a long session stops rewriting its classifier cache every call (−72% writes per call in the replay, −59% classifier spend live on Sonnet 5.5); killswitch CLAUDIN_CLASSIFIER_STABLE_CUT=0. Since 2026-11-11 a window-sized budget and a lag marker exist as opt-in levers (CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1, CLAUDIN_CLASSIFIER_LAG_MARKER=1), not promoted — live rep 1 of 2 passed
+description: Since #321 (2026-10-24, v1.1.49) the auto-mode classifier's transcript is cut at 25k-char chunk boundaries counted from the first entry and gets the whole 200k budget, so a long session stops rewriting its classifier cache every call (−72% writes per call in the replay, −59% classifier spend live on Sonnet 5.5); killswitch CLAUDIN_CLASSIFIER_STABLE_CUT=0. Since 2026-11-11 a window-sized budget and a lag marker exist as opt-in levers (CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1, CLAUDIN_CLASSIFIER_LAG_MARKER=1), not promoted — both live reps passed every gate, the flip awaits the user
 type: project
 scope: src/permissions/yoloClassifier/transcript.ts, src/permissions/yoloClassifier/classify.ts
 impact: functional
@@ -92,12 +92,14 @@ with lookback misses another 13%.
   writes per call 5.2k → 2.0k in the 7 threads past the base budget, 0 of 1,646 requests differ
   when sized for a 200k window, $41.24 → $27.99.
 - Live, Sonnet 5.5, base + placebo + candidate
-  (`scripts/bench/results/classifier-window-lag-live-2026-11.md`): rep 1 passes all six
-  pre-registered gates — classifier writes × 0.15, spend $4.78 → $1.57, placebo × 1.00, a lag
-  block on 9 of 9 wide calls, 0 rejects in every arm, latency × 0.86, the rest of the session
-  unchanged. The run is two reps; rep 2 waited on the account's quota. A Fable 5.2 session took
-  the four breakpoints on the XML path without an error.
-- The default flips only with both reps passing and the user's yes. Then the two variables
-  become killswitches (`=0`).
+  (`scripts/bench/results/classifier-window-lag-live-2026-11.md`): both reps pass all six
+  pre-registered gates (11-11 and 11-12) — classifier writes × 0.15, spend $4.78 → $1.57,
+  placebo × 1.00, a lag block on 18 of 18 wide calls, 0 rejects in every arm, latency × 0.86
+  and × 0.99, the rest of the session unchanged. A Fable 5.2 session took the four breakpoints
+  on the XML path without an error.
+- Seen in rep 2: base and placebo sent 5 and 2 of 54 decisions on to the thinking stage (all
+  allowed), six of the seven on a cut transcript; the candidate sent none in either rep.
+- Both reps pass; the default flips on the user's yes, which had not been given when this
+  was written. Then the two variables become killswitches (`=0`).
 - What the larger budget changes for the classifier: it sees the whole session on a 1M model
   instead of the newest 150–200k chars, and reads ~40% more cached tokens per call.
