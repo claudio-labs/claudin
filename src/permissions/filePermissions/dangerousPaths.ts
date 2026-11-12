@@ -1,10 +1,18 @@
-import { sep } from 'path'
+import { basename, sep } from 'path'
+import picomatch from 'picomatch'
+import type { PermissionRule } from 'src/permissions/PermissionRule.js'
+import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
 import { isClaudeConfigFilePath } from 'src/permissions/filePermissions/internalPaths.js'
+import { matchingRuleForInput } from 'src/permissions/filePermissions/rulePatterns.js'
+import { permissionRuleValueFromString } from 'src/permissions/permissionRuleParser.js'
 import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
-import { getPathsForPermissionCheck } from 'src/shared/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { getFsImplementation, getPathsForPermissionCheck } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 
 /**
  * Dangerous files that should be protected from auto-editing.
@@ -34,6 +42,125 @@ const DANGEROUS_DIRECTORIES = [
   '.claude',
   '.claudin',
 ] as const
+
+// Dotenv-shaped names that hold no secrets: templates, and code named after
+// its env (`.env.ts`, `.env.d.ts`).
+const ENV_NOT_SECRET_SUFFIXES = [
+  '.example',
+  '.sample',
+  '.template',
+  '.dist',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+] as const
+// Names a glob has to reach for a read to land on a dotenv file.
+const ENV_FILE_SAMPLES = ['.env', '.env.local', 'prod.env'] as const
+const WILDCARDS_ONLY_RE = /^[*?]+$/
+
+function isEnvFileName(name: string): boolean {
+  const lower = name.toLowerCase()
+  if (ENV_NOT_SECRET_SUFFIXES.some(suffix => lower.endsWith(suffix))) return false
+  return lower.startsWith('.env.') || lower.endsWith('.env')
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return getFsImplementation().statSync(path).isDirectory()
+  } catch (e) {
+    if (!isENOENT(e)) logForDebugging(`env-file check: cannot stat ${path}: ${e}`)
+    return false
+  }
+}
+
+/**
+ * Whether a path is a dotenv file — `.env`, `.env.<stage>` or `<name>.env`,
+ * and not a directory (a Python virtualenv named `.env`) — which usually holds
+ * secrets that a read would send to the provider. A path that does not exist
+ * yet still counts.
+ */
+export function isSensitiveEnvFile(path: string): boolean {
+  return isEnvFileName(basename(path)) && !isDirectory(path)
+}
+
+/**
+ * Whether a glob's last segment could expand to a dotenv file: `.env*`,
+ * `*.env`, `.en?`. A segment of wildcards alone (`*`) names no file, so
+ * `ls *` does not count. `dot` follows the caller's matcher: bash leaves a
+ * leading dot to the pattern, ripgrep's globs match it.
+ */
+export function globCouldMatchEnvFile(pattern: string, options: { dot: boolean }): boolean {
+  const segment = pattern.slice(pattern.lastIndexOf('/') + 1)
+  if (segment === '' || WILDCARDS_ONLY_RE.test(segment)) return false
+  const matches = picomatch(segment, { dot: options.dot })
+  return ENV_FILE_SAMPLES.some(name => matches(name))
+}
+
+// A rule names a .env when its LAST path segment does: `Read(./.env)`,
+// `Read(**/.env.*)`. ".env" earlier in the pattern is a directory that only
+// contains the letters (`Read(~/.envs/**)`).
+function ruleNamesEnvFile(rule: string): boolean {
+  const content = permissionRuleValueFromString(rule).ruleContent
+  if (!content) return false
+  const segment = content.slice(content.lastIndexOf('/') + 1)
+  return isEnvFileName(segment) || globCouldMatchEnvFile(segment, { dot: true })
+}
+
+/**
+ * What every read gate (the Read tool, the Bash and PowerShell path checks)
+ * answers for a dotenv file: a safety check no mode and no classifier may
+ * approve, so the user is asked even in bypass and auto mode.
+ */
+export function sensitiveEnvFileReason(
+  path: string,
+): Extract<PermissionDecisionReason, { type: 'safetyCheck' }> {
+  return {
+    type: 'safetyCheck',
+    reason: `${path} is a .env file, which usually holds secrets; reading it needs your approval.`,
+    classifierApprovable: false,
+  }
+}
+
+/**
+ * The read allow rule that lets a dotenv file be read without asking: one
+ * whose pattern names a .env. A broad rule — `Read(**)`, `Read(//tmp/**)` —
+ * was written for other files and does not count, the way an Edit allow rule
+ * does not reach past the dangerous-file check.
+ */
+export function envFileReadAllowRule(
+  path: string,
+  context: ToolPermissionContext,
+): PermissionRule | null {
+  const envRulesOnly = Object.fromEntries(
+    Object.entries(context.alwaysAllowRules).map(([source, rules]) => [
+      source,
+      (rules ?? []).filter(ruleNamesEnvFile),
+    ]),
+  ) as ToolPermissionContext['alwaysAllowRules']
+  return matchingRuleForInput(
+    path,
+    { ...context, alwaysAllowRules: envRulesOnly },
+    'read',
+    'allow',
+  )
+}
+
+/**
+ * The ask every read gate returns before a dotenv file, or null when `path` is
+ * not one or an allow rule naming it opts it out. `paths` are `path` and the
+ * forms it resolves to (symlinks).
+ */
+export function sensitiveEnvFileAsk(
+  paths: readonly string[],
+  path: string,
+  context: ToolPermissionContext,
+): Extract<PermissionDecisionReason, { type: 'safetyCheck' }> | null {
+  if (!paths.some(isSensitiveEnvFile) || envFileReadAllowRule(path, context)) return null
+  return sensitiveEnvFileReason(path)
+}
 
 /**
  * Check if a file path is dangerous to auto-edit without explicit permission.

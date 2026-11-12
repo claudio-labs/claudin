@@ -4,6 +4,8 @@ description: Port-candidate backlog comparing the SST opencode monorepo at ../op
 type: reference
 ---
 
+**Tree moved (verified 2026-11-12):** `packages/opencode/src` was deleted in `44b6938b2a` (2026-07-20). The code now lives in `packages/core/src` (session, permission, tool/plugin, snapshot), `packages/ai` (provider-error, cache protocols), `packages/cli` (acp) and `packages/tui`. Every `path:line` below is pre-move; read it with `git show 44b6938b2a^:<path>`. Since the move: `doom_loop` and `prune` are gone from the runtime, the LSP runtime is gone (edit carries a TODO), formatter-on-write survives (`core/src/file-write.ts:84-89`). Already in claudin: `invalid`, spill-to-disk, single-flight OAuth refresh, sub-agent resume.
+
 `../opencode` is the SST opencode monorepo (Effect/Layer everywhere; agent core in `packages/opencode/src`). Distinct from `../openclaude` (gitlawb fork — see openclaude-sibling-fork-reference.md). Scouted 2026-06-24 for features claudin lacks.
 
 **Already in claudin (NOT gaps — verified against Claude Code inheritance):** markdown custom agents (`loadPluginAgents.ts`/`markdownConfigLoader.ts`), markdown slash commands w/ $ARGUMENTS/@file/!`shell`, wildcard permission allow/deny/ask (`settings/types.ts` PermissionsSchema), hooks, fork/auto-background subagents, read-only 9-op LSPTool, /resume + auto-compaction + auto-memory.
@@ -45,3 +47,7 @@ type: reference
 - Bigger/tangled (note, don't rush): snapshot shadow-git via `objects/info/alternates` seeding for fast snapshots on huge repos (`snapshot/index.ts:206-241`); tree-sitter shell-cmd AST → per-path `external_directory` perm (`tool/shell.ts:188-291`); 30-formatter roster (`format/formatter.ts:18-404`).
 
 **Confirmed ABSENT in opencode (no port source here — these live in ../openclaude):** provider-failover chains, credential/key pools. de-Effect tax still applies to everything in `packages/llm` + `core`.
+
+**2026-11-12 round ([[sibling-ports-2026-11]]):**
+- Ported: the context-overflow phrases plus exclusions (from `packages/ai/src/provider-error.ts`) and the `.env` read ask, extended to the Bash and PowerShell gates.
+- Measured and dropped: tool-input repair (1 wrong-type rejection in ~21k uses), Read on a directory, formatter-on-write, cross-pending (claudin already has it) and doom_loop (gone upstream).

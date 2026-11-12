@@ -68,6 +68,12 @@ function buildHookSchemas() {
       .describe(
         'If true, stdin stays open after the input JSON so the hook can ask the user a question (the prompt protocol). Leave it off for an ordinary hook: it reads its input to EOF, and an stdin left open blocks it until its timeout.',
       ),
+    args: z
+      .unknown()
+      .optional()
+      .describe(
+        'Not supported: a command hook runs `command` as one shell line. Accepted only so a hook that carries it is refused, rather than run without its arguments.',
+      ),
   })
 
   const PromptHookSchema = z.object({

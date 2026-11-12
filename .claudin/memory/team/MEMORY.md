@@ -4,6 +4,7 @@
 
 ## Decisions
 - Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind, /diff `x`, fallback · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills, ws ask
+- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule, review's 9 fixes; what was dropped
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
 - [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
@@ -67,7 +68,7 @@
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source
-- [Two latent bugs pinned, not fixed (09-20)](bugs/latent-bugs-pinned-not-fixed.md) — autobackground misses `sleep N`; deleted rules resurrect
+- Latent bugs pinned, not fixed: [09-20 sleep N, rules resurrect](bugs/latent-bugs-pinned-not-fixed.md) · [WebSocket 10-17](bugs/websocket-sites-latent-bugs.md) · [providers 11-12](bugs/latent-bugs-pinned-2026-11-12.md)
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — mid-session reconcile, cache GC, migrate rerun
 - [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — a Cloudflare edge block
 - [/diff canonicalizes worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — fix deferred on purpose
@@ -75,12 +76,10 @@
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run alone
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches dedupe by uuid
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — they get the private carve-out
-- [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — retries never cap
-- [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md)
 - FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md) · memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 - FIXED, tools: [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md)
-- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md)
+- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [/models fields 11-12](bugs/context-window-discovery-field-names.md)
 
 ## Docs
 - [Memory subsystem design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/

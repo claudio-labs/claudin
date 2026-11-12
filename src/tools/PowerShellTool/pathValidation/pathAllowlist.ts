@@ -21,6 +21,11 @@ import {
   matchingRuleForInput,
   pathInAllowedWorkingPath,
 } from 'src/permissions/filePermissions.js'
+import {
+  globCouldMatchEnvFile,
+  sensitiveEnvFileAsk,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
 import { isPathInSandboxWriteAllowlist } from 'src/permissions/pathValidation.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import type { FileOperationType } from 'src/tools/PowerShellTool/pathValidation/cmdletPathConfig.js'
@@ -77,6 +82,16 @@ function isPathAllowed(
       allowed: false,
       decisionReason: { type: 'rule', rule: denyRule },
     }
+  }
+
+  // 1.5. A .env read asks, as it does through the Read tool and Bash.
+  if (operationType === 'read') {
+    const envFileAsk = sensitiveEnvFileAsk(
+      [resolvedPath, ...(precomputedPathsToCheck ?? [])],
+      resolvedPath,
+      context,
+    )
+    if (envFileAsk) return { allowed: false, decisionReason: envFileAsk }
   }
 
   // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
@@ -426,6 +441,12 @@ export function validatePath(
         resolvedPath,
         decisionReason: { type: 'rule', rule: denyRule },
       }
+    }
+    // PowerShell wildcards match a leading dot, so `.env*` and `*` alike can
+    // land on a .env; one that names it carries the .env check, which bypass
+    // mode cannot wave through the way it does the generic ask below.
+    if (operationType === 'read' && globCouldMatchEnvFile(normalizedPath, { dot: true })) {
+      return { allowed: false, resolvedPath, decisionReason: sensitiveEnvFileReason(normalizedPath) }
     }
     return {
       allowed: false,

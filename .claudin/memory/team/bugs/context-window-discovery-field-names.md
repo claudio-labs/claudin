@@ -1,11 +1,13 @@
 ---
 name: Runtime /models discovery only parses `context_length`
-description: openaiModelDiscovery consumes only OpenRouter-style context_length; Groq/vLLM/etc. field names are a mapped, unshipped follow-up
+description: FIXED 2026-11-12 (fix/sibling-ports-2026-11) — /models discovery reads context_length, context_window, max_context_length, max_model_len and meta.n_ctx_train; the setup-time path still keeps only ids
 type: project
 paths:
   - "src/providers/model/openaiModelDiscovery.ts"
   - "src/providers/presets/providerDiscovery.ts"
 ---
+
+**FIXED 2026-11-12** on `fix/sibling-ports-2026-11` (`contextWindowOf` in `openaiModelDiscovery.ts`, pinned in `openaiModelDiscovery.test.ts`). `context_length` still wins when present. The setup-time `listOpenAICompatibleModels` path below is unchanged. What follows is the original note.
 
 Runtime model discovery (`src/providers/model/openaiModelDiscovery.ts`, startup prefetch for provider tag `openai`) feeds `discoveredContextWindows`, which `getOpenAIContextWindow` consults before the 128k fallback — but the parser only reads the **`context_length`** field (OpenRouter style). The map is in-memory per session (re-prefetched each startup, 5s timeout; a failed `/models` silently reverts that session to the table/128k fallback).
 

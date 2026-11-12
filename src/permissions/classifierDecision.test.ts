@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
+  askMayTakeAllowlistFastPath,
   isAutoModeAllowlistedReadOnlyToolUse,
   isAutoModeAllowlistedTool,
 } from 'src/permissions/classifierDecision.js'
@@ -52,5 +55,48 @@ describe('isAutoModeAllowlistedReadOnlyToolUse', () => {
     expect(skips(['git checkout -b feat/x'])).toBe(false)
     // Mixed batches fail closed: one mutation classifies the whole call.
     expect(skips(['git status --short', 'git push'])).toBe(false)
+  })
+})
+
+// An allowlisted tool usually only reads, which is why it skips the
+// classifier. An `ask` someone decided on — the user's own ask rule, or a
+// safety check — is not that case: waving it through made `Read(./secrets/**)`
+// as an ask rule a silent allow in auto mode.
+describe('askMayTakeAllowlistFastPath', () => {
+  test("an ask from the user's rule goes to the classifier", () => {
+    expect(
+      askMayTakeAllowlistFastPath({
+        type: 'rule',
+        rule: {
+          source: 'localSettings',
+          ruleBehavior: 'ask',
+          ruleValue: { toolName: 'Read', ruleContent: './secrets/**' },
+        },
+      }),
+    ).toBe(false)
+  })
+
+  test('an ask from a safety check goes to the classifier', () => {
+    expect(
+      askMayTakeAllowlistFastPath({
+        type: 'safetyCheck',
+        reason: 'sensitive file',
+        classifierApprovable: true,
+      }),
+    ).toBe(false)
+  })
+
+  test('any other ask keeps the fast path', () => {
+    expect(askMayTakeAllowlistFastPath(undefined)).toBe(true)
+    expect(askMayTakeAllowlistFastPath({ type: 'other', reason: 'outside the working directory' })).toBe(true)
+  })
+
+  // The call site sits inside the TRANSCRIPT_CLASSIFIER branch, which `bun
+  // test` compiles out, so its wiring is pinned on the source text.
+  test('both allowlist fast paths in permissions.ts consult it', () => {
+    const source = readFileSync(join(import.meta.dir, 'permissions.ts'), 'utf8')
+    expect(source).toContain('askMayTakeAllowlistFastPath(result.decisionReason)')
+    expect(source).toMatch(/const onSafeAllowlist =\s*\n?\s*mayFastPath &&/)
+    expect(source).toMatch(/const readsOnly =\s*\n?\s*mayFastPath &&/)
   })
 })

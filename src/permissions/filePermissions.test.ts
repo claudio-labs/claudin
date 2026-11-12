@@ -462,3 +462,123 @@ describe('checkReadPermissionForTool', () => {
     })
   })
 })
+
+// A .env file usually holds secrets, and a read sends its contents to the
+// provider. Inside the working directory every read used to be allowed.
+describe('checkReadPermissionForTool on .env files', () => {
+  for (const name of ['.env', '.env.local', '.env.production', 'prod.env']) {
+    test(`asks before reading ${name}, in every mode, and no classifier may approve it`, () => {
+      withTempDir(dir => {
+        const file = join(dir, name)
+        writeFileSync(file, 'SECRET=1')
+        for (const mode of ['default', 'acceptEdits', 'bypassPermissions']) {
+          const decision = callRead(FILE_TOOL, file, workingDirContext(dir, { mode }))
+          expect(decision.behavior).toBe('ask')
+          expect(decision.decisionReason).toMatchObject({
+            type: 'safetyCheck',
+            classifierApprovable: false,
+          })
+        }
+      })
+    })
+  }
+
+  // A broad read rule was written for other files; like an Edit allow rule
+  // and the dangerous-file check, it does not reach past this one.
+  test('a broad Read allow rule still asks for a .env', () => {
+    withTempDir(dir => {
+      const file = join(dir, '.env')
+      writeFileSync(file, 'SECRET=1')
+      for (const rule of ['Read', 'Read(//**)', `Read(/${dir}/**)`]) {
+        const decision = callRead(
+          FILE_TOOL,
+          file,
+          workingDirContext(dir, { alwaysAllowRules: { userSettings: [rule] } }),
+        )
+        expect([rule, decision.behavior]).toEqual([rule, 'ask'])
+      }
+    })
+  })
+
+  // The rule has to name a .env in its LAST segment; ".env" anywhere else in
+  // the pattern is a directory that happens to contain the letters.
+  test('a broad rule on a directory whose name contains ".env" still asks', () => {
+    withTempDir(dir => {
+      for (const sub of ['proj.env-x', '.envs']) {
+        mkdirSync(join(dir, sub))
+        const file = join(dir, sub, '.env')
+        writeFileSync(file, 'SECRET=1')
+        const rule = `Read(/${dir}/${sub}/**)`
+        const decision = callRead(
+          FILE_TOOL,
+          file,
+          workingDirContext(dir, { alwaysAllowRules: { userSettings: [rule] } }),
+        )
+        expect([rule, decision.behavior]).toEqual([rule, 'ask'])
+      }
+    })
+  })
+
+  test('a .env DIRECTORY (a Python virtualenv) is not a .env file', () => {
+    withTempDir(dir => {
+      mkdirSync(join(dir, '.env', 'lib'), { recursive: true })
+      expect(callRead(FILE_TOOL, join(dir, '.env'), workingDirContext(dir)).behavior).toBe('allow')
+    })
+  })
+
+  test('code named after its env is not a .env file', () => {
+    withTempDir(dir => {
+      for (const name of ['.env.ts', '.env.d.ts', '.env.mjs']) {
+        const file = join(dir, name)
+        writeFileSync(file, 'export {}')
+        expect([name, callRead(FILE_TOOL, file, workingDirContext(dir)).behavior]).toEqual([name, 'allow'])
+      }
+    })
+  })
+
+  test('the .env ask offers a session rule naming the file, and that rule is honored', () => {
+    withTempDir(dir => {
+      const file = join(dir, '.env')
+      writeFileSync(file, 'SECRET=1')
+      const decision = callRead(FILE_TOOL, file, workingDirContext(dir))
+      if (decision.behavior !== 'ask') throw new Error('expected an ask decision')
+      expect(decision.suggestions).toEqual([
+        {
+          type: 'addRules',
+          rules: [{ toolName: 'Read', ruleContent: `/${file}` }],
+          behavior: 'allow',
+          destination: 'session',
+        },
+      ])
+      const granted = callRead(
+        FILE_TOOL,
+        file,
+        workingDirContext(dir, { alwaysAllowRules: { session: [`Read(/${file})`] } }),
+      )
+      expect(granted.behavior).toBe('allow')
+    })
+  })
+
+  test('an allow rule that names the .env lets it be read', () => {
+    withTempDir(dir => {
+      const file = join(dir, '.env')
+      writeFileSync(file, 'SECRET=1')
+      const decision = callRead(
+        FILE_TOOL,
+        file,
+        workingDirContext(dir, { alwaysAllowRules: { userSettings: [`Read(/${dir}/.env)`] } }),
+      )
+      expect(decision.behavior).toBe('allow')
+    })
+  })
+
+  for (const name of ['.env.example', '.env.sample', '.env.template', '.env.dist', 'env.ts']) {
+    test(`reads ${name} without asking`, () => {
+      withTempDir(dir => {
+        const file = join(dir, name)
+        writeFileSync(file, 'SECRET=')
+        expect(callRead(FILE_TOOL, file, workingDirContext(dir)).behavior).toBe('allow')
+      })
+    })
+  }
+})

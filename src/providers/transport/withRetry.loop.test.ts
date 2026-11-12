@@ -357,6 +357,27 @@ describe('withRetry - auth errors refresh the client', () => {
     expect(originalOf(r.error)).toBe(e)
   })
 
+  test('a 403 the OpenAI-compatible shim marked rate_limited is retried', async () => {
+    const r = await run([
+      apiError(
+        403,
+        'OpenAI API error 403: {"error":{"code":"rate_limit_exceeded"}} [openai_category=rate_limited]',
+      ),
+    ])
+    expect(r.result).toBe('ok')
+    expect(r.calls).toHaveLength(2)
+  })
+
+  test('a rate_limited 403 still obeys x-should-retry: false', async () => {
+    const e = apiError(403, 'OpenAI API error 403: slow down [openai_category=rate_limited]', {
+      ...ZERO_DELAY,
+      'x-should-retry': 'false',
+    })
+    const r = await run([e])
+    expect(r.calls).toHaveLength(1)
+    expect(originalOf(r.error)).toBe(e)
+  })
+
   test('on Bedrock a 403 refreshes the client and is retried although shouldRetry says no', async () => {
     activate('bedrock')
     const r = await run([apiError(403, 'The security token included in the request is invalid')])

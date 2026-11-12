@@ -28,8 +28,7 @@ paths:
 - Plandex dropped an LLM completion judge after disagreement cycles, so do not add one.
 
 **Neighbors found, not fixed:**
-- `query.ts:592-596` claims PTL is withheld, but it is not.
-- OpenAI-compat `context_overflow` never becomes the PTL message.
+- FIXED 2026-11-12 ([[sibling-ports-2026-11]]): the `query.ts` comment claiming PTL is withheld; OpenAI-compat `context_overflow` now becomes the PTL message.
 - `agent:builtin` 529 exact match ([[builtin-subagents-skip-529-retry]]).
 - `compareStatsAndContent` calls a same-size file with an older mtime unchanged.
 - `maybeShortenFilePath` has no path-boundary check.

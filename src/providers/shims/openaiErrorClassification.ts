@@ -96,16 +96,60 @@ function isLocalhostLikeHostname(hostname: string | null): boolean {
   return /^127\./.test(hostname)
 }
 
+// How servers word a prompt over the context window: this classifier's
+// original substrings, then the phrases opencode collected
+// (packages/ai/src/provider-error.ts) for llama.cpp, vLLM, Bedrock,
+// Cloudflare, TGI, LiteLLM, Z.ai and others.
+const CONTEXT_OVERFLOW_PATTERNS: readonly RegExp[] = [
+  /too many tokens/i,
+  /request too large/i,
+  /request entity too large/i,
+  /payload too large/i,
+  /context length/i,
+  /maximum context/i,
+  /input length/i,
+  /prompt is too long/i,
+  /input is too long for (?:the )?(?:requested|selected) model/i,
+  /too large for the model'?s configured input limit/i,
+  /exceeded this model context window limit/i,
+  /exceeds the context window/i,
+  /input token count.*exceeds the maximum/i,
+  /number of input tokens exceeds maximum length/i,
+  /tokens in request more than max tokens allowed/i,
+  /maximum prompt length is \d+/i,
+  /reduce the length of the messages/i,
+  /exceeds (?:the )?maximum allowed input length/i,
+  /is longer than the model'?s context length/i,
+  // Only a token count: an image size, an image or a tool count share the wording.
+  /exceeds the limit of [\d,]+ tokens/i,
+  /exceeds the available context size/i,
+  /`inputs` tokens \+ `max_new_tokens` must be <= \d+/i,
+  /context window exceed/i,
+  /exceeded model token limit/i,
+  /context[_ ]length[_ ]exceeded/i,
+  /prompt (?:too long|exceeds max length|超长)/i,
+  /but the configured context size is/i,
+  /model_context_window_exceeded/i,
+  /range of input length should be/i,
+  /token limit exceeded/i,
+  /request_too_large/i,
+]
+
+// A throttle or a usage quota that borrows overflow wording: compacting cannot
+// fix it. Unanchored, since most bodies are a JSON envelope around the words.
+const CONTEXT_OVERFLOW_EXCLUSIONS: readonly RegExp[] = [
+  /(?:throttling error|service unavailable):/i,
+  /rate limit/i,
+  /too many requests/i,
+  /max[_ ]tokens must be less than/i,
+  /too many tokens(?: per day)?, please wait/i,
+  /(?:hourly|daily|weekly|monthly) token limit/i,
+]
+
 function isContextOverflowMessage(body: string): boolean {
-  const lower = body.toLowerCase()
   return (
-    lower.includes('too many tokens') ||
-    lower.includes('request too large') ||
-    lower.includes('context length') ||
-    lower.includes('maximum context') ||
-    lower.includes('input length') ||
-    lower.includes('payload too large') ||
-    lower.includes('prompt is too long')
+    !CONTEXT_OVERFLOW_EXCLUSIONS.some(pattern => pattern.test(body)) &&
+    CONTEXT_OVERFLOW_PATTERNS.some(pattern => pattern.test(body))
   )
 }
 
@@ -131,6 +175,43 @@ function isMalformedProviderResponse(body: string): boolean {
     lower.includes('unexpected token') ||
     lower.includes('cannot parse') ||
     lower.includes('not valid json')
+  )
+}
+
+// Codes and types servers put in a JSON error for a throttle, lowercased.
+const RATE_LIMIT_ERROR_CODES: ReadonlySet<string> = new Set([
+  'rate_limit_exceeded',
+  'rate_limit_error',
+  'rate_limited',
+  'too_many_requests',
+  'throttled',
+  'throttlingexception',
+])
+
+/**
+ * Whether a 403 is a throttle. Only a structured signal counts — Retry-After,
+ * x-should-retry: true, or a rate-limit code or type in the JSON error —
+ * because "rate limit" also turns up in the prose of a real refusal.
+ */
+function hasRateLimitSignal(body: string, headers: Headers | undefined): boolean {
+  if (headers?.has('retry-after') || headers?.get('x-should-retry') === 'true') {
+    return true
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(body)
+  } catch {
+    return false
+  }
+  if (!parsed || typeof parsed !== 'object') return false
+  const record = parsed as Record<string, unknown>
+  const error =
+    record.error && typeof record.error === 'object'
+      ? (record.error as Record<string, unknown>)
+      : record
+  return [error.code, error.type].some(
+    value =>
+      typeof value === 'string' && RATE_LIMIT_ERROR_CODES.has(value.toLowerCase()),
   )
 }
 
@@ -247,8 +328,23 @@ export function classifyOpenAINetworkFailure(
 export function classifyOpenAIHttpFailure(options: {
   status: number
   body: string
+  headers?: Headers
 }): OpenAICompatibilityFailure {
   const body = options.body ?? ''
+
+  if (
+    options.status === 429 ||
+    (options.status === 403 && hasRateLimitSignal(body, options.headers))
+  ) {
+    return {
+      source: 'http',
+      category: 'rate_limited',
+      retryable: true,
+      status: options.status,
+      message: body,
+      hint: 'Provider rate-limited the request. Retry after backoff.',
+    }
+  }
 
   if (options.status === 401 || options.status === 403) {
     return {
@@ -258,17 +354,6 @@ export function classifyOpenAIHttpFailure(options: {
       status: options.status,
       message: body,
       hint: 'Authentication failed. Verify API key, token source, and endpoint-specific auth headers.',
-    }
-  }
-
-  if (options.status === 429) {
-    return {
-      source: 'http',
-      category: 'rate_limited',
-      retryable: true,
-      status: options.status,
-      message: body,
-      hint: 'Provider rate-limited the request. Retry after backoff.',
     }
   }
 

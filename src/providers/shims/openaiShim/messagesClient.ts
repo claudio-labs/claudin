@@ -911,6 +911,7 @@ class OpenAIShimMessages {
         classifyOpenAIHttpFailure({
           status,
           body: errorBody,
+          headers: responseHeaders,
         })
       const redactedUrl = redactUrlForDiagnostics(requestUrl)
 
@@ -919,15 +920,16 @@ class OpenAIShimMessages {
         { level: 'warn' },
       )
 
-      throw APIError.generate(
-        status,
-        parsedBody,
-        buildOpenAICompatibilityErrorMessage(
-          `OpenAI API error ${status}: ${errorBody}${rateHint}`,
-          failure,
-        ),
-        responseHeaders,
+      const message = buildOpenAICompatibilityErrorMessage(
+        `OpenAI API error ${status}: ${errorBody}${rateHint}`,
+        failure,
       )
+      const error = APIError.generate(status, parsedBody, message, responseHeaders)
+      // Handed a parsed body, the SDK builds the message from the body and
+      // drops this one — the category marker and hint withRetry and the error
+      // mapper read. The body stays on the error as `error.error`.
+      error.message = `${status} ${message}`
+      throw error
     }
 
     let response: Response | undefined
@@ -1096,6 +1098,7 @@ class OpenAIShimMessages {
           const responsesFailure = classifyOpenAIHttpFailure({
             status: responsesResponse.status,
             body: responsesErrorBody,
+            headers: responsesResponse.headers as unknown as Headers,
           })
           let responsesErrorResponse: object | undefined
           try { responsesErrorResponse = JSON.parse(responsesErrorBody) } catch { /* raw text */ }
@@ -1114,6 +1117,7 @@ class OpenAIShimMessages {
       const failure = classifyOpenAIHttpFailure({
         status: response.status,
         body: errorBody,
+        headers: response.headers as unknown as Headers,
       })
 
       if (

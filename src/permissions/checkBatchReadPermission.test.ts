@@ -86,6 +86,42 @@ describe('checkBatchReadPermission', () => {
     })
   })
 
+  // The batch carries ONE decision reason. A .env's safety check must be the
+  // one it carries, or a batch that also asks for an ordinary reason lets an
+  // allowlist fast path or a classifier wave the .env through.
+  test('asks for a batch with a .env in it, under the .env safety check', () => {
+    withFixtures(dir => {
+      const a = touch(dir, 'a.ts')
+      const env = touch(dir, '.env')
+      const decision = checkBatchReadPermission('Read', [a, env], { file_paths: [a, env] }, contextFor(dir))
+      expect(decision.behavior).toBe('ask')
+      expect(decision.decisionReason).toMatchObject({
+        type: 'safetyCheck',
+        classifierApprovable: false,
+      })
+    })
+  })
+
+  test('the .env safety check binds even when another file asks first', () => {
+    withFixtures(dir => {
+      withFixtures(outside => {
+        const far = touch(outside, 'far.ts')
+        const env = touch(dir, '.env')
+        const decision = checkBatchReadPermission(
+          'Read',
+          [far, env],
+          { file_paths: [far, env] },
+          contextFor(dir),
+        )
+        expect(decision.behavior).toBe('ask')
+        expect(decision.decisionReason).toMatchObject({
+          type: 'safetyCheck',
+          classifierApprovable: false,
+        })
+      })
+    })
+  })
+
   test('a deny on several files names each of them, and none of the rest', () => {
     withFixtures(dir => {
       const a = touch(dir, 'a.ts')

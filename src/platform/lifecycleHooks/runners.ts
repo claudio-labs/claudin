@@ -162,6 +162,17 @@ export async function execCommandHook(
   aborted?: boolean
   backgrounded?: boolean
 }> {
+  // Hooks written for tools that take `{ command, args }` would otherwise run
+  // the bare command — `sh` reading the hook's JSON input as a script. A
+  // PreToolUse hook is a guard, so its refusal blocks (exit 2) rather than let
+  // the tool through; elsewhere 2 means something else (a Stop hook's keeps
+  // the model going), so other events fail plainly.
+  if (hook.args !== undefined) {
+    const reason = `Hook "${hook.command}" has an args field, which command hooks do not support; put the arguments in command.`
+    const status = hookEvent === 'PreToolUse' ? 2 : 1
+    return { stdout: '', stderr: reason, output: reason, status }
+  }
+
   // Gated to once-per-session events to keep diag_log volume bounded.
   // started/completed live inside the try/finally so setup-path throws
   // don't orphan a started marker — that'd be indistinguishable from a hang.

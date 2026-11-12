@@ -539,6 +539,20 @@ describe('validatePath — the working-directory allowlist', () => {
     expect(check('Get-Content ./notes.txt').behavior).toBe('passthrough')
   })
 
+  // The same gate the Read tool and the Bash path check apply to a .env.
+  test('a read of a .env inside the working directory asks', () => {
+    const result = asAsk(check('Get-Content ./.env'))
+    expect(result.message).toContain('.env')
+    expect(check('Get-Content ./.env.example').behavior).toBe('passthrough')
+  })
+
+  // Every glob read already asks here, but generically — which bypass mode
+  // lets through. One that could expand to a .env carries the .env check.
+  test('a glob that could expand to a .env asks under the .env check', () => {
+    const result = asAsk(check('Get-Content ./.env*'))
+    expect(result.decisionReason).toMatchObject({ type: 'safetyCheck', classifierApprovable: false })
+  })
+
   test('a read outside every working directory asks', () => {
     const result = asAsk(check('Get-Content /etc/passwd'))
     expect(result.blockedPath).toBe('/etc/passwd')

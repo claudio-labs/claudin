@@ -848,7 +848,13 @@ export function shouldRetry(
 
   // Retry on rate limits, but not for ClaudeAI Subscription users
   // Enterprise users can retry because they typically use PAYG instead of rate limits
-  if (error.status === 429) {
+  // A 403 the OpenAI-compatible shim marked rate_limited (a Retry-After or a
+  // rate-limit code in the body, never prose) is a rate limit too.
+  if (
+    error.status === 429 ||
+    (error.status === 403 &&
+      extractOpenAICategoryMarker(error.message ?? '') === 'rate_limited')
+  ) {
     if (isQuotaExhaustedError(error)) return false
     return !account.isSubscriber() || account.isEnterprise()
   }

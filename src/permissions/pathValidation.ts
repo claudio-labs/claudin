@@ -19,6 +19,11 @@ import {
   pathInAllowedWorkingPath,
   pathInWorkingPath,
 } from 'src/permissions/filePermissions.js'
+import {
+  globCouldMatchEnvFile,
+  sensitiveEnvFileAsk,
+  sensitiveEnvFileReason,
+} from 'src/permissions/filePermissions/dangerousPaths.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 
 const MAX_DIRS_TO_LIST = 5
@@ -163,6 +168,17 @@ export function isPathAllowed(
     }
   }
 
+  // 1.5. A .env read asks, as it does through the Read tool
+  // (checkReadPermissionForTool); only an allow rule naming a .env stops it.
+  if (operationType === 'read') {
+    const envFileAsk = sensitiveEnvFileAsk(
+      [resolvedPath, ...(precomputedPathsToCheck ?? [])],
+      resolvedPath,
+      context,
+    )
+    if (envFileAsk) return { allowed: false, decisionReason: envFileAsk }
+  }
+
   // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
   // This MUST come before checkPathSafetyForAutoEdit since .claudin is a dangerous directory
   // and internal editable paths live under ~/.claudin/ — matching the ordering in
@@ -274,6 +290,17 @@ export function validateGlobPattern(
   toolPermissionContext: ToolPermissionContext,
   operationType: FileOperationType,
 ): ResolvedPathCheckResult {
+  // The shell expands `cat .env*` to a .env this check never sees by name, and
+  // the base directory alone says nothing, so such a read asks as the .env does.
+  if (operationType === 'read' && globCouldMatchEnvFile(cleanPath, { dot: false })) {
+    const absolutePattern = isAbsolute(cleanPath) ? cleanPath : resolve(cwd, cleanPath)
+    return {
+      allowed: false,
+      resolvedPath: absolutePattern,
+      decisionReason: sensitiveEnvFileReason(absolutePattern),
+    }
+  }
+
   if (containsPathTraversal(cleanPath)) {
     // For patterns with path traversal, resolve the full path
     const absolutePath = isAbsolute(cleanPath)

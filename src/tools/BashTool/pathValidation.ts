@@ -10,7 +10,11 @@ import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getDirectoryForPath } from 'src/shared/fs/path.js'
 import { allWorkingDirectories } from 'src/permissions/filePermissions.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
-import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
+import { isSensitiveEnvFile } from 'src/permissions/filePermissions/dangerousPaths.js'
+import {
+  createReadFileRuleSuggestion,
+  createReadRuleSuggestion,
+} from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   expandTilde,
@@ -34,6 +38,7 @@ export type PathCommand =
   | 'mv'
   | 'cp'
   | 'cat'
+  | 'tac'
   | 'head'
   | 'tail'
   | 'sort'
@@ -275,6 +280,7 @@ export const PATH_EXTRACTORS: Record<
   mv: filterOutFlags,
   cp: filterOutFlags,
   cat: filterOutFlags,
+  tac: filterOutFlags,
   head: filterOutFlags,
   tail: filterOutFlags,
   sort: filterOutFlags,
@@ -520,6 +526,7 @@ const ACTION_VERBS: Record<PathCommand, string> = {
   mv: 'move files to/from',
   cp: 'copy files to/from',
   cat: 'concatenate files from',
+  tac: 'read files in reverse from',
   head: 'read the beginning of files from',
   tail: 'read the end of files from',
   sort: 'sort contents of files from',
@@ -559,6 +566,7 @@ export const COMMAND_OPERATION_TYPE: Record<PathCommand, FileOperationType> = {
   mv: 'write',
   cp: 'write',
   cat: 'read',
+  tac: 'read',
   head: 'read',
   tail: 'read',
   sort: 'read',
@@ -758,7 +766,11 @@ export function createPathChecker(
 
       // Only suggest adding directory/rules if we have a blocked path
       if (result.blockedPath) {
-        if (operationType === 'read') {
+        if (operationType === 'read' && isSensitiveEnvFile(result.blockedPath)) {
+          // A directory rule would not opt a .env out (envFileReadAllowRule
+          // honors only a rule that names it), so offer one for the file.
+          suggestions.push(createReadFileRuleSuggestion(result.blockedPath))
+        } else if (operationType === 'read') {
           // For read operations, suggest a Read rule for the directory (only if it exists)
           const dirPath = getDirectoryForPath(result.blockedPath)
           const suggestion = createReadRuleSuggestion(dirPath, 'session')

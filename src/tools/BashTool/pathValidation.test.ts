@@ -174,6 +174,69 @@ describe('checkPathConstraints', () => {
     ).toBe('passthrough')
   })
 
+  // The Read tool asking before a .env is worth nothing if `cat .env` reads it
+  // without a word: the shell path check is the second gate on the same file.
+  test('asks before a shell command reads a .env file', () => {
+    for (const command of ['cat .env', 'head -5 .env.local', 'grep KEY prod.env']) {
+      const result = checkPathConstraints({ command }, CWD, allowingCwd())
+      expect(askMessage(result)).toContain('.env')
+      expect(result.decisionReason).toMatchObject({
+        type: 'safetyCheck',
+        classifierApprovable: false,
+      })
+    }
+  })
+
+  test('a broad Read allow rule does not let cat read a .env', () => {
+    const context = {
+      ...allowingCwd(),
+      alwaysAllowRules: { userSettings: ['Read(//tmp/**)'] },
+    }
+    expect(checkPathConstraints({ command: 'cat .env' }, CWD, context).behavior).toBe('ask')
+  })
+
+  // The shell expands these to a .env the path check never saw: it judged
+  // only the glob's base directory.
+  test('asks before a glob that could expand to a .env', () => {
+    for (const command of ['cat .env*', 'cat .en?', 'head .env.*', 'cat ./*.env', 'grep KEY .env*']) {
+      const result = checkPathConstraints({ command }, CWD, allowingCwd())
+      expect([command, result.behavior]).toEqual([command, 'ask'])
+      expect(result.decisionReason).toMatchObject({ type: 'safetyCheck', classifierApprovable: false })
+    }
+  })
+
+  test('a bare wildcard names no .env', () => {
+    expect(checkPathConstraints({ command: 'ls *' }, CWD, allowingCwd()).behavior).toBe('passthrough')
+  })
+
+  // tac is a read-only command with no path check at all, so it read any
+  // file, inside the working directories or not.
+  test('tac is path-checked like cat', () => {
+    expect(checkPathConstraints({ command: 'tac .env' }, CWD, allowingCwd()).behavior).toBe('ask')
+    expect(checkPathConstraints({ command: 'tac /etc/hostname' }, CWD, allowingCwd()).behavior).toBe('ask')
+    expect(checkPathConstraints({ command: 'tac notes.txt' }, CWD, allowingCwd()).behavior).toBe('passthrough')
+  })
+
+  test('the "don\'t ask again" offered for a .env names the file, which the guard honors', () => {
+    const result = checkPathConstraints({ command: 'cat .env' }, CWD, allowingCwd())
+    if (result.behavior !== 'ask') throw new Error('expected an ask decision')
+    expect(result.suggestions).toEqual([
+      {
+        type: 'addRules',
+        rules: [{ toolName: 'Read', ruleContent: '//tmp/.env' }],
+        behavior: 'allow',
+        destination: 'session',
+      },
+    ])
+  })
+
+  test('reads a .env.example without asking', () => {
+    expect(
+      checkPathConstraints({ command: 'cat .env.example' }, CWD, allowingCwd())
+        .behavior,
+    ).toBe('passthrough')
+  })
+
   // acceptEdits so a write inside the working directory would pass: what is
   // being proved is that the redirect TARGET is resolved and checked, not that
   // writes ask in general. The `>>` arm matters on its own — appending was

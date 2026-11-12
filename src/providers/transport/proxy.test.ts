@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import type { AgentConnectOpts } from 'agent-base'
+import type { InternalAxiosRequestConfig } from 'axios'
+import { HttpsProxyAgent } from 'https-proxy-agent'
 
+import { clearCACertsCache } from 'src/providers/transport/caCerts.js'
 import {
   _resetH1OnlyForTesting,
   _resetKeepAliveForTesting,
+  createAxiosInstance,
   disableKeepAlive,
   getProviderDispatcher,
   getProxyFetchOptions,
@@ -116,6 +124,63 @@ test('getProxyFetchOptions defers to proxy path when HTTPS_PROXY is set', () => 
     expect(opts.dispatcher).toBeDefined()
     expect(opts.dispatcher).not.toBe(getProviderDispatcher('firstParty'))
   }
+})
+
+// https-proxy-agent uses its constructor options for the socket to the PROXY
+// and the options handed to connect() for the TLS session to the TARGET, so a
+// CA or client cert given only to the constructor never reaches the server the
+// request is for.
+describe('createAxiosInstance behind a CONNECT proxy', () => {
+  const savedCa = process.env.NODE_EXTRA_CA_CERTS
+  const originalConnect = HttpsProxyAgent.prototype.connect
+  let dir = ''
+
+  afterEach(() => {
+    HttpsProxyAgent.prototype.connect = originalConnect
+    if (savedCa === undefined) delete process.env.NODE_EXTRA_CA_CERTS
+    else process.env.NODE_EXTRA_CA_CERTS = savedCa
+    clearCACertsCache()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    dir = ''
+  })
+
+  test('hands the configured CA to the target TLS connection', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'proxy-ca-'))
+    const caPath = join(dir, 'extra.pem')
+    writeFileSync(caPath, 'EXTRA-CA-MARKER')
+    process.env.NODE_EXTRA_CA_CERTS = caPath
+    process.env.HTTPS_PROXY = 'http://127.0.0.1:9'
+    clearCACertsCache()
+
+    const seen: AgentConnectOpts[] = []
+    HttpsProxyAgent.prototype.connect = async function (_req, opts) {
+      seen.push(opts)
+      throw new Error('stop before dialing')
+    }
+
+    const instance = createAxiosInstance()
+    const interceptors = instance.interceptors.request as unknown as {
+      handlers: Array<{
+        fulfilled: (c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig
+      }>
+    }
+    const config = interceptors.handlers[0]!.fulfilled({
+      url: 'https://api.example.com/v1',
+    } as InternalAxiosRequestConfig)
+    const agent = config.httpsAgent as HttpsProxyAgent<string>
+
+    await agent
+      .connect({} as never, {
+        secureEndpoint: true,
+        host: 'api.example.com',
+        port: 443,
+      } as AgentConnectOpts)
+      .catch(() => {})
+
+    expect(seen).toHaveLength(1)
+    const ca = (seen[0] as { ca?: string[] }).ca
+    expect(ca ?? []).toContain('EXTRA-CA-MARKER')
+  })
 })
 
 // The axios path (hooks, OAuth) decides with shouldBypassProxy while fetch goes

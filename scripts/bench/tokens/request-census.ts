@@ -261,6 +261,10 @@ const AVAILABLE_RE = /is available|are available/
 const DENIAL_RE = /Permission for this action has been denied|doesn't want to proceed|was rejected/i
 const PATH_MISSING_RE = /does not exist|No such file or directory|Path does not exist|ENOENT/i
 const INVALID_INPUT_RE = /InputValidationError|No such tool available|not found\. Available|Invalid|unexpected parameter|rejected this search/i
+const INPUT_VALIDATION_RE = /InputValidationError/
+const WRONG_TYPE_RE = /type is expected as/
+const MISSING_PARAM_RE = /required parameter `[^`]+` is missing/
+const UNEXPECTED_PARAM_RE = /unexpected parameter/
 const EXIT_CODE_RE = /^Exit code \d+/
 const PARTIAL_READ_RE = /only read in part/
 const MODIFIED_SINCE_RE = /modified since/
@@ -1615,6 +1619,30 @@ export function renderReport(census: Census, meta: ReportMeta): string[] {
     const withTools = cs.filter(c => c.uses.length > 0)
     log(
       `| ${k} | ${n} | ${pct(withTools.filter(c => c.uses.length === 1).length, withTools.length)} | ${share(c => has(c, 'M-chain:step'))} | ${share(c => has(c, 'M-batch:fresh'))} | ${share(c => has(c, 'M-batch:reread'))} | ${share(c => has(c, 'M-edit'))} | ${share(c => has(c, 'M-task'))} | ${share(isReactHarness)} | ${share(isCore)} | ${share(c => isCore(c) || has(c, 'M-batch:reread') || isReactHarness(c))} |`,
+    )
+  }
+  log('')
+
+  // --- Tool input the schema rejected, per model family: the gate for a
+  // schema-driven argument repair (a wrong type is the repairable kind).
+  log('## InputValidationError per model family')
+  log('| family | tool uses | rejected | % | wrong type | missing | unexpected | other | tools |')
+  log('|---|---|---|---|---|---|---|---|---|')
+  for (const [k, cs] of [...families.entries()].sort((a, b) => b[1].length - a[1].length)) {
+    const uses = cs.flatMap(c => c.uses)
+    const rejected = uses.filter(u => u.res?.isError && INPUT_VALIDATION_RE.test(u.res.text))
+    const kinds = { type: 0, missing: 0, unexpected: 0, other: 0 }
+    const tools = new Map<string, number>()
+    for (const u of rejected) {
+      const text = u.res?.text ?? ''
+      if (WRONG_TYPE_RE.test(text)) kinds.type++
+      else if (MISSING_PARAM_RE.test(text)) kinds.missing++
+      else if (UNEXPECTED_PARAM_RE.test(text)) kinds.unexpected++
+      else kinds.other++
+      tally(tools, u.name)
+    }
+    log(
+      `| ${k} | ${uses.length} | ${rejected.length} | ${pct(rejected.length, uses.length)} | ${kinds.type} | ${kinds.missing} | ${kinds.unexpected} | ${kinds.other} | ${byCount(tools) || '-'} |`,
     )
   }
   log('')

@@ -38,6 +38,8 @@ export type InProcessMcpServer = {
   close(): Promise<void>
 }
 
+const MCP_STDIO_MAX_MESSAGE_BYTES = 128 * 1024 * 1024
+
 /**
  * Builds the MCP transport for a server based on its configured type
  * (sse / sse-ide / ws-ide / ws / http / claudeai-proxy / in-process / stdio).
@@ -323,6 +325,9 @@ export async function createTransport(
         ...serverRef.env,
       } as Record<string, string>,
       stderr: 'pipe', // prevents error output from the MCP server from printing to the UI
+      // The SDK closes the connection on any single message over 10 MiB, so
+      // one large tool result (a screenshot, a big file) took the server down.
+      maxBufferSize: MCP_STDIO_MAX_MESSAGE_BYTES,
     })
   } else {
     throw new Error(`Unsupported server type: ${serverRef.type}`)
