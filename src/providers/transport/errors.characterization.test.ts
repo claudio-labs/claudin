@@ -551,6 +551,21 @@ describe('getAssistantMessageFromError — OpenAI-compatibility category markers
     expect(textOf(msg)).toMatch(/^Local Ollama · rate limit reached · /)
   })
 
+  // A 403 the shim marked rate_limited is retried like a 429 and stops at the
+  // same reset; saying "no reset time reported" when its Retry-After gave one
+  // sent the user back before the window cleared.
+  test('a rate_limited 403 with a Retry-After names the reset', () => {
+    useProfile(OPENAI)
+    const msg = fromError(
+      apiError(403, 'OpenAI API error 403: slow down [openai_category=rate_limited]', {
+        'retry-after': '28800',
+      }),
+    )
+    expect(msg.error).toBe('rate_limit')
+    expect(textOf(msg)).not.toContain('no reset time reported')
+    expect(textOf(msg)).toMatch(/^Local Ollama · rate limit reached · /)
+  })
+
   test.each(['network_error', 'unknown'])('%s echoes the raw message with the marker stripped', category => {
     useProfile(OPENAI)
     const msg = fromError(apiError(500, `OpenAI API error 500:  socket hang up [openai_category=${category}] tail`))
