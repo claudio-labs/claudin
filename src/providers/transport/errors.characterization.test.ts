@@ -933,7 +933,7 @@ describe('get3PModelFallbackSuggestion', () => {
       ['claude_fable_5_2', ms.fable51],
       ['claude-fable-5-1', ms.opus48],
       ['claude-opus-5-5', ms.opus5],
-      ['CLAUDE_OPUS_5_5', ms.opus5],
+      ['Claude_Opus_5_5', ms.opus5],
       ['claude-opus-5', ms.opus48],
       ['claude-opus-4-7', ms.opus46],
       ['claude-opus-4-6', ms.opus41],

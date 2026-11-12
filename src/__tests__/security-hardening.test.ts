@@ -68,6 +68,10 @@ describe('Sandbox settings trust boundary', () => {
 // Fix 3: Plugin git hooks disabled
 // ---------------------------------------------------------------------------
 describe('Plugin git operations disable hooks', () => {
+  // Every git call in the file spreads one GIT_NO_HOOKS constant, so what is
+  // pinned is the constant's value and that each entry point uses it.
+  const NO_HOOKS = "const GIT_NO_HOOKS = ['-c', 'core.hooksPath=/dev/null']"
+
   test('gitClone includes core.hooksPath=/dev/null', async () => {
     const content = await file('src/plugins/marketplaceManager.ts').text()
     // The clone args must disable hooks
@@ -75,7 +79,8 @@ describe('Plugin git operations disable hooks', () => {
       content.indexOf('export async function gitClone('),
       content.indexOf('export async function gitClone(') + 2000,
     )
-    expect(cloneSection).toContain("'core.hooksPath=/dev/null'")
+    expect(content).toContain(NO_HOOKS)
+    expect(cloneSection).toContain('...GIT_NO_HOOKS')
   })
 
   test('gitPull includes core.hooksPath=/dev/null', async () => {
@@ -84,7 +89,8 @@ describe('Plugin git operations disable hooks', () => {
       content.indexOf('export async function gitPull('),
       content.indexOf('export async function gitPull(') + 2000,
     )
-    expect(pullSection).toContain("'core.hooksPath=/dev/null'")
+    expect(content).toContain(NO_HOOKS)
+    expect(pullSection).toContain('...GIT_NO_HOOKS')
   })
 
   test('gitSubmoduleUpdate includes core.hooksPath=/dev/null', async () => {
@@ -93,7 +99,8 @@ describe('Plugin git operations disable hooks', () => {
       content.indexOf('async function gitSubmoduleUpdate('),
       content.indexOf('async function gitSubmoduleUpdate(') + 1000,
     )
-    expect(subSection).toContain("'core.hooksPath=/dev/null'")
+    expect(content).toContain(NO_HOOKS)
+    expect(subSection).toContain('...GIT_NO_HOOKS')
   })
 })
 
