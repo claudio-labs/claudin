@@ -1,6 +1,6 @@
 ---
 name: census-2026-11-11-classifier-chunk-moves
-description: Census 11-04..11 (claudin + ferrous-dns) — the main cache is clean (16 full rewrites, all explained); the classifier is 15% of spend and 62% of what it writes is the stable cut moving, 13% lookback misses; window budget + lag marker −32% in replay and all six live gates in both reps, shipped opt-in; read-slice levers have no headroom (0.1% of calls); a 1h keep-alive nets +$1.5/week at Opus 5.5 prices, +$9 at Fable 5.2; /cd left instructions, git status and branch stale (fixed)
+description: Census 11-04..11 (claudin + ferrous-dns) — the main cache is clean (16 full rewrites, all explained); the classifier is 15% of spend and 62% of what it writes is the stable cut moving, 13% lookback misses; window budget + lag marker −32% in replay and all six live gates in both reps, shipped opt-in in #350, on by default 11-12; read-slice levers have no headroom (0.1% of calls); a 1h keep-alive nets +$1.5/week at Opus 5.5 prices, +$9 at Fable 5.2; /cd left instructions, git status and branch stale (fixed)
 type: project
 expires: 2027-01-10
 ---
@@ -46,7 +46,7 @@ in two sessions: K=2 pings net +$1.5 a week at Opus 5.5 prices and +$9 at Fable 
 main spend), because the extra reads a lost idle-gap clip costs are the same dollars on both
 and the avoided write doubles. Not implemented.
 
-**Fixed on `perf/census-2026-11-11`:**
+**Fixed in #350 (`perf/census-2026-11-11`, merged 2026-11-12):**
 - `/cd` (and `/memory`, a worktree, a restore) cleared the file cache and not `getUserContext`'s
   memo, which `claude_md_delta` compared: the model was told the new directory and kept the old
   one's AGENTS.md, rules and memory indexes until a compaction. The delta reads the files now;

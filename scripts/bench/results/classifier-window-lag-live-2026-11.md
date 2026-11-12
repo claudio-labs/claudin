@@ -1,7 +1,7 @@
 # Classifier window budget + lag marker, live — 2026-11-11, branch perf/census-2026-11-11
 
-**Status: both reps run, all six gates pass in each.** The levers are still opt-in: the
-default flips on the user's yes, not on this file.
+**Status: both reps run, all six gates pass in each.** On the user's yes the levers became
+the default on 2026-11-12 (`perf/classifier-levers-default-on`).
 
 The two reps ran as two one-rep runs, so the account's quota could be read between them
 (rep 1 took the Max plan's 5-hour window from 28% to 53%; rep 2 ran after it reset).
