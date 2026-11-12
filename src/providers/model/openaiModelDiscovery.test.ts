@@ -356,11 +356,11 @@ describe('discoverOpenAICompatibleModelOptions — parsing /models', () => {
     expect(mod.getDiscoveredContextWindow('ctx-missing')).toBeUndefined()
   })
 
-  test('a negative context_length is not recorded, but IS rendered in the description', async () => {
+  test('a negative context_length is neither recorded nor rendered in the description', async () => {
     useProfile('http://llm.test/v1')
     stubAxios({ 'http://llm.test/v1/models': { data: { data: [{ id: 'ctx-neg', context_length: -5 }] } } })
     const options = await mod.discoverOpenAICompatibleModelOptions()
-    expect(options[0]!.description).toBe('ctx-neg · -5 ctx')
+    expect(options[0]!.description).toBe('ctx-neg')
     expect(mod.getDiscoveredContextWindow('ctx-neg')).toBeUndefined()
   })
 

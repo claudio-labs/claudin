@@ -43,20 +43,20 @@ type OpenAIModelsResponse = {
     context_window?: number | null // Groq
     max_context_length?: number | null // LM Studio, Mistral
     max_model_len?: number | null // vLLM
-    meta?: { n_ctx_train?: number | null } | null // llama.cpp
   }>
 }
 
 type OpenAIModelEntry = NonNullable<OpenAIModelsResponse['data']>[number]
 
+// The first positive number wins: a 0 or -1 placeholder does not hide a real
+// window behind it, and a string is not a window. llama.cpp's meta.n_ctx_train
+// is left out on purpose: it is the context the model was trained with, not
+// the -c the server runs with, so taking it overstates the window.
 function contextWindowOf(model: OpenAIModelEntry): number | null {
   return (
-    model.context_length ??
-    model.context_window ??
-    model.max_context_length ??
-    model.max_model_len ??
-    model.meta?.n_ctx_train ??
-    null
+    [model.context_length, model.context_window, model.max_context_length, model.max_model_len].find(
+      (n): n is number => typeof n === 'number' && n > 0,
+    ) ?? null
   )
 }
 
@@ -178,7 +178,7 @@ async function fetchOpenAIModels(
         seen.add(id)
         const label = model.name?.trim() || id
         const ctx = contextWindowOf(model)
-        if (ctx && ctx > 0) discoveredContextWindows.set(id, ctx)
+        if (ctx) discoveredContextWindows.set(id, ctx)
         const ctxPart = ctx ? ` · ${formatContextWindow(ctx)}` : ''
         options.push({
           value: id,
