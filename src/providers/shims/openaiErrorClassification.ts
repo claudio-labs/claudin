@@ -96,16 +96,57 @@ function isLocalhostLikeHostname(hostname: string | null): boolean {
   return /^127\./.test(hostname)
 }
 
+// How servers word a prompt over the context window: this classifier's
+// original substrings, then the phrases opencode collected
+// (packages/ai/src/provider-error.ts) for llama.cpp, vLLM, Bedrock,
+// Cloudflare, TGI, LiteLLM, Z.ai and others.
+const CONTEXT_OVERFLOW_PATTERNS: readonly RegExp[] = [
+  /too many tokens/i,
+  /request too large/i,
+  /request entity too large/i,
+  /payload too large/i,
+  /context length/i,
+  /maximum context/i,
+  /input length/i,
+  /prompt is too long/i,
+  /input is too long for (?:the )?(?:requested|selected) model/i,
+  /too large for the model'?s configured input limit/i,
+  /exceeded this model context window limit/i,
+  /exceeds the context window/i,
+  /input token count.*exceeds the maximum/i,
+  /number of input tokens exceeds maximum length/i,
+  /tokens in request more than max tokens allowed/i,
+  /maximum prompt length is \d+/i,
+  /reduce the length of the messages/i,
+  /exceeds (?:the )?maximum allowed input length/i,
+  /is longer than the model'?s context length/i,
+  /exceeds the limit of \d+/i,
+  /exceeds the available context size/i,
+  /`inputs` tokens \+ `max_new_tokens` must be <= \d+/i,
+  /context window exceed/i,
+  /exceeded model token limit/i,
+  /context[_ ]length[_ ]exceeded/i,
+  /prompt (?:too long|exceeds max length|超长)/i,
+  /but the configured context size is/i,
+  /model_context_window_exceeded/i,
+  /range of input length should be/i,
+  /token limit exceeded/i,
+  /request_too_large/i,
+]
+
+// A throttle that borrows overflow wording: compacting cannot fix it.
+const CONTEXT_OVERFLOW_EXCLUSIONS: readonly RegExp[] = [
+  /^(?:throttling error|service unavailable):/i,
+  /rate limit/i,
+  /too many requests/i,
+  /max[_ ]tokens must be less than/i,
+  /too many tokens(?: per day)?, please wait/i,
+]
+
 function isContextOverflowMessage(body: string): boolean {
-  const lower = body.toLowerCase()
   return (
-    lower.includes('too many tokens') ||
-    lower.includes('request too large') ||
-    lower.includes('context length') ||
-    lower.includes('maximum context') ||
-    lower.includes('input length') ||
-    lower.includes('payload too large') ||
-    lower.includes('prompt is too long')
+    !CONTEXT_OVERFLOW_EXCLUSIONS.some(pattern => pattern.test(body)) &&
+    CONTEXT_OVERFLOW_PATTERNS.some(pattern => pattern.test(body))
   )
 }
 

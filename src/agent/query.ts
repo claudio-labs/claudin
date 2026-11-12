@@ -614,10 +614,10 @@ async function* queryLoop(
               // it back on and cleans up the retry's partials the same way.
               streamingFallbackOccured = false
             }
-            // Withhold recoverable errors (prompt-too-long, max-output-tokens)
-            // until we know whether the truncation-retry recovery can
-            // succeed. Still pushed to assistantMessages so the recovery
-            // checks below find them.
+            // Withhold a max-output-tokens error until we know whether the
+            // resume recovery can succeed. Still pushed to assistantMessages
+            // so the recovery checks below find it. A prompt-too-long is not
+            // withheld: nothing in this loop recovers from it.
             let withheld = false
             if (isWithheldMaxOutputTokens(message)) {
               withheld = true
