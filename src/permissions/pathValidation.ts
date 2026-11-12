@@ -20,6 +20,7 @@ import {
   pathInWorkingPath,
 } from 'src/permissions/filePermissions.js'
 import {
+  envFileReadAllowRule,
   isSensitiveEnvFile,
   sensitiveEnvFileReason,
 } from 'src/permissions/filePermissions/dangerousPaths.js'
@@ -168,11 +169,11 @@ export function isPathAllowed(
   }
 
   // 1.5. A .env read asks, as it does through the Read tool
-  // (checkReadPermissionForTool); a read allow rule for the file stops it.
+  // (checkReadPermissionForTool); only an allow rule naming a .env stops it.
   if (
     operationType === 'read' &&
     [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&
-    !matchingRuleForInput(resolvedPath, context, 'read', 'allow')
+    !envFileReadAllowRule(resolvedPath, context)
   ) {
     return { allowed: false, decisionReason: sensitiveEnvFileReason(resolvedPath) }
   }

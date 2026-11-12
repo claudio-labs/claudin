@@ -22,6 +22,7 @@ import {
   pathInAllowedWorkingPath,
 } from 'src/permissions/filePermissions.js'
 import {
+  envFileReadAllowRule,
   isSensitiveEnvFile,
   sensitiveEnvFileReason,
 } from 'src/permissions/filePermissions/dangerousPaths.js'
@@ -87,7 +88,7 @@ function isPathAllowed(
   if (
     operationType === 'read' &&
     [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&
-    !matchingRuleForInput(resolvedPath, context, 'read', 'allow')
+    !envFileReadAllowRule(resolvedPath, context)
   ) {
     return { allowed: false, decisionReason: sensitiveEnvFileReason(resolvedPath) }
   }

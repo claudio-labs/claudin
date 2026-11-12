@@ -1,11 +1,14 @@
 import { basename, sep } from 'path'
+import type { PermissionRule } from 'src/permissions/PermissionRule.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
 import { isClaudeConfigFilePath } from 'src/permissions/filePermissions/internalPaths.js'
+import { matchingRuleForInput } from 'src/permissions/filePermissions/rulePatterns.js'
 import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
 import { getPathsForPermissionCheck } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 
 /**
  * Dangerous files that should be protected from auto-editing.
@@ -38,6 +41,7 @@ const DANGEROUS_DIRECTORIES = [
 
 // Dotenv templates ship without secrets.
 const ENV_TEMPLATE_SUFFIXES = ['.example', '.sample', '.template', '.dist'] as const
+const NAMES_ENV_RE = /\.env/
 
 /**
  * Whether a path is a dotenv file — `.env`, `.env.<stage>` or `<name>.env` —
@@ -62,6 +66,30 @@ export function sensitiveEnvFileReason(
     reason: `${path} is a .env file, which usually holds secrets; reading it needs your approval.`,
     classifierApprovable: false,
   }
+}
+
+/**
+ * The read allow rule that lets a dotenv file be read without asking: one
+ * whose pattern names a .env. A broad rule — `Read(**)`, `Read(//tmp/**)` —
+ * was written for other files and does not count, the way an Edit allow rule
+ * does not reach past the dangerous-file check.
+ */
+export function envFileReadAllowRule(
+  path: string,
+  context: ToolPermissionContext,
+): PermissionRule | null {
+  const envRulesOnly = Object.fromEntries(
+    Object.entries(context.alwaysAllowRules).map(([source, rules]) => [
+      source,
+      (rules ?? []).filter(rule => NAMES_ENV_RE.test(rule)),
+    ]),
+  ) as ToolPermissionContext['alwaysAllowRules']
+  return matchingRuleForInput(
+    path,
+    { ...context, alwaysAllowRules: envRulesOnly },
+    'read',
+    'allow',
+  )
 }
 
 /**

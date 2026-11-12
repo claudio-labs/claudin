@@ -12,6 +12,7 @@ import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   checkPathSafetyForAutoEdit,
+  envFileReadAllowRule,
   hasSuspiciousWindowsPathPattern,
   isSensitiveEnvFile,
   sensitiveEnvFileReason,
@@ -128,10 +129,10 @@ export function checkReadPermissionForTool(
 
   // 4.5. A .env usually holds secrets, and a read sends them to the provider:
   // ask in every mode. After the read rules, so the user's own deny or ask
-  // rule decides first, and a read allow rule for the file stops the asking.
+  // rule decides first; only an allow rule that names a .env stops the asking.
   if (
     pathsToCheck.some(isSensitiveEnvFile) &&
-    !matchingRuleForInput(path, toolPermissionContext, 'read', 'allow')
+    !envFileReadAllowRule(path, toolPermissionContext)
   ) {
     const decisionReason = sensitiveEnvFileReason(path)
     return { behavior: 'ask', message: decisionReason.reason, decisionReason }

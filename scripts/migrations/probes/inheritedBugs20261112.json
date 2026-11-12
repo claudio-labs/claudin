@@ -153,6 +153,12 @@
       "replace": "    false &&"
     },
     {
+      "name": ".env: any read allow rule switches the ask off again",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "      (rules ?? []).filter(rule => NAMES_ENV_RE.test(rule)),",
+      "replace": "      rules ?? [],"
+    },
+    {
       "name": ".env: templates ask too",
       "source": "src/permissions/filePermissions/dangerousPaths.ts",
       "find": "  if (ENV_TEMPLATE_SUFFIXES.some(suffix => name.endsWith(suffix))) return false\n",
