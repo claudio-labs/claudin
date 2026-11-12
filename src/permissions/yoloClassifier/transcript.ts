@@ -12,6 +12,12 @@
  * follow the history (`earlierCallsOfResponse`), so running a script the same
  * response wrote is judged with the script in view.
  * Killswitch: `CLAUDIN_CLASSIFIER_RESPONSE_CALLS=0` leaves them out.
+ *
+ * Opt-in, `CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1`: the budget follows the
+ * classifier model's window (`classifierTranscriptBudget`), so on a 1M model
+ * the transcript stays whole and the cut stops moving. Off until the live A/B
+ * decides (`scripts/bench/ab/classifier-cache-ab.ts`); it pays together with
+ * the lag marker (`lagMarker.ts`).
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
@@ -19,11 +25,26 @@ import type { Message, MessageOrigin } from 'src/shared/types/message.js'
 import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
 export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
 const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
+
+/**
+ * The budget on a large window, and how much of the window it takes.
+ *
+ * The stable cut still writes the whole kept transcript again each time it
+ * moves, and under the fixed 200k budget it moved once per 25k chars: in the
+ * 2026-11-04..11 census that was 66% of everything the classifier wrote (58
+ * moves on the main threads, ~175k chars each). The classifier runs on the
+ * main loop model, so on a 1M window the transcript can stay whole instead:
+ * 0.8 chars per token of window is a fifth of it at 4 chars a token, capped at
+ * 800k chars (the longest transcript that week was 579k). A window of 250k
+ * tokens or less keeps the 200k it had.
+ */
+export const MAX_WINDOW_TRANSCRIPT_CHARS = 800_000
+const WINDOW_BUDGET_CHARS_PER_TOKEN = 0.8
 
 /**
  * Where the transcript is cut once a session outgrows the budget.
@@ -43,11 +64,27 @@ const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
  * transcript starts at the first boundary whose suffix fits. Appending never
  * moves a boundary, so the cut moves once per chunk of growth and the blocks it
  * keeps are byte-identical from one call to the next.
+ *
+ * A move costs the kept transcript, so the chunk grows with a budget past the
+ * base one (`classifierChunkChars`): a quarter of it, which keeps a session
+ * past an 800k budget from rewriting 775k chars every 25k.
  */
 export const CLASSIFIER_TRANSCRIPT_CHUNK_CHARS = 25_000
+const WINDOW_CHUNKS_PER_BUDGET = 4
+
+/** The chunk the stable cut moves by under a budget of `maxChars`. */
+export function classifierChunkChars(maxChars: number): number {
+  return maxChars <= MAX_CLASSIFIER_TRANSCRIPT_CHARS
+    ? CLASSIFIER_TRANSCRIPT_CHUNK_CHARS
+    : Math.floor(maxChars / WINDOW_CHUNKS_PER_BUDGET)
+}
 
 function isStableCutEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_CLASSIFIER_STABLE_CUT)
+}
+
+function isWindowBudgetEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)
 }
 
 function isResponseCallsEnabled(): boolean {
@@ -59,8 +96,21 @@ function isResponseCallsEnabled(): boolean {
  * cut it is the whole budget: subtracting the action would move the cut on any
  * call whose action is longer than usual. The action is capped on its own
  * (`MAX_CLASSIFIER_BLOCK_VALUE_CHARS` per value).
+ *
+ * `windowTokens` is the window the classifier's prompt is sized against
+ * (`getClassifierWindowTokens`); with the window budget on, the transcript
+ * gets its share of it instead, never less than the base budget.
  */
-export function classifierTranscriptBudget(actionChars: number): number {
+export function classifierTranscriptBudget(
+  actionChars: number,
+  windowTokens?: number,
+): number {
+  if (windowTokens !== undefined && isStableCutEnabled() && isWindowBudgetEnabled()) {
+    return Math.min(
+      MAX_WINDOW_TRANSCRIPT_CHARS,
+      Math.max(MAX_CLASSIFIER_TRANSCRIPT_CHARS, Math.floor(windowTokens * WINDOW_BUDGET_CHARS_PER_TOKEN)),
+    )
+  }
   return isStableCutEnabled()
     ? MAX_CLASSIFIER_TRANSCRIPT_CHARS
     : Math.max(0, MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionChars)
@@ -317,17 +367,18 @@ function stableCutEntries(
     remaining += entry.chars
   }
 
+  const chunk = classifierChunkChars(maxChars)
   let chunkChars = 0
   for (let i = 0; i < entries.length; i++) {
     // An entry as large as a chunk opens its own: merged into the chunk before
     // it, the cut could only land after it, keeping little of the budget.
-    if (sizes[i]! >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0
+    if (sizes[i]! >= chunk) chunkChars = 0
     if (chunkChars === 0 && remaining <= maxChars) {
       return { kept: entries.slice(i), truncated: i > 0 }
     }
     chunkChars += sizes[i]!
     remaining -= sizes[i]!
-    if (chunkChars >= CLASSIFIER_TRANSCRIPT_CHUNK_CHARS) chunkChars = 0
+    if (chunkChars >= chunk) chunkChars = 0
   }
   return entries.length === 0 ? { kept: [], truncated: false } : null
 }

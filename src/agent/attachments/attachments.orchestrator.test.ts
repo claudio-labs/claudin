@@ -8,16 +8,19 @@ import {
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 import type { Message } from 'src/shared/types/message.js'
+import {
+  getCachedClaudeMdContent,
+  setCachedClaudeMdContent,
+} from 'src/platform/bootstrap/state.js'
 
-// The claude_md_delta attachment reads getUserContext().claudeMd, which is
-// discovered from the cwd's CLAUDE.md/AGENTS.md. That doc is present in a dev
-// checkout but absent on a fresh CI clone (AGENTS.md is git-ignored), so the
-// "delta must fire" control tests below would flake on the environment rather
-// than the omit gate they mean to exercise. Pin a non-empty project doc via a
-// scoped getUserContext mock so the gate is what's under test, not the repo.
-const realContext = { ...(await import('src/agent/context.js')) }
+// The claude_md_delta attachment reads the CLAUDE.md family through
+// getMemoryFiles(), which discovers it from the cwd's CLAUDE.md/AGENTS.md.
+// That doc is present in a dev checkout but absent on a fresh CI clone
+// (AGENTS.md is git-ignored), so the "delta must fire" control tests below
+// would flake on the environment rather than the omit gate they mean to
+// exercise. Pin a non-empty family via a scoped getMemoryFiles mock so the
+// gate is what's under test, not the repo.
 const realClaudemd = { ...(await import('src/memory/instructions/claudemd.js')) }
-const HERMETIC_CLAUDE_MD = '# Test project doc\nHermetic claude_md content.\n'
 // The family a slim sub-agent filters: one project doc, one team index.
 const PROJECT_DOC = 'PROJECT-DOC-BODY keep me'
 // The indexes carry real pointer lines so the memory_index counts below are
@@ -106,10 +109,6 @@ describe('getAttachments — subagent context-omission gates', () => {
     // literal string "undefined" behind, which is truthy.
     delete process.env.CLAUDIN_DISABLE_ATTACHMENTS
     delete process.env.CLAUDIN_SIMPLE
-    mock.module('src/agent/context.js', () => ({
-      ...realContext,
-      getUserContext: async () => ({ claudeMd: HERMETIC_CLAUDE_MD }),
-    }))
     mock.module('src/memory/instructions/claudemd.js', () => ({
       ...realClaudemd,
       getMemoryFiles: async () => [
@@ -123,7 +122,6 @@ describe('getAttachments — subagent context-omission gates', () => {
   afterAll(() => {
     // mock.module is process-global and mock.restore() does not revert it;
     // re-install the real module so the stub never bleeds into sibling files.
-    mock.module('src/agent/context.js', () => realContext)
     mock.module('src/memory/instructions/claudemd.js', () => realClaudemd)
   })
 
@@ -171,10 +169,10 @@ describe('getAttachments — subagent context-omission gates', () => {
   })
 
   test('omitMemoryIndexes announces the family without the memory index files', async () => {
-    // The slim Code agent: the delta is rebuilt from getMemoryFiles() with
-    // the AutoMem/TeamMem entries filtered, so the project doc arrives and
-    // the team index does not. Without the flag the announced body is the
-    // memoized getUserContext() string, untouched.
+    // The slim Code agent: the delta is built from getMemoryFiles() with the
+    // AutoMem/TeamMem entries filtered, so the project doc arrives and the
+    // team index does not. Without the flag the same files are announced
+    // whole.
     const slim = await getAttachments(
       null,
       makeSubagentContext(false, true, true),
@@ -190,7 +188,26 @@ describe('getAttachments — subagent context-omission gates', () => {
     const full = await getAttachments(null, makeSubagentContext(false), null, [])
     const fullDelta = full.find(a => a.type === 'claude_md_delta')
     if (fullDelta?.type !== 'claude_md_delta') throw new Error('expected delta')
-    expect(fullDelta.addedContent).toContain(HERMETIC_CLAUDE_MD.trim())
+    expect(fullDelta.addedContent).toContain(PROJECT_DOC)
+    expect(fullDelta.addedContent).toContain(TEAM_INDEX)
+  })
+
+  // The auto-mode classifier judges with the body last announced
+  // (getCachedClaudeMdContent). Before 2026-11-11 only getUserContext's memo
+  // wrote it, so after a /cd the classifier kept the old directory's rules.
+  test('the announced body becomes the classifier’s copy; a slim agent’s filtered one does not', async () => {
+    const saved = getCachedClaudeMdContent()
+    try {
+      setCachedClaudeMdContent('STALE-BODY')
+      await getAttachments(null, makeSubagentContext(false), null, [])
+      expect(getCachedClaudeMdContent()).toContain(PROJECT_DOC)
+      expect(getCachedClaudeMdContent()).toContain(TEAM_INDEX)
+
+      await getAttachments(null, makeSubagentContext(false, true, true), null, [])
+      expect(getCachedClaudeMdContent()).toContain(TEAM_INDEX)
+    } finally {
+      setCachedClaudeMdContent(saved)
+    }
   })
 
   // The memory_index attachment is the render-only sibling of claude_md_delta:

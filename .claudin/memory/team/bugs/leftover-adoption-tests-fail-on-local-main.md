@@ -1,6 +1,6 @@
 ---
 name: leftover-adoption-tests-fail-on-local-main
-description: Five process-leftover tests (CLAUDIN_ADOPT_LEFTOVERS in ShellCommand/runShellCommand, "with real processes" in leftovers.test.ts) fail on a CLEAN main checkout when bun test runs from a Claudin session's Bash (2026-11-01, e243a09d); three more suites flake only under full-suite load — not your branch's fault
+description: Five process-leftover tests (CLAUDIN_ADOPT_LEFTOVERS in ShellCommand/runShellCommand, "with real processes" in leftovers.test.ts) fail on a CLEAN main checkout when bun test runs from a Claudin session's Bash (2026-11-01, e243a09d), not reproduced from background Bash on 2026-11-10; three more suites flake only under full-suite load — not your branch's fault
 type: project
 paths:
   - "src/shared/proc/ShellCommand.test.ts"
@@ -28,7 +28,11 @@ SHA, so the failure is specific to this local setup; not tried from a plain term
 `osc.test.ts` Windows clipboard fallback, `duckduckgo.test.ts` SafeSearchType.STRICT,
 `launcherFailure.test.ts` "the same through zsh".
 
-**Status:** open, cause not investigated (2026-11-01).
+**Status:** open, cause not investigated (2026-11-01). Did NOT reproduce on 2026-11-10. A full
+`bun test` on `feat/fable-5-2` (main at e356d676 plus provider-only changes) ran from a Claudin
+session's background Bash: 17767 pass, 0 fail, exit 0. Neither the 5 tests nor the load-only
+flakes went red. The trigger may be intermittent, or it may depend on foreground Bash; neither
+has been checked.
 
 **Why not fixed:** found while verifying an unrelated feature (AskUserQuestion notes); out of scope.
 Before blaming a branch, run these files on a clean main worktree first.

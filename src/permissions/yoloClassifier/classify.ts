@@ -38,7 +38,9 @@ import {
   getClassifierModel,
   getClassifierThinkingConfig,
   getClassifierTimeoutMs,
+  getClassifierWindowTokens,
 } from 'src/permissions/yoloClassifier/classifierConfig.js'
+import { isLagMarkerEnabled, placeLagMarker } from 'src/permissions/yoloClassifier/lagMarker.js'
 import {
   XML_S1_SUFFIX,
   XML_S2_SUFFIX,
@@ -502,10 +504,14 @@ async function classifyYoloActionUnbounded(
   }
 
   const systemPrompt = await buildYoloSystemPrompt(context)
+  const transcriptBudget = classifierTranscriptBudget(
+    actionCompact.length,
+    getClassifierWindowTokens(getClassifierModel()),
+  )
   const serializedTranscript = serializeTranscriptForClassifier(
     messages,
     tools,
-    classifierTranscriptBudget(actionCompact.length),
+    transcriptBudget,
     earlierCalls,
   )
   const claudeMdMessage = buildClaudeMdMessage()
@@ -517,6 +523,23 @@ async function classifyYoloActionUnbounded(
     actionCompact.length + serializedTranscript.promptLengths.toolCalls
   const userPromptsLength = serializedTranscript.promptLengths.userPrompts
   const userContentBlocks = [...serializedTranscript.userContentBlocks]
+
+  // Use getCacheControl for consistency with the main agent loop —
+  // respects GrowthBook TTL allowlist and query-source gating.
+  const cacheControl = getCacheControl({ querySource: 'auto_mode' })
+  // A second breakpoint where the previous call's prompt ended, so a run of
+  // unjudged tool calls longer than the API's 20-block lookback does not send
+  // the lookup back to the CLAUDE.md breakpoint (lagMarker.ts).
+  const lagAt = isLagMarkerEnabled()
+    ? placeLagMarker(
+        userContentBlocks.map(b => b.text),
+        actionCompact,
+        Date.now(),
+      )
+    : null
+  if (lagAt !== null) {
+    userContentBlocks[lagAt] = { ...userContentBlocks[lagAt]!, cache_control: cacheControl }
+  }
 
   const userPrompt = userContentBlocks.map(b => b.text).join('') + actionCompact
   const promptLengths = {
@@ -545,6 +568,8 @@ async function classifyYoloActionUnbounded(
         `transcriptEntries=${serializedTranscript.transcriptEntries} ` +
         `earlierCalls=${earlierCalls.length} ` +
         `truncated=${serializedTranscript.truncated} ` +
+        `budget=${transcriptBudget} ` +
+        `lag=${lagAt ?? 'none'}/${userContentBlocks.length} ` +
         `messages=${messages.length}`,
     )
     logForDebugging(
@@ -553,14 +578,11 @@ async function classifyYoloActionUnbounded(
     )
   }
 
-  // Use getCacheControl for consistency with the main agent loop —
-  // respects GrowthBook TTL allowlist and query-source gating.
-  const cacheControl = getCacheControl({ querySource: 'auto_mode' })
   // Place cache_control on the action block. In the two-stage classifier,
   // stage 2 shares the same transcript+action prefix as stage 1 — the
   // breakpoint here gives stage 2 a guaranteed cache hit on the full prefix.
-  // Budget: system (1) + CLAUDE.md (0–1) + action (1) = 2–3, under the
-  // API limit of 4 cache_control blocks.
+  // Budget: system (1) + CLAUDE.md (0–1) + lag marker (0–1) + action (1) =
+  // 2–4, the API limit of 4 cache_control blocks.
   userContentBlocks.push({
     type: 'text' as const,
     text: actionCompact,

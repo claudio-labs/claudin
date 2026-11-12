@@ -49,6 +49,7 @@ const {
   classifyYoloAction,
   formatActionForClassifier,
 } = await import('src/permissions/yoloClassifier.js')
+const { _resetLagMarkerForTesting } = await import('src/permissions/yoloClassifier/lagMarker.js')
 
 const tools = [
   {
@@ -306,5 +307,105 @@ describe('a classifier request the API declines', () => {
     expect(capturedOpts.length).toBe(2)
     expect(result.shouldBlock).toBe(false)
     expect(result.refused).toBeUndefined()
+  })
+})
+
+// The two cache levers of the 11-11 census, on the request as sideQuery gets
+// it. Both are off unless their env turns them on.
+describe('window budget and lag marker on the wire', () => {
+  const LAG = 'CLAUDIN_CLASSIFIER_LAG_MARKER'
+  const WINDOW = 'CLAUDIN_CLASSIFIER_WINDOW_BUDGET'
+  const saved = { [LAG]: process.env[LAG], [WINDOW]: process.env[WINDOW] }
+
+  beforeEach(() => {
+    delete process.env[LAG]
+    delete process.env[WINDOW]
+    _resetLagMarkerForTesting()
+  })
+  afterAll(() => {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+    _resetLagMarkerForTesting()
+  })
+
+  const user = (text: string) => ({ type: 'user', message: { role: 'user', content: text } })
+  const bash = (command: string) => ({
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: { command } }] },
+  })
+
+  async function classifyWith(messages: unknown[], command: string) {
+    capturedOpts = []
+    await classifyYoloAction(
+      messages as any,
+      formatActionForClassifier('Bash', { command }),
+      tools,
+      ctx,
+      new AbortController().signal,
+    )
+    return capturedOpts[0]!
+  }
+
+  type Block = { text?: string; cache_control?: unknown }
+  /** The transcript message's blocks: the last user message of the request. */
+  function transcriptBlocks(opts: Record<string, unknown>): Block[] {
+    const messages = opts.messages as Array<{ content: Block[] | string }>
+    return messages.at(-1)!.content as Block[]
+  }
+  const marked = (opts: Record<string, unknown>) =>
+    transcriptBlocks(opts).filter(b => b.cache_control).map(b => b.text)
+  /** Every cache_control the request carries, system included. */
+  function breakpoints(opts: Record<string, unknown>): number {
+    const system = (opts.system as Block[]).filter(b => b.cache_control).length
+    const inMessages = (opts.messages as Array<{ content: Block[] | string }>)
+      .flatMap(m => (Array.isArray(m.content) ? m.content : []))
+      .filter(b => b.cache_control).length
+    return system + inMessages
+  }
+
+  // One judged call, then 22 the mode accepts by itself, then the next judged one.
+  const first = [user('go')]
+  const second = [user('go'), bash('echo one'), ...Array.from({ length: 22 }, (_, i) => bash(`ls d${i}`))]
+
+  for (const model of ['claude-opus-5-5', 'claude-fable-5']) {
+    test(`${model}: the next call marks the block the previous one ended on`, async () => {
+      mainLoopModel = model
+      process.env[LAG] = '1'
+
+      expect(marked(await classifyWith(first, 'echo one'))).toEqual(['Bash echo one\n'])
+      const next = await classifyWith(second, 'echo two')
+
+      expect(marked(next)).toEqual(['Bash echo one\n', 'Bash echo two\n'])
+      expect(breakpoints(next)).toBeLessThanOrEqual(4)
+    })
+  }
+
+  test('without the env only the action is marked', async () => {
+    mainLoopModel = 'claude-opus-5-5'
+    await classifyWith(first, 'echo one')
+
+    expect(marked(await classifyWith(second, 'echo two'))).toEqual(['Bash echo two\n'])
+  })
+
+  // 30 entries of 10k chars: 300k, half again the base budget.
+  const long = Array.from({ length: 30 }, (_, i) => bash(`e${i}:`.padEnd(9_990, 'x')))
+  const firstEntry = (opts: Record<string, unknown>) =>
+    /^Bash e(\d+):/.exec(transcriptBlocks(opts).find(b => b.text?.startsWith('Bash e'))?.text ?? '')?.[1]
+
+  test('a 1M model keeps a 300k transcript whole under the window budget', async () => {
+    mainLoopModel = 'claude-opus-5-5'
+    expect(firstEntry(await classifyWith(long, 'echo hi'))).not.toBe('0')
+
+    process.env[WINDOW] = '1'
+    expect(firstEntry(await classifyWith(long, 'echo hi'))).toBe('0')
+  })
+
+  test('a model billed at long-prompt rates past 100k keeps the base budget', async () => {
+    mainLoopModel = 'claude-haiku-5-5'
+    process.env[WINDOW] = '1'
+
+    expect(firstEntry(await classifyWith(long, 'echo hi'))).not.toBe('0')
   })
 })

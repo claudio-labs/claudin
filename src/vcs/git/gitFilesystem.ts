@@ -581,6 +581,15 @@ export function getCachedDefaultBranch(): Promise<string> {
   return gitWatcher.get('defaultBranch', computeDefaultBranch)
 }
 
+/**
+ * Forget the repo the watcher was started on: its watched files and the
+ * branch, HEAD, remote and default branch it cached. The next read starts it
+ * again on the repo of the current directory.
+ */
+export function resetGitFileWatcher(): void {
+  gitWatcher.reset()
+}
+
 
 /**
  * Read the HEAD SHA for an arbitrary directory (not using the watcher).

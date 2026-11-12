@@ -3,19 +3,19 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
-- [Plandex ports (11-08)](decisions/plandex-ports.md) — elision guard, rewind conflicts, /diff `x`, fallback
+- Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind, /diff `x`, fallback · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills, ws ask
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded, never to make room
-- [OpenAI-compat defers tools client-side, CallTool gateway (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k; `CLAUDIN_SHIM_TOOL_SEARCH=0`
-- [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS); `CLAUDIN_GEMINI_NATIVE=0`
-- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%
+- [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
+- [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS)
+- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%; window budget + lag opt-in 11-11
 - [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
-- [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context read autocompact's count
+- [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree
 - [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:; "taste is user" NOT promoted
 - [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket on; prewarm rejected
-- Collapse: [Git like Bash (10-15)](decisions/git-tool-collapse.md) · [every MCP call, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
-- 10-15 cache round: [relief clips every old result, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
+- Collapse: [Git (10-15)](decisions/git-tool-collapse.md) · [MCP calls, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
+- 10-15 cache round: [relief clips all, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline
 - [Navigation map syncs at the end of a turn (#287)](decisions/rule-map-end-of-turn.md) — stateless dirty gate
 - [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut (10-10)](decisions/summarizer-lossless.md)
@@ -23,12 +23,12 @@
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md)
 - [Memory extraction on Haiku — REJECTED 10-10](decisions/extract-memories-haiku-rejected.md) — lost the user profile
 - [First-request rules said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md)
-- [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
+- [/new and /resume keep a running turn (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
 - Patch: [on the wire (#244)](decisions/patch-tool-rename.md) · [any earlier read (#242)](decisions/apply-patch-any-read.md) · [applies what matches (09-29)](decisions/patch-applies-what-matches.md)
 - [Edit takes Patch's any-read rule (10-12)](decisions/edit-any-read.md) — Write keeps the full gate
-- [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
+- [Sub-agents run one effort level down (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — 6 `CLAUDIN_*` killswitches
-- 09-25 levers ON: [Patch/Edit `then` + path-keeping Bash cap](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14% · [path globs read-only](decisions/readonly-path-globs-default-on.md) — classifier 20→11
+- 09-25 levers ON: [`then` + path-keeping Bash cap](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14% · [path globs read-only](decisions/readonly-path-globs-default-on.md) — classifier 20→11
 - [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md)
 - [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets
 - [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — `CLAUDIN_READ_MULTI=0`
@@ -47,7 +47,7 @@
 - [Adaptive thinking on by default (07-13)](decisions/adaptive-thinking-default-on.md) — `CLAUDIN_ENABLE_ADAPTIVE_THINKING=0` opts out
 - [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests; opt-in `=0`
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — prStatusHosts in config.json
-- [Bash filter shape blindness — CLOSED 08-29](decisions/bash-filter-shape-wontfix.md) — specs cap at 6.8% of chars over 18.3k calls
+- [Bash filter shape blindness — CLOSED 08-29](decisions/bash-filter-shape-wontfix.md) — specs cap at 6.8% of chars
 - [code-review-graph — REJECTED 08-08](decisions/code-review-graph-evaluated-rejected.md) — loses to reading the diff
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — one-shots → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — cost 4–17% more
@@ -55,13 +55,13 @@
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
 - [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md) — the other levers stay opt-in
 - [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, call forms](decisions/tool-repeat-calls.md) — forms kept inside placebo noise
-- [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — `CLAUDIN_DEFERRED_CALL_FORMS=0`, `CLAUDIN_MAIN_CACHE_TTL=1h`
+- [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — both with killswitches
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
 ## Bugs
 - [ContainerTool background timeout never fires](bugs/container-background-timeout-never-fires.md) — not fixed
-- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — 5 red from Claudin's Bash, CI green
-- [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — 3-arm A/B owed before flipping to retain
+- [Leftover-adoption tests fail on clean local main (11-01)](bugs/leftover-adoption-tests-fail-on-local-main.md) — no repro 11-10; CI green
+- [Gemini sits on the aggressive cache profile](bugs/gemini-cache-profile-aggressive.md) — 3-arm A/B owed before retain
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code
 - FIXED #302: [Image blocks pinned the clip frontier](bugs/clip-frontier-stalls-on-image-blocks.md) — "mutated at 14" still open
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
@@ -73,29 +73,27 @@
 - [/diff canonicalizes worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md)
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run alone
-- [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
-- [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — a symlink or TEAM/ path gets the private carve-out
+- [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches dedupe by uuid
+- [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — they get the private carve-out
 - [WebSocket sites: latent bugs pinned, not fixed (10-17)](bugs/websocket-sites-latent-bugs.md) — retries never cap
 - [/models discovery only parses `context_length`](bugs/context-window-discovery-field-names.md) — strict OpenAI/Azure return nothing
 - [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md)
-- FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md)
+- FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md) · memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
 - FIXED, tools: [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md)
-- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md)
-- FIXED, other: [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md)
-- FIXED, memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
+- FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md)
 
 ## Docs
 - [Memory subsystem design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/
 - [/diff reviewer living spec (feature 8.1)](docs/diff-reviewer-living-spec.md) — docs/features/8.1-diff-reviewer.md
 - [Public docs site claudiolabs.ai is outside this repo](docs/claudiolabs-docs-site.md) — extensionless URLs
 - [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging
-- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267/Fable 5.2 templates, launch capture
+- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267/#348 templates, launch capture
 
 ## Conventions
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
-- Claude Code prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321, 11-09](claude-code-2.1.321-tool-diff.md)
+- Claude Code prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321 #347](claude-code-2.1.321-tool-diff.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd
@@ -123,7 +121,7 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09, rewrites 39%](weekly-token-census-2026-10-09.md) · [09-28 fan-out](token-census-2026-09-28.md) · [09-10 rule injections](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [own writes](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
@@ -141,7 +139,7 @@
 - Bench traps: [`--allowedTools`](token-bench-measurement-traps.md) · [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
 - [R3 background agent — IMPLEMENTED 07-17](r3-background-agent-implemented.md) — workflow run|watch, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas
-- Agent A/Bs: [fork vs fresh 09-09, fresh −44%](fork-vs-fresh-ab-2026-09-09.md) · [delegation 09-23, lean text held](delegation-steer-ab-2026-09-23.md)
+- Agent A/Bs: [fork vs fresh 09-09, −44%](fork-vs-fresh-ab-2026-09-09.md) · [delegation 09-23, lean text held](delegation-steer-ab-2026-09-23.md)
 - Typecheck tool: [baseline](typecheck-tool-baseline-design.md) · [phantom errors, fixed](typecheck-baseline-message-fingerprint-fragile.md) · [A/B citation](typecheck-ab-bench-fixture-flaw.md)
 - Typecheck shape: [t0 param → TS7006, count sites (403)](react-compiler-props-param-typing.md) · [107 TS2307, all-`any` .d.ts on purpose](missing-subsystems-retired-by-all-any-declarations.md)
 - [RunTests language coverage](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic tier

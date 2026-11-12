@@ -1,5 +1,5 @@
 /**
- * gitStatus delta — inject on turn 1 only.
+ * gitStatus delta — inject on turn 1, and again when the session moves.
  *
  * WHY: `getGitStatus` in `src/agent/context.ts` explicitly documents its
  * output as "a snapshot in time, and will not update during the
@@ -11,6 +11,13 @@
  * simpler than the other deltas: if any prior `git_status_delta`
  * attachment exists in the transcript, do nothing; otherwise emit the
  * full snapshot once.
+ *
+ * One exception: `/cd` re-roots the session in another directory
+ * (sessions/rerootSession.ts), and the snapshot announced for the old one
+ * names the wrong branch and the wrong commits. An announcement records the
+ * directory it was taken in, and a snapshot for another directory is
+ * announced again. A transcript from before the field existed has none, and
+ * is never re-announced.
  *
  * Mirrors the pattern of:
  *   - `src/mcp/mcpInstructionsDelta.ts`
@@ -32,18 +39,21 @@
 export const GIT_STATUS_CONTEXT_KEY = 'gitStatus' as const
 
 export type GitStatusDelta = {
-  /** Full status snapshot — emitted once per session (turn 1). */
+  /** Full status snapshot — emitted once per directory the session roots in. */
   content: string
+  /** The session root the snapshot was taken in, when the caller names it. */
+  cwd?: string
 }
 
 type ScannableMessage = {
   type: string
-  attachment?: { type: string }
+  attachment?: { type: string; cwd?: string }
 }
 
 /**
  * Emit the gitStatus attachment only when no prior `git_status_delta`
- * exists in the transcript. Returns `null` on any subsequent turn.
+ * exists in the transcript, or when the last one was taken in a directory
+ * other than `cwd`. Returns `null` on any other turn.
  *
  * Pure function: all state is passed in. The caller owns fetching the
  * current gitStatus string (via `getGitStatus` or the cached
@@ -52,21 +62,24 @@ type ScannableMessage = {
 export function getGitStatusDelta(
   currentGitStatus: string | null | undefined,
   messages: readonly ScannableMessage[],
+  cwd?: string,
 ): GitStatusDelta | null {
   if (!currentGitStatus) return null
 
-  let priorAttachmentCount = 0
+  let last: { cwd?: string } | null = null
   for (const msg of messages) {
     if (msg.type !== 'attachment') continue
-    if (msg.attachment?.type === 'git_status_delta') {
-      priorAttachmentCount++
-    }
+    if (msg.attachment?.type === 'git_status_delta') last = msg.attachment
   }
 
   // Already announced — subsequent turns are a no-op. The snapshot is
-  // immutable by design (see getGitStatus in src/agent/context.ts).
-  if (priorAttachmentCount > 0) return null
+  // immutable by design (see getGitStatus in src/agent/context.ts), for the
+  // directory it was taken in.
+  if (last && (cwd === undefined || last.cwd === undefined || last.cwd === cwd)) {
+    return null
+  }
 
-
-  return { content: currentGitStatus }
+  return cwd === undefined
+    ? { content: currentGitStatus }
+    : { content: currentGitStatus, cwd }
 }

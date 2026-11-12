@@ -13,6 +13,8 @@ medium) high → medium. A parent at or below the default — the unpinned case 
 inherited as is, so the step never lands below the default. Forks keep the parent's effort
 (cache prefix), an agent definition with its own `effort` keeps it, `CLAUDIN_EFFORT_LEVEL`
 still pins every request. `CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0` restores plain inheritance.
+Since #347 (2026-11-10) an Agent call's own `effort` input replaces the definition's and so
+skips the step-down, except on a fork (`withRequestedEffort`, `subagentThinking.ts`).
 Taken by the user on 2026-09-29, branch `perf/cache-levers-2026-09-28` (PR #266).
 The first cut was a fixed `high` cap; the user changed it the same day to the one-step
 rule, so a `max` parent keeps its sub-agents at `xhigh` instead of `high`.

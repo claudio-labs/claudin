@@ -124,6 +124,27 @@ export const getSystemContext = memoize(
 )
 
 /**
+ * The CLAUDE.md family as it is on disk now: AGENTS.md, the always-on rules
+ * and the memory indexes, through `getMemoryFiles` (memoized, and cleared by
+ * /cd, /memory, a worktree and a restore). Null when it is turned off.
+ *
+ * getUserContext below keeps the body of the session's FIRST load, because
+ * its date line sits in the cached prefix; claude_md_delta reads this one, so
+ * a session that moved announces the instructions of where it is.
+ */
+export async function loadClaudeMd(
+  filter?: Parameters<typeof getClaudeMds>[1],
+): Promise<string | null> {
+  // CLAUDIN_DISABLE_CLAUDE_MDS: hard off, always.
+  // --bare: skip auto-discovery (cwd walk), BUT honor explicit --add-dir.
+  // --bare means "skip what I didn't ask for", not "ignore what I asked for".
+  const disabled =
+    isEnvTruthy(process.env.CLAUDIN_DISABLE_CLAUDE_MDS) ||
+    (isBareMode() && getAdditionalDirectoriesForClaudeMd().length === 0)
+  return disabled ? null : getClaudeMds(await getMemoryFiles(), filter)
+}
+
+/**
  * This context is prepended to each conversation, and cached for the duration of the conversation.
  */
 export const getUserContext = memoize(
@@ -133,17 +154,9 @@ export const getUserContext = memoize(
     const startTime = Date.now()
     logForDiagnosticsNoPII('info', 'user_context_started')
 
-    // CLAUDIN_DISABLE_CLAUDE_MDS: hard off, always.
-    // --bare: skip auto-discovery (cwd walk), BUT honor explicit --add-dir.
-    // --bare means "skip what I didn't ask for", not "ignore what I asked for".
-    const shouldDisableClaudeMd =
-      isEnvTruthy(process.env.CLAUDIN_DISABLE_CLAUDE_MDS) ||
-      (isBareMode() && getAdditionalDirectoriesForClaudeMd().length === 0)
     // Await the async I/O (readFile/readdir directory walk) so the event
     // loop yields naturally at the first fs.readFile.
-    const claudeMd = shouldDisableClaudeMd
-      ? null
-      : getClaudeMds(await getMemoryFiles())
+    const claudeMd = await loadClaudeMd()
     // Cache for the auto-mode classifier (yoloClassifier.ts reads this
     // instead of importing claudemd.ts directly, which would create a
     // cycle through permissions/filePermissions → permissions → yoloClassifier).
@@ -152,7 +165,7 @@ export const getUserContext = memoize(
     logForDiagnosticsNoPII('info', 'user_context_completed', {
       duration_ms: Date.now() - startTime,
       claudemd_length: claudeMd?.length ?? 0,
-      claudemd_disabled: Boolean(shouldDisableClaudeMd),
+      claudemd_disabled: claudeMd === null,
     })
 
     return {

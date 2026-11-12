@@ -1,6 +1,6 @@
 ---
 name: claude-code-2.1.321-tool-diff
-description: Claude Code 2.1.321 vs Claudin (2026-11-09, branch feat/cc-2.1.321-tool-parity) — ported WebSearch date, CronCreate→Monitor, Monitor ws source + text, Agent effort input, directory-scoped and background skills; NOT ported: Agent "When to use" (A/B failed), per-turn-control/ultrathink (probe: a top-level effort change already keeps the cache), cron 50%/30 min jitter; real-wire facts the flagless stub capture misses
+description: Claude Code 2.1.321 vs Claudin (captured 2026-11-09, shipped as #347 in v1.2.0 on 11-10) — what was ported (WebSearch date, CronCreate→Monitor, Monitor ws source + text, Agent effort input, directory-scoped and background skills), the review round's six bugs, real-wire facts the flagless stub capture misses; what stayed out is decisions/cc-2-1-321-parity-limits
 type: project
 ---
 
@@ -10,11 +10,10 @@ user's OAuth and flags). Predecessor: [[claude-code-2.1.316-tool-prompt-diff]], 
 A/B follow-ups (Bash "don't poll", EnterWorktree honoring CLAUDE.md, the new intro line) are
 still open.
 
-**Ported** (one commit each, local branch `feat/cc-2.1.321-tool-parity`):
+**Ported** (one commit each, merged as #347, released in v1.2.0 on 2026-11-10):
 - WebSearch names no month; it points at the conversation's `Today's date` (the cached
   description had kept a stale month across a month boundary).
-- CronCreate "Not for live watching → Monitor". The jitter stays 10% / 15 min (the user's call;
-  CC moved to 50% / 30 min to spread load on its own API).
+- CronCreate "Not for live watching → Monitor". The jitter is unchanged ([[cc-2-1-321-parity-limits]]).
 - Monitor: the guidance rewritten in Claudin's terms, and a `ws: {url, protocols?}` source — a
   `ShellCommand` adapter (`src/tools/MonitorTool/webSocketCommand.ts`) that appends frames to
   the task output, so monitorStream, TaskStop and `timeout_ms` stay one path. SSRF uses the HTTP
@@ -39,20 +38,11 @@ repo-root relative, scoped names changed mid-session, a conditional skill and a 
 came out bare. Plus one Agreed Decision of the plan never built (the Node lookup pin). Each got a
 red test commit, then its fix.
 
-**Not ported, measured:**
-- Agent "When to use" (CC's cost paragraph): delegation-steer-ab on Sonnet 5.5 high, N=3
-  (`/tmp/delegation-steer-ab/20261109-232035`) — correct answers 5 vs 6 (gate FAIL), cost −0%;
-  the placebo moved delegation +25 pp and cost −13%, so the bench's noise is larger than any
-  effect. Sonnet 5.5 delegated 0–1 of 4 multi-hop questions in every arm.
-- per-turn-control + a real ultrathink effort: `scripts/bench/tokens/per-turn-effort-probe.ts`
-  found both `mid-conversation-output-config-2026-07-01` and the alias `per-turn-control-2026-07-01`
-  accepted on Opus 5.5, Opus 5, Fable 5.1, Sonnet 5.5 and Haiku 5.5 (no header: 400 "Extra inputs
-  are not permitted"). But the control — today's wire, top-level effort changed with no system
-  message — read the whole previous prefix on Sonnet 5.5 and Opus 5.5, exactly like both per-turn
-  layouts. The docs' "a top-level change restarts the cache" did not hold. The user chose to send
-  neither (ultrathink stays a text reminder).
-- mid-conversation-tool-changes, and Fable 5.2 (CC's catalog has `claude-fable-5-2`; Claudin
-  has none).
+**Not ported:** per-turn effort (`per-turn-control`, a real ultrathink effort), the Agent "When
+to use" paragraph, background-by-default forked skills, a stored rule for ws monitors, and CC's
+50% / 30 min cron jitter. Each one's measurement or reason is in [[cc-2-1-321-parity-limits]].
+mid-conversation-tool-changes was left too, unmeasured. Fable 5.2, already in CC's catalog at
+this capture, shipped separately as #348 ([[claude-model-launch]]).
 
 **Left open by the 11-09 review round (pre-existing, not this branch's):** the review's bug agent
 reported that `isBlockedAddress` (`src/platform/lifecycleHooks/ssrfGuard.ts`, shared by HTTP

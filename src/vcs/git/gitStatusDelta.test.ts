@@ -3,7 +3,7 @@ import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 
 type FakeMsg = {
   type: string
-  attachment?: { type: string }
+  attachment?: { type: string; cwd?: string }
 }
 
 describe('getGitStatusDelta', () => {
@@ -49,5 +49,34 @@ describe('getGitStatusDelta', () => {
       { type: 'attachment', attachment: { type: 'git_status_delta' } },
     ]
     expect(getGitStatusDelta('branch: main', history)).toBeNull()
+  })
+
+  // /cd moves the session to another repository: the snapshot announced for
+  // the old one describes the wrong branch and the wrong commits.
+  test('a snapshot announced for another directory is announced again, with its directory', () => {
+    const history: FakeMsg[] = [
+      { type: 'attachment', attachment: { type: 'git_status_delta', cwd: '/repo/a' } },
+    ]
+    expect(getGitStatusDelta('branch: other', history, '/repo/b')).toEqual({
+      content: 'branch: other',
+      cwd: '/repo/b',
+    })
+    expect(getGitStatusDelta('branch: other', history, '/repo/a')).toBeNull()
+  })
+
+  test('only the last announcement counts, and one without a directory is never re-announced', () => {
+    const moved: FakeMsg[] = [
+      { type: 'attachment', attachment: { type: 'git_status_delta', cwd: '/repo/a' } },
+      { type: 'attachment', attachment: { type: 'git_status_delta', cwd: '/repo/b' } },
+    ]
+    expect(getGitStatusDelta('branch: main', moved, '/repo/b')).toBeNull()
+    expect(getGitStatusDelta('branch: main', moved, '/repo/a')).not.toBeNull()
+
+    const legacy: FakeMsg[] = [{ type: 'attachment', attachment: { type: 'git_status_delta' } }]
+    expect(getGitStatusDelta('branch: main', legacy, '/repo/b')).toBeNull()
+  })
+
+  test('the first announcement records the directory it was taken in', () => {
+    expect(getGitStatusDelta('branch: main', [], '/repo/a')).toEqual({ content: 'branch: main', cwd: '/repo/a' })
   })
 })

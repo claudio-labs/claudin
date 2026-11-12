@@ -5,11 +5,16 @@
 // test file, so each test restores exactly what it moved.
 
 import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { spawnSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { getClaudeMdDeltaAttachment } from 'src/agent/attachments/injections.js'
+import { getGitStatus, getSystemContext, getUserContext } from 'src/agent/context.js'
+import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
+import type { Message } from 'src/shared/types/message.js'
 import {
   getOriginalCwd,
   getProjectRoot,
@@ -31,6 +36,8 @@ import {
 } from 'src/sessions/rerootSession.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
+import { getBranch } from 'src/vcs/git/git.js'
+import { resetGitFileWatcher } from 'src/vcs/git/gitFilesystem.js'
 
 let target: string
 let restore: () => void
@@ -117,4 +124,63 @@ test('a missing target throws and leaves the session where it was', () => {
   expect(getOriginalCwd()).toBe(before.originalCwd)
   expect(getProjectRoot()).toBe(before.projectRoot)
   expect(process.cwd()).toBe(before.processCwd)
+})
+
+// /cd into another project: the model was told the new directory (env_delta)
+// and kept the old one's AGENTS.md, rules and memory indexes until a
+// compaction, because the delta read a memo nothing cleared (2026-11-11).
+test('the instructions of the new directory are announced after the move', async () => {
+  const other = realpathSync(await mkdtemp(join(tmpdir(), 'reroot-other-')))
+  try {
+    await writeFile(join(target, 'AGENTS.md'), 'ALPHA-INSTRUCTIONS\n')
+    await writeFile(join(other, 'AGENTS.md'), 'BRAVO-INSTRUCTIONS\n')
+
+    rerootSession(target)
+    getUserContext.cache.clear?.()
+    const [first] = (await getClaudeMdDeltaAttachment([])) as Array<{ addedContent: string }>
+    expect(first?.addedContent).toContain('ALPHA-INSTRUCTIONS')
+    const announced = { type: 'attachment', attachment: first } as unknown as Message
+
+    rerootSession(other)
+    const [second] = (await getClaudeMdDeltaAttachment([announced])) as Array<{ addedContent: string }>
+    expect(second?.addedContent).toContain('BRAVO-INSTRUCTIONS')
+    expect(second?.addedContent).not.toContain('ALPHA-INSTRUCTIONS')
+  } finally {
+    getUserContext.cache.clear?.()
+    clearMemoryFileCaches()
+    await rm(other, { recursive: true, force: true })
+  }
+})
+
+test('the git status snapshot is dropped with the directory it described', async () => {
+  await getGitStatus()
+  await getSystemContext()
+  expect(getSystemContext.cache.has(undefined)).toBe(true)
+
+  rerootSession(target)
+
+  expect(getSystemContext.cache.has(undefined)).toBe(false)
+  expect(getGitStatus.cache.has(undefined)).toBe(false)
+})
+
+// The watcher caches the branch, HEAD, remote and default branch of the repo
+// it started on, and re-reads only when THAT repo's files change. After a /cd
+// the new directory's git status was announced under the old one's branch
+// (live, 2026-11-11: "BRAVO, alpha-branch"), and the footer kept it too.
+test('the branch is the new directory’s after the move', async () => {
+  const other = realpathSync(await mkdtemp(join(tmpdir(), 'reroot-other-')))
+  try {
+    spawnSync('git', ['init', '-q', '-b', 'alpha-branch'], { cwd: target })
+    spawnSync('git', ['init', '-q', '-b', 'bravo-branch'], { cwd: other })
+
+    rerootSession(target)
+    expect(await getBranch()).toBe('alpha-branch')
+
+    rerootSession(other)
+    expect(await getBranch()).toBe('bravo-branch')
+  } finally {
+    // Not left on a directory this test deletes.
+    resetGitFileWatcher()
+    await rm(other, { recursive: true, force: true })
+  }
 })

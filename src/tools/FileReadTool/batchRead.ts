@@ -318,7 +318,12 @@ export async function readBatch(
       readOne,
       before.entry,
     )
-    for (const symbol of read.missing) missing.push(`${symbol} in ${label}`)
+    // The file's symbols ride on its last miss, once per file: without them
+    // the next call was an outline Read to learn the names.
+    read.missing.forEach((miss, i) => {
+      const last = i === read.missing.length - 1
+      missing.push(`${miss.symbol} in ${label}${last && miss.available ? ` (available: ${miss.available})` : ''}`)
+    })
     // The missing symbols are named in the notes whatever becomes of the file.
     unitResults.push(...read.missingUnits)
     if (read.sections.length === 0) continue
@@ -359,7 +364,7 @@ export async function readBatch(
 
 type FileRead = {
   sections: Section[]
-  missing: string[]
+  missing: Array<{ symbol: string; available: string }>
   newMessages: NewMessages
   /** The file's single Reads as PostToolUse sees them, when its block is shown. */
   shownUnits: HookUnitResult[]
@@ -386,7 +391,7 @@ async function readSections(
 ): Promise<FileRead> {
   const { readFileState } = fileContext
   const sections: Section[] = []
-  const missing: string[] = []
+  const missing: FileRead['missing'] = []
   const newMessages: NewMessages = []
   const shownUnits: HookUnitResult[] = []
   const missingUnits: HookUnitResult[] = []
@@ -401,7 +406,7 @@ async function readSections(
     } catch (e) {
       if (isAbortError(e)) throw e
       if (e instanceof SymbolNotFoundError) {
-        missing.push(e.symbol)
+        missing.push({ symbol: e.symbol, available: e.available })
         missingUnits.push({ input: one, error: e })
         continue
       }

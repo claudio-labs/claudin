@@ -1,0 +1,138 @@
+{
+  "test": [
+    "src/permissions/yoloClassifier/transcript.test.ts",
+    "src/permissions/yoloClassifier/lagMarker.test.ts",
+    "src/permissions/yoloClassifier.fableXmlRouting.test.ts",
+    "scripts/bench/tokens/classifier-cache-replay.test.ts"
+  ],
+  "source": "src/permissions/yoloClassifier/lagMarker.ts",
+  "probes": [
+    {
+      "name": "the window budget is on without the flag",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the flag does not turn the window budget on",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_WINDOW_BUDGET)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "the window budget survives the stable cut being off",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  if (windowTokens !== undefined && isStableCutEnabled() && isWindowBudgetEnabled()) {\n",
+      "replace": "  if (windowTokens !== undefined && isWindowBudgetEnabled()) {\n"
+    },
+    {
+      "name": "the window budget has no cap",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "    return Math.min(\n      MAX_WINDOW_TRANSCRIPT_CHARS,\n",
+      "replace": "    return Math.min(\n      Number.MAX_SAFE_INTEGER,\n"
+    },
+    {
+      "name": "a small window gets less than the base budget",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "      Math.max(MAX_CLASSIFIER_TRANSCRIPT_CHARS, Math.floor(windowTokens * WINDOW_BUDGET_CHARS_PER_TOKEN)),\n",
+      "replace": "      Math.floor(windowTokens * WINDOW_BUDGET_CHARS_PER_TOKEN),\n"
+    },
+    {
+      "name": "the chunk stays 25k under a window budget",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  return maxChars <= MAX_CLASSIFIER_TRANSCRIPT_CHARS\n    ? CLASSIFIER_TRANSCRIPT_CHUNK_CHARS\n    : Math.floor(maxChars / WINDOW_CHUNKS_PER_BUDGET)\n",
+      "replace": "  return CLASSIFIER_TRANSCRIPT_CHUNK_CHARS\n"
+    },
+    {
+      "name": "the chunk is a quarter of the base budget too",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  return maxChars <= MAX_CLASSIFIER_TRANSCRIPT_CHARS\n    ? CLASSIFIER_TRANSCRIPT_CHUNK_CHARS\n    : Math.floor(maxChars / WINDOW_CHUNKS_PER_BUDGET)\n",
+      "replace": "  return Math.floor(maxChars / WINDOW_CHUNKS_PER_BUDGET)\n"
+    },
+    {
+      "name": "the window ignores a long-prompt price tier",
+      "source": "src/permissions/yoloClassifier/classifierConfig.ts",
+      "find": "  return longPromptAbove === undefined ? window : Math.min(window, longPromptAbove)\n",
+      "replace": "  return window\n"
+    },
+    {
+      "name": "the lag marker is on without the flag",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the flag does not turn the lag marker on",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_CLASSIFIER_LAG_MARKER)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "the shortest remembered prefix is marked",
+      "find": "  for (let i = keys.length - 1; i >= 0; i--) {\n",
+      "replace": "  for (let i = 0; i < keys.length; i++) {\n"
+    },
+    {
+      "name": "a breakpoint past the TTL is still marked",
+      "find": "    if (at !== undefined && nowMs - at <= LAG_MARKER_TTL_MS) return i\n",
+      "replace": "    if (at !== undefined) return i\n"
+    },
+    {
+      "name": "a call does not remember its own breakpoint",
+      "find": "  rememberBreakpoint(remembered, keys[keys.length - 1]!, nowMs)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a hit does not refresh the prefix it read",
+      "find": "  if (at !== null) rememberBreakpoint(remembered, transcriptKeys[at]!, nowMs)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the action itself can be picked as the lag block",
+      "find": "  const at = pickLagMarker(transcriptKeys, remembered, nowMs)\n",
+      "replace": "  const at = pickLagMarker(keys, remembered, nowMs)\n"
+    },
+    {
+      "name": "the remembered prefixes are never capped",
+      "find": "    if (nowMs - at > LAG_MARKER_TTL_MS || remembered.size > MAX_REMEMBERED_PREFIXES) {\n",
+      "replace": "    if (nowMs - at > LAG_MARKER_TTL_MS) {\n"
+    },
+    {
+      "name": "a long block is walked whole for its key",
+      "find": "    const headEnd = length <= 2 * KEY_EDGE_CHARS ? length : KEY_EDGE_CHARS\n",
+      "replace": "    const headEnd = length\n"
+    },
+    {
+      "name": "the tail of a long block is left out of its key",
+      "find": "    for (let i = Math.max(headEnd, length - KEY_EDGE_CHARS); i < length; i++) {\n",
+      "replace": "    for (let i = length; i < length; i++) {\n"
+    },
+    {
+      "name": "where a block ends is not part of the key",
+      "find": "    hash = ((hash * 33) ^ length) >>> 0\n",
+      "replace": "\n"
+    },
+    {
+      "name": "classify places the lag marker with the flag off",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "  const lagAt = isLagMarkerEnabled()\n",
+      "replace": "  const lagAt = true\n"
+    },
+    {
+      "name": "the lag block carries no cache_control",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "    userContentBlocks[lagAt] = { ...userContentBlocks[lagAt]!, cache_control: cacheControl }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "classify remembers the transcript without its action",
+      "source": "src/permissions/yoloClassifier/classify.ts",
+      "find": "        actionCompact,\n        Date.now(),\n",
+      "replace": "        '',\n        Date.now(),\n"
+    },
+    {
+      "name": "control: the TTL test written the other way round",
+      "expect": "green",
+      "find": "    if (at !== undefined && nowMs - at <= LAG_MARKER_TTL_MS) return i\n",
+      "replace": "    if (at !== undefined && !(nowMs - at > LAG_MARKER_TTL_MS)) return i\n"
+    }
+  ]
+}

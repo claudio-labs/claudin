@@ -222,7 +222,9 @@ function applyHeadLimit<T>(
 // Format limit/offset information for display in tool results.
 // appliedLimit is only set when truncation actually occurred (see applyHeadLimit),
 // so it may be undefined even when appliedOffset is set — build parts conditionally
-// to avoid "limit: undefined" appearing in user-visible output.
+// to avoid "limit: undefined" appearing in user-visible output. A cut page also
+// names the offset of the next one, as Glob's footer does: without it the model
+// re-ran the search narrower instead of paging.
 function formatLimitInfo(
   appliedLimit: number | undefined,
   appliedOffset: number | undefined,
@@ -230,7 +232,10 @@ function formatLimitInfo(
   const parts: string[] = []
   if (appliedLimit !== undefined) parts.push(`limit: ${appliedLimit}`)
   if (appliedOffset) parts.push(`offset: ${appliedOffset}`)
-  return parts.join(', ')
+  const info = parts.join(', ')
+  return appliedLimit === undefined
+    ? info
+    : `${info} — pass offset=${(appliedOffset ?? 0) + appliedLimit} for the next page`
 }
 
 export { RG_LINE_RE, relativizeRgLine } from 'src/tools/GrepTool/relativize.js'

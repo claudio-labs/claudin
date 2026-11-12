@@ -54,6 +54,18 @@ invalidates the whole prefix and silently rebills `cache_creation`.
   `claude_md_delta` work. Until 2026-10-01 EnterWorktree, ExitWorktree,
   /add-dir and /cd each cleared the sections and the next request rewrote
   everything.
+- **A tail delta must read what is true now, not a session memo.**
+  `claude_md_delta` compared the body `getUserContext()` memoized at startup,
+  and /cd, /memory, a worktree and a restore only cleared the file cache under
+  it: the session was told its new directory and kept the old one's AGENTS.md,
+  rules and memory indexes until a compaction (2026-11-11). It reads
+  `loadClaudeMd()` now, and `rerootSession` drops the git status memo and
+  resets the git file watcher, which had the same disease (the new snapshot
+  went out under the old branch). `getUserContext` itself stays memoized: its
+  date line is in `messages[0]`, inside the cached prefix. So when something
+  re-roots or reloads, clear what feeds a delta and never what feeds the
+  prefix; live check with `CLAUDIN_CACHE_STRICT=1` and a `/cd` between two
+  turns.
 - **The SDK's view of a tool input is not the history's.** query.ts yields
   what the API saw; the fields `backfillObservableInput` adds exist only in
   the SDK output (`withObservableToolInputs`). Until 2026-10-01 every consumer
@@ -399,6 +411,18 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   FIRST entry instead, so they never move on an append
   (`stableCutEntries` in `yoloClassifier/transcript.ts`), and replay a change
   against recorded sessions with `scripts/bench/tokens/classifier-cache-replay.ts`.
+  A stable cut still writes everything it keeps each time it MOVES: at 25k
+  chunks under a 200k budget that was 62% of the classifier's writes
+  (2026-11-11). And a prompt made of one block per entry meets the 20-block
+  lookback as soon as entries arrive that no call marked (Reads the mode
+  accepted): 13%. Two opt-in levers answer them and only pay together — the
+  budget sized by the window (`CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1`) and a lag
+  breakpoint where the previous call ended (`CLAUDIN_CLASSIFIER_LAG_MARKER=1`,
+  `yoloClassifier/lagMarker.ts`, the request's fourth and last
+  `cache_control`). The replay has both as arms and files every full miss
+  under its cause; a chunk size is a trade between how often the cut moves
+  and how much each move rewrites, so check it against the replay's synthetic
+  thread before changing it.
 - **How to apply:** a new one-shot utility querySource must be added to
   `SHORT_LIVED_QUERY_SOURCES` or it silently pays the 1h tier; anything that
   re-sends the main thread's prefix must NOT be added.

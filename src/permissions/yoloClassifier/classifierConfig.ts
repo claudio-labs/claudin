@@ -1,5 +1,10 @@
 import { getMainLoopModel } from 'src/providers/model/model.js'
+import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
+import { getModelCosts } from 'src/providers/usage/modelCost.js'
+
+type PromptUsage = Parameters<typeof getModelCosts>[1]
+const EMPTY_PROMPT = { input_tokens: 0, output_tokens: 0 } as PromptUsage
 
 /**
  * Wall-clock budget for one classifier decision, retries included.
@@ -28,6 +33,19 @@ export function getClassifierTimeoutMs(): number {
 /** The classifier runs on the main loop model. */
 export function getClassifierModel(): string {
   return getMainLoopModel()
+}
+
+/**
+ * The window the classifier's prompt is sized against, in tokens: the model's
+ * context window, or the prompt size past which the model bills at its
+ * long-prompt rates when that is smaller (Haiku 5.5: every rate times five
+ * over 100k). The transcript budget takes its share of this
+ * (`classifierTranscriptBudget`).
+ */
+export function getClassifierWindowTokens(model: string): number {
+  const window = getContextWindowForModel(model)
+  const longPromptAbove = getModelCosts(model, EMPTY_PROMPT).longPrompt?.abovePromptTokens
+  return longPromptAbove === undefined ? window : Math.min(window, longPromptAbove)
 }
 
 /**

@@ -1,6 +1,6 @@
 ---
 name: classifier-transcript-stable-cut
-description: Since #321 (2026-10-24, v1.1.49) the auto-mode classifier's transcript is cut at 25k-char chunk boundaries counted from the first entry and gets the whole 200k budget, so a long session stops rewriting its classifier cache every call (−72% writes per call in the replay, −59% classifier spend live on Sonnet 5.5); killswitch CLAUDIN_CLASSIFIER_STABLE_CUT=0
+description: Since #321 (2026-10-24, v1.1.49) the auto-mode classifier's transcript is cut at 25k-char chunk boundaries counted from the first entry and gets the whole 200k budget, so a long session stops rewriting its classifier cache every call (−72% writes per call in the replay, −59% classifier spend live on Sonnet 5.5); killswitch CLAUDIN_CLASSIFIER_STABLE_CUT=0. Since 2026-11-11 a window-sized budget and a lag marker exist as opt-in levers (CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1, CLAUDIN_CLASSIFIER_LAG_MARKER=1), not promoted — both live reps passed every gate, the flip awaits the user
 type: project
 scope: src/permissions/yoloClassifier/transcript.ts, src/permissions/yoloClassifier/classify.ts
 impact: functional
@@ -70,3 +70,36 @@ prompt leaves at a chunk move, unmarked.
   `classifierTranscript.json` pins the old fill, 8 red.
 - The review round found the chunk-sized-entry case (one turn of six parallel
   ~30k calls left 12k kept); fixed before the PR.
+
+**Window budget + lag marker, opt-in since 2026-11-11 (`perf/census-2026-11-11`), NOT
+promoted yet.** The stable cut still writes what it keeps each time it moves, and under 200k it
+moved once per 25k: 62% of the classifier's writes in [[census-2026-11-11-classifier-chunk-moves]],
+with lookback misses another 13%.
+- `CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1`: the budget is `min(800k, max(200k, window tokens × 0.8))`
+  chars, the window being the classifier model's context window or its long-prompt price
+  threshold when that is lower (`getClassifierWindowTokens`; Haiku 5.5 stays at 200k). The
+  chunk is 25k up to 200k and a quarter of the budget past it. The plan said an eighth; at an
+  eighth the replay's synthetic 1.6M thread wrote 19.4k per call against today's 15.0k and
+  failed its gate, at a quarter 9.7k.
+- `CLAUDIN_CLASSIFIER_LAG_MARKER=1`: a second breakpoint on the block where the previous call's
+  prompt ended, found by a content key of the prefix (`lagMarker.ts`), the fourth and last
+  `cache_control` of the request. The key is a fingerprint (a long block counts by its length
+  and both ends): a wrong match costs nothing, the marked block is just not a cached prefix.
+- With both unset the request is byte for byte what it was. Neither alone is worth shipping:
+  5–7% each, 32% together (42% at Fable 5.2 prices), because a whole transcript makes every
+  lookback miss a full rewrite.
+- Replay, all five gates (`scripts/bench/results/classifier-window-lag-replay-2026-11.md`):
+  writes per call 5.2k → 2.0k in the 7 threads past the base budget, 0 of 1,646 requests differ
+  when sized for a 200k window, $41.24 → $27.99.
+- Live, Sonnet 5.5, base + placebo + candidate
+  (`scripts/bench/results/classifier-window-lag-live-2026-11.md`): both reps pass all six
+  pre-registered gates (11-11 and 11-12) — classifier writes × 0.15, spend $4.78 → $1.57,
+  placebo × 1.00, a lag block on 18 of 18 wide calls, 0 rejects in every arm, latency × 0.86
+  and × 0.99, the rest of the session unchanged. A Fable 5.2 session took the four breakpoints
+  on the XML path without an error.
+- Seen in rep 2: base and placebo sent 5 and 2 of 54 decisions on to the thinking stage (all
+  allowed), six of the seven on a cut transcript; the candidate sent none in either rep.
+- Both reps pass; the default flips on the user's yes, which had not been given when this
+  was written. Then the two variables become killswitches (`=0`).
+- What the larger budget changes for the classifier: it sees the whole session on a 1M model
+  instead of the newest 150–200k chars, and reads ~40% more cached tokens per call.

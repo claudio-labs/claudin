@@ -3,9 +3,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
 import {
+  classifierChunkChars,
   classifierTranscriptBudget,
   earlierCallsOfResponse,
   MAX_CLASSIFIER_TRANSCRIPT_CHARS,
+  MAX_WINDOW_TRANSCRIPT_CHARS,
   serializeTranscriptForClassifier,
   type TranscriptEntry,
 } from 'src/permissions/yoloClassifier/transcript.js'
@@ -419,5 +421,76 @@ describe('classifierTranscriptBudget', () => {
 
     expect(classifierTranscriptBudget(31_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 31_000)
     expect(classifierTranscriptBudget(MAX_CLASSIFIER_TRANSCRIPT_CHARS + 1)).toBe(0)
+  })
+})
+
+describe('classifierTranscriptBudget, by the window (CLAUDIN_CLASSIFIER_WINDOW_BUDGET=1)', () => {
+  const WINDOW_BUDGET = 'CLAUDIN_CLASSIFIER_WINDOW_BUDGET'
+  const savedWindowBudget = process.env[WINDOW_BUDGET]
+  beforeEach(() => {
+    process.env[WINDOW_BUDGET] = '1'
+  })
+  afterEach(() => {
+    restoreKillswitch()
+    if (savedWindowBudget === undefined) delete process.env[WINDOW_BUDGET]
+    else process.env[WINDOW_BUDGET] = savedWindowBudget
+  })
+
+  test('a 1M window keeps a session whole, up to the cap', () => {
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+    expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+    expect(classifierTranscriptBudget(0, 500_000)).toBe(400_000)
+    // A window larger than any today: the cap holds, not the share.
+    expect(classifierTranscriptBudget(0, 2_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+  })
+
+  test('a window of 250k tokens or less keeps the base budget', () => {
+    expect(classifierTranscriptBudget(0, 250_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+    expect(classifierTranscriptBudget(0, 200_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+    // Haiku 5.5: the 100k past which every rate is five times higher.
+    expect(classifierTranscriptBudget(0, 100_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+  })
+
+  test('off by default, without a window, and with the stable cut off', () => {
+    expect(classifierTranscriptBudget(0)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+
+    delete process.env[WINDOW_BUDGET]
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+
+    process.env[WINDOW_BUDGET] = '1'
+    process.env[KILLSWITCH] = '0'
+    expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 31_000)
+  })
+})
+
+describe('classifierChunkChars', () => {
+  test('the base budget and anything under it keep the 25k chunk', () => {
+    expect(classifierChunkChars(MAX_CLASSIFIER_TRANSCRIPT_CHARS)).toBe(25_000)
+    expect(classifierChunkChars(BUDGET)).toBe(25_000)
+    expect(classifierChunkChars(120)).toBe(25_000)
+  })
+
+  test('a larger budget moves a quarter of itself at a time', () => {
+    expect(classifierChunkChars(MAX_WINDOW_TRANSCRIPT_CHARS)).toBe(200_000)
+    expect(classifierChunkChars(400_000)).toBe(100_000)
+  })
+
+  test('past a large budget the cut moves once per chunk and keeps at least three quarters', () => {
+    // 10k entries under an 800k budget: the first cut comes after entry 80.
+    let moves = 0
+    let previousFirst = 0
+    for (let n = 79; n <= 160; n++) {
+      const blocks = texts(history(n), MAX_WINDOW_TRANSCRIPT_CHARS)
+      const first = firstKeptIndex(blocks)
+      const kept = blocks.reduce((sum, b) => sum + b.length, 0)
+      if (first !== previousFirst) moves++
+      previousFirst = first
+
+      expect(first % 20).toBe(0)
+      expect(kept).toBeLessThanOrEqual(MAX_WINDOW_TRANSCRIPT_CHARS)
+      expect(kept).toBeGreaterThan(MAX_WINDOW_TRANSCRIPT_CHARS - 200_000 - ENTRY_CHARS)
+    }
+    // 800k of growth past the budget, 200k a move.
+    expect(moves).toBe(4)
   })
 })
