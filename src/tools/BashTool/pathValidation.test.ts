@@ -187,6 +187,14 @@ describe('checkPathConstraints', () => {
     }
   })
 
+  test('a broad Read allow rule does not let cat read a .env', () => {
+    const context = {
+      ...allowingCwd(),
+      alwaysAllowRules: { userSettings: ['Read(//tmp/**)'] },
+    }
+    expect(checkPathConstraints({ command: 'cat .env' }, CWD, context).behavior).toBe('ask')
+  })
+
   test('reads a .env.example without asking', () => {
     expect(
       checkPathConstraints({ command: 'cat .env.example' }, CWD, allowingCwd())

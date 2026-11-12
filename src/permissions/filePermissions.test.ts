@@ -483,6 +483,36 @@ describe('checkReadPermissionForTool on .env files', () => {
     })
   }
 
+  // A broad read rule was written for other files; like an Edit allow rule
+  // and the dangerous-file check, it does not reach past this one.
+  test('a broad Read allow rule still asks for a .env', () => {
+    withTempDir(dir => {
+      const file = join(dir, '.env')
+      writeFileSync(file, 'SECRET=1')
+      for (const rule of ['Read', 'Read(//**)', `Read(/${dir}/**)`]) {
+        const decision = callRead(
+          FILE_TOOL,
+          file,
+          workingDirContext(dir, { alwaysAllowRules: { userSettings: [rule] } }),
+        )
+        expect([rule, decision.behavior]).toEqual([rule, 'ask'])
+      }
+    })
+  })
+
+  test('an allow rule that names the .env lets it be read', () => {
+    withTempDir(dir => {
+      const file = join(dir, '.env')
+      writeFileSync(file, 'SECRET=1')
+      const decision = callRead(
+        FILE_TOOL,
+        file,
+        workingDirContext(dir, { alwaysAllowRules: { userSettings: [`Read(/${dir}/.env)`] } }),
+      )
+      expect(decision.behavior).toBe('allow')
+    })
+  })
+
   for (const name of ['.env.example', '.env.sample', '.env.template', '.env.dist', 'env.ts']) {
     test(`reads ${name} without asking`, () => {
       withTempDir(dir => {
