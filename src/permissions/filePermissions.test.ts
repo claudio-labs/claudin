@@ -462,3 +462,34 @@ describe('checkReadPermissionForTool', () => {
     })
   })
 })
+
+// A .env file usually holds secrets, and a read sends its contents to the
+// provider. Inside the working directory every read used to be allowed.
+describe('checkReadPermissionForTool on .env files', () => {
+  for (const name of ['.env', '.env.local', '.env.production', 'prod.env']) {
+    test(`asks before reading ${name}, in every mode, and no classifier may approve it`, () => {
+      withTempDir(dir => {
+        const file = join(dir, name)
+        writeFileSync(file, 'SECRET=1')
+        for (const mode of ['default', 'acceptEdits', 'bypassPermissions']) {
+          const decision = callRead(FILE_TOOL, file, workingDirContext(dir, { mode }))
+          expect(decision.behavior).toBe('ask')
+          expect(decision.decisionReason).toMatchObject({
+            type: 'safetyCheck',
+            classifierApprovable: false,
+          })
+        }
+      })
+    })
+  }
+
+  for (const name of ['.env.example', '.env.sample', '.env.template', '.env.dist', 'env.ts']) {
+    test(`reads ${name} without asking`, () => {
+      withTempDir(dir => {
+        const file = join(dir, name)
+        writeFileSync(file, 'SECRET=')
+        expect(callRead(FILE_TOOL, file, workingDirContext(dir)).behavior).toBe('allow')
+      })
+    })
+  }
+})

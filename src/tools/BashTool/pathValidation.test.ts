@@ -174,6 +174,26 @@ describe('checkPathConstraints', () => {
     ).toBe('passthrough')
   })
 
+  // The Read tool asking before a .env is worth nothing if `cat .env` reads it
+  // without a word: the shell path check is the second gate on the same file.
+  test('asks before a shell command reads a .env file', () => {
+    for (const command of ['cat .env', 'head -5 .env.local', 'grep KEY prod.env']) {
+      const result = checkPathConstraints({ command }, CWD, allowingCwd())
+      expect(askMessage(result)).toContain('.env')
+      expect(result.decisionReason).toMatchObject({
+        type: 'safetyCheck',
+        classifierApprovable: false,
+      })
+    }
+  })
+
+  test('reads a .env.example without asking', () => {
+    expect(
+      checkPathConstraints({ command: 'cat .env.example' }, CWD, allowingCwd())
+        .behavior,
+    ).toBe('passthrough')
+  })
+
   // acceptEdits so a write inside the working directory would pass: what is
   // being proved is that the redirect TARGET is resolved and checked, not that
   // writes ask in general. The `>>` arm matters on its own — appending was
