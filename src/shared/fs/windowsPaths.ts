@@ -2,23 +2,20 @@ import memoize from 'lodash-es/memoize.js'
 import * as path from 'path'
 import * as pathWin32 from 'path/win32'
 import { getCwd } from 'src/shared/fs/cwd.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { execSync_DEPRECATED } from 'src/shared/proc/execSyncWrapper.js'
 import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 
 /**
- * Check if a file or directory exists on Windows using the dir command
+ * Check if a file or directory exists. A stat, not `dir "<path>"`: the path
+ * comes from CLAUDIN_GIT_BASH_PATH among others, and a shell would expand it.
  * @param path - The path to check
  * @returns true if the path exists, false otherwise
  */
 export function checkPathExists(path: string): boolean {
-  try {
-    execSync_DEPRECATED(`dir "${path}"`, { stdio: 'pipe' })
-    return true
-  } catch {
-    return false
-  }
+  return getFsImplementation().existsSync(path)
 }
 
 /**
