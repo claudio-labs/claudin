@@ -919,15 +919,16 @@ class OpenAIShimMessages {
         { level: 'warn' },
       )
 
-      throw APIError.generate(
-        status,
-        parsedBody,
-        buildOpenAICompatibilityErrorMessage(
-          `OpenAI API error ${status}: ${errorBody}${rateHint}`,
-          failure,
-        ),
-        responseHeaders,
+      const message = buildOpenAICompatibilityErrorMessage(
+        `OpenAI API error ${status}: ${errorBody}${rateHint}`,
+        failure,
       )
+      const error = APIError.generate(status, parsedBody, message, responseHeaders)
+      // Handed a parsed body, the SDK builds the message from the body and
+      // drops this one — the category marker and hint withRetry and the error
+      // mapper read. The body stays on the error as `error.error`.
+      error.message = `${status} ${message}`
+      throw error
     }
 
     let response: Response | undefined
