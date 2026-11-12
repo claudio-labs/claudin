@@ -510,6 +510,11 @@ const GIT_NO_PROMPT_ENV = {
   GIT_ASKPASS: '', // Disable askpass GUI programs
 }
 
+// Every git call on a marketplace checkout leads with this: a global
+// core.hooksPath (say, a post-checkout that installs dependencies) would
+// otherwise run against the marketplace's own files.
+const GIT_NO_HOOKS = ['-c', 'core.hooksPath=/dev/null']
+
 const DEFAULT_PLUGIN_GIT_TIMEOUT_MS = 120 * 1000
 
 function getPluginGitTimeoutMs(): number {
@@ -530,7 +535,6 @@ export async function gitPull(
 ): Promise<{ code: number; stderr: string }> {
   logForDebugging(`git pull: cwd=${cwd} ref=${ref ?? 'default'}`)
   const env = { ...process.env, ...GIT_NO_PROMPT_ENV }
-  const baseArgs = ['-c', 'core.hooksPath=/dev/null']
   const credentialArgs = options?.disableCredentialHelper
     ? ['-c', 'credential.helper=']
     : []
@@ -538,7 +542,7 @@ export async function gitPull(
   if (ref) {
     const fetchResult = await execFileNoThrowWithCwd(
       gitExe(),
-      [...baseArgs, ...credentialArgs, 'fetch', 'origin', ref],
+      [...GIT_NO_HOOKS, ...credentialArgs, 'fetch', 'origin', ref],
       { cwd, timeout: getPluginGitTimeoutMs(), stdin: 'ignore', env },
     )
 
@@ -548,7 +552,7 @@ export async function gitPull(
 
     const checkoutResult = await execFileNoThrowWithCwd(
       gitExe(),
-      [...baseArgs, ...credentialArgs, 'checkout', ref],
+      [...GIT_NO_HOOKS, ...credentialArgs, 'checkout', ref],
       { cwd, timeout: getPluginGitTimeoutMs(), stdin: 'ignore', env },
     )
 
@@ -558,7 +562,7 @@ export async function gitPull(
 
     const pullResult = await execFileNoThrowWithCwd(
       gitExe(),
-      [...baseArgs, ...credentialArgs, 'pull', 'origin', ref],
+      [...GIT_NO_HOOKS, ...credentialArgs, 'pull', 'origin', ref],
       { cwd, timeout: getPluginGitTimeoutMs(), stdin: 'ignore', env },
     )
     if (pullResult.code !== 0) {
@@ -570,7 +574,7 @@ export async function gitPull(
 
   const result = await execFileNoThrowWithCwd(
     gitExe(),
-    [...baseArgs, ...credentialArgs, 'pull', 'origin', 'HEAD'],
+    [...GIT_NO_HOOKS, ...credentialArgs, 'pull', 'origin', 'HEAD'],
     { cwd, timeout: getPluginGitTimeoutMs(), stdin: 'ignore', env },
   )
   if (result.code !== 0) {
@@ -624,8 +628,7 @@ async function gitSubmoduleUpdate(
     [
       '-c',
       'core.sshCommand=ssh -o BatchMode=yes -o StrictHostKeyChecking=yes',
-      '-c',
-      'core.hooksPath=/dev/null',
+      ...GIT_NO_HOOKS,
       ...credentialArgs,
       'submodule',
       'update',
@@ -811,8 +814,7 @@ export async function gitClone(
   const args = [
     '-c',
     'core.sshCommand=ssh -o BatchMode=yes -o StrictHostKeyChecking=yes',
-    '-c',
-    'core.hooksPath=/dev/null',
+    ...GIT_NO_HOOKS,
     'clone',
     '--depth',
     '1',
@@ -863,7 +865,7 @@ export async function gitClone(
       // in a single step on git >= 2.25.
       const sparseResult = await execFileNoThrowWithCwd(
         gitExe(),
-        ['sparse-checkout', 'set', '--cone', '--', ...sparsePaths],
+        [...GIT_NO_HOOKS, 'sparse-checkout', 'set', '--cone', '--', ...sparsePaths],
         {
           cwd: targetPath,
           timeout: timeoutMs,
@@ -882,7 +884,7 @@ export async function gitClone(
         gitExe(),
         // ref was already passed to clone via --branch, so HEAD points to it;
         // if no ref, HEAD points to the remote's default branch.
-        ['checkout', 'HEAD'],
+        [...GIT_NO_HOOKS, 'checkout', 'HEAD'],
         {
           cwd: targetPath,
           timeout: timeoutMs,
@@ -1043,14 +1045,14 @@ export async function reconcileSparseCheckout(
   if (sparsePaths && sparsePaths.length > 0) {
     return execFileNoThrowWithCwd(
       gitExe(),
-      ['sparse-checkout', 'set', '--cone', '--', ...sparsePaths],
+      [...GIT_NO_HOOKS, 'sparse-checkout', 'set', '--cone', '--', ...sparsePaths],
       { cwd, timeout: getPluginGitTimeoutMs(), stdin: 'ignore', env },
     )
   }
 
   const check = await execFileNoThrowWithCwd(
     gitExe(),
-    ['config', '--get', 'core.sparseCheckout'],
+    [...GIT_NO_HOOKS, 'config', '--get', 'core.sparseCheckout'],
     { cwd, stdin: 'ignore', env },
   )
   if (check.code === 0 && check.stdout.trim() === 'true') {

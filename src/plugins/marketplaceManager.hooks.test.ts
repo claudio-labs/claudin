@@ -84,6 +84,6 @@ describe('marketplace git calls ignore the user hooks', () => {
       join(import.meta.dir, 'marketplaceManager.ts'),
       'utf8',
     )
-    expect(source.match(/gitExe\(\),\s*\[\s*'[a-z-]+'/g) ?? []).toEqual([])
+    expect(source.match(/gitExe\(\),\s*\[\s*'[a-z][a-z-]*'/g) ?? []).toEqual([])
   })
 })
