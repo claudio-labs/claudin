@@ -48,7 +48,7 @@ import {
   extractOpenAICategoryMarker,
   type OpenAICompatibilityFailureCategory,
 } from 'src/providers/shims/openaiErrorClassification.js'
-import { extractRateLimitInfo } from 'src/providers/rateLimitInfo.js'
+import { extractRateLimitInfo, type RateLimitInfo } from 'src/providers/rateLimitInfo.js'
 import { formatProviderLimitMessage } from 'src/providers/rateLimitMessages.js'
 import { getActiveProviderLabel } from 'src/providers/providerLabel.js'
 
@@ -92,6 +92,7 @@ function mapOpenAICompatibilityFailureToAssistantMessage(options: {
   category: OpenAICompatibilityFailureCategory
   model: string
   rawMessage: string
+  rateLimitInfo: RateLimitInfo | null
 }): AssistantMessage {
   const switchCmd = getIsNonInteractiveSession() ? '--model' : '/model'
 
@@ -134,10 +135,11 @@ function mapOpenAICompatibilityFailureToAssistantMessage(options: {
     case 'rate_limited':
       // Reached only when a rate-limited failure arrives without the 429 the
       // unified arm in getAssistantMessageFromError keys on. Same shape as
-      // every other provider's limit message, minus the reset we never saw.
+      // every other provider's limit message; a 403 the shim marked carries
+      // its reset like a 429 does, anything else has none to show.
       return createAssistantAPIErrorMessage({
         content: formatProviderLimitMessage(
-          { kind: 'burst', source: 'none' },
+          options.rateLimitInfo ?? { kind: 'burst', source: 'none' },
           getActiveProviderLabel(),
         ),
         error: 'rate_limit',
@@ -654,6 +656,7 @@ export function getAssistantMessageFromError(
         category: openaiCategory,
         model,
         rawMessage: error.message,
+        rateLimitInfo: extractRateLimitInfo(error),
       })
     }
   }

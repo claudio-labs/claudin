@@ -252,6 +252,12 @@
       "replace": "  return hint"
     },
     {
+      "name": "errors: a rate_limited 403 hides its reset again",
+      "source": "src/providers/transport/errors.ts",
+      "find": "          options.rateLimitInfo ?? { kind: 'burst', source: 'none' },",
+      "replace": "          { kind: 'burst', source: 'none' },"
+    },
+    {
       "name": "hooks: a refused PreToolUse hook stops blocking",
       "source": "src/platform/lifecycleHooks/runners.ts",
       "find": "    const status = hookEvent === 'PreToolUse' ? 2 : 1",
