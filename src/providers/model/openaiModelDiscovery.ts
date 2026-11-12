@@ -38,8 +38,26 @@ type OpenAIModelsResponse = {
   data?: Array<{
     id?: string | null
     name?: string | null
-    context_length?: number | null
+    // The context window, under the name each server family gives it.
+    context_length?: number | null // OpenRouter
+    context_window?: number | null // Groq
+    max_context_length?: number | null // LM Studio, Mistral
+    max_model_len?: number | null // vLLM
+    meta?: { n_ctx_train?: number | null } | null // llama.cpp
   }>
+}
+
+type OpenAIModelEntry = NonNullable<OpenAIModelsResponse['data']>[number]
+
+function contextWindowOf(model: OpenAIModelEntry): number | null {
+  return (
+    model.context_length ??
+    model.context_window ??
+    model.max_context_length ??
+    model.max_model_len ??
+    model.meta?.n_ctx_train ??
+    null
+  )
 }
 
 type OllamaTagsResponse = {
@@ -159,7 +177,7 @@ async function fetchOpenAIModels(
         if (!id || seen.has(id)) continue
         seen.add(id)
         const label = model.name?.trim() || id
-        const ctx = model.context_length ?? null
+        const ctx = contextWindowOf(model)
         if (ctx && ctx > 0) discoveredContextWindows.set(id, ctx)
         const ctxPart = ctx ? ` · ${formatContextWindow(ctx)}` : ''
         options.push({
