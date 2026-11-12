@@ -576,6 +576,14 @@ export function convertMessages(
           ...msg.tool_calls,
         ]
       }
+      // The providers that replay reasoning reject a tool call whose
+      // reasoning went missing, so the merged message keeps both halves'.
+      if (msg.reasoning_content) {
+        lastAfterPossibleInjection.reasoning_content =
+          lastAfterPossibleInjection.reasoning_content
+            ? `${lastAfterPossibleInjection.reasoning_content}\n${msg.reasoning_content}`
+            : msg.reasoning_content
+      }
     } else {
       coalesced.push(msg)
     }
