@@ -134,6 +134,43 @@ function isMalformedProviderResponse(body: string): boolean {
   )
 }
 
+// Codes and types servers put in a JSON error for a throttle, lowercased.
+const RATE_LIMIT_ERROR_CODES: ReadonlySet<string> = new Set([
+  'rate_limit_exceeded',
+  'rate_limit_error',
+  'rate_limited',
+  'too_many_requests',
+  'throttled',
+  'throttlingexception',
+])
+
+/**
+ * Whether a 403 is a throttle. Only a structured signal counts — Retry-After,
+ * x-should-retry: true, or a rate-limit code or type in the JSON error —
+ * because "rate limit" also turns up in the prose of a real refusal.
+ */
+function hasRateLimitSignal(body: string, headers: Headers | undefined): boolean {
+  if (headers?.has('retry-after') || headers?.get('x-should-retry') === 'true') {
+    return true
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(body)
+  } catch {
+    return false
+  }
+  if (!parsed || typeof parsed !== 'object') return false
+  const record = parsed as Record<string, unknown>
+  const error =
+    record.error && typeof record.error === 'object'
+      ? (record.error as Record<string, unknown>)
+      : record
+  return [error.code, error.type].some(
+    value =>
+      typeof value === 'string' && RATE_LIMIT_ERROR_CODES.has(value.toLowerCase()),
+  )
+}
+
 function isModelNotFoundMessage(body: string): boolean {
   const lower = body.toLowerCase()
   return (
@@ -247,8 +284,23 @@ export function classifyOpenAINetworkFailure(
 export function classifyOpenAIHttpFailure(options: {
   status: number
   body: string
+  headers?: Headers
 }): OpenAICompatibilityFailure {
   const body = options.body ?? ''
+
+  if (
+    options.status === 429 ||
+    (options.status === 403 && hasRateLimitSignal(body, options.headers))
+  ) {
+    return {
+      source: 'http',
+      category: 'rate_limited',
+      retryable: true,
+      status: options.status,
+      message: body,
+      hint: 'Provider rate-limited the request. Retry after backoff.',
+    }
+  }
 
   if (options.status === 401 || options.status === 403) {
     return {
@@ -258,17 +310,6 @@ export function classifyOpenAIHttpFailure(options: {
       status: options.status,
       message: body,
       hint: 'Authentication failed. Verify API key, token source, and endpoint-specific auth headers.',
-    }
-  }
-
-  if (options.status === 429) {
-    return {
-      source: 'http',
-      category: 'rate_limited',
-      retryable: true,
-      status: options.status,
-      message: body,
-      hint: 'Provider rate-limited the request. Retry after backoff.',
     }
   }
 

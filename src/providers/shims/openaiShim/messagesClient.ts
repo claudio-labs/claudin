@@ -911,6 +911,7 @@ class OpenAIShimMessages {
         classifyOpenAIHttpFailure({
           status,
           body: errorBody,
+          headers: responseHeaders,
         })
       const redactedUrl = redactUrlForDiagnostics(requestUrl)
 
@@ -1097,6 +1098,7 @@ class OpenAIShimMessages {
           const responsesFailure = classifyOpenAIHttpFailure({
             status: responsesResponse.status,
             body: responsesErrorBody,
+            headers: responsesResponse.headers as unknown as Headers,
           })
           let responsesErrorResponse: object | undefined
           try { responsesErrorResponse = JSON.parse(responsesErrorBody) } catch { /* raw text */ }
@@ -1115,6 +1117,7 @@ class OpenAIShimMessages {
       const failure = classifyOpenAIHttpFailure({
         status: response.status,
         body: errorBody,
+        headers: response.headers as unknown as Headers,
       })
 
       if (
