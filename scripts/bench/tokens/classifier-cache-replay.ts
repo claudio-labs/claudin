@@ -38,7 +38,7 @@
  *   4. serializing the largest decision takes under 50 ms.
  *
  * Since 2026-11-11 it also replays the two levers of that week's census, as
- * the `window+lag` arm against `stable` (today):
+ * the `window+lag` arm against `stable` (the default until 2026-11-12):
  *   - the budget sized by the model's window (`CLAUDIN_CLASSIFIER_WINDOW_BUDGET`,
  *     `--window-tokens=` picks the window, 1M by default), so the cut stops
  *     moving;
@@ -306,8 +306,7 @@ export type Arm = {
 function useArm(arm: Arm): void {
   if (arm.stableCut) delete process.env[KILLSWITCH]
   else process.env[KILLSWITCH] = '0'
-  if (arm.windowTokens === undefined) delete process.env[WINDOW_BUDGET]
-  else process.env[WINDOW_BUDGET] = '1'
+  process.env[WINDOW_BUDGET] = arm.windowTokens === undefined ? '0' : '1'
 }
 
 /** The median wall time of `runs` calls of `fn`, in ms: one call's time is at the mercy of a GC pause. */
