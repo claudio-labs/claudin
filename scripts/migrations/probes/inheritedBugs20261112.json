@@ -17,7 +17,10 @@
     "src/permissions/checkBatchReadPermission.test.ts",
     "src/tools/BashTool/pathValidation.test.ts",
     "src/tools/PowerShellTool/pathValidation.test.ts",
-    "scripts/bench/tokens/request-census.test.ts"
+    "scripts/bench/tokens/request-census.test.ts",
+    "src/providers/transport/withRetry.rateLimited403.test.ts",
+    "src/tools/GrepTool/GrepTool.env.test.ts",
+    "src/providers/shims/openaiShim/jsonErrorWording.test.ts"
   ],
   "source": "src/mcp/client/transport.ts",
   "probes": [
@@ -113,8 +116,14 @@
     {
       "name": "discovery: vLLM's max_model_len is ignored again",
       "source": "src/providers/model/openaiModelDiscovery.ts",
-      "find": "    model.max_model_len ??\n",
-      "replace": ""
+      "find": "model.max_context_length, model.max_model_len].find(",
+      "replace": "model.max_context_length].find("
+    },
+    {
+      "name": "discovery: a 0 or a string counts as a window again",
+      "source": "src/providers/model/openaiModelDiscovery.ts",
+      "find": "      (n): n is number => typeof n === 'number' && n > 0,",
+      "replace": "      (n): n is number => n != null,"
     },
     {
       "name": "auto mode: the predicate lets every ask take the fast path",
@@ -131,8 +140,8 @@
     {
       "name": ".env: the Read gate stops asking",
       "source": "src/permissions/filePermissions/readWriteChecks.ts",
-      "find": "    pathsToCheck.some(isSensitiveEnvFile) &&",
-      "replace": "    false &&"
+      "find": "  const envFileAsk = sensitiveEnvFileAsk(pathsToCheck, path, toolPermissionContext)",
+      "replace": "  const envFileAsk = null as ReturnType<typeof sensitiveEnvFileAsk>"
     },
     {
       "name": ".env: a batch binds the first ask again",
@@ -143,26 +152,110 @@
     {
       "name": ".env: the Bash path check stops asking",
       "source": "src/permissions/pathValidation.ts",
-      "find": "    [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&",
-      "replace": "    false &&"
+      "find": "    if (envFileAsk) return { allowed: false, decisionReason: envFileAsk }\n",
+      "replace": ""
     },
     {
       "name": ".env: the PowerShell path check stops asking",
       "source": "src/tools/PowerShellTool/pathValidation/pathAllowlist.ts",
-      "find": "    [resolvedPath, ...(precomputedPathsToCheck ?? [])].some(isSensitiveEnvFile) &&",
-      "replace": "    false &&"
+      "find": "    if (envFileAsk) return { allowed: false, decisionReason: envFileAsk }\n",
+      "replace": ""
     },
     {
       "name": ".env: any read allow rule switches the ask off again",
       "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "      (rules ?? []).filter(rule => NAMES_ENV_RE.test(rule)),",
+      "find": "      (rules ?? []).filter(ruleNamesEnvFile),",
       "replace": "      rules ?? [],"
     },
     {
-      "name": ".env: templates ask too",
+      "name": ".env: templates and code named after an env ask too",
       "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "  if (ENV_TEMPLATE_SUFFIXES.some(suffix => name.endsWith(suffix))) return false\n",
+      "find": "  if (ENV_NOT_SECRET_SUFFIXES.some(suffix => lower.endsWith(suffix))) return false\n",
       "replace": ""
+    },
+    {
+      "name": ".env: a rule with .env anywhere in it opts out again",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "function ruleNamesEnvFile(rule: string): boolean {\n",
+      "replace": "function ruleNamesEnvFile(rule: string): boolean {\n  if (/\\.env/.test(rule)) return true\n"
+    },
+    {
+      "name": ".env: a virtualenv directory named .env asks again",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "  return isEnvFileName(basename(path)) && !isDirectory(path)",
+      "replace": "  return isEnvFileName(basename(path))"
+    },
+    {
+      "name": ".env: the Bash prompt offers a directory rule again",
+      "source": "src/tools/BashTool/pathValidation.ts",
+      "find": "        if (operationType === 'read' && isSensitiveEnvFile(result.blockedPath)) {",
+      "replace": "        if (false) {"
+    },
+    {
+      "name": ".env: a Bash glob is judged by its base directory again",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  if (operationType === 'read' && globCouldMatchEnvFile(cleanPath, { dot: false })) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": ".env: a PowerShell glob takes the generic ask again",
+      "source": "src/tools/PowerShellTool/pathValidation/pathAllowlist.ts",
+      "find": "    if (operationType === 'read' && globCouldMatchEnvFile(normalizedPath, { dot: true })) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "bash: tac loses its path check",
+      "source": "src/tools/BashTool/pathValidation.ts",
+      "find": "  tac: filterOutFlags,\n",
+      "replace": ""
+    },
+    {
+      "name": "grep: a search stops leaving .env files out",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "      for (const g of ENV_FILE_EXCLUSION_GLOBS) args.push('--glob', g)\n",
+      "replace": ""
+    },
+    {
+      "name": "grep: a glob naming a .env stops asking",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    if (envFileAsk) return envFileAsk\n",
+      "replace": ""
+    },
+    {
+      "name": "403: a rate_limited 403 skips the reset and quota checks again",
+      "source": "src/providers/rateLimitInfo.ts",
+      "find": "  return status === 403 && typeof message === 'string' && message.includes(RATE_LIMITED_MARKER)",
+      "replace": "  return false"
+    },
+    {
+      "name": "overflow: any \"exceeds the limit of N\" is an overflow again",
+      "source": "src/providers/shims/openaiErrorClassification.ts",
+      "find": "  /exceeds the limit of [\\d,]+ tokens/i,",
+      "replace": "  /exceeds the limit of \\d+/i,"
+    },
+    {
+      "name": "overflow: a usage quota reads as an overflow again",
+      "source": "src/providers/shims/openaiErrorClassification.ts",
+      "find": "  /(?:hourly|daily|weekly|monthly) token limit/i,\n",
+      "replace": ""
+    },
+    {
+      "name": "overflow: the throttle exclusion is anchored to the body start again",
+      "source": "src/providers/shims/openaiErrorClassification.ts",
+      "find": "  /(?:throttling error|service unavailable):/i,",
+      "replace": "  /^(?:throttling error|service unavailable):/i,"
+    },
+    {
+      "name": "errors: a categorized message drops the server's words again",
+      "source": "src/providers/transport/errors.ts",
+      "find": "  return wording ? `${hint} · ${wording}` : hint",
+      "replace": "  return hint"
+    },
+    {
+      "name": "hooks: a refused PreToolUse hook stops blocking",
+      "source": "src/platform/lifecycleHooks/runners.ts",
+      "find": "    const status = hookEvent === 'PreToolUse' ? 2 : 1",
+      "replace": "    const status = 1"
     },
     {
       "name": "census: the InputValidationError table is gone",
