@@ -655,6 +655,9 @@ temp dir under `bun test` (the preload does not), so a test that reaches
 `~/.claudin/settings.json`. Code that saves user settings takes the store as a
 parameter so its tests can hand in a fake one: `UserSettingsStore` in
 `src/commands/autocompact/setting.ts` (`read` + `save`) is the worked example.
+Hand the fake in even on a path that is not supposed to save: a break-probe
+that lifts the guard turns it into a real write — the env-lock probe in
+`ccCommandsPort.json` wrote `modelSettings` into a developer's file that way.
 Read paths are pinned with `setFlagSettingsInline(…)` + `resetSettingsCache()`
 instead, which merges above every file and touches none.
 
