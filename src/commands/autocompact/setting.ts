@@ -104,16 +104,33 @@ export function saveAutoCompactWindow(
   store: UserSettingsStore = USER_SETTINGS,
 ): string {
   if (configuredAutoCompactWindow(model).source === 'env') return ENV_PRECEDENCE
+  const userSaved = store.read()?.modelSettings
+  const override = overridingWindow(model, userSaved)
   const { error } = store.save('userSettings', {
-    modelSettings: modelSettingsUpdate(store.read()?.modelSettings, model, choice),
+    modelSettings: modelSettingsUpdate(userSaved, model, choice),
   })
   if (error) return `Couldn't save setting: ${error.message}`
 
   const prefix = `Auto-compact window for ${renderModelName(model)}`
-  if (choice === 'auto') return `${prefix} set to auto`
   const limit = modelContextWindow(model)
+  if (override !== undefined) {
+    const set = choice === 'auto' ? 'auto in settings' : `${formatTokens(choice)} tokens`
+    return `${prefix} set to ${set}, but a higher-priority override is active (${formatTokens(Math.min(override, limit))} tokens)`
+  }
+  if (choice === 'auto') return `${prefix} set to auto`
   const capped = limit < choice ? ` (capped to model limit of ${formatTokens(limit)})` : ''
   return `${prefix} set to ${formatTokens(choice)} tokens${capped}`
+}
+
+/**
+ * The window a project, local, flag or policy setting gives the model, which
+ * the user's own settings.json — the lowest source, and the one written
+ * here — cannot override.
+ */
+function overridingWindow(model: string, userSaved: ModelSettings | undefined): number | undefined {
+  const inEffect = configuredAutoCompactWindow(model)
+  if (inEffect.source !== 'settings') return undefined
+  return inEffect.window !== userSaved?.[model]?.autoCompactWindow ? inEffect.window : undefined
 }
 
 /**
