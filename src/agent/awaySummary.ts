@@ -25,7 +25,9 @@ export function isAwaySummaryEnabled(): boolean {
 // large sessions. 30 messages ≈ ~15 exchanges, plenty for "where we left off."
 const RECENT_MESSAGE_WINDOW = 30
 
-const AWAY_SUMMARY_PROMPT = `The user stepped away and is coming back. Write exactly 1-3 short sentences. Start by stating the high-level task — what they are building or debugging, not implementation details. Next: the concrete next step. Skip status reports and commit recaps.`
+// Claude Code 2.1.323's prompt and cap.
+const AWAY_SUMMARY_PROMPT = `The user stepped away and is coming back. Recap in under 40 words, 1-2 plain sentences, no markdown. Lead with the overall goal and current task, then the one next action. Skip root-cause narrative, fix internals, secondary to-dos, and em-dash tangents.`
+export const MAX_RECAP_CHARS = 400
 
 /**
  * Strip inline chain-of-thought from the recap text.
@@ -43,18 +45,32 @@ export function sanitizeAwaySummary(text: string | null): string | null {
   return stripped.length > 0 ? stripped : null
 }
 
+export type AwaySummaryResult =
+  | { kind: 'ok'; text: string; capped: boolean }
+  | { kind: 'no-turn' }
+  | { kind: 'aborted' }
+  | { kind: 'api-error'; text: string }
+  | { kind: 'failed' }
+
+/** Something to recap: a reply from the model, or a compacted conversation. */
+function hasTurn(messages: readonly Message[]): boolean {
+  return messages.some(
+    m =>
+      (m.type === 'assistant' && !m.isApiErrorMessage) ||
+      (m.type === 'user' && m.isCompactSummary === true),
+  )
+}
+
 /**
- * Generates a short session recap for the "while you were away" card.
- * Returns null on abort, empty transcript, or error.
+ * Generates a short session recap, for the "while you were away" card and for
+ * /recap.
  */
 export async function generateAwaySummary(
   messages: readonly Message[],
   signal: AbortSignal,
   query: typeof queryModelWithoutStreaming = queryModelWithoutStreaming,
-): Promise<string | null> {
-  if (messages.length === 0) {
-    return null
-  }
+): Promise<AwaySummaryResult> {
+  if (!hasTurn(messages)) return { kind: 'no-turn' }
 
   try {
     const recent = messages.slice(-RECENT_MESSAGE_WINDOW)
@@ -78,18 +94,22 @@ export async function generateAwaySummary(
       },
     })
 
+    if (signal.aborted) return { kind: 'aborted' }
     if (response.isApiErrorMessage) {
-      logForDebugging(
-        `[awaySummary] API error: ${getAssistantMessageText(response)}`,
-      )
-      return null
+      const text = getAssistantMessageText(response) ?? ''
+      logForDebugging(`[awaySummary] API error: ${text}`)
+      return { kind: 'api-error', text }
     }
-    return sanitizeAwaySummary(getAssistantMessageText(response))
+    const text = sanitizeAwaySummary(getAssistantMessageText(response))
+    if (text === null) return { kind: 'failed' }
+    if (text.length <= MAX_RECAP_CHARS) return { kind: 'ok', text, capped: false }
+    logForDebugging(`[awaySummary] recap capped from ${text.length} to ${MAX_RECAP_CHARS} chars`)
+    return { kind: 'ok', text: `${text.slice(0, MAX_RECAP_CHARS - 1)}…`, capped: true }
   } catch (err) {
     if (isSdkApiUserAbortError(err) || signal.aborted) {
-      return null
+      return { kind: 'aborted' }
     }
     logForDebugging(`[awaySummary] generation failed: ${err}`)
-    return null
+    return { kind: 'failed' }
   }
 }
