@@ -102,9 +102,11 @@ export async function generateAwaySummary(
     }
     const text = sanitizeAwaySummary(getAssistantMessageText(response))
     if (text === null) return { kind: 'failed' }
-    if (text.length <= MAX_RECAP_CHARS) return { kind: 'ok', text, capped: false }
-    logForDebugging(`[awaySummary] recap capped from ${text.length} to ${MAX_RECAP_CHARS} chars`)
-    return { kind: 'ok', text: `${text.slice(0, MAX_RECAP_CHARS - 1)}…`, capped: true }
+    // Counted in code points, so the cut never splits an emoji's surrogate pair.
+    const chars = Array.from(text)
+    if (chars.length <= MAX_RECAP_CHARS) return { kind: 'ok', text, capped: false }
+    logForDebugging(`[awaySummary] recap capped from ${chars.length} to ${MAX_RECAP_CHARS} chars`)
+    return { kind: 'ok', text: `${chars.slice(0, MAX_RECAP_CHARS - 1).join('')}…`, capped: true }
   } catch (err) {
     if (isSdkApiUserAbortError(err) || signal.aborted) {
       return { kind: 'aborted' }
