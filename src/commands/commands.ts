@@ -8,10 +8,15 @@
 // (`{ isEnabled: () => false, isHidden: true, name: 'stub' }`) and none of them
 // appeared in COMMANDS(), so the imports cost a module each and bought nothing.
 import addDir from 'src/commands/add-dir/index.js'
+import {
+  autocompact,
+  autocompactNonInteractive,
+} from 'src/commands/autocompact/index.js'
 import autofixPr from 'src/commands/autofix-pr/index.js'
 import btw from 'src/commands/btw/index.js'
 import feedback from 'src/commands/feedback/index.js'
 import clear from 'src/commands/clear/index.js'
+import { fork, subtask } from 'src/commands/fork/index.js'
 import newSession from 'src/commands/new/index.js'
 import color from 'src/commands/color/index.js'
 import commit from 'src/commands/commit.js'
@@ -67,13 +72,13 @@ const agentWorkflowsCmd = feature('AGENT_WORKFLOWS')
       require('src/commands/workflows/index.js') as typeof import('src/commands/workflows/index.js')
     ).default
   : null
-// NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
-// (it gates the Agent tool's fork-by-default behaviour), but this fork never
-// received `src/commands/fork/`, so the require resolved to the build's
-// missing-module stub — `const noop = () => null; export default noop`. That
-// value is TRUTHY, so the conditional spread below injected a bare arrow
-// function where a Command object belongs and the command list grew an entry
-// named `noop`. The flag stays on; only the phantom command is gone.
+// NOTE: /fork is a plain import, not a `feature('FORK_SUBAGENT') ? require`.
+// The upstream gated require pointed at a `src/commands/fork/` this fork never
+// received, so it resolved to the build's missing-module stub —
+// `const noop = () => null; export default noop`. That value is TRUTHY, so the
+// conditional spread injected a bare arrow function where a Command object
+// belongs and the command list grew an entry named `noop`. /fork and /subtask
+// now exist here and gate themselves in isEnabled (isForkCommandEnabled).
 // `src/commands/__tests__/registry.characterization.test.ts` fails if the
 // shape comes back, here or anywhere else in this table.
 const buddy = isBuddyEnabled()
@@ -84,6 +89,7 @@ const buddy = isBuddyEnabled()
 /* eslint-enable @typescript-eslint/no-require-imports */
 import permissions from 'src/commands/permissions/index.js'
 import plan from 'src/commands/plan/index.js'
+import recap from 'src/commands/recap/index.js'
 import fast from 'src/commands/fast/index.js'
 import provider from 'src/commands/provider/index.js'
 import hooks from 'src/commands/hooks/index.js'
@@ -172,6 +178,8 @@ export { getCommandName, isCommandEnabled } from 'src/shared/types/command.js'
 const COMMANDS = memoize((): Command[] => [
   addDir,
   agents,
+  autocompact,
+  autocompactNonInteractive,
   autoFix,
   autofixPr,
   autoModeSetup,
@@ -198,6 +206,7 @@ const COMMANDS = memoize((): Command[] => [
   effort,
   exit,
   fast,
+  fork,
   goal,
   heapDump,
   help,
@@ -214,6 +223,7 @@ const COMMANDS = memoize((): Command[] => [
   remoteEnv,
   plugin,
   provider,
+  recap,
   releaseNotes,
   reloadPlugins,
   rename,
@@ -224,6 +234,7 @@ const COMMANDS = memoize((): Command[] => [
   status,
   statusline,
   stickers,
+  subtask,
   theme,
   feedback,
   review,

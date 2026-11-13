@@ -140,11 +140,11 @@ describe('slash-command registry — characterization', () => {
   })
 
   test('no command is registered behind a true flag with no implementation', () => {
-    // The `noop` phantom: FORK_SUBAGENT ships true, but src/commands/fork/ holds
-    // only an index.d.ts, so the build substitutes `default = () => null`. That
-    // value is truthy, so `...(forkCmd ? [forkCmd] : [])` spreads a bare arrow
-    // function into COMMANDS() — and its inferred `.name` is "noop", which is
-    // what the user sees in the command list.
+    // The `noop` phantom: FORK_SUBAGENT shipped true while src/commands/fork/
+    // held only an index.d.ts, so the build substituted `default = () => null`.
+    // That value is truthy, so `...(forkCmd ? [forkCmd] : [])` spread a bare
+    // arrow function into COMMANDS() — and its inferred `.name` is "noop", which
+    // is what the user saw in the command list. /fork is a plain import now.
     const flags = shippedFlags()
     const registered = new Set(scanRegisteredBindings())
 
