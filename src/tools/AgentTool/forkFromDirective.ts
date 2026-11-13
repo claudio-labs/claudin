@@ -24,7 +24,7 @@ import { getAgentModel } from 'src/providers/model/agent.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import { asAgentId } from 'src/shared/types/ids.js'
 import type { Message } from 'src/shared/types/message.js'
-import { allocateAgentName, registerAgentName } from 'src/tools/AgentTool/agentName.js'
+import { agentNameProblem, allocateAgentName, registerAgentName } from 'src/tools/AgentTool/agentName.js'
 import { runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js'
 import { buildChildMessage, FORK_AGENT } from 'src/tools/AgentTool/forkSubagent.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
@@ -53,20 +53,23 @@ const LIVE_DEPS: ForkFromDirectiveDeps = {
   coordinatorMode: isCoordinatorMode,
 }
 
-/** The directive's first three words as a slug, at most 24 chars; `fork` when nothing is left. */
+/**
+ * The directive's first three words as a slug, at most 24 chars; `fork` when
+ * nothing is left, or when SendMessage could not address it (`main`, an
+ * agentId shape).
+ */
 export function forkNameFromDirective(directive: string): string {
-  return (
-    directive
-      .trim()
-      .split(/\s+/)
-      .slice(0, 3)
-      .join('-')
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 24) || 'fork'
-  )
+  const slug = directive
+    .trim()
+    .split(/\s+/)
+    .slice(0, 3)
+    .join('-')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .slice(0, 24)
+    .replace(/^-|-$/g, '')
+  return slug && agentNameProblem(slug) === undefined ? slug : 'fork'
 }
 
 /** The directive on one line, at most 50 chars. */
