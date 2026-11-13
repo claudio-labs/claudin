@@ -5,6 +5,7 @@ import {
   subscribeTerminalFocus,
 } from 'src/terminal/ink/terminal-focus-state.js'
 import {
+  awayCardText,
   generateAwaySummary,
   isAwaySummaryEnabled,
 } from 'src/agent/awaySummary.js'
@@ -74,8 +75,9 @@ export function useAwaySummary(
         messagesRef.current,
         controller.signal,
       )
-      if (controller.signal.aborted || result.kind !== 'ok') return
-      setMessages(prev => [...prev, createAwaySummaryMessage(result.text)])
+      const text = awayCardText(result)
+      if (controller.signal.aborted || text === null) return
+      setMessages(prev => [...prev, createAwaySummaryMessage(text)])
     }
 
     function onBlurTimerFire(): void {

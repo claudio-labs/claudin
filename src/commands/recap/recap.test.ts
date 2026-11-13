@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test'
 
 import type { AwaySummaryResult } from 'src/agent/awaySummary.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { recapText } from 'src/commands/recap/recap.ts'
+import { call, recapText } from 'src/commands/recap/recap.ts'
+import type { LocalJSXCommandContext } from 'src/commands/commands.js'
 
 function text(result: AwaySummaryResult): Promise<string> {
   return recapText([], new AbortController().signal, async () => result)
@@ -27,4 +28,12 @@ test('hands the conversation and the abort signal to the generator', async () =>
     return { kind: 'no-turn' }
   })
   expect(seen).toEqual([messages, controller.signal])
+})
+
+test('the command reads the session messages and answers in text', async () => {
+  const context = {
+    messages: [createUserMessage({ content: 'hi' })],
+    abortController: new AbortController(),
+  } as unknown as LocalJSXCommandContext
+  expect(await call('', context)).toEqual({ type: 'text', value: 'Nothing to recap yet — send a message first.' })
 })

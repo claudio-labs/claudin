@@ -79,6 +79,7 @@ describe('applyAutoCompactWindow', () => {
     expect(applyAutoCompactWindow('500k', MODEL, s)).toBe(
       `Auto-compact window for ${name} set to 500k tokens (capped to model limit of 200k)`,
     )
+    expect(applyAutoCompactWindow('200k', MODEL, s)).toBe(`Auto-compact window for ${name} set to 200k tokens`)
   })
 
   test('auto drops the window, its entry, and modelSettings, each only once nothing else is in it', () => {
@@ -146,6 +147,8 @@ describe('status', () => {
     expect(describeConfiguredWindow(MODEL)).toBe('150k tokens (from settings)')
     setSettings({ modelSettings: { [MODEL]: { autoCompactWindow: 500_000 } } })
     expect(describeConfiguredWindow(MODEL)).toBe('500k tokens (from settings) · capped to 200k by model')
+    setSettings({ modelSettings: { [MODEL]: { autoCompactWindow: 200_000 } } })
+    expect(describeConfiguredWindow(MODEL)).toBe('200k tokens (from settings)')
     process.env[AUTO_COMPACT_WINDOW_ENV] = '120000'
     expect(describeConfiguredWindow(MODEL)).toBe(`120k tokens (from ${AUTO_COMPACT_WINDOW_ENV})`)
   })

@@ -61,6 +61,11 @@ function hasTurn(messages: readonly Message[]): boolean {
   )
 }
 
+/** What the away card shows: a recap, and nothing for any other outcome. */
+export function awayCardText(result: AwaySummaryResult): string | null {
+  return result.kind === 'ok' ? result.text : null
+}
+
 /**
  * Generates a short session recap, for the "while you were away" card and for
  * /recap.

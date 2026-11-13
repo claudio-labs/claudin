@@ -74,6 +74,7 @@ describe('spawnForkFromDirective', () => {
 
   function deps(overrides: Partial<ForkFromDirectiveDeps> = {}): ForkFromDirectiveDeps {
     const abortController = new AbortController()
+    calls.abortController = abortController
     return {
       register: (input => {
         calls.register = input
@@ -150,6 +151,25 @@ describe('spawnForkFromDirective', () => {
     ;(ctx as { renderedSystemPrompt?: unknown }).renderedSystemPrompt = rendered
     await spawnForkFromDirective('go', ctx, canUseTool, deps())
     expect(((calls.stream as Record<string, unknown>).override as { systemPrompt: unknown }).systemPrompt).toBe(rendered)
+  })
+
+  test("wires the task to the root store, the caller's permissions and the task's own abort", async () => {
+    const { ctx } = context(conversation)
+    Object.assign(ctx, { agentId: 'parent-agent', toolUseId: 'toolu_1' })
+    await spawnForkFromDirective('go', ctx, canUseTool, deps())
+    const register = calls.register as Record<string, unknown>
+    // setAppStateForTasks, not setAppState: an in-process teammate's is a no-op.
+    expect(register.setAppState).toBe(ctx.setAppStateForTasks)
+    expect(register).toMatchObject({ parentAgentId: 'parent-agent', toolUseId: 'toolu_1' })
+    const lifecycle = calls.lifecycle as Record<string, unknown>
+    expect(lifecycle.rootSetAppState).toBe(ctx.setAppStateForTasks)
+    expect(lifecycle.toolUseContext).toBe(ctx)
+    expect(lifecycle.abortController).toBe(calls.abortController)
+    const stream = calls.stream as Record<string, unknown>
+    expect(stream.canUseTool).toBe(canUseTool)
+    expect(stream.toolUseContext).toBe(ctx)
+    expect(stream.override).toMatchObject({ agentId: asAgentId('fork-agent-abcd') })
+    expect((stream.override as { abortController: unknown }).abortController).toBe(calls.abortController)
   })
 
   test('nothing to fork before the first reply', async () => {

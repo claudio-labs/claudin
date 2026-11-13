@@ -120,6 +120,29 @@ test('↑ and ↓ step like → and ←', async () => {
   }
 })
 
+test('← from auto wraps to the 1M end', async () => {
+  const d = await mount()
+  try {
+    await d.press(LEFT)
+    expect(d.frame()).toContain('Select auto-compact window: 1m tokens')
+  } finally {
+    await d.cleanup()
+  }
+})
+
+test('Esc while the env var decides leaves it unchanged', async () => {
+  process.env[AUTO_COMPACT_WINDOW_ENV] = '300000'
+  const d = await mount()
+  try {
+    await d.pressEscape()
+    expect(d.applied).toEqual([])
+    expect(d.done).toHaveLength(1)
+    expect(d.done[0]).toStartWith(`Auto-compact window for ${NAME} unchanged: 300k tokens`)
+  } finally {
+    await d.cleanup()
+  }
+})
+
 test('stepping back to auto from a saved window applies auto', async () => {
   setSettings({ modelSettings: { [MODEL]: { autoCompactWindow: 100_000 } } })
   const d = await mount()

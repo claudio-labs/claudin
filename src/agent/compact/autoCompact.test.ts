@@ -282,6 +282,13 @@ describe('getEffectiveContextWindowSize', () => {
       process.env.CLAUDIN_AUTO_COMPACT_WINDOW = '150000'
       expect(getEffectiveContextWindowSize(model)).toBe(150_000 - reserved)
     })
+
+    test("never past the model's own window", () => {
+      delete process.env.CLAUDIN_AUTO_COMPACT_WINDOW
+      const full = getEffectiveContextWindowSize(model)
+      setSettings({ modelSettings: { [model]: { autoCompactWindow: 900_000 } } })
+      expect(getEffectiveContextWindowSize(model)).toBe(full)
+    })
   })
 })
 

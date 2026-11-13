@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import {
+  awayCardText,
   generateAwaySummary,
   isAwaySummaryEnabled,
   MAX_RECAP_CHARS,
@@ -83,6 +84,26 @@ describe('generateAwaySummary', () => {
     const { query } = stub(async () => createAssistantMessage({ content: 'w'.repeat(500) }))
     const recap = await generateAwaySummary(transcript(2), new AbortController().signal, query)
     expect(recap).toEqual({ kind: 'ok', text: `${'w'.repeat(MAX_RECAP_CHARS - 1)}…`, capped: true })
+    const exact = stub(async () => createAssistantMessage({ content: 'w'.repeat(MAX_RECAP_CHARS) }))
+    expect(await generateAwaySummary(transcript(2), new AbortController().signal, exact.query)).toEqual({
+      kind: 'ok',
+      text: 'w'.repeat(MAX_RECAP_CHARS),
+      capped: false,
+    })
+  })
+
+  test('asks the small fast model, with no system prompt', async () => {
+    const saved = process.env.ANTHROPIC_SMALL_FAST_MODEL
+    process.env.ANTHROPIC_SMALL_FAST_MODEL = 'small-fast-sentinel'
+    try {
+      const { query, seen } = stub(async () => createAssistantMessage({ content: 'ok' }))
+      await generateAwaySummary(transcript(2), new AbortController().signal, query)
+      expect(seen[0]!.options.model).toBe('small-fast-sentinel')
+      expect([...seen[0]!.systemPrompt]).toEqual([])
+    } finally {
+      if (saved === undefined) delete process.env.ANTHROPIC_SMALL_FAST_MODEL
+      else process.env.ANTHROPIC_SMALL_FAST_MODEL = saved
+    }
   })
 
   test('the cap never splits a character', async () => {
@@ -138,7 +159,23 @@ describe('generateAwaySummary', () => {
       return createAssistantMessage({ content: 'too late' })
     })
     expect(await generateAwaySummary(transcript(2), late.signal, replied.query)).toEqual({ kind: 'aborted' })
+
+    // The SDK's own abort error counts even when this signal never fired.
+    class APIUserAbortError extends Error {}
+    const sdkAbort = stub(async () => {
+      throw new APIUserAbortError('Request was aborted.')
+    })
+    expect(await generateAwaySummary(transcript(2), new AbortController().signal, sdkAbort.query)).toEqual({
+      kind: 'aborted',
+    })
   })
+})
+
+test('the away card shows a recap, never an error or a reason', () => {
+  expect(awayCardText({ kind: 'ok', text: 'The recap.', capped: false })).toBe('The recap.')
+  expect(awayCardText({ kind: 'api-error', text: 'API Error: overloaded' })).toBeNull()
+  expect(awayCardText({ kind: 'failed' })).toBeNull()
+  expect(awayCardText({ kind: 'no-turn' })).toBeNull()
 })
 
 describe('sanitizeAwaySummary', () => {
