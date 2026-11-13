@@ -52,7 +52,7 @@ describe('parseAutoCompactWindow', () => {
   })
 
   test('nothing outside the range or unparsable', () => {
-    for (const raw of ['50k', '99', '99999', '2m', '1000001', 'abc', '', 'k']) {
+    for (const raw of ['50k', '99', '99999', '2m', '1000001', 'abc', '', 'k', '150xyzk', '200kk', '1e5', ' 2 00k', '0x30000']) {
       expect(parseAutoCompactWindow(raw)).toBeUndefined()
     }
   })
@@ -118,6 +118,24 @@ describe('applyAutoCompactWindow', () => {
       `Auto-compact window for ${name} set to 250k tokens (capped to model limit of 200k)`,
     )
     expect(writes).toEqual([{ modelSettings: { [MODEL]: { autoCompactWindow: 250_000 } } }])
+  })
+
+  test('says so when a project, local or policy setting overrides the choice', () => {
+    // Flag settings stand in for the higher-priority sources; userSettings is the lowest.
+    setSettings({ modelSettings: { [MODEL]: { autoCompactWindow: 150_000 } } })
+    const { store: s } = store()
+    expect(applyAutoCompactWindow('auto', MODEL, s)).toBe(
+      `Auto-compact window for ${name} set to auto in settings, but a higher-priority override is active (150k tokens)`,
+    )
+    expect(applyAutoCompactWindow('180k', MODEL, s)).toBe(
+      `Auto-compact window for ${name} set to 180k tokens, but a higher-priority override is active (150k tokens)`,
+    )
+  })
+
+  test('no override when the window in effect is the user settings one', () => {
+    setSettings({ modelSettings: { [MODEL]: { autoCompactWindow: 150_000 } } })
+    const { store: s } = store({ modelSettings: { [MODEL]: { autoCompactWindow: 150_000 } } })
+    expect(applyAutoCompactWindow('auto', MODEL, s)).toBe(`Auto-compact window for ${name} set to auto`)
   })
 })
 

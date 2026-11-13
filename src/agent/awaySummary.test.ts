@@ -85,6 +85,14 @@ describe('generateAwaySummary', () => {
     expect(recap).toEqual({ kind: 'ok', text: `${'w'.repeat(MAX_RECAP_CHARS - 1)}…`, capped: true })
   })
 
+  test('the cap never splits a character', async () => {
+    const reply = `${'a'.repeat(MAX_RECAP_CHARS - 2)}😀 and more text past the cap`
+    const { query } = stub(async () => createAssistantMessage({ content: reply }))
+    const recap = await generateAwaySummary(transcript(2), new AbortController().signal, query)
+    expect(recap).toEqual({ kind: 'ok', text: `${'a'.repeat(MAX_RECAP_CHARS - 2)}😀…`, capped: true })
+    expect((recap as { text: string }).text.isWellFormed()).toBe(true)
+  })
+
   test('strips leaked reasoning from the reply', async () => {
     const { query } = stub(async () =>
       createAssistantMessage({ content: '<thinking>hm</thinking>\nThe recap.' }),

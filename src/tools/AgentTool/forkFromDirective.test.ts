@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
+import {
+  createAssistantMessage,
+  createCompactBoundaryMessage,
+  createUserMessage,
+} from 'src/agent/messages/messages.js'
 import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import type { Message } from 'src/shared/types/message.js'
 import { asAgentId } from 'src/shared/types/ids.js'
+import { agentNameProblem } from 'src/tools/AgentTool/agentName.js'
 import {
   forkDescription,
   forkNameFromDirective,
@@ -27,6 +32,18 @@ describe('forkNameFromDirective', () => {
   test('falls back to fork when nothing survives', () => {
     expect(forkNameFromDirective('???  !!!')).toBe('fork')
   })
+
+  test('a name SendMessage can address: not "main", not an agentId shape', () => {
+    expect(forkNameFromDirective('main')).toBe('fork')
+    expect(forkNameFromDirective('a0123456789abcdef')).toBe('fork')
+    for (const directive of ['main', 'Main', 'a0123456789abcdef', 'fix the bug']) {
+      expect(agentNameProblem(forkNameFromDirective(directive))).toBeUndefined()
+    }
+  })
+
+  test('the 24-char cut leaves no trailing hyphen', () => {
+    expect(forkNameFromDirective(`${'a'.repeat(23)} bbb`)).toBe('a'.repeat(23))
+  })
 })
 
 test('forkDescription flattens whitespace and caps at 50 chars', () => {
@@ -42,10 +59,18 @@ describe('spawnForkFromDirective', () => {
   })
 
   const parentPrompt = asSystemPrompt(['You are the parent.'])
+  const rebuiltPrompt = asSystemPrompt(['Rebuilt for this model and session.'])
   const conversation: Message[] = [
     createUserMessage({ content: 'hi' }),
     createAssistantMessage({ content: 'hello' }),
   ]
+  /** What stopHooks saves at the end of a main turn of `conversation`. */
+  const savedFor = (messages: Message[], mainLoopModel = 'claude-opus-5-5') =>
+    ({
+      systemPrompt: parentPrompt,
+      toolUseContext: { options: { mainLoopModel } },
+      forkContextMessages: messages,
+    }) as unknown as CacheSafeParams
 
   function deps(overrides: Partial<ForkFromDirectiveDeps> = {}): ForkFromDirectiveDeps {
     const abortController = new AbortController()
@@ -62,10 +87,11 @@ describe('spawnForkFromDirective', () => {
         calls.stream = input
         return (async function* () {})()
       }) as ForkFromDirectiveDeps['stream'],
-      savedParams: () => ({ systemPrompt: parentPrompt }) as CacheSafeParams,
+      savedParams: () => savedFor(conversation),
+      buildPrompt: async () => rebuiltPrompt,
       coordinatorMode: () => false,
       ...overrides,
-    }
+    } as ForkFromDirectiveDeps
   }
 
   function context(messages: Message[], taken: string[] = []) {
@@ -126,10 +152,42 @@ describe('spawnForkFromDirective', () => {
     expect(((calls.stream as Record<string, unknown>).override as { systemPrompt: unknown }).systemPrompt).toBe(rendered)
   })
 
-  test('nothing to fork before the first turn: no saved prompt, or no reply yet', async () => {
-    expect(await spawnForkFromDirective('go', context(conversation).ctx, canUseTool, deps({ savedParams: () => null }))).toEqual({ kind: 'no-turn' })
+  test('nothing to fork before the first reply', async () => {
     expect(await spawnForkFromDirective('go', context([createUserMessage({ content: 'hi' })]).ctx, canUseTool, deps())).toEqual({ kind: 'no-turn' })
     expect(calls.register).toBeUndefined()
+  })
+
+  const usedPrompt = () => ((calls.stream as Record<string, unknown>).override as { systemPrompt: unknown }).systemPrompt
+
+  test('a resumed conversation with no turn of its own yet forks on a rebuilt prompt', async () => {
+    const result = await spawnForkFromDirective('go', context(conversation).ctx, canUseTool, deps({ savedParams: () => null }))
+    expect(result.kind).toBe('spawned')
+    expect(usedPrompt()).toBe(rebuiltPrompt)
+  })
+
+  test('a prompt saved for another model, or another conversation, is rebuilt', async () => {
+    await spawnForkFromDirective('go', context(conversation).ctx, canUseTool, deps({ savedParams: () => savedFor(conversation, 'gpt-5') }))
+    expect(usedPrompt()).toBe(rebuiltPrompt)
+    const other = [createUserMessage({ content: 'another session' }), createAssistantMessage({ content: 'yes' })]
+    await spawnForkFromDirective('go', context(conversation).ctx, canUseTool, deps({ savedParams: () => savedFor(other) }))
+    expect(usedPrompt()).toBe(rebuiltPrompt)
+  })
+
+  test('hands the child only what follows the last compaction', async () => {
+    const old = [createUserMessage({ content: 'old question' }), createAssistantMessage({ content: 'old answer' })]
+    const boundary = createCompactBoundaryMessage('auto', 150_000)
+    const after = [
+      createUserMessage({ content: 'summary', isCompactSummary: true }),
+      createUserMessage({ content: 'next' }),
+      createAssistantMessage({ content: 'reply' }),
+    ]
+    const all = [...old, boundary, ...after]
+    await spawnForkFromDirective('go', context(all).ctx, canUseTool, deps({ savedParams: () => savedFor(all) }))
+    const forwarded = (calls.stream as { forkContextMessages: Message[] }).forkContextMessages
+    expect(forwarded).not.toContain(old[0]!)
+    expect(forwarded).not.toContain(old[1]!)
+    expect(forwarded.at(-1)).toBe(after[2]!)
+    expect(usedPrompt()).toBe(parentPrompt)
   })
 
   test('refused in coordinator mode', async () => {

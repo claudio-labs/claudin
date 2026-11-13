@@ -45,4 +45,17 @@ describe('configuredAutoCompactWindow', () => {
     setSettings({ modelSettings: { 'claude-sonnet-4': { autoCompactWindow: -1 } } })
     expect(configuredAutoCompactWindow('claude-sonnet-4')).toEqual({ source: 'auto' })
   })
+
+  test('the env var reads k and m suffixes, and nothing with junk in it', () => {
+    delete process.env[AUTO_COMPACT_WINDOW_ENV]
+    process.env[AUTO_COMPACT_WINDOW_ENV] = '200k'
+    expect(configuredAutoCompactWindow('claude-sonnet-4')).toEqual({ source: 'env', window: 200_000 })
+    process.env[AUTO_COMPACT_WINDOW_ENV] = '1.5M'
+    expect(configuredAutoCompactWindow('claude-sonnet-4')).toEqual({ source: 'env', window: 1_500_000 })
+    // Below 100k stays as written: a small local model needs it.
+    process.env[AUTO_COMPACT_WINDOW_ENV] = '24000'
+    expect(configuredAutoCompactWindow('claude-sonnet-4')).toEqual({ source: 'env', window: 24_000 })
+    process.env[AUTO_COMPACT_WINDOW_ENV] = '300000tokens'
+    expect(configuredAutoCompactWindow('claude-sonnet-4')).toEqual({ source: 'auto' })
+  })
 })

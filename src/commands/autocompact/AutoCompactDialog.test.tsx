@@ -119,6 +119,34 @@ test('Enter on the starting value and Esc leave it unchanged', async () => {
   }
 })
 
+test('the window shown on Enter is the one applied, also off the 100k grid', async () => {
+  // /autocompact 250k opens snapped to 300k: Enter there applies 300k.
+  setSettings({ modelSettings: { [MODEL]: { autoCompactWindow: 250_000 } } })
+  const d = await mount()
+  try {
+    expect(d.frame()).toContain('Select auto-compact window: 300k tokens')
+    await d.press(RIGHT)
+    await d.press(LEFT)
+    await d.press(ENTER)
+    expect(d.applied).toEqual([300_000])
+  } finally {
+    await d.cleanup()
+  }
+})
+
+test('a second Enter neither applies nor reports again', async () => {
+  const d = await mount()
+  try {
+    await d.press(RIGHT)
+    await d.press(ENTER)
+    await d.press(ENTER)
+    expect(d.applied).toEqual([100_000])
+    expect(d.done).toHaveLength(1)
+  } finally {
+    await d.cleanup()
+  }
+})
+
 test('with the env var set it only explains, and the arrows do nothing', async () => {
   process.env[AUTO_COMPACT_WINDOW_ENV] = '300000'
   const d = await mount()
