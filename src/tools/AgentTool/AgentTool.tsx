@@ -51,7 +51,7 @@ import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurpo
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
 import { allowsImplicitAutoBackground, ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js';
 import { agentNameProblem } from 'src/tools/AgentTool/agentName.js';
-import type { SetAppState } from 'src/agent/Task.js';
+import { registerAgentName } from 'src/tools/AgentTool/agentName.js';
 import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from 'src/tools/AgentTool/forkSubagent.js';
 import { forkGateVerdict } from 'src/tools/AgentTool/forkGate.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
@@ -95,22 +95,6 @@ function isAutoBackgroundAgentsEnabled(): boolean {
 }
 
 // Multi-agent type constants are defined inline inside gated blocks to enable dead code elimination
-
-/**
- * Make `name` resolve to `agentId` for SendMessage and ListAgents. The latest
- * registration of a name wins, and it outlives the agent: a send to a
- * finished agent's name resumes it from its transcript.
- */
-function registerAgentName(setAppState: SetAppState, name: string, agentId: string): void {
-  setAppState(prev => {
-    const next = new Map(prev.agentNameRegistry);
-    next.set(name, asAgentId(agentId));
-    return {
-      ...prev,
-      agentNameRegistry: next
-    };
-  });
-}
 
 // Base input schema without multi-agent parameters
 const baseInputSchema = lazySchema(() => z.object({
