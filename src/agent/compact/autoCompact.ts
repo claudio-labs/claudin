@@ -20,6 +20,7 @@ import {
 } from 'src/agent/compact/compact.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
 import { isReliefStarvedCompactEnabled } from 'src/agent/compact/reliefPolicy.js'
+import { configuredAutoCompactWindow } from 'src/agent/compact/autoCompactWindow.js'
 
 // Reserve this many tokens for output during compaction
 // Based on p99.99 of compact summary output being 17,387 tokens.
@@ -33,12 +34,10 @@ export function getEffectiveContextWindowSize(model: string): number {
   )
   let contextWindow = getContextWindowForModel(model, getSdkBetas())
 
-  const autoCompactWindow = process.env.CLAUDIN_AUTO_COMPACT_WINDOW
-  if (autoCompactWindow) {
-    const parsed = parseInt(autoCompactWindow, 10)
-    if (!isNaN(parsed) && parsed > 0) {
-      contextWindow = Math.min(contextWindow, parsed)
-    }
+  // CLAUDIN_AUTO_COMPACT_WINDOW, else the window /autocompact saved for it.
+  const configured = configuredAutoCompactWindow(model)
+  if (configured.source !== 'auto') {
+    contextWindow = Math.min(contextWindow, configured.window)
   }
 
   // Floor: effective context must be at least the summary reservation plus a

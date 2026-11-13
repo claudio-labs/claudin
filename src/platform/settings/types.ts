@@ -713,6 +713,27 @@ export const SettingsSchema = lazySchema(() =>
           'Persisted effort level for supported models. ' +
             "'adaptive' sends no effort field so the model scales per request.",
         ),
+      modelSettings: z
+        .record(
+          z.string(),
+          z
+            .object({
+              autoCompactWindow: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .catch(undefined)
+                .describe(
+                  'Context size, in tokens, at which auto-compact summarizes the ' +
+                    "conversation, capped by the model's context window. Set by /autocompact.",
+                ),
+            })
+            .passthrough(),
+        )
+        .optional()
+        .catch(undefined)
+        .describe('Settings that apply to one model, keyed by model id.'),
       codingLoopXhighDefault: z
         .boolean()
         .optional()

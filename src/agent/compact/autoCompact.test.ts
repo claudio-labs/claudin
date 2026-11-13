@@ -14,6 +14,8 @@ import {
 import { getContextWindowForModel } from 'src/agent/context/context.ts'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.ts'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.ts'
+import { setFlagSettingsInline } from 'src/platform/bootstrap/state/sessionFlags.js'
+import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import type { ToolUseContext } from 'src/tools/Tool.ts'
 
 /** Sets env vars for one test and puts the prior values back after it. */
@@ -254,6 +256,32 @@ describe('getEffectiveContextWindowSize', () => {
       process.env.CLAUDIN_AUTO_COMPACT_WINDOW = bad
       expect(getEffectiveContextWindowSize(model)).toBe(full)
     }
+  })
+
+  describe('the window /autocompact saved for the model', () => {
+    const model = 'claude-sonnet-4'
+    function setSettings(settings: Record<string, unknown> | null): void {
+      setFlagSettingsInline(settings)
+      resetSettingsCache()
+    }
+    afterEach(() => setSettings(null))
+
+    test('caps the window like the env var does, for that model only', () => {
+      delete process.env.CLAUDIN_AUTO_COMPACT_WINDOW
+      const reserved = getContextWindowForModel(model) - getEffectiveContextWindowSize(model)
+      const other = getEffectiveContextWindowSize('claude-opus-4-1')
+      setSettings({ modelSettings: { [model]: { autoCompactWindow: 120_000 } } })
+      expect(getEffectiveContextWindowSize(model)).toBe(120_000 - reserved)
+      expect(getEffectiveContextWindowSize('claude-opus-4-1')).toBe(other)
+    })
+
+    test('CLAUDIN_AUTO_COMPACT_WINDOW wins over it', () => {
+      delete process.env.CLAUDIN_AUTO_COMPACT_WINDOW
+      const reserved = getContextWindowForModel(model) - getEffectiveContextWindowSize(model)
+      setSettings({ modelSettings: { [model]: { autoCompactWindow: 120_000 } } })
+      process.env.CLAUDIN_AUTO_COMPACT_WINDOW = '150000'
+      expect(getEffectiveContextWindowSize(model)).toBe(150_000 - reserved)
+    })
   })
 })
 
