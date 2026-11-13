@@ -114,10 +114,10 @@
       "replace": "return true"
     },
     {
-      "name": "an empty transcript gets a recap",
+      "name": "a transcript with no reply gets a recap",
       "source": "src/agent/awaySummary.ts",
-      "find": "  if (messages.length === 0) {\n    return null\n  }",
-      "replace": "  if (messages.length === 0) {\n    return ''\n  }"
+      "find": "if (!hasTurn(messages)) return { kind: 'no-turn' }",
+      "replace": "if (false) return { kind: 'no-turn' }"
     },
     {
       "name": "/compact accepts an empty conversation",
@@ -128,14 +128,14 @@
     {
       "name": "CLAUDIN_AUTO_COMPACT_WINDOW is ignored",
       "source": "src/agent/compact/autoCompact.ts",
-      "find": "contextWindow = Math.min(contextWindow, parsed)",
+      "find": "contextWindow = Math.min(contextWindow, configured.window)",
       "replace": "contextWindow = contextWindow"
     },
     {
       "name": "an unusable CLAUDIN_AUTO_COMPACT_WINDOW is applied",
-      "source": "src/agent/compact/autoCompact.ts",
-      "find": "parsed > 0) {",
-      "replace": "true) {"
+      "source": "src/agent/compact/autoCompactWindow.ts",
+      "find": "parsed && parsed.tokens > 0",
+      "replace": "parsed"
     },
     {
       "name": "the percentage override can move the trigger later",

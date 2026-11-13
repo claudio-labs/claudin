@@ -1,0 +1,184 @@
+{
+  "test": [
+    "src/tools/AgentTool/forkFromDirective.test.ts",
+    "src/tools/AgentTool/agentName.test.ts",
+    "src/commands/fork",
+    "src/commands/autocompact",
+    "src/commands/recap",
+    "src/agent/awaySummary.test.ts",
+    "src/agent/compact/autoCompactWindow.test.ts",
+    "src/agent/compact/autoCompact.test.ts"
+  ],
+  "source": "src/tools/AgentTool/forkFromDirective.ts",
+  "probes": [
+    {
+      "name": "a fork carries the history from before the last compaction",
+      "find": "const messages = getMessagesAfterCompactBoundary(context.messages)",
+      "replace": "const messages = context.messages"
+    },
+    {
+      "name": "a fork takes whatever prompt the slot holds",
+      "find": "savedPromptFor(deps.savedParams(), context) ??",
+      "replace": "deps.savedParams()?.systemPrompt ??"
+    },
+    {
+      "name": "a prompt saved for another model is reused",
+      "find": "if (!saved || saved.toolUseContext?.options.mainLoopModel !== context.options.mainLoopModel) return undefined",
+      "replace": "if (!saved) return undefined"
+    },
+    {
+      "name": "a prompt saved for another conversation is reused",
+      "find": "if (!first || !context.messages.some(m => m.uuid === first.uuid)) return undefined",
+      "replace": "if (!first) return undefined"
+    },
+    {
+      "name": "a fork starts before the first reply",
+      "find": "  if (!hasTurn(messages)) return { kind: 'no-turn' }\n  // The parent's",
+      "replace": "  // The parent's"
+    },
+    {
+      "name": "a fork name SendMessage cannot address is kept",
+      "find": "return slug && agentNameProblem(slug) === undefined ? slug : 'fork'",
+      "replace": "return slug || 'fork'"
+    },
+    {
+      "name": "the 24-char cut runs after the hyphen trim",
+      "find": "    .slice(0, 24)\n    .replace(/^-|-$/g, '')",
+      "replace": "    .replace(/^-|-$/g, '')\n    .slice(0, 24)"
+    },
+    {
+      "name": "a taken fork name is reused instead of suffixed",
+      "find": "const name = allocateAgentName(context.getAppState().agentNameRegistry, forkNameFromDirective(directive))",
+      "replace": "const name = forkNameFromDirective(directive)"
+    },
+    {
+      "name": "the fork's task goes to the caller's store, a no-op for an in-process teammate",
+      "find": "    setAppState: rootSetAppState,\n",
+      "replace": "    setAppState: context.setAppState,\n"
+    },
+    {
+      "name": "the fork's name is not registered",
+      "find": "  registerAgentName(rootSetAppState, name, agentId)\n",
+      "replace": ""
+    },
+    {
+      "name": "the fork runs without progress summaries",
+      "find": "enableSummarization: true,",
+      "replace": "enableSummarization: false,"
+    },
+    {
+      "name": "/fork is on without the fork agent",
+      "source": "src/commands/fork/index.ts",
+      "find": "return forkSubagent && !backgroundHidden",
+      "replace": "return forkSubagent || !backgroundHidden"
+    },
+    {
+      "name": "/fork ignores the command's permission check",
+      "source": "src/commands/fork/fork.ts",
+      "find": "context.canUseTool ?? hasPermissionsToUseTool",
+      "replace": "hasPermissionsToUseTool"
+    },
+    {
+      "name": "/fork answers with another command's wording",
+      "source": "src/commands/fork/fork.ts",
+      "find": "return runFork(onDone, context, args, FORK_WORDING)",
+      "replace": "return runFork(onDone, context, args, { ...FORK_WORDING, usage: 'Usage: /subtask' })"
+    },
+    {
+      "name": "a zero CLAUDIN_AUTO_COMPACT_WINDOW is applied",
+      "source": "src/agent/compact/autoCompactWindow.ts",
+      "find": "return parsed && parsed.tokens > 0 ? parsed.tokens : undefined",
+      "replace": "return parsed ? parsed.tokens : undefined"
+    },
+    {
+      "name": "a token count with junk after it is read",
+      "source": "src/agent/compact/autoCompactWindow.ts",
+      "find": "/^(\\d+(?:\\.\\d+)?)([km])?$/",
+      "replace": "/^(\\d+(?:\\.\\d+)?)([km])?/"
+    },
+    {
+      "name": "CLAUDIN_AUTO_COMPACT_WINDOW loses to the saved window",
+      "source": "src/agent/compact/autoCompactWindow.ts",
+      "find": "  if (env !== undefined) return { source: 'env', window: env }\n",
+      "replace": ""
+    },
+    {
+      "name": "a higher-priority window is not reported",
+      "source": "src/commands/autocompact/setting.ts",
+      "find": "if (override !== undefined) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the user's own window reads as an override",
+      "source": "src/commands/autocompact/setting.ts",
+      "find": "return inEffect.window !== userSaved?.[model]?.autoCompactWindow ? inEffect.window : undefined",
+      "replace": "return inEffect.window"
+    },
+    {
+      "name": "a bare 200 is 200 tokens",
+      "source": "src/commands/autocompact/setting.ts",
+      "find": "const bareThousands = !parsed.suffixed && parsed.tokens >= 100 && parsed.tokens <= 1_000",
+      "replace": "const bareThousands = false"
+    },
+    {
+      "name": "auto leaves an empty modelSettings behind",
+      "source": "src/commands/autocompact/setting.ts",
+      "find": "  if (otherModels.length === 0) return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "a second Enter saves again",
+      "source": "src/commands/autocompact/AutoCompactDialog.tsx",
+      "find": "    if (finished.current) return\n",
+      "replace": ""
+    },
+    {
+      "name": "the dialog compares Enter with its snapped start",
+      "source": "src/commands/autocompact/AutoCompactDialog.tsx",
+      "find": "value === configuredChoice ? unchanged",
+      "replace": "value === initialDialogValue(configured) ? unchanged"
+    },
+    {
+      "name": "up does not step the dialog",
+      "source": "src/commands/autocompact/AutoCompactDialog.tsx",
+      "find": "(key.rightArrow || key.upArrow) && !locked",
+      "replace": "key.rightArrow && !locked"
+    },
+    {
+      "name": "the dialog hides auto-compact being off",
+      "source": "src/commands/autocompact/AutoCompactDialog.tsx",
+      "find": "        {!autoCompactEnabled && <Text color=\"warning\">{AUTO_COMPACT_DISABLED_NOTE}</Text>}\n",
+      "replace": ""
+    },
+    {
+      "name": "/autocompact waits for the turn to end",
+      "source": "src/commands/autocompact/index.ts",
+      "find": "  immediate: true,\n",
+      "replace": ""
+    },
+    {
+      "name": "the recap cut splits a surrogate pair",
+      "source": "src/agent/awaySummary.ts",
+      "find": "const chars = Array.from(text)",
+      "replace": "const chars = text.split('')"
+    },
+    {
+      "name": "the away card shows an API error",
+      "source": "src/agent/awaySummary.ts",
+      "find": "return result.kind === 'ok' ? result.text : null",
+      "replace": "return 'text' in result ? result.text : null"
+    },
+    {
+      "name": "a recap that lands after the abort is shown",
+      "source": "src/agent/awaySummary.ts",
+      "find": "    if (signal.aborted) return { kind: 'aborted' }\n",
+      "replace": ""
+    },
+    {
+      "name": "/recap before the first message says nothing",
+      "source": "src/commands/recap/recap.ts",
+      "find": "return 'Nothing to recap yet — send a message first.'",
+      "replace": "return ''"
+    }
+  ]
+}
