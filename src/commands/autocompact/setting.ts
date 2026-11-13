@@ -58,15 +58,12 @@ export function describeConfiguredWindow(model: string): string {
   return `${formatTokens(configured.window)} tokens (${SOURCE_LABEL[configured.source]})${capped}`
 }
 
-/** Notes under the current setting: auto-compact being off, then what the window means. */
-export function autoCompactNotes(enabled: boolean = isAutoCompactEnabled()): string[] {
-  return enabled ? [AUTO_COMPACT_EXPLANATION] : [AUTO_COMPACT_DISABLED_NOTE, AUTO_COMPACT_EXPLANATION]
-}
-
+/** The setting, auto-compact being off, then what the window means. */
 export function autoCompactStatusText(model: string, enabled: boolean = isAutoCompactEnabled()): string {
   return [
     `Auto-compact window for ${renderModelName(model)}: ${describeConfiguredWindow(model)}`,
-    ...autoCompactNotes(enabled),
+    ...(enabled ? [] : [AUTO_COMPACT_DISABLED_NOTE]),
+    AUTO_COMPACT_EXPLANATION,
   ].join('\n')
 }
 

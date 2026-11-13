@@ -16,6 +16,8 @@ import { lastFrame, mountHook } from 'src/providers/ui/__testutils__/inkHookHarn
 
 const LEFT = '\x1B[D'
 const RIGHT = '\x1B[C'
+const UP = '\x1B[A'
+const DOWN = '\x1B[B'
 const ENTER = '\r'
 const MODEL = 'claude-sonnet-4'
 const NAME = renderModelName(MODEL)
@@ -35,7 +37,7 @@ afterEach(() => {
   else process.env[AUTO_COMPACT_WINDOW_ENV] = savedEnv
 })
 
-async function mount() {
+async function mount(autoCompactEnabled = true) {
   const done: string[] = []
   const applied: AutoCompactChoice[] = []
   const mounted = await mountHook(
@@ -46,6 +48,7 @@ async function mount() {
         applied.push(choice)
         return `applied ${choice}`
       }}
+      autoCompactEnabled={autoCompactEnabled}
     />,
     { columns: 140 },
   )
@@ -81,6 +84,37 @@ test('opens on the current setting and steps through the 100k grid', async () =>
     await d.press(ENTER)
     expect(d.applied).toEqual([300_000])
     expect(d.done).toEqual(['applied 300000'])
+  } finally {
+    await d.cleanup()
+  }
+})
+
+test("Claude Code's wording, and the disabled note as a warning only when it applies", async () => {
+  const on = await mount(true)
+  try {
+    expect(on.frame()).toContain('This command configures when auto-compaction happens.')
+    expect(on.frame()).not.toContain('Auto-compact is currently disabled (see /config)')
+  } finally {
+    await on.cleanup()
+  }
+  const off = await mount(false)
+  try {
+    expect(off.frame()).toContain('Auto-compact is currently disabled (see /config)')
+  } finally {
+    await off.cleanup()
+  }
+})
+
+test('↑ and ↓ step like → and ←', async () => {
+  const d = await mount()
+  try {
+    await d.press(UP)
+    await d.press(UP)
+    expect(d.frame()).toContain('Select auto-compact window: 200k tokens')
+    await d.press(DOWN)
+    expect(d.frame()).toContain('Select auto-compact window: 100k tokens')
+    await d.press(DOWN)
+    expect(d.frame()).toContain('Select auto-compact window: auto')
   } finally {
     await d.cleanup()
   }
