@@ -4,21 +4,26 @@
 // has no subsystem for (fleet sessions, concurrency slots, review tools).
 //
 // There is no parent tool_use to clone (buildForkedMessages), so the child
-// gets the conversation as is plus one user message carrying the directive.
+// gets the conversation since the last compaction, as a query would send it,
+// plus one user message carrying the directive.
 // No size gate (forkGate.ts): the user asked for the fork by name, and Claude
 // Code has none on this path either.
 
 import { runWithAgentContext } from 'src/agent/coordinator/agentContext.js'
 import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js'
-import { getLastCacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
+import { type CacheSafeParams, getLastCacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { getParentSessionId } from 'src/agent/coordinator/teammate.js'
-import { createUserMessage } from 'src/agent/messages/messages.js'
+import { createUserMessage, getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js'
 import { getQuerySourceForAgent } from 'src/agent/promptCategory.js'
+import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
+import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js'
+import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import { registerAsyncAgent } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { getAgentModel } from 'src/providers/model/agent.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import { asAgentId } from 'src/shared/types/ids.js'
+import type { Message } from 'src/shared/types/message.js'
 import { allocateAgentName, registerAgentName } from 'src/tools/AgentTool/agentName.js'
 import { runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js'
 import { buildChildMessage, FORK_AGENT } from 'src/tools/AgentTool/forkSubagent.js'
@@ -35,6 +40,7 @@ export type ForkFromDirectiveDeps = {
   runLifecycle: typeof runAsyncAgentLifecycle
   stream: typeof runAgent
   savedParams: typeof getLastCacheSafeParams
+  buildPrompt: typeof buildParentSystemPrompt
   coordinatorMode: typeof isCoordinatorMode
 }
 
@@ -43,6 +49,7 @@ const LIVE_DEPS: ForkFromDirectiveDeps = {
   runLifecycle: runAsyncAgentLifecycle,
   stream: runAgent,
   savedParams: getLastCacheSafeParams,
+  buildPrompt: buildParentSystemPrompt,
   coordinatorMode: isCoordinatorMode,
 }
 
@@ -68,6 +75,48 @@ export function forkDescription(directive: string): string {
   return flat.length > 50 ? `${flat.slice(0, 49)}…` : flat
 }
 
+/** Something to fork: a reply from the model, or a compacted conversation. */
+function hasTurn(messages: readonly Message[]): boolean {
+  return messages.some(
+    m =>
+      (m.type === 'assistant' && !m.isApiErrorMessage) ||
+      (m.type === 'user' && m.isCompactSummary === true),
+  )
+}
+
+/**
+ * The prompt the last main turn sent (stopHooks.ts saves it), when it was
+ * rendered for this model and this conversation. A /model, or a /resume that
+ * has not had a turn yet, leaves another one in the slot.
+ */
+function savedPromptFor(saved: CacheSafeParams | null, context: ToolUseContext): SystemPrompt | undefined {
+  if (!saved || saved.toolUseContext?.options.mainLoopModel !== context.options.mainLoopModel) return undefined
+  const first = saved.forkContextMessages[0]
+  if (!first || !context.messages.some(m => m.uuid === first.uuid)) return undefined
+  return saved.systemPrompt
+}
+
+/** The main thread's prompt rendered now, as the Agent tool's fork falls back to. */
+async function buildParentSystemPrompt(context: ToolUseContext): Promise<SystemPrompt> {
+  const appState = context.getAppState()
+  const mainThreadAgentDefinition = appState.agent
+    ? appState.agentDefinitions.activeAgents.find(a => a.agentType === appState.agent)
+    : undefined
+  const defaultSystemPrompt = await getSystemPrompt(
+    context.options.tools,
+    context.options.mainLoopModel,
+    Array.from(appState.toolPermissionContext.additionalWorkingDirectories.keys()),
+    context.options.mcpClients,
+  )
+  return buildEffectiveSystemPrompt({
+    mainThreadAgentDefinition,
+    toolUseContext: context,
+    customSystemPrompt: context.options.customSystemPrompt,
+    defaultSystemPrompt,
+    appendSystemPrompt: context.options.appendSystemPrompt,
+  })
+}
+
 export async function spawnForkFromDirective(
   directive: string,
   context: ToolUseContext,
@@ -75,12 +124,14 @@ export async function spawnForkFromDirective(
   deps: ForkFromDirectiveDeps = LIVE_DEPS,
 ): Promise<ForkFromDirectiveResult> {
   if (deps.coordinatorMode()) return { kind: 'coordinator' }
-  // The parent's rendered prompt keeps the child's prefix cache-identical.
-  // Outside a query it is the one the last main turn sent (stopHooks.ts).
-  const systemPrompt = context.renderedSystemPrompt ?? deps.savedParams()?.systemPrompt
-  if (!systemPrompt || !context.messages.some(m => m.type === 'assistant')) {
-    return { kind: 'no-turn' }
-  }
+  const messages = getMessagesAfterCompactBoundary(context.messages)
+  if (!hasTurn(messages)) return { kind: 'no-turn' }
+  // The parent's rendered prompt keeps the child's prefix cache-identical;
+  // a rebuilt one is right for the model and session, at a cache write.
+  const systemPrompt =
+    context.renderedSystemPrompt ??
+    savedPromptFor(deps.savedParams(), context) ??
+    (await deps.buildPrompt(context))
 
   const startTime = Date.now()
   // In-process teammates get a no-op setAppState; setAppStateForTasks reaches
@@ -131,7 +182,7 @@ export async function spawnForkFromDirective(
             override: { systemPrompt, agentId: asAgentId(agentId), abortController },
             // The parent's exact tools and conversation: a cache-identical prefix.
             availableTools: context.options.tools,
-            forkContextMessages: context.messages,
+            forkContextMessages: messages,
             useExactTools: true,
             onCacheSafeParams,
             description,
