@@ -50,6 +50,7 @@ export function sanitizeAwaySummary(text: string | null): string | null {
 export async function generateAwaySummary(
   messages: readonly Message[],
   signal: AbortSignal,
+  query: typeof queryModelWithoutStreaming = queryModelWithoutStreaming,
 ): Promise<string | null> {
   if (messages.length === 0) {
     return null
@@ -58,7 +59,7 @@ export async function generateAwaySummary(
   try {
     const recent = messages.slice(-RECENT_MESSAGE_WINDOW)
     recent.push(createUserMessage({ content: AWAY_SUMMARY_PROMPT }))
-    const response = await queryModelWithoutStreaming({
+    const response = await query({
       messages: recent,
       systemPrompt: asSystemPrompt([]),
       thinkingConfig: { type: 'disabled' },
