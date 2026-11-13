@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   AUTO_COMPACT_WINDOW_ENV,
   configuredAutoCompactWindow,
@@ -31,9 +31,18 @@ export function AutoCompactDialog({ model, onDone, save = saveAutoCompactWindow 
   const locked = configured.source === 'env'
   const current = describeConfiguredWindow(model)
   const name = renderModelName(model)
-  const [initial] = useState(() => initialDialogValue(configured))
-  const [value, setValue] = useState(initial)
+  const [value, setValue] = useState(() => initialDialogValue(configured))
+  // The start is snapped to the 100k grid, so compare with what is configured:
+  // Enter on a snapped 250k → 300k applies the 300k on screen.
+  const configuredChoice = configured.source === 'auto' ? 'auto' : configured.window
+  const finished = useRef(false)
   const unchanged = `Auto-compact window for ${name} unchanged: ${current}`
+
+  function finish(result: () => string): void {
+    if (finished.current) return
+    finished.current = true
+    onDone(result())
+  }
 
   useInput((_input, key) => {
     if (key.leftArrow && !locked) {
@@ -41,9 +50,9 @@ export function AutoCompactDialog({ model, onDone, save = saveAutoCompactWindow 
     } else if (key.rightArrow && !locked) {
       setValue(v => stepAutoCompactWindow(v, 1))
     } else if (key.return) {
-      onDone(locked || value === initial ? unchanged : save(value, model))
+      finish(() => (locked || value === configuredChoice ? unchanged : save(value, model)))
     } else if (key.escape) {
-      onDone(unchanged)
+      finish(() => unchanged)
     }
   })
 

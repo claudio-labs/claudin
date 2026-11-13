@@ -9,6 +9,7 @@ export const autocompact: Command = {
   name: 'autocompact',
   description: DESCRIPTION,
   argumentHint: ARGUMENT_HINT,
+  immediate: true,
   isEnabled: () => !getIsNonInteractiveSession(),
   load: () => import('src/commands/autocompact/autocompact.js'),
 }
