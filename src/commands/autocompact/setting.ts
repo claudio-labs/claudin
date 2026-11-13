@@ -8,6 +8,7 @@ import {
   AUTO_COMPACT_WINDOW_ENV,
   type ConfiguredAutoCompactWindow,
   configuredAutoCompactWindow,
+  parseTokenCount,
 } from 'src/agent/compact/autoCompactWindow.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
@@ -35,14 +36,11 @@ export const ENV_PRECEDENCE = `${AUTO_COMPACT_WINDOW_ENV} is set and takes prece
 export function parseAutoCompactWindow(raw: string): AutoCompactChoice | undefined {
   const text = raw.trim().toLowerCase()
   if (text === 'auto' || text === 'reset' || text === 'unset' || text === 'default') return 'auto'
-  const suffix = text.slice(-1)
-  const multiplier = suffix === 'm' ? 1_000_000 : suffix === 'k' ? 1_000 : undefined
-  const value = multiplier === undefined ? Number(text) : parseFloat(text) * multiplier
-  const tokens = multiplier === undefined && value >= 100 && value <= 1_000 ? value * 1_000 : value
-  if (text === '' || Number.isNaN(tokens) || tokens < MIN_AUTO_COMPACT_WINDOW || tokens > MAX_AUTO_COMPACT_WINDOW) {
-    return undefined
-  }
-  return Math.round(tokens)
+  const parsed = parseTokenCount(text)
+  if (!parsed) return undefined
+  const bareThousands = !parsed.suffixed && parsed.tokens >= 100 && parsed.tokens <= 1_000
+  const tokens = bareThousands ? parsed.tokens * 1_000 : parsed.tokens
+  return tokens >= MIN_AUTO_COMPACT_WINDOW && tokens <= MAX_AUTO_COMPACT_WINDOW ? tokens : undefined
 }
 
 const SOURCE_LABEL = { env: `from ${AUTO_COMPACT_WINDOW_ENV}`, settings: 'from settings' } as const
