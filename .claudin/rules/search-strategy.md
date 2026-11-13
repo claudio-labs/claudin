@@ -51,7 +51,7 @@ src/
 │   │                              holds the ten end-to-end suites that drive the barrel with a
 │   │                              stubbed fetch over __testutils__/shimHarness.ts. Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
-│   ├── transport/ (49)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
+│   ├── transport/ (55)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
 │   ├── oauth/ (37)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
 │   ├── model/ (63)              ← model.ts (getMainLoopModel, getSmallFastModel),
 │   │                              providers.ts (getAPIProvider), modelOptions, catalogs.
@@ -98,7 +98,7 @@ src/
 │   ├── config/ (22)             ← config.ts is a BARREL over config/ (types, defaults, fileStore,
 │   │                              globalConfig, projectConfig, trust, derived); claudinMigration
 │   ├── settings/ (35)           ← settings.json layers, precedence, remote-managed
-│   ├── lifecycleHooks/ (40)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
+│   ├── lifecycleHooks/ (45)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
 │   │                              each slice's own hooks/ — these are the harness's
 │   ├── bash/ (24)               ← bash parsing, command splitting, shell snapshots
 │   ├── bootstrap/state.ts       ← a BARREL over state/ — the STATE singleton lives in state/store.ts
