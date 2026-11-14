@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
+import { asAgentId } from 'src/shared/types/ids.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { AgentTool } from 'src/tools/AgentTool/AgentTool.js'
-import { agentNameProblem } from 'src/tools/AgentTool/agentName.js'
+import { agentNameProblem, allocateAgentName, registerAgentName } from 'src/tools/AgentTool/agentName.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 
 const priorTeams = process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
@@ -74,5 +76,29 @@ describe('an inline agent registers its name too', () => {
       'if (name) registerAgentName(rootSetAppState, name, syncAgentId);',
     )
     expect(src).toContain('if (name) registerAgentName(rootSetAppState, name, asyncAgentId);')
+  })
+})
+
+describe('the name registry', () => {
+  const registry = (...names: string[]) => new Map(names.map(n => [n, asAgentId(`a-${n}`)]))
+
+  test('allocateAgentName keeps a free name as is', () => {
+    expect(allocateAgentName(registry('other'), 'fix-the-bug')).toBe('fix-the-bug')
+  })
+
+  test('allocateAgentName suffixes a taken name with the first free number', () => {
+    expect(allocateAgentName(registry('fork'), 'fork')).toBe('fork-2')
+    expect(allocateAgentName(registry('fork', 'fork-2', 'fork-3'), 'fork')).toBe('fork-4')
+  })
+
+  test('registerAgentName points the name at the agent, latest registration winning', () => {
+    let state = { agentNameRegistry: registry('fork') } as unknown as AppState
+    const setAppState = (f: (prev: AppState) => AppState) => {
+      state = f(state)
+    }
+    registerAgentName(setAppState, 'fork', 'a-new')
+    registerAgentName(setAppState, 'scout', 'a-scout')
+    expect(state.agentNameRegistry.get('fork')).toBe(asAgentId('a-new'))
+    expect(state.agentNameRegistry.get('scout')).toBe(asAgentId('a-scout'))
   })
 })

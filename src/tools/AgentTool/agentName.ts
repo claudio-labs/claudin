@@ -1,4 +1,5 @@
-import { toAgentId } from 'src/shared/types/ids.js'
+import type { SetAppState } from 'src/agent/Task.js'
+import { type AgentId, asAgentId, toAgentId } from 'src/shared/types/ids.js'
 
 const AGENT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 
@@ -19,4 +20,28 @@ export function agentNameProblem(name: string): string | undefined {
     return `${JSON.stringify(name)} is shaped like an agentId, and a send would resolve it as one — pick a word`
   }
   return undefined
+}
+
+/**
+ * Make `name` resolve to `agentId` for SendMessage and ListAgents. The latest
+ * registration of a name wins, and it outlives the agent: a send to a
+ * finished agent's name resumes it from its transcript.
+ */
+export function registerAgentName(setAppState: SetAppState, name: string, agentId: string): void {
+  setAppState(prev => {
+    const next = new Map(prev.agentNameRegistry)
+    next.set(name, asAgentId(agentId))
+    return {
+      ...prev,
+      agentNameRegistry: next,
+    }
+  })
+}
+
+/** `base` if no agent holds it yet, otherwise the first free `base-2`, `base-3`, … */
+export function allocateAgentName(registry: ReadonlyMap<string, AgentId>, base: string): string {
+  if (!registry.has(base)) return base
+  let n = 2
+  while (registry.has(`${base}-${n}`)) n++
+  return `${base}-${n}`
 }

@@ -649,6 +649,18 @@ active provider, effort — must pin it in `beforeAll` and restore in `afterAll`
 the way `cacheProfile.test.ts` does. And when a suite is green in CI but red on
 one machine, suspect the machine's config before the code.
 
+The same file is **written**, not only read: nothing points the config dir at a
+temp dir under `bun test` (the preload does not), so a test that reaches
+`updateSettingsForSource('userSettings', …)` for real edits the developer's own
+`~/.claudin/settings.json`. Code that saves user settings takes the store as a
+parameter so its tests can hand in a fake one: `UserSettingsStore` in
+`src/commands/autocompact/setting.ts` (`read` + `save`) is the worked example.
+Hand the fake in even on a path that is not supposed to save: a break-probe
+that lifts the guard turns it into a real write — the env-lock probe in
+`ccCommandsPort.json` wrote `modelSettings` into a developer's file that way.
+Read paths are pinned with `setFlagSettingsInline(…)` + `resetSettingsCache()`
+instead, which merges above every file and touches none.
+
 **Typecheck baseline:** `main` reaches **zero** `error TS` since #87, which
 retired the fork's ~107 `TS2307` by adding a `.d.ts` next to each absent module
 — see [build-system.md](build-system.md) for the import trap that creates. The

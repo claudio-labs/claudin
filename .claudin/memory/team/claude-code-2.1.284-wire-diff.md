@@ -1,6 +1,6 @@
 ---
 name: claude-code-2.1.284-wire-diff
-description: Claude Code 2.1.284 vs Claudin on the wire (2026-09-29) — five differences, all decided by measurement on perf/prompt-parity-2284: total_tokens parked then moot (CC dropped it in 2.1.316), env-as-role:system no-go (0.1%), auto-mode text not adopted, AskUserQuestion stays deferred; the lean3 dedup promoted; divergences not to "fix"; the extraction recipe every later capture reuses
+description: Claude Code 2.1.284 vs Claudin on the wire (2026-09-29) — five differences, all decided by measurement on perf/prompt-parity-2284: total_tokens parked then moot (CC dropped it in 2.1.316), env-as-role:system no-go (0.1%), auto-mode text not adopted, AskUserQuestion stays deferred; the lean3 dedup promoted; divergences not to "fix"; the extraction recipe every later capture reuses, plus (11-13) how to read commands/skills/flag-gated tools out of the Bun binary's embedded chunks
 type: project
 ---
 
@@ -70,3 +70,23 @@ must name that same TMPDIR, and `customApiKeyResponses.approved` takes
 only `request.json` tools without `defer_loading: true`; meta.json lists every tool sent. The
 extracted text is Anthropic's, so keep it in a temp dir. Run the arms with
 `scripts/bench/ab/session-cache-ab.ts --variant=…` ([[session-cache-ab-bench-2026-09-23]]).
+
+**What the wire does not show, and where to get it** (2026-11-13, CC 2.1.323). The stub capture
+holds only the tools sent with no flags (26 tools). Slash commands, bundled skills and flag-gated
+tools have to come from the binary:
+- The binary is at `~/.local/share/mise/installs/claude/<ver>/claude`, with several versions side
+  by side, which suits a diff between versions.
+- It is a Bun standalone build. Each embedded JS file starts with `\0// @bun` and runs to the next
+  NUL byte, so split on that.
+- Pretty-print a chunk with `new Bun.Transpiler({loader:'js'}).transformSync(src)`. Biome refuses
+  these chunks.
+- A command is an object literal, `{type:"local-jsx"|"local",name:"…",description:…,
+  argumentHint:…,load:()=>import(chunk)}`, and its behavior is in the loaded chunk. A tool
+  carries a `searchHint:"…"` next to `name:`. The bundled skill names are one array of string
+  constants.
+- Minified names repeat across chunks (there were two different `OOe`), so find a definition by
+  a parameter only it has.
+- The rollout state for the account is in `~/.claude.json` under `cachedGrowthBookFeatures`.
+  For example, commit/pr as on-demand skills was off there on 11-13.
+
+The CC behavior in [[cc-2-1-323-commands-port]] was read this way.

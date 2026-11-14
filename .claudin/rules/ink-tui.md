@@ -10,6 +10,8 @@ paths:
   - "src/**/ui/**"
   - "src/terminal/design-system/**"
   - "src/terminal/prompt-input/**"
+  # §12: what a command hands onDone renders as markdown.
+  - "src/commands/**"
 ---
 # Ink / TUI Renderer — Claudin Development Rules
 
@@ -268,3 +270,16 @@ fix the right one.
   `TypeError: X is not a function` thrown inside `completeRootWhenReady`. What
   caught it was `Stats.test.tsx` driving real keypresses — a test that only renders never reaches a transition-lane commit,
   so scope the post-bump check to the suites that press keys.
+
+## 12. A command's result text is markdown — a bare `<word>` vanishes
+
+- The string a command passes to `onDone` (and a `local` command's `text`
+  result) is rendered through `<Markdown>`
+  (`src/agent/ui/messages/UserLocalCommandOutputMessage.tsx`), `display:
+  'system'` included. Markdown reads `<directive>` as an inline HTML tag and
+  drops it, so `Usage: /fork <directive>` showed as `Usage: /fork` on screen
+  while every `toContain` on the string passed.
+- Escape the angle brackets the way Claude Code does — `'Usage: /fork
+  \\<directive\\>'` in the source (`src/commands/fork/fork.ts`) — and do not
+  "clean up" the backslashes. Only a real terminal shows the difference: verify
+  a usage line under tmux, not by asserting on the string.

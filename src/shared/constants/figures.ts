@@ -21,7 +21,7 @@ export const PAUSE_ICON = '\u23f8' // ⏸
 // MCP subscription indicators
 export const REFRESH_ARROW = '\u21bb' // ↻ - used for resource update indicator
  // → - cross-session injected message indicator
- // ⑂ - fork directive indicator
+export const FORK_GLYPH = '\u2442' // ⑂ - fork directive indicator
 
 // Review status indicators (ultrareview diamond states)
 export const DIAMOND_OPEN = '\u25c7' // ◇ - running
