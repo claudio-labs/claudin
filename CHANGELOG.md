@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.2.2 — 2026-11-14
+
+### ✨ Features
+
+- feat(commands): add /fork, /subtask, /autocompact and /recap (#353) (5de73041)
+
+### 🐛 Bug Fixes
+
+- fix: port openclaude bug fixes and ask before reading .env (#352) (f97ad5c7)
+- fix(context): reload context after /cd, add classifier cache levers (#350) (8fc999dc)
+
+### ⚡ Performance
+
+- perf(permissions): turn the classifier cache levers on by default (#351) (fffea434)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.2.1 — 2026-11-11
 
 ### 👷 CI/CD
