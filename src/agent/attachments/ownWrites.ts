@@ -45,6 +45,18 @@
  * background command or agent goes on writing after its call returned; those
  * changes stay the watcher's.
  *
+ * ## A child's writes
+ *
+ * A child (a sub-agent, a memory fork) settles into its own copy of the read
+ * state, so the above brings the child up to date and leaves its parent
+ * behind. When the caller is a child (`childOf`), the settle also records
+ * what the child's read state now holds as written under the call — a Write,
+ * Edit or Patch of its own, or a change the lines above just adopted — in
+ * `childWrites.ts`. The watcher of the thread that owns the session then
+ * adopts those versions and names them in one `child_written_files` note,
+ * where it used to report each as the user's with a diff. So the changes a
+ * background agent makes do stay the watcher's, but as names.
+ *
  * On by default since 2026-10-21: in the branch-point replay (team memory
  * `edit-method-census-2026-10-21`) the model's next action was the same with
  * the line as with the notes, and the context ~2% of a session smaller.
@@ -52,21 +64,27 @@
  * test can set it.
  */
 import {
+  adoptWrittenEntry,
   changedFileCandidates,
-  isRangeEntry,
-  refreshRangeEntry,
 } from 'src/agent/attachments/changedFile.js'
+import { recordChildWrite } from 'src/agent/attachments/childWrites.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { expandPath, relativeIfInside } from 'src/shared/fs/path.js'
-import { FileTooLargeError, readFileInRange } from 'src/shared/fs/readFileInRange.js'
+import { FileTooLargeError } from 'src/shared/fs/readFileInRange.js'
 import { logError } from 'src/shared/log.js'
 import type { Tool } from 'src/tools/Tool.js'
 
-/** Past this a whole-file entry is left to the watcher, which marks it too large to refresh. */
-const OWN_WRITE_MAX_BYTES = 10 * 1024 * 1024
+/**
+ * How far before the call's start a write of the call may be dated. A file's
+ * mtime comes from the kernel's coarse clock, up to a tick behind the
+ * `Date.now()` the tool loop took first — seen 1 ms early on a HZ=1000
+ * kernel, and a tick is 4 ms at HZ=250, 10 ms at HZ=100. Without it a child's
+ * quick Write goes unrecorded and its parent gets the diff note.
+ */
+const MTIME_CLOCK_SLACK_MS = 10
 
 function isOwnWritesEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_OWN_WRITES)
@@ -94,22 +112,51 @@ function mayChangeFiles(tool: FileChangingTool, input: unknown): boolean {
   }
 }
 
-/** The tool loop's entry: claims for this call what changed while it ran; see the module comment. */
+/**
+ * The tool loop's entry: claims for this call what changed while it ran; see
+ * the module comment. `childOf` says the caller is a child of the session,
+ * whose writes its parent is told of by name.
+ */
 export async function settleOwnWrites(
   tool: FileChangingTool,
   input: unknown,
   readFileState: FileStateCache,
   startedAt: number,
   cwd: string,
+  childOf = false,
 ): Promise<OwnWrites> {
   if (!isOwnWritesEnabled() || !mayChangeFiles(tool, input)) return NONE
+  let own = NONE
   try {
-    return await refreshOwnWrites(readFileState, startedAt, cwd)
+    own = await refreshOwnWrites(readFileState, startedAt, cwd)
   } catch (err) {
     // Fail open: the watcher reports the change, as it did before.
     logError(err)
-    return NONE
   }
+  if (childOf) await recordChildWrites(readFileState, startedAt)
+  return own
+}
+
+/**
+ * Records every entry the call left dated to the disk: one a write tool set
+ * to its own write, or one `refreshOwnWrites` just adopted. An entry older
+ * than the call, or one the disk has moved past, is not this call's.
+ */
+async function recordChildWrites(readFileState: FileStateCache, startedAt: number): Promise<void> {
+  const since = startedAt - MTIME_CLOCK_SLACK_MS
+  await Promise.all(
+    changedFileCandidates(readFileState).map(async ([cacheKey, state]) => {
+      if (state.isPartialView || state.refreshFailed || state.timestamp < since) return
+      const path = expandPath(cacheKey)
+      try {
+        const mtime = await getFileModificationTimeAsync(path)
+        if (mtime === state.timestamp) recordChildWrite(path, mtime)
+      } catch (err) {
+        // Fail open: unrecorded, the parent's watcher reports it with a diff, as before.
+        if (!isENOENT(err)) logError(err)
+      }
+    }),
+  )
 }
 
 /** Brings each read file the call changed up to date; see the module comment. */
@@ -128,19 +175,7 @@ export async function refreshOwnWrites(
       try {
         const mtime = await getFileModificationTimeAsync(path)
         if (mtime < startedAt || mtime <= state.timestamp) return null
-        if (isRangeEntry(state)) {
-          // The diff it returns is the note this module exists to replace.
-          await refreshRangeEntry(cacheKey, path, state, mtime, readFileState)
-        } else {
-          const { content } = await readFileInRange(path, 0, undefined, OWN_WRITE_MAX_BYTES)
-          readFileState.set(cacheKey, {
-            content,
-            timestamp: mtime,
-            offset: undefined,
-            limit: undefined,
-            dedupExempt: true,
-          })
-        }
+        await adoptWrittenEntry(cacheKey, path, state, mtime, readFileState)
         return path
       } catch (err) {
         // Deleted, or grown past the cap: the watcher evicts or marks it on its next pass.

@@ -51,11 +51,14 @@ import type {
   FileStateCache,
   SeenRange,
 } from 'src/shared/fs/fileStateCache.js'
-import { expandPath } from 'src/shared/fs/path.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { expandPath, relativeIfInside } from 'src/shared/fs/path.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
+import { childWriteMtime } from 'src/agent/attachments/childWrites.js'
 import { isFileReadDenied } from 'src/agent/attachments/shared.js'
+import { ownsSessionScopedState } from 'src/agent/attachments/threadOwnership.js'
 
 /**
  * The entries one pass visits, snapshotted WITHOUT touching their recency.
@@ -81,6 +84,9 @@ export function changedFileCandidates(
  * (`src/__tests__/readGateScenarios.test.ts`) can drive the real selection —
  * which entries are visited, and in what order — instead of a hand-rolled
  * copy of the loop; `services.ts` only delegates.
+ *
+ * The files a child of this session wrote (`childWrites.ts`) leave the pass
+ * as one `child_written_files` note, whatever their number.
  */
 export async function getChangedFileAttachments(
   toolUseContext: ToolUseContext,
@@ -106,7 +112,35 @@ export async function getChangedFileAttachments(
       )
     }),
   )
-  return results.filter(result => result != null) as Attachment[]
+  const attachments: Attachment[] = []
+  const childWritten: string[] = []
+  for (const result of results) {
+    if (result == null) continue
+    if (result.type === 'child_written_files') {
+      childWritten.push(...result.filenames)
+    } else {
+      attachments.push(result)
+    }
+  }
+  if (childWritten.length > 0) {
+    attachments.push(childWrittenFiles(childWritten))
+  }
+  return attachments
+}
+
+/**
+ * The note for files a child wrote: names only. The display paths are taken
+ * against the working directory NOW and stored, because the renderer runs
+ * again on every later request and the directory may have moved by then.
+ */
+function childWrittenFiles(paths: readonly string[]): Attachment {
+  const filenames = [...paths].sort()
+  const cwd = getCwd()
+  return {
+    type: 'child_written_files' as const,
+    filenames,
+    displayPaths: filenames.map(path => relativeIfInside(path, cwd)),
+  }
 }
 
 /**
@@ -126,6 +160,28 @@ export async function refreshChangedFile(
     const mtime = await getFileModificationTimeAsync(normalizedPath)
     if (mtime <= fileState.timestamp) {
       return null
+    }
+
+    // This version is one a child of the session wrote (`childWrites.ts`):
+    // the session's own write, so the entry is brought up to date and the
+    // pass names the file instead of showing a diff. Only on the thread that
+    // owns the session — a sibling sub-agent holding the old bytes still
+    // needs to see what changed. An outline or a marker takes the lane below,
+    // as before: adopting it would turn a view the model never had into a read.
+    if (
+      !fileState.isPartialView &&
+      !fileState.refreshFailed &&
+      ownsSessionScopedState(toolUseContext) &&
+      childWriteMtime(normalizedPath) === mtime
+    ) {
+      await adoptWrittenEntry(
+        cacheKey,
+        normalizedPath,
+        fileState,
+        mtime,
+        readFileState,
+      )
+      return childWrittenFiles([normalizedPath])
     }
 
     if (isRangeEntry(fileState)) {
@@ -287,6 +343,9 @@ async function markTooLargeToRefresh(
 /** Read this much of a file to re-verify its slices; past it the entry is evicted like a too-large whole-file one. */
 const RANGE_REFRESH_MAX_BYTES = 10 * 1024 * 1024
 
+/** Past this a whole-file entry is not adopted: the watcher marks it too large to refresh. */
+const ADOPT_MAX_BYTES = 10 * 1024 * 1024
+
 function withoutFinalNewline(content: string): string {
   return content.endsWith('\n') ? content.slice(0, -1) : content
 }
@@ -375,4 +434,51 @@ export async function refreshRangeEntry(
   )
   if (snippet === '') return null
   return { type: 'edited_text_file' as const, filename: normalizedPath, snippet }
+}
+
+/**
+ * Brings an entry up to date with a write the session itself caused — the
+ * model's own call (`ownWrites.ts`) or a child's (`childWrites.ts`) — with no
+ * diff for the model:
+ *
+ * - a whole-file entry gets the file's bytes and the new mtime;
+ * - a range entry is re-verified slice by slice (`refreshRangeEntry`), which
+ *   keeps the slices that still match and drops the rest;
+ * - either is marked `dedupExempt`: Read's `file_unchanged` stub must never
+ *   stand for bytes no Read showed.
+ *
+ * A whole-file read that fails throws (ENOENT, `FileTooLargeError`); what to
+ * make of it is the caller's.
+ */
+export async function adoptWrittenEntry(
+  cacheKey: string,
+  normalizedPath: string,
+  fileState: FileState,
+  mtime: number,
+  readFileState: FileStateCache,
+): Promise<void> {
+  if (isRangeEntry(fileState)) {
+    // The diff it returns is the note the callers exist to replace.
+    await refreshRangeEntry(
+      cacheKey,
+      normalizedPath,
+      fileState,
+      mtime,
+      readFileState,
+    )
+    return
+  }
+  const { content } = await readFileInRange(
+    normalizedPath,
+    0,
+    undefined,
+    ADOPT_MAX_BYTES,
+  )
+  readFileState.set(cacheKey, {
+    content,
+    timestamp: mtime,
+    offset: undefined,
+    limit: undefined,
+    dedupExempt: true,
+  })
 }

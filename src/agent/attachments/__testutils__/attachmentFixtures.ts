@@ -53,6 +53,11 @@ export const ATTACHMENT_FIXTURES: AttachmentFixtures = {
     filename: '/repo/src/quote.ts',
     snippet: '1→export function quote(): string {}',
   },
+  child_written_files: {
+    type: 'child_written_files',
+    filenames: ['/repo/src/price.ts', '/repo/src/quote.ts'],
+    displayPaths: ['src/price.ts', 'src/quote.ts'],
+  },
   edited_image_file: {
     type: 'edited_image_file',
     filename: '/repo/logo.png',

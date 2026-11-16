@@ -1151,8 +1151,9 @@ async function checkPermissionsAndCallTool(
     addToToolDuration(durationMs)
     // What a read file became while this call ran is the call's
     // (agent/attachments/ownWrites.ts): claimed before the PostToolUse hooks
-    // run, so the watcher never reports it as the user's.
-    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd)
+    // run, so the watcher never reports it as the user's. A child's are also
+    // recorded for its parent's watcher (childWrites.ts).
+    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd, toolUseContext.agentId !== undefined)
     const ownWritesNote = ownWrites.note === null ? null : `\n\n${ownWrites.note}`
     const resultAdviceNote = adviceNoteAfterCall(tool, callInput, result.data, adviceNote)
 
@@ -1381,7 +1382,7 @@ async function checkPermissionsAndCallTool(
     addToToolDuration(durationMs)
     // A failed or interrupted call changed what it changed: a python edit
     // followed by a failing test run still claims the edit.
-    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd)
+    const ownWrites = await settleOwnWrites(tool, callInput, toolUseContext.readFileState, startTime, callCwd, toolUseContext.agentId !== undefined)
 
     // Handle MCP auth errors by updating the client status to 'needs-auth'
     // This updates the /mcp display to show the server needs re-authorization

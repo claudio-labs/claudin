@@ -25,6 +25,7 @@ export const ATTACHMENT_PERSISTENCE: Readonly<Record<Attachment['type'], 'persis
   pdf_reference: 'persist',
   already_read_file: 'skip',
   edited_text_file: 'persist',
+  child_written_files: 'persist',
   edited_image_file: 'skip',
   directory: 'persist',
   selected_lines_in_ide: 'persist',

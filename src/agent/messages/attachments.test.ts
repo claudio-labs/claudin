@@ -28,6 +28,21 @@ describe('normalizeAttachmentForAPI', () => {
     expect(normalizeForSnapshot(out)).toMatchSnapshot()
   })
 
+  test('child_written_files names what a child wrote in one line, and carries no diff', () => {
+    const text = (displayPaths: string[]): unknown =>
+      normalizeAttachmentForAPI({
+        type: 'child_written_files',
+        filenames: displayPaths.map(path => `/repo/${path}`),
+        displayPaths,
+      })[0]!.message.content
+    expect(text(['a/b.ts'])).toBe(
+      '<system-reminder>\n(1 file you had read was changed by your own background work — your read now matches the disk: a/b.ts)\n</system-reminder>',
+    )
+    expect(text(['a/b.ts', 'c.ts'])).toBe(
+      '<system-reminder>\n(2 files you had read were changed by your own background work — your read now matches the disk: a/b.ts, c.ts)\n</system-reminder>',
+    )
+  })
+
   test('nested_memory wraps memory content in system-reminder', () => {
     const out = normalizeAttachmentForAPI({
       type: 'nested_memory',

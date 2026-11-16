@@ -130,6 +130,19 @@ Read the team config to discover your teammates' names. Check the task list peri
           isMeta: true,
         }),
       ])
+    case 'child_written_files': {
+      // Modelled on the own-writes line (ownWrites.ts), and like it names only.
+      const subject =
+        attachment.displayPaths.length === 1
+          ? '1 file you had read was'
+          : `${attachment.displayPaths.length} files you had read were`
+      return wrapMessagesInSystemReminder([
+        createUserMessage({
+          content: `(${subject} changed by your own background work — your read now matches the disk: ${attachment.displayPaths.join(', ')})`,
+          isMeta: true,
+        }),
+      ])
+    }
     case 'file': {
       const fileContent = attachment.content as FileReadToolOutput
       switch (fileContent.type) {
