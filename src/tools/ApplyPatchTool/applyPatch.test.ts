@@ -1253,6 +1253,21 @@ describe('a root-relative path after the shell moved', () => {
     expect(summarizeApplyPatch(output)).not.toContain(ROOT_NOTE)
   })
 
+  test('Add File of a name that exists under the root is still created under the shell cwd', async () => {
+    // Nothing on disk says where a new file was meant: an Add never falls back.
+    const underRoot = join(dir, 'x.txt')
+    const p = join(shellDir, 'x.txt')
+    writeFileSync(underRoot, 'root\n')
+    const body = '*** Add File: x.txt\n+shell'
+
+    expect(resolveApplyPatchPaths({ patchText: envelope(body) })).toEqual([p])
+    const output = await run(body)
+
+    expect(readFileSync(p, 'utf8')).toBe('shell\n')
+    expect(readFileSync(underRoot, 'utf8')).toBe('root\n')
+    expect(output.resolvedFromRoot).toBeUndefined()
+  })
+
   test('a path that exists under the shell cwd wins over the root', async () => {
     const underCwd = join(shellDir, 'x.txt')
     const underRoot = join(dir, 'x.txt')
@@ -1280,5 +1295,59 @@ describe('a root-relative path after the shell moved', () => {
     await expect(run(body)).rejects.toThrow('the file does not exist')
     expect(existsSync(join(dir, 'nope'))).toBe(false)
     expect(existsSync(join(shellDir, 'nope'))).toBe(false)
+  })
+
+  test('the cache-invalidation paths cover the root path after a Delete', async () => {
+    // Invalidation runs after the write, when the file is gone and nothing on
+    // disk says which reading the patch took: both are dropped.
+    const p = join(shellDir, 'a.css')
+    writeFileSync(p, 'a { color: red }\n')
+    markRead(p)
+    const body = '*** Delete File: web/static/a.css'
+    await run(body)
+    expect(existsSync(p)).toBe(false)
+
+    const paths = applyPatchCacheInvalidationPaths({ patchText: envelope(body) })
+
+    expect(paths).toContain(p)
+    expect(paths).toContain(join(shellDir, 'web', 'static', 'a.css'))
+    expect(paths).toContain('web/static/a.css') // raw, as the model wrote it
+  })
+
+  test('a Move of a root-resolved file lands under the root', async () => {
+    // The destination follows its source: read from the shell cwd it would
+    // land in web/static/web/static/.
+    const p = join(shellDir, 'a.css')
+    const moved = join(shellDir, 'b.css')
+    writeFileSync(p, 'a { color: red }\n')
+    markRead(p)
+    const body =
+      '*** Update File: web/static/a.css\n*** Move to: web/static/b.css\n@@\n-a { color: red }\n+a { color: blue }'
+
+    expect(resolveApplyPatchPaths({ patchText: envelope(body) })).toEqual([p, moved])
+    const output = await run(body)
+
+    expect(existsSync(p)).toBe(false)
+    expect(readFileSync(moved, 'utf8')).toBe('a { color: blue }\n')
+    expect(existsSync(join(shellDir, 'web'))).toBe(false)
+    expect(output.files[0]).toMatchObject({ absPath: p, type: 'move', movePath: moved })
+    expect(output.resolvedFromRoot).toEqual([join('web', 'static', 'a.css')])
+    // The source is gone now: the destination is still among the paths dropped.
+    expect(applyPatchCacheInvalidationPaths({ patchText: envelope(body) })).toContain(moved)
+  })
+
+  test('a Move of a file under the shell cwd keeps its destination there', async () => {
+    const p = join(shellDir, 'a.css')
+    const moved = join(shellDir, 'sub', 'b.css')
+    writeFileSync(p, 'a { color: red }\n')
+    markRead(p)
+    const body = '*** Update File: a.css\n*** Move to: sub/b.css\n@@\n-a { color: red }\n+a { color: blue }'
+
+    expect(resolveApplyPatchPaths({ patchText: envelope(body) })).toEqual([p, moved])
+    const output = await run(body)
+
+    expect(readFileSync(moved, 'utf8')).toBe('a { color: blue }\n')
+    expect(existsSync(join(dir, 'sub'))).toBe(false)
+    expect(output.resolvedFromRoot).toBeUndefined()
   })
 })
