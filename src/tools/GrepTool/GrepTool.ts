@@ -65,6 +65,10 @@ const CONTENT_ONLY = 'Ignored outside "content" mode.'
 // ripgrep refuses it outside multiline mode, and the pattern means the newline.
 const UNESCAPED_NEWLINE_RE = /(?:^|[^\\])(?:\\\\)*\\n/
 
+// What ripgrep's default engine says about a pattern it cannot parse but
+// PCRE2 can: look-around and backreferences. Both errors name the flag.
+const NEEDS_PCRE2_RE = /look-around|backreferences|--pcre2 flag/
+
 // A search leaves dotenv files out, as the Read gate asks before one: ripgrep
 // prints content, so a match would hand over the secret. A template
 // (`.env.example`) goes with them, since ripgrep cannot re-include a file
@@ -730,12 +734,27 @@ export const GrepTool = buildTool({
     // We don't use AbortController for timeout to avoid interrupting the agent loop
     // If ripgrep times out, it throws RipgrepTimeoutError which propagates up
     // so Claude knows the search didn't complete (rather than thinking there were no matches)
-    const search = await ripGrepWithStatus(
+    let search = await ripGrepWithStatus(
       args,
       target,
       abortController.signal,
       { cwd: rgCwd },
     )
+
+    // A pattern the default engine refuses for look-around or a backreference
+    // is searched once more with PCRE2, rather than sent back to be rewritten.
+    // Only then: every other search keeps the default engine's dialect and
+    // speed. The flag stays in `args`, so the --no-ignore retry below searches
+    // the same way; a ripgrep built without PCRE2 says so in the error thrown.
+    if (search.usageError && NEEDS_PCRE2_RE.test(search.usageError)) {
+      args.push('--pcre2')
+      search = await ripGrepWithStatus(
+        args,
+        target,
+        abortController.signal,
+        { cwd: rgCwd },
+      )
+    }
 
     // ripgrep refused the invocation — a bad regex, an unknown --encoding
     // label, an unrecognized flag. It searched nothing, so an empty result here
