@@ -11,6 +11,7 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "bagel_console",
   "bash_git_instructions",
   "budget_usd",
+  "child_written_files",
   "claude_md_delta",
   "command_permissions",
   "compact_file_reference",

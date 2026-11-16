@@ -1,16 +1,35 @@
 /**
- * Periodic background summarization for coordinator mode sub-agents.
+ * The two summaries of a sub-agent: a periodic progress line while it runs,
+ * and a one-shot summary of its final result.
  *
- * Forks the sub-agent's conversation every ~30s using runForkedAgent()
- * to generate a 1-2 sentence progress summary. The summary is stored
- * on AgentProgress for UI display.
+ * The periodic one forks the sub-agent's conversation every ~30s using
+ * runForkedAgent() for a 3-5 word line ("Reading runAgent.ts"), stored on
+ * AgentProgress for UI display. It runs only in coordinator mode, when the
+ * SDK asked for progress summaries, or with CLAUDIN_AGENT_SUMMARY=1.
+ * Otherwise it is off: every tick resends the sub-agent's whole context on
+ * the sub-agent's model ($0.08-0.27 a tick; $6.05 for 76 ticks in one
+ * measured session, 57% on top of what the agents themselves cost), and the
+ * Agents row shows the last tool activity without it. The flag a caller
+ * computes only says that caller allows a summary; the decision is taken
+ * here, in startAgentSummarization(), where the timer would start.
+ *
+ * Where it runs, a transcript that has not grown since the last summary is
+ * not summarized again: the tick forks nothing and rearms the timer.
+ *
+ * summarizeAgentResult() is separate and behind none of this: one fork, when
+ * a caller asks for it.
  *
  * Cache sharing: uses the same CacheSafeParams as the parent agent
  * to share the prompt cache. Tools are kept in the request for cache
  * key matching but denied via canUseTool callback.
+ *
+ * What reaches outside the module — the gate, the transcript read, the fork,
+ * the summary write and the timer — comes in as AgentSummaryDeps, so a test
+ * drives a tick by hand without mock.module.
  */
 
 import type { TaskContext } from 'src/agent/Task.js'
+import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js'
 import { updateAgentSummary } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { filterIncompleteToolCalls } from 'src/tools/AgentTool/runAgent.js'
 import type { AgentId } from 'src/shared/types/ids.js'
@@ -22,8 +41,52 @@ import {
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentTranscript } from 'src/sessions/sessionStorage.js'
+import { getSdkAgentProgressSummariesEnabled } from 'src/platform/bootstrap/state.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 const SUMMARY_INTERVAL_MS = 30_000
+
+/**
+ * Whether the periodic summary runs at all (the module header says why it is
+ * off elsewhere). `env` is the value of CLAUDIN_AGENT_SUMMARY.
+ */
+export function periodicSummaryEnabled(inputs: {
+  coordinator: boolean
+  sdkAsked: boolean
+  env: string | undefined
+}): boolean {
+  return inputs.coordinator || inputs.sdkAsked || isEnvTruthy(inputs.env)
+}
+
+/** What the summary forks call outside themselves; production passes defaultAgentSummaryDeps. */
+export type AgentSummaryDeps = {
+  /** The gate on the periodic summary, asked once when it starts. */
+  enabled: () => boolean
+  getAgentTranscript: typeof getAgentTranscript
+  runForkedAgent: typeof runForkedAgent
+  updateAgentSummary: typeof updateAgentSummary
+  /** The timer between ticks; the handle only ever goes back to `cancel`. */
+  schedule: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
+  cancel: (timer: ReturnType<typeof setTimeout>) => void
+}
+
+// Each entry calls through instead of holding the function: the import and
+// the timer global are looked up when the tick runs, as they were before the
+// seam, not frozen at whatever this module saw when it loaded.
+export const defaultAgentSummaryDeps: AgentSummaryDeps = {
+  enabled: () =>
+    periodicSummaryEnabled({
+      coordinator: isCoordinatorMode(),
+      sdkAsked: getSdkAgentProgressSummariesEnabled(),
+      env: process.env.CLAUDIN_AGENT_SUMMARY,
+    }),
+  getAgentTranscript: agentId => getAgentTranscript(agentId),
+  runForkedAgent: params => runForkedAgent(params),
+  updateAgentSummary: (taskId, summary, setAppState) =>
+    updateAgentSummary(taskId, summary, setAppState),
+  schedule: (fn, ms) => setTimeout(fn, ms),
+  cancel: timer => clearTimeout(timer),
+}
 
 const RESULT_SUMMARY_PROMPT = `Produce a concise, actionable summary of your final result above, for the agent that delegated this task. Preserve: files touched (with paths), key decisions, and any next steps or caveats. Drop step-by-step narration and intermediate exploration. Do not use tools. Respond with the summary only.`
 
@@ -99,6 +162,7 @@ export async function summarizeAgentResult(
   cacheSafeParams: CacheSafeParams,
   agentMessages: CacheSafeParams['forkContextMessages'],
   abortSignal: AbortSignal,
+  deps: Pick<AgentSummaryDeps, 'runForkedAgent'> = defaultAgentSummaryDeps,
 ): Promise<string | null> {
   if (abortSignal.aborted) return null
   const cleanMessages = filterIncompleteToolCalls(agentMessages)
@@ -120,7 +184,7 @@ export async function summarizeAgentResult(
   try {
     // DO NOT set maxOutputTokens — it would clamp budget_tokens and invalidate
     // the shared prompt cache (thinking config is part of the cache key).
-    const result = await runForkedAgent(
+    const result = await deps.runForkedAgent(
       summaryForkParams(
         RESULT_SUMMARY_PROMPT,
         forkParams,
@@ -163,7 +227,15 @@ export function startAgentSummarization(
   agentId: AgentId,
   cacheSafeParams: CacheSafeParams,
   setAppState: TaskContext['setAppState'],
+  deps: AgentSummaryDeps = defaultAgentSummaryDeps,
 ): { stop: () => void } {
+  // Off unless something consumes the line (module header): no timer, no
+  // transcript read, and a stop() with nothing to stop.
+  if (!deps.enabled()) {
+    logForDebugging(`[AgentSummary] Not started for ${taskId}: off in this mode`)
+    return { stop: () => {} }
+  }
+
   // Drop forkContextMessages from the closure — runSummary rebuilds it each
   // tick from getAgentTranscript(). Without this, the original fork messages
   // (passed from AgentTool.tsx) are pinned for the lifetime of the timer.
@@ -172,6 +244,9 @@ export function startAgentSummarization(
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let stopped = false
   let previousSummary: string | null = null
+  // The transcript's last message at the last fork that answered. Its uuid,
+  // not the transcript's length, is what says nothing was added since.
+  let summarizedThroughUuid: string | null = null
 
   async function runSummary(): Promise<void> {
     if (stopped) return
@@ -180,11 +255,21 @@ export function startAgentSummarization(
 
     try {
       // Read current messages from transcript
-      const transcript = await getAgentTranscript(agentId)
+      const transcript = await deps.getAgentTranscript(agentId)
       if (!transcript || transcript.messages.length < 3) {
         // Not enough context yet — finally block will schedule next attempt
         logForDebugging(
           `[AgentSummary] Skipping summary for ${taskId}: not enough messages (${transcript?.messages.length ?? 0})`,
+        )
+        return
+      }
+
+      // Nothing new since the last summary — the line on the row still
+      // describes the latest action. The finally block rearms the timer.
+      const lastUuid = transcript.messages.at(-1)?.uuid
+      if (lastUuid === summarizedThroughUuid) {
+        logForDebugging(
+          `[AgentSummary] Skipping summary for ${taskId}: no new message`,
         )
         return
       }
@@ -210,7 +295,7 @@ export function startAgentSummarization(
       // tools, model, messages prefix, thinking config). Setting maxOutputTokens
       // would clamp budget_tokens, creating a thinking config mismatch that
       // invalidates the cache.
-      const result = await runForkedAgent(
+      const result = await deps.runForkedAgent(
         summaryForkParams(
           buildSummaryPrompt(previousSummary),
           forkParams,
@@ -220,6 +305,10 @@ export function startAgentSummarization(
       )
 
       if (stopped) return
+
+      // The fork answered, with text or without: this transcript is not asked
+      // about again. One that threw never gets here, so its tick is retried.
+      summarizedThroughUuid = lastUuid ?? null
 
       // Extract summary text from result
       const summaryText = extractSummaryText(result.messages, () =>
@@ -232,7 +321,7 @@ export function startAgentSummarization(
           `[AgentSummary] Summary result for ${taskId}: ${summaryText}`,
         )
         previousSummary = summaryText
-        updateAgentSummary(taskId, summaryText, setAppState)
+        deps.updateAgentSummary(taskId, summaryText, setAppState)
       }
     } catch (e) {
       if (!stopped && e instanceof Error) {
@@ -249,14 +338,14 @@ export function startAgentSummarization(
 
   function scheduleNext(): void {
     if (stopped) return
-    timeoutId = setTimeout(runSummary, SUMMARY_INTERVAL_MS)
+    timeoutId = deps.schedule(runSummary, SUMMARY_INTERVAL_MS)
   }
 
   function stop(): void {
     logForDebugging(`[AgentSummary] Stopping summarization for ${taskId}`)
     stopped = true
     if (timeoutId) {
-      clearTimeout(timeoutId)
+      deps.cancel(timeoutId)
       timeoutId = null
     }
     if (summaryAbortController) {

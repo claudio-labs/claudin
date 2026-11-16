@@ -16,7 +16,10 @@
  *    to report and a human to place.
  *  - **A map this module generated is regenerated whole**, preserving the
  *    annotations keyed by their full path. It carries {@link MAP_MARKER} to say
- *    so. We only restructure files we wrote.
+ *    so. We only restructure files we wrote. A directory already on the map
+ *    keeps its line for as long as anything tracked is left under it, whatever
+ *    kind of file that is: the first draw names only the directories the
+ *    repo's code lives in, but a line somebody added and annotated is theirs.
  *
  * Both modes are subject to the same drift tolerance, and that is what makes
  * running this at the end of every turn that moved the index free: a count
@@ -31,6 +34,7 @@ import {
   countTrackedSources,
   dirCountDrifted,
   dominantSourceExtensions,
+  drawnSourceCount,
   extractRuleClaims,
   lineCountDrifted,
   resolveUniqueBasename,
@@ -67,6 +71,13 @@ export type RuleMapSyncInput = {
   trackedFiles: readonly string[]
   /** Lines each tracked file holds, for size claims. Absent → sizes untouched. */
   fileLines?: ReadonlyMap<string, number>
+  /**
+   * The committed version of a generated map, for the caller that has checked
+   * the working copy holds no edit of the user's. An entry it names that
+   * `content` lost, and that still has tracked files, is drawn again with the
+   * annotation it had there. See {@link lostEntries} for why.
+   */
+  restoreFrom?: string
 }
 
 /** A `dir/ (N)` occurrence located precisely enough to rewrite in place. */
@@ -145,7 +156,7 @@ export function healRuleMap(input: RuleMapSyncInput): string {
 
   const countEdits: CountEdit[] = []
   for (const claim of claims.dirCounts) {
-    const actual = countTrackedSources(trackedFiles, claim.path, extensions)
+    const actual = drawnSourceCount(trackedFiles, claim.path, extensions)
     // A directory that now holds nothing has died or moved, and where its
     // replacement belongs in a curated tree is judgment. Healing it to `(0)`
     // would launder that into a number nobody reads twice, so it is left for
@@ -203,16 +214,24 @@ function directoryCounts(
   return counts
 }
 
-/** The directories one level under `parent` that are worth a line, sorted. */
+/**
+ * The directories one level under `parent` that are worth a line, sorted. One
+ * in `keep` is worth its line at any count: it is on the map already, and
+ * `counts` holds it only while something tracked is left under it.
+ */
 function childDirectories(
   counts: ReadonlyMap<string, number>,
   parent: string,
   depth: number,
+  keep: ReadonlySet<string>,
 ): string[] {
   const segments = depth + 2
   return [...counts.keys()]
     .filter(dir => dir.startsWith(parent) && dir.split('/').length === segments)
-    .filter(dir => (counts.get(dir) ?? 0) >= MIN_DIR_FILES)
+    .filter(dir => {
+      const count = counts.get(dir) ?? 0
+      return count >= MIN_DIR_FILES || (count > 0 && keep.has(dir))
+    })
     .sort()
 }
 
@@ -228,10 +247,11 @@ type TreeEntry = { path: string; trail: boolean[] }
 function treeEntries(
   counts: ReadonlyMap<string, number>,
   maxDepth: number,
+  keep: ReadonlySet<string>,
 ): TreeEntry[] {
   const entries: TreeEntry[] = []
   const walk = (parent: string, depth: number, trail: boolean[]): void => {
-    const children = childDirectories(counts, parent, depth)
+    const children = childDirectories(counts, parent, depth, keep)
     children.forEach((child, index) => {
       const next = [...trail, index === children.length - 1]
       entries.push({ path: child, trail: next })
@@ -254,11 +274,12 @@ function treeEntries(
 function chooseDepth(
   counts: ReadonlyMap<string, number>,
   floorDepth: number,
+  keep: ReadonlySet<string>,
 ): number {
   const floor = Math.min(Math.max(floorDepth, MIN_DEPTH), MAX_DEPTH)
   let chosen = floor
   for (let depth = floor + 1; depth <= MAX_DEPTH; depth++) {
-    if (treeEntries(counts, depth).length > MAX_TREE_ENTRIES) break
+    if (treeEntries(counts, depth, keep).length > MAX_TREE_ENTRIES) break
     chosen = depth
   }
   return chosen
@@ -326,19 +347,33 @@ function renderEntry(trail: readonly boolean[], label: string): string {
  * The `←` column is widened past {@link ANNOTATION_COLUMN} only when a line
  * needs it, so deepening a tree cannot shear the annotations off a level that
  * already fitted.
+ *
+ * `keep` is the directories the map already names. Each is drawn while it
+ * still has a tracked file, with {@link drawnSourceCount} as its number, so a
+ * regenerate never deletes a line for holding the wrong kind of file. A first
+ * draw passes none, and names only the directories the repo's code fills.
  */
 export function renderModuleTree(
   trackedFiles: readonly string[],
   annotations: ReadonlyMap<string, string> = new Map(),
   retained: ReadonlyMap<string, number> = new Map(),
   floorDepth: number = MIN_DEPTH,
+  keep: ReadonlySet<string> = new Set(),
 ): string[] {
   const extensions = dominantSourceExtensions(trackedFiles)
   const counts = directoryCounts(trackedFiles, extensions)
+  for (const dir of keep) {
+    const drawn = drawnSourceCount(trackedFiles, dir, extensions)
+    if (drawn > 0) counts.set(dir, drawn)
+  }
   const shown = (dir: string): number =>
     retained.get(dir) ?? counts.get(dir) ?? 0
 
-  const entries = treeEntries(counts, chooseDepth(counts, floorDepth))
+  const entries = treeEntries(
+    counts,
+    chooseDepth(counts, floorDepth, keep),
+    keep,
+  )
   const bodies = entries.map(({ path, trail }) =>
     renderEntry(trail, `${lastSegment(path)} (${shown(path)})`),
   )
@@ -425,7 +460,11 @@ export function syncRuleMap(input: RuleMapSyncInput): string | null {
     // Gutting a map we wrote is worse than leaving it stale: the fence is where
     // the annotations live, and emptying it discards every one of them.
     if (!hasRenderableTree(trackedFiles)) return null
-    const regenerated = regenerateGeneratedMap(content, trackedFiles)
+    const regenerated = regenerateGeneratedMap(
+      content,
+      trackedFiles,
+      input.restoreFrom,
+    )
     return regenerated === content ? null : regenerated
   }
 
@@ -710,7 +749,7 @@ function countsToRetain(
   const extensions = dominantSourceExtensions(trackedFiles)
   const retained = new Map<string, number>()
   for (const claim of extractRuleClaims(content).dirCounts) {
-    const actual = countTrackedSources(trackedFiles, claim.path, extensions)
+    const actual = drawnSourceCount(trackedFiles, claim.path, extensions)
     if (!dirCountDrifted(claim.claimed, actual)) {
       retained.set(claim.path, claim.claimed)
     }
@@ -718,21 +757,79 @@ function countsToRetain(
   return retained
 }
 
+/** An entry to draw again, with what the committed map said about it. */
+type LostEntry = {
+  path: string
+  gloss: string | undefined
+  /** Its committed count, when that is still inside the tolerance. */
+  retained: number | undefined
+}
+
+/**
+ * The entries a committed generated map names that the working copy no longer
+ * does, and that still have tracked files under them.
+ *
+ * Why they come back: until 2026-11-16 a regenerate deleted the line of any
+ * directory with too few counted files, `← ` annotation included, and a map
+ * regenerated from its own working copy has nowhere to find that line again.
+ * What an earlier heal dropped is derived, never authored, and the committed
+ * map is the last version somebody signed off on, so it is the one place the
+ * annotation can be read back from. Only the lost lines are taken from it:
+ * every entry the working copy still has keeps its own count, which is what
+ * carries the tolerance across heals nobody committed.
+ *
+ * The consequence: a line for a directory with too few counted files that
+ * someone deletes by hand comes back until the deletion is committed.
+ */
+function lostEntries(
+  named: ReadonlySet<string>,
+  committed: string,
+  trackedFiles: readonly string[],
+): LostEntry[] {
+  if (ruleMapKind(committed) !== 'generated') return []
+  const extensions = dominantSourceExtensions(trackedFiles)
+  const glosses = existingAnnotations(committed)
+  const counts = countsToRetain(committed, trackedFiles)
+  return extractRuleClaims(committed)
+    .dirCounts.filter(
+      ({ path }) =>
+        !named.has(path) &&
+        drawnSourceCount(trackedFiles, path, extensions) > 0,
+    )
+    .map(({ path }) => ({
+      path,
+      gloss: glosses.get(path),
+      retained: counts.get(path),
+    }))
+}
+
 /** Rewrites the fenced tree of a map this module wrote, keeping its prose. */
 function regenerateGeneratedMap(
   content: string,
   trackedFiles: readonly string[],
+  restoreFrom?: string,
 ): string {
   const lines = content.split('\n')
   const fence = findTreeFence(lines)
   if (fence === null) return content
 
-  const tree = renderModuleTree(
-    trackedFiles,
-    existingAnnotations(content),
-    countsToRetain(content, trackedFiles),
-    existingTreeDepth(content),
+  const annotations = existingAnnotations(content)
+  const retained = countsToRetain(content, trackedFiles)
+  const keep = new Set(
+    extractRuleClaims(content).dirCounts.map(claim => claim.path),
   )
+  let depth = existingTreeDepth(content)
+  if (restoreFrom !== undefined) {
+    for (const lost of lostEntries(keep, restoreFrom, trackedFiles)) {
+      keep.add(lost.path)
+      if (lost.gloss !== undefined) annotations.set(lost.path, lost.gloss)
+      if (lost.retained !== undefined) retained.set(lost.path, lost.retained)
+      // A level only the lost lines reached is drawn again with them.
+      depth = Math.max(depth, lost.path.split('/').filter(Boolean).length)
+    }
+  }
+
+  const tree = renderModuleTree(trackedFiles, annotations, retained, depth, keep)
   return [
     ...lines.slice(0, fence.open + 1),
     ...tree,

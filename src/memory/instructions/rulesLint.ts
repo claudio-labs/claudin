@@ -29,9 +29,9 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { inspectRuleFrontmatter } from 'src/memory/instructions/ruleFrontmatter.js'
 import {
   type RuleClaims,
-  countTrackedSources,
   dirCountDrifted,
   dominantSourceExtensions,
+  drawnSourceCount,
   extractRuleClaims,
   lineCountDrifted,
   resolveUniqueBasename,
@@ -347,7 +347,9 @@ async function checkRuleClaims(
 
   for (const { path: dir, claimed, lineNumber } of claims.dirCounts) {
     if (!citationExists(root, dir)) continue
-    const actual = countTrackedSources(trackedFiles, dir, extensions)
+    // The number the healer would write, so the two cannot disagree about a
+    // directory that holds files of another kind than the repo's code.
+    const actual = drawnSourceCount(trackedFiles, dir, extensions)
     if (!dirCountDrifted(claimed, actual)) continue
     findings.push({
       file,

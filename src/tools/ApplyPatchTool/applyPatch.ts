@@ -52,7 +52,7 @@ import {
   findElisionPlaceholder,
 } from 'src/tools/shared/elisionGuard.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getCwd } from 'src/shared/fs/cwd.js'
+import { getCwd, getSessionRootCwd } from 'src/shared/fs/cwd.js'
 import { getPatchFromContents } from 'src/vcs/git/diff.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
@@ -111,14 +111,48 @@ export type ApplyPatchOutput = {
   alreadyApplied?: string[]
   /** Files written although never read, because every hunk matched them exactly. */
   appliedUnread?: string[]
+  /** Files found under the project root, not under the shell's directory (resolveHunkPath). */
+  resolvedFromRoot?: string[]
   then?: ThenRun[]
   thenNote?: string
 }
 
-function resolveHunkPath(hunkPath: string): string {
-  // expandPath handles `~`, absolute paths, and resolves relative paths
-  // against the working directory (the form Codex models emit natively).
-  return expandPath(hunkPath)
+/**
+ * Where a hunk's path points. expandPath handles `~`, absolute paths, and
+ * resolves a relative path against the working directory (the form Codex
+ * models emit natively).
+ *
+ * Root fallback: a `cd` in Bash persists, and a model keeps writing paths from
+ * the project root after it — one census session (2026-11-16) lost a 14-file
+ * patch to "the file does not exist" after `cd web/static`. An Update or
+ * Delete whose path does not exist under the shell's directory and does under
+ * the session root goes to the root one, and `fromRoot` says so. A path that
+ * exists under the shell's directory always wins, and an Add keeps the shell's
+ * directory: nothing on disk says where a new file was meant. Patch is the one
+ * file tool that does this — Read, Edit and Write stay cwd-relative — which is
+ * why the result names the files it resolved this way.
+ */
+function resolveHunkPath(hunk: Hunk): { absPath: string; fromRoot: boolean } {
+  const absPath = expandPath(hunk.path)
+  if (hunk.type === 'add') return { absPath, fromRoot: false }
+  const rootPath = expandPath(hunk.path, getSessionRootCwd())
+  // Absolute, `~`, or a shell that never left the root: one reading only.
+  if (rootPath === absPath) return { absPath, fromRoot: false }
+  const fs = getFsImplementation()
+  if (fs.existsSync(absPath) || !fs.existsSync(rootPath)) return { absPath, fromRoot: false }
+  return { absPath: rootPath, fromRoot: true }
+}
+
+/**
+ * A Move's destination, undefined when the hunk moves nothing. It follows its
+ * source: a model that wrote the source from the root wrote the destination
+ * from there too, and read from the shell's directory it would land in
+ * `web/static/web/static/…`.
+ */
+function resolveMovePath(hunk: Hunk, absPath: string, fromRoot: boolean): string | undefined {
+  if (hunk.type !== 'update' || !hunk.movePath) return undefined
+  const movePath = expandPath(hunk.movePath, fromRoot ? getSessionRootCwd() : undefined)
+  return movePath === absPath ? undefined : movePath
 }
 
 function displayPath(absPath: string): string {
@@ -128,12 +162,9 @@ function displayPath(absPath: string): string {
 
 /** Resolved write targets for a hunk (source path plus the move destination). */
 function hunkTargets(hunk: Hunk): { absPath: string; movePath?: string } {
-  const absPath = resolveHunkPath(hunk.path)
-  if (hunk.type === 'update' && hunk.movePath) {
-    const movePath = resolveHunkPath(hunk.movePath)
-    return movePath === absPath ? { absPath } : { absPath, movePath }
-  }
-  return { absPath }
+  const { absPath, fromRoot } = resolveHunkPath(hunk)
+  const movePath = resolveMovePath(hunk, absPath, fromRoot)
+  return movePath ? { absPath, movePath } : { absPath }
 }
 
 function fail(message: string, errorCode = 1): ValidationResult {
@@ -196,8 +227,8 @@ const bullets = (messages: string[]): string =>
 // Planning — what each file of the patch can have done to it
 // ---------------------------------------------------------------------------
 
-/** The sections that write one file, in patch order. */
-type FileGroup = { absPath: string; rel: string; hunks: Hunk[] }
+/** The sections that write one file, in patch order; `fromRoot` when a path of theirs fell back to the project root. */
+type FileGroup = { absPath: string; rel: string; hunks: Hunk[]; fromRoot: boolean }
 
 type Plan =
   | { kind: 'stage'; group: FileGroup; unread: boolean }
@@ -264,9 +295,9 @@ function planPatch(hunks: Hunk[], context: ToolUseContext, strict: boolean): Pla
   const plans: Plan[] = []
   const groups = new Map<string, FileGroup>()
   for (const hunk of hunks) {
-    let absPath: string
+    let resolved: ReturnType<typeof resolveHunkPath>
     try {
-      absPath = resolveHunkPath(hunk.path)
+      resolved = resolveHunkPath(hunk)
     } catch (e) {
       plans.push({
         kind: 'problem',
@@ -276,9 +307,12 @@ function planPatch(hunks: Hunk[], context: ToolUseContext, strict: boolean): Pla
       })
       continue
     }
+    const { absPath, fromRoot } = resolved
     const group = groups.get(absPath)
-    if (group) group.hunks.push(hunk)
-    else groups.set(absPath, { absPath, rel: displayPath(absPath), hunks: [hunk] })
+    if (group) {
+      group.hunks.push(hunk)
+      group.fromRoot ||= fromRoot
+    } else groups.set(absPath, { absPath, rel: displayPath(absPath), hunks: [hunk], fromRoot })
   }
   for (const group of groups.values()) plans.push(planFile(group, context, strict))
   return plans
@@ -327,7 +361,7 @@ function planFile(group: FileGroup, context: ToolUseContext, strict: boolean): P
     unread = true
   }
   if (first.type === 'update' && first.movePath) {
-    const { movePath } = hunkTargets(first)
+    const movePath = resolveMovePath(first, absPath, group.fromRoot)
     if (movePath && fs.existsSync(movePath)) {
       return problem(
         `${APPLY_PATCH_TOOL_NAME}: cannot move ${rel} to ${displayPath(movePath)} — the destination already exists.`,
@@ -417,9 +451,14 @@ export function applyPatchCacheInvalidationPaths(
     paths.add(hunk.path)
     if (hunk.type === 'update' && hunk.movePath) paths.add(hunk.movePath)
     try {
-      const { absPath, movePath } = hunkTargets(hunk)
-      paths.add(absPath)
-      if (movePath) paths.add(movePath)
+      // Not hunkTargets: this runs after the write, when a deleted or moved
+      // source is gone and the root fallback (resolveHunkPath) would answer
+      // the shell's directory. An Update or Delete drops both readings.
+      const bases = hunk.type === 'add' ? [getCwd()] : [getCwd(), getSessionRootCwd()]
+      for (const base of bases) {
+        paths.add(expandPath(hunk.path, base))
+        if (hunk.type === 'update' && hunk.movePath) paths.add(expandPath(hunk.movePath, base))
+      }
     } catch {
       // Resolution can throw on a malformed path; the raw form still helps.
     }
@@ -538,7 +577,9 @@ type StagedFile = { change: StagedChange | null; failed: string[]; already: stri
 /** Reads the file's current content and computes what the plan's sections make of it. */
 function stageFile(group: FileGroup): StagedFile {
   const first = group.hunks[0]!
-  const { absPath, movePath } = hunkTargets(first)
+  // The plan's resolution, not a second one: the path planned is the path written.
+  const { absPath } = group
+  const movePath = resolveMovePath(first, absPath, group.fromRoot)
 
   if (first.type === 'add') {
     const newContent = addContent(first)
@@ -653,6 +694,7 @@ export async function runApplyPatch(
   const notApplied: string[] = []
   const alreadyApplied: string[] = []
   const appliedUnread: string[] = []
+  const resolvedFromRoot: string[] = []
   for (const plan of plans) {
     if (plan.kind === 'problem') {
       notApplied.push(plan.message)
@@ -669,6 +711,8 @@ export async function runApplyPatch(
       if (file.change) {
         staged.push(file.change)
         if (plan.unread) appliedUnread.push(plan.group.rel)
+        // Named from the root, the way the patch wrote it.
+        if (plan.group.fromRoot) resolvedFromRoot.push(relative(getSessionRootCwd(), plan.group.absPath))
       }
     } catch (e) {
       notApplied.push(e instanceof Error ? e.message : String(e))
@@ -704,6 +748,7 @@ export async function runApplyPatch(
       ...(notApplied.length > 0 && { notApplied }),
       ...(alreadyApplied.length > 0 && { alreadyApplied }),
       ...(appliedUnread.length > 0 && { appliedUnread }),
+      ...(resolvedFromRoot.length > 0 && { resolvedFromRoot }),
     },
     newMessages,
   }
@@ -729,6 +774,9 @@ export function summarizeApplyPatch(output: ApplyPatchOutput): string {
     : ['Nothing to change: every change in the patch is already applied.']
   if (output.appliedUnread?.length) {
     out.push(appliedUnreadNote(output.appliedUnread.join(', '), 'patched because every hunk matched it exactly'))
+  }
+  if (output.resolvedFromRoot?.length) {
+    out.push(`Note: ${output.resolvedFromRoot.join(', ')} resolved against the project root; the shell is in ${getCwd()}.`)
   }
   if (output.alreadyApplied?.length) out.push('Already applied, nothing changed:', bullets(output.alreadyApplied))
   if (notApplied.length) out.push('NOT applied — send a patch with only these hunks:', bullets(notApplied))

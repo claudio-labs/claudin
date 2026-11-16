@@ -18,9 +18,20 @@
 // CLAUDIN_AUTO_DREAM_HEADLESS=1 lets a `-p` run dream, and runHeadless then
 // waits for it (drainPendingAutoDream). CLAUDIN_AUTO_DREAM_FORCE=1 opens the
 // gates — enabled, time, sessions — for a bench fixture.
+//
+// CLAUDIN_AUTO_DREAM_FRESH=1 forks the dream without the parent conversation:
+// same system prompt, user and system context, tools and model — so the
+// cached system + tools prefix is still shared — and no parent messages.
+// Off by default. It exists because the consolidation prompt never reads the
+// conversation (it works from the memory directories, the transcript
+// directory, the digest and the system prompt's `# Memory` section), while
+// the fork pays the parent's context on every call of its loop: one measured
+// run read 487k tokens on each of 24 calls. The default changes only on an
+// eval (scripts/bench/ab/memory-hygiene-eval.ts), never on the saving alone.
 
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
+  type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
 } from 'src/agent/coordinator/forkedAgent.js'
@@ -106,6 +117,14 @@ function isGateOpen(): boolean {
 // prompt's session list is populated.
 function isForced(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FORCE)
+}
+
+// CLAUDIN_AUTO_DREAM_FRESH=1 (header): everything the cached prefix is keyed
+// on stays the parent's own; only the conversation is left behind.
+function dreamCacheSafeParams(context: REPLHookContext): CacheSafeParams {
+  const params = createCacheSafeParams(context)
+  if (!isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FRESH)) return params
+  return { ...params, forkContextMessages: [] }
 }
 
 type AppendSystemMessageFn = NonNullable<ToolUseContext['appendSystemMessage']>
@@ -290,7 +309,7 @@ ${digest}`
 
       const result = await deps.runForkedAgent({
         promptMessages: [createUserMessage({ content: prompt })],
-        cacheSafeParams: createCacheSafeParams(context),
+        cacheSafeParams: dreamCacheSafeParams(context),
         // One project's run cannot judge the global dir stale: it may only add to it.
         canUseTool: createMemoryCanUseTool(['global'], { patch: prune ? 'prune' : 'none' }),
         querySource: 'auto_dream',

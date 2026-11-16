@@ -320,6 +320,19 @@ test('ripGrepWithStatus reports an invalid regex instead of "no matches"', async
   expect(result.incomplete).toBeNull()
 })
 
+test('a look-around pattern is reported as a usage error naming --pcre2', async () => {
+  // Grep retries on this text, so the two words it keys on are pinned here.
+  const result = await ripGrepWithStatus(
+    ['--no-messages', 'ZQPROBE(?= =)'],
+    process.cwd(),
+    new AbortController().signal,
+  )
+
+  expect(result.lines).toEqual([])
+  expect(result.usageError).toMatch(/look-around/)
+  expect(result.usageError).toMatch(/--pcre2/)
+})
+
 test('ripGrepWithStatus reports an unknown encoding label', async () => {
   const result = await ripGrepWithStatus(
     ['--encoding', 'utf16', 'anything'],
