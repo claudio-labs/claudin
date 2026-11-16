@@ -19,6 +19,15 @@
  * (`lagMarker.ts`), and both passed a live A/B
  * (`scripts/bench/ab/classifier-cache-ab.ts`).
  * Killswitch: `CLAUDIN_CLASSIFIER_WINDOW_BUDGET=0` keeps the fixed 200k budget.
+ *
+ * `CLAUDIN_CLASSIFIER_WINDOW_CHARS=<n>` lowers the cap of that budget to `n`
+ * chars, floored and held between 200k and 800k; unset, empty or not a number
+ * keeps 800k, and that default is unchanged. It is there to compare caps
+ * without a rebuild: in the 2026-11-16 census the 800k cap took what the
+ * classifier reads per call from ~59k tokens to 97-147k, and a replay
+ * (`scripts/bench/results/`) says a smaller cap may be cheaper. It caps the
+ * window budget and nothing else, so it is ignored under
+ * `CLAUDIN_CLASSIFIER_WINDOW_BUDGET=0` and `CLAUDIN_CLASSIFIER_STABLE_CUT=0`.
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
@@ -93,6 +102,21 @@ function isResponseCallsEnabled(): boolean {
 }
 
 /**
+ * The cap of the window budget: `CLAUDIN_CLASSIFIER_WINDOW_CHARS` floored and
+ * held between the base budget and `MAX_WINDOW_TRANSCRIPT_CHARS`, or that
+ * constant when the variable is unset, empty or not a finite number. Only the
+ * window branch of `classifierTranscriptBudget` asks, so the variable does
+ * nothing with the window budget or the stable cut off.
+ */
+function windowTranscriptCapChars(): number {
+  const raw = process.env.CLAUDIN_CLASSIFIER_WINDOW_CHARS?.trim()
+  if (!raw) return MAX_WINDOW_TRANSCRIPT_CHARS
+  const chars = Number(raw)
+  if (!Number.isFinite(chars)) return MAX_WINDOW_TRANSCRIPT_CHARS
+  return Math.min(MAX_WINDOW_TRANSCRIPT_CHARS, Math.max(MAX_CLASSIFIER_TRANSCRIPT_CHARS, Math.floor(chars)))
+}
+
+/**
  * The transcript's share of `MAX_CLASSIFIER_TRANSCRIPT_CHARS`. With the stable
  * cut it is the whole budget: subtracting the action would move the cut on any
  * call whose action is longer than usual. The action is capped on its own
@@ -100,7 +124,8 @@ function isResponseCallsEnabled(): boolean {
  *
  * `windowTokens` is the window the classifier's prompt is sized against
  * (`getClassifierWindowTokens`); with the window budget on, the transcript
- * gets its share of it instead, never less than the base budget.
+ * gets its share of it instead, never less than the base budget and never
+ * more than the cap (`windowTranscriptCapChars`).
  */
 export function classifierTranscriptBudget(
   actionChars: number,
@@ -108,7 +133,7 @@ export function classifierTranscriptBudget(
 ): number {
   if (windowTokens !== undefined && isStableCutEnabled() && isWindowBudgetEnabled()) {
     return Math.min(
-      MAX_WINDOW_TRANSCRIPT_CHARS,
+      windowTranscriptCapChars(),
       Math.max(MAX_CLASSIFIER_TRANSCRIPT_CHARS, Math.floor(windowTokens * WINDOW_BUDGET_CHARS_PER_TOKEN)),
     )
   }

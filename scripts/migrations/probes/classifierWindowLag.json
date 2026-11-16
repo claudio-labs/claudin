@@ -28,7 +28,7 @@
     {
       "name": "the window budget has no cap",
       "source": "src/permissions/yoloClassifier/transcript.ts",
-      "find": "    return Math.min(\n      MAX_WINDOW_TRANSCRIPT_CHARS,\n",
+      "find": "    return Math.min(\n      windowTranscriptCapChars(),\n",
       "replace": "    return Math.min(\n      Number.MAX_SAFE_INTEGER,\n"
     },
     {
@@ -36,6 +36,18 @@
       "source": "src/permissions/yoloClassifier/transcript.ts",
       "find": "      Math.max(MAX_CLASSIFIER_TRANSCRIPT_CHARS, Math.floor(windowTokens * WINDOW_BUDGET_CHARS_PER_TOKEN)),\n",
       "replace": "      Math.floor(windowTokens * WINDOW_BUDGET_CHARS_PER_TOKEN),\n"
+    },
+    {
+      "name": "a cap set under the base budget is not raised to it",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  return Math.min(MAX_WINDOW_TRANSCRIPT_CHARS, Math.max(MAX_CLASSIFIER_TRANSCRIPT_CHARS, Math.floor(chars)))\n",
+      "replace": "  return Math.min(MAX_WINDOW_TRANSCRIPT_CHARS, Math.floor(chars))\n"
+    },
+    {
+      "name": "CLAUDIN_CLASSIFIER_WINDOW_CHARS is not read",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  const raw = process.env.CLAUDIN_CLASSIFIER_WINDOW_CHARS?.trim()\n",
+      "replace": "  const raw = ''\n"
     },
     {
       "name": "the chunk stays 25k under a window budget",
