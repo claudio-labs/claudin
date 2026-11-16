@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -14,11 +15,18 @@ import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/tools/To
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import {
+  getCwdState,
+  getOriginalCwd,
+  setCwdState,
+  setOriginalCwd,
+} from 'src/platform/bootstrap/state.js'
+import {
   getFsImplementation,
   setFsImplementation,
   setOriginalFsImplementation,
 } from 'src/shared/fs/fsOperations.js'
 import {
+  type ApplyPatchOutput,
   applyPatchCacheInvalidationPaths,
   runApplyPatch,
   summarizeApplyPatch,
@@ -1153,5 +1161,124 @@ describe('applies what matches, reports the rest', () => {
       expect(r).toMatchObject({ result: false })
       cleanup()
     })
+  })
+})
+
+describe('a root-relative path after the shell moved', () => {
+  // A Bash `cd web/static` moves the shell's cwd and leaves the session root
+  // where it was. The model keeps writing paths from the root, and an Update
+  // or Delete of one that exists only there applies to it, with a note.
+  // setCwdState alone is what Shell.ts's cwd tracking does; runWithCwdOverride
+  // moves the root along with the cwd and cannot express the split.
+  type OutputWithRootNote = ApplyPatchOutput & { resolvedFromRoot?: string[] }
+  const ROOT_NOTE = 'resolved against the project root'
+
+  let previousCwd: string
+  let previousOriginalCwd: string
+  let shellDir: string
+
+  beforeEach(() => {
+    shellDir = join(dir, 'web', 'static')
+    mkdirSync(shellDir, { recursive: true })
+    previousCwd = getCwdState()
+    previousOriginalCwd = getOriginalCwd()
+    setOriginalCwd(dir)
+    setCwdState(shellDir) // what BashTool's cwd tracking does after `cd web/static`
+  })
+
+  afterEach(() => {
+    // Restored before the directory they point at is removed.
+    setCwdState(previousCwd)
+    setOriginalCwd(previousOriginalCwd)
+    cleanup()
+  })
+
+  const run = async (body: string): Promise<OutputWithRootNote> =>
+    (await runApplyPatch({ patchText: envelope(body) }, ctx, randomUUID())).output
+
+  test('Update with a root-relative path applies, with a note', async () => {
+    const p = join(shellDir, 'a.css')
+    writeFileSync(p, 'a { color: red }\n')
+    markRead(p)
+    const body = '*** Update File: web/static/a.css\n@@\n-a { color: red }\n+a { color: blue }'
+
+    expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual({ result: true })
+    const output = await run(body)
+
+    expect(readFileSync(p, 'utf8')).toBe('a { color: blue }\n')
+    expect(output.files).toHaveLength(1)
+    expect(output.files[0]).toMatchObject({ absPath: p, type: 'update' })
+    expect(output.resolvedFromRoot).toHaveLength(1)
+    expect(output.resolvedFromRoot?.[0]).toEndWith('a.css')
+    const summary = summarizeApplyPatch(output)
+    expect(summary).toContain(`${ROOT_NOTE}; the shell is in `)
+  })
+
+  test('Delete with a root-relative path removes the file under the root', async () => {
+    const p = join(shellDir, 'a.css')
+    writeFileSync(p, 'a { color: red }\n')
+    markRead(p)
+
+    const output = await run('*** Delete File: web/static/a.css')
+
+    expect(existsSync(p)).toBe(false)
+    expect(output.files[0]).toMatchObject({ absPath: p, type: 'delete' })
+    expect(output.alreadyApplied).toBeUndefined()
+    expect(summarizeApplyPatch(output)).toContain(ROOT_NOTE)
+  })
+
+  test('the permission paths are the resolved ones', () => {
+    // The path that is checked is the path that is written.
+    const p = join(shellDir, 'a.css')
+    writeFileSync(p, 'a { color: red }\n')
+
+    const paths = resolveApplyPatchPaths({
+      patchText: envelope('*** Update File: web/static/a.css\n@@\n-a { color: red }\n+a { color: blue }'),
+    })
+
+    expect(paths).toEqual([p])
+  })
+
+  test('Add File stays relative to the shell cwd', async () => {
+    const body = '*** Add File: new/b.css\n+b { color: red }'
+    const p = join(shellDir, 'new', 'b.css')
+
+    expect(resolveApplyPatchPaths({ patchText: envelope(body) })).toEqual([p])
+    const output = await run(body)
+
+    expect(readFileSync(p, 'utf8')).toBe('b { color: red }\n')
+    expect(existsSync(join(dir, 'new', 'b.css'))).toBe(false)
+    expect(output.files[0]).toMatchObject({ absPath: p, type: 'add' })
+    expect(output.resolvedFromRoot).toBeUndefined()
+    expect(summarizeApplyPatch(output)).not.toContain(ROOT_NOTE)
+  })
+
+  test('a path that exists under the shell cwd wins over the root', async () => {
+    const underCwd = join(shellDir, 'x.txt')
+    const underRoot = join(dir, 'x.txt')
+    writeFileSync(underCwd, 'same\n')
+    writeFileSync(underRoot, 'same\n')
+    markRead(underCwd)
+    markRead(underRoot)
+    const body = '*** Update File: x.txt\n@@\n-same\n+CHANGED'
+
+    expect(resolveApplyPatchPaths({ patchText: envelope(body) })).toEqual([underCwd])
+    const output = await run(body)
+
+    expect(readFileSync(underCwd, 'utf8')).toBe('CHANGED\n')
+    expect(readFileSync(underRoot, 'utf8')).toBe('same\n')
+    expect(output.resolvedFromRoot).toBeUndefined()
+    expect(summarizeApplyPatch(output)).not.toContain(ROOT_NOTE)
+  })
+
+  test('a path that exists nowhere still says the file does not exist', async () => {
+    const body = '*** Update File: nope/missing.css\n@@\n-a\n+b'
+
+    const r = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
+    expect(r.result).toBe(false)
+    if (!r.result) expect(r.message).toContain('cannot Update nope/missing.css — the file does not exist.')
+    await expect(run(body)).rejects.toThrow('the file does not exist')
+    expect(existsSync(join(dir, 'nope'))).toBe(false)
+    expect(existsSync(join(shellDir, 'nope'))).toBe(false)
   })
 })

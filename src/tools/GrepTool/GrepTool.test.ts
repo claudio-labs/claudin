@@ -1090,6 +1090,15 @@ describe('GrepTool — blind spots', () => {
     )
   })
 
+  test('a look-around pattern is searched with PCRE2, not refused', async () => {
+    // ripgrep's default engine has no look-around and says so, naming
+    // --pcre2: the search is retried with it instead of being handed back.
+    const data = await blindGrep({ pattern: 'ZQTRACKED(?= = 2)' })
+
+    expect(data.numFiles).toBe(1)
+    expect(data.filenames[0]).toContain('tracked.ts')
+  })
+
   test('an unknown encoding label is an error, not "no matches"', async () => {
     await expect(
       blindGrep({ pattern: 'ZQWIDE', encoding: 'utf16' }),

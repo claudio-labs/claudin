@@ -219,6 +219,29 @@ describe('settleOwnWrites: which calls may claim a change', () => {
     process.env[FLAG] = '0'
     expect(await claims({ isReadOnly: () => false })).toBe(false)
   })
+
+  // The tool loop says whether the call ran in a child, so the parent can be told the names.
+  test("childOf does not change what the caller's own result says", async () => {
+    const settle = settleOwnWrites as (...args: unknown[]) => ReturnType<typeof settleOwnWrites>
+    const p = join(dir, 'child-of.ts')
+    writeAt(p, 'export const a = 1\n', -60)
+    // Two callers that had read the same file, one of them a child.
+    const main = makeContext()
+    const child = makeContext()
+    for (const ctx of [main, child]) ctx.readFileState.set(p, readEntry(p))
+
+    const startedAt = Date.now()
+    writeAt(p, 'export const a = 2\n', 5) // the python heredoc
+    const tool: FileChangingTool = { isReadOnly: () => false }
+    const asMain = await settle(tool, {}, main.readFileState, startedAt, dir, false)
+    const asChild = await settle(tool, {}, child.readFileState, startedAt, dir, true)
+
+    expect(asChild).toEqual(asMain)
+    expect(asChild).toEqual({
+      changed: [p],
+      note: '(1 file you had read changed under this call — your read now matches the disk: child-of.ts)',
+    })
+  })
 })
 
 // What the tool loop makes of a real Bash command, in a child process so the
