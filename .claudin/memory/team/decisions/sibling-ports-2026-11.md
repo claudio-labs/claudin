@@ -14,7 +14,7 @@ paths:
 Branch `fix/sibling-ports-2026-11`, one PR, one commit per area, red test commits first.
 
 **Ported:**
-- wrap-ansi pinned to 9.0.2. Version 10 expands tabs, so `Cursor` threw on the Node path (npm/dist). The binary uses `Bun.wrapAnsi`. `wrapAnsi.test.ts` holds npm == Bun, so a bump to 10 goes red in CI.
+- wrap-ansi pinned to 9.0.2. Version 10 expands tabs, so `Cursor` threw on the Node path (npm/dist). The binary uses `Bun.wrapAnsi`. `wrapAnsi.test.ts` holds npm == Bun, so a bump to 10 goes red in CI. **Superseded 11-16:** v10 shipped with a zero-width tab sentinel in `wrapAnsi.ts` ([[dependabot-bumps-2026-11-16-audited]]).
 - MCP stdio `maxBufferSize` set to 128 MiB, client only. `mcp serve` is broken by the stub.
 - CONNECT proxy: a `TargetTlsHttpsProxyAgent` hands the CA and mTLS options to `connect()`.
 - Marketplace git calls all lead with `GIT_NO_HOOKS`. The sparse `checkout HEAD` used to run a global post-checkout hook.
