@@ -304,6 +304,7 @@ describe('session census over synthetic transcripts', () => {
   test('spend by source counts only the sessions with a call in the window', () => {
     const { sources } = report()
     expect(sources.sessions).toBe(1)
+    expect(sources.leftOut).toBe(1)
     expect(sources.rows).toEqual([
       { source: 'repl_main_thread', calls: 8, costUSD: 1.5, sessions: 1 },
       { source: 'auto_mode_classifier', calls: 3, costUSD: 0.25, sessions: 1 },
@@ -342,7 +343,7 @@ describe('session census over synthetic transcripts', () => {
     expect(lines).toContain('1h TTL premium paid $0.07; a 5m policy would have re-written ≈$0.21 at the ≥5min gaps')
     expect(lines).toContain('\n--- narration (text beside a tool_use) --- 2 of 9 messages, 46 chars')
     // As above: B's $57.67 stays out of the first row.
-    expect(lines).toContain('\n--- spend by source (whole sessions with a call in the window, last cost-state) --- 1 sessions carry it')
+    expect(lines).toContain('\n--- spend by source (whole sessions with a call in the window, last cost-state) --- 1 sessions carry it, 1 left out')
     expect(lines).toContain('  repl_main_thread                 calls=    8    $1.50  sessions=1')
     expect(lines).toContain('\n--- permission decisions --- 4 of 14 tool uses carry one')
     expect(lines).toContain('prompts answered: 2  wait p50=10.0s p90=10.0s')
@@ -354,7 +355,7 @@ describe('session census over synthetic transcripts', () => {
     const lines = printed(buildReport(walk([], SINCE)))
     expect(lines[0]).toBe('=== SESSION CENSUS - → - ===')
     expect(lines[1]).toBe('calls=0 (main 0, sidechain 0)  total=$0.00')
-    expect(lines).toContain('\n--- spend by source (whole sessions with a call in the window, last cost-state) --- 0 sessions carry it')
+    expect(lines).toContain('\n--- spend by source (whole sessions with a call in the window, last cost-state) --- 0 sessions carry it, 0 left out')
   })
 
   test('parseArgs reads --since as a UTC day and defaults to the last seven', () => {

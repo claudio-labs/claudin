@@ -658,6 +658,8 @@ export function buildReport(w: Walk) {
     narration: { messagesWithTools: calls.filter(c => c.tools.length > 0).length, withText: narration.length, chars: narration.reduce((s, c) => s + c.text.trim().length, 0) },
     sources: {
       sessions: states.filter(s => s.sourceUsage !== undefined).length,
+      // Touched in the window with no call in it: their spend is left out above.
+      leftOut: costStates.size - states.length,
       rows: [...sources.entries()].map(([source, s]) => ({ source, ...s })).sort((a, b) => b.costUSD - a.costUSD),
     },
     permissions: {
@@ -726,7 +728,9 @@ export function print(r: Report): void {
 
   console.log(`\n--- narration (text beside a tool_use) --- ${r.narration.withText} of ${r.narration.messagesWithTools} messages, ${fmt(r.narration.chars)} chars`)
 
-  console.log(`\n--- spend by source (whole sessions with a call in the window, last cost-state) --- ${r.sources.sessions} sessions carry it`)
+  console.log(
+    `\n--- spend by source (whole sessions with a call in the window, last cost-state) --- ${r.sources.sessions} sessions carry it, ${r.sources.leftOut} left out`,
+  )
   for (const s of r.sources.rows.slice(0, 15)) {
     console.log(`  ${pad(s.source, 32)} calls=${padLeft(String(s.calls), 5)} ${padLeft(usd(s.costUSD), 8)}  sessions=${s.sessions}`)
   }
