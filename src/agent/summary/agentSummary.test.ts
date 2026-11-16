@@ -7,10 +7,16 @@ import {
 } from 'src/agent/messages/messages.js'
 import {
   type AgentSummaryDeps,
+  defaultAgentSummaryDeps,
+  periodicSummaryEnabled,
   startAgentSummarization,
   summarizeAgentResult,
   summaryForkParams,
 } from 'src/agent/summary/agentSummary.js'
+import {
+  getSdkAgentProgressSummariesEnabled,
+  setSdkAgentProgressSummariesEnabled,
+} from 'src/platform/bootstrap/state.js'
 import { EMPTY_USAGE } from 'src/providers/usage/emptyUsage.js'
 import * as logModule from 'src/shared/log.js'
 import { asAgentId } from 'src/shared/types/ids.js'
@@ -39,7 +45,8 @@ describe('summaryForkParams', () => {
 
 // Both summary forks, driven through AgentSummaryDeps: the transcript, the
 // fork and the writer are fakes, and the 30 s timer is a list the test fires
-// by hand. No mock.module, no timer globals.
+// by hand. No mock.module, no timer globals. The gate is open in the shared
+// fake; the suites at the end close it and read the real one.
 
 type Messages = CacheSafeParams['forkContextMessages']
 type ForkParams = Parameters<AgentSummaryDeps['runForkedAgent']>[0]
@@ -102,7 +109,7 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function harness() {
+function harness(over: Partial<AgentSummaryDeps> = {}) {
   const timers: { fn: () => unknown; ms: number; handle: TimerHandle; cancelled: boolean }[] = []
   const reads: string[] = []
   const forks: ForkParams[] = []
@@ -117,6 +124,7 @@ function harness() {
     reply: async () => forkResult(assistant('Reading runAgent.ts')),
   }
   const deps: AgentSummaryDeps = {
+    enabled: () => true,
     getAgentTranscript: async agentId => {
       reads.push(agentId)
       return answers.transcript
@@ -139,6 +147,7 @@ function harness() {
         if (timer.handle === handle) timer.cancelled = true
       }
     },
+    ...over,
   }
   return {
     deps,
@@ -158,6 +167,11 @@ function harness() {
 
 function start(h: ReturnType<typeof harness>, params = cacheSafeParams()) {
   return startAgentSummarization(TASK_ID, AGENT_ID, params, setAppState, h.deps)
+}
+
+/** The sub-agent's next step: the same transcript with more at its end. */
+function grow(h: ReturnType<typeof harness>, ...more: Messages) {
+  h.answers.transcript = { messages: [...(h.answers.transcript?.messages ?? []), ...more] }
 }
 
 let logError: ReturnType<typeof spyOn<typeof logModule, 'logError'>>
@@ -279,8 +293,11 @@ describe('startAgentSummarization', () => {
     h.answers.transcript = { messages: threeMessages() }
     start(h)
     await h.tick()
+    // The transcript grows between ticks: an unchanged one is not forked again.
+    grow(h, assistant('Opening validate.ts'))
     h.answers.reply = async () => forkResult(assistant('   '))
     await h.tick()
+    grow(h, user('and the tests'))
     await h.tick()
 
     // Each tick reads the transcript again.
@@ -398,6 +415,157 @@ describe('startAgentSummarization', () => {
     await h.tick()
     expect(h.forks[0]!.cacheSafeParams.forkContextMessages).toEqual(current)
     expect(JSON.stringify(h.forks[0]!.cacheSafeParams)).not.toContain('PINNED-AT-START')
+  })
+})
+
+describe('a transcript that has not grown', () => {
+  test('a tick whose transcript has not grown does not fork again', async () => {
+    const h = harness()
+    const messages = threeMessages()
+    h.answers.transcript = { messages }
+    start(h)
+    await h.tick()
+    // A second read of the same file: other arrays, the same last uuid.
+    h.answers.transcript = { messages: [...messages] }
+    await h.tick()
+
+    expect(h.reads).toHaveLength(2)
+    expect(h.forks).toHaveLength(1)
+    expect(h.written).toHaveLength(1)
+    // The skipped tick still rearms the timer.
+    expect(h.timers.map(t => t.ms)).toEqual([30_000, 30_000, 30_000])
+    expect(h.timers.at(-1)!.cancelled).toBe(false)
+  })
+
+  test('a new message after a skipped tick is summarized', async () => {
+    const h = harness()
+    h.answers.transcript = { messages: threeMessages() }
+    start(h)
+    await h.tick()
+    await h.tick()
+    expect(h.forks).toHaveLength(1)
+
+    const next = assistant('Opening validate.ts')
+    grow(h, next)
+    await h.tick()
+    expect(h.forks).toHaveLength(2)
+    expect(h.forks[1]!.cacheSafeParams.forkContextMessages.at(-1)).toEqual(next)
+    expect(promptText(h.forks[1]!)).toContain('Previous: "Reading runAgent.ts"')
+  })
+
+  test('the key is the last message, not the length', async () => {
+    const h = harness()
+    const messages = threeMessages()
+    h.answers.transcript = { messages }
+    start(h)
+    await h.tick()
+    // As long as before, ending on another message.
+    h.answers.transcript = { messages: [...messages.slice(0, -1), user('try the other file')] }
+    await h.tick()
+    expect(h.forks).toHaveLength(2)
+  })
+
+  test('a tick that threw is retried on the same transcript', async () => {
+    const h = harness()
+    h.answers.transcript = { messages: threeMessages() }
+    h.answers.reply = async () => {
+      throw new Error('fork failed')
+    }
+    start(h)
+    await h.tick()
+    h.answers.reply = async () => forkResult(assistant('Reading runAgent.ts'))
+    await h.tick()
+    expect(h.forks).toHaveLength(2)
+    expect(h.written.map(w => w.summary)).toEqual(['Reading runAgent.ts'])
+  })
+
+  test('a tick that answered with no text is not asked again on the same transcript', async () => {
+    const h = harness()
+    h.answers.transcript = { messages: threeMessages() }
+    h.answers.reply = async () => forkResult(assistant('   '))
+    start(h)
+    await h.tick()
+    await h.tick()
+    expect(h.forks).toHaveLength(1)
+    expect(h.timers).toHaveLength(3)
+  })
+})
+
+describe('periodicSummaryEnabled', () => {
+  const off = { coordinator: false, sdkAsked: false, env: undefined }
+
+  test('off with no coordinator, no SDK request and no switch', () => {
+    expect(periodicSummaryEnabled(off)).toBe(false)
+  })
+
+  test.each([
+    ['coordinator mode', { coordinator: true }],
+    ['an SDK that asked for progress summaries', { sdkAsked: true }],
+    ['CLAUDIN_AGENT_SUMMARY=1', { env: '1' }],
+  ])('on under %s', (_label, on) => {
+    expect(periodicSummaryEnabled({ ...off, ...on })).toBe(true)
+  })
+
+  test.each(['0', ''])('CLAUDIN_AGENT_SUMMARY=%p leaves it off', env => {
+    expect(periodicSummaryEnabled({ ...off, env })).toBe(false)
+  })
+})
+
+describe('the periodic summary gate', () => {
+  test('in the default TUI start arms no timer and forks nothing', async () => {
+    const h = harness({ enabled: () => false })
+    h.answers.transcript = { messages: threeMessages() }
+    const { stop } = start(h)
+    expect(h.timers).toEqual([])
+    expect(h.reads).toEqual([])
+    expect(h.forks).toEqual([])
+    expect(() => stop()).not.toThrow()
+    expect(h.timers).toEqual([])
+  })
+
+  // The gate production passes: the session's SDK flag and the env switch.
+  // Coordinator mode is a build flag, off under `bun test`.
+  describe('as production wires it', () => {
+    let priorEnv: string | undefined
+    let priorSdk: boolean
+
+    beforeEach(() => {
+      priorEnv = process.env.CLAUDIN_AGENT_SUMMARY
+      priorSdk = getSdkAgentProgressSummariesEnabled()
+      delete process.env.CLAUDIN_AGENT_SUMMARY
+      setSdkAgentProgressSummariesEnabled(false)
+    })
+
+    afterEach(() => {
+      if (priorEnv === undefined) delete process.env.CLAUDIN_AGENT_SUMMARY
+      else process.env.CLAUDIN_AGENT_SUMMARY = priorEnv
+      setSdkAgentProgressSummariesEnabled(priorSdk)
+    })
+
+    const startWired = () => {
+      const h = harness({ enabled: defaultAgentSummaryDeps.enabled })
+      start(h)
+      return h
+    }
+
+    test('a session that asked for nothing arms no timer', () => {
+      expect(startWired().timers).toEqual([])
+    })
+
+    test('CLAUDIN_AGENT_SUMMARY=1 arms it', () => {
+      process.env.CLAUDIN_AGENT_SUMMARY = '1'
+      expect(startWired().timers.map(t => t.ms)).toEqual([30_000])
+    })
+
+    test('CLAUDIN_AGENT_SUMMARY=0 does not', () => {
+      process.env.CLAUDIN_AGENT_SUMMARY = '0'
+      expect(startWired().timers).toEqual([])
+    })
+
+    test('an SDK that asked for progress summaries arms it', () => {
+      setSdkAgentProgressSummariesEnabled(true)
+      expect(startWired().timers.map(t => t.ms)).toEqual([30_000])
+    })
   })
 })
 
