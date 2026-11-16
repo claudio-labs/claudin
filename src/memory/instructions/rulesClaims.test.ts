@@ -3,6 +3,7 @@ import {
   countTrackedSources,
   dirCountDrifted,
   dominantSourceExtensions,
+  drawnSourceCount,
   extractRuleClaims,
   lineCountDrifted,
   resolveUniqueBasename,
@@ -327,6 +328,25 @@ describe('counts and tolerances', () => {
     expect(countTrackedSources(tracked, 'src/agent/', ['.ts', '.tsx'])).toBe(2)
     expect(countTrackedSources(tracked, 'src/agent', ['.ts', '.tsx'])).toBe(2)
     expect(countTrackedSources(tracked, 'src/agent/', ['.md'])).toBe(1)
+  })
+
+  test('a drawn count is the counted files while the directory has any', () => {
+    // One source beside a README is still counted by its source: falling back
+    // any earlier would turn `build/ (2)` into 6 the day it gained fixtures.
+    expect(drawnSourceCount(tracked, 'src/agent/', ['.ts', '.tsx'])).toBe(2)
+    expect(drawnSourceCount(tracked, 'src/agent', ['.md'])).toBe(1)
+  })
+
+  test('a drawn count falls back to every tracked file at zero counted', () => {
+    const assets = ['web/app.js', 'web/static/app.css', 'web/index.html', 'webx/a.js']
+    expect(countTrackedSources(assets, 'web/', ['.rs'])).toBe(0)
+    expect(drawnSourceCount(assets, 'web/', ['.rs'])).toBe(3)
+    expect(drawnSourceCount(assets, 'web', ['.rs'])).toBe(3)
+  })
+
+  test('a drawn count is zero only when nothing is tracked under the path', () => {
+    expect(drawnSourceCount(tracked, 'web/', ['.ts', '.tsx'])).toBe(0)
+    expect(drawnSourceCount([], 'src/agent/', ['.ts'])).toBe(0)
   })
 
   test('a directory count tolerates churn and reports a structural move', () => {

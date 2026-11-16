@@ -144,6 +144,20 @@ describe('healRuleMap', () => {
     }).split('\n')[2]
     expect(healed).toBe('├── plans/ (5)  goal/ (40)')
   })
+
+  test('heals a directory of another kind against every file it tracks', () => {
+    // No counted file under `web/` used to read as a dead directory, which a
+    // hand-written map leaves alone: the number could not be healed at all.
+    const withAssets = [...tracked, ...repo({ web: 20 }, '.json')]
+    const map = (count: number): string =>
+      ['```', '.', `├── web/ (${count})  ← frontend`, '```', ''].join('\n')
+    expect(healRuleMap({ content: map(61), trackedFiles: withAssets })).toBe(
+      map(20),
+    )
+    expect(healRuleMap({ content: map(21), trackedFiles: withAssets })).toBe(
+      map(21),
+    )
+  })
 })
 
 describe('renderModuleTree', () => {
@@ -253,6 +267,17 @@ describe('renderModuleTree', () => {
 
   test('emits TODO for a directory nobody has explained', () => {
     expect(renderModuleTree(tracked).join('\n')).toContain('← TODO')
+  })
+
+  test('draws a kept directory under the floor, and only a kept one', () => {
+    const withAssets = [...tracked, ...repo({ web: 6 }, '.json')]
+    const keep = new Set(['src/tiny/', 'web/', 'gone/'])
+    const tree = renderModuleTree(withAssets, new Map(), new Map(), 2, keep)
+    expect(tree.join('\n')).toContain('tiny/ (1)')
+    expect(tree.join('\n')).toContain('web/ (6)')
+    // Kept is not enough: nothing tracked is left under `gone/`.
+    expect(tree.join('\n')).not.toContain('gone/')
+    expect(renderModuleTree(withAssets)).toEqual(renderModuleTree(tracked))
   })
 })
 
@@ -512,6 +537,25 @@ describe('syncRuleMap', () => {
       syncRuleMap({ content: generateRuleMap(code), trackedFiles }),
     ).toBeNull()
   })
+
+  test('a mapped directory with a few counted files is counted by those, whatever sits beside them', () => {
+    // This repo's own `containers/build/ (2)`: two sources and four fixtures.
+    // Counting every tracked file below the floor read it as 6, and the
+    // verifier reported a number nobody had touched as drift.
+    const content = generatedMap(code, [
+      entry('└── src/ (62)'),
+      entry('    ├── agent/ (20)'),
+      entry('    ├── build/ (2)', 'compose parsing'),
+      entry('    └── providers/ (40)'),
+    ])
+    const trackedFiles = [
+      ...code,
+      ...repo({ 'src/build': 2 }),
+      ...repo({ 'src/build': 4 }, '.txt'),
+    ]
+    expect(ruleMapKind(content)).toBe('generated')
+    expect(syncRuleMap({ content, trackedFiles })).toBeNull()
+  })
 })
 
 describe('diffRuleMapCounts', () => {
@@ -658,7 +702,7 @@ describe('isHealerOnlyDiff', () => {
   })
 
   test('accepts an entry dropped because its directory died — given the tracked files', () => {
-    const shrunk = repo({ 'src/agent': 1, 'src/providers': 40 })
+    const shrunk = repo({ 'src/agent': 0, 'src/providers': 40 })
     const next = syncRuleMap({ content: annotated, trackedFiles: shrunk }) ?? ''
     expect(next).not.toContain('agent/')
     expect(isHealerOnlyDiff(annotated, next, shrunk)).toBe(true)
