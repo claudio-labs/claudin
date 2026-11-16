@@ -60,6 +60,16 @@ user's call on 10-21.
 
 B had no Agent claims. Check 5 was not sampled. See [[census-2026-10-24-classifier-cost]].
 
+**Result (2026-11-16, 11-14..16):** notes were back at 28.6 per 1k calls, 59 of them and none
+from the user. The claim covers the caller's own read state, and a child has a copy: 38 notes
+were memory files the session's own forks rewrote and 21 files its background Code agents
+edited, each reported to the parent as "modified, either by the user or by a linter" with a
+diff. Since `fix/census-2026-11-16` a child's settle records the version it left
+(`childWrites.ts`) and the parent gets one `child_written_files` note with names only; a later
+edit by the user leaves another mtime and still gets its diff. Not covered: a file a child
+changed through Bash without reading it, and a resumed session (the record is in memory).
+Check 5 is still unsampled. See [[census-2026-11-16-grep-env-prompt-map-drop]].
+
 **Method.**
 - Pair tool_use with tool_result by id and dedupe by uuid ([[session-corpus-census-inflation]]).
 - A claim is the `refreshedFiles` field on the transcript's tool_result message.

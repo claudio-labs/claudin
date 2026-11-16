@@ -68,6 +68,27 @@ an `edited_text_file` diff appended to the next turn (it does NOT stay as sent).
   `isBackgroundTask` (headless wait, running pill and counts, kill hints) still
   says no.
 
+**A mapped directory keeps its line while anything tracked is under it (2026-11-16,
+`fix/census-2026-11-16`).** The map counts only the dominant extensions, so in a Rust repo
+`web/` (61 tracked js/css/html files) read as zero and every regenerate deleted its line and
+its annotation; the 11-14..16 census saw it removed 27 s after being restored by hand, and the
+ferrous-dns working map was left without it.
+- A directory already on the map is drawn while it has a tracked file. Its number is its
+  counted files, and every tracked file only when it has none of the counted kind
+  (`drawnSourceCount`). The fallback is at zero and not below the draw floor: below the floor
+  it turned this repo's `containers/build/ (2)` into 6. The healer and the verifier use the
+  same number. Zero tracked files still goes `(gone)`. A first draw is unchanged: it names only
+  the directories the repo's code fills.
+- A working map that differs from the committed one only by what the healer writes gets the
+  committed map handed to the sync (`restoreFrom`), and the lines an earlier heal dropped come
+  back with their annotations. Every other line keeps the working copy's count.
+  `isHealerOnlyDiff` is unchanged.
+- The consequence: a line for a directory with too few counted files that someone deletes by
+  hand comes back until the deletion is committed. And a damaged map that also carries an edit
+  of the user's is left alone, so it is not restored until that edit is committed or reverted.
+- The sync now runs `git status` for every existing map, where it used to wait for something
+  to write; `git show` is still paid only when the map is modified.
+
 **Rejected:**
 - **An automatic LLM fork, in the style of dream, that fills `TODO`s and places new
   directories.** The user chose deterministic only. A fork costs tokens on every run

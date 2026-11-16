@@ -106,3 +106,6 @@ with lookback misses another 13%.
   only had benign ones), and any model but Sonnet 5.5 (Fable 5.2 was checked on the wire only).
 - What the larger budget changes for the classifier: it sees the whole session on a 1M model
   instead of the newest 150–200k chars, and reads ~40% more cached tokens per call.
+- **Field, census 11-14..16: −18% a call, not −32%** (reads ~59k → 97–147k tokens).
+  `CLAUDIN_CLASSIFIER_WINDOW_CHARS` lowers the cap; the default is still 800k. See
+  [[census-2026-11-16-grep-env-prompt-map-drop]].
