@@ -1,0 +1,187 @@
+{
+  "test": [
+    "src/tools/GrepTool/GrepTool.env.test.ts",
+    "src/tools/GrepTool/GrepTool.test.ts",
+    "src/tools/ApplyPatchTool/applyPatch.test.ts",
+    "src/agent/attachments/memory.worktreeCopies.test.ts",
+    "src/agent/attachments/changedFile.test.ts",
+    "src/agent/attachments/ownWrites.test.ts",
+    "src/agent/summary/agentSummary.test.ts",
+    "src/memory/autoDream/autoDream.test.ts",
+    "src/memory/instructions/rulesClaims.test.ts",
+    "src/memory/instructions/rulesLint.test.ts",
+    "src/memory/instructions/rulesMapSync.test.ts",
+    "src/memory/instructions/ruleMapAutoSync.test.ts",
+    "scripts/bench/tokens/feature-usage-census.test.ts",
+    "scripts/bench/tokens/session-census.test.ts"
+  ],
+  "source": "src/tools/GrepTool/GrepTool.ts",
+  "probes": [
+    {
+      "name": "a negated Grep glob is read as naming a .env",
+      "find": "  return !pattern.startsWith('!') && globCouldMatchEnvFile(pattern, { dot: true })\n",
+      "replace": "  return globCouldMatchEnvFile(pattern, { dot: true })\n"
+    },
+    {
+      "name": "a look-around pattern is not searched again with PCRE2",
+      "find": "    if (search.usageError && NEEDS_PCRE2_RE.test(search.usageError)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "Patch: a path under the shell's directory loses to the root",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  if (fs.existsSync(absPath) || !fs.existsSync(rootPath)) return { absPath, fromRoot: false }\n",
+      "replace": "  if (!fs.existsSync(rootPath)) return { absPath, fromRoot: false }\n"
+    },
+    {
+      "name": "Patch: no root fallback",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  return { absPath: rootPath, fromRoot: true }\n",
+      "replace": "  return { absPath, fromRoot: false }\n"
+    },
+    {
+      "name": "Patch: an Add falls back to the root",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  if (hunk.type === 'add') return { absPath, fromRoot: false }\n",
+      "replace": ""
+    },
+    {
+      "name": "Patch: a Move destination does not follow a source found under the root",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  const movePath = expandPath(hunk.movePath, fromRoot ? getSessionRootCwd() : undefined)\n",
+      "replace": "  const movePath = expandPath(hunk.movePath)\n"
+    },
+    {
+      "name": "Patch: the root reading of a path is not invalidated",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "      const bases = hunk.type === 'add' ? [getCwd()] : [getCwd(), getSessionRootCwd()]\n",
+      "replace": "      const bases = [getCwd()]\n"
+    },
+    {
+      "name": "Patch: the result does not name what resolved from the root",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "        if (plan.group.fromRoot) resolvedFromRoot.push(relative(getSessionRootCwd(), plan.group.absPath))\n",
+      "replace": ""
+    },
+    {
+      "name": "a worktree copy with other bytes is dropped",
+      "source": "src/agent/attachments/memory.ts",
+      "find": "        (await hasSameBytesOnDisk(file, counterpart))\n",
+      "replace": "        true\n"
+    },
+    {
+      "name": "a worktree copy is dropped whether or not its counterpart is in context",
+      "source": "src/agent/attachments/memory.ts",
+      "find": "        (inContext.has(counterpart) ||\n",
+      "replace": "        (true ||\n"
+    },
+    {
+      "name": "what the same trigger loads does not count as in context",
+      "source": "src/agent/attachments/memory.ts",
+      "find": "    const inContext = new Set<string>(memoryFiles.map(file => file.path))\n",
+      "replace": "    const inContext = new Set<string>()\n"
+    },
+    {
+      "name": "a child's write reaches the parent as a diff",
+      "source": "src/agent/attachments/changedFile.ts",
+      "find": "      childWriteMtime(normalizedPath) === mtime\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "a later edit of a path a child wrote is claimed as the child's",
+      "source": "src/agent/attachments/changedFile.ts",
+      "find": "      childWriteMtime(normalizedPath) === mtime\n",
+      "replace": "      childWriteMtime(normalizedPath) !== undefined\n"
+    },
+    {
+      "name": "a sub-agent's own watcher adopts a child's write too",
+      "source": "src/agent/attachments/changedFile.ts",
+      "find": "      ownsSessionScopedState(toolUseContext) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "a child's settle records nothing",
+      "source": "src/agent/attachments/ownWrites.ts",
+      "find": "  if (childOf) await recordChildWrites(readFileState, startedAt)\n",
+      "replace": ""
+    },
+    {
+      "name": "the main thread's settle records its writes as a child's",
+      "source": "src/agent/attachments/ownWrites.ts",
+      "find": "  if (childOf) await recordChildWrites(readFileState, startedAt)\n",
+      "replace": "  await recordChildWrites(readFileState, startedAt)\n"
+    },
+    {
+      "name": "an entry older than the call is recorded as the child's write",
+      "source": "src/agent/attachments/ownWrites.ts",
+      "find": "      if (state.isPartialView || state.refreshFailed || state.timestamp < since) return\n",
+      "replace": "      if (state.isPartialView || state.refreshFailed) return\n"
+    },
+    {
+      "name": "the periodic summary starts in the default TUI",
+      "source": "src/agent/summary/agentSummary.ts",
+      "find": "  if (!deps.enabled()) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "CLAUDIN_AGENT_SUMMARY=1 does not turn the periodic summary on",
+      "source": "src/agent/summary/agentSummary.ts",
+      "find": "  return inputs.coordinator || inputs.sdkAsked || isEnvTruthy(inputs.env)\n",
+      "replace": "  return inputs.coordinator || inputs.sdkAsked\n"
+    },
+    {
+      "name": "a transcript that has not grown is summarized again",
+      "source": "src/agent/summary/agentSummary.ts",
+      "find": "      if (lastUuid === summarizedThroughUuid) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "CLAUDIN_AUTO_DREAM_FRESH=1 leaves the parent conversation in the fork",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "  if (!isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FRESH)) return params\n",
+      "replace": "  if (true) return params\n"
+    },
+    {
+      "name": "the dream drops the parent conversation by default",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "  if (!isEnvTruthy(process.env.CLAUDIN_AUTO_DREAM_FRESH)) return params\n",
+      "replace": ""
+    },
+    {
+      "name": "a mapped directory under the floor loses its line",
+      "source": "src/memory/instructions/rulesMapSync.ts",
+      "find": "      return count >= MIN_DIR_FILES || (count > 0 && keep.has(dir))\n",
+      "replace": "      return count >= MIN_DIR_FILES\n"
+    },
+    {
+      "name": "a directory with no counted file counts zero",
+      "source": "src/memory/instructions/rulesClaims.ts",
+      "find": "  if (counted > 0) return counted\n",
+      "replace": "  return counted\n"
+    },
+    {
+      "name": "the committed map is not handed to the sync",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": "    const next = syncRuleMap({ content, trackedFiles, restoreFrom })\n",
+      "replace": "    const next = syncRuleMap({ content, trackedFiles })\n"
+    },
+    {
+      "name": "a map the user is editing is healed",
+      "source": "src/memory/instructions/ruleMapAutoSync.ts",
+      "find": "    if (baseline.edited) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a batch Read is one read of an empty path",
+      "source": "scripts/bench/tokens/feature-usage-census.ts",
+      "find": "  if (paths.length === 0) return [c]\n",
+      "replace": "  return [c]\n"
+    },
+    {
+      "name": "spend by source takes every walked cost-state",
+      "source": "scripts/bench/tokens/session-census.ts",
+      "find": "    .filter(([file]) => active.has(sessionOf(file)))\n",
+      "replace": ""
+    }
+  ]
+}

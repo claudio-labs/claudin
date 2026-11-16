@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileS
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 import { refreshChangedFile } from 'src/agent/attachments/changedFile.js'
+import { childWriteMtime, resetChildWrites } from 'src/agent/attachments/childWrites.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import {
   createFileStateCacheWithSizeLimit,
@@ -241,6 +242,57 @@ describe('settleOwnWrites: which calls may claim a change', () => {
       changed: [p],
       note: '(1 file you had read changed under this call — your read now matches the disk: child-of.ts)',
     })
+  })
+})
+
+describe("settleOwnWrites: what a child's settle records for its parent", () => {
+  const tool: FileChangingTool = { isReadOnly: () => false }
+
+  beforeEach(resetChildWrites)
+  afterAll(resetChildWrites)
+
+  /** A read file the call then rewrote, settled as a child's call or as the main thread's. */
+  async function settleARewrite(name: string, childOf: boolean): Promise<string> {
+    const p = join(dir, name)
+    writeAt(p, 'a\n', -60)
+    const ctx = makeContext()
+    ctx.readFileState.set(p, readEntry(p))
+    const startedAt = Date.now()
+    writeAt(p, 'b\n', 5)
+    await settleOwnWrites(tool, {}, ctx.readFileState, startedAt, dir, childOf)
+    return p
+  }
+
+  test('a child records the version its call left', async () => {
+    const p = await settleARewrite('child-records.ts', true)
+    expect(childWriteMtime(p)).toBe(getFileModificationTime(p))
+  })
+
+  // Its own settle already brought its read state up to date: a record would
+  // make its watcher adopt, as a child's, a later change that happens to
+  // leave the same mtime.
+  test('the main thread records nothing', async () => {
+    const p = await settleARewrite('main-records-nothing.ts', false)
+    expect(childWriteMtime(p)).toBeUndefined()
+  })
+
+  // The user may have edited it before the child read it: recorded, that edit
+  // would reach the parent as a name instead of a diff.
+  test('a file the child had only read before the call is not its write', async () => {
+    const read = join(dir, 'child-only-read.ts')
+    const written = join(dir, 'child-wrote.ts')
+    writeAt(read, 'a\n', -60)
+    writeAt(written, 'a\n', -60)
+    const ctx = makeContext()
+    ctx.readFileState.set(read, readEntry(read))
+    ctx.readFileState.set(written, readEntry(written))
+
+    const startedAt = Date.now()
+    writeAt(written, 'b\n', 5)
+    await settleOwnWrites(tool, {}, ctx.readFileState, startedAt, dir, true)
+
+    expect(childWriteMtime(written)).toBe(getFileModificationTime(written))
+    expect(childWriteMtime(read)).toBeUndefined()
   })
 })
 
