@@ -188,4 +188,24 @@ describe('worktree copies of instruction files', () => {
 
     expect(attached).toContain(join(worktree, '.claudin', 'rules', 'scoped.md'))
   })
+
+  test('a main rule with an unanchored glob and its identical worktree copy attach once, as the main one', async () => {
+    // `**/*.ts` in the main checkout matches a file inside the worktree too,
+    // so one Read brings both: the worktree's from the walk down to the file,
+    // the main checkout's from the cwd-level rules. Neither was in context.
+    const rule = '---\npaths:\n  - "**/*.ts"\n---\n\n# Unanchored\n\nZZ_WORKTREE_COPY_UNANCHORED_ZZ\n'
+    const mainRule = join(project, '.claudin', 'rules', 'unanchored.md')
+    writeFileSync(mainRule, rule)
+    writeFileSync(join(worktree, '.claudin', 'rules', 'unanchored.md'), rule)
+
+    const attached = await attachedUnder(
+      project,
+      makeContext(),
+      join(worktree, 'src', 'a.ts'),
+    )
+
+    expect(attached.filter(path => path.endsWith('unanchored.md'))).toEqual([
+      mainRule,
+    ])
+  })
 })

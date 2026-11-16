@@ -1,6 +1,8 @@
 // biome-ignore-all assist/source/organizeImports: keep grouped by domain
-import { dirname, parse, relative, resolve, sep } from 'path'
+import { dirname, join, parse, relative, resolve, sep } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { isENOENT } from 'src/shared/errors.js'
 import {
   type ToolUseContext,
   type ToolPermissionContext,
@@ -9,6 +11,7 @@ import type { Attachment } from 'src/agent/attachments/types.js'
 import {
   type MemoryFileInfo,
   getManagedAndUserConditionalRules,
+  getMemoryFiles,
   getMemoryFilesForNestedDirectory,
   getConditionalRulesForCwdLevelDirectory,
 } from 'src/memory/instructions/claudemd.js'
@@ -21,6 +24,7 @@ import { pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js'
 import { logError } from 'src/shared/log.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getPathScopedMemoryFiles } from 'src/memory/memdir/pathScopedMemories.js'
+import { worktreesDir } from 'src/vcs/git/worktree/slugNaming.js'
 
 export function getDirectoriesToProcess(
   targetPath: string,
@@ -52,6 +56,28 @@ export function getDirectoriesToProcess(
   cwdLevelDirs.reverse()
 
   return { nestedDirs, cwdLevelDirs }
+}
+
+/**
+ * The main-checkout path a file inside a worktree mirrors:
+ * `<originalCwd>/.claudin/worktrees/<slug>/AGENTS.md` → `<originalCwd>/AGENTS.md`.
+ * Null for a path outside the worktrees directory, and for a worktree's root.
+ */
+export function mainCheckoutCounterpart(
+  path: string,
+  originalCwd: string,
+): string | null {
+  const prefix = worktreesDir(originalCwd) + sep
+  if (!path.startsWith(prefix)) return null
+  // The slug is one segment: a nested one is flattened (slugNaming.ts).
+  const insideWorktree = path
+    .slice(prefix.length)
+    .split(sep)
+    .slice(1)
+    .filter(segment => segment !== '')
+  return insideWorktree.length > 0
+    ? join(originalCwd, ...insideWorktree)
+    : null
 }
 
 function isInstructionsMemoryType(
@@ -119,6 +145,75 @@ export function memoryFilesToAttachments(
   return attachments
 }
 
+/** A read error means "not the same bytes": the copy is then attached. */
+async function hasSameBytesOnDisk(
+  file: MemoryFileInfo,
+  counterpart: string,
+): Promise<boolean> {
+  const onDisk = file.contentDiffersFromDisk
+    ? (file.rawContent ?? file.content)
+    : file.content
+  try {
+    const counterpartBytes = await getFsImplementation().readFile(counterpart, {
+      encoding: 'utf-8',
+    })
+    return counterpartBytes === onDisk
+  } catch (error) {
+    // No counterpart is the ordinary case of a rule only this branch has.
+    if (!isENOENT(error)) logError(error)
+    return false
+  }
+}
+
+/**
+ * Leaves out the worktree copies of instruction files the session already
+ * carries. A worktree is a second checkout under the original cwd, so a Read
+ * inside it finds that checkout's own AGENTS.md and rules, and the dedupe in
+ * memoryFilesToAttachments is by path: the same text was attached again under
+ * another name (8 attachments, ~14K chars, in the 2026-11-16 census).
+ *
+ * Conservative on purpose: a worktree on another branch can carry a rule the
+ * main checkout lacks or has changed. A copy is dropped only when its
+ * main-checkout counterpart has the same bytes AND is in context — loaded
+ * eagerly, attached or read earlier, or about to be attached by this same
+ * trigger (a main rule with an unanchored glob matches a worktree file too).
+ */
+async function dropMainCheckoutCopies(
+  memoryFiles: MemoryFileInfo[],
+  originalCwd: string,
+  toolUseContext: ToolUseContext,
+): Promise<MemoryFileInfo[]> {
+  const counterparts = new Map<MemoryFileInfo, string>()
+  for (const file of memoryFiles) {
+    const counterpart = mainCheckoutCounterpart(file.path, originalCwd)
+    if (counterpart) counterparts.set(file, counterpart)
+  }
+  // Nearly every trigger: nothing was loaded from a worktree.
+  if (counterparts.size === 0) return memoryFiles
+
+  try {
+    const inContext = new Set<string>(memoryFiles.map(file => file.path))
+    for (const file of await getMemoryFiles()) inContext.add(file.path)
+
+    const kept: MemoryFileInfo[] = []
+    for (const file of memoryFiles) {
+      const counterpart = counterparts.get(file)
+      const isCopy =
+        counterpart !== undefined &&
+        (inContext.has(counterpart) ||
+          toolUseContext.loadedNestedMemoryPaths?.has(counterpart) === true ||
+          toolUseContext.readFileState.has(counterpart)) &&
+        (await hasSameBytesOnDisk(file, counterpart))
+      if (!isCopy) kept.push(file)
+    }
+    return kept
+  } catch (error) {
+    // A copy attached twice costs tokens; a rule lost costs behaviour.
+    logError(error)
+    return memoryFiles
+  }
+}
+
 export async function getNestedMemoryAttachmentsForFile(
   filePath: string,
   toolUseContext: ToolUseContext,
@@ -133,13 +228,12 @@ export async function getNestedMemoryAttachmentsForFile(
 
     const processedPaths = new Set<string>()
     const originalCwd = getOriginalCwd()
+    // Loaded in full before anything is attached: whether a worktree copy is
+    // redundant depends on what the later loaders bring (dropMainCheckoutCopies).
+    const memoryFiles: MemoryFileInfo[] = []
 
-    const managedUserRules = await getManagedAndUserConditionalRules(
-      filePath,
-      processedPaths,
-    )
-    attachments.push(
-      ...memoryFilesToAttachments(managedUserRules, toolUseContext, filePath),
+    memoryFiles.push(
+      ...(await getManagedAndUserConditionalRules(filePath, processedPaths)),
     )
 
     const { nestedDirs, cwdLevelDirs } = getDirectoriesToProcess(
@@ -148,24 +242,22 @@ export async function getNestedMemoryAttachmentsForFile(
     )
 
     for (const dir of nestedDirs) {
-      const memoryFiles = await getMemoryFilesForNestedDirectory(
-        dir,
-        filePath,
-        processedPaths,
-      )
-      attachments.push(
-        ...memoryFilesToAttachments(memoryFiles, toolUseContext, filePath),
+      memoryFiles.push(
+        ...(await getMemoryFilesForNestedDirectory(
+          dir,
+          filePath,
+          processedPaths,
+        )),
       )
     }
 
     for (const dir of cwdLevelDirs) {
-      const conditionalRules = await getConditionalRulesForCwdLevelDirectory(
-        dir,
-        filePath,
-        processedPaths,
-      )
-      attachments.push(
-        ...memoryFilesToAttachments(conditionalRules, toolUseContext, filePath),
+      memoryFiles.push(
+        ...(await getConditionalRulesForCwdLevelDirectory(
+          dir,
+          filePath,
+          processedPaths,
+        )),
       )
     }
 
@@ -173,12 +265,16 @@ export async function getNestedMemoryAttachmentsForFile(
     // same trigger, same once-per-session dedupe, same reset on compaction.
     // The rule loaders above share `processedPaths` with this call, so a file
     // reached twice in one trigger is still attached once.
-    const pathScopedMemories = await getPathScopedMemoryFiles(
-      filePath,
-      processedPaths,
+    memoryFiles.push(
+      ...(await getPathScopedMemoryFiles(filePath, processedPaths)),
     )
+
     attachments.push(
-      ...memoryFilesToAttachments(pathScopedMemories, toolUseContext, filePath),
+      ...memoryFilesToAttachments(
+        await dropMainCheckoutCopies(memoryFiles, originalCwd, toolUseContext),
+        toolUseContext,
+        filePath,
+      ),
     )
   } catch (error) {
     logError(error)
