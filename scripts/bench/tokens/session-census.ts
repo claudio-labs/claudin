@@ -129,7 +129,7 @@ function promptTokensOf(u: Usage): number {
 
 type Args = { since: number; project: string | null; json: boolean }
 
-function parseArgs(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const a: Args = {
     since: Date.now() - 7 * 24 * 60 * 60 * 1000,
     project: null,
@@ -200,7 +200,7 @@ type Walk = {
   costStates: Map<string, CostStateRecord>
 }
 
-function walk(files: readonly string[], since: number): Walk {
+export function walk(files: readonly string[], since: number): Walk {
   const byId = new Map<string, Call>()
   const uses = new Map<string, ToolUse>()
   const results = new Map<string, string>()
@@ -445,7 +445,7 @@ function quantile(sorted: readonly number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0
 }
 
-function buildReport(w: Walk) {
+export function buildReport(w: Walk) {
   const { calls, uses, results, permissions, costStates } = w
   const byFile = new Map<string, Call[]>()
   for (const c of calls) {
@@ -667,7 +667,7 @@ function buildReport(w: Walk) {
 // Print
 // ---------------------------------------------------------------------------
 
-function print(r: Report): void {
+export function print(r: Report): void {
   const iso = (t: number): string => (Number.isFinite(t) ? new Date(t).toISOString().slice(0, 16) : '-')
   console.log(`=== SESSION CENSUS ${iso(r.range.first)} → ${iso(r.range.last)} ===`)
   console.log(`calls=${r.totals.all.calls} (main ${r.totals.main.calls}, sidechain ${r.totals.side.calls})  total=${usd(r.totals.all.total)}`)
