@@ -15,6 +15,8 @@ import {
   globalFindingsLine,
   initAutoDream,
 } from 'src/memory/autoDream/autoDream.js'
+import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
 import { isDreamTask } from 'src/agent/tasks/DreamTask/DreamTask.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
@@ -262,6 +264,59 @@ describe('an auto-dream run', () => {
     expect(dream?.filesTouched).toEqual(['/mem/a.md', '/mem/b.md', '/mem/d.md'])
     expect(dream?.turns.at(-1)).toEqual({ text: 'merging two files', toolUseCount: 4 })
     expect(calls.rollback).toEqual([])
+  })
+
+  // The consolidation prompt never reads the conversation, so the parent's
+  // messages are dead weight on every call of the fork's loop. The harness
+  // has `messages: []`: both cases seed one, or they would pass on anything.
+  describe('what the fork carries of the parent', () => {
+    const saved = process.env.CLAUDIN_AUTO_DREAM_FRESH
+    const restore = () => {
+      if (saved === undefined) delete process.env.CLAUDIN_AUTO_DREAM_FRESH
+      else process.env.CLAUDIN_AUTO_DREAM_FRESH = saved
+    }
+    const seeded = () => {
+      const h = harness()
+      h.context.messages.push(createUserMessage({ content: 'PARENT-TURN' }))
+      return h
+    }
+    const paramsOf = (calls: ReturnType<typeof fakeDeps>['calls']) =>
+      calls.forks[0]!.cacheSafeParams as CacheSafeParams
+
+    beforeEach(restore)
+    afterAll(restore)
+
+    test('with CLAUDIN_AUTO_DREAM_FRESH=1 the fork carries no parent messages', async () => {
+      process.env.CLAUDIN_AUTO_DREAM_FRESH = '1'
+      const { deps, calls } = fakeDeps()
+      const h = await run(deps, seeded())
+
+      const params = paramsOf(calls)
+      expect(params.forkContextMessages).toEqual([])
+      // …and the cached system + tools prefix is still the parent's own
+      expect(params.systemPrompt).toBe(h.context.systemPrompt)
+      expect(params.userContext).toBe(h.context.userContext)
+      expect(params.systemContext).toBe(h.context.systemContext)
+      expect(params.toolUseContext).toBe(h.context.toolUseContext)
+      // the parent's own list is left alone
+      expect(h.context.messages).toHaveLength(1)
+      expect(calls.forks[0]!.querySource).toBe('auto_dream')
+      expect(h.dreams()[0]?.status).toBe('completed')
+    })
+
+    test('without the switch the fork still carries the parent\'s messages', async () => {
+      delete process.env.CLAUDIN_AUTO_DREAM_FRESH
+      const unset = fakeDeps()
+      const h = await run(unset.deps, seeded())
+      expect(paramsOf(unset.calls).forkContextMessages).toBe(h.context.messages)
+      expect(JSON.stringify(paramsOf(unset.calls).forkContextMessages)).toContain('PARENT-TURN')
+
+      process.env.CLAUDIN_AUTO_DREAM_FRESH = '0'
+      const zero = fakeDeps()
+      const again = await run(zero.deps, seeded())
+      expect(paramsOf(zero.calls).forkContextMessages).toBe(again.context.messages)
+      expect(paramsOf(zero.calls).forkContextMessages).toHaveLength(1)
+    })
   })
 
   test('says "Improved" in the transcript only when notifyMemorySaved is on', async () => {
