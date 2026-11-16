@@ -8,6 +8,10 @@
  * Cache sharing: uses the same CacheSafeParams as the parent agent
  * to share the prompt cache. Tools are kept in the request for cache
  * key matching but denied via canUseTool callback.
+ *
+ * What reaches outside the module — the transcript read, the fork, the
+ * summary write and the timer — comes in as AgentSummaryDeps, so a test
+ * drives a tick by hand without mock.module.
  */
 
 import type { TaskContext } from 'src/agent/Task.js'
@@ -24,6 +28,28 @@ import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentTranscript } from 'src/sessions/sessionStorage.js'
 
 const SUMMARY_INTERVAL_MS = 30_000
+
+/** What the summary forks call outside themselves; production passes defaultAgentSummaryDeps. */
+export type AgentSummaryDeps = {
+  getAgentTranscript: typeof getAgentTranscript
+  runForkedAgent: typeof runForkedAgent
+  updateAgentSummary: typeof updateAgentSummary
+  /** The timer between ticks; the handle only ever goes back to `cancel`. */
+  schedule: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
+  cancel: (timer: ReturnType<typeof setTimeout>) => void
+}
+
+// Each entry calls through instead of holding the function: the import and
+// the timer global are looked up when the tick runs, as they were before the
+// seam, not frozen at whatever this module saw when it loaded.
+const defaultAgentSummaryDeps: AgentSummaryDeps = {
+  getAgentTranscript: agentId => getAgentTranscript(agentId),
+  runForkedAgent: params => runForkedAgent(params),
+  updateAgentSummary: (taskId, summary, setAppState) =>
+    updateAgentSummary(taskId, summary, setAppState),
+  schedule: (fn, ms) => setTimeout(fn, ms),
+  cancel: timer => clearTimeout(timer),
+}
 
 const RESULT_SUMMARY_PROMPT = `Produce a concise, actionable summary of your final result above, for the agent that delegated this task. Preserve: files touched (with paths), key decisions, and any next steps or caveats. Drop step-by-step narration and intermediate exploration. Do not use tools. Respond with the summary only.`
 
@@ -99,6 +125,7 @@ export async function summarizeAgentResult(
   cacheSafeParams: CacheSafeParams,
   agentMessages: CacheSafeParams['forkContextMessages'],
   abortSignal: AbortSignal,
+  deps: Pick<AgentSummaryDeps, 'runForkedAgent'> = defaultAgentSummaryDeps,
 ): Promise<string | null> {
   if (abortSignal.aborted) return null
   const cleanMessages = filterIncompleteToolCalls(agentMessages)
@@ -120,7 +147,7 @@ export async function summarizeAgentResult(
   try {
     // DO NOT set maxOutputTokens — it would clamp budget_tokens and invalidate
     // the shared prompt cache (thinking config is part of the cache key).
-    const result = await runForkedAgent(
+    const result = await deps.runForkedAgent(
       summaryForkParams(
         RESULT_SUMMARY_PROMPT,
         forkParams,
@@ -163,6 +190,7 @@ export function startAgentSummarization(
   agentId: AgentId,
   cacheSafeParams: CacheSafeParams,
   setAppState: TaskContext['setAppState'],
+  deps: AgentSummaryDeps = defaultAgentSummaryDeps,
 ): { stop: () => void } {
   // Drop forkContextMessages from the closure — runSummary rebuilds it each
   // tick from getAgentTranscript(). Without this, the original fork messages
@@ -180,7 +208,7 @@ export function startAgentSummarization(
 
     try {
       // Read current messages from transcript
-      const transcript = await getAgentTranscript(agentId)
+      const transcript = await deps.getAgentTranscript(agentId)
       if (!transcript || transcript.messages.length < 3) {
         // Not enough context yet — finally block will schedule next attempt
         logForDebugging(
@@ -210,7 +238,7 @@ export function startAgentSummarization(
       // tools, model, messages prefix, thinking config). Setting maxOutputTokens
       // would clamp budget_tokens, creating a thinking config mismatch that
       // invalidates the cache.
-      const result = await runForkedAgent(
+      const result = await deps.runForkedAgent(
         summaryForkParams(
           buildSummaryPrompt(previousSummary),
           forkParams,
@@ -232,7 +260,7 @@ export function startAgentSummarization(
           `[AgentSummary] Summary result for ${taskId}: ${summaryText}`,
         )
         previousSummary = summaryText
-        updateAgentSummary(taskId, summaryText, setAppState)
+        deps.updateAgentSummary(taskId, summaryText, setAppState)
       }
     } catch (e) {
       if (!stopped && e instanceof Error) {
@@ -249,14 +277,14 @@ export function startAgentSummarization(
 
   function scheduleNext(): void {
     if (stopped) return
-    timeoutId = setTimeout(runSummary, SUMMARY_INTERVAL_MS)
+    timeoutId = deps.schedule(runSummary, SUMMARY_INTERVAL_MS)
   }
 
   function stop(): void {
     logForDebugging(`[AgentSummary] Stopping summarization for ${taskId}`)
     stopped = true
     if (timeoutId) {
-      clearTimeout(timeoutId)
+      deps.cancel(timeoutId)
       timeoutId = null
     }
     if (summaryAbortController) {
