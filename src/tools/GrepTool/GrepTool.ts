@@ -93,9 +93,18 @@ function searchRootsOf(path: string | undefined): string[] {
   return targets.kind === 'many' ? targets.paths.map(piece => expandPath(piece)) : [expandPath(path)]
 }
 
+/**
+ * Whether one pattern of the Grep `glob` input could pick out a dotenv file.
+ * In ripgrep a `!` glob only excludes, so it selects nothing; picomatch reads
+ * the `!` as "everything but", which matches `.env` for any `!*.test.*`.
+ */
+function namesEnvFile(pattern: string): boolean {
+  return !pattern.startsWith('!') && globCouldMatchEnvFile(pattern, { dot: true })
+}
+
 /** Whether a glob of the Grep `glob` input could pick out a dotenv file. */
 function globNamesEnvFile(glob: string | undefined): boolean {
-  return !!glob && splitGlobInput(glob).some(pattern => globCouldMatchEnvFile(pattern, { dot: true }))
+  return !!glob && splitGlobInput(glob).some(namesEnvFile)
 }
 
 /**
@@ -109,7 +118,7 @@ function envFileGlobAsk(
 ): PermissionDecision | null {
   if (!glob) return null
   for (const pattern of splitGlobInput(glob)) {
-    if (!globCouldMatchEnvFile(pattern, { dot: true })) continue
+    if (!namesEnvFile(pattern)) continue
     for (const root of roots) {
       const target = join(root, pattern)
       if (envFileReadAllowRule(target, context)) continue
