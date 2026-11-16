@@ -21,6 +21,8 @@ const NULL_RENDERING_TYPES = [
   'critical_system_reminder',
   'edited_image_file',
   'edited_text_file',
+  // Told to the model only: the Agents row already shows the user the child at work.
+  'child_written_files',
   'opened_file_in_ide',
   'output_style',
   'plan_mode',

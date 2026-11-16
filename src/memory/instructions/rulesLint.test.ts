@@ -330,6 +330,32 @@ describe('lintRuleFiles — claims inside fenced blocks', () => {
     expect(drift[0]?.message).toContain('holds 140 files; it holds 20')
   })
 
+  test('counts a directory of another kind by its tracked files, as the healer does', async () => {
+    // `web/` holds no file of the repo's language. Read as zero, a true `(6)`
+    // was reported as drift on every run, and the healer's answer was to
+    // delete the line.
+    const trackedFiles = [
+      ...Array.from({ length: 20 }, (_, i) => `src/agent/f${i}.ts`),
+      ...Array.from({ length: 6 }, (_, i) => `web/a${i}.json`),
+    ]
+    const files = Object.fromEntries(trackedFiles.map(path => [path, '{}\n']))
+    const driftOf = async (count: number) =>
+      (
+        await lintRuleFiles({
+          root: makeProject({
+            ...files,
+            'AGENTS.md': ['```', '.', `├── web/ (${count})`, '```', ''].join('\n'),
+          }),
+          trackedFiles,
+        })
+      ).findings.filter(f => f.kind === 'dir_count_drift')
+
+    expect(await driftOf(6)).toEqual([])
+    const drift = await driftOf(61)
+    expect(drift).toHaveLength(1)
+    expect(drift[0]?.message).toContain('holds 61 files; it holds 6')
+  })
+
   test('skips every claim whose file the tracked list cannot identify', async () => {
     const root = makeProject({
       'AGENTS.md': '`shim.ts (the renderer, ~2.2k lines)`\n',

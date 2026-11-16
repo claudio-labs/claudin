@@ -108,9 +108,19 @@ export async function gitDirOf(root: string): Promise<string | null> {
   return git(root, ['rev-parse', '--absolute-git-dir'])
 }
 
+/** What git holds for the map, next to the working copy. */
+type MapBaseline = {
+  /** The committed map when the working copy differs from it; null otherwise. */
+  committed: string | null
+  /** The working copy has edits in flight that are the user's to finish. */
+  edited: boolean
+}
+
+const NO_BASELINE: MapBaseline = { committed: null, edited: false }
+
 /**
- * True when the map has edits in flight that are the user's to finish; null
- * when git could not say.
+ * The committed map a modified working copy is compared with, and whether
+ * the difference is the user's; null when git could not say.
  *
  * Untracked (`??`) does not count: the first sync leaves the file untracked,
  * and that map must keep healing before anybody commits it. Nor does a
@@ -118,15 +128,15 @@ export async function gitDirOf(root: string): Promise<string | null> {
  * is what every heal after the first leaves behind. Any other modification is
  * the user's, and so is one that cannot be compared against anything.
  */
-async function hasUncommittedEdits(
+async function committedBaseline(
   root: string,
   working: string,
   trackedFiles: readonly string[],
-): Promise<boolean | null> {
+): Promise<MapBaseline | null> {
   const status = await git(root, ['status', '--porcelain', '--', RULE_MAP_GIT_PATH])
   if (status === null) return null
-  if (status.length === 0) return false
-  if (status.split('\n').every(line => line.startsWith('??'))) return false
+  if (status.length === 0) return NO_BASELINE
+  if (status.split('\n').every(line => line.startsWith('??'))) return NO_BASELINE
   // A map staged but never committed (`A `) has no HEAD version; the staged
   // one is then the baseline the user signed off on. The `./` makes git read
   // the path from `root`: `HEAD:<path>` is relative to the top of the repo,
@@ -134,7 +144,11 @@ async function hasUncommittedEdits(
   const committed =
     (await gitRaw(root, ['show', `HEAD:./${RULE_MAP_GIT_PATH}`])) ??
     (await gitRaw(root, ['show', `:./${RULE_MAP_GIT_PATH}`]))
-  return committed === null || !isHealerOnlyDiff(committed, working, trackedFiles)
+  return {
+    committed,
+    edited:
+      committed === null || !isHealerOnlyDiff(committed, working, trackedFiles),
+  }
 }
 
 /**
@@ -191,7 +205,22 @@ export async function syncProjectRuleMap(
     const content = existed
       ? await fs.readFile(absPath, { encoding: 'utf8' })
       : ''
-    const next = syncRuleMap({ content, trackedFiles })
+    // What git holds for the map answers two questions: whether the working
+    // copy is the user's to finish (below), and what an earlier heal took out
+    // of it. Until 2026-11-16 a heal deleted the line of a directory with too
+    // few counted files, and a map that lost a line agrees with itself, so
+    // only the committed version can give the line and its annotation back
+    // (`restoreFrom`). That is why the status call runs for every existing
+    // map, where it used to wait for something to write; the `git show` is
+    // still paid only when the map is modified.
+    const baseline = existed
+      ? await committedBaseline(root, content, trackedFiles)
+      : NO_BASELINE
+    const restoreFrom =
+      baseline !== null && !baseline.edited
+        ? (baseline.committed ?? undefined)
+        : undefined
+    const next = syncRuleMap({ content, trackedFiles, restoreFrom })
     if (next === null || next === content) {
       // Distinguished because they debug differently: one means the map is
       // fine, the other means this repo has no tree to draw and never will
@@ -205,12 +234,11 @@ export async function syncProjectRuleMap(
     // A map the user is in the middle of editing is theirs. Healing it now
     // would mix generated numbers into an uncommitted diff they are about to
     // read, which is the fastest way to get an auto-updating file reverted.
-    // Asked only once there is something to write: the two spawns it costs
-    // would otherwise run on every turn that changed the index.
-    if (existed) {
-      const edited = await hasUncommittedEdits(root, content, trackedFiles)
-      if (edited === null) return { status: 'skipped', reason: 'error' }
-      if (edited) return { status: 'skipped', reason: 'uncommitted changes' }
+    // Answered only once there is something to write, so a map that is
+    // current stays "already current" whatever git said about it.
+    if (baseline === null) return { status: 'skipped', reason: 'error' }
+    if (baseline.edited) {
+      return { status: 'skipped', reason: 'uncommitted changes' }
     }
 
     writeAtomically(absPath, next)
@@ -229,7 +257,7 @@ export async function syncProjectRuleMap(
  * Puts the committed map back when this module's own heal is the ONLY change
  * in the working tree, so a `git pull` or `git switch` that a dirty tree
  * refused can run. The heal leaves the map `M` on purpose (see the decision in
- * `hasUncommittedEdits`), and on a branch nobody commits to, like `main`, that
+ * `committedBaseline`), and on a branch nobody commits to, like `main`, that
  * was enough to refuse the next pull: 5 of the 8 Git errors of the
  * 2026-10-23..24 census, in two repos. Nothing is lost by it — the heal is
  * derived, and the scheduler redraws it at the end of the turn.

@@ -41,7 +41,7 @@
 - [memory_delta deleted 08-07](decisions/memory-delta-removed-double-send.md) — a full second copy, not a delta
 - Repo map — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only, cache-safe
-- [Explore agent: removed 08-18, back ON 09-25](decisions/explore-agent-removed.md) — calls −29%, wall +30%; `CLAUDIN_EXPLORE_AGENT=0`
+- [Explore agent: removed 08-18, back ON 09-25](decisions/explore-agent-removed.md) — calls −29%, wall +30%
 - [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks; a named agent stays fresh
 - [Git tool (D2), shipped 08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — `/effort inherit` clears
@@ -117,10 +117,10 @@
 - Removed: [upsell commands 09-15](upsell-commands-missing-login.md) · [growthbook.ts 09-25](growthbook-source-dead-stub-is-real.md) — dead but tested
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
 - [TTL-expiry check 10-12](ttl-expiry-check-2026-10-12.md) — main is 1h; clip→next-turn floor unexplained
-- [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302); sub-agent expiries gone
-- Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09, rewrites 39%](weekly-token-census-2026-10-09.md) · [09-28 fan-out](token-census-2026-09-28.md) · [09-10 rule injections](token-census-2026-09-10-hidden-injections.md)
+- [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302)
+- Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) · [09-28](token-census-2026-09-28.md) · [09-10](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19 perms](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31 overlap](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [own writes](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [11-16](census-2026-11-16-grep-env-prompt-map-drop.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
@@ -134,7 +134,7 @@
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3, D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
 - Read censuses: [Bash as reader](bash-file-read-census-and-redirect-reach.md) · [outline cap false](auto-outline-pivot-false-cap-claim.md)
-- [Feature usage census 09-15/16](feature-usage-census-2026-09-15.md) — floor cap re-asks 33%; outlines 82/82 usable
+- [Feature usage census 09-15/16](feature-usage-census-2026-09-15.md) — floor cap re-asks 33%
 - Bench traps: [`--allowedTools`](token-bench-measurement-traps.md) · [cache-ab-bench](cache-ab-bench-unreliable.md) · [head-anchor](cache-head-anchor-branch-state.md) · [-p orphans bg](headless-bg-agents-not-drained.md) · [clip-pin](clip-pin-cache-ab-2026-07-25.md)
 - [R3 background agent — IMPLEMENTED 07-17](r3-background-agent-implemented.md) — workflow run|watch, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas

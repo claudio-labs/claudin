@@ -90,6 +90,32 @@ describe('Grep and .env files', () => {
     expect(await grep({ path: root, glob: '*' })).not.toContain(SECRET)
   })
 
+  // picomatch reads a leading `!` as negation, so `!*.test.*` "matches" .env:
+  // the search asked first and then ran without the .env exclusions.
+  test('a negated glob neither asks nor prints a .env', async () => {
+    const decision = await runWithCwdOverride(root, () =>
+      GrepTool.checkPermissions({ pattern: 'OPENAI_API_KEY', path: root, glob: '!*.test.*' } as never, context()),
+    )
+    expect(decision.behavior).toBe('allow')
+    const content = await grep({ path: root, glob: '!*.test.*' })
+    expect(content).toContain('app.ts')
+    expect(content).not.toContain(SECRET)
+  })
+
+  test('a negated .env glob asks nothing', async () => {
+    const decision = await runWithCwdOverride(root, () =>
+      GrepTool.checkPermissions({ pattern: 'x', path: root, glob: '!.env' } as never, context()),
+    )
+    expect(decision.behavior).toBe('allow')
+  })
+
+  test('a positive .env glob beside a negated one still asks', async () => {
+    const decision = await runWithCwdOverride(root, () =>
+      GrepTool.checkPermissions({ pattern: 'x', path: root, glob: '.env,!*.test.*' } as never, context()),
+    )
+    expect(decision.behavior).toBe('ask')
+  })
+
   test('the --no-ignore fallback does not print a .env either', async () => {
     const content = await grep({ path: join(root, 'repo'), pattern: SECRET })
     expect(content).not.toContain(SECRET)

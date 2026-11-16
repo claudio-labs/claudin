@@ -1,5 +1,13 @@
 // The auto-outline pivot is behind a build-time flag that the test preload
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from 'bun:test'
 import {
   mkdtempSync,
   readFileSync,
@@ -14,6 +22,7 @@ import { join } from 'path'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import {
+  cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
   FileStateCache,
   READ_FILE_STATE_CACHE_SIZE,
@@ -26,8 +35,13 @@ import {
 } from 'src/tools/FileReadTool/outlineView.js'
 import {
   changedFileCandidates,
+  getChangedFileAttachments,
   refreshChangedFile,
 } from 'src/agent/attachments/changedFile.js'
+import {
+  type FileChangingTool,
+  settleOwnWrites,
+} from 'src/agent/attachments/ownWrites.js'
 
 // ---------------------------------------------------------------------------
 // The changed-files watcher used to hand its re-read to FileReadTool with no
@@ -438,5 +452,228 @@ describe('refreshChangedFile', () => {
 
     expect(await refreshChangedFile(p, p, entry, ctx)).toBeNull()
     expect(ctx.readFileState.has(p)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// A child (a sub-agent, the extract_memories and auto_dream forks) settles its
+// writes into its OWN copy of the read state, so the parent's watcher took
+// every file a child wrote for an outside edit: 59 "modified, either by the
+// user or by a linter" notes in the 2026-11-14..16 census, 248K chars of
+// snippet, none of them from the user. The child's settle now records what it
+// wrote, and the thread that owns the session gets the names in one note.
+//
+// The record is process-wide and has no reset a test can reach, so every case
+// writes a path of its own.
+// ---------------------------------------------------------------------------
+describe('a file a child wrote', () => {
+  const OWN_WRITES_FLAG = 'CLAUDIN_OWN_WRITES'
+  let priorOwnWrites: string | undefined
+
+  beforeEach(() => {
+    priorOwnWrites = process.env[OWN_WRITES_FLAG]
+    // Unset on purpose: on by default, and the settle is a no-op when off.
+    delete process.env[OWN_WRITES_FLAG]
+  })
+  afterEach(() => {
+    if (priorOwnWrites === undefined) delete process.env[OWN_WRITES_FLAG]
+    else process.env[OWN_WRITES_FLAG] = priorOwnWrites
+  })
+
+  /** The tool loop's settle, called with the `childOf` argument it passes for a context that has an agentId. */
+  const settle = settleOwnWrites as (
+    ...args: unknown[]
+  ) => ReturnType<typeof settleOwnWrites>
+  const WRITING_TOOL: FileChangingTool = { isReadOnly: () => false }
+
+  /** A sub-agent's context: an agentId, and its own copy of the parent's read state. */
+  function childContext(parent: ToolUseContext): ToolUseContext {
+    return {
+      ...parent,
+      agentId: 'census-child' as ToolUseContext['agentId'],
+      readFileState: cloneFileStateCache(parent.readFileState),
+    }
+  }
+
+  /** The entry and the mtime a child's Write/Edit/Patch leaves behind. Not settled. */
+  function childWrites(
+    child: ToolUseContext,
+    path: string,
+    content: string,
+    secondsAhead = 10,
+  ): void {
+    writeAhead(path, content, secondsAhead)
+    child.readFileState.set(
+      path,
+      postWriteEntry(content, getFileModificationTime(path)),
+    )
+  }
+
+  /** The settle that ends a child's call started at `startedAt`. */
+  async function settleAsChild(
+    child: ToolUseContext,
+    startedAt: number,
+  ): Promise<void> {
+    await settle(WRITING_TOOL, {}, child.readFileState, startedAt, dir, true)
+  }
+
+  /** A pass's attachment types, as the plain strings the renderer switches on. */
+  function typesOf(attachments: readonly { type: string }[]): string[] {
+    return attachments.map(attachment => attachment.type)
+  }
+
+  /** The names carried by the pass's `child_written_files` attachments, one list per attachment. */
+  function childWrittenNames(
+    attachments: readonly { type: string }[],
+  ): string[][] {
+    return attachments
+      .filter(attachment => attachment.type === 'child_written_files')
+      .map(attachment => (attachment as { filenames?: string[] }).filenames ?? [])
+  }
+
+  test('a file a child wrote reaches the parent as a name, not a diff', async () => {
+    const p = join(dir, 'child-name.ts')
+    writeFileSync(p, 'const a = 1\n')
+    const parent = makeContext()
+    parent.readFileState.set(
+      p,
+      postWriteEntry('const a = 1\n', getFileModificationTime(p)),
+    )
+
+    const child = childContext(parent)
+    const startedAt = Date.now()
+    childWrites(child, p, 'const a = 2\n')
+    await settleAsChild(child, startedAt)
+
+    const attachments = await getChangedFileAttachments(parent)
+
+    expect(typesOf(attachments)).not.toContain('edited_text_file')
+    expect(childWrittenNames(attachments)).toEqual([[p]])
+    expect(attachments).toHaveLength(1)
+    const entry = parent.readFileState.get(p)!
+    expect(entry.content).toContain('const a = 2')
+    expect(entry.timestamp).toBe(getFileModificationTime(p))
+  })
+
+  test('two files written by children in one pass share one attachment', async () => {
+    // Set z-first so neither the cache's order nor the write order is the
+    // sorted one. The first is a child's direct Write; the second a file the
+    // child had read and then changed through Bash, which its settle adopts.
+    const written = join(dir, 'child-pair-z-written.ts')
+    const viaBash = join(dir, 'child-pair-a-bash.ts')
+    const parent = makeContext()
+    for (const p of [written, viaBash]) {
+      writeFileSync(p, 'const a = 1\n')
+      parent.readFileState.set(
+        p,
+        postWriteEntry('const a = 1\n', getFileModificationTime(p)),
+      )
+    }
+
+    const child = childContext(parent)
+    const startedAt = Date.now()
+    childWrites(child, written, 'const a = 2\n')
+    writeAhead(viaBash, 'const a = 2\n')
+    await settleAsChild(child, startedAt)
+
+    const attachments = await getChangedFileAttachments(parent)
+
+    expect(typesOf(attachments)).not.toContain('edited_text_file')
+    expect(childWrittenNames(attachments)).toEqual([[viaBash, written]])
+    expect(attachments).toHaveLength(1)
+  })
+
+  test('a range entry of the parent is brought up to date without a snippet', async () => {
+    const p = join(dir, 'child-range.txt')
+    writeFileSync(p, numbered(60))
+    const parent = makeContext()
+    parent.readFileState.set(p, rangeEntry(p, 40, 6))
+
+    const child = childContext(parent)
+    const startedAt = Date.now()
+    // Inside the slice the parent read: outside it the watcher says nothing anyway.
+    childWrites(child, p, numbered(60, { 42: 'L42' }))
+    await settleAsChild(child, startedAt)
+
+    const attachments = await getChangedFileAttachments(parent)
+
+    expect(typesOf(attachments)).not.toContain('edited_text_file')
+    expect(childWrittenNames(attachments)).toEqual([[p]])
+    expect(attachments).toHaveLength(1)
+    expect(parent.readFileState.get(p)).toMatchObject({
+      content: 'l40\nl41\nL42\nl43\nl44\nl45\n',
+      timestamp: getFileModificationTime(p),
+      offset: 40,
+      limit: 6,
+    })
+  })
+
+  test("an external edit after the child's write still yields a diff note", async () => {
+    const p = join(dir, 'child-then-external.ts')
+    writeFileSync(p, 'const a = 1\n')
+    const parent = makeContext()
+    parent.readFileState.set(
+      p,
+      postWriteEntry('const a = 1\n', getFileModificationTime(p)),
+    )
+
+    const child = childContext(parent)
+    const startedAt = Date.now()
+    childWrites(child, p, 'const a = 2\n')
+    await settleAsChild(child, startedAt)
+    // The user's editor, later: not the mtime the child left.
+    writeAhead(p, 'const a = 3\n', 20)
+
+    const attachments = await getChangedFileAttachments(parent)
+
+    expect(typesOf(attachments)).toEqual(['edited_text_file'])
+    expect((attachments[0] as { snippet: string }).snippet).toContain(
+      'const a = 3',
+    )
+  })
+
+  test("a sub-agent's own watcher still gets the diff", async () => {
+    const p = join(dir, 'child-sibling.ts')
+    writeFileSync(p, 'const a = 1\n')
+    const parent = makeContext()
+    parent.readFileState.set(
+      p,
+      postWriteEntry('const a = 1\n', getFileModificationTime(p)),
+    )
+
+    // Two sub-agents of one parent: the names are the session owner's, and a
+    // sibling holding the old bytes still needs to see what changed.
+    const sibling = childContext(parent)
+    const child = childContext(parent)
+    const startedAt = Date.now()
+    childWrites(child, p, 'const a = 2\n')
+    await settleAsChild(child, startedAt)
+
+    const attachments = await getChangedFileAttachments(sibling)
+
+    expect(typesOf(attachments)).toEqual(['edited_text_file'])
+    expect((attachments[0] as { snippet: string }).snippet).toContain(
+      'const a = 2',
+    )
+  })
+
+  test("a write that was never settled as a child's is reported as today", async () => {
+    const p = join(dir, 'child-unsettled.ts')
+    writeFileSync(p, 'const a = 1\n')
+    const parent = makeContext()
+    parent.readFileState.set(
+      p,
+      postWriteEntry('const a = 1\n', getFileModificationTime(p)),
+    )
+
+    // The same write, with no settle to record it.
+    childWrites(childContext(parent), p, 'const a = 2\n')
+
+    const attachments = await getChangedFileAttachments(parent)
+
+    expect(typesOf(attachments)).toEqual(['edited_text_file'])
+    expect((attachments[0] as { snippet: string }).snippet).toContain(
+      'const a = 2',
+    )
   })
 })

@@ -213,6 +213,16 @@ export type Attachment =
       filename: string
       snippet: string
     }
+  /**
+   * Read files a child of this session wrote (childWrites.ts): names, no diff
+   */
+  | {
+      type: 'child_written_files'
+      /** Absolute paths, sorted */
+      filenames: string[]
+      /** Each path relative to CWD at creation time, for stable display */
+      displayPaths: string[]
+    }
   | {
       type: 'edited_image_file'
       filename: string

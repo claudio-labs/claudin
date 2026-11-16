@@ -319,6 +319,32 @@ export function countTrackedSources(
 }
 
 /**
+ * The number a map states for a directory: its counted files, and when it
+ * holds none of those, every tracked file under it.
+ *
+ * The fallback is what keeps a directory of another kind on a map somebody
+ * put it on. `web/` in a Rust repo held 61 tracked files and no `.rs`, so the
+ * counted number read zero, zero read as "this directory died", and every sync
+ * deleted the line with its annotation (census 2026-11-16). Zero now means
+ * nothing tracked is left under the path, which is the only case worth
+ * reporting as dead.
+ *
+ * Only at zero, not below some small number: a directory of two sources and
+ * four fixtures is still counted by its sources, so no number already on a
+ * map changes meaning.
+ */
+export function drawnSourceCount(
+  tracked: readonly string[],
+  dir: string,
+  extensions: readonly string[],
+): number {
+  const counted = countTrackedSources(tracked, dir, extensions)
+  if (counted > 0) return counted
+  const prefix = dir.endsWith('/') ? dir : `${dir}/`
+  return tracked.filter(file => file.startsWith(prefix)).length
+}
+
+/**
  * Extensions that are tracked, and often numerous, but are not what a
  * navigation map is counting. Keeping them out is what stops `__tests__/ (612)`
  * from meaning "590 snapshots", and what stops a repo's `docs/` tree from

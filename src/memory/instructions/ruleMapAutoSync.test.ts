@@ -10,6 +10,7 @@ import {
   setAsideHealerOnlyRuleMap,
   syncProjectRuleMap,
 } from 'src/memory/instructions/ruleMapAutoSync.js'
+import { isHealerOnlyDiff, ruleMapKind } from 'src/memory/instructions/rulesMapSync.js'
 
 function run(cwd: string, args: string[]): void {
   execFileSync('git', args, { cwd, stdio: 'ignore' })
@@ -65,6 +66,43 @@ function grow(root: string, dir: string, count = 40): void {
   }
   run(root, ['add', 'src'])
   run(root, ['commit', '-qm', dir])
+}
+
+/** Adds `count` tracked, committed files under `dir` that no map counts as code. */
+function addAssets(root: string, dir: string, count: number): void {
+  mkdirSync(join(root, dir), { recursive: true })
+  for (let i = 0; i < count; i++) {
+    writeFileSync(join(root, dir, `a${i}.json`), '{}\n')
+  }
+  run(root, ['add', dir])
+  run(root, ['commit', '-qm', dir])
+}
+
+/**
+ * A repo whose committed map names `web/`, six tracked files and none of them
+ * code. `bare` is the map as first generated, which never drew that line, and
+ * so also what a sync that deleted the line leaves in the working tree.
+ */
+async function repoWithMappedAssets(): Promise<{
+  root: string
+  bare: string
+  committed: string
+}> {
+  const root = makeRepo()
+  addAssets(root, 'web', 6)
+  await syncProjectRuleMap(root)
+  const bare = readFileSync(mapPath(root), 'utf8')
+  const committed = bare
+    .replace('└── src/', '├── src/')
+    .replace(
+      /^ {4}(└── core\/.*)$/m,
+      `│   $1\n${'└── web/ (6)'.padEnd(34)}← frontend`,
+    )
+  expect(ruleMapKind(committed)).toBe('generated')
+  writeFileSync(mapPath(root), committed)
+  run(root, ['add', '-A'])
+  run(root, ['commit', '-qm', 'map'])
+  return { root, bare, committed }
 }
 
 describe('syncProjectRuleMap', () => {
@@ -463,6 +501,86 @@ describe('syncProjectRuleMap', () => {
     const written = readFileSync(mapPath(root), 'utf8')
     expect(written).toContain('- "**/*.py"')
     expect(written).not.toContain('.ts')
+  })
+
+  test('keeps a directory on a committed map whose files are not code', async () => {
+    // The 11-16 census: `web/ (61)` in a Rust repo, deleted by every sync
+    // because .js/.css/.html are not what the map counts.
+    const { root } = await repoWithMappedAssets()
+    grow(root, 'grown')
+
+    const outcome = await syncProjectRuleMap(root)
+    const healed = readFileSync(mapPath(root), 'utf8')
+    expect(healed).toMatch(/^└── web\/ \(6\)\s+← frontend$/m)
+    expect(healed).toContain('grown/ (40)')
+    expect(outcome).toMatchObject({
+      status: 'healed',
+      changes: [
+        { path: 'src/', from: 8, to: 48 },
+        { path: 'src/grown/', from: null, to: 40 },
+      ],
+    })
+  })
+
+  test('a healer drop of a directory that still has tracked files is restored from HEAD, annotation included', async () => {
+    // The working map is what the old sync left: current as far as the code
+    // goes, so syncing it alone finds nothing to do and the line stays lost.
+    const { root, bare, committed } = await repoWithMappedAssets()
+    writeFileSync(mapPath(root), bare)
+    const trackedFiles = gitOut(root, ['ls-files']).split('\n').filter(Boolean)
+    expect(isHealerOnlyDiff(committed, bare, trackedFiles)).toBe(true)
+
+    const outcome = await syncProjectRuleMap(root)
+    const restored = readFileSync(mapPath(root), 'utf8')
+    expect(restored).toContain('web/ (')
+    expect(restored).toContain('← frontend')
+    expect(outcome.status).toBe('healed')
+  })
+
+  test('a second sync after that restore is a no-op', async () => {
+    const { root, bare } = await repoWithMappedAssets()
+    writeFileSync(mapPath(root), bare)
+    await syncProjectRuleMap(root)
+    // `already current` is also the answer while the line is still lost.
+    const restored = readFileSync(mapPath(root), 'utf8')
+    expect(restored).toMatch(/^└── web\/ \(6\)\s+← frontend$/m)
+
+    expect(await syncProjectRuleMap(root)).toEqual({
+      status: 'skipped',
+      reason: 'already current',
+    })
+    expect(readFileSync(mapPath(root), 'utf8')).toBe(restored)
+  })
+
+  test('a working map with a user edit is still skipped as uncommitted changes', async () => {
+    // The same dropped line, plus an annotation nobody committed: rebuilding
+    // from HEAD here would delete it.
+    const { root, bare } = await repoWithMappedAssets()
+    const edited = bare.replace('← TODO', '← mine')
+    writeFileSync(mapPath(root), edited)
+    grow(root, 'grown')
+
+    expect(await syncProjectRuleMap(root)).toEqual({
+      status: 'skipped',
+      reason: 'uncommitted changes',
+    })
+    expect(readFileSync(mapPath(root), 'utf8')).toBe(edited)
+  })
+
+  test('a directory with zero tracked files goes (gone) on a real repo', async () => {
+    const { root } = await repoWithMappedAssets()
+    run(root, ['rm', '-rq', 'web'])
+    run(root, ['commit', '-qm', 'drop web'])
+
+    const outcome = await syncProjectRuleMap(root)
+    expect(outcome).toMatchObject({
+      status: 'healed',
+      changes: [{ path: 'web/', from: 6, to: null }],
+    })
+    expect(
+      outcome.status === 'healed' && describeRuleMapNotice(outcome),
+    ).toContain('web/ (gone)')
+    expect(readFileSync(mapPath(root), 'utf8')).not.toContain('web/')
   })
 })
 

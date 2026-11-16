@@ -13,6 +13,7 @@ const ALL_ATTACHMENT_TYPES = [
   'pdf_reference',
   'already_read_file',
   'edited_text_file',
+  'child_written_files',
   'edited_image_file',
   'directory',
   'selected_lines_in_ide',

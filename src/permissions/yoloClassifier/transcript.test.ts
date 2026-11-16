@@ -426,14 +426,19 @@ describe('classifierTranscriptBudget', () => {
 
 describe('classifierTranscriptBudget, by the window (the default; CLAUDIN_CLASSIFIER_WINDOW_BUDGET=0 turns it off)', () => {
   const WINDOW_BUDGET = 'CLAUDIN_CLASSIFIER_WINDOW_BUDGET'
+  const WINDOW_CHARS = 'CLAUDIN_CLASSIFIER_WINDOW_CHARS'
   const savedWindowBudget = process.env[WINDOW_BUDGET]
+  const savedWindowChars = process.env[WINDOW_CHARS]
   beforeEach(() => {
     delete process.env[WINDOW_BUDGET]
+    delete process.env[WINDOW_CHARS]
   })
   afterEach(() => {
     restoreKillswitch()
     if (savedWindowBudget === undefined) delete process.env[WINDOW_BUDGET]
     else process.env[WINDOW_BUDGET] = savedWindowBudget
+    if (savedWindowChars === undefined) delete process.env[WINDOW_CHARS]
+    else process.env[WINDOW_CHARS] = savedWindowChars
   })
 
   test('a 1M window keeps a session whole, up to the cap', () => {
@@ -460,6 +465,59 @@ describe('classifierTranscriptBudget, by the window (the default; CLAUDIN_CLASSI
     process.env[WINDOW_BUDGET] = '1'
     expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
 
+    process.env[KILLSWITCH] = '0'
+    expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 31_000)
+  })
+
+  test('CLAUDIN_CLASSIFIER_WINDOW_CHARS lowers the cap on a large window', () => {
+    process.env[WINDOW_CHARS] = '400000'
+
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(400_000)
+    expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(400_000)
+    // The chunk follows the budget it is given, so the cut moves 100k at a time.
+    expect(classifierChunkChars(classifierTranscriptBudget(0, 1_000_000))).toBe(100_000)
+
+    process.env[WINDOW_CHARS] = '300000.9'
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(300_000)
+  })
+
+  test('it is clamped to the base budget and to the 800k cap', () => {
+    process.env[WINDOW_CHARS] = '100000'
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+
+    process.env[WINDOW_CHARS] = '-1'
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+
+    process.env[WINDOW_CHARS] = '5000000'
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+    // A 2M window's share is 1.6M: only the clamp holds it at 800k here.
+    expect(classifierTranscriptBudget(0, 2_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+  })
+
+  test('garbage, empty and unset keep the 800k cap', () => {
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+
+    for (const value of ['', '   ', 'abc', '400k', 'NaN', 'Infinity']) {
+      process.env[WINDOW_CHARS] = value
+      expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_WINDOW_TRANSCRIPT_CHARS)
+    }
+  })
+
+  test('it does not shrink a budget the window already keeps below it', () => {
+    process.env[WINDOW_CHARS] = '400000'
+
+    expect(classifierTranscriptBudget(0, 300_000)).toBe(240_000)
+    expect(classifierTranscriptBudget(0, 250_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+  })
+
+  test('it is ignored when the window budget is off', () => {
+    process.env[WINDOW_CHARS] = '400000'
+
+    process.env[WINDOW_BUDGET] = '0'
+    expect(classifierTranscriptBudget(0, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS)
+
+    // The stable cut being off takes the window budget with it.
+    delete process.env[WINDOW_BUDGET]
     process.env[KILLSWITCH] = '0'
     expect(classifierTranscriptBudget(31_000, 1_000_000)).toBe(MAX_CLASSIFIER_TRANSCRIPT_CHARS - 31_000)
   })

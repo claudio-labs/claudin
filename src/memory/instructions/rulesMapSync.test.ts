@@ -4,6 +4,7 @@ import {
   describeRuleMapWrite,
   diffRuleMapCounts,
   existingAnnotations,
+  formatDirCountChange,
   generateRuleMap,
   healRuleMap,
   isHealerOnlyDiff,
@@ -19,6 +20,24 @@ function repo(spec: Record<string, number>, extension = '.ts'): string[] {
   return Object.entries(spec).flatMap(([dir, count]) =>
     Array.from({ length: count }, (_, i) => `${dir}/f${i}${extension}`),
   )
+}
+
+/** A tree line as the generator draws it: the body, then `←` on the shared column. */
+function entry(body: string, gloss = 'TODO'): string {
+  return `${body.padEnd(34)}← ${gloss}`
+}
+
+/**
+ * A generated map of `tracked` whose fenced tree is `tree`: for a map that
+ * names a directory the generator would not draw from `tracked` itself.
+ */
+function generatedMap(tracked: string[], tree: string[]): string {
+  const lines = generateRuleMap(tracked).split('\n')
+  return [
+    ...lines.slice(0, lines.indexOf('```') + 1),
+    ...tree,
+    ...lines.slice(lines.lastIndexOf('```')),
+  ].join('\n')
 }
 
 describe('healRuleMap', () => {
@@ -124,6 +143,20 @@ describe('healRuleMap', () => {
       trackedFiles: repo({ 'src/plans': 5, 'src/goal': 40 }),
     }).split('\n')[2]
     expect(healed).toBe('├── plans/ (5)  goal/ (40)')
+  })
+
+  test('heals a directory of another kind against every file it tracks', () => {
+    // No counted file under `web/` used to read as a dead directory, which a
+    // hand-written map leaves alone: the number could not be healed at all.
+    const withAssets = [...tracked, ...repo({ web: 20 }, '.json')]
+    const map = (count: number): string =>
+      ['```', '.', `├── web/ (${count})  ← frontend`, '```', ''].join('\n')
+    expect(healRuleMap({ content: map(61), trackedFiles: withAssets })).toBe(
+      map(20),
+    )
+    expect(healRuleMap({ content: map(21), trackedFiles: withAssets })).toBe(
+      map(21),
+    )
   })
 })
 
@@ -234,6 +267,17 @@ describe('renderModuleTree', () => {
 
   test('emits TODO for a directory nobody has explained', () => {
     expect(renderModuleTree(tracked).join('\n')).toContain('← TODO')
+  })
+
+  test('draws a kept directory under the floor, and only a kept one', () => {
+    const withAssets = [...tracked, ...repo({ web: 6 }, '.json')]
+    const keep = new Set(['src/tiny/', 'web/', 'gone/'])
+    const tree = renderModuleTree(withAssets, new Map(), new Map(), 2, keep)
+    expect(tree.join('\n')).toContain('tiny/ (1)')
+    expect(tree.join('\n')).toContain('web/ (6)')
+    // Kept is not enough: nothing tracked is left under `gone/`.
+    expect(tree.join('\n')).not.toContain('gone/')
+    expect(renderModuleTree(withAssets)).toEqual(renderModuleTree(tracked))
   })
 })
 
@@ -412,6 +456,106 @@ describe('syncRuleMap', () => {
     })
     expect(next).toContain('lib/ (2)')
   })
+
+  // The 11-16 census case: a Rust repo whose map names `web/ (61)`, a
+  // directory of .js/.css/.html. None of those is an extension the map counts,
+  // so every sync read the directory as dead and deleted its line, annotation
+  // included.
+  const code = repo({ 'src/agent': 20, 'src/providers': 40 })
+  const withWeb = generatedMap(code, [
+    entry('├── src/ (60)'),
+    entry('│   ├── agent/ (20)'),
+    entry('│   └── providers/ (40)'),
+    entry('└── web/ (61)', 'frontend'),
+  ])
+  // 20 tracked files under `web/`, in two extensions, neither of them counted.
+  const webNow = [...repo({ web: 12 }, '.json'), ...repo({ web: 8 }, '.md')]
+
+  test('a directory on the map with only non-counted files is kept with its annotation and an all-tracked count', () => {
+    expect(ruleMapKind(withWeb)).toBe('generated')
+    expect(existingAnnotations(withWeb).get('web/')).toBe('frontend')
+
+    const next = syncRuleMap({ content: withWeb, trackedFiles: [...code, ...webNow] })
+    // `(61)` was true once; with no counted file to go by, the number is
+    // every tracked file the directory still holds.
+    expect(next).toMatch(/^└── web\/ \(20\)\s+← frontend$/m)
+    expect(next).toMatch(/^├── src\/ \(60\)/m)
+  })
+
+  test('a nested non-counted directory keeps its ancestors and its depth', () => {
+    const content = generatedMap(code, [
+      entry('├── src/ (60)'),
+      entry('│   ├── agent/ (20)'),
+      entry('│   └── providers/ (40)'),
+      entry('└── web/ (61)', 'frontend'),
+      entry('    └── static/ (61)', 'served as-is'),
+      entry('        └── vendor/ (20)', 'third-party, do not edit'),
+    ])
+    expect(ruleMapKind(content)).toBe('generated')
+    expect(
+      extractRuleClaims(content).dirCounts.map(claim => claim.path),
+    ).toContain('web/static/vendor/')
+
+    // `src/rag/` is new, so the tree is redrawn rather than left as it was.
+    const next = syncRuleMap({
+      content,
+      trackedFiles: [
+        ...repo({ 'src/agent': 20, 'src/providers': 40, 'src/rag': 9 }),
+        ...repo({ 'web/static': 41, 'web/static/vendor': 20 }, '.json'),
+      ],
+    })
+    expect(next).toContain('rag/ (9)')
+    expect(next).toMatch(/^└── web\/ \(61\)\s+← frontend$/m)
+    expect(next).toMatch(/^ {4}└── static\/ \(61\)\s+← served as-is$/m)
+    expect(next).toMatch(/^ {8}└── vendor\/ \(20\)\s+← third-party, do not edit$/m)
+  })
+
+  test('a second sync of that map is a no-op', () => {
+    const trackedFiles = [...code, ...webNow]
+    const first = syncRuleMap({ content: withWeb, trackedFiles })
+    // Dropping the line is stable too, so the no-op alone would not tell a
+    // kept directory from a deleted one.
+    expect(first).toMatch(/^└── web\/ \(20\)\s+← frontend$/m)
+    expect(syncRuleMap({ content: first ?? '', trackedFiles })).toBeNull()
+  })
+
+  test('a directory with zero tracked files still goes (gone)', () => {
+    const next = syncRuleMap({ content: withWeb, trackedFiles: code }) ?? ''
+    expect(next).not.toContain('web/')
+    expect(next).toContain('← TODO')
+    expect(diffRuleMapCounts(withWeb, next).map(formatDirCountChange)).toEqual([
+      'web/ (gone)',
+    ])
+  })
+
+  test('a non-counted directory nobody put on the map is still not drawn', () => {
+    // Keeping a line somebody wrote is not the same as drawing every asset
+    // directory: a first map, and a sync of one without the line, stay code-only.
+    const trackedFiles = [...code, ...webNow]
+    expect(generateRuleMap(trackedFiles)).not.toContain('web/')
+    expect(
+      syncRuleMap({ content: generateRuleMap(code), trackedFiles }),
+    ).toBeNull()
+  })
+
+  test('a mapped directory with a few counted files is counted by those, whatever sits beside them', () => {
+    // This repo's own `containers/build/ (2)`: two sources and four fixtures.
+    // Counting every tracked file below the floor read it as 6, and the
+    // verifier reported a number nobody had touched as drift.
+    const content = generatedMap(code, [
+      entry('└── src/ (62)'),
+      entry('    ├── agent/ (20)'),
+      entry('    ├── build/ (2)', 'compose parsing'),
+      entry('    └── providers/ (40)'),
+    ])
+    const trackedFiles = [
+      ...code,
+      ...repo({ 'src/build': 2 }),
+      ...repo({ 'src/build': 4 }, '.txt'),
+    ]
+    expect(ruleMapKind(content)).toBe('generated')
+    expect(syncRuleMap({ content, trackedFiles })).toBeNull()
+  })
 })
 
 describe('diffRuleMapCounts', () => {
@@ -558,7 +702,7 @@ describe('isHealerOnlyDiff', () => {
   })
 
   test('accepts an entry dropped because its directory died — given the tracked files', () => {
-    const shrunk = repo({ 'src/agent': 1, 'src/providers': 40 })
+    const shrunk = repo({ 'src/agent': 0, 'src/providers': 40 })
     const next = syncRuleMap({ content: annotated, trackedFiles: shrunk }) ?? ''
     expect(next).not.toContain('agent/')
     expect(isHealerOnlyDiff(annotated, next, shrunk)).toBe(true)

@@ -16,7 +16,8 @@
  *     2026-10-31 they came back empty whenever the search path was elsewhere.
  *   - Read shape — outline / symbol / range / full, the auto-outline pivot and
  *     what the model did NEXT on the same file (symbol / range / full / nothing),
- *     re-reads of one path, and the large full bodies that never pivoted.
+ *     re-reads of one path, and the large full bodies that never pivoted. The
+ *     unit is a file read: a batch (`file_paths`) is one read per file.
  *   - WaitFor — why each wait ended, the runs of back-to-back waits (each call
  *     past the first is one more request) and the ones after a timeout, CI
  *     polls, and the `timeout_s` asked for.
@@ -63,7 +64,7 @@ function localDate(ts: number): string {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
-function parseArgs(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const get = (k: string): string | null => {
     const hit = argv.find(a => a.startsWith(`--${k}=`))
     return hit ? hit.slice(k.length + 3) : null
@@ -114,7 +115,7 @@ function sessionOf(file: string): { session: string; sub: boolean } {
   return { session: basename(file, '.jsonl'), sub: false }
 }
 
-function walk(files: readonly string[]): Call[] {
+export function walk(files: readonly string[]): Call[] {
   const uses = new Map<string, Use>()
   const results = new Map<string, { text: string; isError: boolean }>()
   let seq = 0
@@ -229,7 +230,7 @@ function refusalLead(text: string): string {
 
 type BashReport = ReturnType<typeof bashReport>
 
-function bashReport(calls: Call[]) {
+export function bashReport(calls: Call[]) {
   const bash = calls.filter(c => c.tool === 'Bash')
   const blockedBy = new Map<string, number>()
   const unparsedLeads = new Map<string, number>()
@@ -639,6 +640,9 @@ const READ_OUTLINE_RE =
 const READ_OVERCAP_RE = /^<system-reminder>\nFile '[^']*' \(\d+ lines\) exceeds the read cap/
 const READ_AUTO_PIVOT = 'File is large; returned outline instead of full body'
 const READ_OUTLINE_LINES_RE = /^<system-reminder>\n[^\n]*?\((\d+) lines\)/
+// A batch Read's result: one `==> path <==` line ahead of each file's section.
+const BATCH_SECTION_RE = /^==> .+? <==$/m
+const SECTION_EDGE_RE = /^\n+|\n+$/g
 
 function readShape(input: Block): string {
   if (input.symbol !== undefined) return 'symbol'
@@ -649,8 +653,38 @@ function readShape(input: Block): string {
   return 'full(default)'
 }
 
-function readReport(calls: Call[]) {
-  const reads = calls.filter(c => c.tool === 'Read' && c.answered)
+/**
+ * A Read as the files it read. A batch (`file_paths`) carries no `file_path`,
+ * so until 2026-11-16 every batch of a transcript counted as one read of the
+ * same empty path: a blank basename at the top of the re-read table (61 reads,
+ * 572K chars in that census) and "(none)" among the extensions. Each file of
+ * a batch is a read of its own here, with its section of the result as its
+ * text. A result that does not split into one section per file (an error, a
+ * clipped result) shares its size evenly and keeps no text.
+ */
+function fileReads(c: Call): Call[] {
+  const paths = Array.isArray(c.input.file_paths)
+    ? c.input.file_paths.filter((p): p is string => typeof p === 'string')
+    : []
+  if (paths.length === 0) return [c]
+  const { file_paths: _batch, ...rest } = c.input
+  const sections = c.text.split(BATCH_SECTION_RE).slice(1)
+  const split = sections.length === paths.length
+  return paths.map((path, i) => {
+    const text = split ? sections[i]!.replace(SECTION_EDGE_RE, '') : ''
+    return {
+      ...c,
+      input: { ...rest, file_path: path },
+      text,
+      chars: split ? text.length : Math.round(c.chars / paths.length),
+    }
+  })
+}
+
+export function readReport(calls: Call[]) {
+  const readCalls = calls.filter(c => c.tool === 'Read' && c.answered)
+  const reads = readCalls.flatMap(fileReads)
+  const batches = readCalls.filter(c => Array.isArray(c.input.file_paths))
   const byShape = new Map<string, { n: number; chars: number; sizes: number[]; errors: number }>()
   const byShapeMain = new Map<string, number>()
   const byShapeSub = new Map<string, number>()
@@ -823,7 +857,10 @@ function readReport(calls: Call[]) {
   }
 
   return {
-    calls: reads.length,
+    calls: readCalls.length,
+    fileReads: reads.length,
+    batchCalls: batches.length,
+    batchFiles: batches.reduce((n, c) => n + fileReads(c).length, 0),
     byShape: [...byShape.entries()].map(([shape, s]) => ({
       shape,
       n: s.n,
@@ -932,7 +969,7 @@ export function waitReport(calls: readonly Call[]) {
   }
 }
 
-function overview(calls: Call[]) {
+export function overview(calls: Call[]) {
   const byTool = new Map<string, { n: number; chars: number; errors: number; sub: number }>()
   for (const c of calls) {
     const t = byTool.get(c.tool) ?? { n: 0, chars: 0, errors: 0, sub: 0 }
@@ -961,7 +998,7 @@ function overview(calls: Call[]) {
 // Print
 // ---------------------------------------------------------------------------
 
-function printBash(b: BashReport): void {
+export function printBash(b: BashReport): void {
   console.log('\n== Bash output filter ==')
   console.log(
     `calls=${b.calls} blocked=${b.blocked} errors=${b.errors} ran=${b.ran} unanswered=${b.unanswered}`,
@@ -1010,7 +1047,7 @@ function printBash(b: BashReport): void {
   for (const x of b.bigRaw) console.log(`    ${padLeft(kb(x.chars), 7)}  ${pad(x.head, 24)} ${x.compound ? 'compound' : 'atomic'}`)
 }
 
-function printGrep(g: ReturnType<typeof grepReport>): void {
+export function printGrep(g: ReturnType<typeof grepReport>): void {
   console.log('\n== Grep output modes ==')
   console.log(`calls=${g.calls}`)
   for (const m of g.byMode) {
@@ -1041,7 +1078,7 @@ function printGrep(g: ReturnType<typeof grepReport>): void {
   )
 }
 
-function printWait(w: ReturnType<typeof waitReport>): void {
+export function printWait(w: ReturnType<typeof waitReport>): void {
   console.log('\n== WaitFor ==')
   console.log(
     `calls=${w.waits} runs=${w.runs} (with >1 call: ${w.multiCallRuns}) re-polls=${w.repolls} (after a timeout: ${w.repollsAfterTimeout}) waited=${fmt(w.waitedMin)}min`,
@@ -1051,12 +1088,14 @@ function printWait(w: ReturnType<typeof waitReport>): void {
   console.log(`  timeout_s asked: ${w.timeoutAsked.map(([k, n]) => `${k}:${n}`).join('  ') || '(none)'}`)
 }
 
-function printRead(r: ReturnType<typeof readReport>): void {
+export function printRead(r: ReturnType<typeof readReport>): void {
   console.log('\n== Read shape ==')
-  console.log(`calls=${r.calls} distinct paths (per transcript)=${r.distinctPaths}`)
+  console.log(
+    `calls=${r.calls} file reads=${r.fileReads} (${r.batchCalls} batch calls carried ${r.batchFiles}) distinct paths (per transcript)=${r.distinctPaths}`,
+  )
   for (const s of r.byShape.sort((a, b) => b.n - a.n)) {
     console.log(
-      `  ${pad(s.shape, 16)} n=${padLeft(String(s.n), 4)} (${padLeft(pct(s.n, r.calls), 6)}) chars=${padLeft(kb(s.chars), 8)} median=${padLeft(kb(s.median), 6)} errors=${s.errors}`,
+      `  ${pad(s.shape, 16)} n=${padLeft(String(s.n), 4)} (${padLeft(pct(s.n, r.fileReads), 6)}) chars=${padLeft(kb(s.chars), 8)} median=${padLeft(kb(s.median), 6)} errors=${s.errors}`,
     )
   }
   console.log(`  main: ${r.byShapeMain.map(([m, n]) => `${m}:${n}`).join('  ')}`)
@@ -1070,7 +1109,7 @@ function printRead(r: ReturnType<typeof readReport>): void {
   console.log(
     `  full(default) bodies >10K that did NOT pivot: ${r.defaultOver10k} / ${kb(r.defaultOver10kChars)}  by ext: ${r.defaultOver10kExt.map(([e, n]) => `${e}:${n}`).join(' ')}`,
   )
-  console.log(`  paths read ≥3× in one transcript: ${r.rereadPaths} paths, ${r.rereadExtraCalls} extra calls, ${kb(r.rereadExtraChars)}`)
+  console.log(`  paths read ≥3× in one transcript: ${r.rereadPaths} paths, ${r.rereadExtraCalls} extra reads, ${kb(r.rereadExtraChars)}`)
   console.log(`  slice-walks (3+ range reads of a path with no outline/symbol first): ${r.sliceWalks} paths, ${r.sliceWalkCalls} calls, ${kb(r.sliceWalkChars)}`)
   console.log(`    of which contiguous (each offset resumes where the last slice ended): ${r.contiguousWalks} paths, ${r.contiguousWalkCalls} calls, ${kb(r.contiguousWalkChars)}`)
   console.log(`  read of a path right after editing it: ${r.readAfterEdit} calls, ${kb(r.readAfterEditChars)}`)
@@ -1080,7 +1119,7 @@ function printRead(r: ReturnType<typeof readReport>): void {
   }
 }
 
-function printOverview(o: ReturnType<typeof overview>): void {
+export function printOverview(o: ReturnType<typeof overview>): void {
   console.log('== Overview ==')
   console.log(
     `sessions=${o.sessions} transcripts=${o.transcripts} tool calls=${o.calls} (sub-agent ${o.subCalls}) result chars=${kb(o.totalChars)}`,
@@ -1092,7 +1131,7 @@ function printOverview(o: ReturnType<typeof overview>): void {
   }
 }
 
-function printSymbols(o: ReturnType<typeof overview>, g: ReturnType<typeof grepReport>, r: ReturnType<typeof readReport>): void {
+export function printSymbols(o: ReturnType<typeof overview>, g: ReturnType<typeof grepReport>, r: ReturnType<typeof readReport>): void {
   console.log('\n== Symbols surface ==')
   const readSymbol = r.byShape.find(s => s.shape === 'symbol')?.n ?? 0
   const readOutline = r.byShape.find(s => s.shape === 'outline')?.n ?? 0
