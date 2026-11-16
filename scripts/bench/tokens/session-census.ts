@@ -24,7 +24,10 @@
  * Two sections read what the app records for them since 2026-10-19:
  *   - spend by source, from each session's last `cost-state.sourceUsage`: the
  *     auto-mode classifier, memory forks and keep-alive pings, which no
- *     transcript line carries. It covers whole sessions, not the window;
+ *     transcript line carries. It covers whole sessions, not the window, and
+ *     only the sessions with a call in the window: a transcript touched after
+ *     its last call (a title, a `/resume` that sent nothing) is picked up by
+ *     its mtime, and its whole spend is from before;
  *   - permission decisions, from the `permissionDecision` each tool_result
  *     record carries: prompts and their wait, rule hits, classifier verdicts.
  *
@@ -596,9 +599,14 @@ export function buildReport(w: Walk) {
   }
   const narration = calls.filter(c => c.tools.length > 0 && c.text.trim().length > 0)
 
-  // (9) spend by source — whole sessions, from their last cost-state
+  // (9) spend by source — whole sessions, from their last cost-state, for the
+  // sessions that called in the window (the header says why)
+  const active = new Set(calls.map(c => sessionOf(c.file)))
+  const states = [...costStates.entries()]
+    .filter(([file]) => active.has(sessionOf(file)))
+    .map(([, state]) => state)
   const sources = new Map<string, { calls: number; costUSD: number; sessions: number }>()
-  for (const state of costStates.values()) {
+  for (const state of states) {
     for (const [source, u] of Object.entries(state.sourceUsage ?? {})) {
       const s = sources.get(source) ?? { calls: 0, costUSD: 0, sessions: 0 }
       s.calls += u.calls
@@ -649,7 +657,7 @@ export function buildReport(w: Walk) {
     gaps: { under5: gapsUnder5, from5to60: gaps5to60, over60: gapsOver60, premium1h, rewrite5m },
     narration: { messagesWithTools: calls.filter(c => c.tools.length > 0).length, withText: narration.length, chars: narration.reduce((s, c) => s + c.text.trim().length, 0) },
     sources: {
-      sessions: [...costStates.values()].filter(s => s.sourceUsage !== undefined).length,
+      sessions: states.filter(s => s.sourceUsage !== undefined).length,
       rows: [...sources.entries()].map(([source, s]) => ({ source, ...s })).sort((a, b) => b.costUSD - a.costUSD),
     },
     permissions: {
@@ -718,7 +726,7 @@ export function print(r: Report): void {
 
   console.log(`\n--- narration (text beside a tool_use) --- ${r.narration.withText} of ${r.narration.messagesWithTools} messages, ${fmt(r.narration.chars)} chars`)
 
-  console.log(`\n--- spend by source (whole sessions, last cost-state) --- ${r.sources.sessions} sessions carry it`)
+  console.log(`\n--- spend by source (whole sessions with a call in the window, last cost-state) --- ${r.sources.sessions} sessions carry it`)
   for (const s of r.sources.rows.slice(0, 15)) {
     console.log(`  ${pad(s.source, 32)} calls=${padLeft(String(s.calls), 5)} ${padLeft(usd(s.costUSD), 8)}  sessions=${s.sessions}`)
   }

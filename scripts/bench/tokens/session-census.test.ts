@@ -299,14 +299,13 @@ describe('session census over synthetic transcripts', () => {
     expect(p.rules).toEqual([['Bash(git…)', 1]])
   })
 
-  // KNOWN DEFECT (census 2026-11-16): session B has no call in the window, and
-  // its whole cost-state is counted all the same.
-  test('spend by source takes every walked cost-state, whatever the dates of its calls', () => {
+  // Session B was touched in the window and called nothing in it: its
+  // cost-state ($57.67 of main thread, a dream) is spend from before.
+  test('spend by source counts only the sessions with a call in the window', () => {
     const { sources } = report()
-    expect(sources.sessions).toBe(2)
+    expect(sources.sessions).toBe(1)
     expect(sources.rows).toEqual([
-      { source: 'repl_main_thread', calls: 48, costUSD: 59.17, sessions: 2 },
-      { source: 'auto_dream', calls: 2, costUSD: 3.49, sessions: 1 },
+      { source: 'repl_main_thread', calls: 8, costUSD: 1.5, sessions: 1 },
       { source: 'auto_mode_classifier', calls: 3, costUSD: 0.25, sessions: 1 },
     ])
   })
@@ -342,9 +341,9 @@ describe('session census over synthetic transcripts', () => {
     expect(lines).toContain('\n--- inter-call gaps --- <5min=6  5-60min=1  >60min=1')
     expect(lines).toContain('1h TTL premium paid $0.07; a 5m policy would have re-written ≈$0.21 at the ≥5min gaps')
     expect(lines).toContain('\n--- narration (text beside a tool_use) --- 2 of 9 messages, 46 chars')
-    // KNOWN DEFECT, as above: B's $57.67 is in the first row.
-    expect(lines).toContain('\n--- spend by source (whole sessions, last cost-state) --- 2 sessions carry it')
-    expect(lines).toContain('  repl_main_thread                 calls=   48   $59.17  sessions=2')
+    // As above: B's $57.67 stays out of the first row.
+    expect(lines).toContain('\n--- spend by source (whole sessions with a call in the window, last cost-state) --- 1 sessions carry it')
+    expect(lines).toContain('  repl_main_thread                 calls=    8    $1.50  sessions=1')
     expect(lines).toContain('\n--- permission decisions --- 4 of 14 tool uses carry one')
     expect(lines).toContain('prompts answered: 2  wait p50=10.0s p90=10.0s')
     expect(lines).toContain('     1× Bash(sleep…)')
@@ -355,7 +354,7 @@ describe('session census over synthetic transcripts', () => {
     const lines = printed(buildReport(walk([], SINCE)))
     expect(lines[0]).toBe('=== SESSION CENSUS - → - ===')
     expect(lines[1]).toBe('calls=0 (main 0, sidechain 0)  total=$0.00')
-    expect(lines).toContain('\n--- spend by source (whole sessions, last cost-state) --- 0 sessions carry it')
+    expect(lines).toContain('\n--- spend by source (whole sessions with a call in the window, last cost-state) --- 0 sessions carry it')
   })
 
   test('parseArgs reads --since as a UTC day and defaults to the last seven', () => {
@@ -379,7 +378,7 @@ describe('session census over synthetic transcripts', () => {
     const r = JSON.parse(json.stdout.toString()) as ReturnType<typeof buildReport>
     expect(r.totals.all.calls).toBe(11)
     expect(r.totals.main.calls).toBe(9)
-    expect(r.sources.sessions).toBe(2)
+    expect(r.sources.sessions).toBe(1)
 
     const text = run('--since=2026-11-14', '--project=-proj')
     expect(text.exitCode).toBe(0)

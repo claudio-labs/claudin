@@ -405,18 +405,22 @@ describe('readReport', () => {
   test('answered reads by requested shape, and the outline leads', () => {
     const r = readReport(readCalls())
     expect(r.calls).toBe(22)
+    // Four of them batches of two files: a file read is the unit below.
+    expect(r.fileReads).toBe(26)
+    expect(r.batchCalls).toBe(4)
+    expect(r.batchFiles).toBe(8)
     expect(Object.fromEntries(r.byShape.map(s => [s.shape, s.n]))).toEqual({
-      'full(default)': 8,
+      'full(default)': 11,
       symbol: 2,
-      outline: 3,
+      outline: 4,
       'full(explicit)': 1,
       range: 7,
       'pdf-pages': 1,
     })
     expect(r.byShape.find(s => s.shape === 'range')).toEqual({ shape: 'range', n: 7, chars: 900 + 150 + 5, median: 50, errors: 0 })
     expect(r.byShape.find(s => s.shape === 'full(default)')?.errors).toBe(1)
-    expect(r.byShapeMain).toEqual([['full(default)', 8], ['range', 7], ['outline', 2], ['symbol', 1], ['full(explicit)', 1], ['pdf-pages', 1]])
-    expect(r.byShapeSub).toEqual([['symbol', 1], ['outline', 1]])
+    expect(r.byShapeMain).toEqual([['full(default)', 11], ['range', 7], ['outline', 2], ['symbol', 1], ['full(explicit)', 1], ['pdf-pages', 1]])
+    expect(r.byShapeSub).toEqual([['outline', 2], ['symbol', 1]])
     expect(r.outlineResults).toBe(4)
     expect(r.overcap).toBe(1)
     expect(r.autoPivots).toBe(1)
@@ -445,37 +449,52 @@ describe('readReport', () => {
     expect(r.readAfterEditChars).toBe(300 + 5)
   })
 
-  // KNOWN DEFECT (census 2026-11-16): a batch Read has no `file_path`, so all
-  // of them land on one empty path — a blank basename, the extension "(none)".
-  test('a batch Read counts as one read of an empty path', () => {
+  // Until 2026-11-16 a batch, having no `file_path`, was one read of an empty
+  // path: a blank basename at the top of the table, the extension "(none)".
+  test('a batch Read is one read of each of its files', () => {
     const r = readReport(readCalls())
-    // Nine paths in the main transcript and two in the fork's, '' in each.
-    expect(r.distinctPaths).toBe(11)
-    expect(r.rereadPaths).toBe(4)
-    expect(r.rereadExtraCalls).toBe(3 + 2 + 3 + 2)
-    expect(r.rereadBasenames.map(x => [x.base, x.n])).toEqual([['', 3], ['walk.ts', 3], ['big.ts', 4], ['jump.ts', 4]])
-    expect(r.rereadBasenames[0]).toEqual({ base: '', n: 3, chars: 2 * BATCH_SMALL.length + BATCH_BIG.length, shapes: [['full(default)', 3]] })
+    // Ten paths in the main transcript, a.ts and b.md among them, and three in the fork's.
+    expect(r.distinctPaths).toBe(13)
+    expect(r.rereadPaths).toBe(5)
+    expect(r.rereadExtraCalls).toBe(3 + 2 + 3 + 2 + 2)
+    expect(r.rereadBasenames.map(x => [x.base, x.n])).toEqual([['a.ts', 3], ['walk.ts', 3], ['big.ts', 4], ['jump.ts', 4], ['b.md', 3]])
+    // Each file's own section of the three results, not the whole results.
+    expect(r.rereadBasenames[0]).toEqual({ base: 'a.ts', n: 3, chars: 2 * '     1→const a = 1'.length + 11_000, shapes: [['full(default)', 3]] })
+    expect(r.rereadBasenames[4]?.chars).toBe(2 * '     1→# b'.length + 200)
     expect(r.defaultOver10k).toBe(3)
-    expect(r.defaultOver10kChars).toBe(11_000 + 12_000 + BATCH_BIG.length)
-    expect(r.defaultOver10kExt).toEqual([['.json', 1], ['.md', 1], ['(none)', 1]])
+    // The 11K file of the big batch, by its own extension; its 200-char neighbour is not one.
+    expect(r.defaultOver10kChars).toBe(11_000 + 12_000 + 11_000)
+    expect(r.defaultOver10kExt).toEqual([['.json', 1], ['.md', 1], ['.ts', 1]])
+  })
+
+  test('a batch result that does not split per file shares its size and keeps every path', () => {
+    const r = readReport([
+      call('Read', { file_paths: ['/repo/x.ts', '/repo/y.ts', '/repo/z.ts'] }, 'e'.repeat(90), { isError: true }),
+    ])
+    expect(r.calls).toBe(1)
+    expect(r.fileReads).toBe(3)
+    expect(r.distinctPaths).toBe(3)
+    expect(r.byShape).toEqual([{ shape: 'full(default)', n: 3, chars: 90, median: 30, errors: 3 }])
   })
 
   test('printRead renders the section', () => {
     const lines = printed(() => printRead(readReport(readCalls())))
     expect(lines[0]).toBe('\n== Read shape ==')
-    expect(lines[1]).toBe('calls=22 distinct paths (per transcript)=11')
-    expect(lines[2]).toStartWith('  full(default)    n=   8 ( 36.4%) chars=')
-    expect(lines).toContain('  range            n=   7 ( 31.8%) chars=    1.0K median=  0.0K errors=0')
-    expect(lines).toContain('  main: full(default):8  range:7  outline:2  symbol:1  full(explicit):1  pdf-pages:1')
-    expect(lines).toContain('  sub-agents: symbol:1  outline:1')
+    expect(lines[1]).toBe('calls=22 file reads=26 (4 batch calls carried 8) distinct paths (per transcript)=13')
+    // Shares are of the 26 file reads.
+    expect(lines[2]).toStartWith('  full(default)    n=  11 ( 42.3%) chars=')
+    expect(lines).toContain('  range            n=   7 ( 26.9%) chars=    1.0K median=  0.0K errors=0')
+    expect(lines).toContain('  main: full(default):11  range:7  outline:2  symbol:1  full(explicit):1  pdf-pages:1')
+    expect(lines).toContain('  sub-agents: outline:2  symbol:1')
     expect(lines).toContain('  outline results=4 of which auto-pivot=1 (0.2K sent for 1,200 source lines) overcap=1')
     expect(lines).toContain('  follow-up after AUTO outline (same path): symbol:1')
     expect(lines).toContain('  follow-up after EXPLICIT outline (same path): none:2  full(explicit):1')
     expect(lines).toContain('  outline → full body of the same file: 1 (0.5K — the outline bought nothing there)')
-    // KNOWN DEFECT, as above: the batch is the "(none)" and the blank basename.
-    expect(lines).toContain('  full(default) bodies >10K that did NOT pivot: 3 / 33.4K  by ext: .json:1 .md:1 (none):1')
-    expect(lines).toContain('  paths read ≥3× in one transcript: 4 paths, 10 extra calls, 12.4K')
-    expect(lines).toContain('                                       n=  3 chars=  11.1K  full(default):3')
+    // As above: the batch's files under their own extension and basename.
+    expect(lines).toContain('  full(default) bodies >10K that did NOT pivot: 3 / 33.2K  by ext: .json:1 .md:1 .ts:1')
+    expect(lines).toContain('  paths read ≥3× in one transcript: 5 paths, 12 extra reads, 12.3K')
+    expect(lines).toContain(`    ${'a.ts'.padEnd(34)} n=  3 chars=  10.8K  full(default):3`)
+    expect(lines).toContain(`    ${'b.md'.padEnd(34)} n=  3 chars=   0.2K  full(default):3`)
     expect(lines).toContain('  slice-walks (3+ range reads of a path with no outline/symbol first): 2 paths, 6 calls, 1.0K')
     expect(lines).toContain('    of which contiguous (each offset resumes where the last slice ended): 1 paths, 3 calls, 0.9K')
     expect(lines).toContain('  read of a path right after editing it: 2 calls, 0.3K')

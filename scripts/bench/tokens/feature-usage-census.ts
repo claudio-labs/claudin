@@ -16,7 +16,8 @@
  *     2026-10-31 they came back empty whenever the search path was elsewhere.
  *   - Read shape — outline / symbol / range / full, the auto-outline pivot and
  *     what the model did NEXT on the same file (symbol / range / full / nothing),
- *     re-reads of one path, and the large full bodies that never pivoted.
+ *     re-reads of one path, and the large full bodies that never pivoted. The
+ *     unit is a file read: a batch (`file_paths`) is one read per file.
  *   - WaitFor — why each wait ended, the runs of back-to-back waits (each call
  *     past the first is one more request) and the ones after a timeout, CI
  *     polls, and the `timeout_s` asked for.
@@ -639,6 +640,9 @@ const READ_OUTLINE_RE =
 const READ_OVERCAP_RE = /^<system-reminder>\nFile '[^']*' \(\d+ lines\) exceeds the read cap/
 const READ_AUTO_PIVOT = 'File is large; returned outline instead of full body'
 const READ_OUTLINE_LINES_RE = /^<system-reminder>\n[^\n]*?\((\d+) lines\)/
+// A batch Read's result: one `==> path <==` line ahead of each file's section.
+const BATCH_SECTION_RE = /^==> .+? <==$/m
+const SECTION_EDGE_RE = /^\n+|\n+$/g
 
 function readShape(input: Block): string {
   if (input.symbol !== undefined) return 'symbol'
@@ -649,8 +653,38 @@ function readShape(input: Block): string {
   return 'full(default)'
 }
 
+/**
+ * A Read as the files it read. A batch (`file_paths`) carries no `file_path`,
+ * so until 2026-11-16 every batch of a transcript counted as one read of the
+ * same empty path: a blank basename at the top of the re-read table (61 reads,
+ * 572K chars in that census) and "(none)" among the extensions. Each file of
+ * a batch is a read of its own here, with its section of the result as its
+ * text. A result that does not split into one section per file (an error, a
+ * clipped result) shares its size evenly and keeps no text.
+ */
+function fileReads(c: Call): Call[] {
+  const paths = Array.isArray(c.input.file_paths)
+    ? c.input.file_paths.filter((p): p is string => typeof p === 'string')
+    : []
+  if (paths.length === 0) return [c]
+  const { file_paths: _batch, ...rest } = c.input
+  const sections = c.text.split(BATCH_SECTION_RE).slice(1)
+  const split = sections.length === paths.length
+  return paths.map((path, i) => {
+    const text = split ? sections[i]!.replace(SECTION_EDGE_RE, '') : ''
+    return {
+      ...c,
+      input: { ...rest, file_path: path },
+      text,
+      chars: split ? text.length : Math.round(c.chars / paths.length),
+    }
+  })
+}
+
 export function readReport(calls: Call[]) {
-  const reads = calls.filter(c => c.tool === 'Read' && c.answered)
+  const readCalls = calls.filter(c => c.tool === 'Read' && c.answered)
+  const reads = readCalls.flatMap(fileReads)
+  const batches = readCalls.filter(c => Array.isArray(c.input.file_paths))
   const byShape = new Map<string, { n: number; chars: number; sizes: number[]; errors: number }>()
   const byShapeMain = new Map<string, number>()
   const byShapeSub = new Map<string, number>()
@@ -823,7 +857,10 @@ export function readReport(calls: Call[]) {
   }
 
   return {
-    calls: reads.length,
+    calls: readCalls.length,
+    fileReads: reads.length,
+    batchCalls: batches.length,
+    batchFiles: batches.reduce((n, c) => n + fileReads(c).length, 0),
     byShape: [...byShape.entries()].map(([shape, s]) => ({
       shape,
       n: s.n,
@@ -1053,10 +1090,12 @@ export function printWait(w: ReturnType<typeof waitReport>): void {
 
 export function printRead(r: ReturnType<typeof readReport>): void {
   console.log('\n== Read shape ==')
-  console.log(`calls=${r.calls} distinct paths (per transcript)=${r.distinctPaths}`)
+  console.log(
+    `calls=${r.calls} file reads=${r.fileReads} (${r.batchCalls} batch calls carried ${r.batchFiles}) distinct paths (per transcript)=${r.distinctPaths}`,
+  )
   for (const s of r.byShape.sort((a, b) => b.n - a.n)) {
     console.log(
-      `  ${pad(s.shape, 16)} n=${padLeft(String(s.n), 4)} (${padLeft(pct(s.n, r.calls), 6)}) chars=${padLeft(kb(s.chars), 8)} median=${padLeft(kb(s.median), 6)} errors=${s.errors}`,
+      `  ${pad(s.shape, 16)} n=${padLeft(String(s.n), 4)} (${padLeft(pct(s.n, r.fileReads), 6)}) chars=${padLeft(kb(s.chars), 8)} median=${padLeft(kb(s.median), 6)} errors=${s.errors}`,
     )
   }
   console.log(`  main: ${r.byShapeMain.map(([m, n]) => `${m}:${n}`).join('  ')}`)
@@ -1070,7 +1109,7 @@ export function printRead(r: ReturnType<typeof readReport>): void {
   console.log(
     `  full(default) bodies >10K that did NOT pivot: ${r.defaultOver10k} / ${kb(r.defaultOver10kChars)}  by ext: ${r.defaultOver10kExt.map(([e, n]) => `${e}:${n}`).join(' ')}`,
   )
-  console.log(`  paths read ≥3× in one transcript: ${r.rereadPaths} paths, ${r.rereadExtraCalls} extra calls, ${kb(r.rereadExtraChars)}`)
+  console.log(`  paths read ≥3× in one transcript: ${r.rereadPaths} paths, ${r.rereadExtraCalls} extra reads, ${kb(r.rereadExtraChars)}`)
   console.log(`  slice-walks (3+ range reads of a path with no outline/symbol first): ${r.sliceWalks} paths, ${r.sliceWalkCalls} calls, ${kb(r.sliceWalkChars)}`)
   console.log(`    of which contiguous (each offset resumes where the last slice ended): ${r.contiguousWalks} paths, ${r.contiguousWalkCalls} calls, ${kb(r.contiguousWalkChars)}`)
   console.log(`  read of a path right after editing it: ${r.readAfterEdit} calls, ${kb(r.readAfterEditChars)}`)
