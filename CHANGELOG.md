@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.2.3 — 2026-11-17
+
+### 🐛 Bug Fixes
+
+- fix(tools): close the bugs and cost leaks the 11-16 census found (#357) (513ce3f9)
+
+### 📦 Dependencies
+
+- chore(deps): bump wrap-ansi from 9.0.2 to 10.0.2 (#356) (5c613a7c)
+- chore(deps): bump the production-dependencies group across 1 directory with 10 updates (#355) (d749f1c7)
+- chore(deps): bump knip (#354) (47d7c2c3)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.2.2 — 2026-11-14
 
 ### ✨ Features
