@@ -1279,6 +1279,27 @@ describe('a keep-alive ping through the shim client', () => {
     await keepAlive._fireNowForTesting('main')
     expect(sent).toHaveLength(0)
   })
+
+  // The chain re-sends one body for up to 30 minutes, and create() routes it by
+  // the provider active when it fires: a /provider switch must not turn the
+  // Codex ping into an uncapped, billed request on the new host.
+  test('a chain armed on the Codex backend stops after a switch to Copilot GPT-5', async () => {
+    process.env.OPENAI_BASE_URL = 'https://chatgpt.com/backend-api/codex'
+    process.env.OPENAI_MODEL = 'codexplan'
+    process.env.OPENAI_API_KEY = 'profile-key'
+    process.env.CODEX_API_KEY = 'codex-key'
+    process.env.CHATGPT_ACCOUNT_ID = 'acct-1'
+    await armThroughClient()
+    expect(keepAlive._isArmedForTesting('main')).toBe(true)
+
+    delete process.env.OPENAI_BASE_URL
+    process.env.CLAUDIN_USE_GITHUB = '1'
+    process.env.OPENAI_MODEL = 'gpt-5.5'
+    process.env.OPENAI_API_KEY = 'gh-key'
+    await keepAlive._fireNowForTesting('main')
+    expect(sent).toHaveLength(0)
+    expect(keepAlive._isArmedForTesting('main')).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
