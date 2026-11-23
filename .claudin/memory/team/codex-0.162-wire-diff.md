@@ -1,6 +1,6 @@
 ---
 name: codex-0.162-wire-diff
-description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay (#307) and WebSocket transport (#308) closed 10-17, both in v1.1.46; captures, gates, the free-plan quota that ran out, the traps the captures caught; the rate-limit wire (x-codex-* headers over HTTP, codex.rate_limits event over the socket) confirmed live 10-22
+description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay (#307) and WebSocket transport (#308) closed 10-17, both in v1.1.46; captures, gates, the free-plan quota that ran out, the traps the captures caught; the rate-limit wire (x-codex-* headers over HTTP, codex.rate_limits event over the socket) confirmed live 10-22; re-captured 11-23 against 0.171 — thinking at parity, the cache gap is Claudin's cold first request
 type: project
 ---
 
@@ -68,6 +68,38 @@ changes; `scripts/bench/tokens/codex-reasoning-replay-probe.ts` re-asks the back
 replay's design questions. The runner deletes each flow file (the only copy of the token).
 The provider-switch check against a mock is in testing.md (same section). Recipe for other
 Rust CLIs: [[mitmproxy-rust-binary-recipe]].
+
+## Re-capture 2026-11-23 (Codex CLI 0.171.0, main e3c2fca0)
+
+Same runner, gpt-5.6-terra, effort medium, arms codex + claudin (both WebSocket). Answers
+equal on all three turns. Thinking is at parity: `include`, `reasoning`
+`{effort, context:"all_turns"}` and `text` match; reasoning replayed per request is `0 0 2 3 0`
+on both; ids/phases on every replayed message, calls 2/2 under backend ids; reasoning
+tokens 288 (Codex) vs 348. History growth over the 5 requests: +823 vs +873 tokens.
+- **Context per request is 2×:** Claudin ~28k (39 tools, 18.6k-char instructions), Codex ~14k.
+  Since 0.171 Codex sends no top-level `instructions`/`tools`: one `additional_tools` input
+  item (namespaces `functions`, `collaboration`), four developer messages, a new
+  `access_programs:{cyber:"standard"}` field. Same "responses_lite" shape, rejected on purpose.
+- **Cache:** 90% (Codex) vs 78% (Claudin) over the session. The gap is only Claudin's cold
+  first request: 0 of 28k cached, while Codex's first comes 72% warm (9984/13834) on an
+  account unused for 30 days, so its static prefix seems to be warm server-side. From the
+  2nd request on, Claudin 97% vs Codex 94%. A fresh `-p` session is cold again (27919 in,
+  0 read): `prompt_cache_key` is the session id. Sharing a prefix across sessions is the
+  rejected [[same-project-prefix-sharing-rejected]].
+- Claudin also sends the classifier capability probe (forced `classify_result`, 124 tokens)
+  under `--dangerously-skip-permissions`.
+- Quota: the free plan went 0% → 7% for ~16 requests (both arms), about 0.45% each.
+- **The quota weighs cached input at roughly 1/7 (2026-11-23):** one fresh 27.9k session moved it
+  7% → 10%, and five mostly cold ~26k probe requests moved it 10% → 22%, about 2.4% each, against
+  ~0.45% for a warm one. Price a live batch by its cache state, not by request count.
+- **Cross-session probe, G0 FAILED** (`scripts/bench/tokens/codex-shared-prefix-probe.ts`, body from
+  the capture, a new session-id header and scratchpad line per arm, 3 s apart, N=1):
+  S1 key=session + line moved to `input[0]` → 0%; S2 the same with a new session → **81%**
+  (20992/26027); S3 and S4, a stable key K + moved → **0% and 0%**; S5 key K + line left in
+  instructions → 0%. A pair with the SAME key and prefix missed 3 s apart, so `prompt_cache_key`
+  alone does not route these requests to one cache. Within a session, a constant session-id header
+  hit every time. One hypothesis, not yet tested: the `session-id` header carries affinity. A hit
+  reads a checkpoint (20992 of a ~25.9k shared prefix), not the whole prefix.
 
 ## Rate-limit wire (confirmed 2026-10-22)
 
