@@ -30,6 +30,12 @@
  * until the next real request. A ping that errors stops the chain for that
  * key — a 400 must never loop.
  *
+ * A transport adapter whose wire drops `max_tokens` would turn that read into
+ * a full generation, so its client says how to ping (`keepAlivePingParams`):
+ * the Codex Responses body then carries `max_output_tokens`, and a host that
+ * cannot cap gets no ping (src/providers/shims/codex/backend.ts). The
+ * Anthropic SDK clients have no such method and ping exactly as above.
+ *
  * What this holds: one serialized request body per agent key, for the life
  * of the chain. `streaming.ts` deliberately frees its own copies after each
  * request; this keeps the last one on purpose, and only while a chain runs.
@@ -78,6 +84,8 @@ export type KeepAliveClient = {
       // `never` here the real client is assignable without a cast. The ping
       // re-sends a body the SDK already accepted once, cast at the call.
       create(body: never, opts?: { signal?: AbortSignal }): Promise<unknown>
+      /** The body to ping with, or null for no ping. */
+      keepAlivePingParams?(params: Record<string, unknown>): Record<string, unknown> | null
     }
   }
 }
@@ -136,7 +144,10 @@ export function noteRequestStarted(key: string): void {
 export function armKeepAlive(req: KeepAliveRequest, now: number = Date.now()): void {
   if (!isCacheKeepAliveEnabled() || !req.shortTtl) return
   cancel(req.key)
-  schedule(req, generations.get(req.key) ?? 0, now)
+  const messages = req.client.beta.messages
+  const params = messages.keepAlivePingParams === undefined ? req.params : messages.keepAlivePingParams(req.params)
+  if (params === null) return
+  schedule(params === req.params ? req : { ...req, params }, generations.get(req.key) ?? 0, now)
 }
 
 /**

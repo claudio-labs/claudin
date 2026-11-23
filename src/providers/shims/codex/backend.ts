@@ -19,6 +19,12 @@
  * no include, context or verbosity, no reasoning items, synthetic call ids, and
  * resume and every render strip the Codex item state as for any other
  * provider. The stream-error fix in codexShim.ts stays on either way.
+ *
+ * The keep-alive ping (src/agent/cache/anthropic/keepAlive.ts) re-sends the
+ * last body with max_tokens at the floor, which the Responses body drops. The
+ * Codex backend takes it as max_output_tokens (16 answered `response.incomplete`
+ * live, 2026-11-23), so its ping stays a cache read; every other Responses host
+ * gets no ping, Copilot billing each request.
  */
 import { isSdkApiError } from 'src/shared/errors.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
@@ -31,6 +37,12 @@ import {
 
 /** The code the backend answers with when a replayed reasoning payload no longer decrypts. */
 export const CODEX_REPLAY_REFUSED_CODE = 'invalid_encrypted_content'
+
+/** Marks a Codex-backend request whose max_tokens goes out as max_output_tokens. */
+export const CODEX_HONOR_MAX_TOKENS = 'codexHonorMaxTokens'
+
+/** The Responses API's lowest max_output_tokens. */
+export const CODEX_MIN_OUTPUT_TOKENS = 16
 
 export function isCodexReasoningReplayEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_CODEX_REASONING_REPLAY)
@@ -48,6 +60,19 @@ export function codexReplayActive(
   request: Pick<ResolvedProviderRequest, 'transport' | 'baseUrl'>,
 ): boolean {
   return isCodexBackendRequest(request) && isCodexReasoningReplayEnabled()
+}
+
+/**
+ * The keep-alive ping for `params` on this request's transport: the body as it
+ * is where max_tokens reaches the wire, the body marked to keep its cap on the
+ * Codex backend, and null on any other Responses host.
+ */
+export function codexKeepAlivePingParams(
+  request: Pick<ResolvedProviderRequest, 'transport' | 'baseUrl'>,
+  params: Record<string, unknown>,
+): Record<string, unknown> | null {
+  if (request.transport !== 'codex_responses') return params
+  return isCodexBackendRequest(request) ? { ...params, [CODEX_HONOR_MAX_TOKENS]: true } : null
 }
 
 /**

@@ -144,6 +144,44 @@ describe('cache keep-alive', () => {
     expect(sent).toHaveLength(1)
   })
 
+  test('a transport adapter picks the ping body, or that there is no ping', async () => {
+    const { client, sent } = fakeClient()
+    const create = client.beta.messages.create
+    const marking: KeepAliveClient = {
+      beta: { messages: { create, keepAlivePingParams: params => ({ ...params, marked: true }) } },
+    }
+    noteRequestStarted('h')
+    armKeepAlive(req('h', marking))
+    await _fireNowForTesting('h')
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.body).toMatchObject({ marked: true, stream: false, max_tokens: 1, thinking: { type: 'adaptive' } })
+
+    // An adapter with no floor read to offer leaves nothing armed, and holds no body.
+    const refusing: KeepAliveClient = { beta: { messages: { create, keepAlivePingParams: () => null } } }
+    noteRequestStarted('i')
+    armKeepAlive(req('i', refusing))
+    expect(_isArmedForTesting('i')).toBe(false)
+    await _fireNowForTesting('i')
+    expect(sent).toHaveLength(1)
+  })
+
+  // The Anthropic family pings through the SDK clients themselves, so a client
+  // with no ping adapter of its own is what keeps their pings as above.
+  test('the Anthropic SDK clients carry no ping adapter', async () => {
+    const { default: Anthropic } = await import('@anthropic-ai/sdk')
+    const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
+    const { AnthropicVertex } = await import('@anthropic-ai/vertex-sdk')
+    const clients = [
+      new Anthropic({ apiKey: 'sk-ant-test' }),
+      new AnthropicBedrock({ awsRegion: 'us-east-1', awsAccessKey: 'a', awsSecretKey: 'b' }),
+      // An authClient, or the constructor starts an ADC lookup that rejects in a later file.
+      new AnthropicVertex({ region: 'us-east5', projectId: 'p', authClient: {} as never }),
+    ]
+    for (const client of clients) {
+      expect('keepAlivePingParams' in client.beta.messages).toBe(false)
+    }
+  })
+
   // The three call sites sit on paths a unit test cannot drive (a streamed
   // request, an agent's teardown, /clear); the wiring is pinned on the source.
   test('only agentic requests arm, and a finished agent or /clear cancels', async () => {

@@ -30,9 +30,12 @@ import {
   type CodexReasoningInputItem,
 } from 'src/providers/shims/codex/items.js'
 import {
+  CODEX_HONOR_MAX_TOKENS,
+  CODEX_MIN_OUTPUT_TOKENS,
   CODEX_REPLAY_REFUSED_CODE,
   codexReplayActive,
   codexBackendBodyFields,
+  isCodexBackendRequest,
 } from 'src/providers/shims/codex/backend.js'
 import {
   codexSocketEligible,
@@ -661,6 +664,11 @@ export async function performCodexRequest(options: {
     Object.assign(body, codexBackendBodyFields(options.request.reasoning))
   }
 
+  // A keep-alive ping is a cache read, so it keeps its cap (codexKeepAlivePingParams).
+  if (options.params[CODEX_HONOR_MAX_TOKENS] === true && isCodexBackendRequest(options.request)) {
+    body.max_output_tokens = Math.max(CODEX_MIN_OUTPUT_TOKENS, Number(options.params.max_tokens) || 0)
+  }
+
   const isTargetModel =
     options.request.resolvedModel?.toLowerCase().includes('gpt') ||
     options.request.resolvedModel?.toLowerCase().includes('codex')
@@ -705,10 +713,10 @@ export async function performCodexRequest(options: {
   // process-wide session id. Required on long sessions for WS continuity.
   headers['session-id'] = getSessionId()
   // NOTE: we intentionally do not set `max_output_tokens` on the body
-  // above. The Codex CLI strips it, and so does OpenCode (`chat.params`
-  // → `output.maxOutputTokens = undefined`). performCodexRequest builds
-  // the body from scratch and only forwards the fields Codex accepts,
-  // so no upstream `params.max_tokens` leak is possible here.
+  // above, except on a keep-alive ping. The Codex CLI strips it, and so does
+  // OpenCode (`chat.params` → `output.maxOutputTokens = undefined`).
+  // performCodexRequest builds the body from scratch and only forwards the
+  // fields Codex accepts, so no upstream `params.max_tokens` leak is possible here.
   headers.originator ??= 'claudin'
 
   // Defensive URL normalization: if a user's profile stored a baseUrl that

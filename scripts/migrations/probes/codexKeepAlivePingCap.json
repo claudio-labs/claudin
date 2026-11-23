@@ -1,0 +1,82 @@
+{
+  "test": [
+    "src/agent/cache/anthropic/keepAlive.test.ts",
+    "src/providers/shims/codex/backend.test.ts",
+    "src/providers/shims/codexShim.test.ts"
+  ],
+  "source": "src/agent/cache/anthropic/keepAlive.ts",
+  "probes": [
+    {
+      "name": "keep-alive ignores the transport adapter",
+      "find": "  const params = messages.keepAlivePingParams === undefined ? req.params : messages.keepAlivePingParams(req.params)\n",
+      "replace": "  const params = req.params\n"
+    },
+    {
+      "name": "keep-alive arms where the adapter offers no ping",
+      "find": "  if (params === null) return\n",
+      "replace": ""
+    },
+    {
+      "name": "the shim client has no say in the ping",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "    return codexKeepAlivePingParams(resolveProviderRequest({ model }), params)\n",
+      "replace": "    return params\n"
+    },
+    {
+      "name": "Chat Completions stops being pinged",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  if (request.transport !== 'codex_responses') return params\n",
+      "replace": "  if (request.transport !== 'codex_responses') return null\n"
+    },
+    {
+      "name": "Copilot and other Responses hosts are pinged uncapped",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return isCodexBackendRequest(request) ? { ...params, [CODEX_HONOR_MAX_TOKENS]: true } : null\n",
+      "replace": "  return isCodexBackendRequest(request) ? { ...params, [CODEX_HONOR_MAX_TOKENS]: true } : params\n"
+    },
+    {
+      "name": "the Codex backend ping is not marked",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return isCodexBackendRequest(request) ? { ...params, [CODEX_HONOR_MAX_TOKENS]: true } : null\n",
+      "replace": "  return isCodexBackendRequest(request) ? params : null\n"
+    },
+    {
+      "name": "a marked request goes out uncapped",
+      "source": "src/providers/shims/codexShim.ts",
+      "find": "    body.max_output_tokens = Math.max(CODEX_MIN_OUTPUT_TOKENS, Number(options.params.max_tokens) || 0)\n",
+      "replace": ""
+    },
+    {
+      "name": "the cap goes under the backend floor",
+      "source": "src/providers/shims/codexShim.ts",
+      "find": "    body.max_output_tokens = Math.max(CODEX_MIN_OUTPUT_TOKENS, Number(options.params.max_tokens) || 0)\n",
+      "replace": "    body.max_output_tokens = Number(options.params.max_tokens) || 0\n"
+    },
+    {
+      "name": "the cap reaches a host that is not the Codex backend",
+      "source": "src/providers/shims/codexShim.ts",
+      "find": "  if (options.params[CODEX_HONOR_MAX_TOKENS] === true && isCodexBackendRequest(options.request)) {\n",
+      "replace": "  if (options.params[CODEX_HONOR_MAX_TOKENS] === true) {\n"
+    },
+    {
+      "name": "every Codex request is capped",
+      "source": "src/providers/shims/codexShim.ts",
+      "find": "  if (options.params[CODEX_HONOR_MAX_TOKENS] === true && isCodexBackendRequest(options.request)) {\n",
+      "replace": "  if (isCodexBackendRequest(options.request)) {\n"
+    },
+    {
+      "name": "control: the adapter's doc line changes",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "  /** How to send the keep-alive ping for `params` (src/agent/cache/anthropic/keepAlive.ts). */\n",
+      "replace": "  /** The keep-alive ping for `params` (src/agent/cache/anthropic/keepAlive.ts). */\n",
+      "expect": "green"
+    },
+    {
+      "name": "control: the floor rises",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "export const CODEX_MIN_OUTPUT_TOKENS = 16\n",
+      "replace": "export const CODEX_MIN_OUTPUT_TOKENS = 16 + 0\n",
+      "expect": "green"
+    }
+  ]
+}
