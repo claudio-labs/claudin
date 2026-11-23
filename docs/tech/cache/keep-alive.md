@@ -70,6 +70,14 @@ prefix.
   `CLAUDIN_CACHE_KEEPALIVE_MAX_MIN` (default 30) after the first arm or
   until the next real request. A ping that errors stops the chain: a 400
   must never loop.
+- A client whose wire drops `max_tokens` would turn that read into a full
+  generation, so it says how to ping instead: `keepAlivePingParams` returns
+  the body to send, or null for no ping. It is asked when the chain is armed
+  and again at every ping, because the client routes by the provider active
+  then (2026-11-23, #362). The OpenAI shim client uses it for the Responses
+  path: the ChatGPT Codex backend pings with `max_output_tokens: 16`, and
+  Copilot GPT-5+ and any other Responses host are not pinged. The Anthropic
+  SDK clients have no such method, so everything above holds for them as is.
 
 What it holds: one serialized request body per agent key for the life of the
 chain. `streaming.ts` deliberately nulls its own copies after each request
