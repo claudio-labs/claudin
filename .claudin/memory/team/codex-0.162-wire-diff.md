@@ -84,22 +84,15 @@ tokens 288 (Codex) vs 348. History growth over the 5 requests: +823 vs +873 toke
   first request: 0 of 28k cached, while Codex's first comes 72% warm (9984/13834) on an
   account unused for 30 days, so its static prefix seems to be warm server-side. From the
   2nd request on, Claudin 97% vs Codex 94%. A fresh `-p` session is cold again (27919 in,
-  0 read): `prompt_cache_key` is the session id. Sharing a prefix across sessions is the
-  rejected [[same-project-prefix-sharing-rejected]].
+  0 read). Making a new session warm was probed and rejected: [[codex-cross-session-prefix-rejected]].
 - Claudin also sends the classifier capability probe (forced `classify_result`, 124 tokens)
   under `--dangerously-skip-permissions`.
-- Quota: the free plan went 0% → 7% for ~16 requests (both arms), about 0.45% each.
-- **The quota weighs cached input at roughly 1/7 (2026-11-23):** one fresh 27.9k session moved it
-  7% → 10%, and five mostly cold ~26k probe requests moved it 10% → 22%, about 2.4% each, against
-  ~0.45% for a warm one. Price a live batch by its cache state, not by request count.
-- **Cross-session probe, G0 FAILED** (`scripts/bench/tokens/codex-shared-prefix-probe.ts`, body from
-  the capture, a new session-id header and scratchpad line per arm, 3 s apart, N=1):
-  S1 key=session + line moved to `input[0]` → 0%; S2 the same with a new session → **81%**
-  (20992/26027); S3 and S4, a stable key K + moved → **0% and 0%**; S5 key K + line left in
-  instructions → 0%. A pair with the SAME key and prefix missed 3 s apart, so `prompt_cache_key`
-  alone does not route these requests to one cache. Within a session, a constant session-id header
-  hit every time. One hypothesis, not yet tested: the `session-id` header carries affinity. A hit
-  reads a checkpoint (20992 of a ~25.9k shared prefix), not the whole prefix.
+- **Quota:** the capture's ~16 mostly warm requests cost ~0.45% each of the free window; cold
+  ~26k requests cost ~2.4% each (cached input weighs ~1/7). The keep-alive kept its ping for
+  that reason, now capped: [[codex-keepalive-ping-capped]].
+- **Usage fields new on the backend:** `input_tokens_details.cache_write_tokens_details`
+  `{ttl_30m_tokens, ttl_12h_tokens}` and a per-item `attribution` block. A 1.3k-token request
+  reported no write, so the default tier is unmeasured.
 
 ## Rate-limit wire (confirmed 2026-10-22)
 

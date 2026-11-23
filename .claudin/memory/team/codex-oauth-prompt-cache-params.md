@@ -25,6 +25,7 @@ the key routes a session to the same cache-aware server (~8.5% hit-rate gain
 per the messagesClient comment).
 
 **Follow-ups:**
-- Live HIT on the Codex backend still unverified — run `/cache-probe` in a
-  Codex OAuth session and expect HIT on the 2nd request.
+- Live HIT confirmed 2026-11-23: within one session the key held 96–98% from the
+  2nd request on, across `-c` processes too ([[codex-0.162-wire-diff]]). Across
+  NEW sessions the key does not steer the cache ([[codex-cross-session-prefix-rejected]]).
 - Copilot (`api.githubcopilot.com`) still deliberately NOT gated in.
