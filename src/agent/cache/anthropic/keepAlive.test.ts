@@ -165,6 +165,28 @@ describe('cache keep-alive', () => {
     expect(sent).toHaveLength(1)
   })
 
+  test('the adapter is asked again at every ping, and a null then ends the chain', async () => {
+    const { client, sent } = fakeClient()
+    let offer = true
+    const switching: KeepAliveClient = {
+      beta: {
+        messages: {
+          create: client.beta.messages.create,
+          keepAlivePingParams: params => (offer ? { ...params, marked: true } : null),
+        },
+      },
+    }
+    noteRequestStarted('j')
+    armKeepAlive(req('j', switching))
+    await _fireNowForTesting('j')
+    expect(sent).toHaveLength(1)
+    // The provider changed while the chain ran: the next ping sends nothing and stops.
+    offer = false
+    await _fireNowForTesting('j')
+    expect(sent).toHaveLength(1)
+    expect(_isArmedForTesting('j')).toBe(false)
+  })
+
   // The Anthropic family pings through the SDK clients themselves, so a client
   // with no ping adapter of its own is what keeps their pings as above.
   test('the Anthropic SDK clients carry no ping adapter', async () => {

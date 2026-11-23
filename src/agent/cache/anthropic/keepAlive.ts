@@ -144,10 +144,17 @@ export function noteRequestStarted(key: string): void {
 export function armKeepAlive(req: KeepAliveRequest, now: number = Date.now()): void {
   if (!isCacheKeepAliveEnabled() || !req.shortTtl) return
   cancel(req.key)
+  if (pingParams(req) === null) return
+  schedule(req, generations.get(req.key) ?? 0, now)
+}
+
+/**
+ * The body to ping `req` with now, or null when its client offers no ping.
+ * Asked again at every ping: the client routes by the provider active then.
+ */
+function pingParams(req: KeepAliveRequest): Record<string, unknown> | null {
   const messages = req.client.beta.messages
-  const params = messages.keepAlivePingParams === undefined ? req.params : messages.keepAlivePingParams(req.params)
-  if (params === null) return
-  schedule(params === req.params ? req : { ...req, params }, generations.get(req.key) ?? 0, now)
+  return messages.keepAlivePingParams === undefined ? req.params : messages.keepAlivePingParams(req.params)
 }
 
 /**
@@ -179,8 +186,13 @@ async function fire(key: string, generation: number): Promise<void> {
   }
   const { req } = chain
   try {
+    const params = pingParams(req)
+    if (params === null) {
+      logForDebugging(`[cache keep-alive] ${key}: the client offers no ping now, stopping`)
+      return
+    }
     const res = (await req.client.beta.messages.create({
-      ...req.params,
+      ...params,
       stream: false,
       max_tokens: pingMaxTokens(),
     } as never)) as { usage?: KeepAliveUsage } | undefined
