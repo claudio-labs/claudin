@@ -81,10 +81,11 @@ describe('the keep-alive ping on the Responses path', () => {
   const params = { model: 'gpt-5.6-terra', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }
 
   test('the Codex backend pings with the body marked to keep its output cap', () => {
-    expect(codexKeepAlivePingParams({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL }, params)).toEqual({
-      ...params,
-      [CODEX_HONOR_MAX_TOKENS]: true,
-    })
+    const ping = codexKeepAlivePingParams({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL }, params)
+    expect(ping).toMatchObject(params)
+    expect(ping?.[CODEX_HONOR_MAX_TOKENS]).toBe(true)
+    // The mark is a symbol: it rides every spread and never serializes.
+    expect(JSON.parse(JSON.stringify(ping))).toEqual(params)
   })
 
   test('another Responses host is not pinged: its body has no cap, and Copilot bills each request', () => {

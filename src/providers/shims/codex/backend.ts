@@ -19,12 +19,6 @@
  * no include, context or verbosity, no reasoning items, synthetic call ids, and
  * resume and every render strip the Codex item state as for any other
  * provider. The stream-error fix in codexShim.ts stays on either way.
- *
- * The keep-alive ping (src/agent/cache/anthropic/keepAlive.ts) re-sends the
- * last body with max_tokens at the floor, which the Responses body drops. The
- * Codex backend takes it as max_output_tokens (16 answered `response.incomplete`
- * live, 2026-11-23), so its ping stays a cache read; every other Responses host
- * gets no ping, Copilot billing each request.
  */
 import { isSdkApiError } from 'src/shared/errors.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
@@ -39,7 +33,10 @@ import {
 export const CODEX_REPLAY_REFUSED_CODE = 'invalid_encrypted_content'
 
 /** Marks a Codex-backend request whose max_tokens goes out as max_output_tokens. */
-export const CODEX_HONOR_MAX_TOKENS = 'codexHonorMaxTokens'
+export const CODEX_HONOR_MAX_TOKENS: unique symbol = Symbol('codexHonorMaxTokens')
+
+/** A request body that may carry the mark. */
+export type CodexMarkableParams = Record<string, unknown> & { [CODEX_HONOR_MAX_TOKENS]?: true }
 
 /** The Responses API's lowest max_output_tokens. */
 export const CODEX_MIN_OUTPUT_TOKENS = 16
@@ -63,14 +60,18 @@ export function codexReplayActive(
 }
 
 /**
- * The keep-alive ping for `params` on this request's transport: the body as it
- * is where max_tokens reaches the wire, the body marked to keep its cap on the
- * Codex backend, and null on any other Responses host.
+ * The keep-alive ping for `params` (src/agent/cache/anthropic/keepAlive.ts) on
+ * this request's transport. The ping is a read with max_tokens at the floor,
+ * which the Responses body drops:
+ *  - Chat Completions keeps max_tokens, so the body goes as it is;
+ *  - the Codex backend takes it as max_output_tokens when the body is marked
+ *    (16 answered `response.incomplete` live, 2026-11-23);
+ *  - any other Responses host gets null, no ping: Copilot bills each request.
  */
 export function codexKeepAlivePingParams(
   request: Pick<ResolvedProviderRequest, 'transport' | 'baseUrl'>,
   params: Record<string, unknown>,
-): Record<string, unknown> | null {
+): CodexMarkableParams | null {
   if (request.transport !== 'codex_responses') return params
   return isCodexBackendRequest(request) ? { ...params, [CODEX_HONOR_MAX_TOKENS]: true } : null
 }

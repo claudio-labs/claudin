@@ -77,6 +77,7 @@ export interface ShimCreateParams {
   top_p?: number
   tool_choice?: unknown
   metadata?: unknown
+  [CODEX_HONOR_MAX_TOKENS]?: true
   [key: string]: unknown
 }
 
@@ -664,7 +665,7 @@ export async function performCodexRequest(options: {
     Object.assign(body, codexBackendBodyFields(options.request.reasoning))
   }
 
-  // A keep-alive ping is a cache read, so it keeps its cap (codexKeepAlivePingParams).
+  // A keep-alive ping keeps its cap (codexKeepAlivePingParams).
   if (options.params[CODEX_HONOR_MAX_TOKENS] === true && isCodexBackendRequest(options.request)) {
     body.max_output_tokens = Math.max(CODEX_MIN_OUTPUT_TOKENS, Number(options.params.max_tokens) || 0)
   }

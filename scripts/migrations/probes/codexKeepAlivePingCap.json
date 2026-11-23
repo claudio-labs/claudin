@@ -8,13 +8,23 @@
   "probes": [
     {
       "name": "keep-alive ignores the transport adapter",
-      "find": "  const params = messages.keepAlivePingParams === undefined ? req.params : messages.keepAlivePingParams(req.params)\n",
-      "replace": "  const params = req.params\n"
+      "find": "  return messages.keepAlivePingParams === undefined ? req.params : messages.keepAlivePingParams(req.params)\n",
+      "replace": "  return req.params\n"
     },
     {
       "name": "keep-alive arms where the adapter offers no ping",
-      "find": "  if (params === null) return\n",
+      "find": "  if (pingParams(req) === null) return\n",
       "replace": ""
+    },
+    {
+      "name": "a ping re-sends the body decided at arm time",
+      "find": "    const params = pingParams(req)\n",
+      "replace": "    const params = req.params as Record<string, unknown> | null\n"
+    },
+    {
+      "name": "a ping the adapter no longer offers still goes out",
+      "find": "    if (params === null) {\n",
+      "replace": "    if (false) {\n"
     },
     {
       "name": "the shim client has no say in the ping",

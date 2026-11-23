@@ -17,8 +17,9 @@
  * Promoted on the 2026-10-02..09 census: 400 sub-agent prefixes expired
  * behind foreground waits (`sleep` polls on a backgrounded break-probe, long
  * test runs) and were rewritten whole — 94.8M tokens, $592 in a week. Only
- * the 5m tier is pinged, so by default that is sub-agents; the main thread
- * stays at 1h unless `CLAUDIN_MAIN_CACHE_TTL=5m` moves it.
+ * the 5m tier is pinged. On firstParty and Vertex that is sub-agents by
+ * default, the main thread staying at 1h unless `CLAUDIN_MAIN_CACHE_TTL=5m`
+ * moves it; where `should1hCacheTTL` has no 1h tier, the main thread too.
  *
  * Mechanism: `noteRequestStarted(key)` cancels any pending ping for that
  * agent; `armKeepAlive(req)` is called when a response completes and, if the
@@ -30,11 +31,11 @@
  * until the next real request. A ping that errors stops the chain for that
  * key — a 400 must never loop.
  *
- * A transport adapter whose wire drops `max_tokens` would turn that read into
- * a full generation, so its client says how to ping (`keepAlivePingParams`):
- * the Codex Responses body then carries `max_output_tokens`, and a host that
- * cannot cap gets no ping (src/providers/shims/codex/backend.ts). The
- * Anthropic SDK clients have no such method and ping exactly as above.
+ * A client whose wire would drop the floor, turning the read into a full
+ * generation, says how to ping instead: `keepAlivePingParams` returns the
+ * body to send, or null for no ping. It is asked when the chain is armed and
+ * again at every ping, since the client routes each request by the provider
+ * active then. The Anthropic SDK clients have no such method and ping as above.
  *
  * What this holds: one serialized request body per agent key, for the life
  * of the chain. `streaming.ts` deliberately frees its own copies after each
@@ -84,7 +85,7 @@ export type KeepAliveClient = {
       // `never` here the real client is assignable without a cast. The ping
       // re-sends a body the SDK already accepted once, cast at the call.
       create(body: never, opts?: { signal?: AbortSignal }): Promise<unknown>
-      /** The body to ping with, or null for no ping. */
+      /** The body to ping with now, or null for no ping; absent, the body goes as it is. */
       keepAlivePingParams?(params: Record<string, unknown>): Record<string, unknown> | null
     }
   }

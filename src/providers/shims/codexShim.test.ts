@@ -1206,13 +1206,11 @@ describe('the keep-alive output cap on the Codex backend', () => {
   test('an unmarked request stays uncapped', async () => {
     const body = await bodyFor('https://chatgpt.com/backend-api/codex', { max_tokens: 32000 })
     expect(body.max_output_tokens).toBeUndefined()
-    expect(body[CODEX_HONOR_MAX_TOKENS]).toBeUndefined()
   })
 
-  test('the mark does nothing off the Codex backend, and never reaches a wire', async () => {
+  test('the mark does nothing off the Codex backend', async () => {
     const body = await bodyFor('http://localhost:8000/v1', { max_tokens: 1, [CODEX_HONOR_MAX_TOKENS]: true })
     expect(body.max_output_tokens).toBeUndefined()
-    expect(body[CODEX_HONOR_MAX_TOKENS]).toBeUndefined()
   })
 })
 
