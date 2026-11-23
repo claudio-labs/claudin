@@ -1269,6 +1269,7 @@ describe('a keep-alive ping through the shim client', () => {
   })
 
   test('on GitHub Copilot GPT-5 nothing is armed', async () => {
+    delete process.env.OPENAI_BASE_URL
     process.env.CLAUDIN_USE_GITHUB = '1'
     process.env.OPENAI_MODEL = 'gpt-5.5'
     process.env.OPENAI_API_KEY = 'gh-key'

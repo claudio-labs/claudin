@@ -193,11 +193,13 @@ describe('cache keep-alive', () => {
     const { default: Anthropic } = await import('@anthropic-ai/sdk')
     const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
     const { AnthropicVertex } = await import('@anthropic-ai/vertex-sdk')
+    const { AnthropicFoundry } = await import('@anthropic-ai/foundry-sdk')
     const clients = [
       new Anthropic({ apiKey: 'sk-ant-test' }),
       new AnthropicBedrock({ awsRegion: 'us-east-1', awsAccessKey: 'a', awsSecretKey: 'b' }),
       // An authClient, or the constructor starts an ADC lookup that rejects in a later file.
       new AnthropicVertex({ region: 'us-east5', projectId: 'p', authClient: {} as never }),
+      new AnthropicFoundry({ resource: 'r', apiKey: 'k' }),
     ]
     for (const client of clients) {
       expect('keepAlivePingParams' in client.beta.messages).toBe(false)
