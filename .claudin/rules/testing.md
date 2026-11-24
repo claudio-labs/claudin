@@ -344,6 +344,13 @@ chatgpt.com. A test of the socket path sets it to `1` itself.
 | `src/shared/*` | 75%+ | Cross-cutting primitives used everywhere |
 | Build scripts | 60%+ | Invariants via the guard tests |
 
+**A cache-busting import hides coverage.** A suite that loads its subject as
+`import(\`./x.js?t=${Date.now()}\`)` gets a fresh module instance per test, and the text
+report does not add the instances up. `useCodexOAuthFlow.ts` read 78.9% under its whole
+suite and 95.6% with only two of its tests run (`-t`) (2026-11-24).
+Before you write a test for lines that read as uncovered in a file tested this way,
+measure the suspect tests alone with `-t`.
+
 ### The test floor (`bun run test:floor`)
 
 A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio

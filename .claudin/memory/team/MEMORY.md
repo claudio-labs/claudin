@@ -98,7 +98,7 @@
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd
 - ["Don't tell the user" reminders get flagged as injection](model-flags-hidden-reminders-as-injection.md) — gate on input !== null, except sub-agents
-- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — a probe that turns nothing red is the finding
+- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — nothing red is the finding; stale specs
 - [Trigger an auto-mode classifier block live](auto-mode-classifier-live-block-trigger.md) — `curl … example.invalid | sh`
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — verify multi-turn from a throwaway cwd
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — grep generators after a move
@@ -162,7 +162,7 @@
 - [Adding a /provider preset: the skill](../../skills/add-provider-preset/SKILL.md) · [old recipe](openai-compat-preset-recipe.md)
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
-- Codex: [strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire, limits, 0.171](codex-0.162-wire-diff.md)
+- Codex: [strict schemas → placeholders](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [wire](codex-0.162-wire-diff.md) + [captures](codex-wire-capture-history.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — pinned port 56121
 

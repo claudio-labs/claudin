@@ -48,3 +48,14 @@ genuinely **unreachable** lines, which are a documentation job, not a test defec
 (the 09-20 examples are in [[tier3-file-split-history]]).
 
 **Trap (2026-10-10):** a `replace` that leaves a syntax error (deleting the `if` before an `else`) can hang `bun test` instead of failing it, and break-probe has no timeout: the run sat 20 min until the child was killed by hand. Keep every replacement parseable (`if (x) void 0`, not an empty line), and wrap long runs in `timeout`.
+
+**Stale specs on main (2026-11-24).** Re-running the 11 specs that read the Codex catalog,
+effort and context files found 5 probes refused, all already stale on `main`:
+- `codexReasoningReplay` "KEEP: the render rebuilds a call without its backend id" (`normalize.ts`)
+- `haiku55` "max output: haiku 5.5 falls to 32K"
+- `sonnet55` "max output…" and "block binding…"
+- `inheritedBugs20261023` "P5…", whose `find` matches twice in `openaiContextWindows.ts`
+
+A refused probe prints `?` and the spec never reaches its "every probe met its
+expectation" line, so read the tail of each run rather than its exit status. Repoint one by
+copying the current line, the way `feat/codex-gpt-6-models` did for the five it moved.

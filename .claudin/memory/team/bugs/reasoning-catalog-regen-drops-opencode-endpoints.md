@@ -22,3 +22,10 @@ byte-identical to what the generator emits, so the next full regen leaves them u
 presets should move to `/inference/`. Either repoint the presets or keep the old rows as extra endpoints.
 Until then, add a new model as its generator-identical row and say so in the commit. Related:
 [[opencode-gateway-effort-dead-on-arrival]].
+
+**"Generator-identical" is per line, not per file (2026-11-24).** Re-emitting the vendored data with the
+generator's own `emit()` does not reproduce `reasoningCatalogData.ts`: the hand-added `claude-*-5-5@default`
+rows in `google-vertex` sit after `5@default`, where a code-unit sort puts them before. So the 36 gpt-6.x
+rows (`feat/codex-gpt-6-models`) went in by inserting each line, in the generator's format, at its sorted
+place inside its provider block, leaving every existing line alone: 36 insertions, 0 deletions. The rows
+to add come from `trimModelsDevCatalog` over a downloaded `api.json`, filtered to the new ids.
