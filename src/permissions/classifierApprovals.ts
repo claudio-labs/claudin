@@ -7,9 +7,8 @@ import { feature } from 'bun:bundle'
 import { createSignal } from 'src/shared/signal.js'
 
 type ClassifierApproval = {
-  classifier: 'bash' | 'auto-mode'
+  classifier: 'bash'
   matchedRule?: string
-  reason?: string
 }
 
 const CLASSIFIER_APPROVALS = new Map<string, ClassifierApproval>()
@@ -36,27 +35,6 @@ export function getClassifierApproval(toolUseID: string): string | undefined {
   const approval = CLASSIFIER_APPROVALS.get(toolUseID)
   if (!approval || approval.classifier !== 'bash') return undefined
   return approval.matchedRule
-}
-
-export function setYoloClassifierApproval(
-  toolUseID: string,
-  reason: string,
-): void {
-  if (!feature('TRANSCRIPT_CLASSIFIER')) {
-    return
-  }
-  CLASSIFIER_APPROVALS.set(toolUseID, { classifier: 'auto-mode', reason })
-}
-
-export function getYoloClassifierApproval(
-  toolUseID: string,
-): string | undefined {
-  if (!feature('TRANSCRIPT_CLASSIFIER')) {
-    return undefined
-  }
-  const approval = CLASSIFIER_APPROVALS.get(toolUseID)
-  if (!approval || approval.classifier !== 'auto-mode') return undefined
-  return approval.reason
 }
 
 export function setClassifierChecking(toolUseID: string): void {
