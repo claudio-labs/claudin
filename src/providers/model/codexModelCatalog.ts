@@ -14,13 +14,14 @@
  * A ChatGPT account on the Codex backend gets its own list, with windows below
  * the API's: what `GET /backend-api/codex/models?client_version=…` answers for
  * that account and plan (gpt-6.2-sol and gpt-6.2-astra are paid plans only).
- * The `account` records here are the copy of that catalog Codex CLI 0.172.0
- * bundles: per model, the window (the Codex CLI compacts at 95% of it), the
- * effort levels and the default effort. They are read only when the session
- * is on the Codex backend: the picker, the context window and the effort. A
- * model the account does not offer answers 400 "not supported when using
- * Codex with a ChatGPT account". The 128k of output is the API's too, so
- * `contextOutput` covers it.
+ * codexModelRefresh.ts fetches it and hands it to setCodexAccountModels; until
+ * then, offline or when the fetch fails, the `account` records here stand in.
+ * They are the copy of that catalog Codex CLI 0.172.0 bundles: per model, the
+ * window (the Codex CLI compacts at 95% of it), the effort levels and the
+ * default effort. Either list is read only when the session is on the Codex
+ * backend: the picker, the context window and the effort. A model the account
+ * does not offer answers 400 "not supported when using Codex with a ChatGPT
+ * account". The 128k of output is the API's too, so `contextOutput` covers it.
  */
 import type { ReasoningEffort } from 'src/providers/presets/providerConfig.js'
 
@@ -256,14 +257,27 @@ export function getFilteredCodexCatalog(): CodexModelEntry[] {
   )
 }
 
+// The account's own list, once fetched. While set it is the only answer: a
+// model it does not list gets the API's numbers, like one the snapshot lacks.
+let accountModels: readonly CodexModelEntry[] | null = null
+
+/** The account's list as fetched, every entry with its `account` record; null restores the snapshot. */
+export function setCodexAccountModels(entries: readonly CodexModelEntry[] | null): void {
+  accountModels = entries
+}
+
+function accountCatalog(): readonly CodexModelEntry[] {
+  return accountModels ?? CODEX_MODEL_CATALOG.filter(entry => entry.account !== undefined)
+}
+
 /** What a ChatGPT account offers on the Codex backend, in picker order. */
 export function getCodexAccountCatalog(): CodexModelEntry[] {
-  return CODEX_MODEL_CATALOG.filter(entry => entry.account !== undefined)
+  return [...accountCatalog()]
 }
 
 /** The limits a ChatGPT account gives this model on the Codex backend, if it offers it. */
 export function getCodexAccountLimits(model: string): CodexAccountLimits | undefined {
-  return CODEX_MODEL_CATALOG.find(entry => entry.id === model)?.account
+  return accountCatalog().find(entry => entry.id === model)?.account
 }
 
 

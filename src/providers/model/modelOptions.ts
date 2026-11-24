@@ -460,7 +460,7 @@ function getCodexPlanOption(): ModelOption {
   return {
     value: CODEX_DEFAULT_MODEL,
     label: CODEX_DEFAULT_MODEL,
-    description: 'GPT-6 Luna on the Codex backend, the Codex CLI default',
+    description: 'GPT-6 Luna on the Codex backend, offered on the free plan too',
   }
 }
 

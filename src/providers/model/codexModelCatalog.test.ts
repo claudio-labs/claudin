@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import {
   CODEX_CONTEXT_WINDOWS,
   CODEX_DEFAULT_MODEL,
@@ -8,6 +8,7 @@ import {
   getCodexAccountLimits,
   getFilteredCodexCatalog,
   isCodexModelAllowed,
+  setCodexAccountModels,
 } from 'src/providers/model/codexModelCatalog.js'
 
 describe('codexModelCatalog — the pro rule (opencode parity)', () => {
@@ -130,5 +131,53 @@ describe('codexModelCatalog — the ChatGPT account snapshot', () => {
     expect(CODEX_MAX_OUTPUT_TOKENS['gpt-6-luna']).toBe(128_000)
     // The API numbers of the shared models do not move.
     expect(CODEX_CONTEXT_WINDOWS['gpt-5.6-terra']).toBe(1_050_000)
+  })
+})
+
+// The list GET /codex/models answers for the account, once fetched.
+describe('codexModelCatalog — the account list as fetched', () => {
+  afterEach(() => setCodexAccountModels(null))
+
+  const FREE_PLAN = [
+    {
+      id: 'gpt-6-luna',
+      label: 'gpt-6-luna',
+      description: 'Fast and affordable model for easier tasks.',
+      account: { contextWindow: 272_000, effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium' },
+    },
+    {
+      id: 'gpt-5.6-terra',
+      label: 'gpt-5.6-terra',
+      description: 'Legacy balanced model for agentic coding.',
+      account: { contextWindow: 200_000, effortLevels: ['low', 'high'], defaultEffort: 'high' },
+    },
+  ] as const
+
+  test('replaces the snapshot: the picker and the limits come from it', () => {
+    setCodexAccountModels(FREE_PLAN)
+    expect(getCodexAccountCatalog().map(entry => entry.id)).toEqual(['gpt-6-luna', 'gpt-5.6-terra'])
+    expect(getCodexAccountLimits('gpt-5.6-terra')).toEqual({
+      contextWindow: 200_000,
+      effortLevels: ['low', 'high'],
+      defaultEffort: 'high',
+    })
+  })
+
+  test('a model the snapshot lists but the account does not gets no account limits', () => {
+    setCodexAccountModels(FREE_PLAN)
+    expect(getCodexAccountLimits('gpt-6.2-sol')).toBeUndefined()
+  })
+
+  test('cleared, the snapshot answers again', () => {
+    setCodexAccountModels(FREE_PLAN)
+    setCodexAccountModels(null)
+    expect(getCodexAccountLimits('gpt-6.2-sol')?.contextWindow).toBe(500_000)
+    expect(getCodexAccountCatalog()).toHaveLength(11)
+  })
+
+  test('the API numbers stay the snapshot\'s, whatever the account lists', () => {
+    setCodexAccountModels(FREE_PLAN)
+    expect(CODEX_CONTEXT_WINDOWS['gpt-5.6-terra']).toBe(1_050_000)
+    expect(getFilteredCodexCatalog().map(entry => entry.id)).toContain('gpt-6.2-sol')
   })
 })

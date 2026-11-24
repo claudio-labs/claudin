@@ -6,6 +6,7 @@ import {
 } from 'src/providers/oauth/codexOAuth.js'
 import { openBrowser } from 'src/shared/browser.js'
 import { saveCodexCredentials } from 'src/providers/oauth/codexCredentials.js'
+import { prefetchCodexAccountModels } from 'src/providers/model/codexModelRefresh.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 
 export type CodexOAuthFlowStatus =
@@ -32,6 +33,7 @@ type CodexOAuthFlowDependencies = {
   openBrowser?: typeof openBrowser
   saveCodexCredentials?: typeof saveCodexCredentials
   isBareMode?: typeof isBareMode
+  prefetchCodexAccountModels?: typeof prefetchCodexAccountModels
 }
 
 function createDefaultOAuthService(): Pick<
@@ -55,6 +57,8 @@ export function useCodexOAuthFlow(options: {
   const saveCredentials =
     options.deps?.saveCodexCredentials ?? saveCodexCredentials
   const isBareModeFn = options.deps?.isBareMode ?? isBareMode
+  const prefetchAccountModels =
+    options.deps?.prefetchCodexAccountModels ?? prefetchCodexAccountModels
   const [status, setStatus] = React.useState<CodexOAuthFlowStatus>({
     state: 'starting',
   })
@@ -109,6 +113,8 @@ export function useCodexOAuthFlow(options: {
         }
 
         await onAuthenticated(tokens, persistCredentials)
+        // The account may differ from the one the list was fetched for.
+        void prefetchAccountModels({ force: true })
       })
       .catch(error => {
         if (cancelled) return
@@ -127,6 +133,7 @@ export function useCodexOAuthFlow(options: {
     isBareModeFn,
     onAuthenticated,
     openBrowserFn,
+    prefetchAccountModels,
     saveCredentials,
   ])
 

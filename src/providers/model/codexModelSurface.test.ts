@@ -10,6 +10,8 @@
  * here is the one tryGetActiveProvider resolves. No module is mocked.
  */
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { getCacheProfile, _resetCacheProfileForTesting } from 'src/agent/cache/cacheProfile.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
@@ -18,7 +20,11 @@ import {
   saveGlobalConfig,
   type ProviderProfile,
 } from 'src/platform/config/config.js'
-import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
+import {
+  CODEX_DEFAULT_MODEL,
+  setCodexAccountModels,
+  type CodexModelEntry,
+} from 'src/providers/model/codexModelCatalog.js'
 import { ALL_MODEL_CONFIGS } from 'src/providers/model/configs.js'
 import {
   getDefaultHaikuModel,
@@ -60,6 +66,7 @@ function useProfile(profile: ProviderProfile): void {
 }
 
 afterEach(() => {
+  setCodexAccountModels(null)
   resetGlobalConfigForTests()
   invalidateActiveProviderCache()
 })
@@ -158,6 +165,73 @@ describe('a Codex OAuth profile', () => {
     useProfile(CODEX_OAUTH)
     expect(getAvailableEffortLevels('codexplan')).toEqual(getAvailableEffortLevels('gpt-6-luna'))
     expect(resolveAppliedEffort('codexplan', 'max')).toBe('max')
+  })
+})
+
+const LOW_TO_MAX = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+
+function accountModel(id: string, contextWindow: number, defaultEffort: 'low' | 'medium'): CodexModelEntry {
+  return { id, label: id, description: id, account: { contextWindow, effortLevels: LOW_TO_MAX, defaultEffort } }
+}
+
+// What GET /codex/models answered each plan (codexModelRefresh.ts puts it in
+// the catalog). The free plan's is the 2026-11-24 answer.
+const FREE_PLAN = [
+  accountModel('gpt-6-luna', 272_000, 'medium'),
+  accountModel('gpt-5.6-terra', 272_000, 'medium'),
+  accountModel('gpt-5.6-luna', 272_000, 'medium'),
+]
+const PAID_PLAN = [
+  accountModel('gpt-6.2-sol', 500_000, 'low'),
+  accountModel('gpt-6.2-astra', 272_000, 'low'),
+  accountModel('gpt-6.1-terra', 500_000, 'low'),
+  ...FREE_PLAN,
+]
+
+describe('a Codex OAuth profile with the account list fetched', () => {
+  test('the free plan lists its three models, as before the fetch existed', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels(FREE_PLAN)
+    expect(getModelOptions(false).map(option => option.value)).toEqual([
+      null,
+      'gpt-6-luna',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+      'codexplan',
+    ])
+  })
+
+  test('a paid plan lists the gpt-6.x models with their windows and levels', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels(PAID_PLAN)
+    expect(getModelOptions(false).map(option => option.value).slice(1, 4)).toEqual([
+      'gpt-6.2-sol',
+      'gpt-6.2-astra',
+      'gpt-6.1-terra',
+    ])
+    expect(getContextWindowForModel('gpt-6.2-sol')).toBe(500_000)
+    expect(getContextWindowForModel('gpt-6.2-astra')).toBe(272_000)
+    expect(resolveActiveShimEffortValues('gpt-6.2-sol')).toEqual(LOW_TO_MAX)
+    expect(getAvailableEffortLevels('gpt-6.1-terra')).toEqual([...LOW_TO_MAX])
+  })
+
+  test('a model the account does not list gets the API numbers, as before', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels(FREE_PLAN)
+    expect(getOpenAIContextWindow('gpt-6.2-sol')).toBe(1_050_000)
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
+  })
+
+  test('off the Codex backend the account list is not read', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy-list', baseUrl: 'http://localhost:8000/v1' })
+    setCodexAccountModels(PAID_PLAN)
+    expect(getContextWindowForModel('gpt-6.2-sol')).toBe(1_050_000)
+    expect(getModelOptions(false).map(option => option.value)).toEqual([null, 'codexplan'])
+  })
+
+  test('the codexplan row says where gpt-6-luna is offered, not that it is the Codex CLI default', () => {
+    const source = readFileSync(join(import.meta.dir, 'modelOptions.ts'), 'utf8')
+    expect(source).toContain("description: 'GPT-6 Luna on the Codex backend, offered on the free plan too',")
   })
 })
 

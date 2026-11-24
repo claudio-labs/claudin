@@ -43,6 +43,7 @@ import { isInBundledMode } from 'src/platform/install/bundledMode.js';
 import { createUserMessage } from 'src/agent/messages/messages.js';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js';
+import { prefetchCodexAccountModels } from 'src/providers/model/codexModelRefresh.js';
 import { prefetchOllamaModels } from 'src/providers/model/ollamaModels.js';
 import { prefetchOpenAICompatibleModels } from 'src/providers/model/openaiModelDiscovery.js';
 import { refreshGeminiModelOptions } from 'src/providers/shims/gemini/models.js';
@@ -134,6 +135,8 @@ export async function runPostHeadlessGuards(
   void refreshGeminiModelOptions();
   // Prefetch the live Copilot model catalog (no-op unless github_copilot is active)
   prefetchCopilotModelCatalog();
+  // The ChatGPT account's own model list (no-op unless on the Codex backend)
+  void prefetchCodexAccountModels();
 
   if (!skipStartupPrefetches) {
     logForDebugging('Starting background startup prefetches');
