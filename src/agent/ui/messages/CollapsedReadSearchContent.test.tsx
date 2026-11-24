@@ -323,6 +323,21 @@ describe('CollapsedReadSearchContent — recalled memories', () => {
     }
   })
 
+  test('a group of nothing but recalls has no blank row above its Loaded line', async () => {
+    // The group's top margin separates a badge from what precedes it. With no
+    // badge it left a gap between this line and an attachment's Loaded line
+    // (memory index, rules) right above, which sit flush with no margin.
+    const out = await render({ memoryOps: { private: ops({ read: 1 }) } })
+    expect(out.split('\n')[0]).toContain('⎿  Loaded 1 private memory')
+  })
+
+  test('a group with a badge keeps its blank row above', async () => {
+    const out = await render({ readCount: 2, memoryOps: { private: ops({ read: 1 }) } })
+    const lines = out.split('\n')
+    expect(lines[0]!.trim()).toBe('')
+    expect(lines[1]).toContain('Read 2 files')
+  })
+
   test('the Loaded line sits below the badge, and only one expand hint shows', async () => {
     const lines = (await render({ readCount: 2, memoryOps: { private: ops({ read: 1 }) } }))
       .split('\n')
