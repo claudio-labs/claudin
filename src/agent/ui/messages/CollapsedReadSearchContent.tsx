@@ -538,9 +538,10 @@ export function CollapsedReadSearchContent({
   // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
   // so a group of nothing but recalls has no badge left to render. The
   // "Loaded …" line stands on its own then, exactly as a rules line does, and
-  // takes over the expand hint the badge would have carried.
+  // takes over the expand hint the badge would have carried — and drops the
+  // badge's top margin, so it sits flush under an attachment's Loaded line.
   const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0;
-  return <Box flexDirection="column" marginTop={1} backgroundColor={bg}>
+  return <Box flexDirection="column" marginTop={hasBadgeParts ? 1 : 0} backgroundColor={bg}>
       {hasBadgeParts && <Box flexDirection="row">
         {isActiveGroup ? <ToolUseLoader shouldAnimate isUnresolved isError={anyError} /> : <Box minWidth={2} />}
         <Text dimColor={!isActiveGroup}>
