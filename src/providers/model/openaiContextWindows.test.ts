@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
 // Control the value getOpenAIContextWindow reads from the provider's /models
 // discovery, keeping every other export real. afterAll puts the real module
@@ -17,7 +17,82 @@ afterAll(() => {
 
 // Imported after the mock is registered. getOpenAIContextWindow only requires
 // the discovery module lazily, so the mock is in place before the first call.
-import { getOpenAIContextWindow } from 'src/providers/model/openaiContextWindows.ts'
+import {
+  getOpenAIContextWindow,
+  getOpenAIMaxOutputTokens,
+} from 'src/providers/model/openaiContextWindows.ts'
+import {
+  resetGlobalConfigForTests,
+  saveGlobalConfig,
+  type ProviderProfile,
+} from 'src/platform/config/config.js'
+import {
+  _setCopilotCatalogForTesting,
+  getCatalogCopilotContextWindow,
+} from 'src/providers/model/copilotModelCatalog.js'
+import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
+
+const COPILOT: ProviderProfile = {
+  id: 'windows-copilot',
+  name: 'Copilot',
+  provider: 'openai',
+  baseUrl: 'https://api.githubcopilot.com',
+  model: 'gpt-5.6-sol',
+  extras: { githubToken: 'gh-windows' },
+}
+
+describe('getOpenAIContextWindow — the live Copilot catalog', () => {
+  afterEach(() => {
+    _setCopilotCatalogForTesting(null)
+    resetGlobalConfigForTests()
+    invalidateActiveProviderCache()
+  })
+
+  // gpt-5.6-sol is 1.05M in the bare table (the OpenAI API's window). The
+  // account's catalog is what Copilot actually serves, and it is smaller.
+  test('wins over the bare table for the model Copilot serves', () => {
+    saveGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [COPILOT],
+      activeProviderProfileId: COPILOT.id,
+    }))
+    invalidateActiveProviderCache()
+    _setCopilotCatalogForTesting([
+      {
+        model: {
+          id: 'gpt-5.6-sol',
+          name: 'GPT-5.6 Sol',
+          family: 'gpt',
+          attachment: false,
+          reasoning: true,
+          tool_call: true,
+          temperature: false,
+          knowledge: '',
+          release_date: '',
+          last_updated: '',
+          modalities: { input: ['text'], output: ['text'] },
+          open_weights: false,
+          cost: { input: 0, output: 0 },
+          limit: { context: 400_000, output: 64_000 },
+        },
+        supportedEndpoints: ['/responses'],
+        pickerEnabled: true,
+      },
+    ])
+    mockDiscovered = undefined
+    // Precondition: the seeded catalog answers for this profile.
+    expect(getCatalogCopilotContextWindow('gpt-5.6-sol')).toBe(400_000)
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(400_000)
+    expect(getOpenAIMaxOutputTokens('gpt-5.6-sol')).toBe(64_000)
+  })
+
+  test('answers nothing once Copilot is not the active provider', () => {
+    // No Copilot profile: the bare table, as before.
+    mockDiscovered = undefined
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
+    expect(getOpenAIMaxOutputTokens('gpt-5.6-sol')).toBe(128_000)
+  })
+})
 
 describe('getOpenAIContextWindow — discovery precedence', () => {
   test('prefers the provider-reported window over the hardcoded table', () => {
