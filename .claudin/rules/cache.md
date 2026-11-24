@@ -448,6 +448,21 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   subscription quota's weighting of a ping is still unmeasured — accepted,
   `docs/tech/cache/keep-alive.md`. The control arm of both probes
   (`cache-keepalive-probe.ts`, `ttl-wait-probe.ts`) sets `=0`.
+- **"Only the 5m tier" means every provider but firstParty/vertex** (and
+  Bedrock under `ENABLE_PROMPT_CACHING_1H_BEDROCK`), since `should1hCacheTTL`
+  is false there, and the ping is a floor read only where `max_tokens` reaches
+  the wire. The Responses body drops it, so a Codex or Copilot GPT-5+ ping used
+  to be a full generation. A transport adapter now says how to ping
+  (`keepAlivePingParams` on the shim client, `src/providers/shims/codex/backend.ts`),
+  asked at arm time and again at every ping, since a `/provider` switch
+  re-routes the chain's body:
+  - the ChatGPT Codex backend sends `max_output_tokens` (floor 16);
+  - any other Responses host gets no ping;
+  - an Anthropic SDK client has no such method and pings as before
+    (pinned in `keepAlive.test.ts`).
+
+  A new transport whose wire ignores `max_tokens` needs the same method, or
+  its pings generate.
 - Slim-subagent: `omitClaudeMdAttachments`/`omitGitStatusAttachments` on
   ToolUseContext gate `claude_md_delta`/`nested_memory`/`git_status_delta` in
   `pipeline.ts`. New attachment producers read globals and

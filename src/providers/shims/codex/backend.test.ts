@@ -9,6 +9,8 @@ import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvi
 import {
   activeSessionOnCodexBackend,
   activeSessionReplaysCodexItems,
+  CODEX_HONOR_MAX_TOKENS,
+  codexKeepAlivePingParams,
   codexReplayActive,
   codexBackendBodyFields,
   codexStateToKeep,
@@ -72,6 +74,27 @@ describe('which requests go to the Codex backend', () => {
     process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
     expect(codexReplayActive({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL })).toBe(false)
     expect(isCodexBackendRequest({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL })).toBe(true)
+  })
+})
+
+describe('the keep-alive ping on the Responses path', () => {
+  const params = { model: 'gpt-5.6-terra', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }
+
+  test('the Codex backend pings with the body marked to keep its output cap', () => {
+    const ping = codexKeepAlivePingParams({ transport: 'codex_responses', baseUrl: CODEX_BASE_URL }, params)
+    expect(ping).toMatchObject(params)
+    expect(ping?.[CODEX_HONOR_MAX_TOKENS]).toBe(true)
+    // The mark is a symbol: it rides every spread and never serializes.
+    expect(JSON.parse(JSON.stringify(ping))).toEqual(params)
+  })
+
+  test('another Responses host is not pinged: its body has no cap, and Copilot bills each request', () => {
+    expect(codexKeepAlivePingParams({ transport: 'codex_responses', baseUrl: 'https://api.githubcopilot.com' }, params)).toBeNull()
+    expect(codexKeepAlivePingParams({ transport: 'codex_responses', baseUrl: 'http://localhost:8000/v1' }, params)).toBeNull()
+  })
+
+  test('Chat Completions keeps the body it already caps', () => {
+    expect(codexKeepAlivePingParams({ transport: 'chat_completions', baseUrl: 'https://api.openai.com/v1' }, params)).toBe(params)
   })
 })
 

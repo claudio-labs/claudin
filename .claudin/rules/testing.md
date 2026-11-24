@@ -514,6 +514,10 @@ launcher runs the bundle.
 > run. `renderModelName` then stopped mapping Claude ids. Fixed by taking a
 > plain-object copy; the suite is **0 fail** in a real checkout. Treat any
 > revival of those two names as a real leak, not as this flake.
+> They revived on 2026-11-23 (#362) through a second leak: `activeProvider.ts`
+> caches what `tryGetActiveProvider()` resolved, so a non-Anthropic profile an
+> earlier file left cached beat the Anthropic one the suite mocks. The suite
+> now calls `invalidateActiveProviderCache()` after each profile mock.
 
 In a **git worktree with symlinked `node_modules`** (e.g. `/tmp/...` review
   worktrees): 9 fails — the effort-cycling batch ("Opus 4.8 steps xhigh →
@@ -631,7 +635,11 @@ To reproduce an order-dependent failure locally, take CI's file order from
 will not show it. Passing the files as arguments in that order is not enough:
 bun 1.3 runs them in its own order whatever the argument order (#327 stayed
 green both ways). Copy the victim to a path that sorts after the leaker
-(`src/…/zz/victim.test.ts`) and run the pair.
+(`src/…/zz/victim.test.ts`) and run the pair. CI's order is not stable even
+for an unchanged file set — two #362 runs over the same 1214 files ordered
+them differently — so a leak that predates a PR can go red on it. The console
+prints only files with output; `--reporter=junit --reporter-outfile=<f>` shows
+the order bun actually used.
 
 That comparison has to be **in the same directory**, and it has to be the full
 suite, because a third class of failure hides between the two: a test that reads
