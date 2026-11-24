@@ -110,6 +110,13 @@ describe('lookupReasoningEffortValues', () => {
     expect(lookupReasoningEffortValues(GO, 'minimax-m3')).toBeUndefined()
   })
 
+  test('glm-5.4 on the Z.AI coding plan takes low/high/max', () => {
+    // Launched on the coding plan alone (2026-11-23), with glm-5.3's ladder.
+    expect(
+      lookupReasoningEffortValues('https://api.z.ai/api/coding/paas/v4', 'glm-5.4'),
+    ).toEqual(['low', 'high', 'max'])
+  })
+
   test('ignores a ?reasoning= descriptor suffix on the model name', () => {
     expect(lookupReasoningEffortValues(GO, 'glm-5.3-flash?reasoning=high')).toEqual([
       'low',

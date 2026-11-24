@@ -9,7 +9,7 @@
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
 - [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
 - [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS)
-- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%; window budget + lag on 11-12
+- [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%
 - [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree
@@ -54,8 +54,8 @@
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — cost 4–17% more
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
-- [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md) — the other levers stay opt-in
-- [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, call forms](decisions/tool-repeat-calls.md) — forms kept inside placebo noise
+- [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md)
+- [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, call forms](decisions/tool-repeat-calls.md)
 - [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — both with killswitches
 - [@opentelemetry/api bundled, not external (10-19)](decisions/opentelemetry-devdep-stubbed.md) — external crashed the binary
 
@@ -71,6 +71,7 @@
 - Latent bugs pinned, not fixed: [09-20 sleep N, rules resurrect](bugs/latent-bugs-pinned-not-fixed.md) · [WebSocket 10-17](bugs/websocket-sites-latent-bugs.md) · [providers 11-12](bugs/latent-bugs-pinned-2026-11-12.md)
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — reconcile, cache GC, migrate rerun
 - [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — Cloudflare block
+- [Catalog regen drops OpenCode zen/ rows](bugs/reasoning-catalog-regen-drops-opencode-endpoints.md) — add rows by hand
 - [/diff canonicalizes worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md)
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run alone
@@ -180,7 +181,7 @@
 - [main's GitHub ruleset](main-branch-ruleset-protection.md) — admin bypass; an empty include made it inert
 
 ## TUI / diff / tooling
-- [Inline shrink anchoring: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md) — it stacked @-list ghost rows
+- [Inline shrink anchoring: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md)
 - [Auto-wrap eats a row (side-panel checkerboard)](ink-autowrap-eats-a-row.md) — DECAWM off per paint
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/
 - Bash filter: [collapseRuns+blank-strip safe, no marker-on-blank](bashfilter-collapseruns-blankstrip-footgun.md) · [fixtures keep byte length](bashfilter-fixtures-byte-length-sensitive.md) · [one sample dir](bash-filter-sample-corpus-unified.md)

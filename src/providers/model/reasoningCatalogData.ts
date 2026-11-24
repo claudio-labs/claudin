@@ -500,6 +500,7 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
     'glm-5.3': ['low', 'high', 'max'],
     'glm-5.3-flash': ['low', 'high', 'max'],
     'glm-5.3-highspeed': ['low', 'high', 'max'],
+    'glm-5.4': ['low', 'high', 'max'],
   },
   'zhipuai': {
     'glm-5.2': ['high', 'max'],
@@ -511,5 +512,6 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
     'glm-5.3': ['low', 'high', 'max'],
     'glm-5.3-flash': ['low', 'high', 'max'],
     'glm-5.3-highspeed': ['low', 'high', 'max'],
+    'glm-5.4': ['low', 'high', 'max'],
   },
 }
