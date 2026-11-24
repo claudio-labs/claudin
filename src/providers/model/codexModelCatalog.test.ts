@@ -66,24 +66,62 @@ describe('codexModelCatalog — picker + derived maps', () => {
   })
 })
 
-// What a ChatGPT account offers on the Codex backend (its own catalog,
-// 2026-10-16): three models, 272k of window, 128k of output.
-describe('codexModelCatalog — the ChatGPT account', () => {
-  test('codexplan names the Codex CLI default, and it leads the account list', () => {
+// What a ChatGPT account offers on the Codex backend, as the copy of its
+// catalog Codex CLI 0.172.0 bundles: priority order, 128k of output.
+describe('codexModelCatalog — the ChatGPT account snapshot', () => {
+  const ACCOUNT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+
+  test('codexplan names gpt-6-luna, and the snapshot lists the bundled models in priority order', () => {
     expect(CODEX_DEFAULT_MODEL).toBe('gpt-6-luna')
-    expect(getCodexAccountCatalog().map(entry => entry.id)).toEqual(['gpt-6-luna', 'gpt-5.6-terra', 'gpt-5.6-luna'])
+    expect(getCodexAccountCatalog().map(entry => entry.id)).toEqual([
+      'gpt-6.2-sol',
+      'gpt-6.2-astra',
+      'gpt-6.1-terra',
+      'gpt-6.1-sol',
+      'gpt-6-astra',
+      'gpt-6-sol',
+      'gpt-6-luna',
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+      'gpt-5.5',
+    ])
   })
 
-  test('account limits for the account models only', () => {
-    for (const id of ['gpt-6-luna', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
-      expect(getCodexAccountLimits(id)).toEqual({
-        contextWindow: 272_000,
-        effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
-      })
-    }
-    expect(getCodexAccountLimits('gpt-5.6-sol')).toBeUndefined()
-    expect(getCodexAccountLimits('gpt-5.5')).toBeUndefined()
+  test.each([
+    ['gpt-6.2-sol', 500_000, 'low'],
+    ['gpt-6.2-astra', 272_000, 'low'],
+    ['gpt-6.1-terra', 500_000, 'low'],
+    ['gpt-6.1-sol', 500_000, 'low'],
+    ['gpt-6-astra', 272_000, 'low'],
+    ['gpt-6-sol', 272_000, 'medium'],
+    ['gpt-6-luna', 272_000, 'medium'],
+    ['gpt-5.6-sol', 272_000, 'low'],
+    ['gpt-5.6-terra', 272_000, 'medium'],
+    ['gpt-5.6-luna', 272_000, 'medium'],
+  ] as const)('%s: a %d window, low to max, %s by default', (id, contextWindow, defaultEffort) => {
+    expect(getCodexAccountLimits(id)).toEqual({ contextWindow, effortLevels: ACCOUNT_LEVELS, defaultEffort })
+  })
+
+  test('gpt-5.5 stops at xhigh, as its catalog entry does', () => {
+    expect(getCodexAccountLimits('gpt-5.5')).toEqual({
+      contextWindow: 272_000,
+      effortLevels: ['low', 'medium', 'high', 'xhigh'],
+      defaultEffort: 'medium',
+    })
+  })
+
+  test('a model the account catalog does not list has no account limits', () => {
+    expect(getCodexAccountLimits('gpt-5.4')).toBeUndefined()
     expect(getCodexAccountLimits('unknown')).toBeUndefined()
+  })
+
+  test('the gpt-6.x models carry the API windows for API-key use', () => {
+    for (const id of ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol']) {
+      expect(CODEX_CONTEXT_WINDOWS[id]).toBe(1_050_000)
+      expect(CODEX_MAX_OUTPUT_TOKENS[id]).toBe(128_000)
+      expect(getFilteredCodexCatalog().map(entry => entry.id)).toContain(id)
+    }
   })
 
   test('the account-only model stays out of the API list, with the account limits in the tables', () => {

@@ -86,13 +86,21 @@ describe('a Codex OAuth profile', () => {
     expect(getDefaultMainLoopModel()).toBe('gpt-6-luna')
   })
 
-  test("the /model picker lists what the ChatGPT account offers, and the profile's own model", () => {
+  test("the /model picker lists the account snapshot, and the profile's own model", () => {
     useProfile(CODEX_OAUTH)
     expect(getModelOptions(false).map(option => option.value)).toEqual([
       null,
+      'gpt-6.2-sol',
+      'gpt-6.2-astra',
+      'gpt-6.1-terra',
+      'gpt-6.1-sol',
+      'gpt-6-astra',
+      'gpt-6-sol',
       'gpt-6-luna',
+      'gpt-5.6-sol',
       'gpt-5.6-terra',
       'gpt-5.6-luna',
+      'gpt-5.5',
       'codexplan',
     ])
   })
@@ -120,8 +128,10 @@ describe('a Codex OAuth profile', () => {
     expect(getOpenAIContextWindow('gpt-5.6-luna')).toBe(272_000)
     expect(getOpenAIMaxOutputTokens('gpt-6-luna')).toBe(128_000)
     expect(getContextWindowForModel('gpt-5.6-terra')).toBe(272_000)
+    expect(getOpenAIContextWindow('gpt-6.2-sol')).toBe(500_000)
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(272_000)
     // Not offered to the account: the API's numbers, as before.
-    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
+    expect(getOpenAIContextWindow('gpt-5.4')).toBe(1_050_000)
   })
 
   test("effort levels: the account's, up to max, for every model it offers", () => {
@@ -130,9 +140,10 @@ describe('a Codex OAuth profile', () => {
     expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-6-luna')).toEqual(account)
     expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-terra')).toEqual(account)
     expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-luna')).toEqual(account)
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-6.2-sol')).toEqual(account)
     expect(resolveActiveShimEffortValues('gpt-6-luna')).toEqual(account)
     // A model the account does not offer keeps the GPT-5 family list.
-    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-sol')).toEqual(['low', 'medium', 'high', 'xhigh'])
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.4')).toEqual(['low', 'medium', 'high', 'xhigh'])
   })
 
   test('max is offered by /effort and goes out unchanged, not downgraded to high', () => {
@@ -140,7 +151,7 @@ describe('a Codex OAuth profile', () => {
     expect(getAvailableEffortLevels('gpt-6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
     expect(resolveAppliedEffort('gpt-6-luna', 'max')).toBe('max')
     // Not an account model: max is still downgraded, as before.
-    expect(resolveAppliedEffort('gpt-5.6-sol', 'max')).toBe('high')
+    expect(resolveAppliedEffort('gpt-5.4', 'max')).toBe('high')
   })
 
   test('the codexplan row of /model offers what the model it names offers', () => {
