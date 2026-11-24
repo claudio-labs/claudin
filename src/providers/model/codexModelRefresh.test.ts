@@ -232,7 +232,8 @@ describe('fetchCodexAccountModels', () => {
   })
 
   test.each([
-    ['an error status', () => json({ detail: 'no' }, 400)],
+    // A list body on purpose: only the status says not to take it.
+    ['an error status', () => json(FREE_PLAN_RESPONSE, 500)],
     ['a body that is not the list', () => json({ data: [] })],
     ['an empty list', () => json({ models: [] })],
     ['a failed request', () => Promise.reject(new Error('offline'))],

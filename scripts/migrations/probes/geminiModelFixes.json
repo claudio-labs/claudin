@@ -10,13 +10,13 @@
   "probes": [
     {
       "name": "an unlisted Gemini falls back to 128k again",
-      "find": "if (gemini) return gemini.contextWindow",
-      "replace": "if (gemini) void 0"
+      "find": "  return gemini?.contextWindow",
+      "replace": "  return undefined"
     },
     {
       "name": "an unlisted Gemini loses the family's output limit",
-      "find": "if (gemini) return gemini.maxOutputTokens",
-      "replace": "if (gemini) void 0"
+      "find": "  return gemini?.maxOutputTokens",
+      "replace": "  return undefined"
     },
     {
       "name": "the family rule stops at Gemini 3",

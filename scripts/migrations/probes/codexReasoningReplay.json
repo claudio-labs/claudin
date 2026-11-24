@@ -451,7 +451,7 @@
     {
       "name": "MODELS: a model the account offers loses its limits",
       "source": "src/providers/model/codexModelCatalog.ts",
-      "find": "    account: CHATGPT_ACCOUNT,\n    accountOnly: true,",
+      "find": "    account: chatgptAccount(272_000, 'medium'),\n    accountOnly: true,",
       "replace": "    accountOnly: true,"
     },
     {
@@ -469,8 +469,8 @@
     {
       "name": "EFFORT: the account stops at xhigh",
       "source": "src/providers/model/codexModelCatalog.ts",
-      "find": "  effortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],",
-      "replace": "  effortLevels: ['low', 'medium', 'high', 'xhigh'],"
+      "find": "const ACCOUNT_EFFORT_LEVELS: readonly ReasoningEffort[] = ['low', 'medium', 'high', 'xhigh', 'max']",
+      "replace": "const ACCOUNT_EFFORT_LEVELS: readonly ReasoningEffort[] = ['low', 'medium', 'high', 'xhigh']"
     },
     {
       "name": "KEEP: the render rebuilds a call without its backend id",
@@ -522,8 +522,8 @@
     {
       "name": "REVIEW: codexplan off the Codex backend falls back to 128k",
       "source": "src/providers/model/codexModelCatalog.ts",
-      "find": "    contextInput: 272_000,\n    contextOutput: 128_000,\n    account: CHATGPT_ACCOUNT,",
-      "replace": "    account: CHATGPT_ACCOUNT,"
+      "find": "    contextInput: 272_000,\n    contextOutput: 128_000,\n    account: chatgptAccount(272_000, 'medium'),",
+      "replace": "    account: chatgptAccount(272_000, 'medium'),"
     }
   ]
 }
