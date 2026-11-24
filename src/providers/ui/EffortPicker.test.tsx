@@ -331,6 +331,26 @@ describe('the OpenAI effort family', () => {
       await ui.cleanup()
     }
   })
+
+  test('a model with a real max keeps xhigh as xhigh, and a saved max stays max', async () => {
+    // The ChatGPT account offers gpt-6-luna low..max: relabelling xhigh as
+    // max there draws two max slots, and the saved max focuses the first.
+    useProfile({
+      id: 'ep-codex-max',
+      name: 'Codex OAuth',
+      provider: 'openai',
+      baseUrl: 'https://chatgpt.com/backend-api/codex',
+      model: 'gpt-6-luna',
+    })
+    const ui = await mountPicker('gpt-6-luna', { effortValue: 'max' })
+    try {
+      expect(labelsRow(ui.frame())).toBe('low medium high xhigh max')
+      await ui.press(ENTER)
+      expect(ui.selected).toEqual(['max'])
+    } finally {
+      await ui.cleanup()
+    }
+  })
 })
 
 describe('a model that does not support effort', () => {
