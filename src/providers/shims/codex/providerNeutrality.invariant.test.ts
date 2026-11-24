@@ -28,6 +28,7 @@ import {
   saveGlobalConfig,
   type ProviderProfile,
 } from 'src/platform/config/config.js'
+import { getDefaultEffortForModel } from 'src/providers/effort/effort.js'
 import { getModelOptions } from 'src/providers/model/modelOptions.js'
 import {
   getOpenAIContextWindow,
@@ -462,11 +463,20 @@ describe('the model catalog the OpenAI API reads', () => {
 
   test.each([
     ['https://api.openai.com/v1', 'gpt-5.6-terra', ['none', 'low', 'medium', 'high', 'xhigh', 'max']],
-    ['https://api.openai.com/v1', 'gpt-6-luna', undefined],
+    // The OpenAI API's own row (models.dev), not the ChatGPT account's list.
+    ['https://api.openai.com/v1', 'gpt-6-luna', ['none', 'low', 'medium', 'high', 'xhigh', 'max']],
     ['http://localhost:8000/v1', 'gpt-5.6-terra', ['low', 'medium', 'high', 'xhigh']],
-    ['http://localhost:8000/v1', 'gpt-6-luna', undefined],
+    // No row behind a proxy: the GPT-5-and-later family's list, not the account's max.
+    ['http://localhost:8000/v1', 'gpt-6-luna', ['low', 'medium', 'high', 'xhigh']],
+    ['http://localhost:8000/v1', 'gpt-6.2-sol', ['low', 'medium', 'high', 'xhigh']],
   ] as const)('effort levels for %s %s', (baseUrl, model, levels) => {
     expect(resolveShimEffortValues(baseUrl, model)).toEqual(levels as never)
+  })
+
+  test('the ChatGPT account default effort does not reach the OpenAI API', () => {
+    useProfile(OPENAI)
+    expect(getDefaultEffortForModel('gpt-6.2-sol')).toBeUndefined()
+    expect(getDefaultEffortForModel('gpt-5.6-sol')).toBeUndefined()
   })
 
   test.each([

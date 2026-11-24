@@ -109,6 +109,20 @@ hand from the two tables, and rep 2's new finding (which decisions went to the c
 second stage) had no rep-1 counterpart. Commit each rep's report as soon as it finishes, and
 copy the raw run dir outside /tmp when a later rep will be compared against it.
 
+**`wire-diff.ts` strips every `CLAUDIN_*` variable from the child, so `CLAUDIN_CONFIG_DIR`
+cannot be passed in.** Otherwise it runs each arm on the REAL config, which sends a
+`claudindev` whose active profile is not Anthropic to that provider. On 2026-11-24 the
+active profile was Codex in one project and Anthropic globally. The setup that compared
+`main` with a branch on a throwaway config:
+- `bun run build` on each side, with each `dist/` copied to `<scratch>/wire/dist-main` and
+  `<scratch>/wire/dist-branch`. A `node_modules` symlink to the repo's goes beside them,
+  because the bundle keeps its externals.
+- One wrapper script per arm, which exports `CLAUDIN_CONFIG_DIR` (a `config.json` holding
+  one Anthropic profile with a mock `apiKey` and `hasCompletedOnboarding`) and then runs
+  `exec node <dist>/cli.mjs "$@"`.
+- `--a=<wrapper-main> --b=<wrapper-branch> --raw`, then diff `/tmp/wire-A.json` and
+  `/tmp/wire-B.json` after `jq -S` with the UUIDs replaced.
+
 **Why:** every number this bench produced before the last fix was wrong, and not
 conservatively so — 2.01× and 2.35× both looked defensible and both died to a
 direct check. The errors did not push in a consistent direction, so "it is

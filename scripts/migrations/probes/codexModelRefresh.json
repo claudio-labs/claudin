@@ -1,0 +1,192 @@
+{
+  "test": [
+    "src/providers/model/codexModelRefresh.test.ts",
+    "src/providers/model/codexModelCatalog.test.ts",
+    "src/providers/model/codexModelSurface.test.ts",
+    "src/providers/model/openaiContextWindows.test.ts",
+    "src/providers/model/reasoningCatalog.test.ts",
+    "src/providers/presets/providerConfig.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
+    "src/providers/ui/EffortPicker.test.tsx",
+    "src/providers/ui/useCodexOAuthFlow.test.tsx"
+  ],
+  "source": "src/providers/model/codexModelRefresh.ts",
+  "probes": [
+    {
+      "name": "hidden models reach the picker",
+      "find": "    .filter(model => model.visibility === 'list' && model.context_window)\n",
+      "replace": "    .filter(model => model.context_window)\n"
+    },
+    {
+      "name": "the list keeps the backend's order, not its priority",
+      "find": "    .sort((a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER))\n",
+      "replace": ""
+    },
+    {
+      "name": "ultra reaches the account levels",
+      "find": "            .filter(isAccountEffort),\n",
+      "replace": "            .filter(Boolean),\n"
+    },
+    {
+      "name": "the list is asked without a client version",
+      "find": "    url.searchParams.set('client_version', CODEX_MODELS_CLIENT_VERSION)\n",
+      "replace": ""
+    },
+    {
+      "name": "the list is asked without the account id",
+      "find": "        'chatgpt-account-id': credentials.accountId,\n",
+      "replace": ""
+    },
+    {
+      "name": "the list is asked with no account id at hand",
+      "find": "    if (!credentials.apiKey || !credentials.accountId) return null\n",
+      "replace": "    if (!credentials.apiKey) return null\n"
+    },
+    {
+      "name": "the list is asked off the Codex backend",
+      "find": "  if (!provider || !activeSessionOnCodexBackend()) return null\n",
+      "replace": "  if (!provider) return null\n"
+    },
+    {
+      "name": "an error status is taken as the list",
+      "find": "    if (!response.ok) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "an empty list replaces the snapshot",
+      "find": "    return entries.length > 0 ? entries : null\n",
+      "replace": "    return entries\n"
+    },
+    {
+      "name": "the default credentials are not the profile's",
+      "find": "  credentials: activeCodexCredentials,\n",
+      "replace": "  credentials: async () => ({ apiKey: '' }),\n"
+    },
+    {
+      "name": "the killswitch is ignored",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CODEX_MODELS_FETCH)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "a list for the previous profile is committed",
+      "find": "      if (entries && activeKey() === key) {\n",
+      "replace": "      if (entries) {\n"
+    },
+    {
+      "name": "a profile switch keeps the previous list",
+      "find": "  if (key !== committedKey || options.force) {\n",
+      "replace": "  if (options.force) {\n"
+    },
+    {
+      "name": "the list is asked again for the same profile",
+      "find": "  if (!key || committedKey === key) return Promise.resolve()\n",
+      "replace": "  if (!key) return Promise.resolve()\n"
+    },
+    {
+      "name": "a failed fetch is retried on every config save",
+      "find": "    if (activeKey() !== requestedKey) void prefetchCodexAccountModels()\n",
+      "replace": "    void prefetchCodexAccountModels()\n"
+    },
+    {
+      "name": "a second ask for the same profile chains another fetch",
+      "find": "    if (fetchKey === key && !options.force) return fetchPromise\n",
+      "replace": ""
+    },
+    {
+      "name": "the catalog ignores the fetched list",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "  return accountModels ?? CODEX_MODEL_CATALOG.filter(entry => entry.account !== undefined)\n",
+      "replace": "  return CODEX_MODEL_CATALOG.filter(entry => entry.account !== undefined)\n"
+    },
+    {
+      "name": "the snapshot loses its default efforts",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "  return { contextWindow, effortLevels: ACCOUNT_EFFORT_LEVELS, defaultEffort }\n",
+      "replace": "  return { contextWindow, effortLevels: ACCOUNT_EFFORT_LEVELS }\n"
+    },
+    {
+      "name": "gpt-6.2-sol gets the 272k account window",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "    description: 'GPT-6.2 Sol - fast, go-to model for coding and everyday work',\n    contextInput: 1_050_000,\n    contextOutput: 128_000,\n    account: chatgptAccount(500_000, 'low'),\n",
+      "replace": "    description: 'GPT-6.2 Sol - fast, go-to model for coding and everyday work',\n    contextInput: 1_050_000,\n    contextOutput: 128_000,\n    account: chatgptAccount(272_000, 'low'),\n"
+    },
+    {
+      "name": "pro variants reach the picker",
+      "source": "src/providers/model/codexModelCatalog.ts",
+      "find": "  return !(opts.isPro ?? (CODEX_PRO_RE.test(id) || CODEX_DISALLOWLIST.has(id)))\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "startup does not ask for the list",
+      "source": "src/platform/main/action/startupSequence.ts",
+      "find": "  void prefetchCodexAccountModels();\n",
+      "replace": ""
+    },
+    {
+      "name": "a login does not ask for the list again",
+      "source": "src/providers/ui/useCodexOAuthFlow.ts",
+      "find": "        void prefetchAccountModels({ force: true })\n",
+      "replace": ""
+    },
+    {
+      "name": "the Copilot window loses to the bare table again",
+      "source": "src/providers/model/openaiContextWindows.ts",
+      "find": "    const copilot = getCatalogCopilotContextWindow(model)\n    if (copilot !== undefined) return copilot\n",
+      "replace": "    const copilot = getCatalogCopilotContextWindow(model)\n"
+    },
+    {
+      "name": "the Copilot output limit loses to the bare table again",
+      "source": "src/providers/model/openaiContextWindows.ts",
+      "find": "    const copilot = getCatalogCopilotMaxOutputTokens(model)\n    if (copilot !== undefined) return copilot\n",
+      "replace": "    const copilot = getCatalogCopilotMaxOutputTokens(model)\n"
+    },
+    {
+      "name": "the account default effort is not sent",
+      "source": "src/providers/effort/effort.ts",
+      "find": "    if (accountDefault) return accountDefault\n",
+      "replace": ""
+    },
+    {
+      "name": "/effort opens on the alias table default",
+      "source": "src/providers/ui/EffortPicker.tsx",
+      "find": "      const reasoning = getDefaultEffortForModel(model) ?? getReasoningEffortForModel(model)\n",
+      "replace": "      const reasoning = getReasoningEffortForModel(model)\n"
+    },
+    {
+      "name": "/effort labels xhigh as max beside a real max",
+      "source": "src/providers/ui/EffortPicker.tsx",
+      "find": "  const relabelXhigh = usesOpenAIEffort && !(availableLevels as string[]).includes('max')\n",
+      "replace": "  const relabelXhigh = usesOpenAIEffort\n"
+    },
+    {
+      "name": "the family fallback stops at GPT-5",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "const GPT_REASONING_FAMILY_RE = /^gpt-(?:[5-9]|[1-9]\\d+)(?:[.-]|$)/\n",
+      "replace": "const GPT_REASONING_FAMILY_RE = /^gpt-5(?:[.-]|$)/\n"
+    },
+    {
+      "name": "a gpt-6.x catalog row goes missing",
+      "source": "src/providers/model/reasoningCatalogData.ts",
+      "find": "    'openai/gpt-6.2-sol-pro': ['low', 'medium', 'high', 'xhigh', 'max'],\n",
+      "replace": ""
+    },
+    {
+      "name": "the codexplan row calls gpt-6-luna the Codex CLI default again",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "    description: 'GPT-6 Luna on the Codex backend, offered on the free plan too',\n",
+      "replace": "    description: 'GPT-6 Luna on the Codex backend, the Codex CLI default',\n"
+    },
+    {
+      "name": "control: the killswitch line of the header changes",
+      "find": " * Killswitch: CLAUDIN_CODEX_MODELS_FETCH=0 never asks; the snapshot answers.\n",
+      "replace": " * Killswitch: CLAUDIN_CODEX_MODELS_FETCH=0 never asks, and the snapshot answers.\n",
+      "expect": "green"
+    },
+    {
+      "name": "control: the fetch waits a second longer",
+      "find": "const FETCH_TIMEOUT_MS = 5000\n",
+      "replace": "const FETCH_TIMEOUT_MS = 6000\n",
+      "expect": "green"
+    }
+  ]
+}

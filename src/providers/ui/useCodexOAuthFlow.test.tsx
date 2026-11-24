@@ -4,6 +4,7 @@ import { afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 
 import { createRoot, Text } from 'src/terminal/ink.js'
+import type { CodexOAuthTokens } from 'src/providers/oauth/codexOAuth.js'
 
 const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
@@ -97,6 +98,7 @@ afterEach(() => {
 
 test('does not persist credentials when downstream setup rejects', async () => {
   const saveCodexCredentials = mock(() => ({ success: true }))
+  const prefetchCodexAccountModels = mock(async () => {})
   const cleanup = mock(() => {})
   const onAuthenticated = mock(async () => {
     throw new Error('profile save failed')
@@ -114,6 +116,7 @@ test('does not persist credentials when downstream setup rejects', async () => {
     openBrowser: async () => true,
     saveCodexCredentials,
     isBareMode: () => false,
+    prefetchCodexAccountModels,
   }
 
   const { useCodexOAuthFlow } = await import(
@@ -144,6 +147,7 @@ test('does not persist credentials when downstream setup rejects', async () => {
     await Bun.sleep(0)
     expect(onAuthenticated).toHaveBeenCalled()
     expect(saveCodexCredentials).not.toHaveBeenCalled()
+    expect(prefetchCodexAccountModels).not.toHaveBeenCalled()
   } finally {
     root.unmount()
     streams.stdin.end()
@@ -152,8 +156,88 @@ test('does not persist credentials when downstream setup rejects', async () => {
   }
 })
 
+async function renderStatus(
+  deps: Record<string, unknown>,
+  onAuthenticated: (
+    tokens: CodexOAuthTokens,
+    persistCredentials: (options?: { profileId?: string }) => void,
+  ) => Promise<void>,
+): Promise<{ frame: () => string; close: () => Promise<void> }> {
+  const { useCodexOAuthFlow } = await import('src/providers/ui/useCodexOAuthFlow.js')
+
+  function Harness(): React.ReactNode {
+    const handleAuthenticated = React.useCallback(onAuthenticated, [])
+    const status = useCodexOAuthFlow({ onAuthenticated: handleAuthenticated, deps })
+    return <Text>{status.state === 'error' ? `error: ${status.message}` : status.state}</Text>
+  }
+
+  const streams = createTestStreams()
+  const root = await createRoot({
+    stdout: streams.stdout as unknown as NodeJS.WriteStream,
+    stdin: streams.stdin as unknown as NodeJS.ReadStream,
+    patchConsole: false,
+  })
+  root.render(<Harness />)
+  return {
+    frame: () => extractLastFrame(streams.getOutput()),
+    close: async () => {
+      root.unmount()
+      streams.stdin.end()
+      streams.stdout.end()
+      await Bun.sleep(0)
+    },
+  }
+}
+
+test('in --bare it reports that secure storage is off, and starts no flow', async () => {
+  const createOAuthService = mock(() => ({ startOAuthFlow: async () => TOKENS, cleanup: () => {} }))
+  const prefetchCodexAccountModels = mock(async () => {})
+  const view = await renderStatus(
+    { createOAuthService, isBareMode: () => true, prefetchCodexAccountModels },
+    async () => {},
+  )
+  try {
+    await waitForCondition(() => view.frame().includes('error:'))
+    expect(view.frame()).toContain('secure storage is disabled')
+    expect(createOAuthService).not.toHaveBeenCalled()
+    expect(prefetchCodexAccountModels).not.toHaveBeenCalled()
+  } finally {
+    await view.close()
+  }
+})
+
+test('a credential save that fails is reported, and no model list is asked for', async () => {
+  const prefetchCodexAccountModels = mock(async () => {})
+  const view = await renderStatus(
+    {
+      createOAuthService: () => ({
+        async startOAuthFlow(onAuthorizationUrl: (authUrl: string) => void | Promise<void>) {
+          await onAuthorizationUrl('https://chatgpt.com/codex')
+          return TOKENS
+        },
+        cleanup: () => {},
+      }),
+      openBrowser: async () => true,
+      saveCodexCredentials: () => ({ success: false, warning: 'keychain locked' }),
+      isBareMode: () => false,
+      prefetchCodexAccountModels,
+    },
+    async (_tokens, persistCredentials) => {
+      persistCredentials({ profileId: 'profile_codex_oauth' })
+    },
+  )
+  try {
+    await waitForCondition(() => view.frame().includes('error:'))
+    expect(view.frame()).toContain('keychain locked')
+    expect(prefetchCodexAccountModels).not.toHaveBeenCalled()
+  } finally {
+    await view.close()
+  }
+})
+
 test('persists credentials with profile linkage after downstream setup succeeds', async () => {
   const saveCodexCredentials = mock(() => ({ success: true }))
+  const prefetchCodexAccountModels = mock(async (_options?: { force?: boolean }) => {})
   const onAuthenticated = mock(
     async (
       _tokens: typeof TOKENS,
@@ -176,6 +260,7 @@ test('persists credentials with profile linkage after downstream setup succeeds'
     openBrowser: async () => true,
     saveCodexCredentials,
     isBareMode: () => false,
+    prefetchCodexAccountModels,
   }
 
   const { useCodexOAuthFlow } = await import(
@@ -211,6 +296,9 @@ test('persists credentials with profile linkage after downstream setup succeeds'
       accountId: TOKENS.accountId,
       profileId: 'profile_codex_oauth',
     })
+    // The account's model list is asked for again, for the account just signed in.
+    await waitForCondition(() => prefetchCodexAccountModels.mock.calls.length === 1)
+    expect(prefetchCodexAccountModels).toHaveBeenCalledWith({ force: true })
   } finally {
     root.unmount()
     streams.stdin.end()

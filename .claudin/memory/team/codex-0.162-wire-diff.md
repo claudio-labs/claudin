@@ -1,66 +1,49 @@
 ---
 name: codex-0.162-wire-diff
-description: Codex CLI 0.162/0.163 vs Claudin on the Codex backend — reasoning replay (#307) and WebSocket transport (#308) closed 10-17, both in v1.1.46; captures, gates, the free-plan quota that ran out, the traps the captures caught; the rate-limit wire (x-codex-* headers over HTTP, codex.rate_limits event over the socket) confirmed live 10-22; re-captured 11-23 against 0.171 — thinking at parity, the cache gap is Claudin's cold first request
+description: What the ChatGPT Codex backend accepts and sends, from captures against Codex CLI 0.162–0.172 (10-16 → 11-24) — replay and WebSocket at parity, the per-plan model list, quota weights, the rate-limit wire, and how to re-capture; the dated tables are in codex-wire-capture-history
 type: project
 ---
 
-**Found 2026-10-16** (mitmproxy, same ChatGPT account on both arms, gpt-5.6-terra, effort
-medium, the three `--hard` prompts): Claudin never asked for `reasoning.encrypted_content`
-and never replayed reasoning; codexShim's stream loop ignored `reasoning` output items.
-
-**Closed 2026-10-17** in PR 307, branch `feat/codex-reasoning-replay` (killswitch
-`CLAUDIN_CODEX_REASONING_REPLAY=0`). Final capture, same setup, three arms:
-
-| | Codex 0.162.1 | Claudin | Claudin, killswitch |
-|---|---|---|---|
-| `include` | encrypted_content | encrypted_content | absent |
-| `reasoning` | `{effort, context:"all_turns"}` | same | `{effort}` |
-| `text` | `{verbosity:"low"}` | same | absent |
-| `parallel_tool_calls` | false | true (kept on purpose) | true |
-| reasoning items replayed per request | 0 0 2 3 0 | 0 1 1 2 3 4 | all 0 |
-| messages with id + phase / calls under the backend id | 5/5, 2/2 | 5/5, 10/10 | 0/5, 0/5 |
-
-Answers identical on all arms; zero 4xx; cache 26.1k→27.1k of ~27k. `codexplan` →
-gpt-6-luna with `effort:"max"`: 200. A Codex session resumed under Anthropic sent no
-`codex` field, no encrypted payload, standard tool_use blocks, no retry. The Anthropic
-wire (`wire-diff --raw`) is byte-identical to main's after normalizing session UUIDs.
+Claudin's Codex backend wire matches the Codex CLI where it matters: reasoning replay (#307,
+killswitch `CLAUDIN_CODEX_REASONING_REPLAY=0`) and the WebSocket transport with deltas (#308,
+`CLAUDIN_CODEX_WEBSOCKET=0`; design in `docs/tech/responses-websocket/README.md`, defaults and
+rejections in [[codex-backend-speaks-codex-cli-wire]]). Both closed 2026-10-17 and were
+re-captured at parity on 2026-11-23 against 0.171. The capture tables, the numbers and the 10-17
+review round are in [[codex-wire-capture-history]].
 
 Still different on purpose: Codex's "responses_lite" prompt shape (one `exec` tool, developer
-messages), its `generate: false` prewarm and its telemetry (`x-codex-turn-metadata`,
-`client_metadata` in every frame).
+messages; since 0.171 one `additional_tools` input item and no top-level `instructions`/`tools`),
+its `generate: false` prewarm, its telemetry (`x-codex-turn-metadata`, `client_metadata` in every
+frame), and `parallel_tool_calls` (Codex false, Claudin true).
 
-**Transport closed 2026-10-17** in #308 (killswitch `CLAUDIN_CODEX_WEBSOCKET=0`; design in
-`docs/tech/responses-websocket/README.md`; the defaults and what was rejected are in
-[[codex-backend-speaks-codex-cli-wire]]). Claudin
-talks to the backend over a socket with deltas, like Codex CLI 0.163. Capture with
-`--arm=claudin-http`: 3/6 requests as deltas (input items `1 1 1 9 12 1` vs HTTP
-`1 4 6 9 12 15`), cached/input 131584/162798 vs 131584/162816 (resume turns included),
-answers equal, no 4xx. One-run A/B (5 reads): http 24.1 s, placebo 22.5 s, ws 10.0 s —
-not a measurement. The test account is a **free plan**: its 30-day window ran out during
-these checks (`usage_limit_reached`, resets ~2026-11-15). Over the socket that limit came
-as an `error` frame read as a 500 and retried 11 times; fixed (the frame's `status` is
-now the Response's).
-
-**Facts the capture and probes established:**
-- A ChatGPT account accepts only gpt-6-luna, gpt-5.6-terra, gpt-5.6-luna (272k window,
+**Facts the captures and probes established:**
+- The FREE test account accepts only gpt-6-luna, gpt-5.6-terra, gpt-5.6-luna (272k window,
   128k out, effort low..max; `ultra` on terra is sent by Codex CLI as `high`). The others
   answer 400 "not supported when using Codex with a ChatGPT account".
-  `GET /backend-api/codex/models?client_version=0.162.1` lists them (400 without it).
+  `GET /backend-api/codex/models?client_version=…` lists them (400 without it). The list
+  depends on the plan: paid plans also get gpt-6.2-*. Since 2026-11-24 Claudin reads it at
+  startup ([[codex-model-list-per-account]]); a live GET at 0.172.0 that day returned the
+  same three.
 - The backend rejects a bad reasoning replay with HTTP 200 + one SSE `error` event,
   `code: invalid_encrypted_content`, no completion. A synthetic `fc_` call id makes the
   completed response's `output` come back empty.
 - The first final capture still sent calls under synthetic ids (0 of 10) with every unit
   test green; the cause and the testing lesson are in `.claudin/rules/testing.md`,
   "Provider-private block state goes through the whole render".
-
-**Review round (10-17):** three agents (conventions, design, bugs) found five real bugs the
-captures missed, all fixed in the PR with red tests first: a blank assistant turn after a
-switch to Anthropic, an empty thinking pane per reasoning item, `codexplan` without `max`,
-`codexplan` behind a relay on the 128k fallback, and a recovered stream error stopping the
-replay. Left as documented limits in `codex/items.ts`: the refusal latch is per process (a
-resumed session with refused items pays one failed request; a late refusal from a second
-agent drops the items captured in between). Not done, by choice: moving the replay into
-`codex/replay.ts`, renames, and fetching `/codex/models` instead of the static 3-model list.
+- Over the socket, `usage_limit_reached` arrives as an `error` frame; it was read as a 500 and
+  retried 11 times until fixed (the frame's `status` is now the Response's).
+- **Context and cache (11-23):** Claudin sends ~28k per request, Codex ~14k. Session cache 78%
+  vs 90%, and the whole gap is Claudin's cold first request: Codex's first comes ~72% warm, so
+  its static prefix seems warm server-side. From the 2nd request on Claudin leads, 97% vs 94%.
+  Making a new session warm was probed and rejected: [[codex-cross-session-prefix-rejected]].
+- **Quota weights (free plan, 11-23):** a warm request costs ~0.45% of the 30-day window, a cold
+  ~26k one ~2.4% (cached input weighs ~1/7). That is why the keep-alive kept its ping, capped:
+  [[codex-keepalive-ping-capped]].
+- **Usage fields new on the backend:** `input_tokens_details.cache_write_tokens_details`
+  `{ttl_30m_tokens, ttl_12h_tokens}` and a per-item `attribution` block; the default write tier
+  is unmeasured.
+- Claudin also sends the classifier capability probe (forced `classify_result`, 124 tokens)
+  under `--dangerously-skip-permissions`.
 
 **How to apply:** re-run `scripts/bench/ab/codex-wire-capture.ts --arm=claudin-off` (needs
 mitmdump with its CA, a logged-in Codex CLI, a fresh build) whenever Codex CLI or codexShim
@@ -69,30 +52,18 @@ replay's design questions. The runner deletes each flow file (the only copy of t
 The provider-switch check against a mock is in testing.md (same section). Recipe for other
 Rust CLIs: [[mitmproxy-rust-binary-recipe]].
 
-## Re-capture 2026-11-23 (Codex CLI 0.171.0, main e3c2fca0)
+To see what an account is offered, without quota: it is one GET with no model call. Two ways:
+- **A scratch script.** Set `globalThis.MACRO`, call `enableConfigs()`, and take the Codex
+  profile from `getGlobalConfig().providerProfiles`. Credentials come from
+  `refreshCodexAccessTokenIfNeeded({ profile })` + `resolveRuntimeCodexCredentials`. Then
+  send the request `codexModelRefresh.ts` builds and print `toCodexAccountModels(body.models)`,
+  slugs only.
+- **The TUI.** Run `claudindev` in tmux, with `CLAUDIN_CONFIG_DIR` pointing at a copy of
+  that one profile, and open `/model`.
 
-Same runner, gpt-5.6-terra, effort medium, arms codex + claudin (both WebSocket). Answers
-equal on all three turns. Thinking is at parity: `include`, `reasoning`
-`{effort, context:"all_turns"}` and `text` match; reasoning replayed per request is `0 0 2 3 0`
-on both; ids/phases on every replayed message, calls 2/2 under backend ids; reasoning
-tokens 288 (Codex) vs 348. History growth over the 5 requests: +823 vs +873 tokens.
-- **Context per request is 2×:** Claudin ~28k (39 tools, 18.6k-char instructions), Codex ~14k.
-  Since 0.171 Codex sends no top-level `instructions`/`tools`: one `additional_tools` input
-  item (namespaces `functions`, `collaboration`), four developer messages, a new
-  `access_programs:{cyber:"standard"}` field. Same "responses_lite" shape, rejected on purpose.
-- **Cache:** 90% (Codex) vs 78% (Claudin) over the session. The gap is only Claudin's cold
-  first request: 0 of 28k cached, while Codex's first comes 72% warm (9984/13834) on an
-  account unused for 30 days, so its static prefix seems to be warm server-side. From the
-  2nd request on, Claudin 97% vs Codex 94%. A fresh `-p` session is cold again (27919 in,
-  0 read). Making a new session warm was probed and rejected: [[codex-cross-session-prefix-rejected]].
-- Claudin also sends the classifier capability probe (forced `classify_result`, 124 tokens)
-  under `--dangerously-skip-permissions`.
-- **Quota:** the capture's ~16 mostly warm requests cost ~0.45% each of the free window; cold
-  ~26k requests cost ~2.4% each (cached input weighs ~1/7). The keep-alive kept its ping for
-  that reason, now capped: [[codex-keepalive-ping-capped]].
-- **Usage fields new on the backend:** `input_tokens_details.cache_write_tokens_details`
-  `{ttl_30m_tokens, ttl_12h_tokens}` and a per-item `attribution` block. A 1.3k-token request
-  reported no write, so the default tier is unmeasured.
+Codex CLI's own copy is `~/.codex/models_cache.json`, and the full bundled catalog (every
+plan, `available_in_plans`, `minimal_client_version`) is a JSON object inside its binary
+(`"slug": "gpt-6.2-sol"`).
 
 ## Rate-limit wire (confirmed 2026-10-22)
 

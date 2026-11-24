@@ -4,6 +4,10 @@ import { mock } from 'bun:test'
 // WebSocket on (its runtime default) that request would open a real socket to
 // chatgpt.com instead. Tests of the socket path set it to 1 themselves.
 process.env.CLAUDIN_CODEX_WEBSOCKET ??= '0'
+// A suite that puts a Codex profile in the config would otherwise ask
+// chatgpt.com for the account's model list, with whatever Codex credentials
+// the machine holds. The tests of that fetch set it to 1 themselves.
+process.env.CLAUDIN_CODEX_MODELS_FETCH ??= '0'
 
 // INERT, kept for documentation. Bun ≥1.3.9 resolves `bun:bundle` natively
 // before `mock.module` (or a bundler plugin) can intercept it — the same

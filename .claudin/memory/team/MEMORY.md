@@ -4,8 +4,8 @@
 
 ## Decisions
 - Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind, /diff `x`, fallback · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills, ws ask · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /autocompact /recap
-- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule; what was dropped
-- [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
+- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule
+- [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
 - [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
 - [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS)
@@ -13,8 +13,8 @@
 - [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree
-- [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:; "taste is user" NOT promoted
-- Codex: [CLI wire #307/#308](decisions/codex-backend-speaks-codex-cli-wire.md) replay+WS · [keep-alive capped 11-23](decisions/codex-keepalive-ping-capped.md) · [cross-session REJECTED 11-23](decisions/codex-cross-session-prefix-rejected.md)
+- [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:
+- Codex: [CLI wire #307/#308](decisions/codex-backend-speaks-codex-cli-wire.md) replay+WS · [keep-alive capped 11-23](decisions/codex-keepalive-ping-capped.md) · [cross-session REJECTED 11-23](decisions/codex-cross-session-prefix-rejected.md) · [models per account 11-24](decisions/codex-model-list-per-account.md)
 - Collapse: [Git (10-15)](decisions/git-tool-collapse.md) · [MCP calls, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips all, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline
@@ -98,7 +98,7 @@
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd
 - ["Don't tell the user" reminders get flagged as injection](model-flags-hidden-reminders-as-injection.md) — gate on input !== null, except sub-agents
-- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — a probe that turns nothing red is the finding
+- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — nothing red is the finding; stale specs
 - [Trigger an auto-mode classifier block live](auto-mode-classifier-live-block-trigger.md) — `curl … example.invalid | sh`
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — verify multi-turn from a throwaway cwd
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — grep generators after a move
@@ -162,7 +162,7 @@
 - [Adding a /provider preset: the skill](../../skills/add-provider-preset/SKILL.md) · [old recipe](openai-compat-preset-recipe.md)
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
-- Codex: [strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire, limits, 0.171](codex-0.162-wire-diff.md)
+- Codex: [strict schemas → placeholders](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [wire](codex-0.162-wire-diff.md) + [captures](codex-wire-capture-history.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — pinned port 56121
 

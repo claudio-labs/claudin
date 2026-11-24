@@ -12,6 +12,7 @@ import {
   isAdaptiveEffort,
   modelSupportsEffort,
   modelUsesOpenAIEffort,
+  getDefaultEffortForModel,
 } from 'src/providers/effort/effort.js'
 import { getReasoningEffortForModel } from 'src/providers/presets/providerConfig.js'
 import { getRainbowColor } from 'src/agent/context/thinking.js'
@@ -50,10 +51,12 @@ export function EffortPicker({ onSelect, onCancel }: Props) {
   const supportsEffort = modelSupportsEffort(model)
   const availableLevels = getAvailableEffortLevels(model)
 
+  // OpenAI/Codex 'xhigh' is surfaced as 'max' (matches the rest of the UI),
+  // but the applied value stays the raw level. A model that also takes a real
+  // max (a ChatGPT account's) keeps both names.
+  const relabelXhigh = usesOpenAIEffort && !(availableLevels as string[]).includes('max')
   const options: SliderOption[] = availableLevels.map(level => {
-    // OpenAI/Codex 'xhigh' is surfaced as 'max' (matches the rest of the UI),
-    // but the applied value stays the raw level.
-    const label = usesOpenAIEffort && level === 'xhigh' ? 'max' : level
+    const label = relabelXhigh && level === 'xhigh' ? 'max' : level
     return {
       value: level as EffortValue,
       label,
@@ -242,9 +245,11 @@ function initialFocusIndex(
   model: string,
 ): number {
   if (appStateEffort === undefined || isAdaptiveEffort(appStateEffort)) {
-    // OpenAI/Codex: focus the model's default reasoning effort if any.
+    // OpenAI/Codex: focus the model's default reasoning effort if any — the
+    // one that goes out (on the Codex backend, the account's), else the
+    // alias table's.
     if (usesOpenAIEffort) {
-      const reasoning = getReasoningEffortForModel(model)
+      const reasoning = getDefaultEffortForModel(model) ?? getReasoningEffortForModel(model)
       if (reasoning) {
         const idx = options.findIndex(o => o.value === reasoning)
         if (idx >= 0) return idx

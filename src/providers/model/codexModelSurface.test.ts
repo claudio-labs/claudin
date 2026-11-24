@@ -10,6 +10,8 @@
  * here is the one tryGetActiveProvider resolves. No module is mocked.
  */
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { getCacheProfile, _resetCacheProfileForTesting } from 'src/agent/cache/cacheProfile.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
@@ -18,7 +20,11 @@ import {
   saveGlobalConfig,
   type ProviderProfile,
 } from 'src/platform/config/config.js'
-import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
+import {
+  CODEX_DEFAULT_MODEL,
+  setCodexAccountModels,
+  type CodexModelEntry,
+} from 'src/providers/model/codexModelCatalog.js'
 import { ALL_MODEL_CONFIGS } from 'src/providers/model/configs.js'
 import {
   getDefaultHaikuModel,
@@ -60,6 +66,7 @@ function useProfile(profile: ProviderProfile): void {
 }
 
 afterEach(() => {
+  setCodexAccountModels(null)
   resetGlobalConfigForTests()
   invalidateActiveProviderCache()
 })
@@ -86,13 +93,21 @@ describe('a Codex OAuth profile', () => {
     expect(getDefaultMainLoopModel()).toBe('gpt-6-luna')
   })
 
-  test("the /model picker lists what the ChatGPT account offers, and the profile's own model", () => {
+  test("the /model picker lists the account snapshot, and the profile's own model", () => {
     useProfile(CODEX_OAUTH)
     expect(getModelOptions(false).map(option => option.value)).toEqual([
       null,
+      'gpt-6.2-sol',
+      'gpt-6.2-astra',
+      'gpt-6.1-terra',
+      'gpt-6.1-sol',
+      'gpt-6-astra',
+      'gpt-6-sol',
       'gpt-6-luna',
+      'gpt-5.6-sol',
       'gpt-5.6-terra',
       'gpt-5.6-luna',
+      'gpt-5.5',
       'codexplan',
     ])
   })
@@ -120,8 +135,10 @@ describe('a Codex OAuth profile', () => {
     expect(getOpenAIContextWindow('gpt-5.6-luna')).toBe(272_000)
     expect(getOpenAIMaxOutputTokens('gpt-6-luna')).toBe(128_000)
     expect(getContextWindowForModel('gpt-5.6-terra')).toBe(272_000)
+    expect(getOpenAIContextWindow('gpt-6.2-sol')).toBe(500_000)
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(272_000)
     // Not offered to the account: the API's numbers, as before.
-    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
+    expect(getOpenAIContextWindow('gpt-5.4')).toBe(1_050_000)
   })
 
   test("effort levels: the account's, up to max, for every model it offers", () => {
@@ -130,9 +147,10 @@ describe('a Codex OAuth profile', () => {
     expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-6-luna')).toEqual(account)
     expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-terra')).toEqual(account)
     expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-luna')).toEqual(account)
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-6.2-sol')).toEqual(account)
     expect(resolveActiveShimEffortValues('gpt-6-luna')).toEqual(account)
     // A model the account does not offer keeps the GPT-5 family list.
-    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.6-sol')).toEqual(['low', 'medium', 'high', 'xhigh'])
+    expect(resolveShimEffortValues(CODEX_BASE_URL, 'gpt-5.4')).toEqual(['low', 'medium', 'high', 'xhigh'])
   })
 
   test('max is offered by /effort and goes out unchanged, not downgraded to high', () => {
@@ -140,13 +158,115 @@ describe('a Codex OAuth profile', () => {
     expect(getAvailableEffortLevels('gpt-6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
     expect(resolveAppliedEffort('gpt-6-luna', 'max')).toBe('max')
     // Not an account model: max is still downgraded, as before.
-    expect(resolveAppliedEffort('gpt-5.6-sol', 'max')).toBe('high')
+    expect(resolveAppliedEffort('gpt-5.4', 'max')).toBe('high')
   })
 
   test('the codexplan row of /model offers what the model it names offers', () => {
     useProfile(CODEX_OAUTH)
     expect(getAvailableEffortLevels('codexplan')).toEqual(getAvailableEffortLevels('gpt-6-luna'))
     expect(resolveAppliedEffort('codexplan', 'max')).toBe('max')
+  })
+})
+
+const LOW_TO_MAX = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+
+function accountModel(id: string, contextWindow: number, defaultEffort: 'low' | 'medium'): CodexModelEntry {
+  return { id, label: id, description: id, account: { contextWindow, effortLevels: LOW_TO_MAX, defaultEffort } }
+}
+
+// What GET /codex/models answered each plan (codexModelRefresh.ts puts it in
+// the catalog). The free plan's is the 2026-11-24 answer.
+const FREE_PLAN = [
+  accountModel('gpt-6-luna', 272_000, 'medium'),
+  accountModel('gpt-5.6-terra', 272_000, 'medium'),
+  accountModel('gpt-5.6-luna', 272_000, 'medium'),
+]
+const PAID_PLAN = [
+  accountModel('gpt-6.2-sol', 500_000, 'low'),
+  accountModel('gpt-6.2-astra', 272_000, 'low'),
+  accountModel('gpt-6.1-terra', 500_000, 'low'),
+  ...FREE_PLAN,
+]
+
+describe('a Codex OAuth profile with the account list fetched', () => {
+  test('the free plan lists its three models, as before the fetch existed', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels(FREE_PLAN)
+    expect(getModelOptions(false).map(option => option.value)).toEqual([
+      null,
+      'gpt-6-luna',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+      'codexplan',
+    ])
+  })
+
+  test('a paid plan lists the gpt-6.x models with their windows and levels', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels(PAID_PLAN)
+    expect(getModelOptions(false).map(option => option.value).slice(1, 4)).toEqual([
+      'gpt-6.2-sol',
+      'gpt-6.2-astra',
+      'gpt-6.1-terra',
+    ])
+    expect(getContextWindowForModel('gpt-6.2-sol')).toBe(500_000)
+    expect(getContextWindowForModel('gpt-6.2-astra')).toBe(272_000)
+    expect(resolveActiveShimEffortValues('gpt-6.2-sol')).toEqual(LOW_TO_MAX)
+    expect(getAvailableEffortLevels('gpt-6.1-terra')).toEqual([...LOW_TO_MAX])
+  })
+
+  test('a model the account does not list gets the API numbers, as before', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels(FREE_PLAN)
+    expect(getOpenAIContextWindow('gpt-6.2-sol')).toBe(1_050_000)
+    expect(getOpenAIContextWindow('gpt-5.6-sol')).toBe(1_050_000)
+  })
+
+  test('off the Codex backend the account list is not read', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy-list', baseUrl: 'http://localhost:8000/v1' })
+    setCodexAccountModels(PAID_PLAN)
+    expect(getContextWindowForModel('gpt-6.2-sol')).toBe(1_050_000)
+    expect(getModelOptions(false).map(option => option.value)).toEqual([null, 'codexplan'])
+  })
+
+  test('the codexplan row says where gpt-6-luna is offered, not that it is the Codex CLI default', () => {
+    const source = readFileSync(join(import.meta.dir, 'modelOptions.ts'), 'utf8')
+    expect(source).toContain("description: 'GPT-6 Luna on the Codex backend, offered on the free plan too',")
+  })
+})
+
+describe('the default effort on the Codex backend', () => {
+  test.each([
+    ['gpt-6.2-sol', 'low'],
+    ['gpt-5.6-sol', 'low'],
+    ['gpt-5.6-terra', 'medium'],
+    ['gpt-6-luna', 'medium'],
+    ['codexplan', 'medium'],
+  ] as const)('with nothing pinned, %s goes out at the account default, %s', (model, effort) => {
+    useProfile(CODEX_OAUTH)
+    expect(resolveAppliedEffort(model, undefined)).toBe(effort)
+  })
+
+  test('a pin wins over the account default', () => {
+    useProfile(CODEX_OAUTH)
+    expect(resolveAppliedEffort('gpt-6.2-sol', 'high')).toBe('high')
+  })
+
+  test('the fetched list names the default when there is one', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels([
+      { id: 'gpt-6.2-sol', label: 'gpt-6.2-sol', description: '', account: { contextWindow: 500_000, effortLevels: LOW_TO_MAX, defaultEffort: 'xhigh' } },
+      { id: 'gpt-6-luna', label: 'gpt-6-luna', description: '', account: { contextWindow: 272_000, effortLevels: LOW_TO_MAX } },
+    ])
+    expect(resolveAppliedEffort('gpt-6.2-sol', undefined)).toBe('xhigh')
+    // No default in the list: nothing from the account.
+    expect(resolveAppliedEffort('gpt-6-luna', undefined)).toBeUndefined()
+  })
+
+  test('off the Codex backend the account default is not read', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy-effort', baseUrl: 'http://localhost:8000/v1' })
+    expect(resolveAppliedEffort('gpt-6.2-sol', undefined)).toBeUndefined()
+    expect(resolveAppliedEffort('gpt-5.6-sol', undefined)).toBeUndefined()
   })
 })
 

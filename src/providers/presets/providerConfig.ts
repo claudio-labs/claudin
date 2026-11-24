@@ -298,7 +298,8 @@ export function shouldUseCodexTransport(
 }
 
 const GPT_MAJOR_VERSION_RE = /^gpt-(\d+)/
-const GPT5_FAMILY_RE = /^gpt-5(?:[.-]|$)/
+// GPT-5 and every later major (gpt-6.2-sol, a gpt-10): not gpt-4o or gpt-4.1.
+const GPT_REASONING_FAMILY_RE = /^gpt-(?:[5-9]|[1-9]\d+)(?:[.-]|$)/
 const TRAILING_SLASH_RE = /\/+$/
 // Safe to share with `.replace()` — `String.prototype.replace` does not consult/mutate `lastIndex`.
 const IPV6_BRACKET_RE = /^\[|\]$/g
@@ -1073,5 +1074,5 @@ export function supportsCodexReasoningEffort(model: string): boolean {
     return true
   }
 
-  return GPT5_FAMILY_RE.test(base)
+  return GPT_REASONING_FAMILY_RE.test(base)
 }
