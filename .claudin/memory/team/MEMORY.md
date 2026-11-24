@@ -14,7 +14,7 @@
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree
 - [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:; "taste is user" NOT promoted
-- [Codex backend speaks the Codex CLI wire (#307/#308)](decisions/codex-backend-speaks-codex-cli-wire.md) — replay + WebSocket on; prewarm rejected
+- Codex: [CLI wire #307/#308](decisions/codex-backend-speaks-codex-cli-wire.md) replay+WS · [keep-alive capped 11-23](decisions/codex-keepalive-ping-capped.md) · [cross-session REJECTED 11-23](decisions/codex-cross-session-prefix-rejected.md)
 - Collapse: [Git (10-15)](decisions/git-tool-collapse.md) · [MCP calls, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips all, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline
@@ -161,7 +161,7 @@
 - [Adding a /provider preset: the skill](../../skills/add-provider-preset/SKILL.md) · [old recipe](openai-compat-preset-recipe.md)
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
-- Codex: [strict schemas → placeholder args, strip ""/null](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire #307/#308, rate limits 10-22](codex-0.162-wire-diff.md)
+- Codex: [strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [CLI wire, limits, 0.171](codex-0.162-wire-diff.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — pinned port 56121
 

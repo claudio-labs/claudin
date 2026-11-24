@@ -1,10 +1,10 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
-import * as realDiscovery from 'src/providers/model/openaiModelDiscovery.ts'
 
 // Control the value getOpenAIContextWindow reads from the provider's /models
-// discovery. Spreading the real module keeps every other export intact so this
-// mock is leak-safe across the suite; resetting to undefined in afterAll makes
-// the leaked getter behave exactly like the real default (nothing discovered).
+// discovery, keeping every other export real. afterAll puts the real module
+// back: a getter left answering undefined hides every window discovery
+// records for the rest of the run (context.test.ts read 128k for a 262k one).
+const realDiscovery = { ...(await import('src/providers/model/openaiModelDiscovery.ts')) }
 let mockDiscovered: number | undefined
 mock.module('./openaiModelDiscovery.js', () => ({
   ...realDiscovery,
@@ -12,7 +12,7 @@ mock.module('./openaiModelDiscovery.js', () => ({
 }))
 
 afterAll(() => {
-  mockDiscovered = undefined
+  mock.module('./openaiModelDiscovery.js', () => realDiscovery)
 })
 
 // Imported after the mock is registered. getOpenAIContextWindow only requires

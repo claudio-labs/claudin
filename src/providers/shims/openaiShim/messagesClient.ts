@@ -54,7 +54,7 @@ import {
   performCodexRequest,
   type ShimCreateParams,
 } from 'src/providers/shims/codexShim.js'
-import { codexReplayActive } from 'src/providers/shims/codex/backend.js'
+import { codexKeepAlivePingParams, codexReplayActive } from 'src/providers/shims/codex/backend.js'
 import {
   isGeminiNativeRequest,
   performGeminiRequest,
@@ -189,6 +189,12 @@ class OpenAIShimMessages {
   constructor(defaultHeaders: Record<string, string>, reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh') {
     this.defaultHeaders = filterAnthropicHeaders(defaultHeaders)
     this.reasoningEffort = reasoningEffort
+  }
+
+  /** How to send the keep-alive ping for `params` (src/agent/cache/anthropic/keepAlive.ts). */
+  keepAlivePingParams(params: Record<string, unknown>): Record<string, unknown> | null {
+    const model = typeof params.model === 'string' ? params.model : undefined
+    return codexKeepAlivePingParams(resolveProviderRequest({ model }), params)
   }
 
   create(

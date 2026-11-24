@@ -53,6 +53,8 @@ const {
   performCodexRequest,
 } = await import('src/providers/shims/codexShim.js')
 const { getSessionId } = await import('src/platform/bootstrap/state.js')
+const { CODEX_HONOR_MAX_TOKENS } = await import('src/providers/shims/codex/backend.js')
+const keepAlive = await import('src/agent/cache/anthropic/keepAlive.js')
 const { __test: webSearchToolTest } = await import('src/tools/WebSearchTool/WebSearchTool.js')
 const { _resetReplayTrustForTesting } = await import('src/providers/shims/codex/items.js')
 const { getCodexLimits, resetCodexLimitsForTesting } = await import('src/providers/codexLimits.js')
@@ -1162,6 +1164,140 @@ describe('performCodexRequest prompt-cache params', () => {
     expect(capturedBody).toBeDefined()
     expect(capturedBody?.prompt_cache_key).toBeUndefined()
     expect(capturedBody?.prompt_cache_retention).toBeUndefined()
+  })
+})
+
+// A keep-alive ping is a cache read: on the Codex backend it carries an output
+// cap (accepted live at 16 on 2026-11-23, answered `response.incomplete`); a
+// real request stays uncapped, as Codex CLI sends it.
+describe('the keep-alive output cap on the Codex backend', () => {
+  const realFetch = globalThis.fetch
+  let capturedBody: Record<string, unknown> | undefined
+
+  beforeEach(() => {
+    capturedBody = undefined
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async (_input: unknown, init?: RequestInit) => {
+      capturedBody = JSON.parse(init?.body as string) as Record<string, unknown>
+      return new Response('', { status: 200 })
+    }) as typeof fetch
+  })
+
+  afterEach(() => {
+    ;(globalThis as { fetch: typeof fetch }).fetch = realFetch
+    resetCodexLimitsForTesting()
+  })
+
+  async function bodyFor(baseUrl: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
+    await performCodexRequest({
+      request: { transport: 'codex_responses', requestedModel: 'gpt-5.4', resolvedModel: 'gpt-5.4', baseUrl },
+      credentials: { apiKey: 'test-key', source: 'env' },
+      params: { model: 'gpt-5.4', messages: [{ role: 'user', content: 'hi' }], ...params } as never,
+      defaultHeaders: {},
+    })
+    if (!capturedBody) throw new Error('fetch was not called')
+    return capturedBody
+  }
+
+  test('a marked request sends its max_tokens as max_output_tokens, never under the floor', async () => {
+    expect((await bodyFor('https://chatgpt.com/backend-api/codex', { max_tokens: 1, [CODEX_HONOR_MAX_TOKENS]: true })).max_output_tokens).toBe(16)
+    expect((await bodyFor('https://chatgpt.com/backend-api/codex', { max_tokens: 64, [CODEX_HONOR_MAX_TOKENS]: true })).max_output_tokens).toBe(64)
+  })
+
+  test('an unmarked request stays uncapped', async () => {
+    const body = await bodyFor('https://chatgpt.com/backend-api/codex', { max_tokens: 32000 })
+    expect(body.max_output_tokens).toBeUndefined()
+  })
+
+  test('the mark does nothing off the Codex backend', async () => {
+    const body = await bodyFor('http://localhost:8000/v1', { max_tokens: 1, [CODEX_HONOR_MAX_TOKENS]: true })
+    expect(body.max_output_tokens).toBeUndefined()
+  })
+})
+
+// End to end through the real shim client: armKeepAlive asks the client how
+// to ping, the ping goes out through create(), and performCodexRequest writes it.
+describe('a keep-alive ping through the shim client', () => {
+  const realFetch = globalThis.fetch
+  const managed = ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CHATGPT_ACCOUNT_ID', 'CLAUDIN_CACHE_KEEPALIVE'] as const
+  const saved = Object.fromEntries(managed.map(key => [key, process.env[key]]))
+  let sent: Array<Record<string, unknown>> = []
+
+  beforeEach(() => {
+    sent = []
+    keepAlive._resetKeepAliveForTesting()
+    process.env.CLAUDIN_CACHE_KEEPALIVE = '1'
+    globalThis.fetch = (async (_input: unknown, init?: RequestInit) => {
+      sent.push(JSON.parse(init?.body as string) as Record<string, unknown>)
+      return new Response(
+        sseEvent('response.incomplete', {
+          response: { output: [], incomplete_details: { reason: 'max_output_tokens' }, usage: { input_tokens: 40, output_tokens: 16 } },
+        }),
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      )
+    }) as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    keepAlive._resetKeepAliveForTesting()
+    globalThis.fetch = realFetch
+    for (const key of managed) {
+      if (saved[key] === undefined) delete process.env[key]
+      else process.env[key] = saved[key]
+    }
+  })
+
+  async function armThroughClient(): Promise<void> {
+    const { createOpenAIShimClient } = await import('src/providers/shims/openaiShim.js')
+    const client = createOpenAIShimClient({}) as Parameters<typeof keepAlive.armKeepAlive>[0]['client']
+    const params = { model: process.env.OPENAI_MODEL, messages: [{ role: 'user', content: 'hi' }], max_tokens: 32000 }
+    keepAlive.noteRequestStarted('main')
+    keepAlive.armKeepAlive({ key: 'main', client, params, model: String(process.env.OPENAI_MODEL), shortTtl: true })
+  }
+
+  test('on the Codex backend the ping goes out capped at the backend floor', async () => {
+    process.env.OPENAI_BASE_URL = 'https://chatgpt.com/backend-api/codex'
+    process.env.OPENAI_MODEL = 'codexplan'
+    process.env.OPENAI_API_KEY = 'profile-key'
+    process.env.CODEX_API_KEY = 'codex-key'
+    process.env.CHATGPT_ACCOUNT_ID = 'acct-1'
+    await armThroughClient()
+    await keepAlive._fireNowForTesting('main')
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.max_output_tokens).toBe(16)
+    expect(sent[0]!.prompt_cache_key).toBe(getSessionId())
+    expect(keepAlive._getPingsForTesting()[0]).toMatchObject({ key: 'main', usage: { output_tokens: 16 } })
+  })
+
+  test('on GitHub Copilot GPT-5 nothing is armed', async () => {
+    delete process.env.OPENAI_BASE_URL
+    process.env.CLAUDIN_USE_GITHUB = '1'
+    process.env.OPENAI_MODEL = 'gpt-5.5'
+    process.env.OPENAI_API_KEY = 'gh-key'
+    await armThroughClient()
+    expect(keepAlive._isArmedForTesting('main')).toBe(false)
+    await keepAlive._fireNowForTesting('main')
+    expect(sent).toHaveLength(0)
+  })
+
+  // The chain re-sends one body for up to 30 minutes, and create() routes it by
+  // the provider active when it fires: a /provider switch must not turn the
+  // Codex ping into an uncapped, billed request on the new host.
+  test('a chain armed on the Codex backend stops after a switch to Copilot GPT-5', async () => {
+    process.env.OPENAI_BASE_URL = 'https://chatgpt.com/backend-api/codex'
+    process.env.OPENAI_MODEL = 'codexplan'
+    process.env.OPENAI_API_KEY = 'profile-key'
+    process.env.CODEX_API_KEY = 'codex-key'
+    process.env.CHATGPT_ACCOUNT_ID = 'acct-1'
+    await armThroughClient()
+    expect(keepAlive._isArmedForTesting('main')).toBe(true)
+
+    delete process.env.OPENAI_BASE_URL
+    process.env.CLAUDIN_USE_GITHUB = '1'
+    process.env.OPENAI_MODEL = 'gpt-5.5'
+    process.env.OPENAI_API_KEY = 'gh-key'
+    await keepAlive._fireNowForTesting('main')
+    expect(sent).toHaveLength(0)
+    expect(keepAlive._isArmedForTesting('main')).toBe(false)
   })
 })
 

@@ -3,6 +3,7 @@ import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 import { renderModelName } from 'src/providers/model/model.js'
 import { getModelStrings } from 'src/providers/model/modelStrings.js'
 import type { ProviderProfile } from 'src/platform/config/config.js'
+import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import { readSnapshot } from 'src/providers/ui/ProviderModelIndicator.js'
 
 const realModel = { ...(await import('src/providers/model/model.js')) }
@@ -15,16 +16,21 @@ function setActiveModel(name: string): void {
   }))
 }
 
+// renderModelName reads the provider through tryGetActiveProvider(), which
+// caches what it resolved: a non-Anthropic profile left there by an earlier
+// file would win over the one mocked here and keep the raw Claude id.
 function setProfile(profile: Partial<ProviderProfile> | undefined): void {
   mock.module('src/providers/presets/providerProfiles.js', () => ({
     ...realProfiles,
     getActiveProviderProfile: () => profile,
   }))
+  invalidateActiveProviderCache()
 }
 
 afterEach(() => {
   mock.module('src/providers/model/model.js', () => realModel)
   mock.module('src/providers/presets/providerProfiles.js', () => realProfiles)
+  invalidateActiveProviderCache()
 })
 
 afterAll(() => {
