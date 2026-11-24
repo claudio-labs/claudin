@@ -4,6 +4,7 @@ import { afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 
 import { createRoot, Text } from 'src/terminal/ink.js'
+import type { CodexOAuthTokens } from 'src/providers/oauth/codexOAuth.js'
 
 const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
@@ -158,7 +159,7 @@ test('does not persist credentials when downstream setup rejects', async () => {
 async function renderStatus(
   deps: Record<string, unknown>,
   onAuthenticated: (
-    tokens: typeof TOKENS,
+    tokens: CodexOAuthTokens,
     persistCredentials: (options?: { profileId?: string }) => void,
   ) => Promise<void>,
 ): Promise<{ frame: () => string; close: () => Promise<void> }> {

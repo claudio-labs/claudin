@@ -235,6 +235,41 @@ describe('a Codex OAuth profile with the account list fetched', () => {
   })
 })
 
+describe('the default effort on the Codex backend', () => {
+  test.each([
+    ['gpt-6.2-sol', 'low'],
+    ['gpt-5.6-sol', 'low'],
+    ['gpt-5.6-terra', 'medium'],
+    ['gpt-6-luna', 'medium'],
+    ['codexplan', 'medium'],
+  ] as const)('with nothing pinned, %s goes out at the account default, %s', (model, effort) => {
+    useProfile(CODEX_OAUTH)
+    expect(resolveAppliedEffort(model, undefined)).toBe(effort)
+  })
+
+  test('a pin wins over the account default', () => {
+    useProfile(CODEX_OAUTH)
+    expect(resolveAppliedEffort('gpt-6.2-sol', 'high')).toBe('high')
+  })
+
+  test('the fetched list names the default when there is one', () => {
+    useProfile(CODEX_OAUTH)
+    setCodexAccountModels([
+      { id: 'gpt-6.2-sol', label: 'gpt-6.2-sol', description: '', account: { contextWindow: 500_000, effortLevels: LOW_TO_MAX, defaultEffort: 'xhigh' } },
+      { id: 'gpt-6-luna', label: 'gpt-6-luna', description: '', account: { contextWindow: 272_000, effortLevels: LOW_TO_MAX } },
+    ])
+    expect(resolveAppliedEffort('gpt-6.2-sol', undefined)).toBe('xhigh')
+    // No default in the list: nothing from the account.
+    expect(resolveAppliedEffort('gpt-6-luna', undefined)).toBeUndefined()
+  })
+
+  test('off the Codex backend the account default is not read', () => {
+    useProfile({ ...CODEX_OAUTH, id: 'surface-codex-proxy-effort', baseUrl: 'http://localhost:8000/v1' })
+    expect(resolveAppliedEffort('gpt-6.2-sol', undefined)).toBeUndefined()
+    expect(resolveAppliedEffort('gpt-5.6-sol', undefined)).toBeUndefined()
+  })
+})
+
 // /provider writes `codexplan`, but a profile on the Codex backend can name a
 // model directly (edited, imported, or written by hand). Its requests already
 // go to the Codex backend (resolveProviderRequest reads the base URL); the

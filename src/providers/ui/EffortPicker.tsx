@@ -12,6 +12,7 @@ import {
   isAdaptiveEffort,
   modelSupportsEffort,
   modelUsesOpenAIEffort,
+  getDefaultEffortForModel,
 } from 'src/providers/effort/effort.js'
 import { getReasoningEffortForModel } from 'src/providers/presets/providerConfig.js'
 import { getRainbowColor } from 'src/agent/context/thinking.js'
@@ -242,9 +243,11 @@ function initialFocusIndex(
   model: string,
 ): number {
   if (appStateEffort === undefined || isAdaptiveEffort(appStateEffort)) {
-    // OpenAI/Codex: focus the model's default reasoning effort if any.
+    // OpenAI/Codex: focus the model's default reasoning effort if any — the
+    // one that goes out (on the Codex backend, the account's), else the
+    // alias table's.
     if (usesOpenAIEffort) {
-      const reasoning = getReasoningEffortForModel(model)
+      const reasoning = getDefaultEffortForModel(model) ?? getReasoningEffortForModel(model)
       if (reasoning) {
         const idx = options.findIndex(o => o.value === reasoning)
         if (idx >= 0) return idx

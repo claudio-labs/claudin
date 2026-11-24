@@ -313,6 +313,24 @@ describe('the OpenAI effort family', () => {
       await ui.cleanup()
     }
   })
+
+  test('on the Codex backend it opens on the account default, not the alias table one', async () => {
+    // gpt-5.6-terra is `high` in the alias table and `medium` in the account
+    // catalog; the account's is the one that goes out (getDefaultEffortForModel).
+    useProfile({
+      id: 'ep-codex',
+      name: 'Codex OAuth',
+      provider: 'openai',
+      baseUrl: 'https://chatgpt.com/backend-api/codex',
+      model: 'gpt-5.6-terra',
+    })
+    const ui = await mountPicker('gpt-5.6-terra')
+    try {
+      expect(markerUnder(ui.frame())).toBe('medium')
+    } finally {
+      await ui.cleanup()
+    }
+  })
 })
 
 describe('a model that does not support effort', () => {

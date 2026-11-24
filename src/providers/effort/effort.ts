@@ -11,6 +11,9 @@ import {
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { geminiVersion, isGeminiNativeRequest } from 'src/providers/shims/gemini/endpoints.js'
+import { getCodexAccountLimits } from 'src/providers/model/codexModelCatalog.js'
+import { getCodexAliasModel } from 'src/providers/presets/providerConfig.js'
+import { activeSessionOnCodexBackend } from 'src/providers/shims/codex/backend.js'
 import type { EffortLevel } from 'src/platform/entrypoints/sdk/runtimeTypes.js'
 import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
@@ -689,6 +692,14 @@ export function getDefaultEffortForModel(
     const version = geminiVersion(model)
     if (version !== undefined && version >= 3) return 'high'
     if (version === 2.5) return 'medium'
+  }
+
+  // On the Codex backend the account's catalog names each model's default,
+  // as the Codex CLI reads it: gpt-6.2-sol low, gpt-6-luna medium. It wins
+  // over the alias table's (gpt-5.6-* high), which other endpoints keep.
+  if (activeSessionOnCodexBackend()) {
+    const accountDefault = getCodexAccountLimits(getCodexAliasModel(model))?.defaultEffort
+    if (accountDefault) return accountDefault
   }
 
   // Opt-in: coding/high-autonomy loops on Opus 4.8 default to xhigh. The 4.8
