@@ -111,7 +111,7 @@ const YELLOW_FG_CODE: AnsiCode = {
 
 export class StylePool {
   private ids = new Map<string, number>()
-  private styles: AnsiCode[][] = []
+  private styles: (readonly AnsiCode[])[] = []
   private transitionCache = new Map<number, string>()
   readonly none: number
 
@@ -126,7 +126,7 @@ export class StylePool {
    * on spaces get odd IDs. This lets the renderer skip invisible spaces
    * with a single bitmask check on the packed word.
    */
-  intern(styles: AnsiCode[]): number {
+  intern(styles: readonly AnsiCode[]): number {
     const key = styles.length === 0 ? '' : styles.map(s => s.code).join('\0')
     let id = this.ids.get(key)
     if (id === undefined) {
@@ -141,7 +141,7 @@ export class StylePool {
   }
 
   /** Recover styles from an encoded ID. Strips the bit-0 flag via >>> 1. */
-  get(id: number): AnsiCode[] {
+  get(id: number): readonly AnsiCode[] {
     return this.styles[id >>> 1] ?? []
   }
 
@@ -268,7 +268,7 @@ const VISIBLE_ON_SPACE = new Set([
   '\x1b[55m', // overline
 ])
 
-function hasVisibleSpaceEffect(styles: AnsiCode[]): boolean {
+function hasVisibleSpaceEffect(styles: readonly AnsiCode[]): boolean {
   for (const style of styles) {
     if (VISIBLE_ON_SPACE.has(style.endCode)) return true
   }
@@ -992,7 +992,7 @@ const OSC8_REGEX = new RegExp(`^${ESC}\\]8${SEP}${SEP}([^${BEL}]*)${BEL}$`)
 export const OSC8_PREFIX = `${ESC}]8${SEP}`
 
 export function extractHyperlinkFromStyles(
-  styles: AnsiCode[],
+  styles: readonly AnsiCode[],
 ): Hyperlink | null {
   for (const style of styles) {
     const code = style.code
@@ -1005,7 +1005,9 @@ export function extractHyperlinkFromStyles(
   return null
 }
 
-export function filterOutHyperlinkStyles(styles: AnsiCode[]): AnsiCode[] {
+export function filterOutHyperlinkStyles(
+  styles: readonly AnsiCode[],
+): AnsiCode[] {
   return styles.filter(
     style =>
       !style.code.startsWith(OSC8_PREFIX) || !OSC8_REGEX.test(style.code),

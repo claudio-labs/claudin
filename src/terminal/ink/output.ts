@@ -531,7 +531,7 @@ export default class Output {
   }
 }
 
-function stylesEqual(a: AnsiCode[], b: AnsiCode[]): boolean {
+function stylesEqual(a: readonly AnsiCode[], b: readonly AnsiCode[]): boolean {
   if (a === b) return true // Reference equality fast path
   const len = a.length
   if (len !== b.length) return false
@@ -559,7 +559,7 @@ function styledCharsWithGraphemeClustering(
 
   const result: ClusteredChar[] = []
   const bufferChars: string[] = []
-  let bufferStyles: AnsiCode[] = chars[0]!.styles
+  let bufferStyles = chars[0]!.styles
 
   for (let i = 0; i < charCount; i++) {
     const char = chars[i]!
@@ -585,7 +585,7 @@ function styledCharsWithGraphemeClustering(
 
 function flushBuffer(
   buffer: string,
-  styles: AnsiCode[],
+  styles: readonly AnsiCode[],
   stylePool: StylePool,
   out: ClusteredChar[],
 ): void {
