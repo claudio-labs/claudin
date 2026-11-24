@@ -106,7 +106,7 @@ export class LogUpdate {
   private renderFullFrame(frame: Frame): Diff {
     const { screen } = frame
     const lines: string[] = []
-    let currentStyles: AnsiCode[] = []
+    let currentStyles: readonly AnsiCode[] = []
     let currentHyperlink: Hyperlink = undefined
     for (let y = 0; y < screen.height; y++) {
       let line = ''

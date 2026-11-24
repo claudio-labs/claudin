@@ -4,7 +4,7 @@
 
 ## Decisions
 - Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind, /diff `x`, fallback · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills, ws ask · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /autocompact /recap
-- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule, review's 9 fixes; what was dropped
+- [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule; what was dropped
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option; not a type:'input' row
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
 - [OpenAI-compat defers tools client-side (10-31)](decisions/openai-compat-client-tool-search.md) — Ollama 112k→23k
@@ -35,7 +35,7 @@
 - [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — `CLAUDIN_READ_MULTI=0`
 - [Opus 5.5 defaults to medium effort, like Claude Code (#242)](decisions/opus-5-5-default-effort-medium.md)
 - [Team memory: git IS the sync (09-21)](decisions/team-memory-git-is-the-sync.md) — HTTP sync + LLM recall deleted
-- [`safeguards` classifier — REJECTED 09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint
+- [`safeguards` classifier — REJECTED 09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it
 - [Tool-prompt tone rewrite — DROPPED 09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance found
 - [Seven catch-all dirs retired](decisions/reorg-catch-all-dirs-retired.md) — 15 slices; moduleBoundaries.test.ts
 - [memory_delta deleted 08-07](decisions/memory-delta-removed-double-send.md) — a full second copy, not a delta
@@ -49,7 +49,7 @@
 - [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests; opt-in `=0`
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — prStatusHosts in config.json
 - [Bash filter shape blindness — CLOSED 08-29](decisions/bash-filter-shape-wontfix.md) — specs cap at 6.8% of chars
-- [code-review-graph — REJECTED 08-08](decisions/code-review-graph-evaluated-rejected.md) — loses to reading the diff
+- [code-review-graph — REJECTED 08-08](decisions/code-review-graph-evaluated-rejected.md) — loses to the diff
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — one-shots → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — cost 4–17% more
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
@@ -69,7 +69,7 @@
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source
 - Latent bugs pinned, not fixed: [09-20 sleep N, rules resurrect](bugs/latent-bugs-pinned-not-fixed.md) · [WebSocket 10-17](bugs/websocket-sites-latent-bugs.md) · [providers 11-12](bugs/latent-bugs-pinned-2026-11-12.md)
-- [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — mid-session reconcile, cache GC, migrate rerun
+- [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — reconcile, cache GC, migrate rerun
 - [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — Cloudflare block
 - [/diff canonicalizes worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md)
@@ -170,7 +170,7 @@
 - [Binary release process](binary-release-rollout-state.md) — release-binaries.yml via OIDC
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits: [Aug](dependabot-bumps-2026-08-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28](dependabot-bumps-2026-09-28-audited.md) · [11-09](dependabot-bumps-2026-11-09-audited.md) · [11-16](dependabot-bumps-2026-11-16-audited.md)
+- Dependabot audits: [Aug](dependabot-bumps-2026-08-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28](dependabot-bumps-2026-09-28-audited.md) · [11-09](dependabot-bumps-2026-11-09-audited.md) · [11-16](dependabot-bumps-2026-11-16-audited.md) · [11-24](dependabot-bumps-2026-11-24-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
 - [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310 zstd, OTel crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
 - SDK pins: [1.x #326](dependabot-bumps-2026-10-26-anthropic-sdk-1x.md) · [1.3 ?beta=true #339](dependabot-bumps-2026-11-03-sdk-beta-query.md)
