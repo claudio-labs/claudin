@@ -508,18 +508,21 @@ export function getOpenAIContextWindow(model: string): number | undefined {
   } catch {
     // fall through to the hardcoded table
   }
+  // What the live Copilot catalog says this account gets. It answers only
+  // while a Copilot profile is active, and it wins over the table: a bare id
+  // there carries the OpenAI API's window, larger than what Copilot serves.
+  // Lazy for the same cycle reason as above.
+  try {
+    const { getCatalogCopilotContextWindow } = require('src/providers/model/copilotModelCatalog.js') as typeof import('src/providers/model/copilotModelCatalog.js')
+    const copilot = getCatalogCopilotContextWindow(model)
+    if (copilot !== undefined) return copilot
+  } catch {
+    // fall through to the hardcoded table
+  }
   const known = lookupByModel(OPENAI_CONTEXT_WINDOWS, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
   if (known !== undefined) return known
   const gemini = geminiFamilyLimits(model)
-  if (gemini) return gemini.contextWindow
-  // Copilot models missing from the hardcoded table (new releases) resolve
-  // from the live account catalog. Lazy for the same cycle reason as above.
-  try {
-    const { getCatalogCopilotContextWindow } = require('src/providers/model/copilotModelCatalog.js') as typeof import('src/providers/model/copilotModelCatalog.js')
-    return getCatalogCopilotContextWindow(model)
-  } catch {
-    return undefined
-  }
+  return gemini?.contextWindow
 }
 
 /**
@@ -538,14 +541,15 @@ export function getOpenAIMaxOutputTokens(model: string): number | undefined {
   } catch {
     // fall through to the hardcoded table
   }
+  try {
+    const { getCatalogCopilotMaxOutputTokens } = require('src/providers/model/copilotModelCatalog.js') as typeof import('src/providers/model/copilotModelCatalog.js')
+    const copilot = getCatalogCopilotMaxOutputTokens(model)
+    if (copilot !== undefined) return copilot
+  } catch {
+    // fall through to the hardcoded table
+  }
   const known = lookupByModel(OPENAI_MAX_OUTPUT_TOKENS, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
   if (known !== undefined) return known
   const gemini = geminiFamilyLimits(model)
-  if (gemini) return gemini.maxOutputTokens
-  try {
-    const { getCatalogCopilotMaxOutputTokens } = require('src/providers/model/copilotModelCatalog.js') as typeof import('src/providers/model/copilotModelCatalog.js')
-    return getCatalogCopilotMaxOutputTokens(model)
-  } catch {
-    return undefined
-  }
+  return gemini?.maxOutputTokens
 }
