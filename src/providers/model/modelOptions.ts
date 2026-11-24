@@ -473,10 +473,8 @@ function getCodexSparkOption(): ModelOption {
 }
 
 // Picker list for Codex models. On the Codex backend, what a ChatGPT account
-// offers there; anywhere else, the curated catalog through the opencode-style
-// predicate (getFilteredCodexCatalog) so `pro` variants are hidden by rule and
-// future `gpt-X.Y > 5.4` models appear without editing an enumeration. See
-// src/providers/model/codexModelCatalog.ts.
+// offers there; anywhere else, the curated catalog with `pro` variants hidden
+// by rule (getFilteredCodexCatalog). See src/providers/model/codexModelCatalog.ts.
 function getCodexModelOptions(): ModelOption[] {
   const catalog = activeSessionOnCodexBackend() ? getCodexAccountCatalog() : getFilteredCodexCatalog()
   return catalog.map(entry => ({

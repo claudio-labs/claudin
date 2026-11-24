@@ -2,16 +2,10 @@
  * codexModelCatalog.ts
  * Single source of truth for the Codex (ChatGPT/Codex OAuth) model picker.
  *
- * Ported from opencode's dynamic-filter approach
- * (packages/opencode/src/plugin/openai/codex.ts:285-291): instead of a
- * hand-enumerated picker list, we keep a curated candidate catalog and apply a
- * predicate so that future `gpt-X.Y > 5.4` models show up without editing an
- * enumeration, and `pro` variants are hidden by rule rather than by list.
- *
- * Two intentional divergences from opencode:
- *  - `gpt-5.6` is ENABLED (opencode currently excludes it).
- *  - The allowlist is extended to every catalog id, so the older codex-branded
- *    models (5.1/5.2/5.3) the numeric `>5.4` rule would drop stay in the picker.
+ * A curated catalog, with `pro` variants hidden by rule rather than by list
+ * (opencode parity, packages/opencode/src/plugin/openai/codex.ts:285-291).
+ * opencode also filters by version (`gpt-X.Y > 5.4`); that rule never decided
+ * anything here, since only catalog ids reach the predicate, and it was dropped.
  *
  * The filter governs only the DISPLAYED list. Alias/transport resolution still
  * lives in CODEX_ALIAS_MODELS (src/providers/presets/providerConfig.ts) — a model
@@ -176,40 +170,21 @@ export const CODEX_MODEL_CATALOG: readonly CodexModelEntry[] = [
   },
 ] as const
 
-// Mirrors opencode's ALLOWED_MODELS, extended to every catalog id so the older
-// codex-branded models survive the numeric rule below.
-export const CODEX_ALLOWLIST: ReadonlySet<string> = new Set(
-  CODEX_MODEL_CATALOG.filter(entry => !entry.isPro).map(entry => entry.id),
-)
-
 // Mirrors opencode's DISALLOWED_MODELS.
 export const CODEX_DISALLOWLIST: ReadonlySet<string> = new Set(['gpt-5.5-pro'])
 
-// opencode: `model.api.id.match(/^gpt-(\d+\.\d+)/)` then `parseFloat > 5.4`.
-const CODEX_VERSION_RE = /^gpt-(\d+\.\d+)/
 const CODEX_PRO_RE = /-pro$/
-export const CODEX_MIN_DYNAMIC_VERSION = 5.4
 
 /**
- * The opencode predicate (codex.ts:285-291), minus the `gpt-5.6` exclusion.
- * `isPro` mirrors opencode's `reasoningMode === "pro"` check; when filtering
- * bare ids it is inferred from a `-pro` suffix or the disallowlist.
+ * Whether a model may show in the picker: any but a `pro`-tier variant.
+ * `isPro` mirrors opencode's `reasoningMode === "pro"` check; on a bare id it
+ * is inferred from a `-pro` suffix or the disallowlist.
  */
 export function isCodexModelAllowed(
   id: string,
   opts: { isPro?: boolean } = {},
 ): boolean {
-  const isPro = opts.isPro ?? (CODEX_PRO_RE.test(id) || CODEX_DISALLOWLIST.has(id))
-  if (isPro) return false
-  if (CODEX_ALLOWLIST.has(id)) return true
-  if (CODEX_DISALLOWLIST.has(id)) return false
-  const match = id.match(CODEX_VERSION_RE)
-  return match ? Number.parseFloat(match[1]) > CODEX_MIN_DYNAMIC_VERSION : false
-}
-
-/** Filter a list of bare model ids through the Codex predicate. */
-export function filterCodexModels(ids: readonly string[]): string[] {
-  return ids.filter(id => isCodexModelAllowed(id))
+  return !(opts.isPro ?? (CODEX_PRO_RE.test(id) || CODEX_DISALLOWLIST.has(id)))
 }
 
 /** Catalog entries that pass the filter, in picker order: the API's list. */
