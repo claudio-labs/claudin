@@ -51,10 +51,12 @@ export function EffortPicker({ onSelect, onCancel }: Props) {
   const supportsEffort = modelSupportsEffort(model)
   const availableLevels = getAvailableEffortLevels(model)
 
+  // OpenAI/Codex 'xhigh' is surfaced as 'max' (matches the rest of the UI),
+  // but the applied value stays the raw level. A model that also takes a real
+  // max (a ChatGPT account's) keeps both names.
+  const relabelXhigh = usesOpenAIEffort && !(availableLevels as string[]).includes('max')
   const options: SliderOption[] = availableLevels.map(level => {
-    // OpenAI/Codex 'xhigh' is surfaced as 'max' (matches the rest of the UI),
-    // but the applied value stays the raw level.
-    const label = usesOpenAIEffort && level === 'xhigh' ? 'max' : level
+    const label = relabelXhigh && level === 'xhigh' ? 'max' : level
     return {
       value: level as EffortValue,
       label,
