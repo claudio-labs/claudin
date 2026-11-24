@@ -64,9 +64,14 @@ describe('cronScheduler first sight', () => {
     expect(fired).toEqual([])
   }, 15_000)
 
+  // The lead (up to 90 s) is clamped to createdAt, so a mark closer than that
+  // makes the task due on the first check, which fires and deletes it: take
+  // whichever of :00 and :30 is further from now.
   test('a one-shot is anchored at createdAt with its early jitter', async () => {
     const createdAt = Date.now()
-    const task = { id: 'ffffffff', cron: '30 * * * *', prompt: 'p', createdAt }
-    expect((await firstSight(task)).next).toBe(oneShotJitteredNextCronRunMs('30 * * * *', createdAt, 'ffffffff'))
+    const minute = new Date(createdAt).getMinutes()
+    const cron = minute >= 15 && minute < 45 ? '0 * * * *' : '30 * * * *'
+    const task = { id: 'ffffffff', cron, prompt: 'p', createdAt }
+    expect((await firstSight(task)).next).toBe(oneShotJitteredNextCronRunMs(cron, createdAt, 'ffffffff'))
   }, 15_000)
 })
