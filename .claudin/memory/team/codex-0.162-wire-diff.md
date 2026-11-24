@@ -42,10 +42,13 @@ as an `error` frame read as a 500 and retried 11 times; fixed (the frame's `stat
 now the Response's).
 
 **Facts the capture and probes established:**
-- A ChatGPT account accepts only gpt-6-luna, gpt-5.6-terra, gpt-5.6-luna (272k window,
+- The FREE test account accepts only gpt-6-luna, gpt-5.6-terra, gpt-5.6-luna (272k window,
   128k out, effort low..max; `ultra` on terra is sent by Codex CLI as `high`). The others
   answer 400 "not supported when using Codex with a ChatGPT account".
-  `GET /backend-api/codex/models?client_version=0.162.1` lists them (400 without it).
+  `GET /backend-api/codex/models?client_version=…` lists them (400 without it). The list
+  depends on the plan: paid plans also get gpt-6.2-*. Since 2026-11-24 Claudin reads it at
+  startup ([[codex-model-list-per-account]]); a live GET at 0.172.0 that day returned the
+  same three.
 - The backend rejects a bad reasoning replay with HTTP 200 + one SSE `error` event,
   `code: invalid_encrypted_content`, no completion. A synthetic `fc_` call id makes the
   completed response's `output` come back empty.
