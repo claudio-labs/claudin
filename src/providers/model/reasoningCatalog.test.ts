@@ -117,6 +117,18 @@ describe('lookupReasoningEffortValues', () => {
     ).toEqual(['low', 'high', 'max'])
   })
 
+  test.each([
+    ['https://api.openai.com/v1', 'gpt-6.2-sol', ['low', 'medium', 'high', 'xhigh', 'max']],
+    ['https://api.openai.com/v1', 'gpt-6.1-terra', ['none', 'low', 'medium', 'high', 'xhigh', 'max']],
+    ['https://myres.openai.azure.com/openai/v1', 'gpt-6.2-astra', ['low', 'medium', 'high', 'xhigh', 'max']],
+    ['https://openrouter.ai/api/v1', 'openai/gpt-6.2-sol-pro', ['low', 'medium', 'high', 'xhigh', 'max']],
+    ['https://opencode.ai/zen/v1', 'gpt-6.1-sol', ['low', 'medium', 'high', 'xhigh', 'max']],
+    ['https://opencode.ai/zen/go/v1', 'gpt-6-luna', ['none', 'low', 'medium', 'high', 'xhigh', 'max']],
+  ] as const)('the gpt-6.x rows: %s %s', (baseUrl, model, levels) => {
+    // Added by hand, line for line what the generator emits (2026-11-24).
+    expect(lookupReasoningEffortValues(baseUrl, model)).toEqual(levels as never)
+  })
+
   test('ignores a ?reasoning= descriptor suffix on the model name', () => {
     expect(lookupReasoningEffortValues(GO, 'glm-5.3-flash?reasoning=high')).toEqual([
       'low',
@@ -172,8 +184,14 @@ describe('resolveShimEffortValues', () => {
     const codex = 'https://chatgpt.com/backend-api/codex'
     expect(resolveShimEffortValues(codex, 'gpt-6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
     expect(resolveShimEffortValues(codex, 'gpt-5.4')).toEqual(['low', 'medium', 'high', 'xhigh'])
-    // The same id behind any other endpoint is not the account's.
-    expect(resolveShimEffortValues('https://llm.example.test/v1', 'gpt-6-luna')).toBeUndefined()
+    // The same id behind any other endpoint is not the account's: it gets
+    // the family list, without the account's max.
+    expect(resolveShimEffortValues('https://llm.example.test/v1', 'gpt-6-luna')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+    ])
   })
 
   test('reports nothing for a non-reasoning model on an unknown endpoint', () => {

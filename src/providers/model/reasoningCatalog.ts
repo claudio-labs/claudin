@@ -230,11 +230,11 @@ export function lookupReasoningEffortValues(
 }
 
 /**
- * The GPT-5 family's levels, for an endpoint the catalog does not list. Claudin
- * already claims elsewhere that a `gpt-5*` id takes an effort parameter
- * (`supportsCodexReasoningEffort`, which also covers the Codex aliases); this
- * is that claim's level list, so a self-hosted proxy in front of OpenAI keeps
- * working instead of silently losing the control it had.
+ * The GPT-5-and-later family's levels, for an endpoint the catalog does not
+ * list. Claudin already claims elsewhere that a `gpt-5*` or later id takes an
+ * effort parameter (`supportsCodexReasoningEffort`, which also covers the Codex
+ * aliases); this is that claim's level list, so a self-hosted proxy in front of
+ * OpenAI keeps working instead of silently losing the control it had.
  */
 const OPENAI_FAMILY_LEVELS: readonly CatalogEffortValue[] = [
   'low',
@@ -278,7 +278,7 @@ function geminiNativeEffortValues(
  * THE resolver for a request that goes out through the OpenAI shim — the one
  * function the picker and the wire both call, which is what keeps them from
  * disagreeing. Precedence: the catalog, then what a ChatGPT account offers on
- * the Codex backend, then the GPT-5 family fallback, then native Gemini.
+ * the Codex backend, then the GPT-5-and-later family fallback, then native Gemini.
  *
  * Returns undefined when nothing offers a level Claudin can show. A row whose
  * only level is `none`/`minimal`/`default` counts as nothing: those mean "think
