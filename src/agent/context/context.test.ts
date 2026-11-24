@@ -375,6 +375,17 @@ test('DashScope glm-4.7 uses provider-specific context and output caps', () => {
   })
 })
 
+test('Z.AI glm-5.4 gets its 1M window, not the DashScope glm-5 prefix row', () => {
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
+
+  expect(getContextWindowForModel('glm-5.4')).toBe(1_000_000)
+  expect(getModelMaxOutputTokens('glm-5.4')).toEqual({
+    default: 131_072,
+    upperLimit: 131_072,
+  })
+})
+
 test('DashScope models clamp oversized max output overrides to the provider limit', () => {
   process.env.CLAUDIN_USE_OPENAI = '1'
   process.env.CLAUDIN_MAX_OUTPUT_TOKENS = '100000'
