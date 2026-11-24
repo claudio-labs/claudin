@@ -234,6 +234,11 @@ export const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   'moonshot-v1-8k':             8_192,
   'moonshot-v1-32k':           32_768,
   'moonshot-v1-128k':         131_072,
+
+  // Z.AI GLM Coding Plan (api.z.ai/api/coding/paas/v4). Values from models.dev
+  // (November 2026). Without its own row glm-5.4 prefix-matches DashScope's
+  // 'glm-5' above and gets 198K.
+  'glm-5.4':                1_000_000,
 }
 
 /**
@@ -406,6 +411,9 @@ export const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
   'moonshot-v1-8k':             4_096,
   'moonshot-v1-32k':           16_384,
   'moonshot-v1-128k':          32_768,
+
+  // Z.AI GLM Coding Plan
+  'glm-5.4':                  131_072,
 }
 
 // External context-window overrides loaded once at startup.
