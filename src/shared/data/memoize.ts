@@ -180,3 +180,33 @@ export function memoizeWithLRU<
 
   return memoized
 }
+
+/**
+ * memoizeWithLRU for an async fetch whose failure must not stay cached: a
+ * rejected call answers `onFailure` and leaves the cache, so the next call
+ * fetches again. Only that call's own entry is evicted — a clear and a newer
+ * call may already have replaced it.
+ */
+export function memoizeWithLRUExceptFailures<
+  Args extends unknown[],
+  Result,
+>(
+  f: (...args: Args) => Promise<Result>,
+  onFailure: (error: unknown, ...args: Args) => Result,
+  cacheFn: (...args: Args) => string,
+  maxCacheSize?: number,
+): LRUMemoizedFunction<Args, Promise<Result>> {
+  const memoized: LRUMemoizedFunction<Args, Promise<Result>> = memoizeWithLRU(
+    (...args: Args): Promise<Result> => {
+      const key = cacheFn(...args)
+      const call: Promise<Result> = f(...args).catch(error => {
+        if (memoized.cache.get(key) === call) memoized.cache.delete(key)
+        return onFailure(error, ...args)
+      })
+      return call
+    },
+    cacheFn,
+    maxCacheSize,
+  )
+  return memoized
+}

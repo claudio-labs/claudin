@@ -1,5 +1,9 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { memoizeWithLRU, memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
+import {
+  memoizeWithLRU,
+  memoizeWithLRUExceptFailures,
+  memoizeWithTTLAsync,
+} from 'src/shared/data/memoize.js'
 
 function deferred<T>(): {
   promise: Promise<T>
@@ -123,5 +127,55 @@ describe('memoizeWithLRU', () => {
     for (let i = 0; i <= 100; i++) memoized(i)
     expect(memoized.cache.size()).toBe(100)
     expect(memoized.cache.has('0')).toBe(false)
+  })
+})
+
+describe('memoizeWithLRUExceptFailures', () => {
+  test('memoizes a success', async () => {
+    const f = mock(async (s: string) => s.toUpperCase())
+    const memoized = memoizeWithLRUExceptFailures(f, () => '', s => s)
+    expect(await memoized('a')).toBe('A')
+    expect(await memoized('a')).toBe('A')
+    expect(f).toHaveBeenCalledTimes(1)
+  })
+
+  test('answers the fallback for a failure and fetches again next time', async () => {
+    let calls = 0
+    const onFailure = mock((error: unknown, s: string) => `fallback ${s}: ${String(error)}`)
+    const memoized = memoizeWithLRUExceptFailures(
+      async (s: string) => {
+        calls++
+        if (calls === 1) throw new Error('down')
+        return s.toUpperCase()
+      },
+      onFailure,
+      s => s,
+    )
+    expect(await memoized('a')).toBe('fallback a: Error: down')
+    expect(memoized.cache.has('a')).toBe(false)
+    expect(await memoized('a')).toBe('A')
+    expect(await memoized('a')).toBe('A')
+    expect(calls).toBe(2)
+  })
+
+  test('a failing stale call does not evict the entry that replaced it', async () => {
+    const pending = deferred<string>()
+    let calls = 0
+    const memoized = memoizeWithLRUExceptFailures(
+      async () => {
+        calls++
+        return calls === 1 ? pending.promise : 'fresh'
+      },
+      () => 'fallback',
+      () => 'key',
+    )
+    const stale = memoized()
+    memoized.cache.delete('key')
+    expect(await memoized()).toBe('fresh')
+    pending.reject(new Error('old connection closed'))
+    expect(await stale).toBe('fallback')
+    expect(memoized.cache.has('key')).toBe(true)
+    expect(await memoized()).toBe('fresh')
+    expect(calls).toBe(2)
   })
 })

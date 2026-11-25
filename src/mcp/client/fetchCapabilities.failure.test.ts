@@ -14,9 +14,17 @@ const ANSWERS: Record<string, Record<string, unknown>> = {
   'prompts/list': { prompts: [{ name: 'probe' }] },
 }
 
-// A server whose first list call of each kind fails, then answers.
+// tools/list retries a page 3 times (1 s, then 2 s apart) before it gives up;
+// resources/list and prompts/list do not retry.
+const FAILURES_PER_FETCH: Record<string, number> = {
+  'tools/list': 3,
+  'resources/list': 1,
+  'prompts/list': 1,
+}
+
+// A server whose first fetch of each list fails all its attempts, then answers.
 function flakyServer(name: string): MCPServerConnection {
-  const failed = new Set<string>()
+  const failures = new Map<string, number>()
   return {
     type: 'connected',
     name,
@@ -25,8 +33,9 @@ function flakyServer(name: string): MCPServerConnection {
     cleanup: async () => {},
     client: {
       request: async (req: ListRequest) => {
-        if (!failed.has(req.method)) {
-          failed.add(req.method)
+        const failed = failures.get(req.method) ?? 0
+        if (failed < FAILURES_PER_FETCH[req.method]!) {
+          failures.set(req.method, failed + 1)
           throw new Error(`${req.method} timed out`)
         }
         return ANSWERS[req.method]
@@ -45,7 +54,7 @@ describe('a failed MCP list call is not memoized', () => {
     expect(await fetchToolsForClient(client)).toEqual([])
     const tools = await fetchToolsForClient(client)
     expect(tools.map(t => t.mcpInfo?.toolName)).toEqual(['probe'])
-  })
+  }, 10_000)
 
   test('resources/list', async () => {
     const client = flakyServer('flaky-resources')
@@ -63,8 +72,8 @@ describe('a failed MCP list call is not memoized', () => {
 
   test('a successful list is still served from the memo', async () => {
     const client = flakyServer('flaky-memo')
-    await fetchToolsForClient(client)
-    const first = await fetchToolsForClient(client)
-    expect(await fetchToolsForClient(client)).toBe(first)
+    await fetchResourcesForClient(client)
+    const first = await fetchResourcesForClient(client)
+    expect(await fetchResourcesForClient(client)).toBe(first)
   })
 })

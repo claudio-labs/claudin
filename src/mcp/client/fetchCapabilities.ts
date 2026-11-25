@@ -26,7 +26,7 @@ import {
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/shared/errors.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
-import { memoizeWithLRU } from 'src/shared/data/memoize.js'
+import { memoizeWithLRUExceptFailures } from 'src/shared/data/memoize.js'
 import { recursivelySanitizeUnicode } from 'src/shared/data/sanitization.js'
 import { clearKeychainCache } from 'src/platform/secureStorage/macOsKeychainHelpers.js'
 import { sleep } from 'src/shared/sleep.js'
@@ -82,7 +82,11 @@ export function mcpToolInputToAutoClassifierInput(
     ? keys.map(k => `${k}=${String(input[k])}`).join(' ')
     : toolName
 }
-export const fetchToolsForClient = memoizeWithLRU(
+// A failed list answers [] without being memoized: a sub-agent that names the
+// server (runAgent.ts) or a headless reconcile reads this memo without the
+// reconnect or list_changed that would clear it, and kept an empty server for
+// the rest of the session.
+export const fetchToolsForClient = memoizeWithLRUExceptFailures(
   async (client: MCPServerConnection): Promise<Tool[]> => {
     if (client.type !== 'connected') return []
 
@@ -348,14 +352,15 @@ export const fetchToolsForClient = memoizeWithLRU(
         .filter(isIncludedMcpTool)
     } catch (error) {
       logMCPError(client.name, `Failed to fetch tools: ${errorMessage(error)}`)
-      return []
+      throw error
     }
   },
+  (): Tool[] => [],
   (client: MCPServerConnection) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
 
-export const fetchResourcesForClient = memoizeWithLRU(
+export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
   async (client: MCPServerConnection): Promise<ServerResource[]> => {
     if (client.type !== 'connected') return []
 
@@ -382,14 +387,15 @@ export const fetchResourcesForClient = memoizeWithLRU(
         client.name,
         `Failed to fetch resources: ${errorMessage(error)}`,
       )
-      return []
+      throw error
     }
   },
+  (): ServerResource[] => [],
   (client: MCPServerConnection) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
 
-export const fetchCommandsForClient = memoizeWithLRU(
+export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
   async (client: MCPServerConnection): Promise<Command[]> => {
     if (client.type !== 'connected') return []
 
@@ -459,9 +465,10 @@ export const fetchCommandsForClient = memoizeWithLRU(
         client.name,
         `Failed to fetch commands: ${errorMessage(error)}`,
       )
-      return []
+      throw error
     }
   },
+  (): Command[] => [],
   (client: MCPServerConnection) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
