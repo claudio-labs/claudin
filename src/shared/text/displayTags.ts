@@ -17,9 +17,11 @@ import { PASTED_CONTENT_TAG } from 'src/shared/constants/xml.js'
 const XML_TAG_BLOCK_PATTERN = /<([a-z][\w-]*)(?:\s[^>]*)?>[\s\S]*?<\/\1>\n?/g
 
 // A `<pasted_content>` block as wrapPastedText (src/agent/input/pastedContent.ts)
-// writes it: the closing tag repeats the opening tag's id.
+// writes it: the closing tag repeats the opening tag's id. Each newline the
+// writer puts at a boundary is optional or may be a space, because stored
+// prompts get trimmed (the queue, the /rewind list) and flattened (titles).
 const PASTED_BLOCK_PATTERN = new RegExp(
-  `<${PASTED_CONTENT_TAG} id="([0-9a-f]{4})">\\n([\\s\\S]*?)\\n</${PASTED_CONTENT_TAG} id="\\1">\\n`,
+  `<${PASTED_CONTENT_TAG} id="([0-9a-f]{4})">[\\n ]?([\\s\\S]*?)[\\n ]?</${PASTED_CONTENT_TAG} id="\\1">[\\n ]?`,
   'g',
 )
 

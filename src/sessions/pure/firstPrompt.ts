@@ -1,5 +1,6 @@
 import { builtInCommandNames } from 'src/commands/commands.js'
 import { COMMAND_NAME_TAG } from 'src/shared/constants/xml.js'
+import { unwrapPastedContent } from 'src/shared/text/displayTags.js'
 import type { TranscriptMessage } from 'src/shared/types/logs.js'
 import type { Message } from 'src/shared/types/message.js'
 import { extractTag } from 'src/agent/messages/messages.js'
@@ -62,8 +63,11 @@ export function getFirstMeaningfulUserMessageTextContent<T extends Message>(
       }
     }
 
-    for (const textContent of texts) {
-      if (!textContent) continue
+    // Pasted text is the user's own prompt, not injected XML: unwrap it
+    // before the skip test below reads a leading tag as system context.
+    for (const raw of texts) {
+      if (!raw) continue
+      const textContent = unwrapPastedContent(raw)
 
       const commandNameTag = extractTag(textContent, COMMAND_NAME_TAG)
       if (commandNameTag) {
@@ -150,7 +154,7 @@ export function extractFirstPromptFromChunk(chunk: string): string {
       for (const text of texts) {
         if (!text) continue
 
-        let result = text.replace(/\n/g, ' ').trim()
+        let result = unwrapPastedContent(text).replace(/\n/g, ' ').trim()
 
         // Skip command messages (slash commands) but remember the first one
         // as a fallback title. Matches skip logic in
