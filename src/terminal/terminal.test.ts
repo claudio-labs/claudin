@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import stripAnsi from 'strip-ansi'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import {
   isOutputLineTruncated,
   renderTruncatedContent,
@@ -59,6 +60,20 @@ describe('renderTruncatedContent', () => {
       'x'.repeat(10),
     ])
     expect(rendered).toContain('… +497 lines')
+  })
+
+  // Ported from openclaude #2553.
+  test('keeps every wrapped line inside the width when a wide glyph straddles it', () => {
+    const lines = renderTruncatedContent('a' + '你'.repeat(20), 38).split('\n')
+    expect(lines.map(line => stringWidth(line))).toEqual([29, 12])
+    expect(lines.join('')).toBe('a' + '你'.repeat(20))
+  })
+
+  test('loses no character when the slicer and stringWidth disagree on a glyph', () => {
+    // The tokenizer counts a keycap with VS16 as two cells, stringWidth as one.
+    const text = '1\uFE0Fabcdefghijklmnopqrs'
+    const rendered = renderTruncatedContent(text, WIDTH_FOR_WRAP_10)
+    expect(rendered.split('\n').join('')).toBe(text)
   })
 })
 

@@ -126,6 +126,21 @@ describe('execFileNoThrowWithCwd running a process', () => {
     expect(result.error).toBe('Command timed out after 200ms')
   })
 
+  // Ported from openclaude, which resolves at the timeout itself: 'close'
+  // waits for every holder of the pipes, so a grandchild that inherited
+  // stdout kept the promise open for as long as it lived.
+  test('resolves at its timeout even while a grandchild holds the pipes', async () => {
+    const started = Date.now()
+    const result = await exec.execFileNoThrowWithCwd(
+      ...script(
+        `require("node:child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 3000)"], { stdio: ["ignore", "inherit", "inherit"] }); setTimeout(() => {}, 10_000)`,
+      ),
+      { timeout: 200 },
+    )
+    expect(result.error).toBe('Command timed out after 200ms')
+    expect(Date.now() - started).toBeLessThan(1500)
+  })
+
   test('resolves an aborted process', async () => {
     const controller = new AbortController()
     const pending = exec.execFileNoThrowWithCwd(

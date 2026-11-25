@@ -159,6 +159,15 @@ describe('Bash prompt rules', () => {
     expect(mockSideQuery).not.toHaveBeenCalled()
   })
 
+  test('a -1 index is a clean non-match too', async () => {
+    verdicts = { deny: { matchedIndex: -1, confidence: 'high' } }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      deny: [DENY_PUSH],
+    })
+    expect(result.behavior).toBe('allow')
+  })
+
   test('an abort during the classifier call throws', async () => {
     verdicts = { deny: NO_MATCH }
     const context = makeToolUseContext(
@@ -168,5 +177,76 @@ describe('Bash prompt rules', () => {
     await expect(
       bashToolHasPermission({ command: 'git push origin main' }, context),
     ).rejects.toThrow()
+  })
+})
+
+// Ported from openclaude #2533's review round: a rule the classifier could
+// not evaluate is not a rule that did not match.
+describe('a prompt rule the classifier could not evaluate', () => {
+  const UNEVALUATED =
+    'A Bash prompt rule could not be evaluated; approval required'
+
+  test.each([
+    ['a provider error', 'throws'],
+    ['no tool_use block', 'no-tool-use'],
+    ['an out-of-range index', { matchedIndex: 7, confidence: 'high' }],
+  ] as const)('asks instead of a literal allow after %s on a deny rule', async (_label, verdict) => {
+    verdicts = { deny: verdict }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      deny: [DENY_PUSH],
+    })
+    expect(result.behavior).toBe('ask')
+    expect(reasonOf(result)).toBe(UNEVALUATED)
+  })
+
+  test('asks instead of a literal allow after an error on an ask rule', async () => {
+    verdicts = { ask: 'throws' }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      ask: [ASK_PUSH],
+    })
+    expect(result.behavior).toBe('ask')
+    expect(reasonOf(result)).toBe(UNEVALUATED)
+  })
+
+  test('asks for every segment of a pipeline the literal rules allow', async () => {
+    verdicts = { deny: 'throws' }
+    const result = await decide('git push origin main | cat', {
+      allow: ['Bash(git push:*)', 'Bash(cat:*)'],
+      deny: [DENY_PUSH],
+    })
+    expect(result.behavior).toBe('ask')
+  })
+
+  test('a matched ask rule keeps its own reason when the deny side errored', async () => {
+    verdicts = { deny: 'throws', ask: MATCH }
+    const result = await decide('git push origin main', {
+      deny: [DENY_PUSH],
+      ask: [ASK_PUSH],
+    })
+    expect(result.behavior).toBe('ask')
+    expect(reasonOf(result)).toBe(
+      'Required by Bash prompt rule: "pushing to a remote"',
+    )
+  })
+})
+
+describe('a literal deny against a prompt rule that asks', () => {
+  test('the literal prefix deny wins over a matched ask rule', async () => {
+    verdicts = { ask: MATCH }
+    const result = await decide('git push origin main', {
+      deny: ['Bash(git push:*)'],
+      ask: [ASK_PUSH],
+    })
+    expect(result.behavior).toBe('deny')
+  })
+
+  test('the literal prefix deny wins over an unevaluated deny rule', async () => {
+    verdicts = { deny: 'throws' }
+    const result = await decide('git push origin main', {
+      deny: ['Bash(git push:*)', DENY_PUSH],
+    })
+    expect(result.behavior).toBe('deny')
   })
 })

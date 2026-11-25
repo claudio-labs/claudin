@@ -48,4 +48,16 @@ describe('sliceAnsi', () => {
   test('an empty slice of text that starts with a zero-width char stays empty', () => {
     expect(sliceAnsi('\u200Babc', 0, 0)).toBe('')
   })
+
+  // Ported from openclaude #2553: nothing was opened, so nothing may be closed.
+  test('an empty or out-of-range slice of styled text emits no reset code', () => {
+    expect(sliceAnsi(`${BOLD}abc`, 1, 1)).toBe('')
+    expect(sliceAnsi(`${BOLD}abc`, 5, 9)).toBe('')
+  })
+
+  test('fitEnd drops a wide glyph that would straddle end', () => {
+    expect(sliceAnsi('你好世界', 0, 3, { fitEnd: true })).toBe('你')
+    expect(sliceAnsi('a你', 0, 2, { fitEnd: true })).toBe('a')
+    expect(sliceAnsi('你好世界', 0, 4, { fitEnd: true })).toBe('你好')
+  })
 })

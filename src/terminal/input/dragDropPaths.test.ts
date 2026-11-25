@@ -78,6 +78,23 @@ describe('extractDraggedFilePaths', () => {
         `${thisFile} ${packageJson}`,
         [thisFile, packageJson],
       ],
+      // Ported from openclaude #2517: the split only broke before an
+      // unquoted path, so every quoted multi-file drop came back empty.
+      [
+        'double-quoted and space-separated',
+        `"${spacedFile}" "${packageJson}"`,
+        [spacedFile, packageJson],
+      ],
+      [
+        'single-quoted and space-separated',
+        `'${spacedFile}' '${packageJson}'`,
+        [spacedFile, packageJson],
+      ],
+      [
+        'mixed unquoted and quoted',
+        `${thisFile} "${spacedFile}"`,
+        [thisFile, spacedFile],
+      ],
     ]
     test.each(multiCases)('when input is %s', (_label, input, expected) => {
       expect(extractDraggedFilePaths(input)).toEqual(expected)
