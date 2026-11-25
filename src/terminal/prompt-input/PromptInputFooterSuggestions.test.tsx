@@ -173,3 +173,26 @@ describe('isPathCompletionItem', () => {
     ).toBe(false)
   })
 })
+
+describe('Nerd Font gate', () => {
+  test('is read when the row renders, not when the module loads', async () => {
+    const saved = process.env.CLAUDIN_NERD_FONT
+    const render = () =>
+      renderToString(
+        <PromptInputFooterSuggestions
+          suggestions={[{ id: 'file-src/a.ts', displayText: 'src/a.ts' }]}
+          selectedSuggestion={-1}
+        />,
+        80,
+      )
+    try {
+      process.env.CLAUDIN_NERD_FONT = '1'
+      expect(await render()).toContain(`${EXTENSION_ICONS['.ts']} src/a.ts`)
+      process.env.CLAUDIN_NERD_FONT = '0'
+      expect(await render()).toContain('+ src/a.ts')
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_NERD_FONT
+      else process.env.CLAUDIN_NERD_FONT = saved
+    }
+  })
+})

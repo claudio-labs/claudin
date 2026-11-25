@@ -47,10 +47,6 @@ const PREFIX_WIDTH = stringWidth(SELECTED_PREFIX)
 
 const WHITESPACE_RUN_RE = /\s+/g
 
-// Env-derived terminal capability can't change mid-session, so resolve the
-// Nerd Font gate once at module load — the row re-renders on every keystroke.
-const NERD = hasNerdFontGlyphs()
-
 export function getIcon(itemId: string, displayText: string, nerd: boolean): string {
   if (itemId.startsWith('file-')) {
     return nerd ? getFileTypeIcon(displayText) : '+'
@@ -149,7 +145,7 @@ function layoutCommandRow(
   }
 
   const pathIcon = isPathCompletionItem(item)
-    ? `${NERD ? getFileTypeIcon(item.displayText) : '+'} `
+    ? `${hasNerdFontGlyphs() ? getFileTypeIcon(item.displayText) : '+'} `
     : ''
   const tagText = item.tag ? `[${item.tag}] ` : ''
   const descriptionWidth = Math.max(
@@ -187,16 +183,20 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
     ? 'suggestion'
     : undefined
   const textColor: keyof Theme | undefined = isSelected ? 'inverseText' : undefined
+  // Read per render: the gate is memoized where it is costly (the terminal
+  // heuristic), and the `/config` setting it also reads cannot be resolved
+  // at module load, before the config is open.
+  const nerd = hasNerdFontGlyphs()
 
   if (isUnifiedSuggestion(item.id)) {
-    const icon = getIcon(item.id, item.displayText, NERD)
+    const icon = getIcon(item.id, item.displayText, nerd)
     const dimColor = !isSelected
     const isFile = item.id.startsWith('file-')
     // Tint the glyph by file type. Only with real Nerd glyphs (the ASCII
     // fallback is a '+', not a type), and never on the selected row, where the
     // highlight background owns the colors.
     const iconColor =
-      NERD && isFile && !isSelected
+      nerd && isFile && !isSelected
         ? getFileTypeIconColor(item.displayText)
         : undefined
     const isMcpResource = item.id.startsWith('mcp-resource-')
@@ -277,7 +277,7 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
   // Path completions (`@../`, `/add-dir`) carry a file glyph too — tint it the
   // same way, under the same two conditions.
   const pathIconColor =
-    NERD && pathIcon !== '' && !isSelected
+    nerd && pathIcon !== '' && !isSelected
       ? getFileTypeIconColor(item.displayText)
       : undefined
   const headLine = `${nameCell}${tagText}${descriptionLines[0] ?? ''}`
