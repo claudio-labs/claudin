@@ -202,6 +202,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
 
     // Attached worktrees (entered via EnterWorktree `path`) are never removed —
     // call() (below) coerces them to keep — so skip the remove safety gate here.
+    // Another session holds the worktree even against discard_changes.
     if (input.action === 'remove' && !session.attached) {
       const sessions = sessionsInWorktree(await listLiveSessions(), session.worktreePath)
       if (sessions.length > 0) {
@@ -211,13 +212,9 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
           errorCode: 4,
         }
       }
-      const tasks = input.discard_changes
-        ? []
-        : tasksStartedSince(context.getAppState().tasks, getWorktreeEnteredAt())
-      if (tasks.length > 0) {
-        return { result: false, message: tasksInWorktreeRefusal(tasks), errorCode: 5 }
-      }
     }
+    // The uncommitted work is listed before the tasks are: discard_changes
+    // lifts both refusals, so the model sees what it would lose first.
     if (
       input.action === 'remove' &&
       !input.discard_changes &&
@@ -252,6 +249,10 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
           message: `Worktree has ${parts.join(' and ')}. Removing will discard this work permanently. Confirm with the user, then re-invoke with discard_changes: true — or use action: "keep" to preserve the worktree.`,
           errorCode: 2,
         }
+      }
+      const tasks = tasksStartedSince(context.getAppState().tasks, getWorktreeEnteredAt())
+      if (tasks.length > 0) {
+        return { result: false, message: tasksInWorktreeRefusal(tasks), errorCode: 5 }
       }
     }
 

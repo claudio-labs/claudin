@@ -3,6 +3,7 @@
  * worktree: what a `remove` result says it removed, and the two things that
  * stop a `remove` because something may still be working in the worktree.
  */
+import type { TaskType } from 'src/agent/Task.js'
 import type { TaskState } from 'src/agent/tasks/types.js'
 import { isBackgroundWork } from 'src/agent/tasks/types.js'
 import { pathInWorkingPath } from 'src/permissions/filePermissions/workingDirs.js'
@@ -21,14 +22,25 @@ export function sessionsInWorktree(
  * This session's background work started at or after `sinceMs`, the moment
  * it entered the worktree: tasks carry no cwd, so that is the work that may
  * be running inside it. MCP servers and containers are not counted, as in
- * isBackgroundWork.
+ * isBackgroundWork, nor the kinds that never run in this session's checkout.
+ * An unlisted kind counts, so a new one is held until it is judged.
  */
 export function tasksStartedSince(
   tasks: Readonly<Record<string, TaskState>>,
   sinceMs: number,
 ): TaskState[] {
-  return Object.values(tasks).filter(t => isBackgroundWork(t) && t.startTime >= sinceMs)
+  return Object.values(tasks).filter(
+    t => isBackgroundWork(t) && !NEVER_IN_WORKTREE.has(t.type) && t.startTime >= sinceMs,
+  )
 }
+
+// A dream works in the memory directory, a remote agent on another machine,
+// and an in-process teammate lives as long as its team, not its worktree.
+const NEVER_IN_WORKTREE: ReadonlySet<TaskType> = new Set([
+  'dream',
+  'remote_agent',
+  'in_process_teammate',
+])
 
 /** Refused even with discard_changes: only that session's user can end it. */
 export function sessionInWorktreeRefusal(
@@ -46,7 +58,7 @@ export function tasksInWorktreeRefusal(tasks: readonly TaskState[]): string {
   const one = tasks.length === 1
   const list = tasks.map(t => `"${t.description}"`).join(', ')
   const them = one ? 'it' : 'them'
-  return `${one ? 'A background task' : `${tasks.length} background tasks`} started in this worktree may still be running there (${list}). Wait for ${them}, or ask the user before stopping ${them}, then call this tool again — or use action: "keep". discard_changes: true removes the worktree under ${them}.`
+  return `${one ? 'A background task' : `${tasks.length} background tasks`} started since you entered this worktree may still be running there (${list}). Wait for ${them}, or ask the user before stopping ${them}, then call this tool again — or use action: "keep". discard_changes: true removes the worktree under ${them}.`
 }
 
 /**

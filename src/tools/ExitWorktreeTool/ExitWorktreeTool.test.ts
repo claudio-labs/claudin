@@ -233,6 +233,7 @@ describe('ExitWorktreeTool remove refuses while something may work in the worktr
   const dirs: string[] = []
   let savedConfigDir: string | undefined
   afterEach(() => {
+    restoreWorktreeSession(null)
     if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
     else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
@@ -249,10 +250,26 @@ describe('ExitWorktreeTool remove refuses while something may work in the worktr
     return join(config, 'sessions')
   }
 
-  function enter(): string {
+  // A real, clean git checkout, so the uncommitted-work check passes and the
+  // check after it is the one under test. `dirty` leaves a file uncommitted.
+  function enter({ dirty = false }: { dirty?: boolean } = {}): string {
     const worktree = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-')))
     dirs.push(worktree)
-    restoreWorktreeSession({ originalCwd: '/orig', worktreePath: worktree, worktreeName: 'wt', sessionId: 's' })
+    const git = (...args: string[]) => spawnSync('git', args, { cwd: worktree, encoding: 'utf8' })
+    git('init', '-b', 'main')
+    git('config', 'user.email', 't@t')
+    git('config', 'user.name', 't')
+    git('commit', '--allow-empty', '-m', 'init')
+    const head = git('rev-parse', 'HEAD').stdout.trim()
+    if (dirty) writeFileSync(join(worktree, 'wip.txt'), 'unsaved')
+    restoreWorktreeSession({
+      originalCwd: '/orig',
+      worktreePath: worktree,
+      worktreeName: 'wt',
+      worktreeBranch: 'main',
+      originalHeadCommit: head,
+      sessionId: 's',
+    })
     return worktree
   }
 
@@ -296,17 +313,31 @@ describe('ExitWorktreeTool remove refuses while something may work in the worktr
     expect(refused?.result).toBe(false)
     if (refused?.result === false) {
       expect(refused.errorCode).toBe(5)
-      expect(refused.message).toStartWith('A background task started in this worktree may still be running there ("npm run dev").')
+      expect(refused.message).toStartWith('A background task started since you entered this worktree may still be running there ("npm run dev").')
     }
     const forced = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context(tasks))
     expect(forced?.result).toBe(true)
+  })
+
+  // discard_changes lifts both refusals, so the uncommitted files come first:
+  // the model must see what it would lose before it reaches for the flag.
+  test('a dirty worktree with a task running lists the uncommitted work first', async () => {
+    sessionsDir()
+    enter({ dirty: true })
+    const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
+    const refused = await ExitWorktreeTool.validateInput?.({ action: 'remove' } as never, context(tasks))
+    expect(refused?.result).toBe(false)
+    if (refused?.result === false) {
+      expect(refused.errorCode).toBe(2)
+      expect(refused.message).toStartWith('Worktree has 1 uncommitted file.')
+    }
   })
 
   test('a task started before entering does not hold the worktree', async () => {
     sessionsDir()
     enter()
     const tasks = { b1: runningShell(getWorktreeEnteredAt() - 1) }
-    const result = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context(tasks))
+    const result = await ExitWorktreeTool.validateInput?.({ action: 'remove' } as never, context(tasks))
     expect(result?.result).toBe(true)
   })
 

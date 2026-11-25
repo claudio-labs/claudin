@@ -53,6 +53,16 @@ describe('tasksStartedSince', () => {
     }
     expect(tasksStartedSince(tasks, 1_000).map(t => t.id)).toEqual(['after', 'agent'])
   })
+
+  test('a dream, a remote agent and a teammate never run in the checkout', () => {
+    const tasks = {
+      dream: task({ id: 'dream', type: 'dream' }),
+      remote: task({ id: 'remote', type: 'remote_agent' }),
+      teammate: task({ id: 'teammate', type: 'in_process_teammate' }),
+      shell: task({ id: 'shell', type: 'local_bash' }),
+    }
+    expect(tasksStartedSince(tasks, 1_000).map(t => t.id)).toEqual(['shell'])
+  })
 })
 
 describe('refusal texts', () => {
@@ -70,11 +80,11 @@ describe('refusal texts', () => {
 
   test('tasks: wait, or ask before stopping, and discard_changes removes the worktree under them', () => {
     expect(tasksInWorktreeRefusal([task({ type: 'local_bash' })])).toBe(
-      'A background task started in this worktree may still be running there ("npm run dev"). Wait for it, or ask the user before stopping it, then call this tool again — or use action: "keep". discard_changes: true removes the worktree under it.',
+      'A background task started since you entered this worktree may still be running there ("npm run dev"). Wait for it, or ask the user before stopping it, then call this tool again — or use action: "keep". discard_changes: true removes the worktree under it.',
     )
     expect(
       tasksInWorktreeRefusal([task({ type: 'local_bash' }), task({ type: 'local_agent', description: 'review' })]),
-    ).toStartWith('2 background tasks started in this worktree may still be running there ("npm run dev", "review"). Wait for them')
+    ).toStartWith('2 background tasks started since you entered this worktree may still be running there ("npm run dev", "review"). Wait for them')
   })
 })
 
