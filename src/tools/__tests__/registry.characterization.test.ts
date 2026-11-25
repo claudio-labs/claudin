@@ -20,6 +20,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..')
@@ -104,6 +105,26 @@ describe('tool registry — characterization', () => {
       ...new Set(Object.values(scanGatedTools()).flat().filter(f => !known.has(f))),
     ].sort()
     expect(absent).toMatchSnapshot()
+  })
+
+  test('no tool schema marks a defaulted field required', () => {
+    // zod v4 renders `.optional().default(x)` in output mode, where the
+    // default makes the field present, so it lands in `required` and the
+    // model reads a field it may omit as one it must always send. Claude Code
+    // 2.1.332 dropped ToolSearch's `max_results` from `required` for this.
+    // `.default(x).optional()` keeps the `default` and leaves `required` alone.
+    const offenders = getAllBaseTools().flatMap(tool => {
+      const schema = (tool.inputJSONSchema ??
+        zodToJsonSchema(tool.inputSchema)) as {
+        properties?: Record<string, Record<string, unknown>>
+        required?: string[]
+      }
+      const required = new Set(schema.required ?? [])
+      return Object.entries(schema.properties ?? {})
+        .filter(([field, prop]) => 'default' in prop && required.has(field))
+        .map(([field]) => `${tool.name}.${field}`)
+    })
+    expect(offenders).toEqual([])
   })
 
   test('no tool binding is a null placeholder', () => {
