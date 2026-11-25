@@ -337,12 +337,7 @@ function handleInteractivePermission(
             })
           }
 
-          if (
-            feature('TRANSCRIPT_CLASSIFIER') &&
-            decisionReason.type === 'classifier' &&
-            decisionReason.classifier !== 'auto-mode' &&
-            matchedRule
-          ) {
+          if (feature('TRANSCRIPT_CLASSIFIER') && matchedRule) {
             setClassifierApproval(ctx.toolUseID, matchedRule)
           }
 

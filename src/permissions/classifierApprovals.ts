@@ -1,17 +1,14 @@
 /**
- * Tracks which tool uses were auto-approved by classifiers.
- * Populated from useCanUseTool.ts and permissions.ts, read from UserToolSuccessMessage.tsx.
+ * Tracks which tool uses the Bash classifier auto-approved, and the prompt
+ * rule that matched. Populated from useCanUseTool.tsx and interactiveHandler.ts,
+ * read from UserToolSuccessMessage.tsx.
  */
 
 import { feature } from 'bun:bundle'
 import { createSignal } from 'src/shared/signal.js'
 
-type ClassifierApproval = {
-  classifier: 'bash'
-  matchedRule?: string
-}
-
-const CLASSIFIER_APPROVALS = new Map<string, ClassifierApproval>()
+// toolUseID → the prompt rule that matched
+const CLASSIFIER_APPROVALS = new Map<string, string>()
 const CLASSIFIER_CHECKING = new Set<string>()
 const classifierChecking = createSignal()
 
@@ -22,19 +19,14 @@ export function setClassifierApproval(
   if (!feature('BASH_CLASSIFIER')) {
     return
   }
-  CLASSIFIER_APPROVALS.set(toolUseID, {
-    classifier: 'bash',
-    matchedRule,
-  })
+  CLASSIFIER_APPROVALS.set(toolUseID, matchedRule)
 }
 
 export function getClassifierApproval(toolUseID: string): string | undefined {
   if (!feature('BASH_CLASSIFIER')) {
     return undefined
   }
-  const approval = CLASSIFIER_APPROVALS.get(toolUseID)
-  if (!approval || approval.classifier !== 'bash') return undefined
-  return approval.matchedRule
+  return CLASSIFIER_APPROVALS.get(toolUseID)
 }
 
 export function setClassifierChecking(toolUseID: string): void {
