@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import {
   extractDraggedFilePaths,
+  isDroppedPathList,
   splitPastedPaths,
 } from 'src/terminal/input/dragDropPaths.js'
 
@@ -40,6 +41,31 @@ describe('splitPastedPaths', () => {
     expect(splitPastedPaths('see "quoted" text and ./rel/path')).toEqual([
       'see "quoted" text and ./rel/path',
     ])
+  })
+})
+
+describe('isDroppedPathList', () => {
+  test('several absolute paths, quoted, escaped or Windows, are a drop', () => {
+    expect(isDroppedPathList(splitPastedPaths('/a/x.png /b/y.png'))).toBe(true)
+    expect(
+      isDroppedPathList(splitPastedPaths('"/a/x y.png" \'/b/y.png\' C:\\c\\z.png')),
+    ).toBe(true)
+    expect(isDroppedPathList(splitPastedPaths('/a/my\\ shot.png\n/b/y.png\n'))).toBe(true)
+  })
+
+  test('prose that quotes or names image paths is not', () => {
+    expect(
+      isDroppedPathList(
+        splitPastedPaths('convert "/tmp/in.png" -resize 50% "/tmp/out.png"'),
+      ),
+    ).toBe(false)
+    expect(isDroppedPathList(splitPastedPaths('look at /x/shot.png'))).toBe(false)
+  })
+
+  test('one segment is always taken, a bare filename included', () => {
+    expect(isDroppedPathList(['shot.png'])).toBe(true)
+    expect(isDroppedPathList(['"/a/x.png"', ''])).toBe(true)
+    expect(isDroppedPathList([])).toBe(true)
   })
 })
 

@@ -11,6 +11,10 @@ const IMAGE_EXTENSION_REGEX = /\.(png|jpe?g|gif|webp)$/i
 // boundary between two dropped paths.
 const PASTED_PATH_BOUNDARY = / (?=["']?(?:\/|[A-Za-z]:\\))/
 
+// The start of an absolute path the boundary above recognizes.
+const ABSOLUTE_PATH_START = /^(?:\/|[A-Za-z]:\\)/
+const SHELL_ESCAPE = /\\(.)/g
+
 /**
  * Split pasted text into the paths a terminal drop delivers, space- or
  * newline-separated. Segments come back untrimmed and may be empty; the image
@@ -18,6 +22,35 @@ const PASTED_PATH_BOUNDARY = / (?=["']?(?:\/|[A-Za-z]:\\))/
  */
 export function splitPastedPaths(text: string): string[] {
   return text.split(PASTED_PATH_BOUNDARY).flatMap(part => part.split('\n'))
+}
+
+function stripOuterQuotes(segment: string): string {
+  return (segment.startsWith('"') && segment.endsWith('"')) ||
+    (segment.startsWith("'") && segment.endsWith("'"))
+    ? segment.slice(1, -1)
+    : segment
+}
+
+// Strip outer quotes and shell-escape backslashes from one dropped segment.
+function cleanDroppedPath(segment: string): string {
+  const p = stripOuterQuotes(segment)
+  return process.platform !== 'win32' ? p.replace(SHELL_ESCAPE, '$1') : p
+}
+
+/**
+ * Whether split paste segments read as dropped paths rather than prose. One
+ * segment always does: VS Code pastes a bare image filename, which the image
+ * handler resolves. Several do only when every one is an absolute path — prose
+ * that quotes one, `convert "/tmp/in.png" -resize 50% "/tmp/out.png"`, splits
+ * too and must stay text.
+ */
+export function isDroppedPathList(segments: string[]): boolean {
+  const parts = segments.map(s => s.trim()).filter(Boolean)
+  return (
+    parts.length <= 1 ||
+    // Unescaping would eat a Windows path's backslashes on Unix.
+    parts.every(part => ABSOLUTE_PATH_START.test(stripOuterQuotes(part)))
+  )
 }
 
 /**
@@ -35,17 +68,7 @@ export function extractDraggedFilePaths(text: string): string[] {
   const cleaned: string[] = []
 
   for (const raw of segments) {
-    // Strip outer quotes and shell-escape backslashes
-    let p = raw
-    if (
-      (p.startsWith('"') && p.endsWith('"')) ||
-      (p.startsWith("'") && p.endsWith("'"))
-    ) {
-      p = p.slice(1, -1)
-    }
-    if (process.platform !== 'win32') {
-      p = p.replace(/\\(.)/g, '$1')
-    }
+    const p = cleanDroppedPath(raw)
 
     // Image files are handled by the upstream image paste handler.
     // Check against the cleaned path so quoted/escaped image paths like

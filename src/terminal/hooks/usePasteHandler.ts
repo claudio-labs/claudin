@@ -10,7 +10,10 @@ import {
   tryReadImageFromPath,
 } from 'src/terminal/image/imagePaste.js'
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
-import { splitPastedPaths } from 'src/terminal/input/dragDropPaths.js'
+import {
+  isDroppedPathList,
+  splitPastedPaths,
+} from 'src/terminal/input/dragDropPaths.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 
 const CLIPBOARD_CHECK_DEBOUNCE_MS = 50
@@ -149,9 +152,12 @@ export function usePasteHandler({
             // 1. Newline-separated paths (common in some terminals)
             // 2. Space-separated paths (common when dragging from Finder)
             // splitPastedPaths splits on a space before an absolute path,
-            // quoted or not, and on newlines.
+            // quoted or not, and on newlines. Prose that quotes an image path
+            // splits too, so only a paste of nothing but paths is a drop.
             const lines = splitPastedPaths(pastedText).filter(line => line.trim())
-            const imagePaths = lines.filter(line => isImageFilePath(line))
+            const imagePaths = isDroppedPathList(lines)
+              ? lines.filter(line => isImageFilePath(line))
+              : []
 
             if (onImagePaste && imagePaths.length > 0) {
               const isTempScreenshot =
@@ -261,9 +267,10 @@ export function usePasteHandler({
     // Handle potential image filenames (even if they're shorter than paste threshold)
     // When dragging multiple images, they may come as newline-separated or
     // space-separated paths, quoted or not.
-    const hasImageFilePath = splitPastedPaths(input).some(line =>
-      isImageFilePath(line.trim()),
-    )
+    const segments = splitPastedPaths(input)
+    const hasImageFilePath =
+      isDroppedPathList(segments) &&
+      segments.some(line => isImageFilePath(line.trim()))
 
     // Handle empty paste (clipboard image on macOS)
     // When the user pastes an image with Cmd+V, the terminal sends an empty
