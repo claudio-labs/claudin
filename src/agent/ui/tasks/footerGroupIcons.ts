@@ -29,7 +29,7 @@ const GROUP_ICONS: Record<FooterGroupKey, string> = {
   mcp: '\u{f0431}', // nf-md-puzzle
   remote: '\u{f015f}', // nf-md-cloud
   workflows: '\u{f1049}', // nf-md-graph
-  dreams: '\u{f04b2}', // nf-md-sleep
+  dreams: '\u{f09d1}', // nf-md-brain
   maps: '\u{f0645}', // nf-md-file_tree
 }
 
