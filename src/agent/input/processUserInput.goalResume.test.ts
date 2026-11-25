@@ -65,6 +65,22 @@ test('a scheduled prompt or another agent writing does not resume it', async () 
   expect(s.judges()).toHaveLength(0)
 })
 
+test('a task notification is not the user answering', async () => {
+  const s = pausedSession()
+  await processUserInput({ input: '<task-notification>done</task-notification>', mode: 'task-notification', setToolJSX: () => {}, context: s.context })
+  expect(s.paused()?.reason).toBe('which suite?')
+  expect(s.judges()).toHaveLength(0)
+})
+
+// query.ts drains the replies typed while a turn runs; the call there is the
+// only wiring, so it is pinned on the source.
+test('the main thread resumes a paused goal on a reply drained mid-turn', async () => {
+  const source = await Bun.file(new URL('../query.ts', import.meta.url)).text()
+  expect(source).toContain(
+    '      removeFromQueue(consumedCommands)\n      if (isMainThread) {\n        resumePausedGoalOnQueuedReply(consumedCommands, toolUseContext.setAppState, getSessionId())\n      }\n',
+  )
+})
+
 // A UserPromptSubmit hook that blocks the prompt means the model never got
 // the message, so the user has not answered yet.
 test('a prompt a UserPromptSubmit hook blocks does not resume it', async () => {

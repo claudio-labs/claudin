@@ -28,6 +28,7 @@ import {
   pauseActiveGoal,
   resetGoalStateForSessionEnd,
   resumePausedGoal,
+  resumePausedGoalOnQueuedReply,
   setActiveGoal,
   shouldWarnGoalCheckIncomplete,
 } from 'src/agent/goal/goal.js'
@@ -692,6 +693,22 @@ describe('pausing and resuming a goal (PauseGoal)', () => {
     const before = harness.getState()
     expect(resumePausedGoal(harness.setAppState, SESSION_ID)).toBe(false)
     expect(harness.getState()).toBe(before)
+    expect(getRegisteredGoalEntries(harness)).toHaveLength(1)
+  })
+
+  test('a reply drained mid-turn resumes it; a notification, a cron prompt or an agent\'s text does not', () => {
+    const harness = createHarness()
+    setActiveGoal(harness.setAppState, SESSION_ID, 'tests pass')
+    pauseActiveGoal(harness.setAppState, SESSION_ID, 'which suite?')
+    const notUser = [
+      { mode: 'task-notification' as const },
+      { mode: 'prompt' as const, isMeta: true },
+      { mode: 'prompt' as const, origin: { kind: 'peer' } as never },
+    ]
+    expect(resumePausedGoalOnQueuedReply(notUser, harness.setAppState, SESSION_ID)).toBe(false)
+    expect(harness.getState().activeGoal?.paused?.reason).toBe('which suite?')
+    expect(resumePausedGoalOnQueuedReply([...notUser, { mode: 'prompt' }], harness.setAppState, SESSION_ID)).toBe(true)
+    expect(harness.getState().activeGoal?.paused).toBeUndefined()
     expect(getRegisteredGoalEntries(harness)).toHaveLength(1)
   })
 

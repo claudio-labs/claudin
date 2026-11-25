@@ -24,6 +24,8 @@ import type { HookBlockingError, AggregatedHookResult } from 'src/platform/lifec
 import { addSessionHook, removeGoalStopHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { markStopConditionJudge } from 'src/platform/lifecycleHooks/stopConditionJudge.js'
 import type { PromptHook } from 'src/platform/settings/types.js'
+import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
+import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 
 export const GOAL_MAX_CONDITION_LENGTH = 4000
 
@@ -257,6 +259,23 @@ export function resumePausedGoal(
   registerGoalHook(setAppState, sessionId, condition)
   logForDebugging(`Goal resumed for session ${sessionId}`)
   return true
+}
+
+/**
+ * A reply the user typed while the turn ran reaches the model as a queued
+ * command drained mid-turn, not through processUserInput, so it resumes a
+ * paused goal here. Same test: the user's own prompt, not a scheduled one or
+ * another agent's.
+ */
+export function resumePausedGoalOnQueuedReply(
+  commands: readonly Pick<QueuedCommand, 'mode' | 'isMeta' | 'origin'>[],
+  setAppState: SetAppState,
+  sessionId: string,
+): boolean {
+  const replied = commands.some(
+    cmd => cmd.mode === 'prompt' && !cmd.isMeta && !isAgentAuthored(cmd.origin),
+  )
+  return replied ? resumePausedGoal(setAppState, sessionId) : false
 }
 
 /**
