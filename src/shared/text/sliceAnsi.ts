@@ -17,17 +17,54 @@ function filterStartCodes(codes: AnsiCode[]): AnsiCode[] {
   return codes.filter(c => !isEndCode(c))
 }
 
+export type SliceAnsiOptions = {
+  /**
+   * Keep the result within `end - start` cells: a wide glyph that would
+   * straddle `end` is left out instead of included whole. The default keeps
+   * the partitioning contract (`slice(0, k) + slice(k)` is the original) that
+   * splitting callers need; a caller clipping to a cell budget sets this.
+   */
+  fitEnd?: boolean
+}
+
+// Display width, not code units. Combining marks (Devanagari matras, virama,
+// diacritics) are width 0, and the tokenizer's fullWidth flag wins over
+// stringWidth, which can count a glyph carrying VS16 as one cell.
+function tokenCells(token: ReturnType<typeof tokenize>[number]): number {
+  return token.type !== 'char'
+    ? 0
+    : token.fullWidth
+      ? 2
+      : stringWidth(token.value)
+}
+
 /**
- * Slice a string containing ANSI escape codes.
+ * The cells a string occupies, counted the way sliceAnsi counts them. A caller
+ * that walks a string in chunks measures with this, not stringWidth, so the
+ * walk and the slices agree.
+ */
+export function displayCells(str: string): number {
+  let cells = 0
+  for (const token of tokenize(str)) {
+    cells += tokenCells(token)
+  }
+  return cells
+}
+
+/**
+ * Slice a string containing ANSI escape codes, and report the cells consumed
+ * from `start` — what a chunked walk advances by.
  *
  * Unlike the slice-ansi package, this properly handles OSC 8 hyperlink
  * sequences because @alcalzone/ansi-tokenize tokenizes them correctly.
  */
-export default function sliceAnsi(
+export function sliceAnsiCells(
   str: string,
   start: number,
   end?: number,
-): string {
+  options?: SliceAnsiOptions,
+): { text: string; width: number } {
+  const fitEnd = options?.fitEnd === true
   // Don't pass `end` to tokenize — it counts code units, not display cells,
   // so it drops tokens early for text with zero-width combining marks.
   const tokens = tokenize(str)
@@ -37,17 +74,9 @@ export default function sliceAnsi(
   let include = false
 
   for (const token of tokens) {
-    // Advance by display width, not code units. Combining marks (Devanagari
-    // matras, virama, diacritics) are width 0 — counting them via .length
-    // advanced position past `end` early and truncated the slice. Callers
-    // pass start/end in display cells (via stringWidth), so position must
-    // track the same units.
-    const width =
-      token.type !== 'char'
-        ? 0
-        : token.fullWidth
-          ? 2
-          : stringWidth(token.value)
+    // Callers pass start/end in display cells, so position tracks the same
+    // units (counting code units advanced past `end` early on combining marks).
+    const width = tokenCells(token)
 
     // Break AFTER trailing zero-width marks — a combining mark attaches to
     // the preceding base char, so "भा" (भ + ा, 1 display cell) sliced at
@@ -74,6 +103,10 @@ export default function sliceAnsi(
         result += token.code
       }
     } else {
+      if (fitEnd && end !== undefined && width > 0 && position + width > end) {
+        break
+      }
+
       if (!include && position >= start) {
         // Skip leading zero-width marks at the start boundary — they belong
         // to the preceding base char in the left half. Without this, the
@@ -94,8 +127,23 @@ export default function sliceAnsi(
     }
   }
 
+  const width = Math.max(0, position - start)
+
+  // Nothing was emitted, so no style was opened that would need closing.
+  if (!include) return { text: result, width }
+
   // Only undo start codes that are still active
   const activeStartCodes = filterStartCodes(reduceAnsiCodes(activeCodes))
   result += ansiCodesToString(undoAnsiCodes(activeStartCodes))
-  return result
+  return { text: result, width }
+}
+
+/** Slice a string containing ANSI escape codes. */
+export default function sliceAnsi(
+  str: string,
+  start: number,
+  end?: number,
+  options?: SliceAnsiOptions,
+): string {
+  return sliceAnsiCells(str, start, end, options).text
 }

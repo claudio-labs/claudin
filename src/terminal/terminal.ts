@@ -1,7 +1,6 @@
 import chalk from 'chalk'
 import { ctrlOToExpand } from 'src/terminal/CtrlOToExpand.js'
-import { stringWidth } from 'src/terminal/ink/stringWidth.js'
-import sliceAnsi from 'src/shared/text/sliceAnsi.js'
+import { displayCells, sliceAnsiCells } from 'src/shared/text/sliceAnsi.js'
 
 // Text rendering utilities for terminal display
 const MAX_LINES_TO_SHOW = 3
@@ -24,17 +23,23 @@ function wrapText(
   const wrappedLines: string[] = []
 
   for (const line of lines) {
-    const visibleWidth = stringWidth(line)
-    if (visibleWidth <= wrapWidth) {
+    const lineCells = displayCells(line)
+    if (lineCells <= wrapWidth) {
       wrappedLines.push(line.trimEnd())
     } else {
       // Break long lines into chunks of wrapWidth visible characters
-      // using ANSI-aware slicing to preserve escape sequences
+      // using ANSI-aware slicing to preserve escape sequences. Each chunk
+      // advances by the cells its slice consumed: fitEnd leaves a straddling
+      // wide glyph to the next chunk, and a fixed stride or a stringWidth
+      // measure would skip or repeat a character at the boundary.
       let position = 0
-      while (position < visibleWidth) {
-        const chunk = sliceAnsi(line, position, position + wrapWidth)
-        wrappedLines.push(chunk.trimEnd())
-        position += wrapWidth
+      while (position < lineCells) {
+        const chunk = sliceAnsiCells(line, position, position + wrapWidth, {
+          fitEnd: true,
+        })
+        if (chunk.width === 0) break
+        wrappedLines.push(chunk.text.trimEnd())
+        position += chunk.width
       }
     }
   }

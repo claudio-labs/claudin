@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import sliceAnsi from 'src/shared/text/sliceAnsi.js'
+import sliceAnsi, {
+  displayCells,
+  sliceAnsiCells,
+} from 'src/shared/text/sliceAnsi.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 
 const BOLD = '\x1b[1m'
 const BOLD_OFF = '\x1b[22m'
@@ -59,5 +63,30 @@ describe('sliceAnsi', () => {
     expect(sliceAnsi('你好世界', 0, 3, { fitEnd: true })).toBe('你')
     expect(sliceAnsi('a你', 0, 2, { fitEnd: true })).toBe('a')
     expect(sliceAnsi('你好世界', 0, 4, { fitEnd: true })).toBe('你好')
+  })
+})
+
+describe('sliceAnsiCells', () => {
+  test('reports the cells consumed from start', () => {
+    expect(sliceAnsiCells('你好世界', 0, 3, { fitEnd: true })).toEqual({
+      text: '你',
+      width: 2,
+    })
+    expect(sliceAnsiCells('你好世界', 0, 3)).toEqual({ text: '你好', width: 4 })
+    expect(sliceAnsiCells(`${BOLD}abc`, 1)).toEqual({
+      text: `${BOLD}bc${BOLD_OFF}`,
+      width: 2,
+    })
+    expect(sliceAnsiCells('abc', 5, 9)).toEqual({ text: '', width: 0 })
+  })
+})
+
+describe('displayCells', () => {
+  test('counts the way the slicer does, not the way stringWidth does', () => {
+    expect(displayCells(`${RED}ab${FG_OFF}`)).toBe(2)
+    expect(displayCells('你好')).toBe(4)
+    // The tokenizer marks a keycap with VS16 full width; stringWidth says 1.
+    expect(stringWidth('1\uFE0F')).toBe(1)
+    expect(displayCells('1\uFE0F')).toBe(2)
   })
 })
