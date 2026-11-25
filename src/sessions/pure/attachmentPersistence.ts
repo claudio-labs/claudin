@@ -48,6 +48,7 @@ export const ATTACHMENT_PERSISTENCE: Readonly<Record<Attachment['type'], 'persis
   auto_mode: 'persist',
   auto_mode_exit: 'persist',
   critical_system_reminder: 'persist',
+  goal_status: 'persist',
   plan_file_reference: 'persist',
   mcp_resource: 'persist',
   command_permissions: 'skip',

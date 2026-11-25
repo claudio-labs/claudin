@@ -131,6 +131,12 @@ export type ActiveGoalState = {
   setAt: number
   /** Reason from the judge's most recent ok:false verdict. */
   lastCheckReason?: string
+  /**
+   * Set by PauseGoal when only the user can remove what blocks the goal. The
+   * judge hook is unregistered while it is set; the user's next prompt
+   * clears it and registers the hook again.
+   */
+  paused?: { reason: string; at: number }
 }
 
 /**

@@ -125,6 +125,7 @@ const CURRENT_BASELINE = [
   'McpAuthTool',
   'MonitorTool',
   'NotebookEditTool',
+  'PauseGoalTool',
   'PowerShellTool',
   'REPLTool',
   'ReadMcpResourceTool',

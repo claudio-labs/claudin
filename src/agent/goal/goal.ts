@@ -16,6 +16,7 @@
  * one-time achievement notice.
  */
 import type { ActiveGoalState, AppState } from 'src/terminal/state/AppStateStore.js'
+import type { Attachment } from 'src/agent/attachments/attachments.js'
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getCurrentUsage } from 'src/agent/context/tokens.js'
@@ -96,6 +97,26 @@ export function buildGoalDirective(condition: string): string {
 }
 
 /**
+ * The judge hook for `condition`, whose success callback clears the goal.
+ * Shared by setting a goal and by resuming a paused one.
+ */
+function registerGoalHook(
+  setAppState: SetAppState,
+  sessionId: string,
+  condition: string,
+): void {
+  addSessionHook(
+    setAppState,
+    sessionId,
+    'Stop',
+    '',
+    buildGoalHook(condition),
+    (_succeededHook, result) =>
+      onGoalJudgeSuccess(setAppState, sessionId, condition, result),
+  )
+}
+
+/**
  * Register a goal: replaces any previously registered bare prompt Stop hook
  * (only one goal can be active), registers the judge hook, and records
  * activeGoal state. The hook's onHookSuccess callback auto-clears the goal
@@ -109,17 +130,7 @@ export function setActiveGoal(
   // Replacing a goal overwrites the old one — remove the previous judge
   // hook so only one is registered.
   removeGoalStopHooks(setAppState, sessionId)
-
-  const hook = buildGoalHook(condition)
-  addSessionHook(
-    setAppState,
-    sessionId,
-    'Stop',
-    '',
-    hook,
-    (_succeededHook, result) =>
-      onGoalJudgeSuccess(setAppState, sessionId, condition, result),
-  )
+  registerGoalHook(setAppState, sessionId, condition)
 
   setAppState(prev => ({
     ...prev,
@@ -197,6 +208,84 @@ export function clearActiveGoal(
   return hadGoal || removed > 0
 }
 
+export type PauseGoalOutcome = 'paused' | 'already-paused' | 'no-goal'
+
+/**
+ * PauseGoal: what blocks the goal is something only the user can remove.
+ * The judge hook goes, so a stop is no longer sent back; the goal stays,
+ * iterations and all, until the user's next prompt resumes it. Pausing an
+ * already paused goal replaces its reason.
+ */
+export function pauseActiveGoal(
+  setAppState: SetAppState,
+  sessionId: string,
+  reason: string,
+): PauseGoalOutcome {
+  let outcome: PauseGoalOutcome = 'no-goal'
+  setAppState(prev => {
+    if (!prev.activeGoal) return prev
+    outcome = prev.activeGoal.paused ? 'already-paused' : 'paused'
+    return {
+      ...prev,
+      activeGoal: { ...prev.activeGoal, paused: { reason, at: Date.now() } },
+    }
+  })
+  if (outcome !== 'no-goal') {
+    removeGoalStopHooks(setAppState, sessionId)
+    logForDebugging(`Goal paused for session ${sessionId}`)
+  }
+  return outcome
+}
+
+/**
+ * The user's next prompt after a pause: the judge hook comes back for the
+ * same goal, its iteration count kept. A no-op when no goal is paused.
+ * @returns true if a paused goal was resumed.
+ */
+export function resumePausedGoal(
+  setAppState: SetAppState,
+  sessionId: string,
+): boolean {
+  let condition: string | undefined
+  setAppState(prev => {
+    if (!prev.activeGoal?.paused) return prev
+    condition = prev.activeGoal.condition
+    const { paused: _paused, ...goal } = prev.activeGoal
+    return { ...prev, activeGoal: goal }
+  })
+  if (condition === undefined) return false
+  registerGoalHook(setAppState, sessionId, condition)
+  logForDebugging(`Goal resumed for session ${sessionId}`)
+  return true
+}
+
+/**
+ * What compaction re-attaches about the goal, so the model does not lose it
+ * when the conversation is summarized: the condition, the judge's last
+ * reason, and the pause if there is one.
+ */
+export function buildGoalStatusText(goal: ActiveGoalState): string {
+  const lines = [
+    `The session goal is still active: a stop check keeps you working until a separate evaluator confirms this condition is met: "${goal.condition}".`,
+  ]
+  if (goal.lastCheckReason) {
+    lines.push(`The evaluator's last reason it is not met: ${goal.lastCheckReason}`)
+  }
+  if (goal.paused) {
+    lines.push(
+      `The goal is paused until the user's next message, because: ${goal.paused.reason}`,
+    )
+  }
+  return lines.join('\n')
+}
+
+/** What compaction re-attaches for the active goal; null with no goal. */
+export function buildGoalStatusAttachment(
+  goal: ActiveGoalState | undefined,
+): Attachment | null {
+  return goal ? { type: 'goal_status', content: buildGoalStatusText(goal) } : null
+}
+
 /**
  * Session-end reset: clear the goal app state (activeGoal + lastGoalResult)
  * without touching the hooks registry. Called from executeSessionEndHooks
@@ -227,12 +316,13 @@ export function resetGoalStateForSessionEnd(setAppState: SetAppState): void {
  * that is user intent, not a judge failure.
  */
 export function shouldWarnGoalCheckIncomplete(args: {
-  goalBefore: Pick<ActiveGoalState, 'condition'> | undefined
+  goalBefore: Pick<ActiveGoalState, 'condition' | 'paused'> | undefined
   goalAfter: Pick<ActiveGoalState, 'condition'> | undefined
   goalJudgeBlocked: boolean
   aborted: boolean
 }): boolean {
-  if (!args.goalBefore || args.goalJudgeBlocked || args.aborted) {
+  // A paused goal has no judge registered, so no check was due.
+  if (!args.goalBefore || args.goalBefore.paused || args.goalJudgeBlocked || args.aborted) {
     return false
   }
   return args.goalAfter?.condition === args.goalBefore.condition

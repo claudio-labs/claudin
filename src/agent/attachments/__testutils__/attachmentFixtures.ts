@@ -150,6 +150,11 @@ export const ATTACHMENT_FIXTURES: AttachmentFixtures = {
   auto_mode: { type: 'auto_mode', reminderType: 'full' },
   auto_mode_exit: { type: 'auto_mode_exit' },
   critical_system_reminder: { type: 'critical_system_reminder', content: 'Never push to main.' },
+  goal_status: {
+    type: 'goal_status',
+    content:
+      'The session goal is still active: a stop check keeps you working until a separate evaluator confirms this condition is met: "tests pass".',
+  },
   plan_file_reference: {
     type: 'plan_file_reference',
     planFilePath: '/repo/.claudin/plans/demo.md',

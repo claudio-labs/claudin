@@ -31,6 +31,7 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "env_delta",
   "file",
   "git_status_delta",
+  "goal_status",
   "hook_additional_context",
   "hook_blocking_error",
   "hook_cancelled",

@@ -19,6 +19,8 @@ const NULL_RENDERING_TYPES = [
   'agent_mention',
   'budget_usd',
   'critical_system_reminder',
+  // The footer shows the goal; this is the model's copy after a compaction.
+  'goal_status',
   'edited_image_file',
   'edited_text_file',
   // Told to the model only: the Agents row already shows the user the child at work.

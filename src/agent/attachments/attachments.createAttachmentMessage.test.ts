@@ -35,6 +35,7 @@ const ALL_ATTACHMENT_TYPES = [
   'auto_mode',
   'auto_mode_exit',
   'critical_system_reminder',
+  'goal_status',
   'plan_file_reference',
   'mcp_resource',
   'command_permissions',
