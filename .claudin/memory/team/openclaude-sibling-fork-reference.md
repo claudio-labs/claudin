@@ -23,8 +23,8 @@ bugs that way, and falsified 11 more that only matched by line number.
 
 ## 2026-11-25 round (their 2d98d107..9b92b89c, 31 commits; branch `fix/sibling-ports-2026-11-25`)
 
-**Next audit starts at `9b92b89c`.** The commits were 8 fixes, 19 features and 4 chores. Seven bugs were confirmed by running claudin's own function, and all seven were ported (the user's call, 11-25). Each port has a red test first, and the 26 break-probes live in `scripts/migrations/probes/inheritedBugs20261125.json`.
-- `Bash(prompt: …)` deny and ask rules failed open. A classifier error, a missing verdict or an out-of-range index came back as a non-match, so the command fell through to a literal allow. The result now carries `unavailable` and the caller asks. A prompt-rule ask also waits until after the literal subcommand denies (`deferredAsk` in `decide.ts`). Source: the review round of their #2533.
+**Next audit starts at `9b92b89c`.** The commits were 8 fixes, 19 features and 4 chores. Seven bugs were confirmed by running claudin's own function, and all seven were ported (the user's call, 11-25). Each port has a red test first, and the 38 break-probes (12 from the review round) live in `scripts/migrations/probes/inheritedBugs20261125.json`.
+- `Bash(prompt: …)` deny and ask rules failed open. A classifier error, a missing verdict or an out-of-range index came back as a non-match, so the command fell through to a literal allow. The result now carries `unavailable`, and the caller asks with a non-approvable `safetyCheck` that names the classifier's failure. A prompt-rule ask also waits until after the literal subcommand denies (`deferredAsk` in `decide.ts`). Source: the review round of their #2533.
 - `fileReadCache` checked mtime only. It now checks ctime, size and inode as well (#2518).
 - A multi-file drop of quoted paths came back empty. Both the file path and the image path now go through `splitPastedPaths` (#2517; they fixed the file side only).
 - `renderTruncatedContent` overflowed by one cell on CJK and lost a character after a VS16 keycap. `sliceAnsi` gained `fitEnd` and `sliceAnsiCells`, and an empty slice no longer emits a reset code (#2553).
@@ -45,16 +45,24 @@ Not ported:
 - `HOOK_CHAINS` and `UNATTENDED_RETRY`: deleted as dead code on 09-18.
 - MCP server tasks, idle compaction, deep links and the buddy art.
 
+The review round (three agents, 11-25) found four more after a green 19.2k suite and a 26/26 break-probe. The user took every recommended fix:
+- **The fail-closed ask was an ordinary ask.** Bypass mode, a tool-wide `allow: ["Bash"]` and a PreToolUse hook's allow (`permissions.ts` steps 2a, 2b and `checkRuleBasedPermissions`) turned it back into an allow, while a matched deny held against all three. It is now a `safetyCheck`, and it prompts in bypass too: the user chose that, and in `-p` it becomes a deny.
+- **The resolve at the timeout reported xclip, xsel and wl-copy as failures.** They exit 0 and leave a daemon holding the pipes. That turned off the clipboard probe in `osc.ts` and sent the screenshot copy on to xsel. Now, once `'exit'` has fired, the timeout reports the child's own code.
+- **Prose that quoted an image path was taken for a drop.** Now `isDroppedPathList` takes several segments only when every one is a path. A single segment still passes, because VS Code pastes a bare filename.
+- **The stale marketplace `rm` could race a timed-out `git pull`.** It now has `maxRetries: 5`.
+
+The four `pendingClassifierCheck` arms go through `pendingClassifierCheckUnless`. `feature()` reads false under `bun test`, so a test can only reach that helper.
+
 The live check ran on `dist/cli.mjs` against a mock `/v1/messages` with `allow: Bash(echo:*)` and `deny: Bash(prompt: …)`:
-- When the classifier call answered 400, the tool result was "A Bash prompt rule could not be evaluated; approval required".
+- When the classifier call answered 400, the tool result named the failure and asked for approval.
 - When it answered with a clean non-match, the echo ran.
 - A `touch` in the cwd is no control arm. In `-p` the path check asks before any allow is reached.
 
-Left open: the prompt-rule classifier runs on `getMainLoopModel()`, although its comments say Haiku. Two other budget clips, `Usage.tsx:131` and `PreviewBox.tsx:169`, slice without `fitEnd`.
-
-Traps:
-- `tools/list` retries a page 3 times, 1 s and then 2 s apart, so a fixture that fails once never reaches the memo. The first red test failed for that reason.
-- `echo $(date)` never reaches the misparsing gate's exact allow, while a backtick command does.
+Left open:
+- The prompt-rule classifier runs on `getMainLoopModel()`, so every Bash costs a call on the main model.
+- `Usage.tsx:131` and `PreviewBox.tsx:169` are budget clips that slice without `fitEnd`.
+- A confident prompt-ask match is still overridden by bypass and a tool-wide allow, as upstream does.
+- A `tools/list` that always fails costs 3 attempts and about 3 s per sub-agent spawn. No negative TTL was added, by the user's choice.
 
 ## 2026-10-23 round (their v0.30.0..a838b670, 105 commits; #319, v1.1.49)
 
