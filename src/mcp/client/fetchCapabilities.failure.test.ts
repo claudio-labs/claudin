@@ -14,8 +14,8 @@ const ANSWERS: Record<string, Record<string, unknown>> = {
   'prompts/list': { prompts: [{ name: 'probe' }] },
 }
 
-// tools/list retries a page 3 times (1 s, then 2 s apart) before it gives up;
-// resources/list and prompts/list do not retry.
+// tools/list makes three attempts per page (1 s, then 2 s apart) before it
+// gives up; resources/list and prompts/list make one.
 const FAILURES_PER_FETCH: Record<string, number> = {
   'tools/list': 3,
   'resources/list': 1,
