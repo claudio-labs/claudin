@@ -8,7 +8,7 @@ import { wrapPastedText } from 'src/agent/input/pastedContent.js'
 import { enqueue, popAllEditable, resetCommandQueue } from 'src/agent/messageQueueManager.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { textForResubmit } from 'src/agent/messages/text.js'
-import { copyTextOf, isNavigableMessage, stripSystemReminders } from 'src/agent/ui/messageActions.js'
+import { copyTextOf, isNavigableMessage, userTextOf } from 'src/agent/ui/messageActions.js'
 import { UserPromptMessage } from 'src/agent/ui/messages/UserPromptMessage.js'
 import { renderToString } from 'src/terminal/render/staticRender.js'
 
@@ -27,7 +27,7 @@ describe('pasted text shown back to the user', () => {
   test('a paste-only prompt is still a prompt the user can act on', () => {
     // Normalized: one text block, as the transcript list holds it.
     const message = createUserMessage({ content: [{ type: 'text', text: PASTE_ONLY }] })
-    expect(stripSystemReminders(PASTE_ONLY)).toBe('npm ERR! missing script: test')
+    expect(userTextOf(PASTE_ONLY)).toBe('npm ERR! missing script: test')
     expect(isNavigableMessage(message as never)).toBe(true)
     expect(copyTextOf(message as never)).toBe('npm ERR! missing script: test')
   })

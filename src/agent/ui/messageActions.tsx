@@ -33,7 +33,7 @@ export function isNavigableMessage(msg: NavigableMessage): boolean {
         if (SYNTHETIC_MESSAGES.has(b.text)) return false;
         // Same filter as VirtualMessageList sticky-prompt: XML-wrapped (command
         // expansions, bash-stdout, etc.) aren't real prompts.
-        return !stripSystemReminders(b.text).startsWith('<');
+        return !userTextOf(b.text).startsWith('<');
       }
     case 'system':
       // biome-ignore lint/nursery/useExhaustiveSwitchCases: blocklist — fallthrough return-true is the design
@@ -408,7 +408,7 @@ export function MessageActionsBar(t0: MessageActionsBarProps) {
  * The user's own text: leading <system-reminder> blocks dropped, and each
  * <pasted_content> block back to the text that was pasted.
  */
-export function stripSystemReminders(text: string): string {
+export function userTextOf(text: string): string {
   const CLOSE = '</system-reminder>';
   let t = text.trimStart();
   while (t.startsWith('<system-reminder>')) {
@@ -423,7 +423,7 @@ export function copyTextOf(msg: NavigableMessage): string {
     case 'user':
       {
         const b = msg.message.content[0];
-        return b?.type === 'text' ? stripSystemReminders(b.text) : '';
+        return b?.type === 'text' ? userTextOf(b.text) : '';
       }
     case 'assistant':
       {

@@ -17,7 +17,7 @@ const HEADROOM = 3;
 import { logForDebugging } from 'src/shared/debug.js';
 import { sleep } from 'src/shared/sleep.js';
 import { renderableSearchText } from 'src/sessions/transcriptSearch.js';
-import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, type NavigableType, stripSystemReminders, toolCallOf } from 'src/agent/ui/messageActions.js';
+import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, type NavigableType, toolCallOf, userTextOf } from 'src/agent/ui/messageActions.js';
 
 // Fallback extractor: lower + cache here for callers without the
 // Messages.tsx tool-lookup path (tests, static contexts). Messages.tsx
@@ -155,7 +155,7 @@ function computeStickyPromptText(msg: RenderableMessage): string | null {
     raw = typeof p === 'string' ? p : p.flatMap(b => b.type === 'text' ? [b.text] : []).join('\n');
   }
   if (raw === null) return null;
-  const t = stripSystemReminders(raw);
+  const t = userTextOf(raw);
   if (t.startsWith('<') || t === '') return null;
   return t;
 }
