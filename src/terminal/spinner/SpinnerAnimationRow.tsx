@@ -11,37 +11,15 @@ import type { Theme } from 'src/terminal/theme/theme.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { GlimmerMessage } from 'src/terminal/spinner/GlimmerMessage.js';
-import { SpinnerGlyph } from 'src/terminal/spinner/SpinnerGlyph.js';
 import type { SpinnerMode } from 'src/terminal/spinner/types.js';
 import { useStalledAnimation } from 'src/terminal/spinner/useStalledAnimation.js';
-import { fitSpinnerMessage, interpolateColor, SPINNER_FRAME_MS, toRGBColor } from 'src/terminal/spinner/utils.js';
+import { fitSpinnerMessage } from 'src/terminal/spinner/utils.js';
 const SEP_WIDTH = stringWidth(' · ');
 // Claudin: upstream waits 30s before surfacing the timer + token count, so on
 // short responses the spinner never shows them. Drop to ~3s — still skips the
-// pre-stream warmup, but every multi-second turn surfaces "(Ns · ↓ Nk tokens
-// · thinking)" the way users expect.
+// pre-stream warmup, but every multi-second turn surfaces "(Ns · ↓ Nk tokens)"
+// the way users expect.
 const SHOW_TOKENS_AFTER_MS = 3_000;
-
-// Thinking shimmer constants. Previously lived in a separate ThinkingShimmerText
-// component with its own useAnimationFrame(50) — inlined here to reuse our
-// existing 50ms clock and eliminate the redundant subscriber.
-// Dips darker than upstream (153↔185) but stops short of white: peaking at 220
-// over a 2s period read as a blink rather than a glow, because outside
-// fullscreen the clock is throttled to 250ms and the sine only gets ~8 samples
-// per cycle. Keep the dark end, pull the peak down and widen the period so each
-// step is small enough to look like breathing.
-const THINKING_INACTIVE = {
-  r: 110,
-  g: 110,
-  b: 110
-};
-const THINKING_INACTIVE_SHIMMER = {
-  r: 180,
-  g: 180,
-  b: 180
-};
-const THINKING_DELAY_MS = 3000;
-const THINKING_GLOW_PERIOD_S = 4;
 export type SpinnerAnimationRowProps = {
   // Animation inputs
   mode: SpinnerMode;
@@ -71,18 +49,13 @@ export type SpinnerAnimationRowProps = {
   foregroundedTeammate: InProcessTeammateTaskState | undefined;
   /** Leader's turn has completed. Suppresses stall-red since responseLengthRef/hasActiveTools track leader state only. */
   leaderIsIdle?: boolean;
-
-  // Thinking (state owned by parent, mode-dependent)
-  thinkingStatus: 'thinking' | number | null;
-  effortSuffix: string;
-  /** Verb shown while thinking: 'thinking' or 'adaptive thinking'. */
-  thinkingVerb?: string;
 };
 
 /**
  * The 50ms-animated portion of SpinnerWithVerb. Owns useAnimationFrame(50)
  * and all values derived from the animation clock (frame, glimmer, token
- * counter animation, elapsed-time, stalled intensity, thinking shimmer).
+ * counter animation, elapsed-time, stalled intensity). There is no thinking
+ * status: the verb already reads "Thinking" while the model thinks.
  *
  * The parent SpinnerWithVerb is freed from the 50ms render loop and only
  * re-renders when its props/app state change (~25x/turn instead of ~383x).
@@ -107,10 +80,7 @@ export function SpinnerAnimationRow({
   hasRunningTeammates,
   teammateTokens,
   foregroundedTeammate,
-  leaderIsIdle = false,
-  thinkingStatus,
-  effortSuffix,
-  thinkingVerb = 'thinking'
+  leaderIsIdle = false
 }: SpinnerAnimationRowProps): React.ReactNode {
   // 0 = every clock tick. The clock itself is the rate limiter (its interval is
   // resolved once at boot by utils/renderCadence.ts), so this is identical in
@@ -145,7 +115,6 @@ export function SpinnerAnimationRow({
     isStalled,
     stalledIntensity
   } = useStalledAnimation(time, currentResponseLength, hasActiveTools || leaderIsIdle, reducedMotion);
-  const frame = reducedMotion ? 0 : Math.floor(time / SPINNER_FRAME_MS);
   const glimmerSpeed = mode === 'requesting' ? 50 : 200;
   // message is stable within a turn; stringWidth is expensive enough (Bun native
   // call per code point) to memoize explicitly across the 50ms loop.
@@ -154,7 +123,6 @@ export function SpinnerAnimationRow({
   const cycleLength = glimmerMessageWidth + 20;
   const cyclePosition = Math.floor(time / glimmerSpeed);
   const glimmerIndex = reducedMotion ? -100 : isStalled ? -100 : mode === 'requesting' ? cyclePosition % cycleLength - 10 : glimmerMessageWidth + 10 - cyclePosition % cycleLength;
-  const flashOpacity = reducedMotion ? 0 : mode === 'tool-use' ? (Math.sin(time / 1000 * Math.PI) + 1) / 2 : 0;
 
   // === Token counter animation (smooth increment, driven by 50ms clock) ===
   const tokenCounterRef = useRef(currentResponseLength);
@@ -186,37 +154,14 @@ export function SpinnerAnimationRow({
   const tokensText = hasRunningTeammates ? `${tokenCount} tokens` : `${figures.arrowDown} ${tokenCount} tokens`;
   const tokensWidth = stringWidth(tokensText);
 
-  // === Thinking text (may shrink to fit) ===
-  const thinkingBareWidth = stringWidth(thinkingVerb);
-  let thinkingText = thinkingStatus === 'thinking' ? `${thinkingVerb}${effortSuffix}` : typeof thinkingStatus === 'number' ? `thought for ${Math.max(1, Math.round(thinkingStatus / 1000))}s` : null;
-  let thinkingWidthValue = thinkingText ? stringWidth(thinkingText) : 0;
-
   // === Progressive width gating ===
   const messageWidth = glimmerMessageWidth + 2;
   const sep = SEP_WIDTH;
-  const wantsThinking = thinkingStatus !== null;
   const wantsTimerAndTokens = verbose || hasRunningTeammates || effectiveElapsedMs > SHOW_TOKENS_AFTER_MS;
   const availableSpace = columns - messageWidth - 5;
-  let showThinking = wantsThinking && availableSpace > thinkingWidthValue;
-  if (!showThinking && wantsThinking && thinkingStatus === 'thinking' && effortSuffix) {
-    if (availableSpace > thinkingBareWidth) {
-      thinkingText = thinkingVerb;
-      thinkingWidthValue = thinkingBareWidth;
-      showThinking = true;
-    }
-  }
-  const usedAfterThinking = showThinking ? thinkingWidthValue + sep : 0;
-  const showTimer = wantsTimerAndTokens && availableSpace > usedAfterThinking + timerWidth;
-  const usedAfterTimer = usedAfterThinking + (showTimer ? timerWidth + sep : 0);
+  const showTimer = wantsTimerAndTokens && availableSpace > timerWidth;
+  const usedAfterTimer = showTimer ? timerWidth + sep : 0;
   const showTokens = wantsTimerAndTokens && totalTokens > 0 && availableSpace > usedAfterTimer + tokensWidth;
-  const thinkingOnly = showThinking && thinkingStatus === 'thinking' && !spinnerSuffix && !showTimer && !showTokens && true;
-
-  // === Thinking shimmer color (formerly ThinkingShimmerText's own timer) ===
-  // Same sine-wave opacity, but derived from our shared `time` instead of a
-  // second useAnimationFrame(50) subscription.
-  const thinkingElapsedSec = (time - THINKING_DELAY_MS) / 1000;
-  const thinkingOpacity = time < THINKING_DELAY_MS ? 0 : (Math.sin(thinkingElapsedSec * Math.PI * 2 / THINKING_GLOW_PERIOD_S) + 1) / 2;
-  const thinkingShimmerColor = toRGBColor(interpolateColor(THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, thinkingOpacity));
 
   // === Build status parts ===
   const parts = [...(spinnerSuffix ? [<Text dimColor key="suffix">
@@ -226,26 +171,23 @@ export function SpinnerAnimationRow({
           </Text>] : []), ...(showTokens ? [<Box flexDirection="row" key="tokens">
             {!hasRunningTeammates && <SpinnerModeGlyph mode={mode} />}
             <Text dimColor>{tokenCount} tokens</Text>
-          </Box>] : []), ...(showThinking && thinkingText ? [thinkingStatus === 'thinking' && !reducedMotion ? <Text key="thinking" color={thinkingShimmerColor}>
-              {thinkingOnly ? `(${thinkingText})` : thinkingText}
-            </Text> : <Text dimColor key="thinking">
-              {thinkingText}
-            </Text>] : [])];
+          </Box>] : [])];
   const status = foregroundedTeammate && !foregroundedTeammate.isIdle ? <>
         <Text dimColor>(esc to interrupt </Text>
         <Text color={toInkColor(foregroundedTeammate.identity.color)}>
           {foregroundedTeammate.identity.agentName}
         </Text>
         <Text dimColor>)</Text>
-      </> : !foregroundedTeammate && parts.length > 0 ? thinkingOnly ? <Byline>{parts}</Byline> : <>
+      </> : !foregroundedTeammate && parts.length > 0 ? <>
           <Text dimColor>(</Text>
           <Byline>{parts}</Byline>
           <Text dimColor>)</Text>
         </> : null;
   return <FullWidthRow>
+      {/* No orb glyph: the verb's own shimmer is the activity cue, and a
+          running tool's icon fades beside it. */}
       <Box ref={viewportRef} flexDirection="row" flexWrap="wrap" marginTop={1}>
-        <SpinnerGlyph frame={frame} messageColor={messageColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} reducedMotion={reducedMotion} time={time} glimmerIndex={glimmerIndex} shimmerColor={shimmerColor} />
-        <GlimmerMessage message={displayMessage} mode={mode} messageColor={messageColor} glimmerIndex={glimmerIndex} flashOpacity={flashOpacity} shimmerColor={shimmerColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} />
+        <GlimmerMessage message={displayMessage} messageColor={messageColor} glimmerIndex={glimmerIndex} shimmerColor={shimmerColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} />
         {status}
       </Box>
     </FullWidthRow>;

@@ -9,7 +9,7 @@ import { consumeSpeculativeClassifierCheck, peekSpeculativeClassifierCheck } fro
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import type { AssistantMessage } from 'src/shared/types/message.js';
 import { recordAutoModeDenial } from 'src/permissions/autoModeDenials.js';
-import { clearClassifierChecking, setClassifierApproval, setYoloClassifierApproval } from 'src/permissions/classifierApprovals.js';
+import { clearClassifierChecking, setClassifierApproval } from 'src/permissions/classifierApprovals.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { AbortError, isSdkApiUserAbortError } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
@@ -39,9 +39,6 @@ function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateActi
         if (result.behavior === "allow") {
           if (ctx.resolveIfAborted(resolve)) {
             return;
-          }
-          if (feature("TRANSCRIPT_CLASSIFIER") && result.decisionReason?.type === "classifier" && result.decisionReason.classifier === "auto-mode") {
-            setYoloClassifierApproval(toolUseID, result.decisionReason.reason);
           }
           ctx.logDecision({
             decision: "accept",

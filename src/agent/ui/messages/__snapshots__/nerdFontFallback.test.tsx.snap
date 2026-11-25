@@ -1,0 +1,84 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot true, error false) is the old one 1`] = `"\x1B[38;2;78;186;101m●\x1B[39m \x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-long-file-name.ts)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot true, error false) is the old one 2`] = `"\x1B[38;2;78;186;101m●\x1B[39m \x1B[1mBash\x1B[22m(ls -la /a/very/long/path)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot true, error true) is the old one 1`] = `"\x1B[38;2;255;107;128m●\x1B[39m \x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-long-file-name.ts)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot true, error true) is the old one 2`] = `"\x1B[38;2;255;107;128m●\x1B[39m \x1B[1mBash\x1B[22m(ls -la /a/very/long/path)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot false, error false) is the old one 1`] = `"\x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-long-file-name.ts)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot false, error false) is the old one 2`] = `"\x1B[1mBash\x1B[22m(ls -la /a/very/long/path)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot false, error true) is the old one 1`] = `"\x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-long-file-name.ts)"`;
+
+exports[`without a Nerd Font, at 100 columns a tool row (dot false, error true) is the old one 2`] = `"\x1B[1mBash\x1B[22m(ls -la /a/very/long/path)"`;
+
+exports[`without a Nerd Font, at 100 columns the collapsed badge is the old one, finished and running 1`] = `
+"
+  \x1B[38;2;153;153;153mSearched for \x1B[1m2\x1B[22m patterns, read \x1B[1m3\x1B[22m files (ctrl+o to expand)\x1B[39m"
+`;
+
+exports[`without a Nerd Font, at 100 columns the collapsed badge is the old one, finished and running 2`] = `
+"
+\x1B[38;2;153;153;153m●\x1B[39m Reading \x1B[1m1\x1B[22m file… \x1B[38;2;153;153;153m(ctrl+o to expand)\x1B[39m"
+`;
+
+exports[`without a Nerd Font, at 100 columns a row in the ctrl+o detail is the old one 1`] = `
+"
+\x1B[38;2;78;186;101m●\x1B[39m \x1B[1mUpdate\x1B[22m(/repo/src/a.ts)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot true, error false) is the old one 1`] = `
+"\x1B[38;2;78;186;101m●\x1B[39m \x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-
+        long-file-name.ts)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot true, error false) is the old one 2`] = `
+"\x1B[38;2;78;186;101m●\x1B[39m \x1B[1mBash\x1B[22m(ls -la
+      /a/very/long/path)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot true, error true) is the old one 1`] = `
+"\x1B[38;2;255;107;128m●\x1B[39m \x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-
+        long-file-name.ts)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot true, error true) is the old one 2`] = `
+"\x1B[38;2;255;107;128m●\x1B[39m \x1B[1mBash\x1B[22m(ls -la
+      /a/very/long/path)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot false, error false) is the old one 1`] = `
+"\x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-lo
+      ng-file-name.ts)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot false, error false) is the old one 2`] = `"\x1B[1mBash\x1B[22m(ls -la /a/very/long/path)"`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot false, error true) is the old one 1`] = `
+"\x1B[1mUpdate\x1B[22m(/repo/src/agent/ui/a-lo
+      ng-file-name.ts)"
+`;
+
+exports[`without a Nerd Font, at 30 columns a tool row (dot false, error true) is the old one 2`] = `"\x1B[1mBash\x1B[22m(ls -la /a/very/long/path)"`;
+
+exports[`without a Nerd Font, at 30 columns the collapsed badge is the old one, finished and running 1`] = `
+"
+  \x1B[38;2;153;153;153mSearched for \x1B[1m2\x1B[22m patterns, \x1B[39m
+  \x1B[38;2;153;153;153mread \x1B[1m3\x1B[22m files (ctrl+o to \x1B[39m
+  \x1B[38;2;153;153;153mexpand)\x1B[39m"
+`;
+
+exports[`without a Nerd Font, at 30 columns the collapsed badge is the old one, finished and running 2`] = `
+"
+\x1B[38;2;153;153;153m●\x1B[39m Reading \x1B[1m1\x1B[22m file… \x1B[38;2;153;153;153m(ctrl+o to \x1B[39m
+  \x1B[38;2;153;153;153mexpand)\x1B[39m"
+`;
+
+exports[`without a Nerd Font, at 30 columns a row in the ctrl+o detail is the old one 1`] = `
+"
+\x1B[38;2;78;186;101m●\x1B[39m \x1B[1mUpdate\x1B[22m(/repo/src/a.ts)"
+`;

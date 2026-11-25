@@ -63,7 +63,7 @@ export function HookProgressMessage(t0: Props) {
       }
       let t6;
       if ($[10] !== t2 || $[11] !== t3 || $[12] !== t5) {
-        t6 = <MessageResponse><Box flexDirection="row">{t2}{t3}{t5}</Box></MessageResponse>;
+        t6 = <MessageResponse mark={true}><Box flexDirection="row">{t2}{t3}{t5}</Box></MessageResponse>;
         $[10] = t2;
         $[11] = t3;
         $[12] = t5;
@@ -104,7 +104,7 @@ export function HookProgressMessage(t0: Props) {
   }
   let t6;
   if ($[19] !== t3 || $[20] !== t5) {
-    t6 = <MessageResponse><Box flexDirection="row">{t2}{t3}{t5}</Box></MessageResponse>;
+    t6 = <MessageResponse mark={true}><Box flexDirection="row">{t2}{t3}{t5}</Box></MessageResponse>;
     $[19] = t3;
     $[20] = t5;
     $[21] = t6;

@@ -677,7 +677,7 @@ export const SettingsSchema = lazySchema(() =>
         })
         .optional()
         .describe(
-          'Customize spinner verbs. mode: "append" adds verbs to defaults, "replace" uses only your verbs.',
+          'Customize the verbs teammate spinners pick from (the main spinner names what the agent is doing). mode: "append" adds verbs to defaults, "replace" uses only your verbs.',
         ),
       spinnerTipsOverride: z
         .object({

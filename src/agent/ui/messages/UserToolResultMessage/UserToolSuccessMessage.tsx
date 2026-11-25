@@ -5,9 +5,9 @@ import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/tools/Tool.js';
 import type { NormalizedUserMessage, ProgressMessage } from 'src/shared/types/message.js';
-import { deleteClassifierApproval, getClassifierApproval, getYoloClassifierApproval } from 'src/permissions/classifierApprovals.js';
+import { deleteClassifierApproval, getClassifierApproval } from 'src/permissions/classifierApprovals.js';
 import { extractTag, type buildMessageLookups } from 'src/agent/messages/messages.js';
-import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { MessageResponse, ToolResultBody } from 'src/agent/ui/MessageResponse.js';
 import { HookProgressMessage } from 'src/agent/ui/messages/HookProgressMessage.js';
 type Props = {
   message: NormalizedUserMessage;
@@ -38,7 +38,6 @@ export function UserToolSuccessMessage({
   // Capture classifier approval once on mount, then delete from Map to prevent linear growth.
   // useState lazy initializer ensures the value persists across re-renders.
   const [classifierRule] = React.useState(() => getClassifierApproval(toolUseID));
-  const [yoloReason] = React.useState(() => getYoloClassifierApproval(toolUseID));
   React.useEffect(() => {
     deleteClassifierApproval(toolUseID);
   }, [toolUseID]);
@@ -62,9 +61,6 @@ export function UserToolSuccessMessage({
                       {`"${classifierRule}"`}
                     </Text>
                   </MessageResponse> : null}
-            {feature('TRANSCRIPT_CLASSIFIER') ? yoloReason && <MessageResponse height={1}>
-                    <Text dimColor>Allowed by auto mode classifier</Text>
-                  </MessageResponse> : null}
           </Box>
           <SentryErrorBoundary>
             <HookProgressMessage hookEvent="PostToolUse" lookups={lookups} toolUseID={toolUseID} verbose={verbose} isTranscriptMode={isTranscriptMode} />
@@ -87,9 +83,6 @@ export function UserToolSuccessMessage({
                       {' Auto-approved · matched '}
                       {`"${classifierRule}"`}
                     </Text>
-                  </MessageResponse> : null}
-            {feature('TRANSCRIPT_CLASSIFIER') ? yoloReason && <MessageResponse height={1}>
-                    <Text dimColor>Allowed by auto mode classifier</Text>
                   </MessageResponse> : null}
           </Box>
           <SentryErrorBoundary>
@@ -119,16 +112,13 @@ export function UserToolSuccessMessage({
   const rendersAsAssistantText = tool.userFacingName(undefined) === '';
   return <Box flexDirection="column">
       <Box flexDirection="column" width={rendersAsAssistantText ? undefined : width}>
-        {renderedMessage}
+        <ToolResultBody>{renderedMessage}</ToolResultBody>
         {feature('BASH_CLASSIFIER') ? classifierRule && <MessageResponse height={1}>
                 <Text dimColor>
                   <Text color="success">{figures.tick}</Text>
                   {' Auto-approved \u00b7 matched '}
                   {`"${classifierRule}"`}
                 </Text>
-              </MessageResponse> : null}
-        {feature('TRANSCRIPT_CLASSIFIER') ? yoloReason && <MessageResponse height={1}>
-                <Text dimColor>Allowed by auto mode classifier</Text>
               </MessageResponse> : null}
       </Box>
       <SentryErrorBoundary>

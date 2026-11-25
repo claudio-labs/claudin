@@ -1,6 +1,7 @@
 import { feature } from 'bun:bundle'
 import z from 'zod/v4'
 import { PAUSE_ICON } from 'src/shared/constants/figures.js'
+import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js'
 // Types extracted to src/shared/types/permissions.ts to break import cycles
 import {
   EXTERNAL_PERMISSION_MODES,
@@ -124,9 +125,25 @@ export function isDefaultMode(mode: PermissionMode | undefined): boolean {
   return mode === 'default' || mode === undefined
 }
 
+// The footer's mode icon on a Nerd Font terminal (nf-md-*; footerGroupIcons.ts
+// has why not nf-fa-*). Plan and accept-edits reuse the tool-row icons of
+// the plan and Edit tools; the two modes that skip prompts share a shield-off.
+const NERD_MODE_SYMBOLS: Partial<Record<PermissionMode, string>> = {
+  plan: '\u{f0982}', // nf-md-map_outline
+  acceptEdits: '\u{f0dc9}', // nf-md-file_document_edit_outline
+  bypassPermissions: '\u{f099c}', // nf-md-shield_off_outline
+  dontAsk: '\u{f099c}',
+  auto: '\u{f0068}', // nf-md-auto_fix
+}
 
+/**
+ * The mode's symbol for the footer. A mode without one (default) stays
+ * without one; on a Nerd Font terminal the rest swap ⏵⏵/⏸ for an icon each.
+ */
 export function permissionModeSymbol(mode: PermissionMode): string {
-  return getModeConfig(mode).symbol
+  const symbol = getModeConfig(mode).symbol
+  if (symbol === '' || !hasNerdFontGlyphs()) return symbol
+  return NERD_MODE_SYMBOLS[mode] ?? symbol
 }
 
 export function getModeColor(mode: PermissionMode): ModeColorKey {

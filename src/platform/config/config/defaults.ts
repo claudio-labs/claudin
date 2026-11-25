@@ -122,6 +122,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'copyOnSelect',
   'flickerFreeMode',
   'renderFrameRate',
+  'nerdFontIcons',
   'permissionExplainerEnabled',
   'prStatusFooterEnabled',
   'prStatusHosts',

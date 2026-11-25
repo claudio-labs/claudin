@@ -79,7 +79,7 @@ describe('Read UI — single-file renderers (pinned before the batch Read)', () 
         type: 'text',
         file: { filePath: IN_CWD, content: 'a\nb', numLines: 12, startLine: 1, totalLines: 12 },
       },
-      '⎿  Read 12 lines',
+      '⎿ Read 12 lines',
     ],
     [
       'text, one line',
@@ -87,16 +87,16 @@ describe('Read UI — single-file renderers (pinned before the batch Read)', () 
         type: 'text',
         file: { filePath: IN_CWD, content: 'a', numLines: 1, startLine: 1, totalLines: 1 },
       },
-      '⎿  Read 1 line',
+      '⎿ Read 1 line',
     ],
-    ['file_unchanged', { type: 'file_unchanged', file: { filePath: IN_CWD } }, '⎿  Unchanged since last read'],
+    ['file_unchanged', { type: 'file_unchanged', file: { filePath: IN_CWD } }, '⎿ Unchanged since last read'],
     [
       'outline',
       {
         type: 'outline',
         file: { filePath: IN_CWD, content: 'x', totalLines: 300, symbolCount: 3 },
       },
-      '⎿  Read outline (3 symbols)',
+      '⎿ Read outline (3 symbols)',
     ],
     [
       'outline, one symbol',
@@ -104,7 +104,7 @@ describe('Read UI — single-file renderers (pinned before the batch Read)', () 
         type: 'outline',
         file: { filePath: IN_CWD, content: 'x', totalLines: 300, symbolCount: 1 },
       },
-      '⎿  Read outline (1 symbol)',
+      '⎿ Read outline (1 symbol)',
     ],
     [
       'preview',
@@ -112,12 +112,12 @@ describe('Read UI — single-file renderers (pinned before the batch Read)', () 
         type: 'outline',
         file: { filePath: IN_CWD, content: 'x', totalLines: 120, symbolCount: 0, preview: true },
       },
-      '⎿  Read preview (120 lines)',
+      '⎿ Read preview (120 lines)',
     ],
     [
       'notebook',
       { type: 'notebook', file: { filePath: IN_CWD, cells: [{}, {}] } },
-      '⎿  Read 2 cells',
+      '⎿ Read 2 cells',
     ],
     [
       'empty notebook',
@@ -127,7 +127,7 @@ describe('Read UI — single-file renderers (pinned before the batch Read)', () 
     [
       'pdf',
       { type: 'pdf', file: { filePath: IN_CWD, base64: '', originalSize: 2048 } },
-      '⎿  Read PDF (2KB)',
+      '⎿ Read PDF (2KB)',
     ],
     [
       'pdf pages',
@@ -135,12 +135,12 @@ describe('Read UI — single-file renderers (pinned before the batch Read)', () 
         type: 'parts',
         file: { filePath: IN_CWD, originalSize: 2048, count: 3, outputDir: '/tmp/x' },
       },
-      '⎿  Read 3 pages (2KB)',
+      '⎿ Read 3 pages (2KB)',
     ],
     [
       'image',
       { type: 'image', file: { base64: '', type: 'image/png', originalSize: 2048 } },
-      '⎿  Read image (2KB)',
+      '⎿ Read image (2KB)',
     ],
     [
       'clip-pin fallback (no arm of its own)',
@@ -197,14 +197,14 @@ describe('Read UI — the batch Read', () => {
       { filePath: inCwd('a.ts'), lines: 400 },
       { filePath: inCwd('b.ts'), lines: 12 },
     ]
-    expect(await render(renderToolResultMessage(batch(two)))).toBe('⎿  Read 2 files (412 lines)')
+    expect(await render(renderToolResultMessage(batch(two)))).toBe('⎿ Read 2 files (412 lines)')
     expect(await render(renderToolResultMessage(batch(two, ['c.ts', 'd.ts'])))).toBe(
-      '⎿  Read 2 of 4 files (412 lines)',
+      '⎿ Read 2 of 4 files (412 lines)',
     )
     // Outlines and stubs show no numbered lines; the count is then left out.
     expect(
       await render(renderToolResultMessage(batch([{ filePath: inCwd('a.ts'), lines: 0 }]))),
-    ).toBe('⎿  Read 1 file')
+    ).toBe('⎿ Read 1 file')
   })
 
   test('outputSchema keeps every field the batch renderer reads', () => {

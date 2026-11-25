@@ -17,7 +17,10 @@ import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
+import { ToolStatusIcon, toolIconStatus } from 'src/agent/ui/ToolStatusIcon.js';
 import { HookProgressMessage } from 'src/agent/ui/messages/HookProgressMessage.js';
+import { getToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js';
+import { useNerdFontGlyphs } from 'src/terminal/terminalFont.js';
 type Props = {
   param: ToolUseBlockParam;
   addMargin: boolean;
@@ -33,7 +36,10 @@ type Props = {
   isTranscriptMode?: boolean;
 };
 export function AssistantToolUseMessage(t0: Props) {
-  const $ = _c(82);
+  // Slots 82-84 were added by hand (rules/ink-tui.md §6) for the Nerd Font
+  // icons: the tool icon's dep on the leading slot, the file icon's on the args
+  // box, and the parse's on useNerdFontGlyphs().
+  const $ = _c(85);
   const {
     param,
     addMargin,
@@ -55,10 +61,11 @@ export function AssistantToolUseMessage(t0: Props) {
   const isClassifierCheckingRaw = useIsClassifierChecking(param.id);
   const permissionMode = useAppStateMaybeOutsideOfProvider(_temp2);
   const hasStrippedRules = useAppStateMaybeOutsideOfProvider(_temp3);
+  const nerdFont = useNerdFontGlyphs();
   const isAutoClassifier = permissionMode === "auto" || permissionMode === "plan" && hasStrippedRules;
   const isClassifierChecking = false && isClassifierCheckingRaw && permissionMode !== "auto";
   let t1;
-  if ($[0] !== param.input || $[1] !== param.name || $[2] !== tools) {
+  if ($[0] !== param.input || $[1] !== param.name || $[2] !== tools || $[84] !== nerdFont) {
     bb0: {
       if (!tools) {
         t1 = null;
@@ -76,12 +83,14 @@ export function AssistantToolUseMessage(t0: Props) {
         input,
         userFacingToolName: tool.userFacingName(data),
         userFacingToolNameBackgroundColor: tool.userFacingNameBackgroundColor?.(data),
-        isTransparentWrapper: tool.isTransparentWrapper?.() ?? false
+        isTransparentWrapper: tool.isTransparentWrapper?.() ?? false,
+        rowIcons: getToolRowIcons(tool, data, nerdFont)
       };
     }
     $[0] = param.input;
     $[1] = param.name;
     $[2] = tools;
+    $[84] = nerdFont;
     $[3] = t1;
   } else {
     t1 = $[3];
@@ -96,7 +105,8 @@ export function AssistantToolUseMessage(t0: Props) {
     input: input_0,
     userFacingToolName,
     userFacingToolNameBackgroundColor,
-    isTransparentWrapper
+    isTransparentWrapper,
+    rowIcons
   } = parsed;
   let t2;
   if ($[4] !== lookups.resolvedToolUseIDs || $[5] !== param.id) {
@@ -180,7 +190,7 @@ export function AssistantToolUseMessage(t0: Props) {
     return null;
   }
   const t5 = addMargin ? 1 : 0;
-  const t6 = stringWidth(userFacingToolName) + (shouldShowDot ? 2 : 0);
+  const t6 = stringWidth(userFacingToolName) + (shouldShowDot || rowIcons.toolIcon ? 2 : 0);
   // Async-launched agents have a tool_result (so isResolved=true) but should keep
   // showing a live indicator: green, blinking. Treat them as resolved-but-active.
   // Gate on inProgressToolUseIDs (which Messages.tsx merges with the live
@@ -189,8 +199,16 @@ export function AssistantToolUseMessage(t0: Props) {
   const isUnresolved = !isResolved && !isAsync;
   const effectiveShouldAnimate = shouldAnimate || isAsync;
   let t7;
-  if ($[31] !== isAsync || $[32] !== isQueued || $[33] !== isUnresolved || $[34] !== lookups.erroredToolUseIDs || $[35] !== param.id || $[36] !== effectiveShouldAnimate || $[37] !== shouldShowDot) {
-    t7 = shouldShowDot && (isQueued ? <Box minWidth={2}><Text dimColor={isQueued}>{BLACK_CIRCLE}</Text></Box> : <ToolUseLoader shouldAnimate={effectiveShouldAnimate} isUnresolved={isUnresolved} isError={lookups.erroredToolUseIDs.has(param.id)} isAsync={isAsync} />);
+  if ($[31] !== isAsync || $[32] !== isQueued || $[33] !== isUnresolved || $[34] !== lookups.erroredToolUseIDs || $[35] !== param.id || $[36] !== effectiveShouldAnimate || $[37] !== shouldShowDot || $[82] !== rowIcons.toolIcon) {
+    // On a Nerd Font the tool's icon takes the dot's place and its status; a
+    // row that shows no dot still shows the icon, as a finished one.
+    t7 = rowIcons.toolIcon ? <ToolStatusIcon icon={rowIcons.toolIcon} status={shouldShowDot ? toolIconStatus({
+      isQueued,
+      isAsync,
+      isError: lookups.erroredToolUseIDs.has(param.id),
+      isUnresolved,
+      shouldAnimate: effectiveShouldAnimate
+    }) : "done"} /> : shouldShowDot && (isQueued ? <Box minWidth={2}><Text dimColor={isQueued}>{BLACK_CIRCLE}</Text></Box> : <ToolUseLoader shouldAnimate={effectiveShouldAnimate} isUnresolved={isUnresolved} isError={lookups.erroredToolUseIDs.has(param.id)} isAsync={isAsync} />);
     $[31] = isAsync;
     $[32] = isQueued;
     $[33] = isUnresolved;
@@ -198,6 +216,7 @@ export function AssistantToolUseMessage(t0: Props) {
     $[35] = param.id;
     $[36] = effectiveShouldAnimate;
     $[37] = shouldShowDot;
+    $[82] = rowIcons.toolIcon;
     $[38] = t7;
   } else {
     t7 = $[38];
@@ -214,9 +233,10 @@ export function AssistantToolUseMessage(t0: Props) {
     t9 = $[42];
   }
   let t10;
-  if ($[43] !== renderedToolUseMessage) {
-    t10 = renderedToolUseMessage !== "" && <Box flexWrap="nowrap"><Text>({renderedToolUseMessage})</Text></Box>;
+  if ($[43] !== renderedToolUseMessage || $[83] !== rowIcons.fileIcon) {
+    t10 = renderedToolUseMessage !== "" && <Box flexWrap="nowrap"><Text>({rowIcons.fileIcon && <Text color={rowIcons.fileIcon.color}>{rowIcons.fileIcon.glyph} </Text>}{renderedToolUseMessage})</Text></Box>;
     $[43] = renderedToolUseMessage;
+    $[83] = rowIcons.fileIcon;
     $[44] = t10;
   } else {
     t10 = $[44];

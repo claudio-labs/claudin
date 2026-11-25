@@ -10,7 +10,6 @@ import {
   clearClassifierChecking,
   setClassifierApproval,
   setClassifierChecking,
-  setYoloClassifierApproval,
 } from 'src/permissions/classifierApprovals.js'
 import { errorMessage } from 'src/shared/errors.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
@@ -338,15 +337,8 @@ function handleInteractivePermission(
             })
           }
 
-          if (
-            feature('TRANSCRIPT_CLASSIFIER') &&
-            decisionReason.type === 'classifier'
-          ) {
-            if (decisionReason.classifier === 'auto-mode') {
-              setYoloClassifierApproval(ctx.toolUseID, decisionReason.reason)
-            } else if (matchedRule) {
-              setClassifierApproval(ctx.toolUseID, matchedRule)
-            }
+          if (feature('TRANSCRIPT_CLASSIFIER') && matchedRule) {
+            setClassifierApproval(ctx.toolUseID, matchedRule)
           }
 
           ctx.logDecision(

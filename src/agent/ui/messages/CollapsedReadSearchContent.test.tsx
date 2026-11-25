@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import chalk from 'chalk'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
@@ -9,8 +10,24 @@ import type {
 } from 'src/shared/types/message.js'
 import type { MCPProgress } from 'src/shared/types/tools.js'
 import { MCPTool } from 'src/tools/MCPTool/MCPTool.js'
-import { renderToString } from 'src/terminal/render/staticRender.js'
+import { renderToAnsiString, renderToString } from 'src/terminal/render/staticRender.js'
+import { getTheme } from 'src/terminal/theme/theme.js'
 import { CollapsedReadSearchContent } from 'src/agent/ui/messages/CollapsedReadSearchContent.js'
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
+import { Text } from 'src/terminal/ink.js'
+import { NerdFontGlyphsContext } from 'src/terminal/terminalFont.js'
+
+// Nerd Font detection reads the terminal's env, so on a Ghostty/kitty host the
+// badge would grow icons. Every suite here runs without one unless it opts in.
+let savedNerdFont: string | undefined
+beforeAll(() => {
+  savedNerdFont = process.env.CLAUDIN_NERD_FONT
+  process.env.CLAUDIN_NERD_FONT = '0'
+})
+afterAll(() => {
+  if (savedNerdFont === undefined) delete process.env.CLAUDIN_NERD_FONT
+  else process.env.CLAUDIN_NERD_FONT = savedNerdFont
+})
 
 const EMPTY_GROUP = {
   type: 'collapsed_read_search',
@@ -192,7 +209,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
       true,
     )
 
-    expect(out).toContain('⎿  src/read.ts')
+    expect(out).toContain('⎿ src/read.ts')
     expect(out).not.toContain('one.ts')
     expect(out).not.toContain('two.ts')
   })
@@ -321,6 +338,21 @@ describe('CollapsedReadSearchContent — recalled memories', () => {
       expect(lines).toHaveLength(1)
       expect(flatten(lines[0]!)).toContain(line)
     }
+  })
+
+  test('a group of nothing but recalls has no blank row above its Loaded line', async () => {
+    // The group's top margin separates a badge from what precedes it. With no
+    // badge it left a gap between this line and an attachment's Loaded line
+    // (memory index, rules) right above, which sit flush with no margin.
+    const out = await render({ memoryOps: { private: ops({ read: 1 }) } })
+    expect(out.split('\n')[0]).toContain('⎿ Loaded 1 private memory')
+  })
+
+  test('a group with a badge keeps its blank row above', async () => {
+    const out = await render({ readCount: 2, memoryOps: { private: ops({ read: 1 }) } })
+    const lines = out.split('\n')
+    expect(lines[0]!.trim()).toBe('')
+    expect(lines[1]).toContain('Read 2 files')
   })
 
   test('the Loaded line sits below the badge, and only one expand hint shows', async () => {
@@ -608,6 +640,222 @@ describe('CollapsedReadSearchContent — MCP detail (ctrl+o)', () => {
   test('a claude.ai server drops its prefix, as the group header does', async () => {
     const out = await renderDetail({ serverName: 'claude.ai Slack', resolved: true })
     expect(out).toContain('Called Slack.memory_message_list(')
+  })
+})
+
+describe('CollapsedReadSearchContent — Nerd Font icons in the detail (ctrl+o)', () => {
+  // Most Read/Grep/Edit/Write rows are only ever seen here, so they carry the
+  // same icons as a standalone tool row (toolRowIcons.ts decides which).
+  const EDIT_ICON = '\u{f0dc9}'
+  const TS_ICON = '\ue628'
+  const PUZZLE = '\u{f0431}'
+  const PUA_RE = /[\u{e000}-\u{f8ff}\u{f0000}-\u{ffffd}]/u
+  let saved: string | undefined
+  beforeAll(() => {
+    saved = process.env.CLAUDIN_NERD_FONT
+  })
+  afterAll(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_NERD_FONT
+    else process.env.CLAUDIN_NERD_FONT = saved
+  })
+
+  const editTool = {
+    name: 'Edit',
+    inputSchema: { safeParse: (input: unknown) => ({ success: true, data: input }) },
+    userFacingName: () => 'Update',
+    renderToolUseMessage: (input: { file_path: string }) => input.file_path,
+  }
+  const mcpTool = {
+    ...MCPTool,
+    name: 'mcp__ai-memory__memory_message_list',
+    mcpInfo: { serverName: 'ai-memory', toolName: 'memory_message_list' },
+  }
+
+  function renderDetail(tool: { name: string }, input: object, nerd: boolean, glyphs?: boolean): Promise<string> {
+    process.env.CLAUDIN_NERD_FONT = nerd ? '1' : '0'
+    const use = {
+      type: 'assistant',
+      uuid: 'msg-n1',
+      timestamp: '2026-11-24T00:00:00.000Z',
+      message: {
+        role: 'assistant',
+        id: 'api-n1',
+        content: [{ type: 'tool_use', id: 'n1', name: tool.name, input }],
+      },
+    }
+    return renderToString(
+      <AppStateProvider>
+        <NerdFontGlyphsContext.Provider value={glyphs}>
+          <CollapsedReadSearchContent
+            message={{ ...EMPTY_GROUP, mcpCallCount: 1, messages: [use] } as unknown as CollapsedReadSearchGroup}
+            inProgressToolUseIDs={new Set()}
+            shouldAnimate={false}
+            verbose={true}
+            tools={[tool] as unknown as Tools}
+            lookups={{ ...lookups, resolvedToolUseIDs: new Set(['n1']) } as unknown as typeof lookups}
+          />
+        </NerdFontGlyphsContext.Provider>
+      </AppStateProvider>,
+      120,
+    ).then(stripAnsi)
+  }
+
+  test('a file tool shows its icon before the name and the file icon before the path', async () => {
+    const out = await renderDetail(editTool, { file_path: '/repo/src/a.ts' }, true)
+    expect(out).toContain(`${EDIT_ICON} Update(${TS_ICON} /repo/src/a.ts)`)
+  })
+
+  test('an MCP call shows the puzzle before its Called line', async () => {
+    const out = await renderDetail(mcpTool, { box: 'inbox' }, true)
+    expect(out).toContain(`${PUZZLE} Called ai-memory.memory_message_list(`)
+  })
+
+  test('without a Nerd Font the detail rows are the old ones', async () => {
+    expect(await renderDetail(editTool, { file_path: '/repo/src/a.ts' }, false)).toContain('Update(/repo/src/a.ts)')
+    const mcp = await renderDetail(mcpTool, { box: 'inbox' }, false)
+    expect(mcp).toContain('Called ai-memory.memory_message_list(')
+    expect(mcp).not.toMatch(PUA_RE)
+  })
+
+  test('a render whose text leaves the terminal has none, whatever the terminal', async () => {
+    const out = await renderDetail(editTool, { file_path: '/repo/src/a.ts' }, true, false)
+    expect(out).toContain('Update(/repo/src/a.ts)')
+    expect(out).not.toMatch(PUA_RE)
+  })
+})
+
+describe('CollapsedReadSearchContent — a result in the detail (ctrl+o)', () => {
+  test('carries no ⎿ of its own, like a standalone tool result', async () => {
+    const tool = {
+      name: 'Edit',
+      inputSchema: { safeParse: (input: unknown) => ({ success: true, data: input }) },
+      userFacingName: () => 'Update',
+      renderToolUseMessage: (input: { file_path: string }) => input.file_path,
+      renderToolResultMessage: () => <MessageResponse><Text>Added 2 lines</Text></MessageResponse>,
+    }
+    const use = {
+      type: 'assistant',
+      uuid: 'msg-r1',
+      timestamp: '2026-11-24T00:00:00.000Z',
+      message: { role: 'assistant', id: 'api-r1', content: [{ type: 'tool_use', id: 'r1', name: 'Edit', input: { file_path: '/repo/a.ts' } }] },
+    }
+    const out = stripAnsi(await renderToString(
+      <AppStateProvider>
+        <CollapsedReadSearchContent
+          message={{ ...EMPTY_GROUP, messages: [use] } as unknown as CollapsedReadSearchGroup}
+          inProgressToolUseIDs={new Set()}
+          shouldAnimate={false}
+          verbose={true}
+          tools={[tool] as unknown as Tools}
+          lookups={{
+            ...lookups,
+            resolvedToolUseIDs: new Set(['r1']),
+            toolResultByToolUseID: new Map([['r1', { type: 'user', toolUseResult: { ok: true } }]]),
+          } as unknown as typeof lookups}
+        />
+      </AppStateProvider>,
+      120,
+    ))
+    expect(out).toContain('Update(/repo/a.ts)')
+    expect(out).toContain('    Added 2 lines')
+    expect(out).not.toContain('⎿')
+  })
+})
+
+describe('CollapsedReadSearchContent — Nerd Font icons on the badge', () => {
+  const MAGNIFY = '\u{f0349}'
+  const FILE_DOCUMENT = '\u{f09ee}'
+  const FILE_EDIT = '\u{f0dc9}'
+  const BRAIN = '\u{f09d1}'
+  const PUA_RE = /[\u{e000}-\u{f8ff}\u{f0000}-\u{ffffd}]/u
+  afterAll(() => {
+    process.env.CLAUDIN_NERD_FONT = '0'
+  })
+
+  test('every part leads with its action icon, and the line drops its dot column', async () => {
+    process.env.CLAUDIN_NERD_FONT = '1'
+    const out = await render({
+      searchCount: 2,
+      readCount: 3,
+      writeFileStats: [{ path: '/repo/one.ts', kind: 'M', additions: 1, deletions: 1 }],
+      memoryOps: { team: { search: 1, read: 0, write: 0 } },
+    } as Partial<CollapsedReadSearchGroup>)
+    const line = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(line.startsWith(FILE_EDIT)).toBe(true)
+    expect(flatten(out)).toContain(
+      `${FILE_EDIT} Updated 1 file, ${MAGNIFY} searched for 2 patterns, ${FILE_DOCUMENT} read 3 files, ${BRAIN} searched team memories`,
+    )
+  })
+
+  test('a running group keeps the icons, with no loader dot in front', async () => {
+    process.env.CLAUDIN_NERD_FONT = '1'
+    const line = (await render({ readCount: 1 }, true)).split('\n').find(l => l.trim().length > 0) ?? ''
+    expect(line.startsWith(`${FILE_DOCUMENT} Reading 1 file`)).toBe(true)
+    expect(line).not.toContain('●')
+  })
+
+  test('without a Nerd Font the badge is the old one', async () => {
+    process.env.CLAUDIN_NERD_FONT = '0'
+    const out = await render({ searchCount: 2, readCount: 3 })
+    const line = out.split('\n').find(l => l.trim().length > 0) ?? ''
+    expect(line.startsWith('  Searched for 2 patterns, read 3 files')).toBe(true)
+    expect(out).not.toMatch(PUA_RE)
+  })
+
+  test('a render whose text leaves the terminal keeps the old badge', async () => {
+    process.env.CLAUDIN_NERD_FONT = '1'
+    const out = stripAnsi(await renderToString(
+      <AppStateProvider>
+        <NerdFontGlyphsContext.Provider value={false}>
+          <CollapsedReadSearchContent
+            message={{ ...EMPTY_GROUP, searchCount: 2, readCount: 3 }}
+            inProgressToolUseIDs={new Set()}
+            shouldAnimate={false}
+            verbose={false}
+            tools={[] as unknown as Tools}
+            lookups={lookups}
+          />
+        </NerdFontGlyphsContext.Provider>
+      </AppStateProvider>,
+    ))
+    const line = out.split('\n').find(l => l.trim().length > 0) ?? ''
+    expect(line.startsWith('  Searched for 2 patterns, read 3 files')).toBe(true)
+    expect(out).not.toMatch(PUA_RE)
+  })
+
+  test('a running group with an error turns its icons red, as the dot did', async () => {
+    process.env.CLAUDIN_NERD_FONT = '1'
+    const saved = chalk.level
+    chalk.level = 3
+    try {
+      const use = {
+        type: 'assistant',
+        uuid: 'msg-e1',
+        timestamp: '2026-11-24T00:00:00.000Z',
+        message: { role: 'assistant', id: 'api-e1', content: [{ type: 'tool_use', id: 'e1', name: 'Read', input: {} }] },
+      }
+      const renderAnsi = (errored: boolean) =>
+        renderToAnsiString(
+          <AppStateProvider>
+            <CollapsedReadSearchContent
+              message={{ ...EMPTY_GROUP, readCount: 1, messages: [use] } as unknown as CollapsedReadSearchGroup}
+              inProgressToolUseIDs={new Set(['e1'])}
+              shouldAnimate={false}
+              verbose={false}
+              tools={[] as unknown as Tools}
+              lookups={{ ...lookups, erroredToolUseIDs: new Set(errored ? ['e1'] : []) } as unknown as typeof lookups}
+              isActiveGroup
+            />
+          </AppStateProvider>,
+        )
+      const error = `\u001b[38;2;${getTheme('dark').error.match(/\d+/g)!.join(';')}m`
+      const before = (out: string) => out.slice(0, out.indexOf(FILE_DOCUMENT))
+      expect(before(await renderAnsi(true))).toContain(error)
+      expect(before(await renderAnsi(false))).not.toContain(error)
+    } finally {
+      chalk.level = saved
+    }
   })
 })
 

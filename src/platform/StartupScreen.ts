@@ -187,8 +187,7 @@ export function buildStartupBannerLines(
 
   const headerLine = `${BOLD}Claudin${RESET} ${DIM}v${version}${RESET}`
   // Same display name the status bar shows (ProviderModelIndicator renders it
-  // through renderModelName) and the same effort wording as the Logo/Spinner,
-  // so the two surfaces name the model identically.
+  // through renderModelName), so the two surfaces name the model identically.
   const providerLine = `${p.name} ${sep} ${renderModelName(p.model)}${p.effort ? formatEffortSuffix(p.effort) : ''}`
   const cwdLine = `${DIM}${formatCwd()}${RESET}`
 

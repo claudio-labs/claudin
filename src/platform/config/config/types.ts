@@ -497,6 +497,11 @@ export type GlobalConfig = {
   // CLAUDIN_FPS still takes precedence.
   renderFrameRate?: 'auto' | '60' | '120' | '240' | '360'
 
+  // Nerd Font icons in the TUI: 'auto' (default) trusts the terminal
+  // heuristic in src/terminal/terminalFont.ts; 'on'/'off' override it. Env
+  // var CLAUDIN_NERD_FONT still takes precedence.
+  nerdFontIcons?: 'auto' | 'on' | 'off'
+
   // GitHub repo path mapping for teleport directory switching
   // Key: "owner/repo" (lowercase), Value: array of absolute paths where repo is cloned
   githubRepoPaths?: Record<string, string[]>

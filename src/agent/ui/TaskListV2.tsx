@@ -17,6 +17,7 @@ import type { Theme } from 'src/terminal/theme/theme.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import ThemedText from 'src/terminal/design-system/ThemedText.js';
 import { orderTasksForDisplay } from 'src/agent/ui/tasks/taskOrdering.js';
+import { getTaskIcon } from 'src/agent/ui/taskStatusIcons.js';
 type Props = {
   tasks: Task[];
   isStandalone?: boolean;
@@ -252,28 +253,6 @@ type TaskItemProps = {
   ownerActive: boolean;
   columns: number;
 };
-function getTaskIcon(status: Task['status']): {
-  icon: string;
-  color: keyof Theme | undefined;
-} {
-  switch (status) {
-    case 'completed':
-      return {
-        icon: figures.tick,
-        color: 'success'
-      };
-    case 'in_progress':
-      return {
-        icon: figures.squareSmallFilled,
-        color: 'claude'
-      };
-    case 'pending':
-      return {
-        icon: figures.squareSmall,
-        color: undefined
-      };
-  }
-}
 function TaskItem(t0: TaskItemProps) {
   const $ = _c(37);
   const {

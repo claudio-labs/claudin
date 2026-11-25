@@ -107,7 +107,7 @@ export function renderToolResultMessage(content: Out, progressMessagesForMessage
   return <Box flexDirection="column">
       {stdout !== '' ? <OutputLine content={stdout} verbose={verbose} highlightLogs /> : null}
       {stderr.trim() !== '' ? <OutputLine content={stderr} verbose={verbose} isError highlightLogs /> : null}
-      {stdout === '' && stderr.trim() === '' ? <MessageResponse height={1}>
+      {stdout === '' && stderr.trim() === '' ? <MessageResponse height={1} mark={!!backgroundTaskId}>
           <Text dimColor>
             {backgroundTaskId ? <>
                 Running in the background{' '}
@@ -115,7 +115,7 @@ export function renderToolResultMessage(content: Out, progressMessagesForMessage
               </> : interrupted ? 'Interrupted' : returnCodeInterpretation || '(No output)'}
           </Text>
         </MessageResponse> : null}
-      {timeoutMs ? <MessageResponse>
+      {timeoutMs ? <MessageResponse mark>
           <ShellTimeDisplay timeoutMs={timeoutMs} />
         </MessageResponse> : null}
     </Box>;

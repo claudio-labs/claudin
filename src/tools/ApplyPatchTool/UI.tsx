@@ -73,8 +73,8 @@ function groupLabel(group: Group): string {
 
 // One clickable group row. The header (label + aggregate counts) carries no
 // disclosure marker; clicking it (or global verbose) reveals each file under a
-// "⎿" connector, matching the app's native tool-result sub-line style. (We avoid
-// a "▾"/"▸" chevron on the header — the small down-triangle is tofu in some
+// two-column indent, unmarked like the rest of a tool result. (We avoid a
+// "▾"/"▸" chevron on the header — the small down-triangle is tofu in some
 // fonts, and a glyph glued to the label reads as cramped.) Hover brightens the
 // row by dropping dimColor (so it lights up to the normal foreground) rather
 // than adding bold over dimColor — the latter renders as a muddy dark-gray in
@@ -117,7 +117,7 @@ function GroupRow({
             const path = targetPath(file)
             return (
               <Box key={path} flexDirection="row">
-                <Text dimColor>{'⎿  '}</Text>
+                <Box width={2} flexShrink={0} />
                 <Box flexDirection="column">
                   <Box flexDirection="row">
                     <Text bold>{LABEL[file.type]}</Text>

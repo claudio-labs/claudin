@@ -5,7 +5,7 @@ import { getCanonicalName } from 'src/providers/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/providers/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getSettingsWithErrors } from 'src/platform/settings/settings.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 export type ThinkingConfig =
   | { type: 'adaptive' }
@@ -195,24 +195,6 @@ export function modelRequiresAdaptiveThinking(model: string): boolean {
     canonical.includes('opus-5') ||
     canonical.includes('haiku-5')
   )
-}
-
-/**
- * Whether this model *would* use adaptive thinking (`thinking: { type:
- * 'adaptive' }`) when thinking is on. Mirrors the model/env side of the gate in
- * src/providers/shims/claude/streaming.ts (do not change that selection here —
- * this is a display-only helper). It deliberately does NOT decide whether
- * thinking is enabled at all (config/`thinkingConfig.type`); callers must
- * already know thinking is on (e.g. the spinner only shows the verb while
- * `thinkingStatus === 'thinking'`). The name says "would", not "is active",
- * precisely because the enabled-decision lives with the caller.
- */
-export function modelWouldUseAdaptiveThinking(model: string): boolean {
-  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_THINKING)) return false
-  // Fable-class models only accept adaptive — forced on regardless of the opt-out.
-  if (modelRequiresAdaptiveThinking(model)) return true
-  if (!isAdaptiveThinkingEnabled()) return false
-  return modelSupportsThinking(model) && modelSupportsAdaptiveThinking(model)
 }
 
 /**

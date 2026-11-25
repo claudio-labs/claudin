@@ -52,7 +52,9 @@ describe('ContainerTool result', () => {
       }),
     )
     expect(out).toContain('✗ exec failed (exit 1)')
-    expect(out).toContain('⎿ the command exited 1')
+    // Part of the result, so no ⎿ of its own: only the result's gutter has one.
+    expect(out).toContain('\n      the command exited 1')
+    expect(out).not.toContain('⎿ the command exited 1')
     expect(out).toContain('ERROR line 6')
     expect(out).not.toContain('ERROR line 7')
     expect(out).toContain('… 2 more lines')
@@ -69,6 +71,18 @@ describe('ContainerTool result', () => {
     )
     expect(out).toContain('ERROR the one line')
     expect(out).not.toContain('full body nobody asked for')
+  })
+
+  test('a build the watchdog stopped says so, with no ⎿ of its own', async () => {
+    const out = await render(
+      result({
+        op: 'build',
+        exitCode: 1,
+        stall: { reason: 'idle', ranMs: 90_000, silentMs: 60_000, lastLine: '#5 RUN apt-get install' },
+      }),
+    )
+    expect(out).toContain('\n      stopped after 90s, silent for 60s')
+    expect(out).not.toContain('⎿ stopped')
   })
 })
 

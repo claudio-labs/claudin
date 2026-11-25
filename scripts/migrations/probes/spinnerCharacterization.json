@@ -7,8 +7,8 @@
     {
       "name": "brief mode drops the remote background count",
       "comment": "\"N in background\" is the local background tasks plus remoteBackgroundTaskCount",
-      "find": "count(Object.values(s_0.tasks), isBackgroundTask) + s_0.remoteBackgroundTaskCount",
-      "replace": "count(Object.values(s_0.tasks), isBackgroundTask)"
+      "find": "count(Object.values(s_0.tasks), isBackgroundWork) + s_0.remoteBackgroundTaskCount",
+      "replace": "count(Object.values(s_0.tasks), isBackgroundWork)"
     },
     {
       "name": "brief mode hides the reconnecting warning",
@@ -33,12 +33,6 @@
       "comment": "the static Idle display needs a running teammate; otherwise the spinner row renders",
       "find": "if (leaderIsIdle && hasRunningTeammates && !foregroundedTeammate) {",
       "replace": "if (leaderIsIdle && !foregroundedTeammate) {"
-    },
-    {
-      "name": "a short thinking block skips its 2s minimum",
-      "comment": "\"thinking\" stays on screen for at least 2s before \"thought for Ns\"",
-      "find": "const remainingThinkingTime = Math.max(0, 2000 - elapsed);",
-      "replace": "const remainingThinkingTime = Math.max(0, 0 - elapsed);"
     }
   ]
 }

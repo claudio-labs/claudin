@@ -18,7 +18,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as React from 'react'
 
-import { getSpinnerVerbs } from 'src/agent/prompts/spinnerVerbs.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import {
   lastFrame,
@@ -231,9 +230,34 @@ describe('SpinnerWithVerb — leader', () => {
     expect(out).not.toContain('Tip:')
   })
 
-  test('without an override it picks one of the spinner verbs', async () => {
-    const out = await renderWith(<SpinnerWithVerb {...verbProps({ overrideMessage: null })} />, appState())
-    expect(getSpinnerVerbs().some(verb => out.includes(`${verb}...`))).toBe(true)
+  test('the row opens on the verb, with no orb glyph in front', async () => {
+    const out = await renderWith(<SpinnerWithVerb {...verbProps()} />, appState())
+    const row = out.split('\n').find(l => l.includes('Compiling...')) ?? ''
+    expect(row.startsWith('Compiling...')).toBe(true)
+    for (const glyph of ORB) expect(out).not.toContain(glyph)
+  })
+
+  test('with no tool or task to describe, the verb says what the mode is doing', async () => {
+    const verbOf = async (mode: SpinnerMode) => {
+      const out = await renderWith(<SpinnerWithVerb {...verbProps({ mode, overrideMessage: null })} />, appState())
+      return out.split('\n').find(l => l.includes('...'))?.split('...')[0]
+    }
+    expect(await verbOf('responding')).toBe('Writing reply')
+    expect(await verbOf('thinking')).toBe('Thinking')
+    expect(await verbOf('requesting')).toBe('Thinking')
+    expect(await verbOf('tool-use')).toBe('Working')
+    expect(await verbOf('tool-input')).toBe('Working')
+  })
+
+  test('the running tools’ activity is the verb; an override still wins over it', async () => {
+    const activity = await renderWith(
+      <SpinnerWithVerb {...verbProps({ overrideMessage: null, activityLabel: 'Editing Spinner.tsx' })} />,
+      appState(),
+    )
+    expect(activity.split('\n').some(l => l.startsWith('Editing Spinner.tsx...'))).toBe(true)
+    const override = await renderWith(<SpinnerWithVerb {...verbProps({ activityLabel: 'Editing Spinner.tsx' })} />, appState())
+    expect(override).toContain('Compiling...')
+    expect(override).not.toContain('Editing')
   })
 
   test('a spinner tip renders as "Tip: …"', async () => {
@@ -334,7 +358,9 @@ describe('SpinnerWithVerb — leader', () => {
   })
 })
 
-describe('SpinnerWithVerb — thinking status', () => {
+describe('SpinnerWithVerb — no thinking status', () => {
+  // The verb reads "Thinking" while the model thinks, so the row no longer
+  // adds "thinking with <effort> effort" or, after, "thought for Ns".
   let setModeExternal: ((mode: SpinnerMode) => void) | null = null
   function ModeHarness(props: VerbProps): React.ReactNode {
     const [mode, setMode] = React.useState<SpinnerMode>(props.mode)
@@ -342,31 +368,21 @@ describe('SpinnerWithVerb — thinking status', () => {
     return <SpinnerWithVerb {...props} mode={mode} />
   }
 
-  test('thinking mode shows "thinking", then "thought for Ns" once it stops after 2s', async () => {
+  test('thinking shows only the verb, and stopping adds no "thought for Ns"', async () => {
     const start = Date.now()
     setSystemTime(start)
-    const m = await mount(<ModeHarness {...verbProps({ mode: 'thinking' })} />, appState())
-    await frameContaining(m, 'thinking', 'thinking status')
+    const m = await mount(
+      <ModeHarness {...verbProps({ mode: 'thinking', overrideMessage: null, verbose: true })} />,
+      appState(),
+    )
+    const thinking = await frameContaining(m, 'Thinking...', 'thinking verb')
+    expect(thinking).not.toContain('thinking with')
+    expect(thinking).not.toMatch(/·\s*thinking/)
     setSystemTime(start + 5_000)
     setModeExternal!('responding')
-    const frame = await frameContaining(m, 'thought for 5s', 'thought-for status')
-    expect(frame).not.toContain('thinking')
-  })
-
-  test('a thinking block shorter than 2s keeps "thinking" on screen', async () => {
-    const m = await mount(<ModeHarness {...verbProps({ mode: 'thinking' })} />, appState())
-    await frameContaining(m, 'thinking', 'thinking status')
-    setModeExternal!('responding')
+    const frame = await frameContaining(m, 'Writing reply...', 'responding verb')
     await Bun.sleep(50)
-    const frame = lastFrame(m.streams.getOutput())
-    expect(frame).toContain('thinking')
-    expect(frame).not.toContain('thought for')
-  })
-
-  test('a mode that never thought shows no thinking status', async () => {
-    const m = await mount(<ModeHarness {...verbProps({ mode: 'responding' })} />, appState())
-    const frame = await frameContaining(m, 'Compiling...', 'spinner row')
-    expect(frame).not.toContain('thinking')
+    expect(lastFrame(m.streams.getOutput())).not.toContain('thought for')
     expect(frame).not.toContain('thought for')
   })
 })
@@ -559,6 +575,20 @@ describe('SpinnerWithVerb — TodoV2 tasks', () => {
     const m = await mount(<SpinnerWithVerb {...verbProps({ overrideMessage: null })} />, appState())
     const frame = await frameContaining(m, 'Next: Second', 'fallback next task')
     expect(frame).toContain('Refactor parser...')
+  })
+
+  test('a running tool’s activity wins over the todo in progress', async () => {
+    seedTasks([
+      { id: '1', subject: 'Write tests', activeForm: 'Writing tests', status: 'in_progress' },
+      { id: '2', subject: 'Ship it', status: 'pending' },
+    ])
+    const m = await mount(
+      <SpinnerWithVerb {...verbProps({ overrideMessage: null, activityLabel: 'Running bun test' })} />,
+      appState(),
+    )
+    const frame = await frameContaining(m, 'Next: Ship it', 'next task')
+    expect(frame).toContain('Running bun test...')
+    expect(frame).not.toContain('Writing tests...')
   })
 
   test('a blocker that is completed does not block', async () => {

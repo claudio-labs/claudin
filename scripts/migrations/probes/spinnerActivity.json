@@ -1,0 +1,148 @@
+{
+  "test": [
+    "src/agent/ui/messages/toolActivityLabel.test.ts",
+    "src/terminal/spinner/Spinner.characterization.test.tsx",
+    "src/agent/repl/ui/REPLStatus.test.tsx"
+  ],
+  "source": "src/agent/ui/messages/toolActivityLabel.ts",
+  "probes": [
+    {
+      "name": "labels are capped at three words",
+      "find": "const MAX_WORDS = 3",
+      "replace": "const MAX_WORDS = 4"
+    },
+    {
+      "name": "long objects are cut",
+      "find": "const MAX_OBJECT_CHARS = 28",
+      "replace": "const MAX_OBJECT_CHARS = 280"
+    },
+    {
+      "name": "file tools name the file, not its path",
+      "find": "  return file && path.basename(file)",
+      "replace": "  return file"
+    },
+    {
+      "name": "a batch of one names its file",
+      "find": "    ? files.length === 1\n      ? fileName(files[0])\n      : `${files.length} files`",
+      "replace": "    ? `${files.length} files`"
+    },
+    {
+      "name": "a Patch reads its file headers",
+      "find": "/^\\*\\*\\* (?:Add|Update|Delete) File: (.+)$/gm",
+      "replace": "/^\\*\\*\\* (?:Update) File: (.+)$/gm"
+    },
+    {
+      "name": "a cd link is skipped",
+      "find": "  const segment = segments.find(s => !/^cd(\\s|$)/.test(s)) ?? segments[0]",
+      "replace": "  const segment = segments[0]"
+    },
+    {
+      "name": "VAR=value prefixes are skipped",
+      "find": ".filter(token => !/^\\w+=/.test(token))",
+      "replace": ""
+    },
+    {
+      "name": "a runner's run/exec gives way to what it runs",
+      "find": "['run', 'exec'].includes(tokens[1] ?? '') && isWord(tokens[2]) ? tokens[2] : tokens[1]",
+      "replace": "tokens[1]"
+    },
+    {
+      "name": "a flag or argument is not a subcommand",
+      "find": "  return isWord(sub) ? `${program} ${sub}` : program",
+      "replace": "  return sub ? `${program} ${sub}` : program"
+    },
+    {
+      "name": "a bad URL has no host",
+      "find": "    return new URL(text(url) ?? '').hostname || undefined",
+      "replace": "    return text(url)"
+    },
+    {
+      "name": "MCP calls name their server",
+      "find": "  if (name.startsWith('mcp__')) {",
+      "replace": "  if (name.startsWith('never__')) {"
+    },
+    {
+      "name": "an unknown tool is run by name",
+      "find": "  return ACTIVITIES[name] ?? { verb: 'Running', object: () => name }",
+      "replace": "  return ACTIVITIES[name] ?? { verb: 'Running' }"
+    },
+    {
+      "name": "parallel calls of one kind are counted with their noun",
+      "find": "  return alike && first!.noun ?",
+      "replace": "  return false ?"
+    },
+    {
+      "name": "parallel calls with no noun are counted as tools",
+      "find": "  return alike && first!.noun ?",
+      "replace": "  return alike ?"
+    },
+    {
+      "name": "only the newest messages are scanned",
+      "find": "const SCAN_LIMIT = 50",
+      "replace": "const SCAN_LIMIT = 500"
+    },
+    {
+      "name": "progress does not count toward the scan limit",
+      "comment": "a sub-agent's steps or two commands' ticks would push a running call out of it",
+      "find": "    if (message.type === 'progress') continue\n",
+      "replace": ""
+    },
+    {
+      "name": "running calls come back oldest first",
+      "find": "  return calls.reverse()",
+      "replace": "  return calls"
+    },
+    {
+      "name": "running calls beat the streaming one",
+      "find": "  if (running) return running\n",
+      "replace": ""
+    },
+    {
+      "name": "the streaming call is the newest",
+      "find": "streamingToolUses.at(-1)?.contentBlock.name",
+      "replace": "streamingToolUses.at(0)?.contentBlock.name"
+    },
+    {
+      "name": "the spinner verb is the activity before the todo",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "overrideMessage ?? activityLabel ?? currentTodo?.activeForm ?? currentTodo?.subject ?? MODE_VERBS[mode]",
+      "replace": "overrideMessage ?? currentTodo?.activeForm ?? currentTodo?.subject ?? activityLabel ?? MODE_VERBS[mode]"
+    },
+    {
+      "name": "an override beats the activity",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "overrideMessage ?? activityLabel ?? currentTodo",
+      "replace": "activityLabel ?? overrideMessage ?? currentTodo"
+    },
+    {
+      "name": "the mode names the verb when nothing else does",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "  responding: 'Writing reply',",
+      "replace": "  responding: 'Working',"
+    },
+    {
+      "name": "REPLStatus hands the label to the spinner",
+      "source": "src/agent/repl/ui/REPLStatus.tsx",
+      "find": "      activityLabel,\n      spinnerSuffix",
+      "replace": "      spinnerSuffix"
+    },
+    {
+      "name": "the row has no thinking status",
+      "source": "src/terminal/spinner/SpinnerAnimationRow.tsx",
+      "find": "          </Box>] : [])];",
+      "replace": "          </Box>] : []), ...(mode === 'thinking' ? [<Text key=\"thinking\">thinking with high effort</Text>] : [])];"
+    },
+    {
+      "name": "the row has no thought-for status",
+      "source": "src/terminal/spinner/SpinnerAnimationRow.tsx",
+      "find": "          </Box>] : [])];",
+      "replace": "          </Box>] : []), ...(mode === 'responding' ? [<Text key=\"thinking\">thought for 5s</Text>] : [])];"
+    },
+    {
+      "name": "the spinner row has no orb glyph",
+      "source": "src/terminal/spinner/SpinnerAnimationRow.tsx",
+      "find": "        <GlimmerMessage message={displayMessage}",
+      "replace": "        <Text>⣾ </Text><GlimmerMessage message={displayMessage}"
+    }
+  ]
+}

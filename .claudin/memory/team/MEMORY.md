@@ -3,7 +3,8 @@
 > Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
 
 ## Decisions
-- Ports: [Plandex (#341)](decisions/plandex-ports.md) — elision guard, rewind, /diff `x`, fallback · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills, ws ask · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /autocompact /recap
+- [Transcript UI round 11-24](decisions/transcript-ui-round-2026-11-24.md) — icons take the ●, no ⎿ in results
+- Ports: [Plandex (#341)](decisions/plandex-ports.md) — rewind, /diff `x` · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /recap
 - [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
@@ -42,11 +43,11 @@
 - Repo map — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only, cache-safe
 - [Explore agent: removed 08-18, back ON 09-25](decisions/explore-agent-removed.md) — calls −29%, wall +30%
-- [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks; a named agent stays fresh
-- [Git tool (D2), shipped 08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
+- [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks
+- [Git tool (D2), shipped 08-04](decisions/git-tool-design.md) — cost −11.5%; batching claim failed the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — `/effort inherit` clears
 - [Adaptive thinking on by default (07-13)](decisions/adaptive-thinking-default-on.md) — `CLAUDIN_ENABLE_ADAPTIVE_THINKING=0` opts out
-- [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests; opt-in `=0`
+- [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — prStatusHosts in config.json
 - [Bash filter shape blindness — CLOSED 08-29](decisions/bash-filter-shape-wontfix.md) — specs cap at 6.8% of chars
 - [code-review-graph — REJECTED 08-08](decisions/code-review-graph-evaluated-rejected.md) — loses to the diff
@@ -105,10 +106,10 @@
 - [Stale paths in team memory — resolution table](memory-cites-pre-reorg-paths.md) — read the sentence first
 - [Stale <new-diagnostics> reminders — FIXED in #245](stale-diagnostics-notifications.md)
 - Removal passes: [pin from the BUNDLE first](characterization-net-before-deletion.md) · [only what the build proves dead](removal-pass-only-provably-dead.md) · [telemetry deletions hollow tests](tests-observing-through-telemetry.md)
-- [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md) — `ts.createSourceFile` fails at runtime
+- [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md)
 - Worktree agents: [stale base](audit-agent-worktree-sees-committed-head.md) · [edits leak to main](worktree-agent-edits-leak-to-main-checkout.md) — pin the SHA
 - [Public copy: no "fork of Claude Code"](public-docs-product-not-fork-framing.md) — one slim non-affiliation line
-- No rule covers: [tools.js → TDZ](tool-importing-tools-registry-tdz.md) · [ProviderManager tests](providermanager-tui-tests-fail-non-tty.md) · [CI order leaks](full-suite-in-ci-portability.md) · [full repaint](ink-bordered-fillheight-panes-recipe.md)
+- No rule covers: [tools.js → TDZ](tool-importing-tools-registry-tdz.md) · [ProviderManager](providermanager-tui-tests-fail-non-tty.md) · [CI leaks](full-suite-in-ci-portability.md) · [full repaint](ink-bordered-fillheight-panes-recipe.md) · [tool rows ×2](tool-row-drawn-in-two-places.md)
 
 ## Repo health
 - [Attachment producers leaked parent state into sub-agents](attachment-producers-leak-parent-state.md) — agentId is NOT the gate
@@ -128,7 +129,7 @@
 - [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines; rounds r2–r5 linked inside
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Giant-file split recipe](tier3-file-split-roadmap.md) — done 09-20 · [history](tier3-file-split-history.md)
-- [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
+- [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%
 - [Product roadmap 2026-07](roadmap-2026-07.md) — R1–R5; R3 done · [tokens](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, wrong facts, map drift

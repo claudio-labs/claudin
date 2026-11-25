@@ -168,7 +168,7 @@ export default function BashToolResultMessage(t0: Props) {
   }
   let t9;
   if ($[17] !== backgroundTaskId || $[18] !== cwdResetWarning || $[19] !== noOutputExpected || $[20] !== returnCodeInterpretation || $[21] !== stderr || $[22] !== stdout) {
-    t9 = stdout === "" && stderr.trim() === "" && !cwdResetWarning ? <MessageResponse height={1}><FullWidthRow><Text dimColor={true}>{backgroundTaskId ? <>Running in the background{" "}<KeyboardShortcutHint shortcut={"\u2193"} action="manage" parens={true} /></> : returnCodeInterpretation || (noOutputExpected ? "Done" : "(No output)")}</Text></FullWidthRow></MessageResponse> : null;
+    t9 = stdout === "" && stderr.trim() === "" && !cwdResetWarning ? <MessageResponse height={1} mark={!!backgroundTaskId}><FullWidthRow><Text dimColor={true}>{backgroundTaskId ? <>Running in the background{" "}<KeyboardShortcutHint shortcut={"\u2193"} action="manage" parens={true} /></> : returnCodeInterpretation || (noOutputExpected ? "Done" : "(No output)")}</Text></FullWidthRow></MessageResponse> : null;
     $[17] = backgroundTaskId;
     $[18] = cwdResetWarning;
     $[19] = noOutputExpected;
@@ -181,7 +181,7 @@ export default function BashToolResultMessage(t0: Props) {
   }
   let t10;
   if ($[24] !== timeoutMs) {
-    t10 = timeoutMs && <MessageResponse><ShellTimeDisplay timeoutMs={timeoutMs} /></MessageResponse>;
+    t10 = timeoutMs && <MessageResponse mark={true}><ShellTimeDisplay timeoutMs={timeoutMs} /></MessageResponse>;
     $[24] = timeoutMs;
     $[25] = t10;
   } else {

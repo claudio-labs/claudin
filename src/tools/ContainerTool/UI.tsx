@@ -196,15 +196,16 @@ export function renderToolResultMessage(
           // An observation, never a verdict: a long `RUN apt-get` is quiet for
           // legitimate reasons and this must not read as "it hung".
           <Text dimColor wrap="truncate-end">
-            {`⎿ stopped after ${Math.round(output.stall.ranMs / 1000)}s, silent for ${Math.round(output.stall.silentMs / 1000)}s`}
+            {`  stopped after ${Math.round(output.stall.ranMs / 1000)}s, silent for ${Math.round(output.stall.silentMs / 1000)}s`}
           </Text>
         ) : null}
         {output.contextWarning ? (
-          <Text dimColor wrap="truncate-end">{`⎿ ${output.contextWarning}`}</Text>
+          <Text dimColor wrap="truncate-end">{`  ${output.contextWarning}`}</Text>
         ) : null}
         {diagnosis ? (
           <Text color="error" wrap="truncate-end">
-            ⎿ {diagnosis.summary}
+            {'  '}
+            {diagnosis.summary}
           </Text>
         ) : null}
         {evidenceLines.map((line, i) => (

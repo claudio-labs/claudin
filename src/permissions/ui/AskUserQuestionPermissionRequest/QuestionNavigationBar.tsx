@@ -6,6 +6,17 @@ import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Question } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import { truncateToWidth } from 'src/shared/text/format.js';
+import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js';
+
+// figures' ☒ draws a crossed box, which reads as "rejected" beside the
+// Submit tab's ✔. On a Nerd Font a tab takes the task list's circle pair
+// instead (taskStatusIcons.ts): checked once answered, empty until then.
+const NERD_ANSWERED = '\u{f0134}'; // nf-md-checkbox_marked_circle_outline
+const NERD_UNANSWERED = '\u{f0130}'; // nf-md-checkbox_blank_circle_outline
+function tabCheckbox(isAnswered: boolean): string {
+  if (hasNerdFontGlyphs()) return isAnswered ? NERD_ANSWERED : NERD_UNANSWERED;
+  return isAnswered ? figures.checkboxOn : figures.checkboxOff;
+}
 type Props = {
   questions: Question[];
   currentQuestionIndex: number;
@@ -113,7 +124,7 @@ export function QuestionNavigationBar(t0: Props) {
       t5 = (q_1: Question, index_2: number) => {
         const isSelected = index_2 === currentQuestionIndex;
         const isAnswered = q_1?.question && !!answers[q_1.question];
-        const checkbox = isAnswered ? figures.checkboxOn : figures.checkboxOff;
+        const checkbox = tabCheckbox(!!isAnswered);
         const displayText = tabDisplayTexts[index_2] || q_1?.header || `Q${index_2 + 1}`;
         return <Box key={q_1?.question || `question-${index_2}`}>{isSelected ? <Text backgroundColor="permission" color="inverseText">{" "}{checkbox} {displayText}{" "}</Text> : <Text>{" "}{checkbox} {displayText}{" "}</Text>}</Box>;
       };

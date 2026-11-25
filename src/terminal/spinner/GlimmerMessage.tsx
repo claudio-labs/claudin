@@ -4,14 +4,11 @@ import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Text, useTheme } from 'src/terminal/ink.js';
 import { getGraphemeSegmenter } from 'src/shared/text/intl.js';
 import { getTheme, type Theme } from 'src/terminal/theme/theme.js';
-import type { SpinnerMode } from 'src/terminal/spinner/types.js';
 import { interpolateColor, parseRGB, resolveStallColor, toRGBColor } from 'src/terminal/spinner/utils.js';
 type Props = {
   message: string;
-  mode: SpinnerMode;
   messageColor: keyof Theme;
   glimmerIndex: number;
-  flashOpacity: number;
   shimmerColor: keyof Theme;
   stalledIntensity?: number;
 };
@@ -19,10 +16,8 @@ export function GlimmerMessage(t0: Props) {
   const $ = _c(75);
   const {
     message,
-    mode,
     messageColor,
     glimmerIndex,
-    flashOpacity,
     shimmerColor,
     stalledIntensity: t1
   } = t0;
@@ -31,7 +26,7 @@ export function GlimmerMessage(t0: Props) {
   let messageWidth;
   let segments;
   let t2;
-  if ($[0] !== flashOpacity || $[1] !== message || $[2] !== messageColor || $[3] !== mode || $[4] !== shimmerColor || $[5] !== stalledIntensity || $[6] !== themeName) {
+  if ($[1] !== message || $[2] !== messageColor || $[4] !== shimmerColor || $[5] !== stalledIntensity || $[6] !== themeName) {
     t2 = Symbol.for("react.early_return_sentinel");
     bb0: {
       const theme = getTheme(themeName);
@@ -127,69 +122,9 @@ export function GlimmerMessage(t0: Props) {
         t2 = t7;
         break bb0;
       }
-      if (mode === "tool-use") {
-        const baseColorStr_0 = theme[messageColor];
-        const shimmerColorStr = theme[shimmerColor];
-        const baseRGB_0 = baseColorStr_0 ? parseRGB(baseColorStr_0) : null;
-        const shimmerRGB = shimmerColorStr ? parseRGB(shimmerColorStr) : null;
-        if (baseRGB_0 && shimmerRGB) {
-          const interpolated_0 = interpolateColor(baseRGB_0, shimmerRGB, flashOpacity);
-          const t5 = <Text color={toRGBColor(interpolated_0)}>{message}</Text>;
-          let t6;
-          if ($[27] !== messageColor) {
-            t6 = <Text color={messageColor}> </Text>;
-            $[27] = messageColor;
-            $[28] = t6;
-          } else {
-            t6 = $[28];
-          }
-          let t7;
-          if ($[29] !== t5 || $[30] !== t6) {
-            t7 = <>{t5}{t6}</>;
-            $[29] = t5;
-            $[30] = t6;
-            $[31] = t7;
-          } else {
-            t7 = $[31];
-          }
-          t2 = t7;
-          break bb0;
-        }
-        const color_1 = flashOpacity > 0.5 ? shimmerColor : messageColor;
-        let t5;
-        if ($[32] !== color_1 || $[33] !== message) {
-          t5 = <Text color={color_1}>{message}</Text>;
-          $[32] = color_1;
-          $[33] = message;
-          $[34] = t5;
-        } else {
-          t5 = $[34];
-        }
-        let t6;
-        if ($[35] !== messageColor) {
-          t6 = <Text color={messageColor}> </Text>;
-          $[35] = messageColor;
-          $[36] = t6;
-        } else {
-          t6 = $[36];
-        }
-        let t7;
-        if ($[37] !== t5 || $[38] !== t6) {
-          t7 = <>{t5}{t6}</>;
-          $[37] = t5;
-          $[38] = t6;
-          $[39] = t7;
-        } else {
-          t7 = $[39];
-        }
-        t2 = t7;
-        break bb0;
-      }
     }
-    $[0] = flashOpacity;
     $[1] = message;
     $[2] = messageColor;
-    $[3] = mode;
     $[4] = shimmerColor;
     $[5] = stalledIntensity;
     $[6] = themeName;

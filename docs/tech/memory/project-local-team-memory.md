@@ -396,7 +396,7 @@ lone rule.
 An explicit `Read` of a memory file is the third case, and it reads the same
 way. The count leaves the collapsed read/search badge — where it used to be
 a verb, `recalling 1 memory, recalling 2 team memories…` — for its own
-`⎿  Loaded 1 private memory, 2 team memories` line under it (`formatMemoryRecallCounts`
+`⎿ Loaded 1 private memory, 2 team memories` line under it (`formatMemoryRecallCounts`
 in `src/agent/ui/messages/memoryRecallLine.ts`, private clause first, the
 same nouns `nestedMemoryBatchLabel` uses; no category breakdown, since the
 group carries counts rather than paths). What stays on the badge is what the

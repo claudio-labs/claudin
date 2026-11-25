@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
   ADAPTIVE_EFFORT,
-  getEffortSuffix,
   getEffortValueDescription,
   isAdaptiveEffort,
   resolveAppliedEffort,
@@ -21,10 +20,6 @@ describe('adaptive effort', () => {
 
   test('resolveAppliedEffort returns undefined for adaptive (no effort field sent)', () => {
     expect(resolveAppliedEffort(OPUS, ADAPTIVE_EFFORT)).toBeUndefined()
-  })
-
-  test('getEffortSuffix surfaces adaptive in the status bar', () => {
-    expect(getEffortSuffix(OPUS, ADAPTIVE_EFFORT)).toBe(' with adaptive effort')
   })
 
   test('adaptive is persistable as-is', () => {

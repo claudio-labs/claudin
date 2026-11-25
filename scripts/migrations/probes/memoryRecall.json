@@ -30,7 +30,7 @@
     {
       "name": "the collapsed group renders the Loaded line at all",
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
-      "find": "      {recalledCounts !== undefined && <Text dimColor>\n          {'  ⎿  '}Loaded <Text bold>{recalledCounts}</Text>\n          {!hasBadgeParts && <>\n              {' '}\n              <CtrlOToExpand />\n            </>}\n        </Text>}\n",
+      "find": "      {recalledCounts !== undefined && <Text dimColor>\n          {'  ⎿ '}Loaded <Text bold>{recalledCounts}</Text>\n          {!hasBadgeParts && <>\n              {' '}\n              <CtrlOToExpand />\n            </>}\n        </Text>}\n",
       "replace": ""
     },
     {

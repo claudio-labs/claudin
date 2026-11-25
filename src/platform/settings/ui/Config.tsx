@@ -48,6 +48,7 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeEnabled, getFastModeModel, isFastModeSupportedByModel } from 'src/providers/fastMode.js';
 import { isFullscreenEnvEnabled, isFullscreenForcedByEnv } from 'src/terminal/render/fullscreen.js';
 import { FRAME_RATE_OPTIONS, type FrameRateSetting, getEffectiveFrameRate, isFrameRateForcedByEnv } from 'src/terminal/render/renderCadence.js';
+import { hasNerdFontGlyphs, isNerdFontForcedByEnv, NERD_FONT_ICONS_OPTIONS, type NerdFontIconsSetting } from 'src/terminal/terminalFont.js';
 import { buildDisplayRows, countSettingRows, firstSelectableIndex, isSelectableRow, lastSelectableIndex, nextSelectableIndex, sectionJumpIndex } from 'src/platform/settings/ui/configGroups.js';
 type Props = {
   onClose: (result?: string, options?: {
@@ -800,6 +801,26 @@ export function Config({
       });
     }
   },
+  {
+    id: 'nerdFontIcons',
+    // CLAUDIN_NERD_FONT pins the answer — say so, and show what `auto`
+    // resolved to, the way the Frame rate row does.
+    label: `Nerd Font icons (${isNerdFontForcedByEnv() ? 'env, ' : ''}${hasNerdFontGlyphs() ? 'on' : 'off'})`,
+    searchText: 'nerd font icons glyphs powerline devicons terminal font',
+    value: globalConfig.nerdFontIcons ?? 'auto',
+    options: [...NERD_FONT_ICONS_OPTIONS],
+    type: 'enum' as const,
+    onChange(nerdFontIcons: string) {
+      saveGlobalConfig(current => ({
+        ...current,
+        nerdFontIcons: nerdFontIcons as NerdFontIconsSetting
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        nerdFontIcons: nerdFontIcons as NerdFontIconsSetting
+      });
+    }
+  },
   // autoUpdates setting is hidden - use DISABLE_AUTOUPDATER env var to control
   autoUpdaterDisabledReason ? {
     id: 'autoUpdatesChannel',
@@ -1245,6 +1266,9 @@ export function Config({
     }
     if (globalConfig.renderFrameRate !== initialConfig.current.renderFrameRate) {
       formattedChanges.push(`Set frame rate to ${chalk.bold(globalConfig.renderFrameRate ?? 'auto')} (applies on restart)`);
+    }
+    if (globalConfig.nerdFontIcons !== initialConfig.current.nerdFontIcons) {
+      formattedChanges.push(`Set Nerd Font icons to ${chalk.bold(globalConfig.nerdFontIcons ?? 'auto')}`);
     }
     if (globalConfig.terminalProgressBarEnabled !== initialConfig.current.terminalProgressBarEnabled) {
       formattedChanges.push(`${globalConfig.terminalProgressBarEnabled ? 'Enabled' : 'Disabled'} terminal progress bar`);
