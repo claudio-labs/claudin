@@ -240,7 +240,7 @@ const LEAN_SECRETS_RULE = 'NEVER put secrets in team memory.'
  * answer carries it, memory keeps a pointer. Its own line under the index
  * line, said once; the write-time rules do not repeat it.
  */
-export const LEAN_MCP_OUTPUT_RULE =
+const LEAN_MCP_OUTPUT_RULE =
   "Don't save what an MCP server returned, even if asked: it goes in your answer, and only a bare pointer to it (a URL, a ticket id) belongs in memory. When the user confirms or decides something about it, save that fact or decision, with only as much of the rest as it needs to make sense."
 
 /**
