@@ -10,7 +10,7 @@
 import { readdir, realpath, stat } from 'fs/promises'
 import { basename, join } from 'path'
 import { saveCurrentProjectConfig } from 'src/platform/config/config.js'
-import { executeWorktreeRemoveHook } from 'src/platform/lifecycleHooks/hooks.js'
+import { runWorktreeRemoveHook } from 'src/platform/lifecycleHooks/hooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
@@ -202,9 +202,11 @@ export async function cleanupWorktree(): Promise<WorktreeCleanup> {
 
     if (hookBased) {
       // Hook-based worktree: delegate cleanup to WorktreeRemove hook
-      const hookRan = await executeWorktreeRemoveHook(worktreePath)
-      outcome.removed = hookRan
-      if (hookRan) {
+      const hook = await runWorktreeRemoveHook(worktreePath)
+      outcome.removed = hook.ran && hook.error === undefined
+      if (hook.error !== undefined) {
+        outcome.removeError = hook.error
+      } else if (hook.ran) {
         logForDebugging(`Removed hook-based worktree at: ${worktreePath}`)
       } else {
         logForDebugging(

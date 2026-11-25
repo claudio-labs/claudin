@@ -106,6 +106,12 @@ describe('describeRemoval', () => {
     )
   })
 
+  test('a WorktreeRemove hook that failed: still on disk, with the hook\'s output', () => {
+    expect(
+      describeRemoval({ worktreePath: PATH, hookBased: true, cleanup: { removed: false, removeError: 'remove refused', branch: 'none' } }),
+    ).toBe(`Exited the worktree, but ${PATH} is still on disk: its WorktreeRemove hook failed (remove refused).`)
+  })
+
   test('a git worktree with no branch recorded says only what was removed', () => {
     expect(describeRemoval({ worktreePath: PATH, cleanup: { removed: true, branch: 'none' } })).toBe(
       `Exited and removed worktree at ${PATH}.`,

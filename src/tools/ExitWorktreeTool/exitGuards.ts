@@ -66,9 +66,11 @@ export function describeRemoval({
   cleanup: WorktreeCleanup
 }): string {
   if (!cleanup.removed) {
-    const why = hookBased
-      ? 'a hook made this worktree, and no WorktreeRemove hook is configured to remove it'
-      : `git could not remove it${cleanup.removeError ? ` (${cleanup.removeError})` : ''}`
+    const why = !hookBased
+      ? `git could not remove it${cleanup.removeError ? ` (${cleanup.removeError})` : ''}`
+      : cleanup.removeError
+        ? `its WorktreeRemove hook failed (${cleanup.removeError})`
+        : 'a hook made this worktree, and no WorktreeRemove hook is configured to remove it'
     return `Exited the worktree, but ${worktreePath} is still on disk: ${why}.`
   }
   if (cleanup.branch === 'deleted') {
