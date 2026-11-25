@@ -39,6 +39,7 @@ export {
   cleanupWorktree,
   hasWorktreeChanges,
   keepWorktree,
+  type WorktreeCleanup,
 } from 'src/vcs/git/worktree/sessionLifecycle.js'
 export {
   validateWorktreeSlug,

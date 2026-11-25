@@ -174,10 +174,23 @@ export async function keepWorktree(): Promise<void> {
   }
 }
 
-export async function cleanupWorktree(): Promise<void> {
+/**
+ * What cleanupWorktree removed, for ExitWorktree to report. `branch` is
+ * 'none' when the session has no branch of its own to delete: a hook made
+ * the worktree, or no branch was recorded.
+ */
+export type WorktreeCleanup = {
+  removed: boolean
+  removeError?: string
+  branch: 'deleted' | 'refused' | 'none'
+  branchError?: string
+}
+
+export async function cleanupWorktree(): Promise<WorktreeCleanup> {
+  const outcome: WorktreeCleanup = { removed: false, branch: 'none' }
   const currentSession = getCurrentWorktreeSession()
   if (!currentSession) {
-    return
+    return outcome
   }
 
   try {
@@ -190,6 +203,7 @@ export async function cleanupWorktree(): Promise<void> {
     if (hookBased) {
       // Hook-based worktree: delegate cleanup to WorktreeRemove hook
       const hookRan = await executeWorktreeRemoveHook(worktreePath)
+      outcome.removed = hookRan
       if (hookRan) {
         logForDebugging(`Removed hook-based worktree at: ${worktreePath}`)
       } else {
@@ -211,10 +225,12 @@ export async function cleanupWorktree(): Promise<void> {
         )
 
       if (removeCode !== 0) {
+        outcome.removeError = removeError.trim().split('\n')[0]
         logForDebugging(`Failed to remove linked worktree: ${removeError}`, {
           level: 'error',
         })
       } else {
+        outcome.removed = true
         logForDebugging(`Removed linked worktree at: ${worktreePath}`)
       }
     }
@@ -241,11 +257,14 @@ export async function cleanupWorktree(): Promise<void> {
         )
 
       if (deleteBranchCode !== 0) {
+        outcome.branch = 'refused'
+        outcome.branchError = deleteBranchError.trim().split('\n')[0]
         logForDebugging(
           `Could not delete worktree branch: ${deleteBranchError}`,
           { level: 'error' },
         )
       } else {
+        outcome.branch = 'deleted'
         logForDebugging(`Deleted worktree branch: ${worktreeBranch}`)
       }
     }
@@ -256,6 +275,7 @@ export async function cleanupWorktree(): Promise<void> {
       level: 'error',
     })
   }
+  return outcome
 }
 
 /**

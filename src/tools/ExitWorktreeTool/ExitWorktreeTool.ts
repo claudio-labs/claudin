@@ -23,6 +23,7 @@ import {
   killTmuxSession,
 } from 'src/vcs/git/worktree.js'
 import { EXIT_WORKTREE_TOOL_NAME } from 'src/tools/ExitWorktreeTool/constants.js'
+import { describeRemoval } from 'src/tools/ExitWorktreeTool/exitGuards.js'
 import { getExitWorktreeToolPrompt } from 'src/tools/ExitWorktreeTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ExitWorktreeTool/UI.js'
 
@@ -31,7 +32,7 @@ const inputSchema = lazySchema(() =>
     action: z
       .enum(['keep', 'remove'])
       .describe(
-        '"keep" leaves the worktree and branch on disk; "remove" deletes both.',
+        '"keep" leaves the worktree and branch on disk; "remove" deletes the worktree and, unless a hook made it or git refuses, its branch.',
       ),
     discard_changes: z
       .boolean()
@@ -250,6 +251,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       worktreeBranch,
       tmuxSessionName,
       originalHeadCommit,
+      hookBased,
     } = session
 
     // --worktree startup calls setOriginalCwd(getCwd()) and
@@ -299,7 +301,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
     if (tmuxSessionName) {
       await killTmuxSession(tmuxSessionName)
     }
-    await cleanupWorktree()
+    const cleanup = await cleanupWorktree()
     restoreSessionToOriginalCwd(originalCwd, projectRootIsWorktree)
 
 
@@ -313,7 +315,9 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       )
     }
     const discardNote =
-      discardParts.length > 0 ? ` Discarded ${discardParts.join(' and ')}.` : ''
+      cleanup.removed && discardParts.length > 0
+        ? ` Discarded ${discardParts.join(' and ')}.`
+        : ''
     return {
       data: {
         action: 'remove' as const,
@@ -322,7 +326,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
         worktreeBranch,
         discardedFiles: changedFiles,
         discardedCommits: commits,
-        message: `Exited and removed worktree at ${worktreePath}.${discardNote} Session is now back in ${originalCwd}.`,
+        message: `${describeRemoval({ worktreePath, worktreeBranch, hookBased, cleanup })}${discardNote} Session is now back in ${originalCwd}.`,
       },
     }
   },

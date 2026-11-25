@@ -201,4 +201,30 @@ describe('ExitWorktreeTool remove reports what it removed', () => {
     expect(message).toContain(`removed worktree at ${worktree}`)
     expect(message).toContain('Git refused to delete branch main, so it is still there')
   })
+
+  test('its own branch is deleted and the result says so', async () => {
+    const { repo, worktree } = repoWithWorktree('wt-own')
+    const message = await remove({
+      originalCwd: repo,
+      worktreePath: worktree,
+      worktreeName: 'wt',
+      worktreeBranch: 'wt-own',
+      sessionId: 'sess-test',
+    })
+    expect(message).toStartWith(`Exited and removed worktree at ${worktree} and deleted its branch wt-own.`)
+    expect(existsSync(worktree)).toBe(false)
+    const branches = spawnSync('git', ['branch', '--list', 'wt-own'], { cwd: repo, encoding: 'utf8' }).stdout
+    expect(branches.trim()).toBe('')
+  })
+
+  test('the texts say a hook-made worktree or a refused delete keeps its branch', async () => {
+    const prompt = await ExitWorktreeTool.prompt({} as never)
+    expect(prompt).toContain(
+      'delete the worktree directory, and its branch too unless a hook made the worktree or git refuses the delete.',
+    )
+    const action = (ExitWorktreeTool.inputSchema as unknown as { shape: Record<string, { description?: string }> }).shape.action
+    expect(action?.description).toBe(
+      '"keep" leaves the worktree and branch on disk; "remove" deletes the worktree and, unless a hook made it or git refuses, its branch.',
+    )
+  })
 })
