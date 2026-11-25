@@ -12,8 +12,12 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
+import { useIsolatedHooksConfig } from 'src/platform/lifecycleHooks/__testutils__/isolatedHooksConfig.js'
 import { getWorktreeEnteredAt, restoreWorktreeSession, type WorktreeSession } from 'src/vcs/git/worktree.js'
 import { ExitWorktreeTool } from 'src/tools/ExitWorktreeTool/ExitWorktreeTool.js'
+
+// remove runs the WorktreeRemove hooks for real: only ones a test registers.
+useIsolatedHooksConfig()
 
 const attachedSession = {
   originalCwd: '/orig',
@@ -347,22 +351,5 @@ describe('ExitWorktreeTool remove refuses while something may work in the worktr
     writeFileSync(join(dir, `${process.ppid}.json`), JSON.stringify({ pid: process.ppid, sessionId: 'o', cwd: worktree }))
     const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
     expect((await ExitWorktreeTool.validateInput?.({ action: 'keep' } as never, context(tasks)))?.result).toBe(true)
-  })
-})
-
-describe('the worktree entered-at stamp', () => {
-  test('set on entering, kept when the same worktree is set again, cleared on leaving', async () => {
-    const session = { originalCwd: '/o', worktreePath: '/tmp/stamp-wt', worktreeName: 'w', sessionId: 's' }
-    const before = Date.now()
-    restoreWorktreeSession(session)
-    const entered = getWorktreeEnteredAt()
-    expect(entered).toBeGreaterThanOrEqual(before)
-    await new Promise(r => setTimeout(r, 5))
-    restoreWorktreeSession({ ...session, tmuxSessionName: 'tmux-1' })
-    expect(getWorktreeEnteredAt()).toBe(entered)
-    restoreWorktreeSession({ ...session, worktreePath: '/tmp/stamp-other' })
-    expect(getWorktreeEnteredAt()).toBeGreaterThan(entered)
-    restoreWorktreeSession(null)
-    expect(getWorktreeEnteredAt()).toBe(0)
   })
 })

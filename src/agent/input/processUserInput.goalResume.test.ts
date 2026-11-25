@@ -5,10 +5,14 @@ import { expect, test } from 'bun:test'
 import { pauseActiveGoal, setActiveGoal } from 'src/agent/goal/goal.js'
 import { processUserInput, type ProcessUserInputContext } from 'src/agent/input/processUserInput.js'
 import { clearRegisteredHooks, getSessionId, registerHookCallbacks } from 'src/platform/bootstrap/state.js'
+import { useIsolatedHooksConfig } from 'src/platform/lifecycleHooks/__testutils__/isolatedHooksConfig.js'
 import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { isStopConditionJudge } from 'src/platform/lifecycleHooks/stopConditionJudge.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
+
+// processUserInput runs the UserPromptSubmit hooks: only ones a test registers.
+useIsolatedHooksConfig()
 
 function pausedSession() {
   let state = {

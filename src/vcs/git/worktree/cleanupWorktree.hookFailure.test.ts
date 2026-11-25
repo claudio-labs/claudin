@@ -6,7 +6,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { clearRegisteredHooks, registerHookCallbacks } from 'src/platform/bootstrap/state.js'
+import { useIsolatedHooksConfig } from 'src/platform/lifecycleHooks/__testutils__/isolatedHooksConfig.js'
 import { cleanupWorktree, restoreWorktreeSession } from 'src/vcs/git/worktree.js'
+
+useIsolatedHooksConfig()
 
 const dirs: string[] = []
 const processCwd = process.cwd()
