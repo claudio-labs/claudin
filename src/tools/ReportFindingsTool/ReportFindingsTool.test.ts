@@ -51,9 +51,16 @@ describe('ReportFindingsTool', () => {
 
   test('input schema rejects unknown per-finding keys (strict)', () => {
     const extra = ReportFindingsTool.inputSchema.safeParse({
-      findings: [finding({ severity: 'high' })],
+      findings: [finding({ priority: 'high' })],
     })
     expect(extra.success).toBe(false)
+  })
+
+  test('severity is optional and takes only important, pre_existing or nit', () => {
+    for (const severity of ['important', 'pre_existing', 'nit']) {
+      expect(ReportFindingsTool.inputSchema.safeParse({ findings: [finding({ severity })] }).success).toBe(true)
+    }
+    expect(ReportFindingsTool.inputSchema.safeParse({ findings: [finding({ severity: 'high' })] }).success).toBe(false)
   })
 
   test('input schema enforces the MAX_FINDINGS cap', () => {

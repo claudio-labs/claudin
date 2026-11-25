@@ -289,6 +289,7 @@ describe('code-review headless output fallback', () => {
     const text = buildCodeReviewPrompt(parseCodeReviewArgs('high'))
     expect(text).toContain('Headless output (non-interactive session)')
     expect(text).toContain('failure_scenario')
+    expect(text).toContain('`severity`, `summary`, `failure_scenario`')
   })
 
   test('interactive review omits the JSON fallback (tool render is shown)', () => {
@@ -301,5 +302,20 @@ describe('code-review headless output fallback', () => {
     setIsInteractive(false)
     const text = buildCodeReviewPrompt(parseCodeReviewArgs('low'))
     expect(text).not.toContain('Headless output (non-interactive session)')
+  })
+})
+
+// Claude Code 2.1.332's severity, kept beside the cleanup angle: a cleanup is
+// a `nit`, and no severity is a reason to drop a finding.
+describe('code-review severity', () => {
+  test('medium and up define the three severities and rank by them', () => {
+    for (const level of ['medium', 'high', 'max'] as const) {
+      const text = buildCodeReviewPrompt(parseCodeReviewArgs(level))
+      expect(text).toContain("Set each finding's `severity`:")
+      expect(text).toContain('`pre_existing` if the change only fails\n    to fix it, and `important` if the change re-exposes it.')
+      expect(text).toContain('a broken CLAUDE.md or\n    AGENTS.md rule, a bug that harms nobody, or a cleanup.')
+      expect(text).toContain('A severity only labels and\n  orders a finding: never drop one for its severity.')
+      expect(text).toContain('most severe if more survive, cutting the lowest-ranked\n  first')
+    }
   })
 })

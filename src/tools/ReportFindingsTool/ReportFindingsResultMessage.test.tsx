@@ -84,4 +84,12 @@ describe('ReportFindings result message', () => {
     expect(out).toContain('No findings survived verification.')
     expect(out).not.toContain('↳')
   })
+
+  test('a severity leads the summary, in words', async () => {
+    const finding = { ...ONE_FINDING.findings[0]!, summary: 'stale cache', severity: 'pre_existing' as const }
+    const flat = (await render({ findings: [finding] }, 120)).replace(/\s+/g, ' ')
+    expect(flat).toContain('router.py:256 — pre-existing: stale cache (CONFIRMED)')
+    const plain = (await render(ONE_FINDING, 120)).replace(/\s+/g, ' ')
+    expect(plain).toContain(`router.py:256 — ${LONG_SUMMARY.slice(0, 20)}`)
+  })
 })
