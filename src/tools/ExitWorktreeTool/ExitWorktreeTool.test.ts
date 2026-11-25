@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { spawnSync } from 'child_process'
-import { existsSync, mkdtempSync, realpathSync, rmSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -12,7 +12,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
-import { restoreWorktreeSession, type WorktreeSession } from 'src/vcs/git/worktree.js'
+import { getWorktreeEnteredAt, restoreWorktreeSession, type WorktreeSession } from 'src/vcs/git/worktree.js'
 import { ExitWorktreeTool } from 'src/tools/ExitWorktreeTool/ExitWorktreeTool.js'
 
 const attachedSession = {
@@ -226,5 +226,112 @@ describe('ExitWorktreeTool remove reports what it removed', () => {
     expect(action?.description).toBe(
       '"keep" leaves the worktree and branch on disk; "remove" deletes the worktree and, unless a hook made it or git refuses, its branch.',
     )
+  })
+})
+
+describe('ExitWorktreeTool remove refuses while something may work in the worktree', () => {
+  const dirs: string[] = []
+  let savedConfigDir: string | undefined
+  afterEach(() => {
+    if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  // A config dir of its own, so the only other live session is the one a
+  // test writes: this test's parent process, which is alive.
+  function sessionsDir(): string {
+    savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+    const config = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-config-')))
+    dirs.push(config)
+    process.env.CLAUDIN_CONFIG_DIR = config
+    mkdirSync(join(config, 'sessions'))
+    return join(config, 'sessions')
+  }
+
+  function enter(): string {
+    const worktree = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-')))
+    dirs.push(worktree)
+    restoreWorktreeSession({ originalCwd: '/orig', worktreePath: worktree, worktreeName: 'wt', sessionId: 's' })
+    return worktree
+  }
+
+  function context(tasks: Record<string, unknown> = {}) {
+    return { getAppState: () => ({ tasks }) } as never
+  }
+
+  function runningShell(startTime: number) {
+    return {
+      id: 'b1',
+      type: 'local_bash',
+      status: 'running',
+      description: 'npm run dev',
+      startTime,
+      outputFile: '/tmp/b1.out',
+      outputOffset: 0,
+      notified: false,
+    }
+  }
+
+  test('another live session in the worktree refuses remove, even with discard_changes', async () => {
+    const dir = sessionsDir()
+    const worktree = enter()
+    writeFileSync(
+      join(dir, `${process.ppid}.json`),
+      JSON.stringify({ pid: process.ppid, sessionId: 'other', cwd: join(worktree, 'src') }),
+    )
+    const result = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context())
+    expect(result?.result).toBe(false)
+    if (result?.result === false) {
+      expect(result.errorCode).toBe(4)
+      expect(result.message).toContain(`Another Claudin session (pid ${process.ppid}) is running in this worktree`)
+    }
+  })
+
+  test('a task started after entering refuses remove; discard_changes lets it through', async () => {
+    sessionsDir()
+    enter()
+    const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
+    const refused = await ExitWorktreeTool.validateInput?.({ action: 'remove' } as never, context(tasks))
+    expect(refused?.result).toBe(false)
+    if (refused?.result === false) {
+      expect(refused.errorCode).toBe(5)
+      expect(refused.message).toStartWith('A background task started in this worktree may still be running there ("npm run dev").')
+    }
+    const forced = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context(tasks))
+    expect(forced?.result).toBe(true)
+  })
+
+  test('a task started before entering does not hold the worktree', async () => {
+    sessionsDir()
+    enter()
+    const tasks = { b1: runningShell(getWorktreeEnteredAt() - 1) }
+    const result = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context(tasks))
+    expect(result?.result).toBe(true)
+  })
+
+  test('keep is never refused for either', async () => {
+    const dir = sessionsDir()
+    const worktree = enter()
+    writeFileSync(join(dir, `${process.ppid}.json`), JSON.stringify({ pid: process.ppid, sessionId: 'o', cwd: worktree }))
+    const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
+    expect((await ExitWorktreeTool.validateInput?.({ action: 'keep' } as never, context(tasks)))?.result).toBe(true)
+  })
+})
+
+describe('the worktree entered-at stamp', () => {
+  test('set on entering, kept when the same worktree is set again, cleared on leaving', async () => {
+    const session = { originalCwd: '/o', worktreePath: '/tmp/stamp-wt', worktreeName: 'w', sessionId: 's' }
+    const before = Date.now()
+    restoreWorktreeSession(session)
+    const entered = getWorktreeEnteredAt()
+    expect(entered).toBeGreaterThanOrEqual(before)
+    await new Promise(r => setTimeout(r, 5))
+    restoreWorktreeSession({ ...session, tmuxSessionName: 'tmux-1' })
+    expect(getWorktreeEnteredAt()).toBe(entered)
+    restoreWorktreeSession({ ...session, worktreePath: '/tmp/stamp-other' })
+    expect(getWorktreeEnteredAt()).toBeGreaterThan(entered)
+    restoreWorktreeSession(null)
+    expect(getWorktreeEnteredAt()).toBe(0)
   })
 })

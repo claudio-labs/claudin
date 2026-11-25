@@ -14,16 +14,23 @@ import { updateHooksConfigSnapshot } from 'src/platform/lifecycleHooks/hooksConf
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
-import { updateSessionCwd } from 'src/sessions/concurrentSessions.js'
+import { listLiveSessions, updateSessionCwd } from 'src/sessions/concurrentSessions.js'
 import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import {
   cleanupWorktree,
   getCurrentWorktreeSession,
+  getWorktreeEnteredAt,
   keepWorktree,
   killTmuxSession,
 } from 'src/vcs/git/worktree.js'
 import { EXIT_WORKTREE_TOOL_NAME } from 'src/tools/ExitWorktreeTool/constants.js'
-import { describeRemoval } from 'src/tools/ExitWorktreeTool/exitGuards.js'
+import {
+  describeRemoval,
+  sessionInWorktreeRefusal,
+  sessionsInWorktree,
+  tasksInWorktreeRefusal,
+  tasksStartedSince,
+} from 'src/tools/ExitWorktreeTool/exitGuards.js'
 import { getExitWorktreeToolPrompt } from 'src/tools/ExitWorktreeTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ExitWorktreeTool/UI.js'
 
@@ -38,7 +45,7 @@ const inputSchema = lazySchema(() =>
       .boolean()
       .optional()
       .describe(
-        'Required true when action is "remove" and the worktree has uncommitted files or unmerged commits. The tool will refuse and list them otherwise.',
+        'Required true when action is "remove" and the worktree has uncommitted files or unmerged commits. The tool will refuse and list them otherwise. It also removes the worktree under any task still running there, so set it only after the user has confirmed.',
       ),
   }),
 )
@@ -177,7 +184,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
   toAutoClassifierInput(input) {
     return input.action
   },
-  async validateInput(input) {
+  async validateInput(input, context) {
     // Scope guard: getCurrentWorktreeSession() is null unless EnterWorktree
     // (specifically createWorktreeForSession) ran in THIS session. Worktrees
     // created by `git worktree add`, or by EnterWorktree in a previous
@@ -195,6 +202,22 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
 
     // Attached worktrees (entered via EnterWorktree `path`) are never removed —
     // call() (below) coerces them to keep — so skip the remove safety gate here.
+    if (input.action === 'remove' && !session.attached) {
+      const sessions = sessionsInWorktree(await listLiveSessions(), session.worktreePath)
+      if (sessions.length > 0) {
+        return {
+          result: false,
+          message: sessionInWorktreeRefusal(sessions, session.worktreePath),
+          errorCode: 4,
+        }
+      }
+      const tasks = input.discard_changes
+        ? []
+        : tasksStartedSince(context.getAppState().tasks, getWorktreeEnteredAt())
+      if (tasks.length > 0) {
+        return { result: false, message: tasksInWorktreeRefusal(tasks), errorCode: 5 }
+      }
+    }
     if (
       input.action === 'remove' &&
       !input.discard_changes &&

@@ -1,7 +1,82 @@
 import { describe, expect, test } from 'bun:test'
-import { describeRemoval } from 'src/tools/ExitWorktreeTool/exitGuards.js'
+import type { TaskState } from 'src/agent/tasks/types.js'
+import type { LiveSession } from 'src/sessions/concurrentSessions.js'
+import {
+  describeRemoval,
+  sessionInWorktreeRefusal,
+  sessionsInWorktree,
+  tasksInWorktreeRefusal,
+  tasksStartedSince,
+} from 'src/tools/ExitWorktreeTool/exitGuards.js'
 
 const PATH = '/repo/.claudin/worktrees/feat'
+
+function session(pid: number, cwd: string): LiveSession {
+  return { pid, sessionId: `s-${pid}`, cwd }
+}
+
+function task(over: Partial<TaskState> & { type: TaskState['type'] }): TaskState {
+  return {
+    id: 't1',
+    status: 'running',
+    description: 'npm run dev',
+    startTime: 2_000,
+    outputFile: '/tmp/t1.out',
+    outputOffset: 0,
+    notified: false,
+    ...over,
+  } as TaskState
+}
+
+describe('sessionsInWorktree', () => {
+  test('a session at the worktree or below it counts; a sibling with the same prefix does not', () => {
+    const all = [
+      session(1, PATH),
+      session(2, `${PATH}/src`),
+      session(3, `${PATH}-other`),
+      session(4, '/repo'),
+    ]
+    expect(sessionsInWorktree(all, PATH).map(s => s.pid)).toEqual([1, 2])
+  })
+})
+
+describe('tasksStartedSince', () => {
+  test('running background work started after entering counts', () => {
+    const tasks = {
+      after: task({ id: 'after', type: 'local_bash', startTime: 2_000 }),
+      before: task({ id: 'before', type: 'local_bash', startTime: 500 }),
+      done: task({ id: 'done', type: 'local_agent', status: 'completed' }),
+      foreground: task({ id: 'foreground', type: 'local_bash', isBackgrounded: false } as never),
+      server: task({ id: 'server', type: 'mcp_server' }),
+      container: task({ id: 'container', type: 'container' }),
+      agent: task({ id: 'agent', type: 'local_agent', startTime: 1_000 }),
+    }
+    expect(tasksStartedSince(tasks, 1_000).map(t => t.id)).toEqual(['after', 'agent'])
+  })
+})
+
+describe('refusal texts', () => {
+  test('another session: names it, holds even with discard_changes, offers keep', () => {
+    expect(sessionInWorktreeRefusal([session(42, PATH)], PATH)).toBe(
+      `Another Claudin session (pid 42) is running in this worktree, though possibly idle, so this tool will not remove ${PATH}, even with discard_changes. If the user ends that session, call this tool again. Otherwise use action: "keep".`,
+    )
+    expect(sessionInWorktreeRefusal([session(42, PATH), session(43, PATH)], PATH)).toStartWith(
+      '2 other Claudin sessions (pid 42, pid 43) are running in this worktree',
+    )
+    expect(sessionInWorktreeRefusal([session(42, PATH), session(43, PATH)], PATH)).toContain(
+      'If the user ends those sessions',
+    )
+  })
+
+  test('tasks: wait, or ask before stopping, and discard_changes removes the worktree under them', () => {
+    expect(tasksInWorktreeRefusal([task({ type: 'local_bash' })])).toBe(
+      'A background task started in this worktree may still be running there ("npm run dev"). Wait for it, or ask the user before stopping it, then call this tool again — or use action: "keep". discard_changes: true removes the worktree under it.',
+    )
+    expect(
+      tasksInWorktreeRefusal([task({ type: 'local_bash' }), task({ type: 'local_agent', description: 'review' })]),
+    ).toStartWith('2 background tasks started in this worktree may still be running there ("npm run dev", "review"). Wait for them')
+  })
+})
 
 describe('describeRemoval', () => {
   test('worktree and branch removed', () => {

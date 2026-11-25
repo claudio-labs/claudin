@@ -492,6 +492,7 @@ describe('the current worktree session', () => {
 // here claims they behave.
 // createWorktreeForSession, createAgentWorktree and removeAgentWorktree left
 // the list: worktree/createWorktree.test.ts drives them against a temp repo.
+// cleanupWorktree left it too: ExitWorktreeTool.test.ts drives its remove.
 // ---------------------------------------------------------------------------
 /** Every value export, exactly. Adding one here is a deliberate act. */
 const EXPECTED_EXPORTS = [
@@ -507,6 +508,7 @@ const EXPECTED_EXPORTS = [
   'generateTmuxSessionName',
   'getCurrentWorktreeSession',
   'getTmuxInstallInstructions',
+  'getWorktreeEnteredAt',
   'hasWorktreeChanges',
   'isTmuxAvailable',
   'keepWorktree',
@@ -523,7 +525,6 @@ const EXPECTED_EXPORTS = [
 const NOT_BEHAVIOURALLY_COVERED = [
   'attachExistingWorktree', // rejection paths only; the happy path chdirs
   'cleanupStaleAgentWorktrees',
-  'cleanupWorktree',
   'copyWorktreeIncludeFiles',
   'createTmuxSessionForWorktree',
   'execIntoTmuxWorktree',
@@ -576,6 +577,7 @@ describe('worktree surface', () => {
   test.each([
     ['validateWorktreeSlug', 1],
     ['getCurrentWorktreeSession', 0],
+    ['getWorktreeEnteredAt', 0],
     ['restoreWorktreeSession', 1],
     ['generateTmuxSessionName', 2],
     ['withGitWorktreeMutationLock', 2],
