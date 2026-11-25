@@ -31,6 +31,7 @@ import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectI
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
+import { buildGoalStatusAttachment } from 'src/agent/goal/goal.js'
 
 export const POST_COMPACT_MAX_FILES_TO_RESTORE = 5
 export const POST_COMPACT_TOKEN_BUDGET = 50_000
@@ -272,6 +273,18 @@ export async function createPlanModeAttachmentIfNeeded(
     ...planMode,
     rendered: snapshotPlanModeReminder(planMode),
   })
+}
+
+/**
+ * The /goal the stop check enforces, which the summary may have dropped.
+ * Main conversation only: a sub-agent never owns the session's goal.
+ */
+export function createGoalStatusAttachmentIfNeeded(
+  context: Pick<ToolUseContext, 'agentId' | 'getAppState'>,
+): AttachmentMessage | null {
+  if (context.agentId) return null
+  const attachment = buildGoalStatusAttachment(context.getAppState().activeGoal)
+  return attachment ? createAttachmentMessage(attachment) : null
 }
 
 /**

@@ -82,8 +82,7 @@ import {
   getCompactUserSummaryMessage,
   getPartialCompactPrompt,
 } from 'src/agent/compact/prompt.js'
-import { POST_COMPACT_MAX_FILES_TO_RESTORE, createAsyncAgentAttachmentsIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
-import { buildGoalStatusAttachment } from 'src/agent/goal/goal.js'
+import { POST_COMPACT_MAX_FILES_TO_RESTORE, createAsyncAgentAttachmentsIfNeeded, createGoalStatusAttachmentIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import { MAX_PTL_RETRIES, stripImagesFromMessages, stripReinjectedAttachments, truncateHeadForPTLRetry } from 'src/agent/compact/messagePreparation.js'
 
 export { createAsyncAgentAttachmentsIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
@@ -333,12 +332,9 @@ export async function compactConversation(
       postCompactFileAttachments.push(skillAttachment)
     }
 
-    // The goal the stop check enforces, which the summary may have dropped.
-    const goalAttachment = context.agentId
-      ? null
-      : buildGoalStatusAttachment(context.getAppState().activeGoal)
+    const goalAttachment = createGoalStatusAttachmentIfNeeded(context)
     if (goalAttachment) {
-      postCompactFileAttachments.push(createAttachmentMessage(goalAttachment))
+      postCompactFileAttachments.push(goalAttachment)
     }
 
     // Compaction ate prior delta attachments. Re-announce from the current
@@ -651,11 +647,9 @@ export async function partialCompactConversation(
       postCompactFileAttachments.push(skillAttachment)
     }
 
-    const goalAttachment = context.agentId
-      ? null
-      : buildGoalStatusAttachment(context.getAppState().activeGoal)
+    const goalAttachment = createGoalStatusAttachmentIfNeeded(context)
     if (goalAttachment) {
-      postCompactFileAttachments.push(createAttachmentMessage(goalAttachment))
+      postCompactFileAttachments.push(goalAttachment)
     }
 
     // Re-announce only what was in the summarized portion — messagesToKeep
