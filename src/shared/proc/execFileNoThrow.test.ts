@@ -3,7 +3,9 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-async function importFreshExecFileNoThrowModule() {
+async function importFreshExecFileNoThrowModule(): Promise<
+  typeof import('./execFileNoThrow.ts')
+> {
   return import(`./execFileNoThrow.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
@@ -56,6 +58,25 @@ const exec = await importFreshExecFileNoThrowModule()
 // `bun -e` scripts, so every case runs a real child process on any platform.
 function script(source: string): [string, string[]] {
   return [process.execPath, ['-e', source]]
+}
+
+// Starts a grandchild that inherits the pipes and lives 3 s, and prints its
+// pid so the test can kill it instead of leaving it to outlive the suite.
+const SPAWN_PIPE_HOLDER =
+  'const holder = require("node:child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 3000)"], { stdio: ["ignore", "inherit", "inherit"] }); console.log(holder.pid);'
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function killPrintedPid(stdout: string): void {
+  const pid = Number.parseInt(stdout, 10)
+  if (Number.isInteger(pid) && isAlive(pid)) process.kill(pid)
 }
 
 describe('execFileNoThrowWithCwd running a process', () => {
@@ -119,11 +140,14 @@ describe('execFileNoThrowWithCwd running a process', () => {
 
   test('kills the process at its timeout', async () => {
     const result = await exec.execFileNoThrowWithCwd(
-      ...script('setTimeout(() => {}, 10_000)'),
+      ...script('console.log(process.pid); setTimeout(() => {}, 10_000)'),
       { timeout: 200 },
     )
     expect(result.code).toBe(1)
     expect(result.error).toBe('Command timed out after 200ms')
+    const pid = Number.parseInt(result.stdout, 10)
+    for (let i = 0; i < 20 && isAlive(pid); i++) await Bun.sleep(50)
+    expect(isAlive(pid)).toBe(false)
   })
 
   // Ported from openclaude, which resolves at the timeout itself: 'close'
@@ -132,13 +156,33 @@ describe('execFileNoThrowWithCwd running a process', () => {
   test('resolves at its timeout even while a grandchild holds the pipes', async () => {
     const started = Date.now()
     const result = await exec.execFileNoThrowWithCwd(
-      ...script(
-        `require("node:child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 3000)"], { stdio: ["ignore", "inherit", "inherit"] }); setTimeout(() => {}, 10_000)`,
-      ),
+      ...script(`${SPAWN_PIPE_HOLDER} setTimeout(() => {}, 10_000)`),
       { timeout: 200 },
     )
-    expect(result.error).toBe('Command timed out after 200ms')
-    expect(Date.now() - started).toBeLessThan(1500)
+    try {
+      expect(result.error).toBe('Command timed out after 200ms')
+      expect(Date.now() - started).toBeLessThan(1500)
+    } finally {
+      killPrintedPid(result.stdout)
+    }
+  })
+
+  // Found by the 2026-11-25 review round. xclip, xsel and wl-copy exit 0 at
+  // once and leave a daemon holding the pipes; reporting their timeout as a
+  // failure turned the clipboard probe off (osc.ts) and sent a screenshot copy
+  // on to xsel with an empty stdin (screenshotClipboard.ts).
+  test('reports the exit code of a child that exited while a grandchild holds the pipes', async () => {
+    const result = await exec.execFileNoThrowWithCwd(
+      ...script(SPAWN_PIPE_HOLDER),
+      { timeout: 300 },
+    )
+    try {
+      expect(result.code).toBe(0)
+      expect(result.error).toBeUndefined()
+      expect(result.stdout).toMatch(/^\d+\n$/)
+    } finally {
+      killPrintedPid(result.stdout)
+    }
   })
 
   test('resolves an aborted process', async () => {

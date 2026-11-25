@@ -202,6 +202,8 @@ describe('classifyBashCommand', () => {
       toolUseResponse({ matchedIndex: 'x', confidence: 'super' })],
     ['an out-of-range index', async () =>
       toolUseResponse({ matchedIndex: 4, confidence: 'high', reason: 'r' })],
+    ['a negative index other than -1', async () =>
+      toolUseResponse({ matchedIndex: -2, confidence: 'high', reason: 'r' })],
   ])('marks the result unavailable after %s', async (_label, answer) => {
     mockSideQuery.mockImplementationOnce(answer)
     const result = await classifyBashCommand(
