@@ -188,6 +188,52 @@ describe('classifyBashCommand', () => {
     expect(result.reason).toContain('500 server error')
   })
 
+  // A verdict that never happened must say so: deny and ask callers fail
+  // closed on it instead of reading it as "no rule matched".
+  test.each([
+    ['an API error', async () => {
+      throw new Error('503')
+    }],
+    ['no tool_use block', async () => ({
+      content: [{ type: 'text', text: 'no' }],
+      usage: { input_tokens: 0, output_tokens: 0 },
+    })],
+    ['a malformed verdict', async () =>
+      toolUseResponse({ matchedIndex: 'x', confidence: 'super' })],
+    ['an out-of-range index', async () =>
+      toolUseResponse({ matchedIndex: 4, confidence: 'high', reason: 'r' })],
+    ['a negative index other than -1', async () =>
+      toolUseResponse({ matchedIndex: -2, confidence: 'high', reason: 'r' })],
+  ])('marks the result unavailable after %s', async (_label, answer) => {
+    mockSideQuery.mockImplementationOnce(answer)
+    const result = await classifyBashCommand(
+      'echo hi',
+      '/home/u/repo',
+      ['list git remotes'],
+      'deny',
+      sig(),
+      false,
+    )
+    expect(result.matches).toBe(false)
+    expect(result.unavailable).toBe(true)
+  })
+
+  test.each([null, -1])('an index of %p is an evaluated non-match', async index => {
+    mockSideQuery.mockImplementationOnce(async () =>
+      toolUseResponse({ matchedIndex: index, confidence: 'high', reason: 'r' }),
+    )
+    const result = await classifyBashCommand(
+      'echo hi',
+      '/home/u/repo',
+      ['list git remotes'],
+      'deny',
+      sig(),
+      false,
+    )
+    expect(result.matches).toBe(false)
+    expect(result.unavailable).toBeUndefined()
+  })
+
   test('propagates throw when signal aborted', async () => {
     const ctrl = new AbortController()
     ctrl.abort()

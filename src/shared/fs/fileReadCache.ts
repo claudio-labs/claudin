@@ -2,14 +2,36 @@ import type { Stats } from 'node:fs'
 import { detectFileEncoding } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 
+// What a cached read stays valid for. `cp -p`, `rsync -t`, `touch -r` and an
+// atomic rename can each keep the mtime, so the mtime alone is not enough.
+type StatStamp = { mtime: number; ctime: number; size: number; inode: number }
+
+function statStamp(stats: Stats): StatStamp {
+  return {
+    mtime: stats.mtimeMs,
+    ctime: stats.ctimeMs,
+    size: stats.size,
+    inode: stats.ino,
+  }
+}
+
+function sameStamp(a: StatStamp, b: StatStamp): boolean {
+  return (
+    a.mtime === b.mtime &&
+    a.ctime === b.ctime &&
+    a.size === b.size &&
+    a.inode === b.inode
+  )
+}
+
 type CachedFileData = {
   content: string
   encoding: BufferEncoding
-  mtime: number
+  stamp: StatStamp
 }
 
 /**
- * A simple in-memory cache for file contents with automatic invalidation based on modification time.
+ * A simple in-memory cache for file contents with automatic invalidation based on file stats.
  * This eliminates redundant file reads in FileEditTool operations.
  */
 class FileReadCache {
@@ -22,7 +44,7 @@ class FileReadCache {
 
   /**
    * Reads a file with caching. Returns both content and encoding.
-   * Cache key includes file path and modification time for automatic invalidation.
+   * An entry is valid while its StatStamp still matches the file's.
    */
   readFile(filePath: string): { content: string; encoding: BufferEncoding } {
     const fs = getFsImplementation()
@@ -37,8 +59,9 @@ class FileReadCache {
     }
 
     const cachedData = this.cache.get(filePath)
+    const stamp = statStamp(stats)
 
-    if (cachedData && cachedData.mtime === stats.mtimeMs) {
+    if (cachedData && sameStamp(cachedData.stamp, stamp)) {
       return { content: cachedData.content, encoding: cachedData.encoding }
     }
 
@@ -49,7 +72,7 @@ class FileReadCache {
 
     // Only cache entries within the size limit; large files are returned but not stored.
     if (stats.size <= this.maxEntryBytes) {
-      this.cache.set(filePath, { content, encoding, mtime: stats.mtimeMs })
+      this.cache.set(filePath, { content, encoding, stamp })
 
       if (this.cache.size > this.maxCacheSize) {
         const firstKey = this.cache.keys().next().value

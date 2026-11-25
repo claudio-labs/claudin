@@ -1,0 +1,240 @@
+{
+  "test": [
+    "src/permissions/bashClassifier.adversarial.test.ts",
+    "src/tools/BashTool/bashPermissions.promptRules.test.ts",
+    "src/shared/fs/fileReadCache.test.ts",
+    "src/terminal/input/dragDropPaths.test.ts",
+    "src/terminal/hooks/usePasteHandler.test.ts",
+    "src/shared/text/sliceAnsi.test.ts",
+    "src/terminal/terminal.test.ts",
+    "src/shared/data/memoize.test.ts",
+    "src/mcp/client/fetchCapabilities.failure.test.ts",
+    "src/shared/proc/execFileNoThrow.test.ts",
+    "src/plugins/marketplaceManager.staleCache.test.ts"
+  ],
+  "source": "src/permissions/bashClassifier.ts",
+  "probes": [
+    {
+      "name": "prompt rules: a provider error reads as a non-match again",
+      "find": "      reason: `classifier error: ${errorMessage(err)}`,\n      unavailable: true,\n",
+      "replace": "      reason: `classifier error: ${errorMessage(err)}`,\n"
+    },
+    {
+      "name": "prompt rules: an answer without a tool_use block reads as a non-match",
+      "find": "        reason: 'classifier returned no tool_use block',\n        unavailable: true,\n",
+      "replace": "        reason: 'classifier returned no tool_use block',\n"
+    },
+    {
+      "name": "prompt rules: a malformed verdict reads as a non-match",
+      "find": "        reason: 'classifier returned malformed response',\n        unavailable: true,\n",
+      "replace": "        reason: 'classifier returned malformed response',\n"
+    },
+    {
+      "name": "prompt rules: an out-of-range index reads as a non-match",
+      "find": "        reason: `classifier returned an out-of-range index (${parsed.matchedIndex})`,\n        unavailable: true,\n",
+      "replace": "        reason: `classifier returned an out-of-range index (${parsed.matchedIndex})`,\n"
+    },
+    {
+      "name": "prompt rules: -1 stops being a clean non-match",
+      "find": "parsed.matchedIndex === null || parsed.matchedIndex === -1",
+      "replace": "parsed.matchedIndex === null"
+    },
+    {
+      "name": "prompt rules: an index of -2 reads as a non-match",
+      "find": "    if (parsed.matchedIndex < 0 || parsed.matchedIndex >= descriptions.length) {",
+      "replace": "    if (parsed.matchedIndex >= descriptions.length) {"
+    },
+    {
+      "name": "prompt rules: an unevaluated rule falls through to the literal allow",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "        deferredAsk === null &&\n        (denyResult?.unavailable || askResult?.unavailable)\n",
+      "replace": "        false\n"
+    },
+    {
+      "name": "prompt rules: a matched ask returns before the literal denies",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "        deferredAsk = {\n          behavior: 'ask',\n          message: createPermissionRequestMessage(BashTool.name),\n",
+      "replace": "        return {\n          behavior: 'ask',\n          message: createPermissionRequestMessage(BashTool.name),\n"
+    },
+    {
+      "name": "prompt rules: the deferred ask is never returned",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "  if (deferredAsk !== null) {\n    return deferredAsk\n  }\n",
+      "replace": "  if (deferredAsk !== null) void 0\n"
+    },
+    {
+      "name": "prompt rules: an operator allow no longer yields to the deferred ask",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "if (commandOperatorResult.behavior !== 'allow' || deferredAsk === null) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "prompt rules: an exact allow passes the misparsing gate past a deferred ask",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "if (exactMatchResult.behavior === 'allow' && deferredAsk === null) {",
+      "replace": "if (exactMatchResult.behavior === 'allow') {"
+    },
+    {
+      "name": "prompt rules (review): the fail-closed ask is an ordinary ask again",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "          type: 'safetyCheck' as const,\n",
+      "replace": "          type: 'other' as const,\n"
+    },
+    {
+      "name": "prompt rules (review): the ask stops naming the classifier's failure",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "could not be evaluated (${unevaluated?.reason}); approval required",
+      "replace": "could not be evaluated; approval required"
+    },
+    {
+      "name": "prompt rules (review): the deferred ask comes before the redirect deny",
+      "source": "src/tools/BashTool/bashPermissions/decide.ts",
+      "find": "  if (pathResult.behavior === 'deny') {\n    return pathResult\n  }\n\n  // Every deny-producing check has run",
+      "replace": "  // Every deny-producing check has run"
+    },
+    {
+      "name": "prompt rules (review): the gate never withholds the allow classifier",
+      "source": "src/tools/BashTool/bashPermissions/speculative.ts",
+      "find": "  if (blocked) return {}\n",
+      "replace": ""
+    },
+    {
+      "name": "file cache: size stops invalidating",
+      "source": "src/shared/fs/fileReadCache.ts",
+      "find": "    a.size === b.size &&\n",
+      "replace": ""
+    },
+    {
+      "name": "file cache: ctime stops invalidating",
+      "source": "src/shared/fs/fileReadCache.ts",
+      "find": "    a.ctime === b.ctime &&\n",
+      "replace": ""
+    },
+    {
+      "name": "file cache: inode stops invalidating",
+      "source": "src/shared/fs/fileReadCache.ts",
+      "find": "    a.inode === b.inode\n",
+      "replace": "      true\n"
+    },
+    {
+      "name": "file cache (review): the ctime is stored under the mtime's value",
+      "source": "src/shared/fs/fileReadCache.ts",
+      "find": "    ctime: stats.ctimeMs,\n",
+      "replace": "    ctime: stats.mtimeMs,\n"
+    },
+    {
+      "name": "drag and drop: the split ignores quoted paths again",
+      "source": "src/terminal/input/dragDropPaths.ts",
+      "find": "const PASTED_PATH_BOUNDARY = / (?=[\"']?(?:\\/|[A-Za-z]:\\\\))/",
+      "replace": "const PASTED_PATH_BOUNDARY = / (?=\\/|[A-Za-z]:\\\\)/"
+    },
+    {
+      "name": "drag and drop: the image paste keeps a private split",
+      "source": "src/terminal/hooks/usePasteHandler.ts",
+      "find": "    const segments = splitPastedPaths(input)\n",
+      "replace": "    const segments = input.split(/ (?=\\/|[A-Za-z]:\\\\)/)\n"
+    },
+    {
+      "name": "paste (review): several segments are a drop even when one is prose",
+      "source": "src/terminal/input/dragDropPaths.ts",
+      "find": "    parts.every(part => ABSOLUTE_PATH_START.test(stripOuterQuotes(part)))\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "paste (review): a single segment is judged like several",
+      "source": "src/terminal/input/dragDropPaths.ts",
+      "find": "    parts.length <= 1 ||\n",
+      "replace": ""
+    },
+    {
+      "name": "paste (review): the hook takes image paths from prose again",
+      "source": "src/terminal/hooks/usePasteHandler.ts",
+      "find": "            const imagePaths = isDroppedPathList(lines)\n",
+      "replace": "            const imagePaths = true\n"
+    },
+    {
+      "name": "marketplace (review): the stale cache rm stops retrying",
+      "source": "src/plugins/marketplaceManager.ts",
+      "find": "    await fs.rm(cachePath, { recursive: true, maxRetries: 5 })\n",
+      "replace": "    await fs.rm(cachePath, { recursive: true })\n"
+    },
+    {
+      "name": "sliceAnsi: an empty slice closes styles it never opened",
+      "source": "src/shared/text/sliceAnsi.ts",
+      "find": "  if (!include) return { text: result, width }\n",
+      "replace": ""
+    },
+    {
+      "name": "sliceAnsi: fitEnd stops dropping a straddling glyph",
+      "source": "src/shared/text/sliceAnsi.ts",
+      "find": "      if (fitEnd && end !== undefined && width > 0 && position + width > end) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "sliceAnsi: displayCells goes back to stringWidth",
+      "source": "src/shared/text/sliceAnsi.ts",
+      "find": "    cells += tokenCells(token)",
+      "replace": "    cells += token.type === 'char' ? stringWidth(token.value) : 0"
+    },
+    {
+      "name": "terminal wrap: the slice may overshoot the width",
+      "source": "src/terminal/terminal.ts",
+      "find": "          fitEnd: true,\n",
+      "replace": "          fitEnd: false,\n"
+    },
+    {
+      "name": "terminal wrap: back to a fixed stride",
+      "source": "src/terminal/terminal.ts",
+      "find": "        position += chunk.width\n",
+      "replace": "        position += wrapWidth\n"
+    },
+    {
+      "name": "MCP: a failure stays memoized",
+      "source": "src/shared/data/memoize.ts",
+      "find": "        if (memoized.cache.get(key) === call) memoized.cache.delete(key)\n",
+      "replace": ""
+    },
+    {
+      "name": "MCP: the eviction loses its identity guard",
+      "source": "src/shared/data/memoize.ts",
+      "find": "        if (memoized.cache.get(key) === call) memoized.cache.delete(key)\n",
+      "replace": "        memoized.cache.delete(key)\n"
+    },
+    {
+      "name": "MCP: a failed tools/list answers [] inside the memo again",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      logMCPError(client.name, `Failed to fetch tools: ${errorMessage(error)}`)\n      throw error\n",
+      "replace": "      logMCPError(client.name, `Failed to fetch tools: ${errorMessage(error)}`)\n      return []\n"
+    },
+    {
+      "name": "MCP: a failed resources/list answers [] inside the memo again",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "        `Failed to fetch resources: ${errorMessage(error)}`,\n      )\n      throw error\n",
+      "replace": "        `Failed to fetch resources: ${errorMessage(error)}`,\n      )\n      return []\n"
+    },
+    {
+      "name": "MCP: a failed prompts/list answers [] inside the memo again",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "        `Failed to fetch commands: ${errorMessage(error)}`,\n      )\n      throw error\n",
+      "replace": "        `Failed to fetch commands: ${errorMessage(error)}`,\n      )\n      return []\n"
+    },
+    {
+      "name": "execFileNoThrow: the timeout only kills and waits for close",
+      "source": "src/shared/proc/execFileNoThrow.ts",
+      "find": "            child.kill()\n            finish({\n              stdout: finalPreserveOutput ? stdout : '',\n              stderr: finalPreserveOutput ? stderr : '',\n              code: 1,\n              error: `Command timed out after ${finalTimeout}ms`,\n            })\n",
+      "replace": "            child.kill()\n"
+    },
+    {
+      "name": "execFileNoThrow (review): a child that already exited is reported as timed out",
+      "source": "src/shared/proc/execFileNoThrow.ts",
+      "find": "            if (exited) {\n              settleExited(exited.code, exited.signal)\n              return\n            }\n",
+      "replace": ""
+    },
+    {
+      "name": "execFileNoThrow (review): the timeout no longer kills the child",
+      "source": "src/shared/proc/execFileNoThrow.ts",
+      "find": "            child.kill()\n            finish({\n              stdout: finalPreserveOutput ? stdout : '',\n              stderr: finalPreserveOutput ? stderr : '',\n              code: 1,\n",
+      "replace": "            finish({\n              stdout: finalPreserveOutput ? stdout : '',\n              stderr: finalPreserveOutput ? stderr : '',\n              code: 1,\n"
+    }
+  ]
+}

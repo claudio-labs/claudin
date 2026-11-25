@@ -10,6 +10,10 @@ import {
   tryReadImageFromPath,
 } from 'src/terminal/image/imagePaste.js'
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
+import {
+  isDroppedPathList,
+  splitPastedPaths,
+} from 'src/terminal/input/dragDropPaths.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 
 const CLIPBOARD_CHECK_DEBOUNCE_MS = 50
@@ -147,15 +151,13 @@ export function usePasteHandler({
             // When dragging multiple images, they may come as:
             // 1. Newline-separated paths (common in some terminals)
             // 2. Space-separated paths (common when dragging from Finder)
-            // For space-separated paths, we split on spaces that precede absolute paths:
-            // - Unix: space followed by `/` (e.g., `/Users/...`)
-            // - Windows: space followed by drive letter and `:\` (e.g., `C:\Users\...`)
-            // This works because spaces within paths are escaped (e.g., `file\ name.png`)
-            const lines = pastedText
-              .split(/ (?=\/|[A-Za-z]:\\)/)
-              .flatMap(part => part.split('\n'))
-              .filter(line => line.trim())
-            const imagePaths = lines.filter(line => isImageFilePath(line))
+            // splitPastedPaths splits on a space before an absolute path,
+            // quoted or not, and on newlines. Prose that quotes an image path
+            // splits too, so only a paste of nothing but paths is a drop.
+            const lines = splitPastedPaths(pastedText).filter(line => line.trim())
+            const imagePaths = isDroppedPathList(lines)
+              ? lines.filter(line => isImageFilePath(line))
+              : []
 
             if (onImagePaste && imagePaths.length > 0) {
               const isTempScreenshot =
@@ -264,12 +266,11 @@ export function usePasteHandler({
 
     // Handle potential image filenames (even if they're shorter than paste threshold)
     // When dragging multiple images, they may come as newline-separated or
-    // space-separated paths. Split on spaces preceding absolute paths:
-    // - Unix: ` /` - Windows: ` C:\` etc.
-    const hasImageFilePath = input
-      .split(/ (?=\/|[A-Za-z]:\\)/)
-      .flatMap(part => part.split('\n'))
-      .some(line => isImageFilePath(line.trim()))
+    // space-separated paths, quoted or not.
+    const segments = splitPastedPaths(input)
+    const hasImageFilePath =
+      isDroppedPathList(segments) &&
+      segments.some(line => isImageFilePath(line.trim()))
 
     // Handle empty paste (clipboard image on macOS)
     // When the user pastes an image with Cmd+V, the terminal sends an empty

@@ -10,9 +10,13 @@ const realPath = { ...(await import('src/shared/fs/path.js')) }
 const realPlatform = { ...(await import('src/shared/proc/platform.js')) }
 const realErrors = { ...(await import('src/shared/errors.js')) }
 
-// Controllable fake fs — tests mutate these per-test via beforeEach
+// Controllable fake fs — tests mutate these per-test via beforeEach. Every
+// stat field starts at a distinct value, so storing one under another's name
+// cannot pass by coincidence.
 let fakeStatMtime = 1000
 let fakeStatSize = 100
+let fakeStatCtime = 3000
+let fakeStatIno = 7
 let fakeContent = 'hello world'
 const readFileSyncSpy = mock((_path: string, _opts: unknown): string => fakeContent)
 
@@ -21,6 +25,8 @@ mock.module('./fsOperations.js', () => ({
     statSync: (_path: string) => ({
       mtimeMs: fakeStatMtime,
       size: fakeStatSize,
+      ctimeMs: fakeStatCtime,
+      ino: fakeStatIno,
       mode: 0o644,
     }),
     readFileSync: readFileSyncSpy,
@@ -72,6 +78,8 @@ beforeEach(() => {
   readFileSyncSpy.mockImplementation((_path: string, _opts: unknown) => fakeContent)
   fakeStatMtime = 1000
   fakeStatSize = 100
+  fakeStatCtime = 3000
+  fakeStatIno = 7
   fakeContent = 'hello world'
 })
 
@@ -99,6 +107,21 @@ describe('FileReadCache.readFile', () => {
     const result = fileReadCache.readFile('/tmp/test.ts')
     expect(readFileSyncSpy).toHaveBeenCalledTimes(2)
     expect(result.content).toBe('updated content')
+  })
+
+  // Ported from openclaude #2518. `cp -p`, `rsync -t`, `touch -r` and an
+  // atomic rename all keep the mtime, so mtime alone served the old text.
+  test.each([
+    ['the size', () => (fakeStatSize = 15)],
+    ['the ctime', () => (fakeStatCtime = 4000)],
+    ['the inode', () => (fakeStatIno = 8)],
+  ])('re-reads a same-mtime file when %s changes', (_label, change) => {
+    fileReadCache.readFile('/tmp/test.ts')
+    change()
+    fakeContent = 'rewritten text'
+    const result = fileReadCache.readFile('/tmp/test.ts')
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(2)
+    expect(result.content).toBe('rewritten text')
   })
 
   test('does NOT cache files above maxEntryBytes (256KB)', () => {

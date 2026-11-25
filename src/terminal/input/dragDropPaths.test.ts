@@ -2,11 +2,72 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { extractDraggedFilePaths } from 'src/terminal/input/dragDropPaths.js'
+import {
+  extractDraggedFilePaths,
+  isDroppedPathList,
+  splitPastedPaths,
+} from 'src/terminal/input/dragDropPaths.js'
 
 function escapeFinderDraggedPath(filePath: string): string {
   return filePath.replace(/([\\ ])/g, '\\$1')
 }
+
+describe('splitPastedPaths', () => {
+  test('splits on a space before an absolute path, quoted or not', () => {
+    expect(splitPastedPaths('/a/x.png /b/y.png')).toEqual(['/a/x.png', '/b/y.png'])
+    expect(splitPastedPaths('"/a/x y.png" "/b/y.png"')).toEqual([
+      '"/a/x y.png"',
+      '"/b/y.png"',
+    ])
+    expect(splitPastedPaths("'/a/x.png' C:\\b\\y.png")).toEqual([
+      "'/a/x.png'",
+      'C:\\b\\y.png',
+    ])
+    expect(splitPastedPaths("'C:\\a\\x.png' '/b/y.png'")).toEqual([
+      "'C:\\a\\x.png'",
+      "'/b/y.png'",
+    ])
+  })
+
+  test('splits on newlines and keeps escaped spaces inside a path', () => {
+    expect(splitPastedPaths('/a/my\\ shot.png\n/b/y.png\n')).toEqual([
+      '/a/my\\ shot.png',
+      '/b/y.png',
+      '',
+    ])
+  })
+
+  test('leaves prose and relative paths whole', () => {
+    expect(splitPastedPaths('see "quoted" text and ./rel/path')).toEqual([
+      'see "quoted" text and ./rel/path',
+    ])
+  })
+})
+
+describe('isDroppedPathList', () => {
+  test('several absolute paths, quoted, escaped or Windows, are a drop', () => {
+    expect(isDroppedPathList(splitPastedPaths('/a/x.png /b/y.png'))).toBe(true)
+    expect(
+      isDroppedPathList(splitPastedPaths('"/a/x y.png" \'/b/y.png\' C:\\c\\z.png')),
+    ).toBe(true)
+    expect(isDroppedPathList(splitPastedPaths('/a/my\\ shot.png\n/b/y.png\n'))).toBe(true)
+  })
+
+  test('prose that quotes or names image paths is not', () => {
+    expect(
+      isDroppedPathList(
+        splitPastedPaths('convert "/tmp/in.png" -resize 50% "/tmp/out.png"'),
+      ),
+    ).toBe(false)
+    expect(isDroppedPathList(splitPastedPaths('look at /x/shot.png'))).toBe(false)
+  })
+
+  test('one segment is always taken, a bare filename included', () => {
+    expect(isDroppedPathList(['shot.png'])).toBe(true)
+    expect(isDroppedPathList(['"/a/x.png"', ''])).toBe(true)
+    expect(isDroppedPathList([])).toBe(true)
+  })
+})
 
 describe('extractDraggedFilePaths', () => {
   // Paths that exist on any system.
@@ -77,6 +138,23 @@ describe('extractDraggedFilePaths', () => {
         'space-separated (Finder drag)',
         `${thisFile} ${packageJson}`,
         [thisFile, packageJson],
+      ],
+      // Ported from openclaude #2517: the split only broke before an
+      // unquoted path, so every quoted multi-file drop came back empty.
+      [
+        'double-quoted and space-separated',
+        `"${spacedFile}" "${packageJson}"`,
+        [spacedFile, packageJson],
+      ],
+      [
+        'single-quoted and space-separated',
+        `'${spacedFile}' '${packageJson}'`,
+        [spacedFile, packageJson],
+      ],
+      [
+        'mixed unquoted and quoted',
+        `${thisFile} "${spacedFile}"`,
+        [thisFile, spacedFile],
       ],
     ]
     test.each(multiCases)('when input is %s', (_label, input, expected) => {

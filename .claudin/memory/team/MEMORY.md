@@ -191,7 +191,7 @@
 - ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md)
 
 ## References (sibling repos, wire formats, archives)
-- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; #319 closed them · [audits](openclaude-audit-history.md)
+- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; next audit 9b92b89c · [audits](openclaude-audit-history.md)
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — 4 gaps · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth: wire + OAuth

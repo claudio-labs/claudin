@@ -1125,7 +1125,9 @@ async function cacheMarketplaceFromGit(
   }
 
   try {
-    await fs.rm(cachePath, { recursive: true })
+    // A git pull that timed out may leave its fetch writing here for a
+    // moment; retry ENOTEMPTY/EBUSY instead of failing the refresh.
+    await fs.rm(cachePath, { recursive: true, maxRetries: 5 })
     // rm succeeded — a stale or partially-cloned directory existed; log for diagnostics
     logForDebugging(
       `Found stale marketplace directory at ${cachePath}, cleaning up to allow re-clone`,
