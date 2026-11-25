@@ -3,6 +3,7 @@ import React, { useContext, useMemo } from 'react';
 import { Box } from 'src/terminal/ink.js';
 import { logError } from 'src/shared/log.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';
+import { unwrapPastedContent } from 'src/shared/text/displayTags.js';
 import { MessageActionsSelectedContext } from 'src/agent/ui/messageActions.js';
 import { HighlightedThinkingText } from 'src/agent/ui/messages/HighlightedThinkingText.js';
 type Props = {
@@ -33,10 +34,11 @@ export function UserPromptMessage({
 }: Props): React.ReactNode {
   // Truncate before the early return so the hook order is stable.
   const displayText = useMemo(() => {
-    if (text.length <= MAX_DISPLAY_CHARS) return text;
-    const head = text.slice(0, TRUNCATE_HEAD_CHARS);
-    const tail = text.slice(-TRUNCATE_TAIL_CHARS);
-    const hiddenLines = countCharInString(text, '\n', TRUNCATE_HEAD_CHARS) - countCharInString(tail, '\n');
+    const shown = unwrapPastedContent(text);
+    if (shown.length <= MAX_DISPLAY_CHARS) return shown;
+    const head = shown.slice(0, TRUNCATE_HEAD_CHARS);
+    const tail = shown.slice(-TRUNCATE_TAIL_CHARS);
+    const hiddenLines = countCharInString(shown, '\n', TRUNCATE_HEAD_CHARS) - countCharInString(tail, '\n');
     return `${head}\n… +${hiddenLines} lines …\n${tail}`;
   }, [text]);
   const isSelected = useContext(MessageActionsSelectedContext);

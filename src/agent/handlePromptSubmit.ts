@@ -4,6 +4,7 @@ import { selectableUserMessagesFilter } from 'src/agent/ui/MessageSelector.js'
 import type { SpinnerMode } from 'src/terminal/spinner/types.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { expandPastedTextRefs, parseReferences } from 'src/agent/history.js'
+import { shouldWrapPastes, wrapPastedContents } from 'src/agent/input/pastedContent.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
@@ -212,8 +213,15 @@ export async function handlePromptSubmit(
 
   // Parse references and replace with actual content early, before queueing
   // or immediate-command dispatch, so queued commands and immediate commands
-  // both receive the expanded text from when it was submitted.
-  const finalInput = expandPastedTextRefs(input, pastedContents)
+  // both receive the expanded text from when it was submitted. A plain prompt
+  // gets each paste in its own <pasted_content> block; a command takes it as
+  // its own input.
+  const finalInput = expandPastedTextRefs(
+    input,
+    shouldWrapPastes({ input, mode, skipSlashCommands })
+      ? wrapPastedContents(pastedContents)
+      : pastedContents,
+  )
   const pastedTextRefs = parseReferences(input).filter(
     r => pastedContents[r.id]?.type === 'text',
   )

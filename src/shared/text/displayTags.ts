@@ -1,3 +1,5 @@
+import { PASTED_CONTENT_TAG } from 'src/shared/constants/xml.js'
+
 /**
  * Matches any XML-like `<tag>…</tag>` block (lowercase tag names, optional
  * attributes, multi-line content). Used to strip system-injected wrapper tags
@@ -14,18 +16,36 @@
  */
 const XML_TAG_BLOCK_PATTERN = /<([a-z][\w-]*)(?:\s[^>]*)?>[\s\S]*?<\/\1>\n?/g
 
+// A `<pasted_content>` block as wrapPastedText (src/agent/input/pastedContent.ts)
+// writes it: the closing tag repeats the opening tag's id.
+const PASTED_BLOCK_PATTERN = new RegExp(
+  `<${PASTED_CONTENT_TAG} id="([0-9a-f]{4})">\\n([\\s\\S]*?)\\n</${PASTED_CONTENT_TAG} id="\\1">\\n`,
+  'g',
+)
+
+/**
+ * The text as the user pasted it: the tags go, the pasted text stays. Every
+ * place that shows a prompt back to the user calls this, so it shows what it
+ * showed before prompts carried the tags.
+ */
+export function unwrapPastedContent(text: string): string {
+  if (!text.includes(`<${PASTED_CONTENT_TAG} id="`)) return text
+  return text.replace(PASTED_BLOCK_PATTERN, '$2')
+}
+
 /**
  * Strip XML-like tag blocks from text for use in UI titles (/rewind, /resume,
  * bridge session titles). System-injected context — IDE metadata, hook output,
  * task notifications — arrives wrapped in tags and should never surface as a
- * title.
+ * title. Pasted text is the user's, so it stays in the title, unwrapped.
  *
  * If stripping would result in empty text, returns the original unchanged
  * (better to show something than nothing).
  */
 export function stripDisplayTags(text: string): string {
-  const result = text.replace(XML_TAG_BLOCK_PATTERN, '').trim()
-  return result || text
+  const unwrapped = unwrapPastedContent(text)
+  const result = unwrapped.replace(XML_TAG_BLOCK_PATTERN, '').trim()
+  return result || unwrapped
 }
 
 /**
@@ -35,7 +55,7 @@ export function stripDisplayTags(text: string): string {
  * to skip pure-XML messages during bridge title derivation.
  */
 export function stripDisplayTagsAllowEmpty(text: string): string {
-  return text.replace(XML_TAG_BLOCK_PATTERN, '').trim()
+  return unwrapPastedContent(text).replace(XML_TAG_BLOCK_PATTERN, '').trim()
 }
 
 const IDE_CONTEXT_TAGS_PATTERN =

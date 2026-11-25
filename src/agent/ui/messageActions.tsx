@@ -6,6 +6,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { NormalizedUserMessage, RenderableMessage } from 'src/shared/types/message.js';
 import { isEmptyMessageText, SYNTHETIC_MESSAGES } from 'src/agent/messages/messages.js';
+import { unwrapPastedContent } from 'src/shared/text/displayTags.js';
 const NAVIGABLE_TYPES = ['user', 'assistant', 'grouped_tool_use', 'collapsed_read_search', 'system', 'attachment'] as const;
 export type NavigableType = (typeof NAVIGABLE_TYPES)[number];
 export type NavigableOf<T extends NavigableType> = Extract<RenderableMessage, {
@@ -403,6 +404,10 @@ export function MessageActionsBar(t0: MessageActionsBarProps) {
   }
   return t14;
 }
+/**
+ * The user's own text: leading <system-reminder> blocks dropped, and each
+ * <pasted_content> block back to the text that was pasted.
+ */
 export function stripSystemReminders(text: string): string {
   const CLOSE = '</system-reminder>';
   let t = text.trimStart();
@@ -411,7 +416,7 @@ export function stripSystemReminders(text: string): string {
     if (end < 0) break;
     t = t.slice(end + CLOSE.length).trimStart();
   }
-  return t;
+  return unwrapPastedContent(t);
 }
 export function copyTextOf(msg: NavigableMessage): string {
   switch (msg.type) {
@@ -440,7 +445,7 @@ export function copyTextOf(msg: NavigableMessage): string {
         const a = msg.attachment;
         if (a.type === 'queued_command') {
           const p = a.prompt;
-          return typeof p === 'string' ? p : p.flatMap(b => b.type === 'text' ? [b.text] : []).join('\n');
+          return unwrapPastedContent(typeof p === 'string' ? p : p.flatMap(b => b.type === 'text' ? [b.text] : []).join('\n'));
         }
         return `[${a.type}]`;
       }

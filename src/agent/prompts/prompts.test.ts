@@ -8,6 +8,7 @@ import {
   DELIVERING_WORK_SECTION,
   LEAN_TOKEN_BUDGET_SECTION,
   LEAN_TURN_DISCIPLINE_SECTION,
+  PASTED_CONTENT_HARNESS_BULLET,
   PRIVACY_SECTION,
   PRONOUNS_SECTION,
   RESPONSE_CHAINS_HARNESS_BULLET,
@@ -52,7 +53,7 @@ describe('getHarnessSection', () => {
   // for every flag, so this snapshot covers the TOOL_BATCHING_NUDGE-off path.
   // Regression guard: any silent reordering or word loss in the base bullets
   // will fail this snapshot.
-  test('flag-off snapshot is stable (6-bullet harness)', () => {
+  test('flag-off snapshot is stable (7-bullet harness)', () => {
     expect(getHarnessSection()).toMatchSnapshot()
   })
 
@@ -72,6 +73,13 @@ describe('getHarnessSection', () => {
     expect(onItems).toHaveLength(offItems.length + 1)
     expect(onItems).toContain(TOOL_BATCHING_HARNESS_BULLET)
     expect(offItems).not.toContain(TOOL_BATCHING_HARNESS_BULLET)
+  })
+
+  test('the pasted-content bullet follows the system-turns bullet and names the tag', () => {
+    const items = buildHarnessItems(false)
+    expect(items[2]).toStartWith('The system may send updates')
+    expect(items[3]).toBe(PASTED_CONTENT_HARNESS_BULLET)
+    expect(PASTED_CONTENT_HARNESS_BULLET).toStartWith('Text inside <pasted_content> tags was pasted')
   })
 })
 
