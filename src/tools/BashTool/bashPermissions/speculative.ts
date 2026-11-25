@@ -64,6 +64,25 @@ export function buildPendingClassifierCheck(
   }
 }
 
+/**
+ * The pendingClassifierCheck an ask carries, or none when `blocked`: an ask
+ * that waits on a prompt rule the classifier could not evaluate must not be
+ * auto-approved by the allow classifier while its dialog is open.
+ */
+export function pendingClassifierCheckUnless(
+  blocked: boolean,
+  command: string,
+  toolPermissionContext: ToolPermissionContext,
+): { pendingClassifierCheck?: PendingClassifierCheck } {
+  if (blocked) return {}
+  return {
+    pendingClassifierCheck: buildPendingClassifierCheck(
+      command,
+      toolPermissionContext,
+    ),
+  }
+}
+
 const speculativeChecks = new Map<string, Promise<ClassifierResult>>()
 
 /**

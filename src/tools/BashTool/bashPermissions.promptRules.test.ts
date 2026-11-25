@@ -16,6 +16,13 @@ import {
   mock,
   test,
 } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const GATE_BLOCKED_BY_DEFERRED_ASK =
+  /pendingClassifierCheckUnless\(\s*deferredAsk !== null,/g
+const GATE_BLOCKED_BY_UNEVALUATED_DENY =
+  /pendingClassifierCheckUnless\(\s*denyResult\?\.unavailable === true,/g
 
 // mock.module lasts for the whole run (testing.md, "Cross-file mock leaks"):
 // snapshot the real module and put it back in afterAll.
@@ -78,6 +85,9 @@ const { checkRuleBasedPermissions, hasPermissionsToUseTool } = await import(
   'src/permissions/permissions.js'
 )
 const { BashTool } = await import('src/tools/BashTool/BashTool.js')
+const { pendingClassifierCheckUnless } = await import(
+  'src/tools/BashTool/bashPermissions/speculative.js'
+)
 const {
   makePermissionContext,
   makeToolUseContext,
@@ -359,5 +369,33 @@ describe('an unevaluated prompt deny rule through the permission engine', () => 
     expect(
       (await checkRuleBasedPermissions(BashTool, { command: 'git push origin main' }, context))?.behavior,
     ).toBe('ask')
+  })
+})
+
+// Every feature() reads false under bun test, so the asks above never carry a
+// pendingClassifierCheck here. The gate that withholds it is tested directly,
+// and its four call sites are pinned on the source.
+describe('the allow classifier is held back behind an unevaluated rule', () => {
+  const ALLOW_STATUS = 'Bash(prompt: read-only git status)'
+
+  test('pendingClassifierCheckUnless withholds the check only when blocked', () => {
+    const context = makePermissionContext({ allow: [ALLOW_STATUS] })
+    expect(pendingClassifierCheckUnless(true, 'git status', context)).toEqual({})
+    expect(
+      pendingClassifierCheckUnless(false, 'git status', context)
+        .pendingClassifierCheck,
+    ).toMatchObject({
+      command: 'git status',
+      descriptions: ['read-only git status'],
+    })
+  })
+
+  test('each ask that can follow a deferred prompt-rule ask goes through the gate', () => {
+    const source = readFileSync(
+      join(import.meta.dir, 'bashPermissions', 'decide.ts'),
+      'utf8',
+    )
+    expect(source.match(GATE_BLOCKED_BY_DEFERRED_ASK)?.length).toBe(3)
+    expect(source.match(GATE_BLOCKED_BY_UNEVALUATED_DENY)?.length).toBe(1)
   })
 })

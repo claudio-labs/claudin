@@ -73,6 +73,7 @@ import {
 import {
   buildPendingClassifierCheck,
   logClassifierResultForAnts,
+  pendingClassifierCheckUnless,
 } from 'src/tools/BashTool/bashPermissions/speculative.js'
 
 // Shorthand aliases for two long `_DEPRECATED` names used throughout this file.
@@ -166,10 +167,11 @@ export async function bashToolHasPermission(
 
   // A prompt-rule ask — a confident ask match, or a deny/ask rule the
   // classifier could not evaluate — waits until the literal deny checks below
-  // have run, so a literal deny still wins. It still beats any literal allow.
+  // have run, so a literal deny still wins over it. It still beats any literal
+  // allow.
   let deferredAsk: PermissionResult | null = null
 
-  // Check Bash prompt deny and ask rules in parallel (both use Haiku).
+  // Check Bash prompt deny and ask rules in parallel.
   // Deny takes precedence over ask, and both take precedence over allow rules.
   // Skip when in auto mode - auto mode classifier handles all permission decisions
   if (
@@ -275,27 +277,31 @@ export async function bashToolHasPermission(
           suggestions,
           // Not while a deny rule went unevaluated: the allow classifier must
           // not auto-approve past a deny nobody checked.
-          ...(feature('BASH_CLASSIFIER') && !denyResult?.unavailable
-            ? {
-                pendingClassifierCheck: buildPendingClassifierCheck(
-                  input.command,
-                  appState.toolPermissionContext,
-                ),
-              }
+          ...(feature('BASH_CLASSIFIER')
+            ? pendingClassifierCheckUnless(
+                denyResult?.unavailable === true,
+                input.command,
+                appState.toolPermissionContext,
+              )
             : {}),
         }
       }
 
       // A rule the classifier could not evaluate (provider error, unusable
       // answer) is not a rule that did not match: ask, with nothing attached
-      // that could auto-approve it.
+      // that could auto-approve it. A safety check, so neither bypass mode, a
+      // tool-wide Bash allow nor a hook's allow turns it into an allow — a
+      // matched deny holds against all three, and an unchecked one must not be
+      // looser.
       if (
         deferredAsk === null &&
         (denyResult?.unavailable || askResult?.unavailable)
       ) {
+        const unevaluated = denyResult?.unavailable ? denyResult : askResult
         const decisionReason = {
-          type: 'other' as const,
-          reason: 'A Bash prompt rule could not be evaluated; approval required',
+          type: 'safetyCheck' as const,
+          reason: `A Bash prompt rule could not be evaluated (${unevaluated?.reason}); approval required`,
+          classifierApprovable: false,
         }
         deferredAsk = {
           behavior: 'ask',
@@ -354,13 +360,12 @@ export async function bashToolHasPermission(
               safetyResult.message ??
               'Command contains patterns that require approval',
           },
-          ...(feature('BASH_CLASSIFIER') && deferredAsk === null
-            ? {
-                pendingClassifierCheck: buildPendingClassifierCheck(
-                  input.command,
-                  appState.toolPermissionContext,
-                ),
-              }
+          ...(feature('BASH_CLASSIFIER')
+            ? pendingClassifierCheckUnless(
+                deferredAsk !== null,
+                input.command,
+                appState.toolPermissionContext,
+              )
             : {}),
         }
       }
@@ -390,13 +395,12 @@ export async function bashToolHasPermission(
       appState = context.getAppState()
       return {
         ...commandOperatorResult,
-        ...(feature('BASH_CLASSIFIER') && deferredAsk === null
-          ? {
-              pendingClassifierCheck: buildPendingClassifierCheck(
-                input.command,
-                appState.toolPermissionContext,
-              ),
-            }
+        ...(feature('BASH_CLASSIFIER')
+          ? pendingClassifierCheckUnless(
+              deferredAsk !== null,
+              input.command,
+              appState.toolPermissionContext,
+            )
           : {}),
       }
     }
@@ -456,13 +460,12 @@ export async function bashToolHasPermission(
           ),
           decisionReason,
           suggestions: [], // Don't suggest saving a potentially dangerous command
-          ...(feature('BASH_CLASSIFIER') && deferredAsk === null
-            ? {
-                pendingClassifierCheck: buildPendingClassifierCheck(
-                  input.command,
-                  appState.toolPermissionContext,
-                ),
-              }
+          ...(feature('BASH_CLASSIFIER')
+            ? pendingClassifierCheckUnless(
+                deferredAsk !== null,
+                input.command,
+                appState.toolPermissionContext,
+              )
             : {}),
         }
       }
