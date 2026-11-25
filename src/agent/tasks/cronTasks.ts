@@ -377,6 +377,18 @@ export function finalRunNotice(
 }
 
 /**
+ * The prompts the last fire sends. The notice follows a plain prompt in the
+ * same message; a slash command (`/loop 1h /babysit-prs` stores the bare
+ * command) fires untouched and the notice goes out as the next message,
+ * because text after the name would become the command's name or arguments.
+ */
+export function finalFirePrompts(prompt: string, notice: string): string[] {
+  return prompt.trimStart().startsWith('/')
+    ? [prompt, notice]
+    : [`${prompt}\n\n${notice}`]
+}
+
+/**
  * taskId is an 8-hex-char UUID slice (see {@link addCronTask}) → parse as
  * u32 → [0, 1). Stable across restarts, uniformly distributed across the
  * fleet. Non-hex ids (hand-edited JSON) fall back to 0 = no jitter.

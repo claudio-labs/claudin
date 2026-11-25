@@ -8,6 +8,7 @@ import {
   type CronTask,
   DEFAULT_CRON_JITTER_CONFIG,
   finalRunNotice,
+  finalFirePrompts,
   findMissedTasks,
   firstFireMs,
   getCronFilePath,
@@ -291,5 +292,16 @@ describe('finalRunNotice', () => {
     expect(finalRunNotice(job, 24 * HOUR)).toContain('ends 1 day after')
     expect(finalRunNotice(job, 6 * HOUR)).toContain('ends 6 hours after')
     expect(finalRunNotice(job, HOUR)).toContain('ends 1 hour after')
+  })
+})
+
+describe('finalFirePrompts', () => {
+  test('a plain prompt carries the notice in the same message', () => {
+    expect(finalFirePrompts('check the deploy', 'N')).toEqual(['check the deploy\n\nN'])
+  })
+
+  test('a slash command fires untouched, the notice as the next message', () => {
+    expect(finalFirePrompts('/babysit-prs', 'N')).toEqual(['/babysit-prs', 'N'])
+    expect(finalFirePrompts('  /review 12', 'N')).toEqual(['  /review 12', 'N'])
   })
 })

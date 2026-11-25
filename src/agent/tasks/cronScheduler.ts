@@ -20,6 +20,7 @@ import {
   type CronJitterConfig,
   type CronTask,
   DEFAULT_CRON_JITTER_CONFIG,
+  finalFirePrompts,
   finalRunNotice,
   findMissedTasks,
   firstFireMs,
@@ -305,13 +306,15 @@ export function createCronScheduler(
       // async inFlight/chokidar path). Fires one last time, with a notice
       // that it is the last, then is removed.
       const aged = isRecurringTaskAged(t, now, jitterCfg.recurringMaxAgeMs)
-      const firePrompt = aged
-        ? `${expandedPrompt}\n\n${finalRunNotice(t, jitterCfg.recurringMaxAgeMs)}`
-        : expandedPrompt
-      if (onFireTask) {
-        onFireTask(firePrompt === t.prompt ? t : { ...t, prompt: firePrompt })
-      } else {
-        onFire(firePrompt)
+      const firePrompts = aged
+        ? finalFirePrompts(expandedPrompt, finalRunNotice(t, jitterCfg.recurringMaxAgeMs))
+        : [expandedPrompt]
+      for (const firePrompt of firePrompts) {
+        if (onFireTask) {
+          onFireTask(firePrompt === t.prompt ? t : { ...t, prompt: firePrompt })
+        } else {
+          onFire(firePrompt)
+        }
       }
 
       if (aged) {
