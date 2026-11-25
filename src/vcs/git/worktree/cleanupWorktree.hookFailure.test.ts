@@ -26,6 +26,10 @@ function tempDir(): string {
   return dir
 }
 
+test("the hooks that run here are only the test's: the user settings are an empty temp dir", () => {
+  expect(process.env.CLAUDIN_CONFIG_DIR).toContain(join(tmpdir(), 'hooks-config-'))
+})
+
 test('a failing WorktreeRemove hook leaves the worktree, and cleanup says so', async () => {
   const worktree = tempDir()
   registerHookCallbacks({

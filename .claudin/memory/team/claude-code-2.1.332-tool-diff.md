@@ -68,5 +68,23 @@ Predecessor: [[claude-code-2.1.321-tool-diff]].
 - **Out of scope:** CC's background-MCP-task tools (MCP tasks protocol), the `first-week`
   check-ins, the REPL cost paragraph, and server-classifier denial texts.
 
+**Review round (2026-11-25, 3 agents).** It found four bugs that the green full suite and
+`cc2332Parity.json` (36/36 probes red) had missed. Each one got a red test first, then a fix:
+- A paste block whose trailing newline was trimmed kept its tags. That covered the queued
+  prompt, `/rewind` and flattened titles. The live check had typed text after the paste.
+- A prompt that opens with a paste was skipped by `SKIP_FIRST_PROMPT_PATTERN`, so `/resume`
+  and `/export` named the session after something else.
+- A slash-command cron's last fire turned the notice into its command name.
+- A WorktreeRemove hook that ran and failed counted as a removal.
+
+The round also changed these:
+- The goal resumes only after the UserPromptSubmit hooks, and on a reply drained mid-turn.
+- ExitWorktree's dirty listing runs before the task refusal, and dreams, remote agents and
+  teammates no longer hold the worktree.
+- The SendMessage line exempts a reply's `from`.
+- Tests that run real hooks use `useIsolatedHooksConfig`.
+
+Left open: `/exit`'s `WorktreeExitDialog` removes a worktree without the session check.
+
 **How to apply:** re-capture before the next port, since CC ships weekly. Keep the extracted
 text in the scratchpad and quote only what a finding needs.
