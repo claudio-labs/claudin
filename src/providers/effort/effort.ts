@@ -548,26 +548,8 @@ export function getDisplayedEffortLabel(
 }
 
 /**
- * Build the ` with {level} effort` suffix shown in Logo/Spinner.
- * Returns empty string if the user hasn't explicitly set an effort value.
- * Delegates to resolveAppliedEffort() so the displayed level matches what
- * the API actually receives (including max→high clamp for non-Opus models).
- */
-export function getEffortSuffix(
-  model: string,
-  effortValue: EffortValue | undefined,
-): string {
-  if (effortValue === undefined) return ''
-  if (isAdaptiveEffort(effortValue)) return formatEffortSuffix(ADAPTIVE_EFFORT)
-  const resolved = resolveAppliedEffort(model, effortValue)
-  if (resolved === undefined) return ''
-  return formatEffortSuffix(convertEffortValueToLevel(resolved))
-}
-
-/**
- * Wording of the effort suffix, for callers that already hold a resolved
- * label (the startup banner) rather than the raw setting. Keeps the Logo,
- * the Spinner and the banner phrasing it the same way.
+ * The ` with {label} effort` suffix of the startup banner's provider line,
+ * from a label the caller already resolved.
  */
 export function formatEffortSuffix(label: EffortLevel | AdaptiveEffort): string {
   return ` with ${label} effort`

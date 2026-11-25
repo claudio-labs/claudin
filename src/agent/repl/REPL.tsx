@@ -19,6 +19,7 @@ import { TranscriptModeFooter } from 'src/agent/repl/ui/TranscriptModeFooter.js'
 import { TranscriptSearchBar } from 'src/agent/repl/ui/TranscriptSearchBar.js';
 import { AnimatedTerminalTitle } from 'src/agent/repl/ui/AnimatedTerminalTitle.js';
 import { REPLStatus } from 'src/agent/repl/ui/REPLStatus.js';
+import { describeActivity } from 'src/agent/ui/messages/toolActivityLabel.js';
 import { REPLTranscriptView } from 'src/agent/repl/ui/REPLTranscriptView.js';
 import { renderREPLDialogs } from 'src/agent/repl/ui/REPLDialogs.js';
 import { getFocusedInputDialog } from 'src/agent/repl/getFocusedInputDialog.js';
@@ -1477,6 +1478,8 @@ export function REPL({
       // Hide spinner when streaming text is visible (the text IS the feedback),
       // but keep it when isBriefOnly suppresses the streaming text display
       !hasVisibleStreamingText || isBriefOnly);
+  // What the agent is doing, in at most three words, for the spinner's verb.
+  const activityLabel = useMemo(() => describeActivity(messages, inProgressToolUseIDs, streamingToolUses), [messages, inProgressToolUseIDs, streamingToolUses]);
 
   // Check if any permission or ask question prompt is currently visible
   // This is used to prevent the survey from opening while prompts are active
@@ -2833,7 +2836,7 @@ export function REPL({
         {toolJSX && !(toolJSX.isLocalJSXCommand && toolJSX.isImmediate) && !toolJsxCentered && <Box flexDirection="column" width="100%">
           {toolJSX.jsx}
         </Box>}
-        <REPLStatus showSpinner={showSpinner} streamMode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} spinnerMessage={spinnerMessage} stopHookSpinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerColor={spinnerColor} spinnerShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} isLoading={isLoading} userInputOnProcessing={userInputOnProcessing} hasRunningTeammates={hasRunningTeammates} isBriefOnly={isBriefOnly} viewedAgentTask={viewedAgentTask} />
+        <REPLStatus showSpinner={showSpinner} streamMode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} spinnerMessage={spinnerMessage} activityLabel={activityLabel} stopHookSpinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerColor={spinnerColor} spinnerShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} isLoading={isLoading} userInputOnProcessing={userInputOnProcessing} hasRunningTeammates={hasRunningTeammates} isBriefOnly={isBriefOnly} viewedAgentTask={viewedAgentTask} />
         {idleTodosBesideChat && <Box width="100%" flexDirection="column">
           <TaskListV2 tasks={tasksV2!} isStandalone={true} />
         </Box>}

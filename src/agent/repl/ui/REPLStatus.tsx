@@ -35,6 +35,7 @@ export type REPLStatusProps = {
   // created. Re-asserting it here would double the source of truth.
   apiMetricsRef: React.RefObject<unknown[]>
   spinnerMessage: string | null
+  activityLabel: string | undefined
   stopHookSpinnerSuffix: string | null
   verbose: boolean
   loadingStartTimeRef: React.RefObject<number>
@@ -61,6 +62,7 @@ export function REPLStatus(props: REPLStatusProps): React.ReactNode {
     responseLengthRef,
     apiMetricsRef,
     spinnerMessage,
+    activityLabel,
     stopHookSpinnerSuffix,
     verbose,
     loadingStartTimeRef,
@@ -89,6 +91,7 @@ export function REPLStatus(props: REPLStatusProps): React.ReactNode {
       // wire-through intact without re-typing Spinner.
       apiMetricsRef,
       overrideMessage: spinnerMessage,
+      activityLabel,
       spinnerSuffix: stopHookSpinnerSuffix,
       verbose,
       loadingStartTimeRef,

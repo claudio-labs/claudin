@@ -50,20 +50,6 @@ export function isBoldSpinnerFrame(_frame: number): boolean {
   return false
 }
 
-// The verb's shimmer used to continue across the glyph cell while the brand C
-// was showing; with the orbit always turning there is no such window, so the
-// sweep stops at the message.
-export function isBrandCFrame(_frame: number): boolean {
-  return false
-}
-
-// The glyph cell sits two columns left of the message's first character
-// (Box width={2}: glyph + gap), i.e. at message-coordinate -2. Mirror
-// ShimmerChar's highlight rule (exact hit ± 1 neighbor) around it.
-export function isGlyphShimmerHit(glimmerIndex: number): boolean {
-  return glimmerIndex >= -3 && glimmerIndex <= -1
-}
-
 // Interpolate between two RGB colors
 export function interpolateColor(
   color1: RGBColorType,

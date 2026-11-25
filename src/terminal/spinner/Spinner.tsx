@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { Box, Text } from 'src/terminal/ink.js';
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { computeGlimmerIndex, computeShimmerSegments, SHIMMER_INTERVAL_MS } from 'src/platform/bridge/bridgeStatusUtil.js';
 import { feature } from 'bun:bundle';
 import { count } from 'src/shared/data/array.js';
@@ -23,8 +23,6 @@ import { useSettings } from 'src/platform/useSettings.js';
 import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { isBackgroundWork } from 'src/agent/tasks/types.js';
 import { getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
-import { getEffortSuffix, isAdaptiveEffort } from 'src/providers/effort/effort.js';
-import { getMainLoopModel } from 'src/providers/model/model.js';
 import { getViewedTeammateTask } from 'src/terminal/state/selectors.js';
 import { TEARDROP_ASTERISK } from 'src/shared/constants/figures.js';
 import figures from 'figures';
@@ -36,6 +34,14 @@ export type { SpinnerMode } from 'src/terminal/spinner/index.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
 // No mirroring: the orbit is a directional rotation (see getDefaultCharacters).
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
+// The verb when no tool call or task says what the agent is doing.
+const MODE_VERBS: Record<SpinnerMode, string> = {
+  requesting: 'Thinking',
+  thinking: 'Thinking',
+  responding: 'Writing reply',
+  'tool-input': 'Working',
+  'tool-use': 'Working'
+};
 type Props = {
   mode: SpinnerMode;
   loadingStartTimeRef: React.RefObject<number>;
@@ -46,6 +52,9 @@ type Props = {
   overrideColor?: keyof Theme | null;
   overrideShimmerColor?: keyof Theme | null;
   overrideMessage?: string | null;
+  /** What the agent is doing, in at most three words ("Editing Spinner.tsx"),
+   *  read off the running tool calls (toolActivityLabel.ts). */
+  activityLabel?: string;
   spinnerSuffix?: string | null;
   verbose: boolean;
   hasActiveTools?: boolean;
@@ -67,6 +76,7 @@ function SpinnerWithVerbInner({
   overrideColor,
   overrideShimmerColor,
   overrideMessage,
+  activityLabel,
   spinnerSuffix,
   verbose,
   hasActiveTools = false,
@@ -104,62 +114,19 @@ function SpinnerWithVerbInner({
   } = useTerminalSize();
   const tasksV2 = useTasksV2();
 
-  // Track thinking status: 'thinking' | number (duration in ms) | null
-  // Shows each state for minimum 2s to avoid UI jank
-  const [thinkingStatus, setThinkingStatus] = useState<'thinking' | number | null>(null);
-  const thinkingStartRef = useRef<number | null>(null);
-  useEffect(() => {
-    let showDurationTimer: ReturnType<typeof setTimeout> | null = null;
-    let clearStatusTimer: ReturnType<typeof setTimeout> | null = null;
-    if (mode === 'thinking') {
-      // Started thinking
-      if (thinkingStartRef.current === null) {
-        thinkingStartRef.current = Date.now();
-        setThinkingStatus('thinking');
-      }
-    } else if (thinkingStartRef.current !== null) {
-      // Stopped thinking - calculate duration and ensure 2s minimum display
-      const duration = Date.now() - thinkingStartRef.current;
-      const elapsed = Date.now() - thinkingStartRef.current;
-      const remainingThinkingTime = Math.max(0, 2000 - elapsed);
-      thinkingStartRef.current = null;
-
-      // Show "thinking..." for remaining time if < 2s elapsed, then show duration
-      const showDuration = (): void => {
-        setThinkingStatus(duration);
-        // Clear after 2s
-        clearStatusTimer = setTimeout(setThinkingStatus, 2000, null);
-      };
-      if (remainingThinkingTime > 0) {
-        showDurationTimer = setTimeout(showDuration, remainingThinkingTime);
-      } else {
-        showDuration();
-      }
-    }
-    return () => {
-      if (showDurationTimer) clearTimeout(showDurationTimer);
-      if (clearStatusTimer) clearTimeout(clearStatusTimer);
-    };
-  }, [mode]);
-
   // Find the current in-progress task and next pending task
   const currentTodo = tasksV2?.find(task => task.status !== 'pending' && task.status !== 'completed');
   const nextTask = findNextPendingTask(tasksV2);
 
-  // Use useState with initializer to pick a random verb once on mount
+  // A teammate's fallback verb, picked once on mount
   const [randomVerb] = useState(() => sample(getSpinnerVerbs()));
 
-  // Leader's own verb (always the leader's, regardless of who is foregrounded)
-  const leaderVerb = overrideMessage ?? currentTodo?.activeForm ?? currentTodo?.subject ?? randomVerb;
+  // Leader's own verb (always the leader's, regardless of who is foregrounded):
+  // what it is doing rather than a random verb — the running tools, else the
+  // task in progress, else the mode. A teammate keeps its own random one.
+  const leaderVerb = overrideMessage ?? activityLabel ?? currentTodo?.activeForm ?? currentTodo?.subject ?? MODE_VERBS[mode];
   const effectiveVerb = foregroundedTeammate && !foregroundedTeammate.isIdle ? foregroundedTeammate.spinnerVerb ?? randomVerb : leaderVerb;
   const message = effectiveVerb + '…';
-
-  const effortValue = useAppState((s_4: AppState) => s_4.effortValue);
-  // Adaptive effort is no longer surfaced in the UI but legacy settings may
-  // still hold the value; treat it as unset so the pinned-level suffix path
-  // applies once the user picks a level.
-  const effortSuffix = isAdaptiveEffort(effortValue) ? '' : getEffortSuffix(getMainLoopModel(), effortValue);
-  const thinkingVerb = 'thinking';
 
   // Check if any running in-process teammates exist (needed for both modes)
   const runningTeammates = getAllInProcessTeammateTasks(tasks).filter(t => t.status === 'running');
@@ -248,7 +215,7 @@ function SpinnerWithVerbInner({
     }
   }
   return <Box flexDirection="column" width="100%" alignItems="flex-start">
-      <SpinnerAnimationRow mode={mode} reducedMotion={reducedMotion} hasActiveTools={hasActiveTools} responseLengthRef={responseLengthRef} message={message} messageColor={messageColor} shimmerColor={shimmerColor} overrideColor={overrideColor} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerSuffix={spinnerSuffix} verbose={verbose} columns={columns} hasRunningTeammates={hasRunningTeammates} teammateTokens={teammateTokens} foregroundedTeammate={foregroundedTeammate} leaderIsIdle={leaderIsIdle} thinkingStatus={thinkingStatus} effortSuffix={effortSuffix} thinkingVerb={thinkingVerb} />
+      <SpinnerAnimationRow mode={mode} reducedMotion={reducedMotion} hasActiveTools={hasActiveTools} responseLengthRef={responseLengthRef} message={message} messageColor={messageColor} shimmerColor={shimmerColor} overrideColor={overrideColor} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerSuffix={spinnerSuffix} verbose={verbose} columns={columns} hasRunningTeammates={hasRunningTeammates} teammateTokens={teammateTokens} foregroundedTeammate={foregroundedTeammate} leaderIsIdle={leaderIsIdle} />
       {showSpinnerTree && hasRunningTeammates ? <TeammateSpinnerTree selectedIndex={selectedIPAgentIndex} isInSelectionMode={viewSelectionMode === 'selecting-agent'} allIdle={allIdle} leaderVerb={leaderIsIdle ? undefined : leaderVerb} leaderIdleText={leaderIsIdle ? 'Idle' : undefined} leaderTokenCount={leaderTokenCount} /> : showExpandedTodos && tasksV2 && tasksV2.length > 0 ? <Box width="100%" flexDirection="column">
           <MessageResponse>
             <TaskListV2 tasks={tasksV2} />
