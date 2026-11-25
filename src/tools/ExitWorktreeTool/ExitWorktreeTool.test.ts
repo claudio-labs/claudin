@@ -1,6 +1,18 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { spawnSync } from 'child_process'
+import { existsSync, mkdtempSync, realpathSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
-import { restoreWorktreeSession } from 'src/vcs/git/worktree.js'
+import {
+  getOriginalCwd,
+  getProjectRoot,
+  setOriginalCwd,
+  setProjectRoot,
+} from 'src/platform/bootstrap/state.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
+import { restoreWorktreeSession, type WorktreeSession } from 'src/vcs/git/worktree.js'
 import { ExitWorktreeTool } from 'src/tools/ExitWorktreeTool/ExitWorktreeTool.js'
 
 const attachedSession = {
@@ -108,5 +120,85 @@ describe('ExitWorktreeTool', () => {
       content: 'Exited worktree at /tmp/wt (kept)',
       tool_use_id: 'u1',
     })
+  })
+})
+
+// `remove` for real: call() chdirs back, resets the cwd, originalCwd and
+// projectRoot and clears the session, so all of it is put back after.
+describe('ExitWorktreeTool remove reports what it removed', () => {
+  const dirs: string[] = []
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  function tempDir(): string {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-')))
+    dirs.push(dir)
+    return dir
+  }
+
+  async function remove(session: WorktreeSession): Promise<string> {
+    const prev = {
+      processCwd: process.cwd(),
+      cwd: getCwd(),
+      originalCwd: getOriginalCwd(),
+      projectRoot: getProjectRoot(),
+    }
+    restoreWorktreeSession(session)
+    try {
+      const result = await ExitWorktreeTool.call(
+        { action: 'remove', discard_changes: true } as never,
+        {} as never,
+        (() => {}) as never,
+        {} as never,
+      )
+      return result.data.message
+    } finally {
+      process.chdir(prev.processCwd)
+      setCwd(prev.cwd)
+      setOriginalCwd(prev.originalCwd)
+      setProjectRoot(prev.projectRoot)
+      restoreWorktreeSession(null)
+    }
+  }
+
+  function repoWithWorktree(branch: string): { repo: string; worktree: string } {
+    const repo = tempDir()
+    const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' })
+    git('init', '-b', 'main')
+    git('config', 'user.email', 't@t')
+    git('config', 'user.name', 't')
+    git('commit', '--allow-empty', '-m', 'init')
+    const worktree = join(tempDir(), 'wt')
+    git('worktree', 'add', '-b', branch, worktree)
+    return { repo, worktree }
+  }
+
+  test('a hook-made worktree with no WorktreeRemove hook is said to be still on disk', async () => {
+    const worktree = tempDir()
+    const message = await remove({
+      originalCwd: tempDir(),
+      worktreePath: worktree,
+      worktreeName: 'hooked',
+      sessionId: 'sess-test',
+      hookBased: true,
+    })
+    expect(existsSync(worktree)).toBe(true)
+    expect(message).not.toContain('removed worktree')
+    expect(message).toContain(`${worktree} is still on disk`)
+  })
+
+  test('a branch git refuses to delete is said to be kept', async () => {
+    const { repo, worktree } = repoWithWorktree('wt-refused')
+    // `main` is checked out in the main worktree, so `git branch -D` refuses it.
+    const message = await remove({
+      originalCwd: repo,
+      worktreePath: worktree,
+      worktreeName: 'wt',
+      worktreeBranch: 'main',
+      sessionId: 'sess-test',
+    })
+    expect(message).toContain(`removed worktree at ${worktree}`)
+    expect(message).toContain('Git refused to delete branch main, so it is still there')
   })
 })
