@@ -6,18 +6,27 @@ import { isAbsolute } from 'path'
 // `IMAGE_EXTENSION_REGEX` in `./imagePaste.ts`.
 const IMAGE_EXTENSION_REGEX = /\.(png|jpe?g|gif|webp)$/i
 
+// A space followed by an absolute path, Unix or Windows, optionally quoted.
+// Spaces inside an unquoted path are escaped (`file\ name`), so this is the
+// boundary between two dropped paths.
+const PASTED_PATH_BOUNDARY = / (?=["']?(?:\/|[A-Za-z]:\\))/
+
+/**
+ * Split pasted text into the paths a terminal drop delivers, space- or
+ * newline-separated. Segments come back untrimmed and may be empty; the image
+ * paste handler in usePasteHandler and extractDraggedFilePaths both split here.
+ */
+export function splitPastedPaths(text: string): string[] {
+  return text.split(PASTED_PATH_BOUNDARY).flatMap(part => part.split('\n'))
+}
+
 /**
  * Detect absolute file paths in pasted text (typically from drag-and-drop).
  * Returns the cleaned paths if ALL segments are existing non-image files,
  * or an empty array otherwise.
- *
- * Splitting logic mirrors usePasteHandler: space preceding `/` or a Windows
- * drive letter, plus newline separators.
  */
 export function extractDraggedFilePaths(text: string): string[] {
-  const segments = text
-    .split(/ (?=\/|[A-Za-z]:\\)/)
-    .flatMap(part => part.split('\n'))
+  const segments = splitPastedPaths(text)
     .map(s => s.trim())
     .filter(Boolean)
 

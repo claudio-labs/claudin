@@ -2,11 +2,46 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { extractDraggedFilePaths } from 'src/terminal/input/dragDropPaths.js'
+import {
+  extractDraggedFilePaths,
+  splitPastedPaths,
+} from 'src/terminal/input/dragDropPaths.js'
 
 function escapeFinderDraggedPath(filePath: string): string {
   return filePath.replace(/([\\ ])/g, '\\$1')
 }
+
+describe('splitPastedPaths', () => {
+  test('splits on a space before an absolute path, quoted or not', () => {
+    expect(splitPastedPaths('/a/x.png /b/y.png')).toEqual(['/a/x.png', '/b/y.png'])
+    expect(splitPastedPaths('"/a/x y.png" "/b/y.png"')).toEqual([
+      '"/a/x y.png"',
+      '"/b/y.png"',
+    ])
+    expect(splitPastedPaths("'/a/x.png' C:\\b\\y.png")).toEqual([
+      "'/a/x.png'",
+      'C:\\b\\y.png',
+    ])
+    expect(splitPastedPaths("'C:\\a\\x.png' '/b/y.png'")).toEqual([
+      "'C:\\a\\x.png'",
+      "'/b/y.png'",
+    ])
+  })
+
+  test('splits on newlines and keeps escaped spaces inside a path', () => {
+    expect(splitPastedPaths('/a/my\\ shot.png\n/b/y.png\n')).toEqual([
+      '/a/my\\ shot.png',
+      '/b/y.png',
+      '',
+    ])
+  })
+
+  test('leaves prose and relative paths whole', () => {
+    expect(splitPastedPaths('see "quoted" text and ./rel/path')).toEqual([
+      'see "quoted" text and ./rel/path',
+    ])
+  })
+})
 
 describe('extractDraggedFilePaths', () => {
   // Paths that exist on any system.
