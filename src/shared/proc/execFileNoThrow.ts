@@ -225,7 +225,6 @@ export function execFileNoThrowWithCwd(
     let stderr = ''
     let combinedBufferSize = 0
     let signal: string | undefined
-    let timedOut = false
 
     const finish = (result: {
       stdout: string
@@ -282,11 +281,18 @@ export function execFileNoThrowWithCwd(
       finish({ stdout: '', stderr: '', code: 1, error: error.message })
     })
 
+    // Resolve at the timeout itself: 'close' waits for every holder of the
+    // pipes, and a grandchild that inherited stdout can outlive the kill.
     const timeoutId =
       finalTimeout > 0
         ? setTimeout(() => {
-            timedOut = true
             child.kill()
+            finish({
+              stdout: finalPreserveOutput ? stdout : '',
+              stderr: finalPreserveOutput ? stderr : '',
+              code: 1,
+              error: `Command timed out after ${finalTimeout}ms`,
+            })
           }, finalTimeout)
         : undefined
 
@@ -297,16 +303,6 @@ export function execFileNoThrowWithCwd(
 
       signal = closeSignal ?? undefined
       const errorCode = code ?? 1
-
-      if (timedOut) {
-        finish({
-          stdout: finalPreserveOutput ? stdout : '',
-          stderr: finalPreserveOutput ? stderr : '',
-          code: errorCode,
-          error: `Command timed out after ${finalTimeout}ms`,
-        })
-        return
-      }
 
       if (errorCode !== 0) {
         if (finalPreserveOutput) {
