@@ -38,7 +38,7 @@ export type FsOperations = {
   /** Removes files and directories asynchronously (with recursive option) */
   rm(
     path: string,
-    options?: { recursive?: boolean; force?: boolean },
+    options?: { recursive?: boolean; force?: boolean; maxRetries?: number },
   ): Promise<void>
   /** Creates directory recursively asynchronously. */
   mkdir(path: string, options?: { mode?: number }): Promise<void>
