@@ -1,0 +1,341 @@
+{
+  "test": [
+    "src/terminal/terminalFont.test.ts",
+    "src/platform/settings/ui/configNerdFontRow.test.ts",
+    "src/platform/settings/ui/configGroups.test.ts",
+    "src/terminal/prompt-input/PromptInputFooterSuggestions.test.tsx",
+    "src/agent/ui/messages/toolRowIcons.test.ts",
+    "src/agent/ui/messages/AssistantToolUseMessage.icons.test.tsx",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/agent/ui/ToolStatusIcon.test.tsx",
+    "src/agent/ui/taskStatusIcons.test.ts",
+    "src/permissions/PermissionMode.test.ts",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.test.tsx",
+    "src/agent/ui/messages/nerdFontFallback.test.tsx",
+    "src/platform/exportRenderer.test.tsx"
+  ],
+  "source": "src/terminal/terminalFont.ts",
+  "probes": [
+    {
+      "name": "tmux markers name the outer terminal",
+      "find": "  if (NERD_FONT_TERMINAL_MARKERS.some(name => env[name])) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "iTerm2's LC_TERMINAL counts",
+      "find": "  return env.LC_TERMINAL === 'iTerm2'",
+      "replace": "  return false"
+    },
+    {
+      "name": "the markers count only behind tmux or screen",
+      "comment": "another emulator started from a Ghostty/kitty/WezTerm shell inherits them",
+      "find": "  if (!isMultiplexer(env)) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "$TMUX alone says tmux is in front",
+      "find": "  if (env.TMUX) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "screen counts as a multiplexer",
+      "find": "  return term.startsWith('tmux') || term.startsWith('screen')",
+      "replace": "  return term.startsWith('tmux')"
+    },
+    {
+      "name": "a render can say no to the icons",
+      "find": "  return useContext(NerdFontGlyphsContext) ?? hasNerdFontGlyphs()",
+      "replace": "  return hasNerdFontGlyphs()"
+    },
+    {
+      "name": "the plain-text export asks for no icons",
+      "source": "src/platform/exportRenderer.tsx",
+      "find": "    plainGlyphs: true\n",
+      "replace": "    plainGlyphs: false\n"
+    },
+    {
+      "name": "the scrollback dump keeps the icons",
+      "source": "src/platform/exportRenderer.tsx",
+      "find": "value={plainGlyphs ? false : undefined}",
+      "replace": "value={false}"
+    },
+    {
+      "name": "a tool row follows the render's answer",
+      "source": "src/agent/ui/messages/AssistantToolUseMessage.tsx",
+      "find": "rowIcons: getToolRowIcons(tool, data, nerdFont)",
+      "replace": "rowIcons: getToolRowIcons(tool, data)"
+    },
+    {
+      "name": "a ctrl+o detail row follows the render's answer",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const rowIcons = getToolRowIcons(tool, input, nerdFont);",
+      "replace": "const rowIcons = getToolRowIcons(tool, input);"
+    },
+    {
+      "name": "the collapsed badge follows the render's answer",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "const partIcons = getCollapsedPartIcons(nerdFont);",
+      "replace": "const partIcons = getCollapsedPartIcons();"
+    },
+    {
+      "name": "the /config setting turns icons on",
+      "find": "  if (setting === 'on') return true\n",
+      "replace": ""
+    },
+    {
+      "name": "the /config setting turns icons off",
+      "find": "  if (setting === 'off') return false\n",
+      "replace": ""
+    },
+    {
+      "name": "the env override beats the setting",
+      "find": "  if (isEnvTruthy(override)) return true\n  if (isEnvDefinedFalsy(override)) return false\n  if (setting === 'on')",
+      "replace": "  if (setting === 'on')"
+    },
+    {
+      "name": "the terminal heuristic is memoized",
+      "find": "  terminalDetection ??= detectNerdFontTerminal(process.env)",
+      "replace": "  terminalDetection = detectNerdFontTerminal(process.env)"
+    },
+    {
+      "name": "the setting is read from global config",
+      "find": "    getGlobalConfig().nerdFontIcons,",
+      "replace": "    undefined,"
+    },
+    {
+      "name": "/config offers auto/on/off",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "    options: [...NERD_FONT_ICONS_OPTIONS],",
+      "replace": "    options: ['auto'],"
+    },
+    {
+      "name": "the /config row is grouped under Terminal",
+      "source": "src/platform/settings/ui/configGroups.ts",
+      "find": "      'nerdFontIcons',\n",
+      "replace": ""
+    },
+    {
+      "name": "the @-menu reads the gate when it renders",
+      "source": "src/terminal/prompt-input/PromptInputFooterSuggestions.tsx",
+      "find": "  const nerd = hasNerdFontGlyphs()",
+      "replace": "  const nerd = true"
+    },
+    {
+      "name": "no tool-row icon without a Nerd Font",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "  if (!nerdFont) return {}\n",
+      "replace": ""
+    },
+    {
+      "name": "without a Nerd Font a row draws what main drew",
+      "comment": "the snapshot in nerdFontFallback.test.tsx was recorded on main",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "  if (!nerdFont) return {}\n",
+      "replace": "  if (!nerdFont) return { toolIcon: '●' }\n"
+    },
+    {
+      "name": "MCP tools share the puzzle",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "tool.isMcp ? PUZZLE : (TOOL_ICONS[tool.name] ?? TOOLS)",
+      "replace": "(TOOL_ICONS[tool.name] ?? TOOLS)"
+    },
+    {
+      "name": "unmapped tools get the generic icon",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "(TOOL_ICONS[tool.name] ?? TOOLS)",
+      "replace": "TOOL_ICONS[tool.name]"
+    },
+    {
+      "name": "NotebookEdit's file is notebook_path",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "  [NOTEBOOK_EDIT_TOOL_NAME]: 'notebook_path',",
+      "replace": "  [NOTEBOOK_EDIT_TOOL_NAME]: 'file_path',"
+    },
+    {
+      "name": "an empty path gets no file icon",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "  if (typeof path !== 'string' || path === '') return { toolIcon }",
+      "replace": "  if (typeof path !== 'string') return { toolIcon }"
+    },
+    {
+      "name": "the tool icon takes the dot's place",
+      "source": "src/agent/ui/messages/AssistantToolUseMessage.tsx",
+      "find": "    t7 = rowIcons.toolIcon ? <ToolStatusIcon",
+      "replace": "    t7 = false ? <ToolStatusIcon"
+    },
+    {
+      "name": "a dotless row shows its icon as done",
+      "source": "src/agent/ui/messages/AssistantToolUseMessage.tsx",
+      "find": "    }) : \"done\"} /> : shouldShowDot",
+      "replace": "    }) : \"error\"} /> : shouldShowDot"
+    },
+    {
+      "name": "the row's error reaches the icon",
+      "source": "src/agent/ui/messages/AssistantToolUseMessage.tsx",
+      "find": "      isError: lookups.erroredToolUseIDs.has(param.id),\n",
+      "replace": "      isError: false,\n"
+    },
+    {
+      "name": "the file icon renders inside the parens",
+      "source": "src/agent/ui/messages/AssistantToolUseMessage.tsx",
+      "find": "{rowIcons.fileIcon && <Text color={rowIcons.fileIcon.color}>{rowIcons.fileIcon.glyph} </Text>}",
+      "replace": ""
+    },
+    {
+      "name": "the ctrl+o detail row's icon takes the loader's place",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "        t8 = rowIcons.toolIcon ? <ToolStatusIcon",
+      "replace": "        t8 = false ? <ToolStatusIcon"
+    },
+    {
+      "name": "the ctrl+o detail row carries the file icon",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "{rowIcons.fileIcon && <Text color={rowIcons.fileIcon.color}>{rowIcons.fileIcon.glyph} </Text>}{toolUseMessage}",
+      "replace": "{toolUseMessage}"
+    },
+    {
+      "name": "badge part icons need a Nerd Font",
+      "source": "src/agent/ui/messages/toolRowIcons.ts",
+      "find": "  return nerdFont ? COLLAPSED_PART_ICONS : undefined",
+      "replace": "  return COLLAPSED_PART_ICONS"
+    },
+    {
+      "name": "the badge drops its dot column on a Nerd Font",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "        {partIcons ? null : isActiveGroup ?",
+      "replace": "        {isActiveGroup ?"
+    },
+    {
+      "name": "a badge part leads with its icon",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "        {partIcon('read')}{readVerb}",
+      "replace": "        {readVerb}"
+    },
+    {
+      "name": "a write part leads with its own icon",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "        {partIcon(kind)}{isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}\n      </Text>);\n  }\n  if (isFullscreenEnvEnabled() && message.commits?.length) {",
+      "replace": "        {isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}\n      </Text>);\n  }\n  if (isFullscreenEnvEnabled() && message.commits?.length) {"
+    },
+    {
+      "name": "a memory part leads with the brain",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "        {partIcon('memory')}",
+      "replace": ""
+    },
+    {
+      "name": "a running group's error turns its icons red",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "isActiveGroup ? anyError ? 'error' : 'running' : 'done'",
+      "replace": "isActiveGroup ? 'running' : 'done'"
+    },
+    {
+      "name": "a queued call is pending before anything else",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  if (isQueued) return 'pending';\n",
+      "replace": ""
+    },
+    {
+      "name": "a live async agent runs",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  if (isAsync) return 'running';\n",
+      "replace": ""
+    },
+    {
+      "name": "an error wins over an unresolved call",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  if (isError) return 'error';\n",
+      "replace": ""
+    },
+    {
+      "name": "an unresolved call runs only while it animates",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "shouldAnimate ? 'running' : 'pending'",
+      "replace": "'running'"
+    },
+    {
+      "name": "the fade is a 2 s sine",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "Math.sin(time / 1000 * Math.PI)",
+      "replace": "Math.sin(time / 500 * Math.PI)"
+    },
+    {
+      "name": "an ANSI theme switches at the half-way point",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  return flash > 0.5 ? 'text' : 'success';",
+      "replace": "  return 'success';"
+    },
+    {
+      "name": "the fade runs from green to the text color",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  const text = parseRGB(theme.text);",
+      "replace": "  const text = parseRGB(theme.claudeShimmer);"
+    },
+    {
+      "name": "reduced motion holds a running icon on green",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  const fading = status === 'running' && focused && !reducedMotion;",
+      "replace": "  const fading = status === 'running' && focused;"
+    },
+    {
+      "name": "a still running icon is green",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "time) : 'success', false];",
+      "replace": "time) : 'claude', false];"
+    },
+    {
+      "name": "an errored icon is red",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  if (status === 'error') return [ref, 'error', false];\n",
+      "replace": ""
+    },
+    {
+      "name": "a pending icon is dim",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  if (status === 'pending') return [ref, undefined, true];",
+      "replace": "  if (status === 'pending') return [ref, undefined, false];"
+    },
+    {
+      "name": "a finished icon keeps the default color",
+      "source": "src/agent/ui/ToolStatusIcon.tsx",
+      "find": "  if (status === 'done') return [ref, undefined, false];",
+      "replace": "  if (status === 'done') return [ref, 'claude', false];"
+    },
+    {
+      "name": "task icons switch to the nf-md set",
+      "source": "src/agent/ui/taskStatusIcons.ts",
+      "find": "hasNerdFontGlyphs() ? NERD_ICONS : FALLBACK_ICONS",
+      "replace": "FALLBACK_ICONS"
+    },
+    {
+      "name": "TaskListV2 delegates to the task icon module",
+      "source": "src/agent/ui/TaskListV2.tsx",
+      "find": "import { getTaskIcon } from 'src/agent/ui/taskStatusIcons.js';",
+      "replace": "import { getTaskIcon } from './taskStatusIcons.js';"
+    },
+    {
+      "name": "a mode with no symbol of its own (default, unconfigured auto) gets no icon",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "  if (symbol === '' || !hasNerdFontGlyphs()) return symbol",
+      "replace": "  if (!hasNerdFontGlyphs()) return symbol"
+    },
+    {
+      "name": "modes swap to their icon on a Nerd Font",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "  return NERD_MODE_SYMBOLS[mode] ?? symbol",
+      "replace": "  return symbol"
+    },
+    {
+      "name": "question tabs swap ☒/☐ for the circles on a Nerd Font",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx",
+      "find": "  if (hasNerdFontGlyphs()) return isAnswered ? NERD_ANSWERED : NERD_UNANSWERED;\n",
+      "replace": ""
+    },
+    {
+      "name": "a question tab marks whether it is answered",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx",
+      "find": "const checkbox = tabCheckbox(!!isAnswered);",
+      "replace": "const checkbox = tabCheckbox(false);"
+    }
+  ]
+}

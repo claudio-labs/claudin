@@ -5,6 +5,7 @@ import { KeybindingProvider } from 'src/terminal/keybindings/KeybindingContext.j
 import { loadKeybindingsSync } from 'src/terminal/keybindings/loadUserBindings.js';
 import type { KeybindingContextName } from 'src/terminal/keybindings/types.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
+import { NerdFontGlyphsContext } from 'src/terminal/terminalFont.js';
 import type { Tools } from 'src/tools/Tool.js';
 import type { Message } from 'src/shared/types/message.js';
 import { renderToAnsiString } from 'src/terminal/render/staticRender.js';
@@ -54,16 +55,21 @@ export async function streamRenderedMessages(messages: Message[], tools: Tools, 
   columns,
   verbose = false,
   chunkSize = 40,
-  onProgress
+  onProgress,
+  plainGlyphs = false
 }: {
   columns?: number;
   verbose?: boolean;
   chunkSize?: number;
   onProgress?: (rendered: number) => void;
+  /** No Nerd Font icons, for text that leaves this terminal. */
+  plainGlyphs?: boolean;
 } = {}): Promise<void> {
   const renderChunk = (range: readonly [number, number]) => renderToAnsiString(<AppStateProvider>
         <StaticKeybindingProvider>
-          <Messages messages={messages} tools={tools} commands={[]} verbose={verbose} toolJSX={null} toolUseConfirmQueue={[]} inProgressToolUseIDs={new Set()} isMessageSelectorVisible={false} conversationId="export" screen="prompt" streamingToolUses={[]} showAllInTranscript={true} isLoading={false} renderRange={range} />
+          <NerdFontGlyphsContext.Provider value={plainGlyphs ? false : undefined}>
+            <Messages messages={messages} tools={tools} commands={[]} verbose={verbose} toolJSX={null} toolUseConfirmQueue={[]} inProgressToolUseIDs={new Set()} isMessageSelectorVisible={false} conversationId="export" screen="prompt" streamingToolUses={[]} showAllInTranscript={true} isLoading={false} renderRange={range} />
+          </NerdFontGlyphsContext.Provider>
         </StaticKeybindingProvider>
       </AppStateProvider>, columns);
 
@@ -84,12 +90,14 @@ export async function streamRenderedMessages(messages: Message[], tools: Tools, 
 
 /**
  * Renders messages to a plain text string suitable for export.
- * Uses the same React rendering logic as the interactive UI.
+ * Uses the same React rendering logic as the interactive UI, minus the Nerd
+ * Font icons: whatever opens the file has no reason to have the font.
  */
 export async function renderMessagesToPlainText(messages: Message[], tools: Tools = [], columns?: number): Promise<string> {
   const parts: string[] = [];
   await streamRenderedMessages(messages, tools, chunk => void parts.push(stripAnsi(chunk)), {
-    columns
+    columns,
+    plainGlyphs: true
   });
   return parts.join('');
 }
