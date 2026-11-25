@@ -342,13 +342,13 @@ export function typesSectionCombined(hasGlobal: boolean): readonly string[] {
   ]
 }
 
-/**
- * `## What NOT to save in memory` section. Identical across both modes.
- */
 // Claude Code 2.1.332: what a connector returned belongs in the answer.
 export const MCP_OUTPUT_NOT_SAVED_BULLET =
   '- What an MCP server or connector returned: it goes in your answer, and memory takes only a bare pointer to it (a URL, a ticket id). When the user confirms or decides something about it, save that fact or decision, with only as much of the rest as it needs to make sense; a request to save it is not by itself such a decision.'
 
+/**
+ * `## What NOT to save in memory` section. Identical across both modes.
+ */
 export const WHAT_NOT_TO_SAVE_SECTION: readonly string[] = [
   '## What NOT to save in memory',
   '',

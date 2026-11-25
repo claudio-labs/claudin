@@ -95,7 +95,9 @@ import { z } from 'zod/v4'
 // ✅ Correct — typed at boundary, validated at entry
 const InputSchema = z.object({
   command: z.string().min(1),
-  timeout: z.number().optional().default(30_000),
+  // default before optional: the other order lists the field as required
+  // in the JSON schema the model sees
+  timeout: z.number().default(30_000).optional(),
 })
 
 type Input = z.infer<typeof InputSchema>

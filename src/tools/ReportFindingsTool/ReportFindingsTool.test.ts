@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { MAX_FINDINGS } from 'src/tools/ReportFindingsTool/constants.js'
-import { ReportFindingsTool } from 'src/tools/ReportFindingsTool/ReportFindingsTool.js'
+import { ReportFindingsTool, type Output } from 'src/tools/ReportFindingsTool/ReportFindingsTool.js'
 
 function finding(over: Record<string, unknown> = {}) {
   return {
@@ -61,6 +61,13 @@ describe('ReportFindingsTool', () => {
       expect(ReportFindingsTool.inputSchema.safeParse({ findings: [finding({ severity })] }).success).toBe(true)
     }
     expect(ReportFindingsTool.inputSchema.safeParse({ findings: [finding({ severity: 'high' })] }).success).toBe(false)
+  })
+
+  // What the transcript renders is the output, replayed on --resume: the
+  // field has to survive the output schema too.
+  test('severity survives the output schema', () => {
+    const out = ReportFindingsTool.outputSchema!.parse({ findings: [finding({ severity: 'pre_existing' })] }) as Output
+    expect(out.findings[0]?.severity).toBe('pre_existing')
   })
 
   test('input schema enforces the MAX_FINDINGS cap', () => {

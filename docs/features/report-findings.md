@@ -1,10 +1,9 @@
 # ReportFindings (typed code-review output)
 
-**Status: not yet in claudin.** There is no `ReportFindings` tool under `src/tools/`. claudin's
-`/code-review` skill (`src/skills/bundled/code-review.ts`) already produces findings with the
-same *shape* — but as a **JSON array printed as model text**, not as a validated tool call the
-host renders. This doc specifies the tool as it ships in upstream Claude Code 2.1.201, so it can
-be ported. Proposed paths below are not present yet.
+**Status: shipped.** The tool is `src/tools/ReportFindingsTool/`, and `/code-review`
+(`src/skills/bundled/code-review.ts`) reports through it, loading it with ToolSearch. The
+`severity` field follows Claude Code 2.1.332. This doc was written to port it from upstream
+Claude Code 2.1.201; the sections from "The problem" to "How it would land" record that design.
 
 `ReportFindings` is a **structured-output tool for code review**. It performs no side effect —
 no read, no edit, no shell — it exists purely so the model *hands back* the findings of a review
@@ -37,6 +36,7 @@ One tool call, once, at the end of a review. The payload:
 | `findings[].summary` | ✓ | One-sentence statement of the defect. |
 | `findings[].failure_scenario` | ✓ | Concrete inputs/state → wrong output/crash. This is what separates a real bug from a hunch. |
 | `findings[].line` | — | 1-indexed line the finding anchors to. |
+| `findings[].severity` | — | `important` (this change adds or worsens it), `pre_existing` (in the codebase, not introduced here) or `nit` (minor: a broken CLAUDE.md/AGENTS.md rule, a harmless bug, a cleanup). Labels and orders a finding; never a reason to drop one. |
 | `findings[].category` | — | Kebab-case slug (≤40 chars): `correctness`, `simplification`, `efficiency`, `test-coverage`, … |
 | `findings[].verdict` | — | `CONFIRMED` or `PLAUSIBLE` — set when a verify pass ran; absent on inline-only reviews. |
 | `findings[].outcome` | — | Set **only** when re-reporting after `--fix`: `fixed` / `skipped` / `no_change_needed`. |
