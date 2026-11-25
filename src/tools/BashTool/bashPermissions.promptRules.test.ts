@@ -25,12 +25,20 @@ type Verdict =
   | 'throws'
   | 'no-tool-use'
 
-let verdicts: { deny?: Verdict; ask?: Verdict } = {}
+// A verdict, or one chosen per classified command.
+type VerdictFor = Verdict | ((command: string) => Verdict)
 
-const mockSideQuery = mock(async (opts: { system: string }) => {
-  const verdict = opts.system.includes('deny rule')
+let verdicts: { deny?: VerdictFor; ask?: VerdictFor } = {}
+
+const COMMAND_IN_PROMPT = /<command>\n([\s\S]*)\n<\/command>/
+
+const mockSideQuery = mock(
+  async (opts: { system: string; messages: { content: string }[] }) => {
+  const chosen = opts.system.includes('deny rule')
     ? verdicts.deny
     : verdicts.ask
+  const command = COMMAND_IN_PROMPT.exec(opts.messages[0]!.content)?.[1] ?? ''
+  const verdict = typeof chosen === 'function' ? chosen(command) : chosen
   if (verdict === undefined) throw new Error('no verdict set for this rule')
   if (verdict === 'throws') throw new Error('503 overloaded')
   if (verdict === 'no-tool-use') {
@@ -45,7 +53,8 @@ const mockSideQuery = mock(async (opts: { system: string }) => {
       },
     ],
   }
-})
+  },
+)
 
 mock.module('src/agent/sideQuery.js', () => ({
   ...realSideQueryModule,
@@ -217,6 +226,25 @@ describe('a prompt rule the classifier could not evaluate', () => {
       deny: [DENY_PUSH],
     })
     expect(result.behavior).toBe('ask')
+  })
+
+  test('asks when only the whole pipeline went unevaluated, its segments not', async () => {
+    verdicts = { deny: command => (command.includes('|') ? 'throws' : NO_MATCH) }
+    const rules = {
+      allow: ['Bash(git push:*)', 'Bash(cat:*)'],
+      deny: [DENY_PUSH],
+    }
+    expect((await decide('git push origin main', rules)).behavior).toBe('allow')
+    expect((await decide('git push origin main | cat', rules)).behavior).toBe('ask')
+  })
+
+  test('an exact allow does not carry the misparsing gate past it', async () => {
+    // Backticks trip the misparsing gate, where only an exact allow passes.
+    const rules = { allow: ['Bash(echo `date`)'], deny: [DENY_PUSH] }
+    verdicts = { deny: NO_MATCH }
+    expect((await decide('echo `date`', rules)).behavior).toBe('allow')
+    verdicts = { deny: 'throws' }
+    expect((await decide('echo `date`', rules)).behavior).toBe('ask')
   })
 
   test('a matched ask rule keeps its own reason when the deny side errored', async () => {
