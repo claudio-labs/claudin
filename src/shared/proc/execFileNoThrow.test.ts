@@ -62,8 +62,9 @@ function script(source: string): [string, string[]] {
 
 // Starts a grandchild that inherits the pipes and lives 3 s, and prints its
 // pid so the test can kill it instead of leaving it to outlive the suite.
+// unref() lets the child exit before it, the way xclip's parent does.
 const SPAWN_PIPE_HOLDER =
-  'const holder = require("node:child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 3000)"], { stdio: ["ignore", "inherit", "inherit"] }); console.log(holder.pid);'
+  'const holder = require("node:child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 3000)"], { stdio: ["ignore", "inherit", "inherit"] }); holder.unref(); console.log(holder.pid);'
 
 function isAlive(pid: number): boolean {
   try {

@@ -224,7 +224,9 @@ export function execFileNoThrowWithCwd(
     let stdout = ''
     let stderr = ''
     let combinedBufferSize = 0
-    let signal: string | undefined
+    // Set by 'exit', which comes before 'close' and does not wait for the pipes.
+    let exited: { code: number | null; signal: NodeJS.Signals | null } | null =
+      null
 
     const finish = (result: {
       stdout: string
@@ -281,11 +283,50 @@ export function execFileNoThrowWithCwd(
       finish({ stdout: '', stderr: '', code: 1, error: error.message })
     })
 
+    // How a child that exited resolves: its own code, and the output so far.
+    const settleExited = (
+      code: number | null,
+      exitSignal: NodeJS.Signals | null,
+    ) => {
+      const errorCode = code ?? 1
+
+      if (errorCode !== 0) {
+        if (finalPreserveOutput) {
+          finish({
+            stdout,
+            stderr,
+            code: errorCode,
+            error: getErrorMessage({ signal: exitSignal ?? undefined }, errorCode),
+          })
+        } else {
+          finish({ stdout: '', stderr: '', code: errorCode })
+        }
+        return
+      }
+
+      finish({
+        stdout,
+        stderr,
+        code: 0,
+      })
+    }
+
+    child.once('exit', (code, exitSignal) => {
+      exited = { code, signal: exitSignal }
+    })
+
     // Resolve at the timeout itself: 'close' waits for every holder of the
     // pipes, and a grandchild that inherited stdout can outlive the kill.
     const timeoutId =
       finalTimeout > 0
         ? setTimeout(() => {
+            // A child that already exited only left something holding its
+            // pipes — the daemon xclip, xsel and wl-copy fork — so its own
+            // exit code is the answer, not a timeout.
+            if (exited) {
+              settleExited(exited.code, exited.signal)
+              return
+            }
             child.kill()
             finish({
               stdout: finalPreserveOutput ? stdout : '',
@@ -300,29 +341,7 @@ export function execFileNoThrowWithCwd(
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
-
-      signal = closeSignal ?? undefined
-      const errorCode = code ?? 1
-
-      if (errorCode !== 0) {
-        if (finalPreserveOutput) {
-          finish({
-            stdout,
-            stderr,
-            code: errorCode,
-            error: getErrorMessage({ signal }, errorCode),
-          })
-        } else {
-          finish({ stdout: '', stderr: '', code: errorCode })
-        }
-        return
-      }
-
-      finish({
-        stdout,
-        stderr,
-        code: 0,
-      })
+      settleExited(code, closeSignal)
     })
   })
 }
