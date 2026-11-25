@@ -1,0 +1,172 @@
+/**
+ * Bash(prompt: …) deny and ask rules, through bashToolHasPermission.
+ *
+ * sideQuery is mocked so the classifier answers without an API call, and the
+ * BASH_CLASSIFIER test hatch turns the classifier on (every feature() reads
+ * false under bun test). The pendingClassifierCheck arms stay out of reach for
+ * the same reason; the decisions below are what this file can see.
+ */
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  mock,
+  test,
+} from 'bun:test'
+
+// mock.module lasts for the whole run (testing.md, "Cross-file mock leaks"):
+// snapshot the real module and put it back in afterAll.
+const realSideQueryModule = { ...(await import('src/agent/sideQuery.js')) }
+
+type Verdict =
+  | { matchedIndex: number | null; confidence: 'high' | 'medium' | 'low' }
+  | 'throws'
+  | 'no-tool-use'
+
+let verdicts: { deny?: Verdict; ask?: Verdict } = {}
+
+const mockSideQuery = mock(async (opts: { system: string }) => {
+  const verdict = opts.system.includes('deny rule')
+    ? verdicts.deny
+    : verdicts.ask
+  if (verdict === undefined) throw new Error('no verdict set for this rule')
+  if (verdict === 'throws') throw new Error('503 overloaded')
+  if (verdict === 'no-tool-use') {
+    return { content: [{ type: 'text', text: 'no idea' }] }
+  }
+  return {
+    content: [
+      {
+        type: 'tool_use',
+        name: 'classify_match',
+        input: { ...verdict, reason: 'test verdict' },
+      },
+    ],
+  }
+})
+
+mock.module('src/agent/sideQuery.js', () => ({
+  ...realSideQueryModule,
+  sideQuery: mockSideQuery,
+}))
+
+const { __setBashClassifierEnabledForTests } = await import(
+  'src/permissions/bashClassifier.js'
+)
+const { bashToolHasPermission } = await import(
+  'src/tools/BashTool/bashPermissions.js'
+)
+const {
+  makePermissionContext,
+  makeToolUseContext,
+  resetPermissionState,
+  stubMacroVersion,
+} = await import('src/tools/BashTool/__testutils__/permissionContext.js')
+type PermissionRules = import('src/tools/BashTool/__testutils__/permissionContext.js').PermissionRules
+
+beforeAll(() => {
+  stubMacroVersion()
+  __setBashClassifierEnabledForTests(true)
+})
+afterAll(() => {
+  __setBashClassifierEnabledForTests(undefined)
+  mock.module('src/agent/sideQuery.js', () => realSideQueryModule)
+})
+afterEach(() => {
+  verdicts = {}
+  mockSideQuery.mockClear()
+  resetPermissionState()
+})
+
+const MATCH = { matchedIndex: 0, confidence: 'high' } as const
+const NO_MATCH = { matchedIndex: null, confidence: 'high' } as const
+
+const DENY_PUSH = 'Bash(prompt: never push to a remote)'
+const ASK_PUSH = 'Bash(prompt: pushing to a remote)'
+
+function decide(command: string, rules: PermissionRules) {
+  return bashToolHasPermission(
+    { command },
+    makeToolUseContext(makePermissionContext(rules)),
+  )
+}
+
+function reasonOf(result: Awaited<ReturnType<typeof decide>>): string | undefined {
+  const reason = result.decisionReason
+  return reason?.type === 'other' ? reason.reason : undefined
+}
+
+describe('Bash prompt rules', () => {
+  test('a matched deny rule denies before any literal allow', async () => {
+    verdicts = { deny: MATCH }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      deny: [DENY_PUSH],
+    })
+    expect(result.behavior).toBe('deny')
+    expect(reasonOf(result)).toBe(
+      'Denied by Bash prompt rule: "never push to a remote"',
+    )
+  })
+
+  test('a matched ask rule asks before any literal allow', async () => {
+    verdicts = { ask: MATCH }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      ask: [ASK_PUSH],
+    })
+    expect(result.behavior).toBe('ask')
+    expect(reasonOf(result)).toBe(
+      'Required by Bash prompt rule: "pushing to a remote"',
+    )
+  })
+
+  test('a deny match wins over an ask match', async () => {
+    verdicts = { deny: MATCH, ask: MATCH }
+    const result = await decide('git push origin main', {
+      deny: [DENY_PUSH],
+      ask: [ASK_PUSH],
+    })
+    expect(result.behavior).toBe('deny')
+  })
+
+  test('a clean non-match falls through to the literal allow', async () => {
+    verdicts = { deny: NO_MATCH, ask: NO_MATCH }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      deny: [DENY_PUSH],
+      ask: [ASK_PUSH],
+    })
+    expect(result.behavior).toBe('allow')
+  })
+
+  test('only a high-confidence match decides', async () => {
+    verdicts = { deny: { matchedIndex: 0, confidence: 'medium' } }
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+      deny: [DENY_PUSH],
+    })
+    expect(result.behavior).toBe('allow')
+  })
+
+  test('no prompt rules, no classifier call', async () => {
+    const result = await decide('git push origin main', {
+      allow: ['Bash(git push:*)'],
+    })
+    expect(result.behavior).toBe('allow')
+    expect(mockSideQuery).not.toHaveBeenCalled()
+  })
+
+  test('an abort during the classifier call throws', async () => {
+    verdicts = { deny: NO_MATCH }
+    const context = makeToolUseContext(
+      makePermissionContext({ deny: [DENY_PUSH] }),
+    )
+    context.abortController.abort()
+    await expect(
+      bashToolHasPermission({ command: 'git push origin main' }, context),
+    ).rejects.toThrow()
+  })
+})
