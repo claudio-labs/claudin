@@ -7,6 +7,7 @@ import {
   addCronTask,
   type CronTask,
   DEFAULT_CRON_JITTER_CONFIG,
+  finalRunNotice,
   findMissedTasks,
   firstFireMs,
   getCronFilePath,
@@ -274,5 +275,21 @@ describe('firstFireMs and nextFireMs', () => {
     const job = { id: '00000000', cron: '0 0 31 2 *', createdAt: NOV_1_0905, recurring: true }
     expect(firstFireMs(job)).toBeNull()
     expect(nextFireMs(job, NOV_1_0905 + HOUR)).toBeNull()
+  })
+})
+
+describe('finalRunNotice', () => {
+  const job = { id: 'abcd1234', cron: '*/30 * * * *' }
+
+  test('names the job and the limit, and leaves re-creating it to the user', () => {
+    expect(finalRunNotice(job, DEFAULT_CRON_JITTER_CONFIG.recurringMaxAgeMs)).toBe(
+      'Recurring job abcd1234 (cron */30 * * * *) has had its last run, just now, and is deleted: a recurring job ends 7 days after it is created. Tell the user that it has ended, and that they can ask you to create it again. Do not create it again unless they ask.',
+    )
+  })
+
+  test('a host-set limit reads in days, or hours under a day', () => {
+    expect(finalRunNotice(job, 24 * HOUR)).toContain('ends 1 day after')
+    expect(finalRunNotice(job, 6 * HOUR)).toContain('ends 6 hours after')
+    expect(finalRunNotice(job, HOUR)).toContain('ends 1 hour after')
   })
 })

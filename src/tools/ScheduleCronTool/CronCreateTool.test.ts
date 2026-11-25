@@ -39,6 +39,12 @@ describe('CronCreateTool', () => {
     expect(prompt).toContain('use Monitor instead: it streams events as they happen')
   })
 
+  test('the prompt says the last fire of an expiring job carries a note', () => {
+    expect(buildCronCreatePrompt()).toContain(
+      'Recurring tasks auto-expire after 7 days — they fire one final time, with a note that it is their last run, then are deleted. Tell the user about this limit.',
+    )
+  })
+
   test('isEnabled() is true when cron is not disabled by env', () => {
     expect(CronCreateTool.isEnabled?.()).toBe(true)
   })
