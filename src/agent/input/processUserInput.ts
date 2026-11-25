@@ -173,13 +173,6 @@ export async function processUserInput({
     return result
   }
 
-  // The user's own message ends a PauseGoal pause: the goal's judge comes
-  // back before this turn runs. Scheduled prompts and another agent's text
-  // are not the user writing.
-  if (mode === 'prompt' && !isMeta && !skipInputDirectives) {
-    resumePausedGoal(context.setAppState, getSessionId())
-  }
-
   // Execute UserPromptSubmit hooks and handle blocking
   queryCheckpoint('query_hooks_start')
   const inputMessage = getContentText(input) || ''
@@ -268,6 +261,14 @@ export async function processUserInput({
     } else if (hookMessage) {
       result.messages.push(hookMessage)
     }
+  }
+
+  // The user's own message ends a PauseGoal pause: the goal's judge comes
+  // back before this turn runs. Scheduled prompts and another agent's text
+  // are not the user writing, and a prompt a hook blocked never reached the
+  // model.
+  if (mode === 'prompt' && !isMeta && !skipInputDirectives) {
+    resumePausedGoal(context.setAppState, getSessionId())
   }
   queryCheckpoint('query_hooks_end')
 
