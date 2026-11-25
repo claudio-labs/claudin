@@ -6,10 +6,13 @@ type CachedFileData = {
   content: string
   encoding: BufferEncoding
   mtime: number
+  ctime: number
+  size: number
+  inode: number
 }
 
 /**
- * A simple in-memory cache for file contents with automatic invalidation based on modification time.
+ * A simple in-memory cache for file contents with automatic invalidation based on file stats.
  * This eliminates redundant file reads in FileEditTool operations.
  */
 class FileReadCache {
@@ -22,7 +25,8 @@ class FileReadCache {
 
   /**
    * Reads a file with caching. Returns both content and encoding.
-   * Cache key includes file path and modification time for automatic invalidation.
+   * An entry is valid while mtime, ctime, size and inode all match: `cp -p`,
+   * `rsync -t`, `touch -r` and an atomic rename can each keep the mtime.
    */
   readFile(filePath: string): { content: string; encoding: BufferEncoding } {
     const fs = getFsImplementation()
@@ -38,7 +42,13 @@ class FileReadCache {
 
     const cachedData = this.cache.get(filePath)
 
-    if (cachedData && cachedData.mtime === stats.mtimeMs) {
+    if (
+      cachedData &&
+      cachedData.mtime === stats.mtimeMs &&
+      cachedData.ctime === stats.ctimeMs &&
+      cachedData.size === stats.size &&
+      cachedData.inode === stats.ino
+    ) {
       return { content: cachedData.content, encoding: cachedData.encoding }
     }
 
@@ -49,7 +59,14 @@ class FileReadCache {
 
     // Only cache entries within the size limit; large files are returned but not stored.
     if (stats.size <= this.maxEntryBytes) {
-      this.cache.set(filePath, { content, encoding, mtime: stats.mtimeMs })
+      this.cache.set(filePath, {
+        content,
+        encoding,
+        mtime: stats.mtimeMs,
+        ctime: stats.ctimeMs,
+        size: stats.size,
+        inode: stats.ino,
+      })
 
       if (this.cache.size > this.maxCacheSize) {
         const firstKey = this.cache.keys().next().value
