@@ -4,19 +4,23 @@ import { readFileSync } from 'fs'
 import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
   CORRECTIONS_SECTION,
+  CURL_FORM_STRING_ENV_ITEM,
   DELIVERING_WORK_SECTION,
   LEAN_TOKEN_BUDGET_SECTION,
   LEAN_TURN_DISCIPLINE_SECTION,
+  PRIVACY_SECTION,
   PRONOUNS_SECTION,
   RESPONSE_CHAINS_HARNESS_BULLET,
   SUBAGENT_NOTES_BULLETS,
   TOOL_BATCHING_HARNESS_BULLET,
+  UNTRUSTED_DOWNLOADS_ENV_ITEM,
   VERBOSITY_STEERING_SECTION,
   buildSubagentNotes,
   buildWorkContractSections,
   buildHarnessItems,
   buildAgentToolSection,
   buildLeanMultiHopItem,
+  computeSimpleEnvInfo,
   getHarnessSection,
   getSessionSpecificGuidanceSection,
   getSubagentBatchingNote,
@@ -242,6 +246,37 @@ describe('pronoun default', () => {
     // Visible thinking is user-visible text on the extended-thinking
     // providers; the rule is worthless if it stops at the final answer.
     expect(PRONOUNS_SECTION).toContain('including visible thinking')
+  })
+})
+
+describe('privacy and untrusted-input rules (Claude Code 2.1.332)', () => {
+  test('privacy wording matches snapshot', () => {
+    expect(PRIVACY_SECTION).toMatchSnapshot()
+  })
+
+  test('privacy covers every channel a detail can leak through', () => {
+    expect(PRIVACY_SECTION).toContain('in a header, URL, or payload')
+    expect(PRIVACY_SECTION).toContain('unless the user explicitly asks')
+    expect(PRIVACY_SECTION).toContain('use a generic client name or ask the user')
+  })
+
+  test('privacy follows the actions section, before the cache boundary', () => {
+    const source = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
+    expect(source).toContain('    getActionsSection(),\n    PRIVACY_SECTION,\n')
+  })
+
+  test('the env carries the downloads and curl bullets right after the OS line', async () => {
+    const lines = (await computeSimpleEnvInfo('claude-opus-5-5')).split('\n')
+    const os = lines.findIndex(line => line.startsWith(' - OS Version: '))
+    expect(os).toBeGreaterThan(0)
+    expect(lines[os + 1]).toBe(` - ${UNTRUSTED_DOWNLOADS_ENV_ITEM}`)
+    expect(lines[os + 2]).toBe(` - ${CURL_FORM_STRING_ENV_ITEM}`)
+  })
+
+  test('env bullets keep the wording Claude Code sends', () => {
+    expect(UNTRUSTED_DOWNLOADS_ENV_ITEM).toContain('Run any Python that reads them with `-I`.')
+    expect(UNTRUSTED_DOWNLOADS_ENV_ITEM).toContain('This does not apply to code the user asked you to build or run.')
+    expect(CURL_FORM_STRING_ENV_ITEM).toBe('In `curl`, send untrusted values with `--form-string`, not `-F`.')
   })
 })
 
