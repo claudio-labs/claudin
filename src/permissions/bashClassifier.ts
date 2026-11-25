@@ -42,6 +42,12 @@ export type ClassifierResult = {
   matchedDescription?: string
   confidence: 'high' | 'medium' | 'low'
   reason: string
+  /**
+   * No verdict was produced: a provider error, no tool_use block, a malformed
+   * answer or an index outside the list. Deny and ask callers must not read
+   * this as "no rule matched".
+   */
+  unavailable?: boolean
 }
 
 export type ClassifierBehavior = 'deny' | 'ask' | 'allow'
@@ -234,9 +240,10 @@ function buildBashClassifierUserPrompt(
  * are no descriptions to match against — both no-op cases avoid a wasted API
  * call.
  *
- * On API error: returns `{ matches: false, confidence: 'low' }`. We do not
- * fall back to "match" on error — that would silently auto-approve commands
- * the classifier did not actually evaluate.
+ * On API error or an unusable answer: returns `{ matches: false, unavailable:
+ * true }`. We do not fall back to "match" — that would silently auto-approve
+ * commands the classifier did not actually evaluate — and the deny/ask callers
+ * prompt on `unavailable` instead of falling through to a literal allow.
  */
 export async function classifyBashCommand(
   command: string,
@@ -288,6 +295,7 @@ export async function classifyBashCommand(
         matches: false,
         confidence: 'low',
         reason: 'classifier returned no tool_use block',
+        unavailable: true,
       }
     }
     const parsed = parseClassifierResponse(toolUseBlock, classifyMatchSchema())
@@ -296,17 +304,23 @@ export async function classifyBashCommand(
         matches: false,
         confidence: 'low',
         reason: 'classifier returned malformed response',
+        unavailable: true,
       }
     }
-    if (
-      parsed.matchedIndex === null ||
-      parsed.matchedIndex < 0 ||
-      parsed.matchedIndex >= descriptions.length
-    ) {
+    // null is the schema's "no match"; -1 is the one models reach for anyway.
+    if (parsed.matchedIndex === null || parsed.matchedIndex === -1) {
       return {
         matches: false,
         confidence: parsed.confidence,
         reason: parsed.reason,
+      }
+    }
+    if (parsed.matchedIndex < 0 || parsed.matchedIndex >= descriptions.length) {
+      return {
+        matches: false,
+        confidence: 'low',
+        reason: `classifier returned an out-of-range index (${parsed.matchedIndex})`,
+        unavailable: true,
       }
     }
     return {
@@ -324,6 +338,7 @@ export async function classifyBashCommand(
       matches: false,
       confidence: 'low',
       reason: `classifier error: ${errorMessage(err)}`,
+      unavailable: true,
     }
   }
 }

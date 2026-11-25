@@ -164,6 +164,11 @@ export async function bashToolHasPermission(
     return exactMatchResult
   }
 
+  // A prompt-rule ask — a confident ask match, or a deny/ask rule the
+  // classifier could not evaluate — waits until the literal deny checks below
+  // have run, so a literal deny still wins. It still beats any literal allow.
+  let deferredAsk: PermissionResult | null = null
+
   // Check Bash prompt deny and ask rules in parallel (both use Haiku).
   // Deny takes precedence over ask, and both take precedence over allow rules.
   // Skip when in auto mode - auto mode classifier handles all permission decisions
@@ -260,7 +265,7 @@ export async function bashToolHasPermission(
             ? suggestionForPrefix(commandPrefixResult.commandPrefix)
             : suggestionForExactCommand(input.command)
         }
-        return {
+        deferredAsk = {
           behavior: 'ask',
           message: createPermissionRequestMessage(BashTool.name),
           decisionReason: {
@@ -268,7 +273,9 @@ export async function bashToolHasPermission(
             reason: `Required by Bash prompt rule: "${askResult.matchedDescription}"`,
           },
           suggestions,
-          ...(feature('BASH_CLASSIFIER')
+          // Not while a deny rule went unevaluated: the allow classifier must
+          // not auto-approve past a deny nobody checked.
+          ...(feature('BASH_CLASSIFIER') && !denyResult?.unavailable
             ? {
                 pendingClassifierCheck: buildPendingClassifierCheck(
                   input.command,
@@ -276,6 +283,25 @@ export async function bashToolHasPermission(
                 ),
               }
             : {}),
+        }
+      }
+
+      // A rule the classifier could not evaluate (provider error, unusable
+      // answer) is not a rule that did not match: ask, with nothing attached
+      // that could auto-approve it.
+      if (
+        deferredAsk === null &&
+        (denyResult?.unavailable || askResult?.unavailable)
+      ) {
+        const decisionReason = {
+          type: 'other' as const,
+          reason: 'A Bash prompt rule could not be evaluated; approval required',
+        }
+        deferredAsk = {
+          behavior: 'ask',
+          message: createPermissionRequestMessage(BashTool.name, decisionReason),
+          decisionReason,
+          suggestions: suggestionForExactCommand(input.command),
         }
       }
     }
@@ -311,7 +337,8 @@ export async function bashToolHasPermission(
         safetyResult.behavior !== 'passthrough' &&
         safetyResult.behavior !== 'allow'
       ) {
-        // Attach pending classifier check - may auto-approve before user responds
+        // Attach pending classifier check - may auto-approve before user
+        // responds. Not while a prompt-rule ask is deferred.
         appState = context.getAppState()
         return {
           behavior: 'ask',
@@ -327,7 +354,7 @@ export async function bashToolHasPermission(
               safetyResult.message ??
               'Command contains patterns that require approval',
           },
-          ...(feature('BASH_CLASSIFIER')
+          ...(feature('BASH_CLASSIFIER') && deferredAsk === null
             ? {
                 pendingClassifierCheck: buildPendingClassifierCheck(
                   input.command,
@@ -358,11 +385,12 @@ export async function bashToolHasPermission(
 
     // When pipe segments return 'ask' (individual segments not allowed by rules),
     // attach pending classifier check - may auto-approve before user responds.
+    // Not while a prompt-rule ask is deferred.
     if (commandOperatorResult.behavior === 'ask') {
       appState = context.getAppState()
       return {
         ...commandOperatorResult,
-        ...(feature('BASH_CLASSIFIER')
+        ...(feature('BASH_CLASSIFIER') && deferredAsk === null
           ? {
               pendingClassifierCheck: buildPendingClassifierCheck(
                 input.command,
@@ -373,7 +401,11 @@ export async function bashToolHasPermission(
       }
     }
 
-    return commandOperatorResult
+    // An allow yields to a deferred prompt-rule ask, after the literal
+    // subcommand deny checks below have had their turn.
+    if (commandOperatorResult.behavior !== 'allow' || deferredAsk === null) {
+      return commandOperatorResult
+    }
   }
 
   // SECURITY: the misparsing gate — "can splitCommand be trusted on this
@@ -400,16 +432,18 @@ export async function bashToolHasPermission(
           remainderResult.isBashSecurityCheckForMisparsing)
       ) {
         // Allow if the exact command has an explicit allow permission — the user
-        // made a conscious choice to permit this specific command.
+        // made a conscious choice to permit this specific command. A deferred
+        // prompt-rule ask still outranks it.
         appState = context.getAppState()
         const exactMatchResult = bashToolCheckExactMatchPermission(
           input,
           appState.toolPermissionContext,
         )
-        if (exactMatchResult.behavior === 'allow') {
+        if (exactMatchResult.behavior === 'allow' && deferredAsk === null) {
           return exactMatchResult
         }
-        // Attach pending classifier check - may auto-approve before user responds
+        // Attach pending classifier check - may auto-approve before user
+        // responds. Not while a prompt-rule ask is deferred.
         const decisionReason: PermissionDecisionReason = {
           type: 'other' as const,
           reason: originalCommandSafetyResult.message,
@@ -422,7 +456,7 @@ export async function bashToolHasPermission(
           ),
           decisionReason,
           suggestions: [], // Don't suggest saving a potentially dangerous command
-          ...(feature('BASH_CLASSIFIER')
+          ...(feature('BASH_CLASSIFIER') && deferredAsk === null
             ? {
                 pendingClassifierCheck: buildPendingClassifierCheck(
                   input.command,
@@ -567,6 +601,12 @@ export async function bashToolHasPermission(
   )
   if (pathResult.behavior === 'deny') {
     return pathResult
+  }
+
+  // Every deny-producing check has run: the deferred prompt-rule ask now
+  // comes before the literal ask and allow handling below.
+  if (deferredAsk !== null) {
+    return deferredAsk
   }
 
   const askSubresult = subcommandPermissionDecisions.find(
