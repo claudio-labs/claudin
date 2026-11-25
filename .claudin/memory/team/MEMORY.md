@@ -15,7 +15,7 @@
 - [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
 - [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree
 - [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:
-- Codex: [CLI wire #307/#308](decisions/codex-backend-speaks-codex-cli-wire.md) replay+WS · [keep-alive capped 11-23](decisions/codex-keepalive-ping-capped.md) · [cross-session REJECTED 11-23](decisions/codex-cross-session-prefix-rejected.md) · [models per account 11-24](decisions/codex-model-list-per-account.md)
+- Codex: [CLI wire #307/#308](decisions/codex-backend-speaks-codex-cli-wire.md) · [keep-alive capped](decisions/codex-keepalive-ping-capped.md) · [cross-session REJECTED](decisions/codex-cross-session-prefix-rejected.md) · [models per account](decisions/codex-model-list-per-account.md)
 - Collapse: [Git (10-15)](decisions/git-tool-collapse.md) · [MCP calls, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
 - 10-15 cache round: [relief clips all, −22%](decisions/relief-clip-all.md) · [same-project prefix REJECTED, ≤0.2%](decisions/same-project-prefix-sharing-rejected.md)
 - [Only main owns background agents (10-15)](decisions/only-main-owns-background-agents.md) — a sub-agent's spawn runs inline
@@ -94,7 +94,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
-- Claude Code prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321 #347](claude-code-2.1.321-tool-diff.md)
+- CC prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321](claude-code-2.1.321-tool-diff.md) · [2.1.332](claude-code-2.1.332-tool-diff.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd

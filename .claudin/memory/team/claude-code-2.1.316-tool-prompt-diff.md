@@ -38,7 +38,8 @@ paragraph. Still 26 tools, env still in a `role: "system"` message.
   "User:".
 
 **Follow-ups, decided out of that PR:**
-- The untrusted-downloads env bullet — the user will revisit it.
+- The untrusted-downloads env bullet — shipped 2026-11-25 with the 2.1.332 port
+  ([[claude-code-2.1.332-tool-diff]]).
 - A/B with a placebo arm before adopting: Bash `run_in_background` "you'll be notified, don't
   poll" (the lean3 text says "Read its output file later"); EnterWorktree honoring CLAUDE.md or
   memory; CC's new intro line ("an agent working with the user toward their goals").
