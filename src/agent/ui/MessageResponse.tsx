@@ -6,23 +6,32 @@ import { Ratchet } from 'src/terminal/design-system/Ratchet.js';
 type Props = {
   children: React.ReactNode;
   height?: number;
+  /** Keep the ⎿ inside a tool result (ToolResultBody), for what the harness
+   *  adds around the result rather than the result itself: a timeout, a
+   *  command still running in the background, a hook. */
+  mark?: boolean;
 };
 export function MessageResponse(t0: Props) {
-  const $ = _c(8);
+  // Slots 8-9 were added by hand (rules/ink-tui.md §6): $[0] keys the gutter on
+  // `unmarked` and $[8] holds it, and $[9] keys the row on the gutter.
+  const $ = _c(10);
   const {
     children,
-    height
+    height,
+    mark
   } = t0;
   const isMessageResponse = useContext(MessageResponseContext);
+  const unmarked = useContext(ToolResultBodyContext) && !mark;
   if (isMessageResponse) {
     return children;
   }
   let t1;
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = <NoSelect fromLeftEdge={true} flexShrink={0}><Text dimColor={true}>{"  "}⎿  </Text></NoSelect>;
-    $[0] = t1;
+  if ($[0] !== unmarked) {
+    t1 = unmarked ? <NoSelect fromLeftEdge={true} flexShrink={0} width={4} /> : <NoSelect fromLeftEdge={true} flexShrink={0}><Text dimColor={true}>{"  "}⎿ </Text></NoSelect>;
+    $[0] = unmarked;
+    $[8] = t1;
   } else {
-    t1 = $[0];
+    t1 = $[8];
   }
   let t2;
   if ($[1] !== children) {
@@ -33,10 +42,11 @@ export function MessageResponse(t0: Props) {
     t2 = $[2];
   }
   let t3;
-  if ($[3] !== height || $[4] !== t2) {
+  if ($[3] !== height || $[4] !== t2 || $[9] !== t1) {
     t3 = <MessageResponseProvider><Box flexDirection="row" height={height} overflowY="hidden">{t1}{t2}</Box></MessageResponseProvider>;
     $[3] = height;
     $[4] = t2;
+    $[9] = t1;
     $[5] = t3;
   } else {
     t3 = $[5];
@@ -74,4 +84,16 @@ function MessageResponseProvider(t0: { children: React.ReactNode }) {
     t1 = $[1];
   }
   return t1;
+}
+
+// A tool's result sits in the same 4-column gutter with no ⎿: the mark is
+// kept for the secondary lines around it (MessageResponse's `mark`), the way
+// it marks the rules and memories the harness loaded and a running command.
+const ToolResultBodyContext = React.createContext(false);
+export function ToolResultBody({
+  children
+}: {
+  children: React.ReactNode;
+}): React.ReactNode {
+  return <ToolResultBodyContext.Provider value={true}>{children}</ToolResultBodyContext.Provider>;
 }

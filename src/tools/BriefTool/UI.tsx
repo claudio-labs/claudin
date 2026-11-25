@@ -55,7 +55,7 @@ export function renderToolResultMessage(output: Output, _progressMessages: Progr
   // Default view: dropTextInBriefTurns (Messages.tsx) hides the redundant
   // assistant text that would otherwise precede this — SendUserMessage is the
   // only text-like content in its turn. No gutter mark; read as plain text.
-  // userFacingName() returns '' so UserToolSuccessMessage drops its columns-5
+  // userFacingName() returns '' so UserToolSuccessMessage drops its columns-4
   // width constraint and AssistantToolUseMessage renders null (no tool chrome).
   // Empty minWidth={2} box mirrors AssistantTextMessage's ⏺ gutter spacing.
   return <Box flexDirection="row" marginTop={1}>

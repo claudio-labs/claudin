@@ -2,6 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import type { Tools } from 'src/tools/Tool.js';
+import { ToolResultBody } from 'src/agent/ui/MessageResponse.js';
 import type { NormalizedUserMessage, ProgressMessage } from 'src/shared/types/message.js';
 import { type buildMessageLookups, CANCEL_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE, REJECT_MESSAGE } from 'src/agent/messages/messages.js';
 import { UserToolCanceledMessage } from 'src/agent/ui/messages/UserToolResultMessage/UserToolCanceledMessage.js';
@@ -40,7 +41,7 @@ export function UserToolResultMessage(t0: Props) {
   if (typeof param.content === "string" && param.content.startsWith(CANCEL_MESSAGE)) {
     let t1;
     if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-      t1 = <UserToolCanceledMessage />;
+      t1 = <ToolResultBody><UserToolCanceledMessage /></ToolResultBody>;
       $[0] = t1;
     } else {
       t1 = $[0];
@@ -53,7 +54,7 @@ export function UserToolResultMessage(t0: Props) {
     };
     let t2;
     if ($[1] !== isTranscriptMode || $[2] !== lookups || $[3] !== progressMessagesForMessage || $[4] !== style || $[5] !== t1 || $[6] !== toolUse.tool || $[7] !== tools || $[8] !== verbose) {
-      t2 = <UserToolRejectMessage input={t1} progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} lookups={lookups} style={style} verbose={verbose} isTranscriptMode={isTranscriptMode} />;
+      t2 = <ToolResultBody><UserToolRejectMessage input={t1} progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} lookups={lookups} style={style} verbose={verbose} isTranscriptMode={isTranscriptMode} /></ToolResultBody>;
       $[1] = isTranscriptMode;
       $[2] = lookups;
       $[3] = progressMessagesForMessage;
@@ -71,7 +72,7 @@ export function UserToolResultMessage(t0: Props) {
   if (param.is_error) {
     let t1;
     if ($[10] !== isTranscriptMode || $[11] !== param || $[12] !== progressMessagesForMessage || $[13] !== toolUse.tool || $[14] !== tools || $[15] !== verbose) {
-      t1 = <UserToolErrorMessage progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} param={param} verbose={verbose} isTranscriptMode={isTranscriptMode} />;
+      t1 = <ToolResultBody><UserToolErrorMessage progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} param={param} verbose={verbose} isTranscriptMode={isTranscriptMode} /></ToolResultBody>;
       $[10] = isTranscriptMode;
       $[11] = param;
       $[12] = progressMessagesForMessage;

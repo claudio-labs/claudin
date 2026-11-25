@@ -1,0 +1,123 @@
+{
+  "test": [
+    "src/agent/ui/MessageResponse.marks.test.tsx",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/tools/ContainerTool/UI.test.tsx",
+    "src/tools/BashTool/BashToolResultMessage.test.tsx",
+    "src/__tests__/toolResultGutter.test.ts"
+  ],
+  "source": "src/agent/ui/MessageResponse.tsx",
+  "comment": "Inside a tool row the ⎿ marks only the secondary lines around a result (a shell timeout, a command running in the background, a hook); the result itself keeps the 4-column gutter with no mark.",
+  "probes": [
+    {
+      "name": "a tool result body drops the ⎿",
+      "find": "  const unmarked = useContext(ToolResultBodyContext) && !mark;",
+      "replace": "  const unmarked = false;"
+    },
+    {
+      "name": "mark keeps the ⎿ inside a result",
+      "find": "  const unmarked = useContext(ToolResultBodyContext) && !mark;",
+      "replace": "  const unmarked = useContext(ToolResultBodyContext);"
+    },
+    {
+      "name": "the unmarked gutter keeps four columns",
+      "find": "<NoSelect fromLeftEdge={true} flexShrink={0} width={4} />",
+      "replace": "<NoSelect fromLeftEdge={true} flexShrink={0} />"
+    },
+    {
+      "name": "a success result is a result body",
+      "source": "src/agent/ui/messages/UserToolResultMessage/UserToolSuccessMessage.tsx",
+      "find": "<ToolResultBody>{renderedMessage}</ToolResultBody>",
+      "replace": "{renderedMessage}"
+    },
+    {
+      "name": "an interrupted result is a result body",
+      "source": "src/agent/ui/messages/UserToolResultMessage/UserToolResultMessage.tsx",
+      "find": "t1 = <ToolResultBody><UserToolCanceledMessage /></ToolResultBody>;",
+      "replace": "t1 = <UserToolCanceledMessage />;"
+    },
+    {
+      "name": "a result in the ctrl+o detail is a result body",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "<Box><ToolResultBody>{tool.renderToolResultMessage?.(toolResult, [], {\n            verbose: true,\n            tools,\n            theme\n          })}</ToolResultBody></Box>",
+      "replace": "<Box>{tool.renderToolResultMessage?.(toolResult, [], {\n            verbose: true,\n            tools,\n            theme\n          })}</Box>"
+    },
+    {
+      "name": "a hook line keeps its ⎿",
+      "source": "src/agent/ui/messages/HookProgressMessage.tsx",
+      "find": "        t6 = <MessageResponse mark={true}><Box flexDirection=\"row\">{t2}{t3}{t5}</Box></MessageResponse>;",
+      "replace": "        t6 = <MessageResponse><Box flexDirection=\"row\">{t2}{t3}{t5}</Box></MessageResponse>;"
+    },
+    {
+      "name": "the Bash timeout line keeps its ⎿",
+      "source": "src/tools/BashTool/BashToolResultMessage.tsx",
+      "find": "<MessageResponse mark={true}><ShellTimeDisplay timeoutMs={timeoutMs} /></MessageResponse>",
+      "replace": "<MessageResponse><ShellTimeDisplay timeoutMs={timeoutMs} /></MessageResponse>"
+    },
+    {
+      "name": "a Bash command in the background keeps its ⎿",
+      "source": "src/tools/BashTool/BashToolResultMessage.tsx",
+      "find": "<MessageResponse height={1} mark={!!backgroundTaskId}>",
+      "replace": "<MessageResponse height={1}>"
+    },
+    {
+      "name": "a finished Bash command with no output has no ⎿",
+      "source": "src/tools/BashTool/BashToolResultMessage.tsx",
+      "find": "<MessageResponse height={1} mark={!!backgroundTaskId}>",
+      "replace": "<MessageResponse height={1} mark={true}>"
+    },
+    {
+      "name": "the ctrl+b hint lines up under the Running line",
+      "source": "src/tools/BashTool/UI.tsx",
+      "find": "<Box paddingLeft={4}>",
+      "replace": "<Box paddingLeft={5}>"
+    },
+    {
+      "name": "a Container diagnosis has no ⎿ of its own",
+      "source": "src/tools/ContainerTool/UI.tsx",
+      "find": "            {'  '}\n            {diagnosis.summary}",
+      "replace": "            ⎿ {diagnosis.summary}"
+    },
+    {
+      "name": "a Container stall line has no ⎿ of its own",
+      "source": "src/tools/ContainerTool/UI.tsx",
+      "find": "{`  stopped after ${",
+      "replace": "{`⎿ stopped after ${"
+    },
+    {
+      "name": "a mounted line repaints when only its gutter changes",
+      "find": "  if ($[3] !== height || $[4] !== t2 || $[9] !== t1) {",
+      "replace": "  if ($[3] !== height || $[4] !== t2) {"
+    },
+    {
+      "name": "an errored result is a result body",
+      "source": "src/agent/ui/messages/UserToolResultMessage/UserToolResultMessage.tsx",
+      "find": "t1 = <ToolResultBody><UserToolErrorMessage progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} param={param} verbose={verbose} isTranscriptMode={isTranscriptMode} /></ToolResultBody>;",
+      "replace": "t1 = <UserToolErrorMessage progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} param={param} verbose={verbose} isTranscriptMode={isTranscriptMode} />;"
+    },
+    {
+      "name": "a rejected result is a result body",
+      "source": "src/agent/ui/messages/UserToolResultMessage/UserToolResultMessage.tsx",
+      "find": "t2 = <ToolResultBody><UserToolRejectMessage input={t1} progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} lookups={lookups} style={style} verbose={verbose} isTranscriptMode={isTranscriptMode} /></ToolResultBody>;",
+      "replace": "t2 = <UserToolRejectMessage input={t1} progressMessagesForMessage={progressMessagesForMessage} tool={toolUse.tool} tools={tools} lookups={lookups} style={style} verbose={verbose} isTranscriptMode={isTranscriptMode} />;"
+    },
+    {
+      "name": "a PowerShell timeout keeps its ⎿",
+      "source": "src/tools/PowerShellTool/UI.tsx",
+      "find": "{timeoutMs ? <MessageResponse mark>",
+      "replace": "{timeoutMs ? <MessageResponse>"
+    },
+    {
+      "name": "a PowerShell background command keeps its ⎿",
+      "source": "src/tools/PowerShellTool/UI.tsx",
+      "find": "<MessageResponse height={1} mark={!!backgroundTaskId}>",
+      "replace": "<MessageResponse height={1}>"
+    },
+    {
+      "name": "the permission debug lines keep a one-column gutter",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "t2 = <Text dimColor={true}>{\"  \"}⎿{\" \"}</Text>;",
+      "replace": "t2 = <Text dimColor={true}>{\"  \"}⎿{\"  \"}</Text>;"
+    }
+  ]
+}

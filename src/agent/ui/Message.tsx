@@ -419,7 +419,7 @@ function UserMessage(t0: UserMessageProps) {
       }
     case "tool_result":
       {
-        const t1 = columns - 5;
+        const t1 = columns - 4;
         let t2;
         if ($[10] !== isTranscriptMode || $[11] !== lookups || $[12] !== message || $[13] !== param || $[14] !== progressMessagesForMessage || $[15] !== style || $[16] !== t1 || $[17] !== tools || $[18] !== verbose) {
           t2 = <UserToolResultMessage param={param} message={message} lookups={lookups} progressMessagesForMessage={progressMessagesForMessage} style={style} tools={tools} verbose={verbose} width={t1} isTranscriptMode={isTranscriptMode} />;

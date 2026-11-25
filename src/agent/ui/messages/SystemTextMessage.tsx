@@ -377,7 +377,7 @@ function StopHookSummaryMessage(t0: StopHookSummaryProps) {
   }
   let t12;
   if ($[31] !== preventedContinuation || $[32] !== stopReason) {
-    t12 = preventedContinuation && stopReason && <Text><Text dimColor={true}>⎿  </Text>{stopReason}</Text>;
+    t12 = preventedContinuation && stopReason && <Text><Text dimColor={true}>⎿ </Text>{stopReason}</Text>;
     $[31] = preventedContinuation;
     $[32] = stopReason;
     $[33] = t12;
@@ -386,7 +386,7 @@ function StopHookSummaryMessage(t0: StopHookSummaryProps) {
   }
   let t13;
   if ($[34] !== hookErrors || $[35] !== message.hookLabel) {
-    t13 = hookErrors.length > 0 && hookErrors.map((err: string, idx_1: number) => <Text key={idx_1}><Text dimColor={true}>⎿  </Text>{message.hookLabel ?? "Stop"} hook error: {err}</Text>);
+    t13 = hookErrors.length > 0 && hookErrors.map((err: string, idx_1: number) => <Text key={idx_1}><Text dimColor={true}>⎿ </Text>{message.hookLabel ?? "Stop"} hook error: {err}</Text>);
     $[34] = hookErrors;
     $[35] = message.hookLabel;
     $[36] = t13;
@@ -419,7 +419,7 @@ function StopHookSummaryMessage(t0: StopHookSummaryProps) {
 }
 function _temp3(info_0: StopHookInfo, idx_0: number) {
   const durationStr_0 = false && info_0.durationMs !== undefined ? ` (${formatSecondsShort(info_0.durationMs ?? 0)})` : "";
-  return <Text key={`cmd-${idx_0}`} dimColor={true}>⎿  {info_0.command === "prompt" ? `prompt: ${info_0.promptText || ""}` : info_0.command}{durationStr_0}</Text>;
+  return <Text key={`cmd-${idx_0}`} dimColor={true}>⎿ {info_0.command === "prompt" ? `prompt: ${info_0.promptText || ""}` : info_0.command}{durationStr_0}</Text>;
 }
 function _temp2(info: StopHookInfo, idx: number) {
   const durationStr = false && info.durationMs !== undefined ? ` (${formatSecondsShort(info.durationMs ?? 0)})` : "";

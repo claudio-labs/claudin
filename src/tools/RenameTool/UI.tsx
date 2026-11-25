@@ -32,7 +32,7 @@ function FileDiff({
   return (
     <Box flexDirection="column">
       <Box flexDirection="row">
-        <Text dimColor>{'⎿  '}</Text>
+        <Box width={2} flexShrink={0} />
         <Text dimColor>
           <FilePathLink filePath={file.absPath}>
             {getDisplayPath(file.absPath)}

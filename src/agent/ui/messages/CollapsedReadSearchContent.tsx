@@ -20,7 +20,11 @@ import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/Bas
 import { McpGroupElapsedTime, mcpBatchSpan, type McpCallTiming } from 'src/tools/MCPTool/McpElapsedTime.js';
 import { renderMcpCallLine } from 'src/tools/MCPTool/UI.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
+import { ToolResultBody } from 'src/agent/ui/MessageResponse.js';
+import { ToolStatusGlyph, ToolStatusIcon, toolIconStatus, type ToolIconStatus } from 'src/agent/ui/ToolStatusIcon.js';
 import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
+import { type CollapsedPartKind, getCollapsedPartIcons, getToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js';
+import { useNerdFontGlyphs } from 'src/terminal/terminalFont.js';
 import { MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 
@@ -65,7 +69,9 @@ type VerboseToolUseProps = {
 
 /** Render a single tool use in verbose mode */
 function VerboseToolUse(t0: VerboseToolUseProps) {
-  const $ = _c(24);
+  // Slots 24-25 were added by hand (rules/ink-tui.md §6): the loader's dep on
+  // the Nerd Font tool icon, and the row's on useNerdFontGlyphs().
+  const $ = _c(26);
   const {
     content,
     tools,
@@ -75,9 +81,10 @@ function VerboseToolUse(t0: VerboseToolUseProps) {
     theme
   } = t0;
   const bg = useSelectedMessageBg();
+  const nerdFont = useNerdFontGlyphs();
   let t1;
   let t2;
-  if ($[0] !== bg || $[1] !== content.id || $[2] !== content.input || $[3] !== content.name || $[4] !== inProgressToolUseIDs || $[5] !== lookups || $[6] !== shouldAnimate || $[7] !== theme || $[8] !== tools) {
+  if ($[0] !== bg || $[1] !== content.id || $[2] !== content.input || $[3] !== content.name || $[4] !== inProgressToolUseIDs || $[5] !== lookups || $[6] !== shouldAnimate || $[7] !== theme || $[8] !== tools || $[25] !== nerdFont) {
     t2 = Symbol.for("react.early_return_sentinel");
     bb0: {
       const tool = findToolByName(tools, content.name) ?? findToolByName(getReplPrimitiveTools(), content.name);
@@ -131,22 +138,31 @@ function VerboseToolUse(t0: VerboseToolUseProps) {
       }) : null;
       const t6 = shouldAnimate && isInProgress;
       const t7 = !isResolved;
+      // The same Nerd Font icons as a standalone tool row (AssistantToolUseMessage),
+      // since most Read/Grep/Edit/Write rows are only ever seen here, under ctrl+o.
+      // The tool icon takes the loader's dot and its status.
+      const rowIcons = getToolRowIcons(tool, input, nerdFont);
       let t8;
-      if ($[20] !== isError || $[21] !== t6 || $[22] !== t7) {
-        t8 = <ToolUseLoader shouldAnimate={t6} isUnresolved={t7} isError={isError} />;
+      if ($[20] !== isError || $[21] !== t6 || $[22] !== t7 || $[24] !== rowIcons.toolIcon) {
+        t8 = rowIcons.toolIcon ? <ToolStatusIcon icon={rowIcons.toolIcon} status={toolIconStatus({
+          isError,
+          isUnresolved: t7,
+          shouldAnimate: t6
+        })} /> : <ToolUseLoader shouldAnimate={t6} isUnresolved={t7} isError={isError} />;
         $[20] = isError;
         $[21] = t6;
         $[22] = t7;
+        $[24] = rowIcons.toolIcon;
         $[23] = t8;
       } else {
         t8 = $[23];
       }
-      const header = tool.mcpInfo && input ? renderMcpCallLine(tool.mcpInfo, input, isResolved) : <Text><Text bold={true}>{userFacingName}</Text>{toolUseMessage && <Text>({toolUseMessage})</Text>}</Text>;
-      t1 = <Box key={content.id} flexDirection="column" marginTop={1} backgroundColor={bg}><Box flexDirection="row">{t8}{header}{input && tool.renderToolUseTag?.(input)}</Box>{isResolved && !isError && toolResult !== undefined && <Box>{tool.renderToolResultMessage?.(toolResult, [], {
+      const header = tool.mcpInfo && input ? renderMcpCallLine(tool.mcpInfo, input, isResolved) : <Text><Text bold={true}>{userFacingName}</Text>{toolUseMessage && <Text>({rowIcons.fileIcon && <Text color={rowIcons.fileIcon.color}>{rowIcons.fileIcon.glyph} </Text>}{toolUseMessage})</Text>}</Text>;
+      t1 = <Box key={content.id} flexDirection="column" marginTop={1} backgroundColor={bg}><Box flexDirection="row">{t8}{header}{input && tool.renderToolUseTag?.(input)}</Box>{isResolved && !isError && toolResult !== undefined && <Box><ToolResultBody>{tool.renderToolResultMessage?.(toolResult, [], {
             verbose: true,
             tools,
             theme
-          })}</Box>}</Box>;
+          })}</ToolResultBody></Box>}</Box>;
     }
     $[0] = bg;
     $[1] = content.id;
@@ -157,6 +173,7 @@ function VerboseToolUse(t0: VerboseToolUseProps) {
     $[6] = shouldAnimate;
     $[7] = theme;
     $[8] = tools;
+    $[25] = nerdFont;
     $[9] = t1;
     $[10] = t2;
   } else {
@@ -186,6 +203,7 @@ export function CollapsedReadSearchContent({
     messages: groupMessages
   } = message;
   const [theme] = useTheme();
+  const nerdFont = useNerdFontGlyphs();
   const toolUseIds = getToolUseIdsFromCollapsedGroup(message);
   const anyError = toolUseIds.some(id => lookups.erroredToolUseIDs.has(id));
   const memoryOps = message.memoryOps;
@@ -304,7 +322,7 @@ export function CollapsedReadSearchContent({
       })}
         {message.hookInfos && message.hookInfos.length > 0 && <>
             <Text dimColor>
-              {'  ⎿  '}Ran {message.hookCount} PreToolUse{' '}
+              {'  ⎿ '}Ran {message.hookCount} PreToolUse{' '}
               {message.hookCount === 1 ? 'hook' : 'hooks'} (
               {formatSecondsShort(message.hookTotalMs ?? 0)})
             </Text>
@@ -375,12 +393,21 @@ export function CollapsedReadSearchContent({
   // before memory so the line reads "Ran 3 shell commands, recalled 1 memory".
   const nonMemParts: React.ReactNode[] = [];
 
+  // On a Nerd Font every part leads with its action's icon and the line drops
+  // its leading dot column. The icons carry the dot's status: they fade while
+  // the group runs, like a running tool row's, and go red with an error.
+  const partIcons = getCollapsedPartIcons(nerdFont);
+  const partStatus: ToolIconStatus = isActiveGroup ? anyError ? 'error' : 'running' : 'done';
+  function partIcon(kind: CollapsedPartKind): React.ReactNode {
+    return partIcons && <><ToolStatusGlyph icon={partIcons[kind]} status={partStatus} />{' '}</>;
+  }
+
   // Git operations lead the line — they're the load-bearing outcome.
-  function pushPart(key: string, verb: string, body: React.ReactNode): void {
+  function pushPart(kind: CollapsedPartKind, key: string, verb: string, body: React.ReactNode): void {
     const isFirst = nonMemParts.length === 0;
     if (!isFirst) nonMemParts.push(<Text key={`comma-${key}`}>, </Text>);
     nonMemParts.push(<Text key={key}>
-        {isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}
+        {partIcon(kind)}{isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}
       </Text>);
   }
   if (isFullscreenEnvEnabled() && message.commits?.length) {
@@ -392,13 +419,13 @@ export function CollapsedReadSearchContent({
     for (const kind of ['committed', 'amended', 'cherry-picked'] as const) {
       const shas = message.commits.filter(c => c.kind === kind).map(c_0 => c_0.sha);
       if (shas.length) {
-        pushPart(kind, byKind[kind], <Text bold>{shas.join(', ')}</Text>);
+        pushPart('commit', kind, byKind[kind], <Text bold>{shas.join(', ')}</Text>);
       }
     }
   }
   if (isFullscreenEnvEnabled() && message.pushes?.length) {
     const branches = uniq(message.pushes.map(p => p.branch));
-    pushPart('push', 'pushed to', <Text bold>{branches.join(', ')}</Text>);
+    pushPart('push', 'push', 'pushed to', <Text bold>{branches.join(', ')}</Text>);
   }
   if (isFullscreenEnvEnabled() && message.branches?.length) {
     const byAction = {
@@ -406,7 +433,7 @@ export function CollapsedReadSearchContent({
       rebased: 'rebased onto'
     };
     for (const b of message.branches) {
-      pushPart(`br-${b.action}-${b.ref}`, byAction[b.action], <Text bold>{b.ref}</Text>);
+      pushPart('branch', `br-${b.action}-${b.ref}`, byAction[b.action], <Text bold>{b.ref}</Text>);
     }
   }
   if (isFullscreenEnvEnabled() && message.prs?.length) {
@@ -419,7 +446,7 @@ export function CollapsedReadSearchContent({
       ready: 'marked ready'
     };
     for (const pr of message.prs) {
-      pushPart(`pr-${pr.action}-${pr.number}`, verbs[pr.action], pr.url ? <PrBadge number={pr.number} url={pr.url} bold /> : <Text bold>PR #{pr.number}</Text>);
+      pushPart('pr', `pr-${pr.action}-${pr.number}`, verbs[pr.action], pr.url ? <PrBadge number={pr.number} url={pr.url} bold /> : <Text bold>PR #{pr.number}</Text>);
     }
   }
   // Writes come next: like the git ops above, they're the outcome of the group,
@@ -428,10 +455,10 @@ export function CollapsedReadSearchContent({
   // own words, so an Edit reads as "Updated" and a Rename as "Renamed". 'R' (a
   // file that changed path) and 'S' (a symbol renamed in place) share that last
   // row: both are a rename, and the ⎿ rows are what tell them apart.
-  const writeVerbs = [['A', writeCounts.A, isActiveGroup ? 'creating' : 'created'], ['M', writeCounts.M, isActiveGroup ? 'updating' : 'updated'], ['D', writeCounts.D, isActiveGroup ? 'deleting' : 'deleted'], ['R', writeCounts.R + writeCounts.S, isActiveGroup ? 'renaming' : 'renamed']] as const;
-  for (const [kind, count, verb] of writeVerbs) {
+  const writeVerbs = [['A', 'create', writeCounts.A, isActiveGroup ? 'creating' : 'created'], ['M', 'update', writeCounts.M, isActiveGroup ? 'updating' : 'updated'], ['D', 'delete', writeCounts.D, isActiveGroup ? 'deleting' : 'deleted'], ['R', 'rename', writeCounts.R + writeCounts.S, isActiveGroup ? 'renaming' : 'renamed']] as const;
+  for (const [kind, part, count, verb] of writeVerbs) {
     if (count === 0) continue;
-    pushPart(`write-${kind}`, verb, <>
+    pushPart(part, `write-${kind}`, verb, <>
           <Text bold>{count}</Text> {count === 1 ? 'file' : 'files'}
         </>);
   }
@@ -442,7 +469,7 @@ export function CollapsedReadSearchContent({
       nonMemParts.push(<Text key="comma-s">, </Text>);
     }
     nonMemParts.push(<Text key="search">
-        {searchVerb} <Text bold>{searchCount}</Text>{' '}
+        {partIcon('search')}{searchVerb} <Text bold>{searchCount}</Text>{' '}
         {searchCount === 1 ? 'pattern' : 'patterns'}
       </Text>);
   }
@@ -453,7 +480,7 @@ export function CollapsedReadSearchContent({
       nonMemParts.push(<Text key="comma-r">, </Text>);
     }
     nonMemParts.push(<Text key="read">
-        {readVerb} <Text bold>{readCount}</Text>{' '}
+        {partIcon('read')}{readVerb} <Text bold>{readCount}</Text>{' '}
         {readCount === 1 ? 'file' : 'files'}
       </Text>);
   }
@@ -464,7 +491,7 @@ export function CollapsedReadSearchContent({
       nonMemParts.push(<Text key="comma-l">, </Text>);
     }
     nonMemParts.push(<Text key="list">
-        {listVerb} <Text bold>{listCount}</Text>{' '}
+        {partIcon('list')}{listVerb} <Text bold>{listCount}</Text>{' '}
         {listCount === 1 ? 'directory' : 'directories'}
       </Text>);
   }
@@ -474,7 +501,7 @@ export function CollapsedReadSearchContent({
       nonMemParts.push(<Text key="comma-repl">, </Text>);
     }
     nonMemParts.push(<Text key="repl">
-        {replVerb} <Text bold>{replCount}</Text>{' '}
+        {partIcon('repl')}{replVerb} <Text bold>{replCount}</Text>{' '}
         {replCount === 1 ? 'time' : 'times'}
       </Text>);
   }
@@ -488,7 +515,7 @@ export function CollapsedReadSearchContent({
     // The clock sits inside this part, not at the end of the line, so it
     // can't be read as the shell commands' or the memories' time.
     nonMemParts.push(<Text key="mcp">
-        {verb_0} {serverLabel}
+        {partIcon('mcp')}{verb_0} {serverLabel}
         {mcpCallCount > 1 && <>
             {' '}
             <Text bold>{mcpCallCount}</Text> times
@@ -503,7 +530,7 @@ export function CollapsedReadSearchContent({
       nonMemParts.push(<Text key="comma-bash">, </Text>);
     }
     nonMemParts.push(<Text key="bash">
-        {verb_1} <Text bold>{bashCount}</Text> shell{' '}
+        {partIcon('bash')}{verb_1} <Text bold>{bashCount}</Text> shell{' '}
         {bashCount === 1 ? 'command' : 'commands'}
       </Text>);
   }
@@ -519,7 +546,7 @@ export function CollapsedReadSearchContent({
     const verb = isActiveGroup ? active : done;
     if (!isFirst) memParts.push(<Text key={`comma-${key}`}>, </Text>);
     memParts.push(<Text key={key}>
-        {isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}
+        {partIcon('memory')}{isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}
       </Text>);
   }
   for (const scope of MEMORY_SCOPES) {
@@ -543,7 +570,7 @@ export function CollapsedReadSearchContent({
   const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0;
   return <Box flexDirection="column" marginTop={hasBadgeParts ? 1 : 0} backgroundColor={bg}>
       {hasBadgeParts && <Box flexDirection="row">
-        {isActiveGroup ? <ToolUseLoader shouldAnimate isUnresolved isError={anyError} /> : <Box minWidth={2} />}
+        {partIcons ? null : isActiveGroup ? <ToolUseLoader shouldAnimate isUnresolved isError={anyError} /> : <Box minWidth={2} />}
         <Text dimColor={!isActiveGroup}>
           {nonMemParts}
           {memParts}
@@ -564,19 +591,19 @@ export function CollapsedReadSearchContent({
         </Text>
       </Box>}
       {recalledCounts !== undefined && <Text dimColor>
-          {'  ⎿  '}Loaded <Text bold>{recalledCounts}</Text>
+          {'  ⎿ '}Loaded <Text bold>{recalledCounts}</Text>
           {!hasBadgeParts && <>
               {' '}
               <CtrlOToExpand />
             </>}
         </Text>}
       {isActiveGroup && displayedHint !== undefined &&
-    // Row layout: 5-wide gutter for ⎿, then a flex column for the text.
+    // Row layout: 4-wide gutter for ⎿, then a flex column for the text.
     // Ink's wrap stays inside the right column so continuation lines
     // indent under ⎿. MAX_HINT_CHARS in commandAsHint caps total at ~5 lines.
     <Box flexDirection="row">
-          <Box width={5} flexShrink={0}>
-            <Text dimColor>{'  ⎿  '}</Text>
+          <Box width={4} flexShrink={0}>
+            <Text dimColor>{'  ⎿ '}</Text>
           </Box>
           <Box flexDirection="column" flexGrow={1}>
             {displayedHint.split('\n').map((line, i, arr) => <Text key={`hint-${i}`} dimColor>
@@ -587,8 +614,8 @@ export function CollapsedReadSearchContent({
         </Box>}
       {/* The latest written file, only while the group runs — a finished group is one line. */}
       {isActiveGroup && displayedWrite !== undefined && <Box flexDirection="row">
-          <Box width={5} flexShrink={0}>
-            <Text dimColor>{'  ⎿  '}</Text>
+          <Box width={4} flexShrink={0}>
+            <Text dimColor>{'  ⎿ '}</Text>
           </Box>
           <Box flexDirection="column" flexGrow={1}>
             {/* One Text, not two: siblings here are columns that wrap
@@ -606,7 +633,7 @@ export function CollapsedReadSearchContent({
           </Box>
         </Box>}
       {message.hookTotalMs !== undefined && message.hookTotalMs > 0 && <Text dimColor>
-          {'  ⎿  '}Ran {message.hookCount} PreToolUse{' '}
+          {'  ⎿ '}Ran {message.hookCount} PreToolUse{' '}
           {message.hookCount === 1 ? 'hook' : 'hooks'} (
           {formatSecondsShort(message.hookTotalMs)})
         </Text>}

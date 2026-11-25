@@ -7,7 +7,7 @@ import { filterToolProgressMessages, type Tool, type Tools } from 'src/tools/Too
 import type { NormalizedUserMessage, ProgressMessage } from 'src/shared/types/message.js';
 import { deleteClassifierApproval, getClassifierApproval } from 'src/permissions/classifierApprovals.js';
 import { extractTag, type buildMessageLookups } from 'src/agent/messages/messages.js';
-import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { MessageResponse, ToolResultBody } from 'src/agent/ui/MessageResponse.js';
 import { HookProgressMessage } from 'src/agent/ui/messages/HookProgressMessage.js';
 type Props = {
   message: NormalizedUserMessage;
@@ -112,7 +112,7 @@ export function UserToolSuccessMessage({
   const rendersAsAssistantText = tool.userFacingName(undefined) === '';
   return <Box flexDirection="column">
       <Box flexDirection="column" width={rendersAsAssistantText ? undefined : width}>
-        {renderedMessage}
+        <ToolResultBody>{renderedMessage}</ToolResultBody>
         {feature('BASH_CLASSIFIER') ? classifierRule && <MessageResponse height={1}>
                 <Text dimColor>
                   <Text color="success">{figures.tick}</Text>
