@@ -50,4 +50,16 @@ describe('unwrapPastedContent', () => {
   test('keeps the text around the block', () => {
     expect(unwrapPastedContent(`a ${PASTED} b`)).toBe('a the pasted log b')
   })
+
+  // Stored text gets trimmed (the queue, the /rewind list) and flattened
+  // (titles turn newlines into spaces); the block must unwrap either way.
+  test('a block whose trailing newline was trimmed', () => {
+    expect(unwrapPastedContent(`see ${PASTED}`.trim())).toBe('see the pasted log')
+    expect(stripDisplayTags(`see ${PASTED}`.trim())).toBe('see the pasted log')
+  })
+
+  test('a block whose newlines were flattened to spaces', () => {
+    const flat = `fix ${PASTED} now`.replace(/\n/g, ' ')
+    expect(unwrapPastedContent(flat)).toBe('fix the pasted log now')
+  })
 })

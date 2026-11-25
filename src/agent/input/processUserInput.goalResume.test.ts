@@ -4,7 +4,7 @@ import { expect, test } from 'bun:test'
 
 import { pauseActiveGoal, setActiveGoal } from 'src/agent/goal/goal.js'
 import { processUserInput, type ProcessUserInputContext } from 'src/agent/input/processUserInput.js'
-import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { clearRegisteredHooks, getSessionId, registerHookCallbacks } from 'src/platform/bootstrap/state.js'
 import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { isStopConditionJudge } from 'src/platform/lifecycleHooks/stopConditionJudge.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
@@ -63,4 +63,28 @@ test('a scheduled prompt or another agent writing does not resume it', async () 
   })
   expect(s.paused()?.reason).toBe('which suite?')
   expect(s.judges()).toHaveLength(0)
+})
+
+// A UserPromptSubmit hook that blocks the prompt means the model never got
+// the message, so the user has not answered yet.
+test('a prompt a UserPromptSubmit hook blocks does not resume it', async () => {
+  const s = pausedSession()
+  registerHookCallbacks({
+    UserPromptSubmit: [
+      {
+        matcher: '',
+        hooks: [{ type: 'command', command: 'echo "not now" >&2; exit 2' }],
+        pluginRoot: '/tmp',
+        pluginName: 'block-probe',
+      },
+    ] as never,
+  })
+  try {
+    const result = await processUserInput({ input: 'the unit suite', mode: 'prompt', setToolJSX: () => {}, context: s.context })
+    expect(result.shouldQuery).toBe(false)
+    expect(s.paused()?.reason).toBe('which suite?')
+    expect(s.judges()).toHaveLength(0)
+  } finally {
+    clearRegisteredHooks()
+  }
 })

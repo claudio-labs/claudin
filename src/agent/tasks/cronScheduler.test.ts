@@ -111,4 +111,15 @@ describe('cronScheduler aged-out recurring task', () => {
     const task = { id: 'a9ed0002', cron: '* * * * *', prompt: 'check the deploy', createdAt: Date.now() - 2 * HOUR, recurring: true }
     expect((await fireOnce(task)).fired).toEqual(['check the deploy'])
   }, 15_000)
+
+  // `/loop 1h /babysit-prs` stores the bare command: its last fire must still
+  // run it, so the notice goes out as the next message instead of inside it.
+  test('a slash-command job still runs as its command on its last fire, the notice after it', async () => {
+    const DAY = 24 * HOUR
+    const task = { id: 'a9ed0003', cron: '* * * * *', prompt: '/babysit-prs', createdAt: Date.now() - 8 * DAY, recurring: true }
+    const { fired } = await fireOnce(task)
+    const deadline = Date.now() + 2_000
+    while (Date.now() < deadline && fired.length < 2) await new Promise(r => setTimeout(r, 50))
+    expect(fired).toEqual(['/babysit-prs', finalRunNotice(task, DEFAULT_CRON_JITTER_CONFIG.recurringMaxAgeMs)])
+  }, 15_000)
 })
