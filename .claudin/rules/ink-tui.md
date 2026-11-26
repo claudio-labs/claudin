@@ -295,6 +295,6 @@ fix the right one.
 - Before it, one session spent 113 calls on new-session / sleep / capture-pane
   rounds (2026-11-24), and an `until` written to wait for a turn matched the
   prompt it had just typed, echoed in the pane. `send` gives the turn 3 s to
-  start before idle counts.
+  start before idle or `--until` counts.
 - The mouse, a mock API and seeded state are still recipes, not flags: team
   memory `tmux-mouse-click-verification`.

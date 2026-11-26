@@ -43,8 +43,8 @@ eight runs beside it in the response were skipped).
    Both walk one project: run them once for each project on request-census's
    `projects:` line, with the matching directory under `~/.claudin/projects/`
    (`-home-…-<name>`). Without `--project` they walk only the cwd's, and the
-   other projects' spend and calls are silently left out. A project with no
-   call in the window prints that on stderr and exits 0.
+   other projects' spend and calls are silently left out. A project with nothing
+   in the window prints that on stderr and exits 0, in both scripts.
 
    For a question the five do not answer, dump the window's paired calls and
    query the file instead of writing a walk of your own:

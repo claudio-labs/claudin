@@ -59,3 +59,8 @@ effort and context files found 5 probes refused, all already stale on `main`:
 A refused probe prints `?` and the spec never reaches its "every probe met its
 expectation" line, so read the tail of each run rather than its exit status. Repoint one by
 copying the current line, the way `feat/codex-gpt-6-models` did for the five it moved.
+
+**Token-count fixtures (2026-11-26).** A probe on code whose output is token-counted (Read's
+pages) changes what is counted, and the VCR layer records a `token-count-*.json` for each new
+body: one probe run left nine. Delete the untracked ones after the run and confirm the real
+suites need none of them with `CI=1 bun test …`, which throws "Fixture missing" otherwise.
