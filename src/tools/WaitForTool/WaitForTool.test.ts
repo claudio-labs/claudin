@@ -134,6 +134,54 @@ describe('WaitForTool', () => {
     expect(data.reason).toBe('timeout')
   })
 
+  // 12 of 124 timeouts since 2026-09-01 had the awaited line in their last
+  // output: `^` and `$` anchored the whole output, so `^exit \d+` under a test
+  // summary waited out 1,200-1,800 s for a suite that ended in ~7 minutes.
+  describe('until: ^ and $ anchor lines', () => {
+    const wait = (command: string, until: string, timeout_s = 2) =>
+      WaitForTool.call({ command, until, interval_s: 0.2, timeout_s, description: 'd' }, makeCtx())
+
+    for (const [name, command, until] of [
+      ['fc0b9f01 11-26: an exit line under the summary', "printf 'Ran 19315 tests across 1248 files.\\nexit 0\\n'", '^exit \\d+'],
+      ['a status line among others', "printf '200\\nlog line\\n'", '^(200|30\\d|401)$'],
+      ['$ before the trailing newline', 'echo READY', 'READY$'],
+      ['a pattern spanning lines that ends at a line', "printf 'stream ended\\n❯ \\n  ? for shortcuts\\n'", 'stream ended[\\s\\S]*❯\\s*$'],
+    ] as const) {
+      test(name, async () => {
+        const { data } = await wait(command, until)
+        expect(data.reason).toBe('match')
+      })
+    }
+
+    describe('what must not change', () => {
+      test('the not-busy lookahead still reads the whole output', async () => {
+        const until = '^(?![\\s\\S]*(Clauding|esc to interrupt))[\\s\\S]*$'
+        const busy = await wait("printf 'Clauding… (esc to interrupt)\\nmore\\nlast\\n'", until, 1)
+        expect(busy.data.matched).toBe(false)
+        const idle = await wait("printf 'done\\nmore\\n'", until)
+        expect(idle.data.matched).toBe(true)
+      })
+
+      test('(?s)^(?=…)(?=…) still needs both rows anywhere in the output', async () => {
+        const until = '(?s)^(?=.*A=completed)(?=.*B=completed)'
+        const one = await wait("printf 'A=completed\\nB=pending\\n'", until, 1)
+        expect(one.data.matched).toBe(false)
+        const both = await wait("printf 'B=completed\\nA=completed\\n'", until)
+        expect(both.data.matched).toBe(true)
+      })
+
+      test('^$ still means an empty output', async () => {
+        expect((await wait("printf '123\\n\\n456\\n'", '^$', 1)).data.matched).toBe(false)
+        expect((await wait('true', '^$')).data.matched).toBe(true)
+      })
+    })
+
+    test('the until text says how ^ and $ read', () => {
+      const shape = WaitForTool.inputSchema.shape as Record<string, { description?: string }>
+      expect(shape.until?.description).toContain('match at line breaks')
+    })
+  })
+
   test('until: a flag JavaScript does not have is still an invalid regex', async () => {
     const bad = await WaitForTool.validateInput?.(
       { command: 'ls', description: 'd', until: '(?x) READY # spaced' } as never,

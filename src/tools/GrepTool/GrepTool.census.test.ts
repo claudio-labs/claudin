@@ -167,6 +167,46 @@ describe('several paths in one `path`', () => {
   })
 })
 
+// The two parameters the model sent most often that Grep did not have, in
+// 2026-10..11: `-o` six times (the route list, a format string), `exclude`
+// four (Glob's own name for it).
+describe('-o and exclude', () => {
+  test('the schema takes both', () => {
+    const parsed = GrepTool.inputSchema.safeParse({ pattern: 'x', '-o': true, exclude: ['*.test.ts'] })
+    expect(parsed.success).toBe(true)
+  })
+
+  test('-o prints only the matched part of each line', async () => {
+    const data = await grep({ pattern: 'askTo\\w+', path: join(root, 'src/vcs'), output_mode: 'content', '-o': true })
+    expect(data.content).toBe('src/vcs/diff/ui/DiffDialog.tsx:2:askToRevertHunk')
+  })
+
+  test('-o is ignored outside content mode', async () => {
+    const data = await grep({ pattern: 'askTo\\w+', path: join(root, 'src/vcs'), '-o': true })
+    expect(data.filenames.map(f => basename(f))).toEqual(['DiffDialog.tsx'])
+  })
+
+  test('exclude leaves the globs out, as a list or as one string', async () => {
+    const listed = await grep({ pattern: 'retry', path: root, exclude: ['src/tools/RunTestsTool/**'] })
+    expect(listed.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])
+    const spelled = await grep({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/**' })
+    expect(spelled.filenames.map(f => basename(f))).toEqual(['RunTestsTool.ts'])
+  })
+
+  test('an exclude naming a dotenv file never asks for one', async () => {
+    const decision = await runWithCwdOverride(root, () =>
+      GrepTool.checkPermissions(
+        { pattern: 'x', path: root, exclude: ['.env', '*.env', '!*.test.*'] } as never,
+        contextWith({
+          ...emptyPermissionContext,
+          additionalWorkingDirectories: new Map([[root, { path: root, source: 'session' }]]),
+        }),
+      ),
+    )
+    expect(decision.behavior).toBe('allow')
+  })
+})
+
 describe('a pattern that holds \\n', () => {
   test('2b5c3f37 11-08 16:47: the alternation with setRevertPrompt\\(null\\)\\n finds its lines', async () => {
     const data = await grep({
