@@ -139,7 +139,7 @@ function rangeOfText(text: string): Range | null {
 }
 
 function readsOfRead(call: CensusCall, idx: number): Read[] {
-  const input = call.input as { file_path?: string; file_paths?: string[]; symbol?: unknown; view?: string }
+  const input = call.input as { file_path?: string; file_paths?: string[]; symbol?: unknown; view?: string; offset?: number }
   const paths = input.file_paths ?? (input.file_path ? [input.file_path] : [])
   const batch = paths.length > 1
   const read = (file: string, range: Range | null, kind: string): Read => ({
@@ -149,7 +149,9 @@ function readsOfRead(call: CensusCall, idx: number): Read[] {
   const result = call.result as { type?: string; file?: { startLine?: number; numLines?: number }; files?: { filePath: string; lines?: number }[] } | null
   if (result?.type === 'batch' && Array.isArray(result.files)) {
     const outline = input.view === 'outline' ? 'outline asked' : 'outline'
-    return result.files.map(f => (f.lines ?? 0) > 0 ? read(f.filePath, [1, f.lines!], 'batch') : read(f.filePath, null, outline))
+    // A batch's range applies to every file: its lines start at its offset.
+    const from = Math.max(1, input.offset ?? 1)
+    return result.files.map(f => (f.lines ?? 0) > 0 ? read(f.filePath, [from, from + f.lines! - 1], 'batch') : read(f.filePath, null, outline))
   }
   const sections = batch ? call.text.split(BATCH_SPLIT_RE) : ['', paths[0] ?? '', call.text]
   const out: Read[] = []
