@@ -206,6 +206,14 @@ export async function refreshChangedFile(
     }
 
     const result = await FileReadTool.call(fileInput, toolUseContext)
+    // Past the token cap a view='full' Read answers with its first page and a
+    // note (overCapPage.ts). Diffed against the whole file, that page read as
+    // every later line deleted, and adopting it let Write through: it takes
+    // the over-cap marker below instead, as the error it replaced did.
+    if (result.data.type === 'text' && result.data.file.note !== undefined) {
+      await markTooLargeToRefresh(cacheKey, normalizedPath, readFileState)
+      return null
+    }
     // Extract only the changed section
     if (result.data.type === 'text') {
       const snippet = getSnippetForTwoFileDiff(

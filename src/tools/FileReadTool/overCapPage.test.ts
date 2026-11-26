@@ -10,7 +10,7 @@ import {
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
-import { linesUnderCap, pageOverCap, type OverCapRead, type Page } from 'src/tools/FileReadTool/overCapPage.js'
+import { linesUnderCap, pageOverCap, type OverCapRead } from 'src/tools/FileReadTool/overCapPage.js'
 
 describe('linesUnderCap', () => {
   const lines = Array.from({ length: 100 }, () => 'x'.repeat(99))
@@ -35,8 +35,8 @@ describe('linesUnderCap', () => {
 describe('pageOverCap', () => {
   const body = Array.from({ length: 100 }, (_, i) => `row ${String(i + 1).padStart(3, '0')} ${'x'.repeat(91)}`).join('\n')
 
-  test('the first lines that fit, and a note naming them and where to go on', () => {
-    const page = pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 500), {
+  test('the first lines that fit, and a note naming them and where to go on', async () => {
+    const page = await pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 500), {
       filePath: '/tmp/a.txt',
       startLine: 1,
       totalLines: 100,
@@ -50,8 +50,8 @@ describe('pageOverCap', () => {
     )
   })
 
-  test('the last page asks for no more lines than are left', () => {
-    const page = pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 700), {
+  test('the last page asks for no more lines than are left', async () => {
+    const page = await pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 700), {
       filePath: '/tmp/a.txt',
       startLine: 1,
       totalLines: 100,
@@ -62,8 +62,8 @@ describe('pageOverCap', () => {
     expect(page.note).toEndWith('Read with offset=64 limit=37 for the next page.')
   })
 
-  test('a range counts from where it starts', () => {
-    const page = pageOverCap(body, new MaxFileReadTokenExceededError(136_793, 25_000), {
+  test('a range counts from where it starts', async () => {
+    const page = await pageOverCap(body, new MaxFileReadTokenExceededError(136_793, 25_000), {
       filePath: '/tmp/a.txt',
       startLine: 23,
       totalLines: 400,
@@ -72,7 +72,7 @@ describe('pageOverCap', () => {
     expect(page.note).toStartWith(`Lines 23-${22 + page.numLines} of 400 are shown. The range asked for is ~136,793 tokens`)
   })
 
-  test('a first line over the cap alone names a Bash cut of it', () => {
+  test('a first line over the cap alone names a Bash cut of it', async () => {
     const read = () =>
       pageOverCap('z'.repeat(100_000) + '\nshort', new MaxFileReadTokenExceededError(25_000, 1_000), {
         filePath: '/tmp/big.json',
@@ -80,8 +80,8 @@ describe('pageOverCap', () => {
         totalLines: 60,
         wholeFile: false,
       })
-    expect(read).toThrow(MaxFileReadTokenExceededError)
-    expect(read).toThrow(
+    await expect(read()).rejects.toThrow(MaxFileReadTokenExceededError)
+    await expect(read()).rejects.toThrow(
       "File content (25000 tokens) exceeds maximum allowed tokens (1000). Line 23 alone is over the cap; read part of it with Bash: sed -n '23p' '/tmp/big.json' | cut -c1-20000",
     )
   })
@@ -99,15 +99,17 @@ describe('pageOverCap', () => {
     const sparse = Array.from({ length: 1_000 }, () => 'x'.repeat(120))
     const content = [...dense, ...sparse].join('\n')
     const read: OverCapRead = { filePath: 'doc.md', startLine: 1, totalLines: 2_000, wholeFile: true }
-    const withCheck = pageOverCap as unknown as (
-      c: string,
-      e: MaxFileReadTokenExceededError,
-      r: OverCapRead,
-      f: (page: string) => Promise<void>,
-    ) => Page | Promise<Page>
-    const page = await withCheck(content, new MaxFileReadTokenExceededError(Math.round(tokens(content)), 25_000), read, fits)
+    const page = await pageOverCap(content, new MaxFileReadTokenExceededError(Math.round(tokens(content)), 25_000), read, fits)
     expect(tokens(page.content)).toBeLessThanOrEqual(25_000)
     expect(page.note).toStartWith(`Lines 1-${page.numLines} of 2000 are shown.`)
+  })
+
+  test('an error that is not the cap is not a reason to halve', async () => {
+    const broken = async () => {
+      throw new Error('count failed')
+    }
+    const read: OverCapRead = { filePath: '/tmp/a.txt', startLine: 1, totalLines: 100, wholeFile: true }
+    await expect(pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 500), read, broken)).rejects.toThrow('count failed')
   })
 })
 

@@ -411,12 +411,17 @@ export async function callInner(
     ) {
       throw e
     }
-    const page = pageOverCap(readResult.content, e, {
-      filePath: file_path,
-      startLine: offset,
-      totalLines: readResult.totalLines,
-      wholeFile: offset === 1 && limit === undefined,
-    })
+    const page = await pageOverCap(
+      readResult.content,
+      e,
+      {
+        filePath: file_path,
+        startLine: offset,
+        totalLines: readResult.totalLines,
+        wholeFile: offset === 1 && limit === undefined,
+      },
+      candidate => validateContentTokens(candidate, ext, maxTokens),
+    )
     overCapNote = page.note
     readResult = {
       ...readResult,

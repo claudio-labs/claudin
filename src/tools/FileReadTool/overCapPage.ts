@@ -10,7 +10,9 @@
  *
  * The page is sized from the count the cap check already made of the whole
  * (`MaxFileReadTokenExceededError.tokenCount`), scaled by characters, with a
- * margin: counting the page again would be one more API call per page.
+ * margin, and then counted itself: a head denser than the average (CJK,
+ * minified code) went over the cap it was cut for. A page that does not fit
+ * is halved until it does.
  */
 import { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
 
@@ -46,11 +48,26 @@ export type Page = { content: string; numLines: number; note: string }
 
 /**
  * The first page of `content` that fits under the cap `overCap` reports.
+ * `fits` counts a candidate page and throws MaxFileReadTokenExceededError when
+ * it is over; without it the estimate is the page.
  * @throws MaxFileReadTokenExceededError naming a Bash cut when the first line alone is over it.
  */
-export function pageOverCap(content: string, overCap: MaxFileReadTokenExceededError, read: OverCapRead): Page {
+export async function pageOverCap(
+  content: string,
+  overCap: MaxFileReadTokenExceededError,
+  read: OverCapRead,
+  fits: (page: string) => Promise<void> = async () => {},
+): Promise<Page> {
   const lines = content.split('\n')
-  const numLines = linesUnderCap(lines, overCap.tokenCount, overCap.maxTokens)
+  let numLines = linesUnderCap(lines, overCap.tokenCount, overCap.maxTokens)
+  for (; numLines > 0; numLines = Math.floor(numLines / 2)) {
+    try {
+      await fits(lines.slice(0, numLines).join('\n'))
+      break
+    } catch (e) {
+      if (!(e instanceof MaxFileReadTokenExceededError)) throw e
+    }
+  }
   if (numLines === 0) {
     throw new MaxFileReadTokenExceededError(
       overCap.tokenCount,
@@ -60,9 +77,12 @@ export function pageOverCap(content: string, overCap: MaxFileReadTokenExceededEr
   }
   const last = read.startLine + numLines - 1
   const asked = read.wholeFile ? 'The file' : 'The range asked for'
+  // A limit as well as the offset: a Read with an offset and no limit meets
+  // the byte cap again on a file past it.
+  const next = Math.min(numLines, lines.length - numLines)
   return {
     content: lines.slice(0, numLines).join('\n'),
     numLines,
-    note: `Lines ${read.startLine}-${last} of ${read.totalLines} are shown. ${asked} is ~${overCap.tokenCount.toLocaleString('en-US')} tokens, over the ${overCap.maxTokens.toLocaleString('en-US')}-token cap. Read with offset=${last + 1} for the rest.`,
+    note: `Lines ${read.startLine}-${last} of ${read.totalLines} are shown. ${asked} is ~${overCap.tokenCount.toLocaleString('en-US')} tokens, over the ${overCap.maxTokens.toLocaleString('en-US')}-token cap. Read with offset=${last + 1} limit=${next} for the next page.`,
   }
 }
