@@ -16,6 +16,7 @@ import type { Props as MessageComponentProps } from 'src/agent/ui/Message.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import { ToolStatusIcon, toolIconStatus } from 'src/agent/ui/ToolStatusIcon.js';
+import type { ToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js';
 import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
 import { findToolByName, type Tools } from 'src/tools/Tool.js';
 import type { Message, ProgressMessage } from 'src/shared/types/message.js';
@@ -703,13 +704,16 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
 }>, options: {
   shouldAnimate: boolean;
   tools: Tools;
-  toolIcon?: string;
+  rowIcons: (input: unknown) => ToolRowIcons;
 }): React.ReactNode | null {
   const {
     shouldAnimate,
     tools,
-    toolIcon
+    rowIcons
   } = options;
+  const {
+    toolIcon
+  } = rowIcons(undefined);
 
   // Calculate stats for each agent
   const agentStats = toolUses.map(({

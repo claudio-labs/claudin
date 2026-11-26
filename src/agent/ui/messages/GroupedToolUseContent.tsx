@@ -58,6 +58,6 @@ export function GroupedToolUseContent({
   return tool.renderGroupedToolUse(toolUsesData, {
     shouldAnimate: shouldAnimate && anyInProgress,
     tools,
-    toolIcon: getToolRowIcons(tool, undefined, nerdFont).toolIcon
+    rowIcons: input => getToolRowIcons(tool, input, nerdFont)
   });
 }
