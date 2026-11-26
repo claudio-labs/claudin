@@ -3,10 +3,7 @@ import type { ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isENOENT } from 'src/shared/errors.js'
-import {
-  FILE_NOT_FOUND_CWD_NOTE,
-  suggestPathUnderCwd,
-} from 'src/shared/fs/file.js'
+import { FILE_NOT_FOUND_CWD_NOTE } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { glob } from 'src/shared/fs/glob.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -16,6 +13,7 @@ import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
+import { missingPathHint } from 'src/tools/shared/missingPath.js'
 import { DESCRIPTION, GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import {
   getToolUseSummary,
@@ -199,14 +197,10 @@ export const GlobTool = buildTool({
         stats = await fs.stat(absolutePath)
       } catch (e: unknown) {
         if (isENOENT(e)) {
-          const cwdSuggestion = await suggestPathUnderCwd(absolutePath)
-          let message = `Directory does not exist: ${path}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
-          if (cwdSuggestion) {
-            message += ` Did you mean ${cwdSuggestion}?`
-          }
+          const hint = await missingPathHint(absolutePath)
           return {
             result: false,
-            message,
+            message: `Directory does not exist: ${path}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`,
             errorCode: 1,
           }
         }

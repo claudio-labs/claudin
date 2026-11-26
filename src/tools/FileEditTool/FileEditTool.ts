@@ -19,6 +19,7 @@ import {
   elisionRefusal,
   findElisionPlaceholder,
 } from 'src/tools/shared/elisionGuard.js'
+import { missingPathHint } from 'src/tools/shared/missingPath.js'
 import { isSessionMemoryIndex } from 'src/memory/memdir/memoryDirs.js'
 import {
   activateConditionalSkillsForPaths,
@@ -34,9 +35,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
-  findSimilarFile,
   getFileModificationTime,
-  suggestPathUnderCwd,
   writeTextContent,
 } from 'src/shared/fs/file.js'
 import {
@@ -315,16 +314,7 @@ export const FileEditTool = buildTool({
       if (old_string === '') {
         return memoryFormatVerdict(fullFilePath, new_string)
       }
-      // Try to find a similar file with a different extension
-      const similarFilename = findSimilarFile(fullFilePath)
-      const cwdSuggestion = await suggestPathUnderCwd(fullFilePath)
-      let message = `File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
-
-      if (cwdSuggestion) {
-        message += ` Did you mean ${cwdSuggestion}?`
-      } else if (similarFilename) {
-        message += ` Did you mean ${similarFilename}?`
-      }
+      let message = `File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${await missingPathHint(fullFilePath)}`
       // b40b178b 2026-11-08: two Edits of a PR body never written, both told
       // only that it was missing.
       message += ' To create it, use Write, or Edit with an empty old_string.'

@@ -19,6 +19,7 @@ import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 // cycle in the order the tool registry loads them.
 import { GlobTool } from 'src/tools/GlobTool/GlobTool.js'
 import { GrepTool } from 'src/tools/GrepTool/GrepTool.js'
+import { missingPathHint } from 'src/tools/shared/missingPath.js'
 
 let root = ''
 let elsewhere = ''
@@ -35,11 +36,14 @@ beforeAll(() => {
     'src/shared/proc/Shell.ts',
     'src/platform/bootstrap/state.ts',
     'src/tools/FileReadTool/batchRead.ts',
+    'src/tools/FileReadTool/batchRead.test.ts',
     'src/skills/bundled/batch.ts',
     'a/index.ts',
     'b/index.ts',
     'c/index.ts',
     'd/index.ts',
+    'x/util.ts',
+    'y/util.ts',
   ]) {
     mkdirSync(join(root, file, '..'), { recursive: true })
     writeFileSync(join(root, file), 'export {}\n')
@@ -134,5 +138,35 @@ describe('Read, Glob and Edit name it the same way', () => {
       ),
     )
     expect(verdict.result === false && verdict.message).toContain(`Did you mean ${join(root, 'src/shared/proc/Shell.ts')}?`)
+  })
+})
+
+describe('missingPathHint, in order', () => {
+  const hint = (rel: string, listFiles?: (root: string) => Promise<string[]>) =>
+    runWithCwdOverride(root, () => missingPathHint(join(root, rel), listFiles))
+
+  test('a dropped cwd folder comes first', async () => {
+    const dropped = join(root, '..', 'src/shared/proc/Shell.ts')
+    expect(await runWithCwdOverride(root, () => missingPathHint(dropped))).toBe(
+      ` Did you mean ${join(root, 'src/shared/proc/Shell.ts')}?`,
+    )
+  })
+
+  test('then the same name with another extension, as a bare name', async () => {
+    expect(await hint('src/shared/proc/Shell.js')).toBe(' Did you mean Shell.ts?')
+  })
+
+  test('then the siblings the name starts, leaving tests out', async () => {
+    expect(await hint('src/tools/FileReadTool/batch.ts')).toBe(
+      ` Did you mean ${join(root, 'src/tools/FileReadTool/batchRead.ts')}?`,
+    )
+  })
+
+  test('then up to three paths with the same name, shortest first', async () => {
+    expect(await hint('z/util.ts')).toBe(` Did you mean ${join(root, 'x/util.ts')} or ${join(root, 'y/util.ts')}?`)
+  })
+
+  test('nothing when the listing has nothing', async () => {
+    expect(await hint('src/platform/shell/Shell.ts', async () => [])).toBe('')
   })
 })

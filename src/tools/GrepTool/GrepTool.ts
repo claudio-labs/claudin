@@ -4,10 +4,7 @@ import type { ToolPermissionContext, ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isENOENT } from 'src/shared/errors.js'
-import {
-  FILE_NOT_FOUND_CWD_NOTE,
-  suggestPathUnderCwd,
-} from 'src/shared/fs/file.js'
+import { FILE_NOT_FOUND_CWD_NOTE } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { expandPath, toRelativePath } from 'src/shared/fs/path.js'
@@ -33,6 +30,7 @@ import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
 import { globsForSearchPath, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
 import { resolveSearchTargets } from 'src/tools/GrepTool/searchTargets.js'
+import { missingPathHint } from 'src/tools/shared/missingPath.js'
 import {
   BODIES_HEADER_SUFFIX,
   bodiesSchemaFields,
@@ -390,14 +388,10 @@ export const GrepTool = buildTool({
           const targets = resolveSearchTargets(path, piece => fs.existsSync(expandPath(piece)))
           if (targets.kind === 'many') return { result: true }
           const missing = targets.kind === 'missing' ? targets.path : path
-          const cwdSuggestion = await suggestPathUnderCwd(expandPath(missing))
-          let message = `Path does not exist: ${missing}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
-          if (cwdSuggestion) {
-            message += ` Did you mean ${cwdSuggestion}?`
-          }
+          const hint = await missingPathHint(expandPath(missing))
           return {
             result: false,
-            message,
+            message: `Path does not exist: ${missing}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`,
             errorCode: 1,
           }
         }
