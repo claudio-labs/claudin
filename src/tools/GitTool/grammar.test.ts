@@ -721,6 +721,7 @@ describe('a plain argument bash would misread is quoted and runs', () => {
     expect(parsed.ok).toBe(false)
     if (!parsed.ok) {
       expect(parsed.reason).toContain('`#`')
+      expect(parsed.reason).toContain('beside quotes')
       expect(parsed.reason).toContain('single quotes')
     }
   })
@@ -747,7 +748,7 @@ describe('a plain argument bash would misread is quoted and runs', () => {
       const parsed = parseGitCommand(cmd)
       expect(parsed.ok).toBe(false)
       if (!parsed.ok) {
-        expect(parsed.reason).not.toContain('also holds quotes')
+        expect(parsed.reason).toContain('beside other characters bash reads specially')
         expect(parsed.reason).toContain('single quotes')
       }
     }

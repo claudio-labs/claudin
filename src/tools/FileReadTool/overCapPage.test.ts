@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -110,6 +110,15 @@ describe('pageOverCap', () => {
     }
     const read: OverCapRead = { filePath: '/tmp/a.txt', startLine: 1, totalLines: 100, wholeFile: true }
     await expect(pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 500), read, broken)).rejects.toThrow('count failed')
+  })
+
+  // Under `bun test` the token count is the local estimate, the same per
+  // character for the whole and for its page, so no tool-level read can miss
+  // the cap after sizing: the count the dispatcher hands the page is pinned
+  // on its source instead.
+  test('the dispatcher counts the page with the cap check of the read', () => {
+    const dispatch = readFileSync(join(import.meta.dir, 'readDispatch.ts'), 'utf8')
+    expect(dispatch).toContain('candidate => validateContentTokens(candidate, ext, maxTokens),')
   })
 })
 

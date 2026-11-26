@@ -3,7 +3,8 @@
     "src/tools/shared/missingPath.test.ts",
     "src/tools/FileReadTool/overCapPage.test.ts",
     "src/tools/FileReadTool/autoOutlineOnElision.test.ts",
-    "src/tools/GrepTool/GrepTool.census.test.ts"
+    "src/tools/GrepTool/GrepTool.census.test.ts",
+    "src/agent/attachments/changedFile.test.ts"
   ],
   "source": "src/tools/shared/missingPath.ts",
   "probes": [
@@ -24,8 +25,8 @@
     },
     {
       "name": "missingPath: the repo-wide name search is gone",
-      "find": " ?? (await likelyPaths(fullPath, listFiles))",
-      "replace": ""
+      "find": "    (await likelyPaths(fullPath, listFiles, readable))\n",
+      "replace": "    undefined\n"
     },
     {
       "name": "missingPath: a path outside the cwd gets a guess",
@@ -40,25 +41,82 @@
     {
       "name": "Grep: the missing path hint is not wired",
       "source": "src/tools/GrepTool/GrepTool.ts",
-      "find": "await missingPathHint(expandPath(missing))",
+      "find": "await missingPathHint(expandPath(missing), context.getAppState().toolPermissionContext)",
       "replace": "''"
     },
     {
       "name": "Glob: the missing path hint is not wired",
       "source": "src/tools/GlobTool/GlobTool.ts",
-      "find": "await missingPathHint(absolutePath)",
+      "find": "await missingPathHint(absolutePath, context.getAppState().toolPermissionContext)",
       "replace": "''"
     },
     {
       "name": "Read: the missing path hint is not wired",
       "source": "src/tools/FileReadTool/FileReadTool.ts",
-      "find": "await missingPathHint(fullFilePath)",
+      "find": "await missingPathHint(fullFilePath, context.getAppState().toolPermissionContext)",
       "replace": "''"
     },
     {
       "name": "Edit: the missing path hint is not wired",
       "source": "src/tools/FileEditTool/FileEditTool.ts",
-      "find": "${await missingPathHint(fullFilePath)}",
+      "find": "${await missingPathHint(fullFilePath, toolUseContext.getAppState().toolPermissionContext)}",
+      "replace": ""
+    },
+    {
+      "name": "review 11-26 — missingPath: the Read deny rules are not consulted",
+      "find": "  const readable = (path: string) => matchingRuleForInput(path, permissions, 'read', 'deny') === null\n",
+      "replace": "  const readable = (_path: string) => true\n"
+    },
+    {
+      "name": "review 11-26 — missingPath: a hidden sibling is named",
+      "find": "  const siblings = (await siblingsStartingWith(fullPath)).filter(readable)\n",
+      "replace": "  const siblings = await siblingsStartingWith(fullPath)\n"
+    },
+    {
+      "name": "review 11-26 — missingPath: a hidden same-name file is named",
+      "find": "  return nameGuesses((await sameNameUnder(cwd, fullPath, listFiles)).filter(readable))\n",
+      "replace": "  return nameGuesses(await sameNameUnder(cwd, fullPath, listFiles))\n"
+    },
+    {
+      "name": "review 11-26 — changedFile: a page is diffed and adopted instead of marked",
+      "source": "src/agent/attachments/changedFile.ts",
+      "find": "    if (result.data.type === 'text' && result.data.file.note !== undefined) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "review 11-26 — readDispatch: the page is not counted again",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "      candidate => validateContentTokens(candidate, ext, maxTokens),\n",
+      "replace": "      async () => {},\n"
+    },
+    {
+      "name": "review 11-26 — overCapPage: a page over the cap is not halved",
+      "source": "src/tools/FileReadTool/overCapPage.ts",
+      "find": "      if (!(e instanceof MaxFileReadTokenExceededError)) throw e\n",
+      "replace": "      throw e\n"
+    },
+    {
+      "name": "review 11-26 — overCapPage: a failing count is read as over the cap",
+      "source": "src/tools/FileReadTool/overCapPage.ts",
+      "find": "      if (!(e instanceof MaxFileReadTokenExceededError)) throw e\n",
+      "replace": "      void e\n"
+    },
+    {
+      "name": "review 11-26 — overCapPage: the note names no limit",
+      "source": "src/tools/FileReadTool/overCapPage.ts",
+      "find": "Read with offset=${last + 1} limit=${next} for the next page.",
+      "replace": "Read with offset=${last + 1} for the next page."
+    },
+    {
+      "name": "review 11-26 — overCapPage: the last page asks for more lines than are left",
+      "source": "src/tools/FileReadTool/overCapPage.ts",
+      "find": "  const next = Math.min(numLines, lines.length - numLines)\n",
+      "replace": "  const next = numLines\n"
+    },
+    {
+      "name": "review 11-26 — Grep: an empty exclude entry reaches rg as --glob !",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "        if (!body) continue\n",
       "replace": ""
     },
     {
@@ -118,8 +176,8 @@
     {
       "name": "Grep: a negated exclude entry is negated twice",
       "source": "src/tools/GrepTool/GrepTool.ts",
-      "find": "pattern.replace(LEADING_BANG_RE, '')",
-      "replace": "pattern"
+      "find": "        const body = pattern.trim().replace(LEADING_BANG_RE, '')\n",
+      "replace": "        const body = pattern.trim()\n"
     },
     {
       "name": "Grep: exclude globs never reach rg",

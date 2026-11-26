@@ -1,6 +1,7 @@
 {
   "test": [
     "scripts/bench/tokens/feature-usage-census.test.ts",
+    "scripts/bench/tokens/session-census.test.ts",
     "scripts/dev/tui-probe.test.ts"
   ],
   "source": "scripts/bench/tokens/feature-usage-census.ts",
@@ -48,6 +49,24 @@
       "source": "scripts/dev/tui-probe.ts",
       "find": "    'CLAUDIN_DISABLE_RULE_MAP_SYNC=1',\n",
       "replace": ""
+    },
+    {
+      "name": "review 11-26 — tui-probe: send passes its text where tmux reads flags",
+      "source": "scripts/dev/tui-probe.ts",
+      "find": "  return ['send-keys', '-t', name, '-l', '--', text]\n",
+      "replace": "  return ['send-keys', '-t', name, '-l', text]\n"
+    },
+    {
+      "name": "review 11-26 — tui-probe: --until matches before the turn starts",
+      "source": "scripts/dev/tui-probe.ts",
+      "find": "    matched: started && until !== null && untilMatches(until, pane),\n",
+      "replace": "    matched: until !== null && untilMatches(until, pane),\n"
+    },
+    {
+      "name": "review 11-26 — session-census: an empty window exits 1 again",
+      "source": "scripts/bench/tokens/session-census.ts",
+      "find": "    return\n  }\n  const report = buildReport(walk(files, args.since))\n",
+      "replace": "    process.exit(1)\n  }\n  const report = buildReport(walk(files, args.since))\n"
     }
   ]
 }

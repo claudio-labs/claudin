@@ -4,18 +4,33 @@
   "probes": [
     {
       "name": "untilPattern: no pattern keeps the whole-output reading",
-      "find": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
+      "find": "  const wholeOutput = LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
       "replace": "  const wholeOutput = false\n"
     },
     {
-      "name": "untilPattern: a ^(?! lookaround reads lines (the CI idiom)",
-      "find": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
+      "name": "untilPattern: a lookaround reads lines (the CI idiom)",
+      "find": "  const wholeOutput = LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
       "replace": "  const wholeOutput = EMPTY_OUTPUT_RE.test(body)\n"
     },
     {
       "name": "untilPattern: ^$ reads lines (a blank line ends the wait)",
-      "find": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
-      "replace": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body)\n"
+      "find": "  const wholeOutput = LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
+      "replace": "  const wholeOutput = LOOKAROUND_RE.test(body)\n"
+    },
+    {
+      "name": "review 11-26 — only a lookaround right after ^ reads the whole output (the tempered form)",
+      "find": "const LOOKAROUND_RE = /(?<!\\\\)\\(\\?<?[=!]/\n",
+      "replace": "const LOOKAROUND_RE = /\\^\\(\\?[=!]/\n"
+    },
+    {
+      "name": "review 11-26 — an escaped \\( counts as a lookaround",
+      "find": "const LOOKAROUND_RE = /(?<!\\\\)\\(\\?<?[=!]/\n",
+      "replace": "const LOOKAROUND_RE = /\\(\\?<?[=!]/\n"
+    },
+    {
+      "name": "review 11-26 — an empty-output alternative reads lines (^\\s*$|…)",
+      "find": "const EMPTY_OUTPUT_RE = /(?:^|\\||\\((?:\\?:)?)\\^(?:\\\\s\\*)?\\$(?=$|\\||\\))/\n",
+      "replace": "const EMPTY_OUTPUT_RE = /^\\^(?:\\\\s\\*)?\\$$/\n"
     },
     {
       "name": "untilPattern: no m flag (the ^exit timeouts)",
@@ -24,8 +39,13 @@
     },
     {
       "name": "untilPattern: trailing newlines stay on the output",
-      "find": "  return until.test(output.replace(TRAILING_NEWLINES_RE, ''))\n",
+      "find": "  return until.test(output) || until.test(output.replace(TRAILING_NEWLINES_RE, ''))\n",
       "replace": "  return until.test(output)\n"
+    },
+    {
+      "name": "review 11-26 — the raw output is not tested (READY\\n)",
+      "find": "  return until.test(output) || until.test(output.replace(TRAILING_NEWLINES_RE, ''))\n",
+      "replace": "  return until.test(output.replace(TRAILING_NEWLINES_RE, ''))\n"
     },
     {
       "name": "WaitForTool: the poll tests the regex itself, not untilMatches",
@@ -36,7 +56,7 @@
     {
       "name": "WaitForTool: the until text stops saying how ^ and $ read",
       "source": "src/tools/WaitForTool/WaitForTool.ts",
-      "find": " `^` and `$` match at line breaks, except after a `^(?!`/`^(?=` lookaround.",
+      "find": " `^` and `$` match at line breaks, except in a pattern with a lookaround.",
       "replace": ""
     }
   ]

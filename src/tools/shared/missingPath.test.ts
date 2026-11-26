@@ -161,6 +161,13 @@ describe('a path the Read deny rules hide is never named', () => {
     expect(denied.result === false && denied.message).not.toContain('secrets')
   })
 
+  test('a sibling the rules hide is not named either', async () => {
+    const missing = join(root, 'secrets/prod.json')
+    const open = await runWithCwdOverride(root, () => missingPathHint(missing, getEmptyToolPermissionContext()))
+    expect(open).toBe(` Did you mean ${join(root, 'secrets/prod.env.json')}?`)
+    expect(await runWithCwdOverride(root, () => missingPathHint(missing, denying()))).toBe('')
+  })
+
   test('Read', async () => {
     const message = await runWithCwdOverride(root, () =>
       FileReadTool.call({ file_path: join(root, 'config/prod.env.json') }, context(denying()), undefined as never, undefined as never),
