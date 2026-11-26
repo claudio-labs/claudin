@@ -107,7 +107,8 @@ const BATCH_SPLIT_RE = /^==> (.+?) <==$/m
 const UNCHANGED_RE = /^File unchanged since last read/m
 const PATCH_FILE_RE = /^\*\*\* (?:Update|Add|Delete) File: (.+)$/gm
 const PATCH_MOVE_RE = /^\*\*\* Move to: (.+)$/gm
-const SEGMENT_SPLIT_RE = /\s*(?:&&|\|\||;|\n|\|)\s*/
+// Captures the joiner, so a segment knows whether it is piped onward.
+const SEGMENT_SPLIT_RE = /\s*(&&|\|\||;|\n|\|)\s*/
 const HEREDOC_RE = /<<\s*'?\w+/
 const SED_RANGE_RE = /^'?"?(\d+)(?:,(\d+))?p'?"?$/
 const CUT_RE = /^<bash-output-filtered[^>]*lines="(\d+)\/(\d+)"/
@@ -147,7 +148,8 @@ function readsOfRead(call: CensusCall, idx: number): Read[] {
   if (call.isError) return []
   const result = call.result as { type?: string; file?: { startLine?: number; numLines?: number }; files?: { filePath: string; lines?: number }[] } | null
   if (result?.type === 'batch' && Array.isArray(result.files)) {
-    return result.files.map(f => (f.lines ?? 0) > 0 ? read(f.filePath, [1, f.lines!], 'batch') : read(f.filePath, null, 'outline'))
+    const outline = input.view === 'outline' ? 'outline asked' : 'outline'
+    return result.files.map(f => (f.lines ?? 0) > 0 ? read(f.filePath, [1, f.lines!], 'batch') : read(f.filePath, null, outline))
   }
   const sections = batch ? call.text.split(BATCH_SPLIT_RE) : ['', paths[0] ?? '', call.text]
   const out: Read[] = []
@@ -171,7 +173,12 @@ function readsOfBash(call: CensusCall, idx: number): Read[] {
   })()
   const out: Read[] = []
   let cwd = call.cwd
-  for (const segment of command.split(SEGMENT_SPLIT_RE)) {
+  const parts = command.split(SEGMENT_SPLIT_RE)
+  for (let i = 0; i < parts.length; i += 2) {
+    const segment = parts[i]!
+    // What the rest of a pipeline lets through is unknown: a print piped
+    // onward (`sed -n 80,400p f | grep …`, `cat f | head`) shows no range.
+    const pipedOnward = parts[i + 1] === '|'
     const [head, ...args] = segment.trim().split(/\s+/)
     if (!head) continue
     if (head === 'cd' && args[0]) {
@@ -191,7 +198,7 @@ function readsOfBash(call: CensusCall, idx: number): Read[] {
     for (const word of head === 'grep' || head === 'sed' ? operands.slice(1) : operands) {
       const path = word.replace(/^["']|["']$/g, '')
       if (/[$`*{}()<>~]/.test(path) || !/[./]/.test(path)) continue
-      out.push({ idx, file: absolute(path, cwd), viaBash: true, range: cut ? null : range, kind: cut ? 'cut' : 'bash', ts: call.ts })
+      out.push({ idx, file: absolute(path, cwd), viaBash: true, range: cut || pipedOnward ? null : range, kind: cut ? 'cut' : 'bash', ts: call.ts })
     }
   }
   return out
