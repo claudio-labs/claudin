@@ -92,6 +92,7 @@ import type { DeepImmutable } from 'src/shared/types/utils.js'
 import type { AttributionState } from 'src/vcs/git/commitAttribution.js'
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import type { Theme, ThemeName } from 'src/terminal/theme/theme.js'
+import type { ToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js'
 
 export type QueryChainTracking = {
   chainId: string
@@ -894,6 +895,9 @@ export type Tool<
     options: {
       shouldAnimate: boolean
       tools: Tools
+      // The icons this tool's row shows for an input, as a single row shows
+      // them; empty without a Nerd Font.
+      rowIcons: (input: unknown) => ToolRowIcons
     },
   ): React.ReactNode | null
 }

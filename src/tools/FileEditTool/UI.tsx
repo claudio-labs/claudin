@@ -11,6 +11,8 @@ import { FileEditToolUpdatedMessage } from 'src/tools/FileEditTool/ui/FileEditTo
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
+import { ToolStatusIcon, toolIconStatus } from 'src/agent/ui/ToolStatusIcon.js';
+import type { ToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js';
 import type { Tools } from 'src/tools/Tool.js';
 import type { Message, ProgressMessage } from 'src/shared/types/message.js';
 import { adjustHunkLineNumbers, CONTEXT_LINES } from 'src/vcs/git/diff.js';
@@ -335,14 +337,15 @@ function renderGroupedEditBody(item: GroupedEditItem, isPlan: boolean, tools: To
 }
 
 // Renders the bold "Update" / "Updated plan" header followed by "(path)",
-// matching the single-block header in AssistantToolUseMessage.
+// matching the single-block header in AssistantToolUseMessage, icons included.
 function GroupedEditHeader({
   input,
   filePath,
   isPlan,
   isUnresolved,
   isError,
-  shouldAnimate
+  shouldAnimate,
+  icons
 }: {
   input: FileEditInput | undefined;
   filePath: string;
@@ -350,11 +353,17 @@ function GroupedEditHeader({
   isUnresolved: boolean;
   isError: boolean;
   shouldAnimate: boolean;
+  icons: ToolRowIcons;
 }): React.ReactNode {
+  const status = {
+    shouldAnimate: shouldAnimate && isUnresolved,
+    isUnresolved,
+    isError
+  };
   return <Box flexDirection="row">
-      <ToolUseLoader shouldAnimate={shouldAnimate && isUnresolved} isUnresolved={isUnresolved} isError={isError} />
+      {icons.toolIcon ? <ToolStatusIcon icon={icons.toolIcon} status={toolIconStatus(status)} /> : <ToolUseLoader {...status} />}
       <Box flexShrink={0}><Text bold>{userFacingName(input)}</Text></Box>
-      {filePath !== '' && !isPlan && <Box flexWrap="nowrap"><Text>(<FilePathLink filePath={filePath}>{getDisplayPath(filePath)}</FilePathLink>)</Text></Box>}
+      {filePath !== '' && !isPlan && <Box flexWrap="nowrap"><Text>({icons.fileIcon && <Text color={icons.fileIcon.color}>{icons.fileIcon.glyph} </Text>}<FilePathLink filePath={filePath}>{getDisplayPath(filePath)}</FilePathLink>)</Text></Box>}
     </Box>;
 }
 
@@ -386,10 +395,12 @@ export function renderGroupedFileEditToolUse(toolUses: Array<{
 }>, options: {
   shouldAnimate: boolean;
   tools: Tools;
+  rowIcons: (input: unknown) => ToolRowIcons;
 }): React.ReactNode | null {
   const {
     shouldAnimate,
-    tools
+    tools,
+    rowIcons
   } = options;
   const items: GroupedEditItem[] = toolUses.map(tu => {
     const parsed = inputSchema().safeParse(tu.param.input);
@@ -415,18 +426,21 @@ export function renderGroupedFileEditToolUse(toolUses: Array<{
   return <Box flexDirection="column">
       {groups.map((group, groupIndex) => {
         const isPlan = group.filePath.startsWith(getPlansDirectory());
+        const icons = rowIcons({
+          file_path: group.filePath
+        });
         // Plan files keep today's behavior: each edit renders as its own
         // header + body (not collapsed under a shared header).
         if (isPlan) {
           return group.items.map(item => <Box key={item.param.id} flexDirection="column" marginTop={1}>
-                <GroupedEditHeader input={item.input} filePath={group.filePath} isPlan={isPlan} isUnresolved={item.isInProgress} isError={item.isError} shouldAnimate={shouldAnimate} />
+                <GroupedEditHeader input={item.input} filePath={group.filePath} isPlan={isPlan} isUnresolved={item.isInProgress} isError={item.isError} shouldAnimate={shouldAnimate} icons={icons} />
                 {renderGroupedEditBody(item, isPlan, tools)}
               </Box>);
         }
         const anyInProgress = group.items.some(i => i.isInProgress);
         const anyError = group.items.some(i => i.isError);
         return <Box key={group.filePath || groupIndex} flexDirection="column" marginTop={1}>
-            <GroupedEditHeader input={group.items[0]?.input} filePath={group.filePath} isPlan={isPlan} isUnresolved={anyInProgress} isError={anyError} shouldAnimate={shouldAnimate} />
+            <GroupedEditHeader input={group.items[0]?.input} filePath={group.filePath} isPlan={isPlan} isUnresolved={anyInProgress} isError={anyError} shouldAnimate={shouldAnimate} icons={icons} />
             {group.items.map(item => <React.Fragment key={item.param.id}>{renderGroupedEditBody(item, isPlan, tools)}</React.Fragment>)}
           </Box>;
       })}

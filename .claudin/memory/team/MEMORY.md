@@ -109,7 +109,7 @@
 - [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md)
 - Worktree agents: [stale base](audit-agent-worktree-sees-committed-head.md) · [edits leak to main](worktree-agent-edits-leak-to-main-checkout.md) — pin the SHA
 - [Public copy: no "fork of Claude Code"](public-docs-product-not-fork-framing.md) — one slim non-affiliation line
-- No rule covers: [tools.js → TDZ](tool-importing-tools-registry-tdz.md) · [ProviderManager](providermanager-tui-tests-fail-non-tty.md) · [CI leaks](full-suite-in-ci-portability.md) · [full repaint](ink-bordered-fillheight-panes-recipe.md) · [tool rows ×2](tool-row-drawn-in-two-places.md)
+- No rule covers: [tools.js → TDZ](tool-importing-tools-registry-tdz.md) · [ProviderManager](providermanager-tui-tests-fail-non-tty.md) · [CI leaks](full-suite-in-ci-portability.md) · [full repaint](ink-bordered-fillheight-panes-recipe.md) · [tool rows ×3](tool-row-drawn-in-two-places.md)
 
 ## Repo health
 - [Attachment producers leaked parent state into sub-agents](attachment-producers-leak-parent-state.md) — agentId is NOT the gate

@@ -15,6 +15,8 @@ import { Message as MessageComponent } from 'src/agent/ui/Message.js';
 import type { Props as MessageComponentProps } from 'src/agent/ui/Message.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
+import { ToolStatusIcon, toolIconStatus } from 'src/agent/ui/ToolStatusIcon.js';
+import type { ToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js';
 import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
 import { findToolByName, type Tools } from 'src/tools/Tool.js';
 import type { Message, ProgressMessage } from 'src/shared/types/message.js';
@@ -702,11 +704,16 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
 }>, options: {
   shouldAnimate: boolean;
   tools: Tools;
+  rowIcons: (input: unknown) => ToolRowIcons;
 }): React.ReactNode | null {
   const {
     shouldAnimate,
-    tools
+    tools,
+    rowIcons
   } = options;
+  const {
+    toolIcon
+  } = rowIcons(undefined);
 
   // Calculate stats for each agent
   const agentStats = toolUses.map(({
@@ -785,9 +792,16 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
 
   // Check if all resolved agents are async (background)
   const allAsync = agentStats.every(stat => stat.isAsync);
+  const status = {
+    shouldAnimate: shouldAnimate && (anyUnresolved || anyInProgress),
+    isUnresolved: anyUnresolved || anyInProgress,
+    isError: anyError,
+    isAsync: anyInProgress && allAsync
+  };
   return <Box flexDirection="column" marginTop={1}>
       <Box flexDirection="row">
-        <ToolUseLoader shouldAnimate={shouldAnimate && (anyUnresolved || anyInProgress)} isUnresolved={anyUnresolved || anyInProgress} isError={anyError} isAsync={anyInProgress && allAsync} />
+        {/* On a Nerd Font the agent icon takes the dot's place, as on a single Agent row. */}
+        {toolIcon ? <ToolStatusIcon icon={toolIcon} status={toolIconStatus(status)} /> : <ToolUseLoader {...status} />}
         <Text>
           {allComplete ? allAsync ? <>
                 <Text bold>{toolUses.length}</Text> background agents launched{' '}

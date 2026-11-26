@@ -35,7 +35,7 @@ paths:
   terminal; the user kept that when the review flagged reduced motion.
 
 **What changes for a teammate:**
-- A change to how a tool row looks goes in both renderers ([[tool-row-drawn-in-two-places]]).
+- A change to how a tool row looks goes in all three renderers ([[tool-row-drawn-in-two-places]]).
 - A component that draws icons reads `useNerdFontGlyphs()`, not `hasNerdFontGlyphs()`, or
   `/export` writes the codepoints.
 - A result renderer adds no ⎿ of its own: `UserToolSuccessMessage` wraps it in `ToolResultBody`.
