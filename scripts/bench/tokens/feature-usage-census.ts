@@ -31,6 +31,10 @@
  * Run:
  *   bun scripts/bench/tokens/feature-usage-census.ts --since=2026-09-14 --until=2026-09-15
  *   bun scripts/bench/tokens/feature-usage-census.ts --since=2026-09-14 --exclude=<sessionId> --json
+ *
+ * An empty window is an answer and exits 0, with its line on stderr: the
+ * census runs its scripts in one response, and an exit 1 there skipped the
+ * runs beside it. A `--since`/`--until` that is not one date exits 2.
  */
 import { readFileSync } from 'fs'
 import { basename, dirname, resolve } from 'path'
@@ -81,6 +85,16 @@ export function parseArgs(argv: string[]): Args {
 
 function cwdSlug(): string {
   return process.cwd().replace(/[^a-zA-Z0-9]/g, '-')
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const USAGE =
+  'usage: feature-usage-census.ts [--since=YYYY-MM-DD] [--until=YYYY-MM-DD] [--project=<slug>] [--exclude=<session>,…] [--json]'
+
+/** Why a window bound is not one local date, or null. */
+function badDate(flag: string, value: string): string | null {
+  if (DATE_RE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00`))) return null
+  return `${flag}=${value} is not one date (YYYY-MM-DD); a window is --since=A --until=B.`
 }
 
 // ---------------------------------------------------------------------------
@@ -1152,6 +1166,11 @@ export function printSymbols(o: ReturnType<typeof overview>, g: ReturnType<typeo
 
 function main(): void {
   const args = parseArgs(process.argv.slice(2))
+  const bad = badDate('--since', args.since) ?? badDate('--until', args.until)
+  if (bad) {
+    console.error(`${bad}\n${USAGE}`)
+    process.exit(2)
+  }
   let dirs = projectDirs(args.project)
   if (!args.project) {
     const own = dirs.filter(d => basename(d) === cwdSlug())
@@ -1170,7 +1189,7 @@ function main(): void {
   })
   if (calls.length === 0) {
     console.error(`no tool calls between ${args.since} and ${args.until} under ${dirs.join(', ')}`)
-    process.exit(1)
+    return
   }
   const o = overview(calls)
   const b = bashReport(calls)
