@@ -47,6 +47,27 @@ describe("commandLineBound — the reads the cap cut in the corpus", () => {
   }
 });
 
+// A diff limited to the paths it names prints those files' changes, and feeds
+// a bound the way `git show <rev>:<path>` does (census 11-22..26).
+describe("commandLineBound — a diff of named files feeds a bound", () => {
+  test.each([
+    ["git show 766d48db -- src/services/api/withRetry.ts | head -150", 150],
+    ["git --no-pager diff main...HEAD -- src/a.ts | cat | head -150", 150],
+    ["git show 3beebbfd -- src/auth.ts | grep -n '^[-+]' | head -150", 150],
+    ["git -C ../openclaude show 766d48db -- src/compact.ts | sed -n 118,235p", 118],
+  ])("%s", (command, lines) => {
+    expect(commandLineBound(command)).toBe(lines);
+  });
+
+  test.each([
+    ["git show 9b92b89c | head -300"],
+    ["git diff -- . | head -40"],
+    ["git log -p -- src/a.ts | head -40"],
+  ])("not a feed: %s", (command) => {
+    expect(commandLineBound(command)).toBeNull();
+  });
+});
+
 describe("commandLineBound — each bounded shape", () => {
   test.each([
     // sed: ranges, single lines, repeated -e, run-together flags, one stream across files

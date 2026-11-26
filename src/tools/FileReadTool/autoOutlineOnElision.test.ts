@@ -7,10 +7,11 @@ const priorForceAutoOutline = process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION
 process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
+import { resultDirs } from 'src/agent/tools/toolResultFiles.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   createFileStateCacheWithSizeLimit,
@@ -592,6 +593,33 @@ describe('FileReadTool — plain-text preview pivot', () => {
     const small = writeFixture('small.txt', 'just a few\nlines\n')
     const { data } = await read(small)
     expect(data.type).toBe('text')
+  })
+
+  // A relief clip's stub names the copy of the result it replaced ("the full
+  // result is saved at …"). Census 11-22..26: the Read of that copy came back
+  // as a preview and took a second Read for the middle the model had already
+  // been shown once.
+  test('a saved tool result comes back whole, as the clip stub promised', async () => {
+    // The fallback directory: the session's own one lives under the config dir.
+    const saved = resultDirs()[1]!
+    mkdirSync(saved, { recursive: true })
+    const p = join(saved, 'toolu_census1126-0123456789ab.txt')
+    writeFileSync(p, BIG_TXT)
+    try {
+      const { data } = await read(p)
+      expect(data.type).toBe('text')
+      if (data.type !== 'text') throw new Error('expected text')
+      expect(data.file.content).toContain('line 0200')
+      expect(data.file.numLines).toBe(400)
+      // Past Read's own cap the preview still answers, as it does for any .txt.
+      const capped = await read(p, {}, makeContext({ maxSizeBytes: 8 * 1024, maxTokens: 25_000 }))
+      expect(capped.data.type).toBe('outline')
+    } finally {
+      rmSync(p, { force: true })
+    }
+    // A .txt that is no saved result keeps the preview.
+    const elsewhere = await read(writeFixture('toolu_lookalike-0123456789ab.txt', BIG_TXT))
+    expect(elsewhere.data.type).toBe('outline')
   })
 
   test('a large diff pivots to its files, and symbol=<path> unfolds one of them', async () => {

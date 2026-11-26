@@ -215,6 +215,21 @@ describe('batch Read — several files', () => {
     expect(ctx.readFileState.get(a)?.isPartialView).toBe(true)
   })
 
+  test('offset and limit apply to every file, each read as a Read of that range', async () => {
+    const a = writeFixture('range-a.ts', SAMPLE_TS)
+    const b = writeFixture('range-b.txt', 'first\nsecond\nthird\nfourth\n')
+    const ctx = context()
+    const result = await inFixtureDir(() => call(ReadOn, { file_paths: [a, b], offset: 2, limit: 2 }, ctx))
+    expect(textOf(result.data)).toBe(
+      `==> range-a.ts <==\n${await singleText(a, { offset: 2, limit: 2 })}\n\n==> range-b.txt <==\n${await singleText(b, { offset: 2, limit: 2 })}`,
+    )
+    expect(textOf(result.data)).toContain('second')
+    expect(textOf(result.data)).not.toContain('fourth')
+    for (const p of [a, b]) {
+      expect(ctx.readFileState.get(p)).toMatchObject({ offset: 2, limit: 2 })
+    }
+  })
+
   test('a symbol is looked up in every file; the misses share one line and name what the file has', async () => {
     const a = writeFixture('sym-a.ts', SAMPLE_TS)
     const c = writeFixture('sym-c.ts', OTHER_TS)
@@ -508,13 +523,19 @@ describe('batch Read — validateInput', () => {
     if (both.result === false) expect(both.message).toContain('not both')
   })
 
-  test('offset, limit, pages and encoding are single-file only', async () => {
+  test('pages and encoding are single-file only', async () => {
     const a = writeFixture('combo-a.ts', OTHER_TS)
     const b = writeFixture('combo-b.ts', OTHER_TS)
-    for (const extra of [{ offset: 2 }, { limit: 5 }, { pages: '1-2' }, { encoding: 'latin1' }]) {
+    for (const extra of [{ pages: '1-2' }, { encoding: 'latin1' }]) {
       const result = await validate({ file_paths: [a, b], ...extra })
       expect(result.result).toBe(false)
       if (result.result === false) expect(result.message).toContain(Object.keys(extra)[0]!)
+    }
+    // A range is not: it applies to every file (census 11-22..26, `limit: 5`
+    // and `limit: 45` over several files, both refused, both meaning "the
+    // first N lines of each").
+    for (const extra of [{ offset: 2 }, { limit: 5 }, { offset: 2, limit: 1 }]) {
+      expect(await validate({ file_paths: [a, b], ...extra })).toEqual({ result: true })
     }
     // A symbol list on one file keeps its encoding.
     expect((await validate({ file_path: a, symbol: ['x', 'y'], encoding: 'latin1' })).result).toBe(
@@ -677,6 +698,14 @@ describe('batch Read — hooks', () => {
     ])
   })
 
+  test("a batch's range rides on every unit, as each Read of it carries", () => {
+    const units = ReadOn.hookUnits?.({ file_paths: ['/r/a.ts', '/r/b.ts'], offset: 3, limit: 40 })
+    expect(units?.inputs).toEqual([
+      { file_path: '/r/a.ts', offset: 3, limit: 40 },
+      { file_path: '/r/b.ts', offset: 3, limit: 40 },
+    ])
+  })
+
   test('the units are the Reads the batch makes: a repeat once, media not at all', () => {
     const units = ReadOn.hookUnits?.({ file_paths: ['/r/a.ts', '/r/a.ts', '/r/pic.png', '/r/doc.pdf', '/r/b.ts'] })
     expect(units?.inputs).toEqual([{ file_path: '/r/a.ts' }, { file_path: '/r/b.ts' }])
@@ -714,6 +743,11 @@ describe('batch Read — hooks', () => {
       const symbols = unitsOf({ file_path: '/r/a.ts', symbol: ['x', 'y'] })
       expect(symbols.merge([{ file_path: '/r/moved.ts', symbol: 'x' }, { file_path: '/r/moved.ts', symbol: 'y' }])).toEqual({
         input: { file_path: '/r/moved.ts', symbol: ['x', 'y'] },
+      })
+      // A range every unit takes alike is the batch's range.
+      const ranged = unitsOf({ file_paths: ['/r/a.ts', '/r/b.ts'], limit: 40 })
+      expect(ranged.merge(ranged.inputs.map(unit => ({ ...unit, offset: 5, limit: 10 })))).toEqual({
+        input: { file_paths: ['/r/a.ts', '/r/b.ts'], offset: 5, limit: 10 },
       })
     })
 

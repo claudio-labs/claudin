@@ -57,6 +57,71 @@ describe("isModelDirectedRead — what the model asked to read", () => {
     expect(isModelDirectedRead(command)).toBe(false);
   });
 
+  // Explore's caps of 11-22..26 (team memory `census-2026-11-26-cache-clean-explore-caps`):
+  // a diff limited to paths the model named, cut to 100 lines while it had
+  // asked for 150. Verbatim but for the sibling checkout made relative.
+  test.each([
+    ["a commit's diff of one file into a bound", "cd ../openclaude && git show 766d48db -- src/services/api/withRetry.ts | head -150"],
+    [
+      "a commit's diff of several files into a bound",
+      "cd ../openclaude && git show 766d48db -- src/services/api/withRetry.ts src/hooks/useIdleCompaction.ts src/services/compact/idleCompaction.ts | head -400",
+    ],
+    ["a branch diff behind the pager guard", "git --no-pager diff main...HEAD -- src/tools/BashTool/bashPermissions/decide.ts | cat"],
+    ["the changed lines of a diff into a bound", "cd ../openclaude && git show 3beebbfd -- src/services/mcp/auth.ts | grep -n '^[-+]' | head -150"],
+    [
+      "a diff sliced by sed beside a file slice",
+      "sed -n 284,320p src/agent/compact/compact.ts; echo ----OC; cd ../openclaude && git show 766d48db -- src/services/compact/compact.ts | sed -n 118,235p",
+    ],
+    [
+      "a diff of another checkout, without its header",
+      "git -C ../openclaude show c61b6b58 --format= -- src/utils/execFileNoThrow.ts src/utils/execFileNoThrowPortable.ts",
+    ],
+    [
+      "a range diff beside a file print",
+      "cat src/agent/input/pastedContent.display.test.tsx; git diff 51c2b0e2..HEAD -- src/agent/handlePromptSubmit.test.ts src/shared/text/displayTags.test.ts | head -150",
+    ],
+    [
+      "a working-tree diff between prints",
+      "cat .claudin/memory/team/tool-row-drawn-in-two-places.md; git diff -- .claudin/memory/team/MEMORY.md | cat; cat src/agent/ui/messages/toolRowIcons.ts src/agent/ui/ToolStatusIcon.tsx",
+    ],
+    [
+      "a pathspec glob the model wrote",
+      "cd ../openclaude && git show 439d7534 -- src/tools/ExitWorktreeTool/ExitWorktreeTool.ts; echo ====; git show 439d7534 -- '*ExitWorktreeTool.test.ts' | head -120",
+    ],
+  ])("the 11-26 census: %s", (_, command) => {
+    expect(isModelDirectedRead(command)).toBe(true);
+  });
+
+  test("a bare cat at the end of a pipeline is the identity", () => {
+    expect(isModelDirectedRead("cat src/a.ts | cat")).toBe(true);
+    // What a loop pipes into is still a pipeline of its own.
+    expect(isModelDirectedRead("for f in a.ts b.ts; do cat $f; done | cat")).toBe(false);
+    expect(isModelDirectedRead("echo hi | cat")).toBe(false);
+  });
+
+  // The diffs the lane still leaves to the cap: no path the model named, or a
+  // git that could run or write something else.
+  test.each([
+    ["a whole commit", "cd ../openclaude && git show 9b92b89c | head -300"],
+    ["a commit's file list", "git show HEAD~1 --stat | head"],
+    ["a commit message", "git show -s --format='%b' 3beebbfd | head -70"],
+    ["the whole tree as the path", "git diff main...HEAD -- . | head -150"],
+    ["the tree spelled ./", "git diff -- ./"],
+    ["a pathspec with magic", "git show 63a6ffc2 -- src/utils/sliceAnsi.ts ':!*.test.ts'"],
+    ["a diff written to a file", "git diff --output=/tmp/d.patch -- src/a.ts"],
+    ["an external diff driver", "git diff --ext-diff -- src/a.ts"],
+    ["a text conversion filter", "git show --textconv HEAD -- src/a.ts"],
+    ["a diff of files outside the repository", "git diff --no-index -- a.ts b.ts"],
+    ["a config override", "git -c core.pager=less diff -- src/a.ts"],
+    ["a substituted revision", "git show $(git rev-parse HEAD) -- src/a.ts"],
+    ["a variable revision", "git show $REV -- src/a.ts"],
+    ["a log", "git log -p -- src/a.ts"],
+    ["a diff into a filter with no bound", "git show 3beebbfd -- src/utils/memoize.ts | grep '^[-+]'"],
+    ["no path after the separator", "git diff main --"],
+  ])("still capped: %s", (_, command) => {
+    expect(isModelDirectedRead(command)).toBe(false);
+  });
+
   // The surviving surface: none of these is something the model asked to read,
   // and the cut exists for exactly them.
   test.each([

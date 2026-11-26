@@ -88,6 +88,33 @@ describe('rereadsOfThread', () => {
     expect(counts['reread: duplicate within 3 calls']).toBe(1)
   })
 
+  // The 11-26 census counted 7 of its 16 main "auto" outlines from batch Reads
+  // that had asked for them.
+  test("a batch outline the model asked for is an asked outline, not Read's pivot", () => {
+    const batch = { type: 'batch', files: [{ filePath: '/repo/a.ts', lines: 0 }, { filePath: '/repo/b.ts', lines: 0 }] }
+    const counts = rereadsOfThread([
+      call('Read', { file_paths: ['/repo/a.ts', '/repo/b.ts'], view: 'outline' }, 'outlines', { result: batch }),
+      call('Read', { file_path: '/repo/a.ts', offset: 1, limit: 40 }, numbered(1, 40)),
+    ])
+    expect(counts['reread: asked outline → body']).toBe(1)
+    expect(counts['reread: auto outline → body']).toBeUndefined()
+  })
+
+  // A print piped onward shows only what the rest of the pipeline let through:
+  // the 11-26 census read `sed -n 80,400p f | grep -n …` as lines 80-400 shown,
+  // and the Read of 76-84 after it as a duplicate.
+  test.each([
+    ['sed -n 80,400p src/a.ts | grep -n -E "^\\s*it\\("', 100, 10],
+    ['cat src/a.ts | head -150', 10, 5],
+  ])('a print piped onward covers no lines: %s', (command, offset, limit) => {
+    const counts = rereadsOfThread([
+      call('Bash', { command }, '<bash-output-read>5:}) 84 src/a.ts</bash-output-read>'),
+      call('Read', { file_path: '/repo/src/a.ts', offset, limit }, numbered(offset, offset + limit - 1)),
+    ])
+    expect(counts['reread: duplicate within 3 calls']).toBeUndefined()
+    expect(counts['reread: new lines']).toBe(1)
+  })
+
   test('a batch entry the harness answered unchanged counts as the unchanged stub', () => {
     const counts = rereadsOfThread([
       call('Read', { file_paths: ['/repo/a.ts', '/repo/b.ts'] }, `==> a.ts <==\n${numbered(1, 3)}\n\n==> b.ts <==\n${numbered(1, 3)}`),
