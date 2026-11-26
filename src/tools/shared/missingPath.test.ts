@@ -16,7 +16,6 @@ import {
   getEmptyToolPermissionContext,
   type ToolPermissionContext,
   type ToolUseContext,
-  type ValidationResult,
 } from 'src/tools/Tool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
@@ -77,7 +76,7 @@ function context(toolPermissionContext: ToolPermissionContext = getEmptyToolPerm
 
 async function grepRefusal(rel: string): Promise<string> {
   const verdict = await runWithCwdOverride(root, () =>
-    GrepTool.validateInput!({ pattern: 'x', path: join(root, rel) } as never),
+    GrepTool.validateInput!({ pattern: 'x', path: join(root, rel) } as never, context()),
   )
   return verdict.result === false ? verdict.message : '(accepted)'
 }
@@ -108,7 +107,7 @@ describe('Grep names the likely path', () => {
 
     test('a path outside the working directory gets no guess', async () => {
       const verdict = await runWithCwdOverride(root, () =>
-        GrepTool.validateInput!({ pattern: 'x', path: join(elsewhere, 'Shell.ts') } as never),
+        GrepTool.validateInput!({ pattern: 'x', path: join(elsewhere, 'Shell.ts') } as never, context()),
       )
       expect(verdict.result === false && verdict.message).not.toContain('Did you mean')
     })
@@ -130,7 +129,7 @@ describe('Read, Glob and Edit name it the same way', () => {
 
   test('Glob', async () => {
     const verdict = await runWithCwdOverride(root, () =>
-      GlobTool.validateInput!({ pattern: '*.ts', path: join(root, 'src/bootstrap') } as never),
+      GlobTool.validateInput!({ pattern: '*.ts', path: join(root, 'src/bootstrap') } as never, context()),
     )
     expect(verdict.result === false && verdict.message).toContain(`Did you mean ${join(root, 'src/platform/bootstrap')}?`)
   })
@@ -153,14 +152,12 @@ describe('a path the Read deny rules hide is never named', () => {
     ...getEmptyToolPermissionContext(),
     alwaysDenyRules: { cliArg: [`Read(/${root}/secrets/**)`] },
   })
-  type ValidateWith = (input: unknown, context: ToolUseContext) => Promise<ValidationResult>
 
   test('Grep, with the rule and without it', async () => {
-    const validate = GrepTool.validateInput as unknown as ValidateWith
-    const missing = { pattern: 'x', path: join(root, 'config/prod.env.json') }
-    const open = await runWithCwdOverride(root, () => validate(missing, context()))
+    const missing = { pattern: 'x', path: join(root, 'config/prod.env.json') } as never
+    const open = await runWithCwdOverride(root, () => GrepTool.validateInput!(missing, context()))
     expect(open.result === false && open.message).toContain(`Did you mean ${join(root, 'secrets/prod.env.json')}?`)
-    const denied = await runWithCwdOverride(root, () => validate(missing, context(denying())))
+    const denied = await runWithCwdOverride(root, () => GrepTool.validateInput!(missing, context(denying())))
     expect(denied.result === false && denied.message).not.toContain('secrets')
   })
 
@@ -177,12 +174,13 @@ describe('a path the Read deny rules hide is never named', () => {
 })
 
 describe('missingPathHint, in order', () => {
+  const open = getEmptyToolPermissionContext()
   const hint = (rel: string, listFiles?: (root: string) => Promise<string[]>) =>
-    runWithCwdOverride(root, () => missingPathHint(join(root, rel), listFiles))
+    runWithCwdOverride(root, () => missingPathHint(join(root, rel), open, listFiles))
 
   test('a dropped cwd folder comes first', async () => {
     const dropped = join(root, '..', 'src/shared/proc/Shell.ts')
-    expect(await runWithCwdOverride(root, () => missingPathHint(dropped))).toBe(
+    expect(await runWithCwdOverride(root, () => missingPathHint(dropped, open))).toBe(
       ` Did you mean ${join(root, 'src/shared/proc/Shell.ts')}?`,
     )
   })

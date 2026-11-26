@@ -383,7 +383,7 @@ export const GrepTool = buildTool({
   async preparePermissionMatcher({ pattern }) {
     return rulePattern => matchWildcardPattern(rulePattern, pattern)
   },
-  async validateInput({ path }): Promise<ValidationResult> {
+  async validateInput({ path }, context): Promise<ValidationResult> {
     // If path is provided, validate that it exists
     if (path) {
       const fs = getFsImplementation()
@@ -401,7 +401,7 @@ export const GrepTool = buildTool({
           const targets = resolveSearchTargets(path, piece => fs.existsSync(expandPath(piece)))
           if (targets.kind === 'many') return { result: true }
           const missing = targets.kind === 'missing' ? targets.path : path
-          const hint = await missingPathHint(expandPath(missing))
+          const hint = await missingPathHint(expandPath(missing), context.getAppState().toolPermissionContext)
           return {
             result: false,
             message: `Path does not exist: ${missing}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`,
@@ -716,8 +716,11 @@ export const GrepTool = buildTool({
     if (exclude?.length) {
       const excluded = new Set<string>()
       for (const pattern of exclude) {
+        // An empty entry would be `--glob !`, which ripgrep reads as "skip every file".
+        const body = pattern.trim().replace(LEADING_BANG_RE, '')
+        if (!body) continue
         for (const root of searchRoots) {
-          for (const g of globsForSearchPath(`!${pattern.replace(LEADING_BANG_RE, '')}`, root, rgCwd ?? process.cwd())) excluded.add(g)
+          for (const g of globsForSearchPath(`!${body}`, root, rgCwd ?? process.cwd())) excluded.add(g)
         }
       }
       for (const g of excluded) args.push('--glob', g)

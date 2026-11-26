@@ -21,12 +21,17 @@
  * 3 and 4 name at most three paths, and more than three is no guess at all.
  * Only a path under the cwd gets them, and a listing that fails or runs past
  * its budget gives no hint: a hint is worth one call, never a stall.
+ *
+ * A path the session's Read deny rules hide is never named: the listing
+ * comes from the filesystem, not from what the session may read.
  */
 import { readdir } from 'fs/promises'
 import { basename, dirname, extname, join, sep } from 'path'
+import { matchingRuleForInput } from 'src/permissions/filePermissions.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { findSimilarFile, suggestPathUnderCwd } from 'src/shared/fs/file.js'
 import { ripGrep } from 'src/shared/fs/ripgrep.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 
 const MAX_GUESSES = 3
 const LISTING_TIMEOUT_MS = 3_000
@@ -79,16 +84,29 @@ function nameGuesses(paths: readonly string[]): string | undefined {
 }
 
 /** ` Did you mean <path>?` for a missing absolute path, or '' when nothing fits. */
-export async function missingPathHint(fullPath: string, listFiles: ListFiles = listProjectFiles): Promise<string> {
+export async function missingPathHint(
+  fullPath: string,
+  permissions: ToolPermissionContext,
+  listFiles: ListFiles = listProjectFiles,
+): Promise<string> {
+  const readable = (path: string) => matchingRuleForInput(path, permissions, 'read', 'deny') === null
+  const underCwd = await suggestPathUnderCwd(fullPath)
+  const similar = findSimilarFile(fullPath)
   const guess =
-    (await suggestPathUnderCwd(fullPath)) ?? findSimilarFile(fullPath) ?? (await likelyPaths(fullPath, listFiles))
+    (underCwd && readable(underCwd) ? underCwd : undefined) ??
+    (similar && readable(join(dirname(fullPath), similar)) ? similar : undefined) ??
+    (await likelyPaths(fullPath, listFiles, readable))
   return guess ? ` Did you mean ${guess}?` : ''
 }
 
-async function likelyPaths(fullPath: string, listFiles: ListFiles): Promise<string | undefined> {
+async function likelyPaths(
+  fullPath: string,
+  listFiles: ListFiles,
+  readable: (path: string) => boolean,
+): Promise<string | undefined> {
   const cwd = getCwd()
   if (!fullPath.startsWith(cwd + sep)) return undefined
-  const siblings = await siblingsStartingWith(fullPath)
+  const siblings = (await siblingsStartingWith(fullPath)).filter(readable)
   if (siblings.length > 0) return nameGuesses(siblings)
-  return nameGuesses(await sameNameUnder(cwd, fullPath, listFiles))
+  return nameGuesses((await sameNameUnder(cwd, fullPath, listFiles)).filter(readable))
 }

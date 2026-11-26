@@ -314,7 +314,7 @@ export const FileEditTool = buildTool({
       if (old_string === '') {
         return memoryFormatVerdict(fullFilePath, new_string)
       }
-      let message = `File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${await missingPathHint(fullFilePath)}`
+      let message = `File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${await missingPathHint(fullFilePath, toolUseContext.getAppState().toolPermissionContext)}`
       // b40b178b 2026-11-08: two Edits of a PR body never written, both told
       // only that it was missing.
       message += ' To create it, use Write, or Edit with an empty old_string.'

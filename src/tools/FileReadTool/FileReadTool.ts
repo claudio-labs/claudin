@@ -1053,7 +1053,7 @@ export const FileReadTool = buildTool({
           }
         }
 
-        const hint = await missingPathHint(fullFilePath)
+        const hint = await missingPathHint(fullFilePath, context.getAppState().toolPermissionContext)
         throw new Error(`File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`)
       }
       throw error

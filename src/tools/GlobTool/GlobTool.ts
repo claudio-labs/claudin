@@ -153,7 +153,7 @@ export const GlobTool = buildTool({
     offset,
     head_limit,
     max_depth,
-  }): Promise<ValidationResult> {
+  }, context): Promise<ValidationResult> {
     if (offset !== undefined && (offset < 0 || !Number.isFinite(offset))) {
       return {
         result: false,
@@ -197,7 +197,7 @@ export const GlobTool = buildTool({
         stats = await fs.stat(absolutePath)
       } catch (e: unknown) {
         if (isENOENT(e)) {
-          const hint = await missingPathHint(absolutePath)
+          const hint = await missingPathHint(absolutePath, context.getAppState().toolPermissionContext)
           return {
             result: false,
             message: `Directory does not exist: ${path}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`,
