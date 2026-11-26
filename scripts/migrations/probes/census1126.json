@@ -7,7 +7,8 @@
     "src/tools/FileReadTool/readGlobs.test.ts",
     "src/tools/FileReadTool/autoOutlineOnElision.test.ts",
     "src/agent/queryHelpers.extractReadFiles.test.ts",
-    "scripts/bench/tokens/reread-census.test.ts"
+    "scripts/bench/tokens/reread-census.test.ts",
+    "scripts/bench/tokens/feature-usage-census.test.ts"
   ],
   "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
   "probes": [
@@ -145,6 +146,30 @@
       "source": "scripts/bench/tokens/reread-census.ts",
       "find": "range: cut || pipedOnward ? null : range",
       "replace": "range: cut ? null : range"
+    },
+    {
+      "name": "census: a new WaitFor command or condition continues the run",
+      "source": "scripts/bench/tokens/feature-usage-census.ts",
+      "find": "    if (target !== waitingFor) runLength = 0\n",
+      "replace": ""
+    },
+    {
+      "name": "line bound: a blob beside a commit feeds a bound",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "operands.every((arg) => REV_PATH_RE.test(arg.text))",
+      "replace": "operands.some((arg) => REV_PATH_RE.test(arg.text))"
+    },
+    {
+      "name": "line bound: any colon reads as <rev>:<path>",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "const REV_PATH_RE = /^[^-:][^:]*:./;\n",
+      "replace": "const REV_PATH_RE = /:/;\n"
+    },
+    {
+      "name": "line bound: a flag is an operand",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "    const operands = args.slice(1).filter((arg) => !arg.text.startsWith(\"-\"));\n",
+      "replace": "    const operands = args.slice(1);\n"
     }
   ]
 }

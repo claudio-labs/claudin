@@ -56,6 +56,7 @@ describe("commandLineBound — a diff of named files feeds a bound", () => {
     ["git show 3beebbfd -- src/auth.ts | grep -n '^[-+]' | head -150", 150],
     ["git -C ../openclaude show 766d48db -- src/compact.ts | sed -n 118,235p", 118],
     ["git show HEAD~1:src/a.ts | head -40", 40],
+    ["git show --no-color HEAD~1:src/a.ts | head -40", 40],
   ])("%s", (command, lines) => {
     expect(commandLineBound(command)).toBe(lines);
   });
@@ -69,6 +70,7 @@ describe("commandLineBound — a diff of named files feeds a bound", () => {
     ["git show 9b92b89c --format='%h: %s' | head -300"],
     ["git show 63a6ffc2 -- src/utils/sliceAnsi.ts ':!*.test.ts' | head -50"],
     ["git show 9b92b89c main:src/a.ts | head -40"],
+    ["git show HEAD:src/a.ts ':!src/b.ts' | head -40"],
   ])("not a feed: %s", (command) => {
     expect(commandLineBound(command)).toBeNull();
   });
