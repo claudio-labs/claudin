@@ -32,6 +32,7 @@ import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { maxTimeoutS, STATED_MAX_TIMEOUT_S } from 'src/tools/WaitForTool/limits.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
+import { compileUntil, untilMatches } from 'src/tools/WaitForTool/untilPattern.js'
 
 const DEFAULT_SETTLE_S = 3
 const DEFAULT_INTERVAL_S = 1
@@ -50,7 +51,9 @@ const inputSchema = lazySchema(() =>
     until: z
       .string()
       .optional()
-      .describe('Regex; return as soon as the output matches it. Preferred over settling.'),
+      .describe(
+        'Regex; return as soon as the output matches it. `^` and `$` match at line breaks, except after a `^(?!`/`^(?=` lookaround. Preferred over settling.',
+      ),
     settle_s: z
       .number()
       .min(0)
@@ -123,23 +126,6 @@ async function runOnce(
 function formatStatus(output: Output): string {
   const secs = (output.elapsedMs / 1000).toFixed(1)
   return `[${WAITFOR_TOOL_NAME}: ${output.reason} after ${secs}s, ${output.polls} poll${output.polls === 1 ? '' : 's'}]`
-}
-
-/**
- * `(?s)…` is how PCRE and Python turn on dot-all, and the model writes it that
- * way to match CI rows spread over several lines. JavaScript has no global
- * inline group — only the scoped `(?s:…)` — so `new RegExp` threw, and the
- * 2026-10-05..11 census saw three waits refused for it. A leading group of
- * `i`, `m` and `s` becomes those flags; anything else is left for `new RegExp`
- * to reject as before. `u` stays out: in JavaScript it is a stricter mode that
- * rejects escapes like `\-`, not the no-op it is in Python.
- */
-const LEADING_FLAGS_RE = /^\(\?([ims]+)\)/
-
-/** @throws SyntaxError when `until` is not a valid regex. */
-function compileUntil(source: string): RegExp {
-  const leading = LEADING_FLAGS_RE.exec(source)
-  return leading ? new RegExp(source.slice(leading[0].length), leading[1]) : new RegExp(source)
 }
 
 /**
@@ -317,7 +303,7 @@ export const WaitForTool = buildTool({
       const next = poll.text
       const now = Date.now()
       if (untilRe) {
-        if (untilRe.test(next)) {
+        if (untilMatches(untilRe, next)) {
           output = next
           matched = true
           reason = 'match'
