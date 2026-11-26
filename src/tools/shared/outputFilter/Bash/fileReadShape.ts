@@ -126,6 +126,12 @@ const COUNT_RE = /^\d+$/;
 const COUNT_FLAG_RE = /^-\d+$/;
 /** `tail -n +N`: from line N to the end. */
 const FROM_LINE_RE = /^\+\d+$/;
+/** The git subcommands `isScopedGitDiff` takes. */
+const GIT_DIFF_COMMANDS: ReadonlySet<string> = new Set(["show", "diff"]);
+/** Flags that write a file, run a program, or diff files outside the repository. */
+const GIT_DIFF_UNSAFE_FLAG_RE = /^--(?:output|ext-diff|textconv|no-index)(?:=|$)/;
+/** `.` or `./`: a path that names the whole tree. */
+const WHOLE_TREE_RE = /^\.\/?$/;
 /** The directory stack moves the cwd where `cd`'s one argument does not say. */
 const DIRECTORY_STACK: ReadonlySet<string> = new Set(["pushd", "popd"]);
 
@@ -469,6 +475,40 @@ export function isListing(head: string, args: readonly ReadWord[]): boolean {
     default:
       return false;
   }
+}
+
+/**
+ * `git show <rev> -- <paths>`, `git diff [<range>] -- <paths>`: a diff limited
+ * to paths the model named, which prints those files' changes and nothing
+ * else. Explore's 43 caps of 11-22..26 were mostly this shape, `| head -150`
+ * cut to 100 lines (team memory `census-2026-11-26-cache-clean-explore-caps`).
+ *
+ * The only global options taken are `--no-pager` and `-C <dir>`; `-c` could
+ * set a pager or an external diff. After `show`/`diff`, every word is literal
+ * and at least one path follows `--`. Refused: a path of `.` or `./` (the
+ * whole tree), pathspec magic (`:!*.test.ts`), and the flags that write a
+ * file, run a program or diff outside the repository.
+ *
+ * A diff is not the file, so neither `walkReads` nor `parsePureFileRead` calls
+ * this: the read credit and the whole-file fit never count one as a read.
+ */
+export function isScopedGitDiff(words: readonly ReadWord[]): boolean {
+  if (words[0]?.text !== "git") return false;
+  if (words.some((word) => EXPANDED_WORD_RE.test(expandHomeTilde(word.text)))) return false;
+  let at = 1;
+  for (;;) {
+    const option = words[at]?.text;
+    if (option === "--no-pager") at += 1;
+    else if (option === "-C" && words[at + 1]) at += 2;
+    else break;
+  }
+  if (!GIT_DIFF_COMMANDS.has(words[at]?.text ?? "")) return false;
+  const rest = words.slice(at + 1);
+  const separator = rest.findIndex((word) => word.text === "--");
+  if (separator < 0) return false;
+  if (rest.slice(0, separator).some((word) => GIT_DIFF_UNSAFE_FLAG_RE.test(word.text))) return false;
+  const paths = rest.slice(separator + 1);
+  return paths.length > 0 && paths.every((path) => !WHOLE_TREE_RE.test(path.text) && !path.text.startsWith(":"));
 }
 
 /**
