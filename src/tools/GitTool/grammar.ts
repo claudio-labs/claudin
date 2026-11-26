@@ -119,7 +119,7 @@ function quotesItself(word: string): boolean {
  * message is touched; a word with any quoting of its own is copied as it is.
  * Idempotent: a quoted word is no longer plain.
  */
-export function quoteLiteralWords(command: string): string {
+function quoteLiteralWords(command: string): string {
   let out = ''
   let i = 0
   while (i < command.length) {
