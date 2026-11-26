@@ -189,7 +189,8 @@ describe('-o and exclude', () => {
   test('exclude leaves the globs out, as a list or as one string', async () => {
     const listed = await grep({ pattern: 'retry', path: root, exclude: ['src/tools/RunTestsTool/**'] })
     expect(listed.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])
-    const spelled = await grep({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/**' })
+    // One string is split by the schema, as `glob` is, before call() sees it.
+    const spelled = await grep(GrepTool.inputSchema.parse({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/**' }))
     expect(spelled.filenames.map(f => basename(f))).toEqual(['RunTestsTool.ts'])
   })
 

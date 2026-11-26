@@ -74,6 +74,9 @@ const NEEDS_PCRE2_RE = /look-around|backreferences|--pcre2 flag/
 // searched, because ripgrep applies no glob to a file on its command line.
 const ENV_FILE_EXCLUSION_GLOBS = ['!.env', '!.env.*', '!*.env'] as const
 
+// An `exclude` entry written as a negation (`!*.test.ts`) means the same thing.
+const LEADING_BANG_RE = /^!/
+
 /** relativizeRgLine against whichever search root the line's path is under. */
 function relativizeAcross(line: string, roots: readonly string[]): string {
   for (const root of roots) {
@@ -157,6 +160,13 @@ const inputSchema = lazySchema(() =>
       .describe(
         'Glob that filters files, e.g. "*.js", "*.{ts,tsx}" (rg --glob)',
       ),
+    // A string is split like `glob`: the model copies Glob's list, or writes one string.
+    exclude: z
+      .preprocess(
+        value => (typeof value === 'string' ? splitGlobInput(value) : value),
+        z.array(z.string()).optional(),
+      )
+      .describe('Globs to leave out, e.g. ["**/*.test.ts"] (rg --glob !…)'),
     output_mode: z
       .enum(['content', 'files_with_matches', 'count', 'symbols'])
       .optional()
@@ -177,6 +187,9 @@ const inputSchema = lazySchema(() =>
     ),
     '-n': semanticBoolean(z.boolean().optional()).describe(
       `Line numbers (rg -n), default true. ${CONTENT_ONLY}`,
+    ),
+    '-o': semanticBoolean(z.boolean().optional()).describe(
+      `Only the matched part of each line (rg -o). ${CONTENT_ONLY}`,
     ),
     '-i': semanticBoolean(z.boolean().optional()).describe(
       'true forces case-insensitive matching, false case-sensitive; omitted, ripgrep smart-case applies.',
@@ -545,6 +558,7 @@ export const GrepTool = buildTool({
       pattern,
       path,
       glob,
+      exclude,
       type,
       output_mode = 'files_with_matches',
       '-B': context_before,
@@ -552,6 +566,7 @@ export const GrepTool = buildTool({
       '-C': context_c,
       context,
       '-n': show_line_numbers = true,
+      '-o': only_matching = false,
       '-i': case_insensitive,
       no_ignore = false,
       binary = false,
@@ -633,6 +648,10 @@ export const GrepTool = buildTool({
       args.push('-n')
     }
 
+    if (only_matching && output_mode === 'content') {
+      args.push('-o')
+    }
+
     // 'symbols' mode parses `path:line:text`, so the filename must always be
     // present. rg omits it when the search target is a single file — force it
     // with -H so single-file greps don't parse as `line:text` and drop matches.
@@ -690,6 +709,18 @@ export const GrepTool = buildTool({
         }
       }
       for (const g of globs) args.push('--glob', g)
+    }
+
+    // Anchored the same way as `glob`. Leaving files out cannot pick a .env,
+    // so an exclude naming one asks nothing in checkPermissions.
+    if (exclude?.length) {
+      const excluded = new Set<string>()
+      for (const pattern of exclude) {
+        for (const root of searchRoots) {
+          for (const g of globsForSearchPath(`!${pattern.replace(LEADING_BANG_RE, '')}`, root, rgCwd ?? process.cwd())) excluded.add(g)
+        }
+      }
+      for (const g of excluded) args.push('--glob', g)
     }
 
     // A glob that names a .env was asked about in checkPermissions; every other

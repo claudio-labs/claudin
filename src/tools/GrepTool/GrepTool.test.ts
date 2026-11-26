@@ -1376,12 +1376,14 @@ describe('GrepTool — input schema texts', () => {
       'pattern',
       'path',
       'glob',
+      'exclude',
       'output_mode',
       '-B',
       '-A',
       '-C',
       'context',
       '-n',
+      '-o',
       '-i',
       'no_ignore',
       'binary',
@@ -1399,12 +1401,14 @@ describe('GrepTool — input schema texts', () => {
     const required: Record<string, string[]> = {
       path: ['(rg PATH)', 'Defaults to the working directory'],
       glob: ['(rg --glob)'],
+      exclude: ['(rg --glob !…)'],
       output_mode: ['"files_with_matches" (default)', '"symbols"', 'Terraform'],
       '-B': ['(rg -B)'],
       '-A': ['(rg -A)'],
       '-C': ['Alias for context; context wins when both are given'],
       context: ['(rg -C)'],
       '-n': ['(rg -n), default true'],
+      '-o': ['(rg -o)'],
       '-i': ['smart-case'],
       no_ignore: ['.gitignore/.ignore', '(rg --no-ignore)', 'Default false'],
       binary: ['(rg -a)', 'Default false'],
@@ -1414,7 +1418,7 @@ describe('GrepTool — input schema texts', () => {
       offset: ['"| tail -n +N | head -N"', 'Default 0'],
       multiline: ['(rg -U --multiline-dotall)', 'Default false'],
     }
-    for (const flag of ['-A', '-B', '-C', 'context', '-n']) {
+    for (const flag of ['-A', '-B', '-C', 'context', '-n', '-o']) {
       required[flag]!.push('Ignored outside "content" mode.')
     }
     const missing = Object.entries(required).flatMap(([field, needles]) =>
