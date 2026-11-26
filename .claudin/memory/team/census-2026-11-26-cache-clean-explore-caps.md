@@ -1,6 +1,6 @@
 ---
 name: census-2026-11-26-cache-clean-explore-caps
-description: Census 11-22..26 (claudin + ferrous-dns, v1.2.3) — cache and context clean (4 drops, all explained; 0 compactions); fixed on fix/census-2026-11-26 — scoped git diffs kept by the read lane (25 of 62 caps), batch Read takes offset/limit, saved results read whole, re-read census miscounts; Playwright re-pointed at Brave; mergeable 8.4→12.5% is the work mix and the WaitFor re-polls are a counter artifact
+description: Census 11-22..26 (claudin + ferrous-dns, v1.2.3) — cache and context clean (4 drops, all explained; 0 compactions); fixed on fix/census-2026-11-26 — scoped git diffs kept by the read lane (26 of 63 caps), batch Read takes offset/limit, saved results up to 50k read whole, census miscounts (re-reads, WaitFor); Playwright re-pointed at Brave; mergeable 8.4→12.5% is the work mix
 type: project
 expires: 2027-01-26
 ---
@@ -41,13 +41,13 @@ The same pattern shows in 24 sessions 10-28..11-21; the onset was checked only i
   30% of edits (27% before). Ceiling of a fix: ~22 edit→verify calls that could have used `then`
   plus 7 Typecheck→test pairs, ~1% of calls. No change made.
 - Bash caps: main 12, sub 50 (5 before), 43 in Explore, mostly `git show <sha> -- <path> | head
-  -150` cut to 100 lines. **Fixed:** the lane keeps 25 of the 62 whole (24 of 50 sub; 1 more
-  accepted but past 28k chars), and 5 of those had been re-run.
-- WaitFor 108 calls, 5 "re-polls" (0 before), 9 timeouts. **A counter artifact:**
-  `feature-usage-census.ts:949-954` counts any back-to-back WaitFor, whatever the command. All 5
-  first calls matched: 3 were deliberate two-stage waits, 2 an `until` matching the prompt the
-  model had typed, echoed in the tmux capture (`WaitForTool.ts:319-320` tests the whole output).
-  Like-for-like on 11-14..16: 3 such pairs in 25 calls. No change made.
+  -150` cut to 100 lines. **Fixed:** the lane keeps 26 of the 63 whole (the window grew during
+  the day; 1 more accepted but past 28k chars), and 6 of those had been re-run.
+- WaitFor 93 calls in claudin, 9 timeouts. The census reported 5 "re-polls" (0 before), all a
+  **counter artifact**, now fixed: it counted any back-to-back WaitFor, whatever the command.
+  All 5 first calls had matched: 3 were deliberate two-stage waits, 2 an `until` matching the
+  prompt the model had typed, echoed in the tmux capture (`WaitForTool.ts:319-320` tests the
+  whole output; not changed). Keyed on command + `until`, the count is 0 of 93.
 - Empty slash-glob Greps 4 of 39.
 - Tool errors 43 of 5,180 (0.83%; 1.1% before): 8 the user's rejections (5 of them
   ExitPlanMode plan reviews), 2 correct classifier denials, 3 batch skips, 17 the model's own
@@ -62,18 +62,34 @@ against the project root`. Playwright in ferrous-dns failed 2/2 on `/usr/bin/chr
 **Fixed on `fix/census-2026-11-26` (2026-11-26):**
 - The read lane keeps a diff of named paths (`isScopedGitDiff`, `fileReadShape.ts`) and reads a
   closing bare `| cat` as the identity ([[bash-read-lane]]). A whole commit, `--stat`, `-s`, `git
-  log`, `-- .`, pathspec magic and `--output`/`--ext-diff`/`--textconv`/`--no-index`/`-c` keep
-  the cap. Read credit never counts a diff.
+  log`, a show of a range, paths that spell the whole tree (`.`, `.//`, `src/..`, `'*'`, `*`,
+  `..`, `/`), pathspec magic and `--output`/`--ext-diff`/`--textconv`/`--no-index`/`-c` keep
+  the cap; a narrower glob is a path. Read credit never counts a diff.
+- `git show <rev>:<path>` feeds a bound only when every operand is one (`isRevisionFileShow`,
+  beside the scoped diff, behind the same `gitCommand`): a colon in `--format`, a `:!` pathspec
+  or a commit beside a blob used to let a whole commit through. `:path` (the index copy),
+  `--no-pager` and `-C` are read; `:/text` and a variable rev are not.
 - A batch Read applies `offset`/`limit` to every file; `pages`/`encoding` stay single-file.
-- A Read of a result this session saved (`resultDirs()`) skips the text preview.
-- The re-read census counts asked batch outlines and piped prints as they are.
+  `/resume` reads Codex's `null` placeholders as no range, for single Reads too (a bug from
+  before this branch).
+- A Read of a result this session saved (`resultDirs()`), up to 50k chars
+  (`DEFAULT_MAX_RESULT_SIZE_CHARS`), skips the text preview; a paged one past that keeps it.
+- The re-read census counts asked batch outlines, piped prints and a batch's offset as they
+  are; the feature-usage census keys a WaitFor run on its command and `until`.
 - Playwright MCP re-added in ferrous-dns and legendarr with `--browser chromium
   --executable-path /opt/brave-bin/brave`; navigate checked live. A navigate drops a
   `.playwright-mcp/` snapshot dir in the cwd, not gitignored in ferrous-dns.
-- Evidence: break-probe `census1126.json` (24 probes; two lines turned nothing red on the first
-  pass and got cases). Full suite 19,272 pass. Live on the bundle (Haiku 5.5): `git show <sha> --
-  <file> | head -150` came back as 150 lines in `<bash-output-read>`; a `file_paths` Read with
-  `limit: 5` returned 5 lines of each file.
+- A three-agent review (bugs, conventions, regressions) found the whole-tree, range, Codex-null,
+  paged-result and census-offset bugs above, plus five mutations no test caught; all fixed with
+  red tests first.
+- Not built, on purpose (user, 2026-11-26): a `for` variable as the rev (no census case needed
+  it), and line filters with no bound after a diff (`| grep '^[-+]'`), since `cat f | grep X` is
+  pinned as no read. `prompt.ts` was left alone; only the `file_paths` text names the range.
+- Evidence: break-probe `census1126.json`, 43 probes, all red (four lines turned nothing red on
+  first passes and got cases). Full suite 19,298 pass. Live on the bundle (Haiku 5.5): `git show
+  <sha> -- <file> | head -150` came back as 150 lines in `<bash-output-read>`, `git diff A..B --
+  '*' | head -150` was capped at 100, and a `file_paths` Read with `offset: 3, limit: 4` returned
+  lines 3-6 of each file.
 
 **Checks for the next census:** Explore caps against this window's 43, and the lane-kept count
 in `cut-refetch-census --lane`; batch Reads with `offset`/`limit` succeed; Playwright calls in
