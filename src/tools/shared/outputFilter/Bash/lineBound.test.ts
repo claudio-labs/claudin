@@ -55,6 +55,7 @@ describe("commandLineBound — a diff of named files feeds a bound", () => {
     ["git --no-pager diff main...HEAD -- src/a.ts | cat | head -150", 150],
     ["git show 3beebbfd -- src/auth.ts | grep -n '^[-+]' | head -150", 150],
     ["git -C ../openclaude show 766d48db -- src/compact.ts | sed -n 118,235p", 118],
+    ["git show HEAD~1:src/a.ts | head -40", 40],
   ])("%s", (command, lines) => {
     expect(commandLineBound(command)).toBe(lines);
   });
@@ -63,6 +64,11 @@ describe("commandLineBound — a diff of named files feeds a bound", () => {
     ["git show 9b92b89c | head -300"],
     ["git diff -- . | head -40"],
     ["git log -p -- src/a.ts | head -40"],
+    // A colon anywhere used to read as `<rev>:<path>`: a format string, a
+    // pathspec with magic, or a blob beside a commit print a whole commit.
+    ["git show 9b92b89c --format='%h: %s' | head -300"],
+    ["git show 63a6ffc2 -- src/utils/sliceAnsi.ts ':!*.test.ts' | head -50"],
+    ["git show 9b92b89c main:src/a.ts | head -40"],
   ])("not a feed: %s", (command) => {
     expect(commandLineBound(command)).toBeNull();
   });
