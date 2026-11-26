@@ -31,13 +31,19 @@
  * Run:
  *   bun scripts/bench/tokens/feature-usage-census.ts --since=2026-09-14 --until=2026-09-15
  *   bun scripts/bench/tokens/feature-usage-census.ts --since=2026-09-14 --exclude=<sessionId> --json
+ *   bun scripts/bench/tokens/feature-usage-census.ts --since=2026-09-14 --project=<a>,<b> --dump=<file.jsonl>
+ *
+ * `--dump` is for a question the reports do not answer: it writes the paired
+ * calls of the window, one JSON row each, to the file it names and prints only
+ * the count. 33 one-off python/grep passes over the corpus in 2026-11-19..26,
+ * 29 of them in one census, each re-derived this walk.
  *
  * An empty window is an answer and exits 0, with its line on stderr: the
  * census runs its scripts in one response, and an exit 1 there skipped the
  * runs beside it. A `--since`/`--until` that is not one date exits 2.
  */
-import { readFileSync } from 'fs'
-import { basename, dirname, resolve } from 'path'
+import { readFileSync, writeFileSync } from 'fs'
+import { basename, dirname, resolve, sep } from 'path'
 import { isDirAnchoredGlob, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
 import {
   contentText,
@@ -56,9 +62,11 @@ import {
 type Args = {
   since: string
   until: string
-  project: string | null
+  /** `--project=a,b`; empty walks the cwd's project. */
+  projects: string[]
   exclude: Set<string>
   json: boolean
+  dump: string | null
 }
 
 function localDate(ts: number): string {
@@ -77,9 +85,10 @@ export function parseArgs(argv: string[]): Args {
   return {
     since: get('since') ?? today,
     until: get('until') ?? today,
-    project: get('project'),
+    projects: (get('project') ?? '').split(',').filter(Boolean),
     exclude: new Set((get('exclude') ?? '').split(',').filter(Boolean)),
     json: argv.includes('--json'),
+    dump: get('dump'),
   }
 }
 
@@ -89,7 +98,7 @@ function cwdSlug(): string {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const USAGE =
-  'usage: feature-usage-census.ts [--since=YYYY-MM-DD] [--until=YYYY-MM-DD] [--project=<slug>] [--exclude=<session>,…] [--json]'
+  'usage: feature-usage-census.ts [--since=YYYY-MM-DD] [--until=YYYY-MM-DD] [--project=<slug>,…] [--exclude=<session>,…] [--json | --dump=<file.jsonl>]'
 
 /** Why a window bound is not one local date, or null. */
 function badDate(flag: string, value: string): string | null {
@@ -1161,6 +1170,32 @@ export function printSymbols(o: ReturnType<typeof overview>, g: ReturnType<typeo
 }
 
 // ---------------------------------------------------------------------------
+// Dump
+// ---------------------------------------------------------------------------
+
+/** One JSON line per call; `project` is the directory of `dirs` its transcript sits in. */
+export function dumpRows(calls: readonly Call[], dirs: readonly string[]): string {
+  const rows = calls.map(c => {
+    const project = dirs.find(d => c.file.startsWith(d + sep))
+    return JSON.stringify({
+      project: project === undefined ? '' : basename(project),
+      session: c.session,
+      sub: c.sub,
+      file: c.file,
+      seq: c.seq,
+      ts: new Date(c.ts).toISOString(),
+      tool: c.tool,
+      input: c.input,
+      text: c.text,
+      chars: c.chars,
+      isError: c.isError,
+      cwd: c.cwd,
+    })
+  })
+  return `${rows.join('\n')}\n`
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1171,8 +1206,8 @@ function main(): void {
     console.error(`${bad}\n${USAGE}`)
     process.exit(2)
   }
-  let dirs = projectDirs(args.project)
-  if (!args.project) {
+  let dirs = args.projects.length > 0 ? args.projects.flatMap(p => projectDirs(p)) : projectDirs()
+  if (args.projects.length === 0) {
     const own = dirs.filter(d => basename(d) === cwdSlug())
     if (own.length > 0) dirs = own
   }
@@ -1189,6 +1224,11 @@ function main(): void {
   })
   if (calls.length === 0) {
     console.error(`no tool calls between ${args.since} and ${args.until} under ${dirs.join(', ')}`)
+    return
+  }
+  if (args.dump) {
+    writeFileSync(args.dump, dumpRows(calls, dirs))
+    console.log(`${calls.length} calls → ${args.dump}`)
     return
   }
   const o = overview(calls)

@@ -595,16 +595,18 @@ describe('parseArgs', () => {
     expect(parseArgs(['--since=2026-11-14', '--until=2026-11-15', '--project=-proj', '--exclude=a,b', '--json'])).toEqual({
       since: '2026-11-14',
       until: '2026-11-15',
-      project: '-proj',
+      projects: ['-proj'],
       exclude: new Set(['a', 'b']),
       json: true,
+      dump: null,
     })
+    expect(parseArgs(['--project=-a,-b', '--dump=/tmp/d.jsonl'])).toMatchObject({ projects: ['-a', '-b'], dump: '/tmp/d.jsonl' })
   })
 
   test('defaults to today, in local time, with nothing excluded', () => {
     const now = new Date()
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    expect(parseArgs([])).toEqual({ since: today, until: today, project: null, exclude: new Set(), json: false })
+    expect(parseArgs([])).toEqual({ since: today, until: today, projects: [], exclude: new Set(), json: false, dump: null })
   })
 })
 

@@ -45,6 +45,12 @@ eight runs beside it in the response were skipped).
    (`-home-…-<name>`). Without `--project` they walk only the cwd's, and the
    other projects' spend and calls are silently left out. A project with no
    call in the window prints that on stderr and exits 0.
+
+   For a question the five do not answer, dump the window's paired calls and
+   query the file instead of writing a walk of your own:
+   `bun scripts/bench/tokens/feature-usage-census.ts --since=$since --project=<a>,<b> --exclude=… --dump=<scratchpad>/calls.jsonl`
+   writes one JSON row per call (project, session, sub, tool, input, text,
+   isError, …) and prints only the count.
 3. **Compare with the last census.** Find it with
    `Grep(pattern: "census-", path: ".claudin/memory/team/")` and read it before
    calling anything new. A number with no baseline is a measurement, not a
