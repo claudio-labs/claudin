@@ -17,15 +17,16 @@ files" / "Updated N files", so their individual rows exist **only** in (2).
 
 3. A tool's own `renderGroupedToolUse` — the header of 2+ calls of the same tool from one turn
    ("2 background agents launched"): `renderGroupedAgentToolUse` in `src/tools/AgentTool/UI.tsx`
-   and `renderGroupedFileEditToolUse` in `src/tools/FileEditTool/UI.tsx`. It receives the Nerd Font
-   icon as `options.toolIcon`, computed in `GroupedToolUseContent.tsx`.
+   and `renderGroupedFileEditToolUse` in `src/tools/FileEditTool/UI.tsx`. It gets the icons as
+   `options.rowIcons(input)`, which `GroupedToolUseContent.tsx` binds to `getToolRowIcons` with the
+   tool and `useNerdFontGlyphs()`, so a grouped renderer needs no hook and no icon import.
 
 **Why:** on 2026-11-24 the Nerd Font tool-row icons (branch `feat/ui-adjustments`) were planned and
 wired into (1) only. Unit and render tests were green; the first live ctrl+o check showed
 `● Write(…)` / `● Update(…)` with no icon while `● 󰆍 Bash(…)` had one. It took a second round to
 add the same `getToolRowIcons` call to (2). On 2026-11-26 the user saw (3): two background agents
-still showed a blinking ● where a single Agent row showed the robot. The Agent header takes the
-icon since; the Edit group's header (`FileEditTool/UI.tsx`) still draws the ●.
+still showed a blinking ● where a single Agent row showed the robot. Both grouped headers take
+the icons since (#369); the Edit one also has the file-type icon before the path.
 
 **How to apply:** any change to how a tool row's name or args look (icons, colors, a prefix, a
 label) goes in all three, with a render test for each. Verify under ctrl+o and with 2+ parallel
