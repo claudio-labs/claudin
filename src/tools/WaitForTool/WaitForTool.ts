@@ -52,7 +52,7 @@ const inputSchema = lazySchema(() =>
       .string()
       .optional()
       .describe(
-        'Regex; return as soon as the output matches it. `^` and `$` match at line breaks, except after a `^(?!`/`^(?=` lookaround. Preferred over settling.',
+        'Regex; return as soon as the output matches it. `^` and `$` match at line breaks, except in a pattern with a lookaround. Preferred over settling.',
       ),
     settle_s: z
       .number()
