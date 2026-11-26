@@ -540,7 +540,11 @@ export function extractReadFilesFromMessages(
             if (input?.view !== 'outline') {
               batchReadToolUseIds.set(content.id, {
                 paths: readPathsOf(targets),
-                ranged: symbolsOf(targets).length > 0,
+                // A range applies to every file of a batch (readMulti.ts).
+                ranged:
+                  symbolsOf(targets).length > 0 ||
+                  input?.offset !== undefined ||
+                  input?.limit !== undefined,
               })
             }
           } else if (targets.file_path && input?.view !== 'outline') {

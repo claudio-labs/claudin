@@ -123,7 +123,7 @@ function batchCapableInputSchema() {
             z.array(z.string()).min(MIN_BATCH_FILES).max(MAX_BATCH_FILES).optional(),
           )
           .describe(
-            `${MIN_BATCH_FILES}-${MAX_BATCH_FILES} absolute paths to read in one call, instead of file_path; offset, limit, pages and encoding are single-file only.`,
+            `${MIN_BATCH_FILES}-${MAX_BATCH_FILES} absolute paths to read in one call, instead of file_path; offset and limit apply to every file; pages and encoding are single-file only.`,
           ),
     offset,
     limit,
@@ -166,7 +166,7 @@ function globFilePathsField() {
       z.array(z.string()).min(1).max(MAX_GLOB_FILES).optional(),
     )
     .describe(
-      `Absolute paths to read in one call instead of file_path, or globs such as /repo/src/*.ts — each expanded in path order, inside the project, .gitignore respected. Up to ${MAX_GLOB_FILES} files. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.`,
+      `Absolute paths to read in one call instead of file_path, or globs such as /repo/src/*.ts — each expanded in path order, inside the project, .gitignore respected. Up to ${MAX_GLOB_FILES} files. view, symbol, offset and limit apply to every file; pages and encoding are single-file only.`,
     )
 }
 
