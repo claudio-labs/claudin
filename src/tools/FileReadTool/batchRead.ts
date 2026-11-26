@@ -99,6 +99,8 @@ function batchReadUnits(input: Input): SingleInput[] {
 function unitInput(input: Input, filePath: string, symbol: string | undefined): SingleInput {
   return {
     file_path: filePath,
+    ...(input.offset !== undefined && { offset: input.offset }),
+    ...(input.limit !== undefined && { limit: input.limit }),
     ...(input.view !== undefined && { view: input.view }),
     ...(symbol !== undefined && { symbol }),
     ...(input.encoding !== undefined && { encoding: input.encoding }),
@@ -166,11 +168,21 @@ function mergeUnitUpdates(
   for (let i = 0; i < wanted.length; i += perFile) paths.push(wanted[i]!.file_path)
   const symbols = wanted.slice(0, perFile).map(unit => unit.symbol)
 
-  const { file_path: _path, file_paths: _paths, view: _view, symbol: _symbol, encoding: _encoding, ...rest } =
-    input
+  const {
+    file_path: _path,
+    file_paths: _paths,
+    offset: _offset,
+    limit: _limit,
+    view: _view,
+    symbol: _symbol,
+    encoding: _encoding,
+    ...rest
+  } = input
   const merged: Record<string, unknown> = {
     ...rest,
     ...(input.file_paths !== undefined ? { file_paths: paths } : { file_path: paths[0] }),
+    ...(head.offset !== undefined && { offset: head.offset }),
+    ...(head.limit !== undefined && { limit: head.limit }),
     ...(head.view !== undefined && { view: head.view }),
     ...(symbols.some(symbol => symbol !== undefined) && {
       symbol: sameList(symbols, symbolsOf(input)) ? input.symbol : symbols,

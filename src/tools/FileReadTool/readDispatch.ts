@@ -7,6 +7,8 @@ import {
 } from 'src/shared/constants/apiLimits.js'
 import { memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
+import { isSavedResultPath } from 'src/agent/tools/toolResultFiles.js'
+import { DEFAULT_MAX_RESULT_SIZE_CHARS } from 'src/tools/constants/toolLimits.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
@@ -460,7 +462,12 @@ export async function callInner(
   // The same policy for a file the language gate cannot outline: a vanilla
   // Read of a large `.txt`/`.log`/extensionless body returns its head and
   // tail with the line count. Same escapes as the code pivot — an explicit
-  // view, a symbol, or a range all mean the caller has already chosen.
+  // view, a symbol, or a range all mean the caller has already chosen. A
+  // result this session saved whole is no file to sample: its clip stub
+  // promised the full result, and it already passed the token cap above
+  // (census 11-22..26: the preview cost a second Read of a 20 KB saved
+  // diff). Past the line a tool ships a result whole under, the file is a
+  // paged result, shown one page, and keeps the preview.
   if (
     autoOutlineOnElisionEnabled() &&
     !outlineLang &&
@@ -468,7 +475,8 @@ export async function callInner(
     view === undefined &&
     offset === 1 &&
     limit === undefined &&
-    textPreviewApplies(content.length, totalLines)
+    textPreviewApplies(content.length, totalLines) &&
+    !(content.length <= DEFAULT_MAX_RESULT_SIZE_CHARS && isSavedResultPath(fullFilePath))
   ) {
     const lines = content.split('\n')
     if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()

@@ -59,7 +59,7 @@ exports[`Read input schema — the default, CLAUDIN_READ_MULTI unset the JSON sc
       "type": "string"
     },
     "file_paths": {
-      "description": "2-20 absolute paths to read in one call, instead of file_path; offset, limit, pages and encoding are single-file only.",
+      "description": "2-20 absolute paths to read in one call, instead of file_path; offset and limit apply to every file; pages and encoding are single-file only.",
       "minItems": 2,
       "maxItems": 20,
       "type": "array",

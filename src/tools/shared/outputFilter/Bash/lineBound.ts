@@ -31,8 +31,10 @@
  *     `NR<=B`) with at most a `{print …}` body — the range, NR counting across
  *     files.
  * - A pipeline whose bound is one of those over stdin, fed only by file prints
- *   (`cat`, `nl`, `git show <rev>:<path>`), searches (`grep`, `egrep`, `fgrep`,
- *   `rg`) or other range prints — or one of those over files at its head.
+ *   (`cat`, `nl`, `git show <rev>:<path>`), diffs of named files (`git show
+ *   <rev> -- <paths>`, `git diff -- <paths>`), searches (`grep`, `egrep`,
+ *   `fgrep`, `rg`) or other range prints — or one of those over files at its
+ *   head.
  *   What follows the bound may only drop or reshape lines: `cut`, `tr`,
  *   `sort`, `uniq`, `column`, `wc`, a bare `cat` or `nl`, a `grep` over stdin
  *   without `-o` or context.
@@ -52,6 +54,8 @@ import { walkCommandSegments } from "src/platform/bash/segments.js";
 import {
   cdTarget,
   expandHomeTilde,
+  isRevisionFileShow,
+  isScopedGitDiff,
   type ReadWord,
   sedPrintOf,
   wordsOf,
@@ -249,11 +253,11 @@ function glueLines(words: readonly ReadWord[], scope: Scope): number | null {
 
 /** Whether a stage may feed a bound: it prints files, searches, or is a range print itself. */
 function isBoundedFeed(words: readonly ReadWord[]): boolean {
-  const [head, ...args] = words;
+  const [head] = words;
   if (!head) return false;
   if (FILE_PRINTERS.has(head.text) || SEARCHERS.has(head.text) || RANGE_PRINTERS.has(head.text)) return true;
-  // `git show <rev>:<path>` prints a file as it was; any other `git show` prints a commit.
-  return head.text === "git" && args[0]?.text === "show" && args.slice(1).some((arg) => arg.text.includes(":"));
+  // A file as it was (`git show <rev>:<path>`), or a diff of named files.
+  return isRevisionFileShow(words) || isScopedGitDiff(words);
 }
 
 /** Whether a stage after the bound prints no more lines than it reads, all of them from stdin. */

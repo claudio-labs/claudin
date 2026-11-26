@@ -540,7 +540,13 @@ export function extractReadFilesFromMessages(
             if (input?.view !== 'outline') {
               batchReadToolUseIds.set(content.id, {
                 paths: readPathsOf(targets),
-                ranged: symbolsOf(targets).length > 0,
+                // A range applies to every file of a batch (readMulti.ts).
+                // `!= null`: Codex strict mode stores `null` for a field the
+                // model left out, and null is no range.
+                ranged:
+                  symbolsOf(targets).length > 0 ||
+                  input?.offset != null ||
+                  input?.limit != null,
               })
             }
           } else if (targets.file_path && input?.view !== 'outline') {
@@ -549,9 +555,9 @@ export function extractReadFilesFromMessages(
             fileReadToolUseIds.set(content.id, {
               filePath: absolutePath,
               ranged:
-                input?.offset !== undefined ||
-                input?.limit !== undefined ||
-                input?.symbol !== undefined,
+                input?.offset != null ||
+                input?.limit != null ||
+                input?.symbol != null,
             })
           }
         } else if (

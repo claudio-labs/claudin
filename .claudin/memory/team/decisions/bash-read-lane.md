@@ -53,4 +53,13 @@ paths:
 
 **Superseded in part (2026-10-10):** the summarizer no longer cuts anything ([[summarizer-lossless]]), so `BashTool.skipsResultSummarizer` is gone and `CLAUDIN_BASH_ONE_CUT=0` brings back only the 15+15 cap. The one cut is the only cut Bash output gets; past the 30k line a result is paged.
 
+**Widened (user, 2026-11-26, `fix/census-2026-11-26`):** a diff limited to paths the model
+named (`git show <rev> -- <paths>`, `git diff [<range>] -- <paths>`, `isScopedGitDiff`) is a
+print, and feeds a bound; a bare `| cat` closing a pipeline is the identity. Explore's 43 caps of
+11-22..26 were mostly this shape; the lane now keeps 26 of the window's 63. A whole commit,
+`--stat`, `-s`, `git log`, a show of a range and a path that spells the whole tree (`.`,
+`src/..`, `'*'`, `/`) keep the cap, and #252's rejection of any `cmd | head -N` stands. The
+`git show <rev>:<path>` feed now needs every operand to be one (`isRevisionFileShow`, same
+module) ([[census-2026-11-26-cache-clean-explore-caps]]).
+
 **Supersedes:** [[cap-keeps-model-bounded-reads]] (#252's bounded keep) and [[bash-read-passthrough-not-promoted]] (cat credit, off).

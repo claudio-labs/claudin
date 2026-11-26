@@ -499,3 +499,18 @@ describe("catReadsOf — a cd, a head, a tail", () => {
     });
   }
 });
+
+// The read lane keeps a diff of named files whole (`isScopedGitDiff`), but a
+// diff is not the file: it must never count as a read of one, for the credit
+// or for the over-budget fit of whole files.
+describe("a diff of named files is no file read", () => {
+  test.each([
+    ["git show 766d48db -- src/a.ts"],
+    ["git --no-pager diff main...HEAD -- src/a.ts | cat"],
+    ["cat src/b.ts; git diff -- src/a.ts"],
+  ])("%s", (command) => {
+    expect(parsePureFileRead(command)).toBeNull();
+    expect(catReadsOf(command).map((word) => word.text)).toEqual(command.startsWith("cat ") ? ["src/b.ts"] : []);
+    expect(sedRangeReadsOf(command)).toEqual([]);
+  });
+});

@@ -322,7 +322,7 @@ describe('resolveReadGlobs', () => {
     const { deps, listed } = fakeDeps()
     for (const input of [
       { file_path: '/proj/a.ts', file_paths: ['src/*.ts'] },
-      { file_paths: ['src/*.ts'], offset: 3 },
+      { file_paths: ['src/*.ts'], pages: '1-2' },
     ] satisfies Input[]) {
       const result = await resolveReadGlobs(input, deps)
       expect(result.ok && result.input).toBe(input)

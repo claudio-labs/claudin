@@ -86,6 +86,30 @@ describe('waitReport', () => {
     expect(w.timeoutAsked).toEqual([['600', 3], ['default', 1]])
   })
 
+  // The 11-26 census counted 5 re-polls; none repeated a wait: three waited
+  // in two stages on one pane ("Running…", then idle), two asked again with a
+  // stricter `until` after an early match, and one moved on to a log.
+  test('a wait on another command, or for another condition, starts its own run', () => {
+    const pane = 'tmux capture-pane -t uiprobe -p'
+    const w = waitReport([
+      wait('match', 5, { command: pane, until: 'Running' }),
+      wait('match', 40, { command: pane, until: 'IDLE' }),
+      wait('timeout', 60, { command: 'tail -n 5 log.txt', until: 'keep-alive' }),
+      wait('match', 9, { command: 'tail -n 5 log.txt', until: 'keep-alive' }),
+    ])
+    expect(w.runs).toBe(3)
+    expect(w.repolls).toBe(1)
+    expect(w.repollsAfterTimeout).toBe(1)
+    expect(w.multiCallRuns).toBe(1)
+    // The same condition on another command is another wait too.
+    const other = waitReport([
+      wait('match', 5, { command: 'tail -n 5 a.log', until: 'ready' }),
+      wait('match', 5, { command: 'tail -n 5 b.log', until: 'ready' }),
+    ])
+    expect(other.runs).toBe(2)
+    expect(other.repolls).toBe(0)
+  })
+
   test('a wait in another transcript starts its own run', () => {
     const w = waitReport([wait('timeout', 600), call('WaitFor', { command: 'cat f' }, 'x', { file: '/t/b.jsonl' })])
     expect(w.runs).toBe(2)

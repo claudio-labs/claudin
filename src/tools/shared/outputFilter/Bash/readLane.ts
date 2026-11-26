@@ -27,6 +27,8 @@
  * Pipelines joined by `;`, `&&`, `||` or newlines, every one of them:
  *
  * - a print of files: `cat [-n]`, `head`/`tail` with a count (`printedBy`);
+ * - a diff limited to paths it names: `git show <rev> -- <paths>`, `git diff
+ *   [<range>] -- <paths>` (`isScopedGitDiff`) — those files' changes;
  * - a slice the command bounds (`pipelineBound`): `sed -n A,Bp`, an awk `NR`
  *   range, and a file print or a search piped into `head -N` and line filters;
  * - a search over files it names, not recursive: `grep -n X a.ts b.ts` prints
@@ -34,6 +36,9 @@
  * - glue: `echo`, `printf`, a literal `cd` outside a loop, an assignment,
  *   `true`, a listing (`ls`, `git ls-files`, `wc`), `grep -c`;
  * - `for V in <words or globs>; do …; done` around any of these.
+ *
+ * A bare `cat` closing a pipeline is the identity — `git diff -- f | cat`, the
+ * model's pager guard — and is read past.
  *
  * At least one segment must print something read. Everything else refuses the
  * whole command: any other program, a pipe into anything but a bound, an
@@ -52,6 +57,7 @@ import {
   cdTarget,
   expandHomeTilde,
   isListing,
+  isScopedGitDiff,
   type Loop,
   parseLoopHeader,
   printedBy,
@@ -71,6 +77,11 @@ const RECURSIVE_LONG_FLAGS_RE = /^--(?:recursive|dereference-recursive|directori
 const FILE_SEARCHERS: ReadonlySet<string> = new Set(["grep", "egrep", "fgrep"]);
 
 type Verdict = "print" | "glue";
+
+/** `cat` with no argument: what it reads from the pipe, it prints unchanged. */
+function isBareCat(words: readonly ReadWord[]): boolean {
+  return words.length === 1 && words[0]!.text === "cat";
+}
 
 /**
  * `grep -n X a.ts b.ts`: a search that prints lines of the files it names and
@@ -110,9 +121,11 @@ function segmentVerdict(words: readonly ReadWord[], loops: readonly Loop[], scop
       // In a loop body a relative `cd` moves again on every pass.
       return loops.length === 0 && cdTarget(args) !== null ? "glue" : null;
     case "ls":
-    case "git":
     case "wc":
       return isListing(head.text, args) ? "glue" : null;
+    case "git":
+      if (isListing(head.text, args)) return "glue";
+      return isScopedGitDiff(words) ? "print" : null;
   }
   if (isFileSearch(head.text, args, loops)) return "print";
   // `sed -n`, awk NR ranges; and the glue lineBound knows: `wc`, `grep -c`, `true`, `X=1`.
@@ -134,6 +147,7 @@ export function isModelDirectedRead(command: string): boolean {
   const closePipeline = (): boolean => {
     const pipeline = stages;
     stages = [];
+    while (pipeline.length > 1 && isBareCat(pipeline[pipeline.length - 1]!)) pipeline.pop();
     if (pipeline.length === 0) return true;
     const scope: Scope = {
       loopVariables: new Set(loops.map((loop) => loop.variable)),

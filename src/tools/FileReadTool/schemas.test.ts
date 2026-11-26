@@ -148,7 +148,7 @@ describe('Read input schema — CLAUDIN_READ_GLOBS on', () => {
     expect(paths.minItems).toBe(1)
     expect(paths.maxItems).toBe(50)
     expect(paths.description).toBe(
-      'Absolute paths to read in one call instead of file_path, or globs such as /repo/src/*.ts — each expanded in path order, inside the project, .gitignore respected. Up to 50 files. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.',
+      'Absolute paths to read in one call instead of file_path, or globs such as /repo/src/*.ts — each expanded in path order, inside the project, .gitignore respected. Up to 50 files. view, symbol, offset and limit apply to every file; pages and encoding are single-file only.',
     )
   })
 
@@ -189,7 +189,7 @@ describe('Read input schema — what only the parameter texts say', () => {
     const t = await texts(byDefault)
     expect(t.file_path).toContain('Give this or file_paths, not both.')
     expect(t.file_paths).toContain('2-20 absolute paths to read in one call, instead of file_path')
-    expect(t.file_paths).toContain('offset, limit, pages and encoding are single-file only')
+    expect(t.file_paths).toContain('offset and limit apply to every file; pages and encoding are single-file only')
     expect(t.pages).toContain('at most 20 pages per request')
     expect(t.view).toContain("'outline'")
     expect(t.view).toContain("'full'")

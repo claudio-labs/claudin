@@ -159,7 +159,10 @@ export function toSingleInput(input: Input): SingleInput {
 const SHAPE_ERROR_CODE = 10
 const SINGLE_FILE_OPTION_ERROR_CODE = 11
 
-const SINGLE_FILE_OPTIONS = ['offset', 'limit', 'pages', 'encoding'] as const
+// `offset` and `limit` apply to every file of a batch, as `head -n N a b` does:
+// the 11-22..26 census saw `limit: 5` and `limit: 45` over several files
+// refused, both meaning the first N lines of each.
+const SINGLE_FILE_OPTIONS = ['pages', 'encoding'] as const
 
 /**
  * What a batch-capable input asks for that the schema cannot refuse on its
