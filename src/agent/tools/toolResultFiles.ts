@@ -57,9 +57,7 @@ export function resultDirs(): string[] {
 
 /**
  * Whether `filePath` is a result this session saved — the copy a clip stub or
- * a paged result names. Read hands it back whole instead of a preview
- * (readDispatch.ts): the model was shown it once, and the stub promised the
- * full result. The separator keeps `tool-results-x/` out.
+ * a paged result names. The separator keeps `tool-results-x/` out.
  */
 export function isSavedResultPath(filePath: string): boolean {
   return resultDirs().some(dir => filePath.startsWith(dir.endsWith(sep) ? dir : dir + sep))
