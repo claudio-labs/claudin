@@ -13,7 +13,7 @@ import { createHash } from 'crypto'
 import { existsSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { join, sep } from 'path'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getProjectDir } from 'src/sessions/sessionStoragePortable.js'
@@ -53,6 +53,16 @@ function getFallbackResultsDir(): string {
 /** The directories a result may be saved in, in the order they are tried. */
 export function resultDirs(): string[] {
   return [getToolResultsDir(), getFallbackResultsDir()]
+}
+
+/**
+ * Whether `filePath` is a result this session saved — the copy a clip stub or
+ * a paged result names. Read hands it back whole instead of a preview
+ * (readDispatch.ts): the model was shown it once, and the stub promised the
+ * full result. The separator keeps `tool-results-x/` out.
+ */
+export function isSavedResultPath(filePath: string): boolean {
+  return resultDirs().some(dir => filePath.startsWith(dir.endsWith(sep) ? dir : dir + sep))
 }
 
 /**
