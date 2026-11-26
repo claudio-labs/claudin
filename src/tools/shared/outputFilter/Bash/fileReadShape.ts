@@ -130,8 +130,18 @@ const FROM_LINE_RE = /^\+\d+$/;
 const GIT_DIFF_COMMANDS: ReadonlySet<string> = new Set(["show", "diff"]);
 /** Flags that write a file, run a program, or diff files outside the repository. */
 const GIT_DIFF_UNSAFE_FLAG_RE = /^--(?:output|ext-diff|textconv|no-index)(?:=|$)/;
-/** `.` or `./`: a path that names the whole tree. */
-const WHOLE_TREE_RE = /^\.\/?$/;
+/** A path made of nothing but `*`, `.` and `/`: `*`, `**`, `.`, `.//`, `..`, `/`. */
+const WHOLE_TREE_GLOB_RE = /^[*./]+$/;
+/** `..`, `../..`: a path that climbs out and names nothing below. */
+const PARENTS_ONLY_RE = /^\.\.(?:\/\.\.)*$/;
+const TRAILING_SLASHES_RE = /\/+$/;
+/**
+ * `<rev>:<path>`, a file as it was at a revision, or `:<path>`, as staged: a
+ * rev that is no flag, then a path that is no pathspec magic (`:!x`, `:^x`,
+ * `:(exclude)x`) and no `:/text`, which names the commit whose message
+ * matches.
+ */
+const REV_PATH_RE = /^(?:[^-:][^:]*)?:(?![!^(/])./;
 /** The directory stack moves the cwd where `cd`'s one argument does not say. */
 const DIRECTORY_STACK: ReadonlySet<string> = new Set(["pushd", "popd"]);
 
@@ -478,37 +488,70 @@ export function isListing(head: string, args: readonly ReadWord[]): boolean {
 }
 
 /**
+ * `git [--no-pager] [-C <dir>] <subcommand> …`: the subcommand and the words
+ * after it. Null for any other global option first — `-c` could set a pager
+ * or an external diff — and for a word the shell would rewrite, which the
+ * grammar cannot read.
+ */
+function gitCommand(words: readonly ReadWord[]): { subcommand: string; args: readonly ReadWord[] } | null {
+  if (words[0]?.text !== "git") return null;
+  if (words.some((word) => EXPANDED_WORD_RE.test(expandHomeTilde(word.text)))) return null;
+  let at = 1;
+  while (words[at]?.text === "--no-pager" || (words[at]?.text === "-C" && words[at + 1])) {
+    at += words[at]!.text === "-C" ? 2 : 1;
+  }
+  const subcommand = words[at]?.text;
+  return subcommand === undefined ? null : { subcommand, args: words.slice(at + 1) };
+}
+
+/** A path that names the whole tree, or climbs out of it: `.`, `src/..`, `'*'`, `/`. */
+function namesWholeTree(path: string): boolean {
+  if (WHOLE_TREE_GLOB_RE.test(path)) return true;
+  const normalized = normalize(path).replace(TRAILING_SLASHES_RE, "");
+  return normalized === "." || PARENTS_ONLY_RE.test(normalized);
+}
+
+/**
  * `git show <rev> -- <paths>`, `git diff [<range>] -- <paths>`: a diff limited
  * to paths the model named, which prints those files' changes and nothing
  * else. Explore's 43 caps of 11-22..26 were mostly this shape, `| head -150`
  * cut to 100 lines (team memory `census-2026-11-26-cache-clean-explore-caps`).
  *
- * The only global options taken are `--no-pager` and `-C <dir>`; `-c` could
- * set a pager or an external diff. After `show`/`diff`, every word is literal
- * and at least one path follows `--`. Refused: a path of `.` or `./` (the
- * whole tree), pathspec magic (`:!*.test.ts`), and the flags that write a
- * file, run a program or diff outside the repository.
+ * After `show`/`diff` (`gitCommand`), at least one path follows `--`. A glob
+ * the model wrote is a path like any other (`'*Tool.test.ts'`); refused are
+ * the paths that spell the whole tree or climb out of it (`namesWholeTree`),
+ * pathspec magic (`:!*.test.ts`), a range under `show` — which prints every
+ * commit in it, a `git log -p` — and the flags that write a file, run a
+ * program or diff outside the repository.
  *
  * A diff is not the file, so neither `walkReads` nor `parsePureFileRead` calls
  * this: the read credit and the whole-file fit never count one as a read.
  */
 export function isScopedGitDiff(words: readonly ReadWord[]): boolean {
-  if (words[0]?.text !== "git") return false;
-  if (words.some((word) => EXPANDED_WORD_RE.test(expandHomeTilde(word.text)))) return false;
-  let at = 1;
-  for (;;) {
-    const option = words[at]?.text;
-    if (option === "--no-pager") at += 1;
-    else if (option === "-C" && words[at + 1]) at += 2;
-    else break;
-  }
-  if (!GIT_DIFF_COMMANDS.has(words[at]?.text ?? "")) return false;
-  const rest = words.slice(at + 1);
-  const separator = rest.findIndex((word) => word.text === "--");
+  const git = gitCommand(words);
+  if (!git || !GIT_DIFF_COMMANDS.has(git.subcommand)) return false;
+  const separator = git.args.findIndex((word) => word.text === "--");
   if (separator < 0) return false;
-  if (rest.slice(0, separator).some((word) => GIT_DIFF_UNSAFE_FLAG_RE.test(word.text))) return false;
-  const paths = rest.slice(separator + 1);
-  return paths.length > 0 && paths.every((path) => !WHOLE_TREE_RE.test(path.text) && !path.text.startsWith(":"));
+  const options = git.args.slice(0, separator);
+  if (options.some((word) => GIT_DIFF_UNSAFE_FLAG_RE.test(word.text))) return false;
+  if (git.subcommand === "show" && options.some((word) => !word.text.startsWith("-") && word.text.includes(".."))) {
+    return false;
+  }
+  const paths = git.args.slice(separator + 1);
+  return paths.length > 0 && paths.every((path) => !namesWholeTree(path.text) && !path.text.startsWith(":"));
+}
+
+/**
+ * `git show <rev>:<path>`, `git show :<path>`: a file as it was, or as staged
+ * (`REV_PATH_RE`). Every operand must be one — a colon in a flag
+ * (`--format='%h: %s'`), a `:!` pathspec or a commit beside a blob prints a
+ * commit.
+ */
+export function isRevisionFileShow(words: readonly ReadWord[]): boolean {
+  const git = gitCommand(words);
+  if (git?.subcommand !== "show") return false;
+  const operands = git.args.filter((arg) => !arg.text.startsWith("-"));
+  return operands.length > 0 && operands.every((arg) => REV_PATH_RE.test(arg.text));
 }
 
 /**
