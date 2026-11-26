@@ -267,11 +267,13 @@ describe('accept / refuse', () => {
     if (!parsed.ok) expect(parsed.reason).toContain('unterminated quote')
   })
 
-  test('refuses an unquoted # — shell-quote drops the rest of the line', () => {
-    // bash treats a mid-word `#` as literal and shell-quote does not, so there
-    // is no token list here that can be classified honestly.
-    expect(acceptsGitCommand('git log --grep=#123')).toBe(false)
+  test('quotes a mid-word # before shell-quote can drop the rest of the line', () => {
+    // bash treats a mid-word `#` as literal and shell-quote does not; quoted,
+    // both read the argument git gets.
+    const parsed = parseGitCommand('git log --grep=#123')
+    expect(parsed.ok && parsed.command).toBe("git log --grep='#123'")
     expect(acceptsGitCommand("git log --grep='#123'")).toBe(true)
+    expect(acceptsGitCommand('git log # a comment')).toBe(false)
   })
 
   test('reads flags from resolved tokens, not from inside a message', () => {
@@ -644,11 +646,12 @@ describe('interactive forms are declined, not run', () => {
 })
 
 // An operator glued inside one argument is an argument that needs quotes, not
-// a second command: "one plain command per list element" was the wrong fix,
-// and the model sent the same shape again (b40b178b, 2026-11-08). The cases
-// are the refusals of the 2026-11-04..09 census.
-describe('an operator inside an argument names the quoting fix', () => {
-  for (const [session, cmd, word, fixed] of [
+// a second command. Naming the fix (b40b178b, 2026-11-08) still cost a
+// refusal and a resend per shape; the tool now writes the quotes itself, and
+// git receives exactly the characters the model wrote. The cases are the
+// refusals of the 2026-11-04..09 and 11-19..26 censuses.
+describe('a plain argument bash would misread is quoted and runs', () => {
+  for (const [session, cmd, word, quoted] of [
     [
       '32d3ba9c 11-04',
       "gh api repos/ferrous-networking/ferrous-dns/issues?milestone=2&state=open --jq '.[] | {number,title}'",
@@ -659,32 +662,111 @@ describe('an operator inside an argument names the quoting fix', () => {
       'b40b178b 11-08 05:13',
       'git log --format=%s -60 --all --grep=^test(',
       '--grep=^test(',
-      "git log --format=%s -60 --all '--grep=^test('",
+      "git log --format=%s -60 --all --grep='^test('",
     ],
     [
       'b40b178b 11-08 05:25',
       'git log --format=%s -300 origin/main --grep=(web) --grep=(dashboard) --grep=(ui)',
       '--grep=(web)',
-      "git log --format=%s -300 origin/main '--grep=(web)' '--grep=(dashboard)' '--grep=(ui)'",
+      "git log --format=%s -300 origin/main --grep='(web)' --grep='(dashboard)' --grep='(ui)'",
+    ],
+    [
+      'a8f84f21 11-26',
+      'git log --oneline --grep=#298 -i',
+      '--grep=#298',
+      "git log --oneline --grep='#298' -i",
+    ],
+    [
+      '9ed0875a 11-24',
+      'git branch --sort=-committerdate --format=%(refname:short)',
+      '--format=%(refname:short)',
+      "git branch --sort=-committerdate --format='%(refname:short)'",
     ],
   ] as const) {
-    test(`${session}: quotes \`${word}\``, () => {
+    test(`${session}: \`${word}\` is quoted`, () => {
       const parsed = parseGitCommand(cmd)
-      expect(parsed.ok).toBe(false)
-      if (parsed.ok) return
-      expect(parsed.reason).toContain(`'${word}'`)
-      expect(parsed.reason).toContain('single quotes')
-      expect(parsed.reason).not.toContain('one plain command per list element')
-      // The fix the message names is one the tool then accepts.
-      expect(parseGitCommand(fixed).ok).toBe(true)
+      expect(parsed.ok).toBe(true)
+      if (!parsed.ok) return
+      expect(parsed.command).toBe(quoted)
+      expect(parsed.args).toContain(word)
+      // Quoting twice changes nothing.
+      const again = parseGitCommand(parsed.command)
+      expect(again.ok && again.command).toBe(quoted)
     })
   }
 
-  test('a quoted --grep=(web) and its siblings parse', () => {
-    expect(
-      parseGitCommand("git log --format=%s -300 origin/main '--grep=(web)' '--grep=(dashboard)' '--grep=(ui)'")
-        .ok,
-    ).toBe(true)
+  // Bash's permission check asks for a flag NAME in quotes ("quoted
+  // characters in flag names"), so `'--grep=#298'` asked where a user's
+  // `Bash(git log:*)` allowed `--grep='#298'`. Only a flag's value is quoted.
+  test('a flag is quoted after its =, any other word whole', () => {
+    expect(parseGitCommand('git log --grep=#1')).toMatchObject({ command: "git log --grep='#1'" })
+    expect(parseGitCommand('git log -S#1')).toMatchObject({ command: "git log '-S#1'" })
+    expect(parseGitCommand('gh api a/b?c=1&d=2')).toMatchObject({ command: "gh api 'a/b?c=1&d=2'" })
+  })
+
+  test('a # mid-word keeps the arguments after it', () => {
+    const parsed = parseGitCommand('git log --oneline --grep=#298 -i')
+    expect(parsed.ok && parsed.args).toEqual(['log', '--oneline', '--grep=#298', '-i'])
+    expect(isReadOnlyGitCommand('git log --oneline --grep=#298 -i')).toBe(true)
+  })
+
+  test('a # that starts a word is a comment, and says so', () => {
+    const parsed = parseGitCommand('git log --oneline # the recent ones')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) expect(parsed.reason).toContain('starts a comment')
+  })
+
+  test('a # in a word that also holds a quote names the quoting fix', () => {
+    const parsed = parseGitCommand('git log --grep="fix"#298')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) {
+      expect(parsed.reason).toContain('`#`')
+      expect(parsed.reason).toContain('beside quotes')
+      expect(parsed.reason).toContain('single quotes')
+    }
+  })
+
+  test('a quoted message keeps its # ( ) & exactly as written', () => {
+    for (const cmd of ['git commit -m "fix (#12) & more"', "git commit -m 'fix (#12) & more'"]) {
+      const parsed = parseGitCommand(cmd)
+      expect(parsed.ok && parsed.command).toBe(cmd)
+      expect(parsed.ok && parsed.args).toEqual(['commit', '-m', 'fix (#12) & more'])
+    }
+  })
+
+  // 2026-11-26 review: the walker ended a "…" at its first ", so a \" inside
+  // one let a word of the message be quoted, and git committed other bytes.
+  test('a \\" inside a double-quoted message leaves the message alone', () => {
+    const cmd = 'git commit -m "say \\" --grep=(x) ok"'
+    const parsed = parseGitCommand(cmd)
+    expect(parsed.ok && parsed.command).toBe(cmd)
+    expect(parsed.ok && parsed.args).toEqual(['commit', '-m', 'say " --grep=(x) ok'])
+  })
+
+  test('a # beside other shell characters names them, not quotes', () => {
+    for (const cmd of ['git log ~/a#b', 'git log --grep=a{b}#c', 'git log a#b|c']) {
+      const parsed = parseGitCommand(cmd)
+      expect(parsed.ok).toBe(false)
+      if (!parsed.ok) {
+        expect(parsed.reason).toContain('beside other characters bash reads specially')
+        expect(parsed.reason).toContain('single quotes')
+      }
+    }
+  })
+
+  test('a refusal shows the command as it was sent, not as quoted', () => {
+    const parsed = parseGitCommand('git log --grep=#1 # the recent ones')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) {
+      expect(parsed.reason).toContain('`git log --grep=#1 # the recent ones`')
+      expect(parsed.reason).not.toContain("--grep='#1'")
+    }
+  })
+
+  test('a quoted --grep=(web) and its siblings parse unchanged', () => {
+    const cmd = "git log --format=%s -300 origin/main '--grep=(web)' '--grep=(dashboard)' '--grep=(ui)'"
+    const parsed = parseGitCommand(cmd)
+    expect(parsed.ok && parsed.command).toBe(cmd)
   })
 
   describe('what must not change', () => {
@@ -717,6 +799,24 @@ describe('an operator inside an argument names the quoting fix', () => {
       const parsed = parseGitCommand('git log --oneline $(git merge-base HEAD origin/main)..origin/main')
       expect(parsed.ok).toBe(false)
       if (!parsed.ok) expect(parsed.reason).toContain('command substitution')
+    })
+
+    test('every shape bash reads as more than one argument stays refused', () => {
+      for (const cmd of [
+        'git log a&&b',
+        'git log a& b',
+        'git log >&2',
+        'git log a>&b',
+        'git log x #comment',
+        'git log (x)',
+        'git log &x',
+        'git log a;b(c)',
+        'git log "a"#b',
+        'git log --format=%ad|%s',
+        'git log a(b\nrm -rf x',
+      ]) {
+        expect({ cmd, ok: parseGitCommand(cmd).ok }).toEqual({ cmd, ok: false })
+      }
     })
   })
 })

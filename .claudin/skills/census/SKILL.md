@@ -12,6 +12,11 @@ Measure how recorded sessions used tools since `$since`. The scripts are
 committed; do not rebuild them in the scratchpad. Each one's header documents
 its labels.
 
+`$since` is one date, `YYYY-MM-DD`. Given a range `A..B`, pass `--since=A`, and
+`--until=B` to the feature-usage census, the only one that takes it; a range
+in `--since` is refused (2026-11-26: one sent as a date failed, and the
+eight runs beside it in the response were skipped).
+
 ## Steps
 
 1. **Exclude this session.** Its transcript grows while the census runs. Pass
@@ -29,11 +34,23 @@ its labels.
    - `NODE_ENV=test bun --preload ./src/stubs/test-preload.ts scripts/bench/tokens/cut-refetch-census.ts --since=$since --lane`
      answers whether the Bash filter's cuts cost re-runs, and which cut shapes
      the read lane would now pass.
-   - `bun scripts/bench/tokens/session-census.ts --since=$since` answers the
-     spend, the cache drops and the tool errors.
+   - `bun scripts/bench/tokens/session-census.ts --since=$since --project=<slug>`
+     answers the spend, the cache drops and the tool errors.
    - `bun scripts/bench/tokens/feature-usage-census.ts --since=$since --exclude=… --project=<slug>`,
-     once per directory under `~/.claudin/projects/`, answers how Grep and Read were shaped, the
-     Grep globs with a `/` that came back empty, and the WaitFor re-polls.
+     answers how Grep and Read were shaped, the Grep globs with a `/` that came
+     back empty, and the WaitFor re-polls.
+
+   Both walk one project: run them once for each project on request-census's
+   `projects:` line, with the matching directory under `~/.claudin/projects/`
+   (`-home-…-<name>`). Without `--project` they walk only the cwd's, and the
+   other projects' spend and calls are silently left out. A project with nothing
+   in the window prints that on stderr and exits 0, in both scripts.
+
+   For a question the five do not answer, dump the window's paired calls and
+   query the file instead of writing a walk of your own:
+   `bun scripts/bench/tokens/feature-usage-census.ts --since=$since --project=<a>,<b> --exclude=… --dump=<scratchpad>/calls.jsonl`
+   writes one JSON row per call (project, session, sub, tool, input, text,
+   isError, …) and prints only the count.
 3. **Compare with the last census.** Find it with
    `Grep(pattern: "census-", path: ".claudin/memory/team/")` and read it before
    calling anything new. A number with no baseline is a measurement, not a
@@ -56,6 +73,7 @@ its labels.
   two totals differ.
 - `feature-usage-census.ts` walks only the project of the cwd unless
   `--project` names another, and `--until` defaults to today.
+  `session-census.ts` does the same with `--project`.
 - Sub-agent transcripts carry no `toolUseResult`. The re-read census reads
   ranges off the `N→` line numbers. Any new counter must do the same, or it
   will count every follow-up Read as a duplicate.

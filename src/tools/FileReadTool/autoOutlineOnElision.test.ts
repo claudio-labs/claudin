@@ -557,10 +557,29 @@ describe('FileReadTool — plain-text preview pivot', () => {
     expect(data.file.preview).toBe(true)
     expect(data.file.content).toContain('is 400 lines')
     expect(data.file.content).toContain('line 0400')
-    // view='full' keeps the cap error, as it does for code files.
-    await expect(
-      read(p, { view: 'full' }, makeContext({ maxSizeBytes: 10 * 1024 * 1024, maxTokens: 1000 })),
-    ).rejects.toThrow(/exceeds maximum allowed tokens/)
+  })
+
+  test('over the token cap, view=full answers with the first page and where the rest starts', async () => {
+    // 9 refusals in 2026-10..11, one sub-agent re-sending the same Read four
+    // times: "exceeds maximum allowed tokens" asked for offset and limit and
+    // gave no line to start from. Same recorded body as the test above.
+    const p = writeFixture('dump-overcap-full.txt', BIG_TXT)
+    const { data } = await read(
+      p,
+      { view: 'full' },
+      makeContext({ maxSizeBytes: 10 * 1024 * 1024, maxTokens: 1000 }),
+    )
+    expect(data.type).toBe('text')
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.startLine).toBe(1)
+    expect(data.file.numLines).toBeGreaterThan(10)
+    expect(data.file.numLines).toBeLessThan(400)
+    const content = String(FileReadTool.mapToolResultToToolResultBlockParam(data, 'toolu_page').content)
+    expect(content).toContain('line 0001')
+    expect(content).not.toContain('line 0400')
+    const next = data.file.numLines + 1
+    expect(content).toContain(`Lines 1-${data.file.numLines} of 400`)
+    expect(content).toContain(`offset=${next}`)
   })
 
   test('over the byte cap, the preview is cut from a capped re-read and says so', async () => {

@@ -4,10 +4,7 @@ import type { ToolPermissionContext, ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isENOENT } from 'src/shared/errors.js'
-import {
-  FILE_NOT_FOUND_CWD_NOTE,
-  suggestPathUnderCwd,
-} from 'src/shared/fs/file.js'
+import { FILE_NOT_FOUND_CWD_NOTE } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { expandPath, toRelativePath } from 'src/shared/fs/path.js'
@@ -33,6 +30,7 @@ import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
 import { globsForSearchPath, splitGlobInput } from 'src/tools/GrepTool/globAnchor.js'
 import { resolveSearchTargets } from 'src/tools/GrepTool/searchTargets.js'
+import { missingPathHint } from 'src/tools/shared/missingPath.js'
 import {
   BODIES_HEADER_SUFFIX,
   bodiesSchemaFields,
@@ -75,6 +73,9 @@ const NEEDS_PCRE2_RE = /look-around|backreferences|--pcre2 flag/
 // without turning every glob into a whitelist; named as the path it is still
 // searched, because ripgrep applies no glob to a file on its command line.
 const ENV_FILE_EXCLUSION_GLOBS = ['!.env', '!.env.*', '!*.env'] as const
+
+// An `exclude` entry written as a negation (`!*.test.ts`) means the same thing.
+const LEADING_BANG_RE = /^!/
 
 /** relativizeRgLine against whichever search root the line's path is under. */
 function relativizeAcross(line: string, roots: readonly string[]): string {
@@ -159,6 +160,13 @@ const inputSchema = lazySchema(() =>
       .describe(
         'Glob that filters files, e.g. "*.js", "*.{ts,tsx}" (rg --glob)',
       ),
+    // A string is split like `glob`: the model copies Glob's list, or writes one string.
+    exclude: z
+      .preprocess(
+        value => (typeof value === 'string' ? splitGlobInput(value) : value),
+        z.array(z.string()).optional(),
+      )
+      .describe('Globs to leave out, e.g. ["**/*.test.ts"] (rg --glob !…)'),
     output_mode: z
       .enum(['content', 'files_with_matches', 'count', 'symbols'])
       .optional()
@@ -179,6 +187,9 @@ const inputSchema = lazySchema(() =>
     ),
     '-n': semanticBoolean(z.boolean().optional()).describe(
       `Line numbers (rg -n), default true. ${CONTENT_ONLY}`,
+    ),
+    '-o': semanticBoolean(z.boolean().optional()).describe(
+      `Only the matched part of each line (rg -o). ${CONTENT_ONLY}`,
     ),
     '-i': semanticBoolean(z.boolean().optional()).describe(
       'true forces case-insensitive matching, false case-sensitive; omitted, ripgrep smart-case applies.',
@@ -372,7 +383,7 @@ export const GrepTool = buildTool({
   async preparePermissionMatcher({ pattern }) {
     return rulePattern => matchWildcardPattern(rulePattern, pattern)
   },
-  async validateInput({ path }): Promise<ValidationResult> {
+  async validateInput({ path }, context): Promise<ValidationResult> {
     // If path is provided, validate that it exists
     if (path) {
       const fs = getFsImplementation()
@@ -390,14 +401,10 @@ export const GrepTool = buildTool({
           const targets = resolveSearchTargets(path, piece => fs.existsSync(expandPath(piece)))
           if (targets.kind === 'many') return { result: true }
           const missing = targets.kind === 'missing' ? targets.path : path
-          const cwdSuggestion = await suggestPathUnderCwd(expandPath(missing))
-          let message = `Path does not exist: ${missing}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
-          if (cwdSuggestion) {
-            message += ` Did you mean ${cwdSuggestion}?`
-          }
+          const hint = await missingPathHint(expandPath(missing), context.getAppState().toolPermissionContext)
           return {
             result: false,
-            message,
+            message: `Path does not exist: ${missing}. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`,
             errorCode: 1,
           }
         }
@@ -551,6 +558,7 @@ export const GrepTool = buildTool({
       pattern,
       path,
       glob,
+      exclude,
       type,
       output_mode = 'files_with_matches',
       '-B': context_before,
@@ -558,6 +566,7 @@ export const GrepTool = buildTool({
       '-C': context_c,
       context,
       '-n': show_line_numbers = true,
+      '-o': only_matching = false,
       '-i': case_insensitive,
       no_ignore = false,
       binary = false,
@@ -639,6 +648,10 @@ export const GrepTool = buildTool({
       args.push('-n')
     }
 
+    if (only_matching && output_mode === 'content') {
+      args.push('-o')
+    }
+
     // 'symbols' mode parses `path:line:text`, so the filename must always be
     // present. rg omits it when the search target is a single file — force it
     // with -H so single-file greps don't parse as `line:text` and drop matches.
@@ -696,6 +709,21 @@ export const GrepTool = buildTool({
         }
       }
       for (const g of globs) args.push('--glob', g)
+    }
+
+    // Anchored the same way as `glob`. Leaving files out cannot pick a .env,
+    // so an exclude naming one asks nothing in checkPermissions.
+    if (exclude?.length) {
+      const excluded = new Set<string>()
+      for (const pattern of exclude) {
+        // An empty entry would be `--glob !`, which ripgrep reads as "skip every file".
+        const body = pattern.trim().replace(LEADING_BANG_RE, '')
+        if (!body) continue
+        for (const root of searchRoots) {
+          for (const g of globsForSearchPath(`!${body}`, root, rgCwd ?? process.cwd())) excluded.add(g)
+        }
+      }
+      for (const g of excluded) args.push('--glob', g)
     }
 
     // A glob that names a .env was asked about in checkPermissions; every other

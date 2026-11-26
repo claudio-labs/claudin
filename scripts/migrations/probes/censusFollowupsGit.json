@@ -1,0 +1,73 @@
+{
+  "test": [
+    "src/tools/GitTool/full.test.ts",
+    "src/tools/GitTool/grammar.test.ts",
+    "src/tools/GitTool/GitTool.test.ts",
+    "src/tools/GitTool/permissions.test.ts"
+  ],
+  "source": "src/tools/GitTool/grammar.ts",
+  "probes": [
+    {
+      "name": "run: a spilled command is read from stdout again (the 30k cut)",
+      "source": "src/tools/GitTool/run.ts",
+      "find": "    const text = await readFullShellOutput(result)\n",
+      "replace": "    const text = result.stdout || ''\n"
+    },
+    {
+      "name": "grammar: parseGitCommand stops quoting plain words",
+      "find": "  const command = quoteLiteralWords(sent)\n",
+      "replace": "  const command = sent\n"
+    },
+    {
+      "name": "grammar: a word holding $, a quote or a glob gets quoted too",
+      "find": "    !NOT_PLAIN_RE.test(word) &&\n",
+      "replace": "    true &&\n"
+    },
+    {
+      "name": "grammar: a word that starts with # or ( gets quoted too",
+      "find": "    !SHELL_WORD_START_RE.test(word) &&\n",
+      "replace": "    true &&\n"
+    },
+    {
+      "name": "grammar: a word holding && or a trailing & gets quoted too",
+      "find": "    !SECOND_COMMAND_AMP_RE.test(word)\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "grammar: a comment # stops saying it is a comment",
+      "find": "has a \\`#\\` that starts a comment in bash",
+      "replace": "has a \\`#\\` whose quoting is ambiguous"
+    },
+    {
+      "name": "GitTool: resolveInput hands back the command as sent",
+      "source": "src/tools/GitTool/GitTool.ts",
+      "find": "      return parsed.ok ? parsed.command : command\n",
+      "replace": "      return command\n"
+    },
+    {
+      "name": "review 11-26 — bashWords: a backslash-escaped quote closes a double-quoted message",
+      "find": "        while (i < command.length && command[i] !== '\"') i += command[i] === '\\\\' ? 2 : 1\n",
+      "replace": "        while (i < command.length && command[i] !== '\"') i++\n"
+    },
+    {
+      "name": "review 11-26 — singleQuoted: a flag is quoted whole, which Bash's permission check asks about",
+      "find": "  if (word.startsWith('-') && eq !== -1 && !LITERAL_TRIGGER_RE.test(word.slice(0, eq))) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "review 11-26 — argumentAround: a word with quotes of its own is named for quoting",
+      "find": "  if (!word || word.quoted) return null\n",
+      "replace": "  if (!word) return null\n"
+    },
+    {
+      "name": "review 11-26 — the # refusal blames quotes for any neighbour",
+      "find": "      const beside = word?.quoted ? 'quotes' : 'other characters bash reads specially'\n",
+      "replace": "      const beside = 'quotes'\n"
+    },
+    {
+      "name": "review 11-26 — a refusal shows the command with the tool's quotes",
+      "find": "  const hazard = scanShellHazards(core, stripHeadTailTail(sent))\n",
+      "replace": "  const hazard = scanShellHazards(core)\n"
+    }
+  ]
+}

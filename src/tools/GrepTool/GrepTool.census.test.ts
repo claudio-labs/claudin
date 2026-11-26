@@ -85,7 +85,7 @@ describe('several paths in one `path`', () => {
 
   test('2b5c3f37 11-08: validateInput takes three paths that each exist', async () => {
     const verdict = await runWithCwdOverride(root, () =>
-      GrepTool.validateInput!(census() as never),
+      GrepTool.validateInput!(census() as never, contextWith()),
     )
     expect(verdict).toEqual({ result: true })
   })
@@ -114,7 +114,7 @@ describe('several paths in one `path`', () => {
       GrepTool.validateInput!({
         pattern: 'enabled',
         path: `${pieces('src/tools/BuildTool', 'src/tools/GitTool')} ${missing}`,
-      } as never),
+      } as never, contextWith()),
     )
     expect(verdict.result).toBe(false)
     if (verdict.result === false) expect(verdict.message).toContain(`Path does not exist: ${missing}.`)
@@ -159,11 +159,69 @@ describe('several paths in one `path`', () => {
 
     test('a single missing path keeps its message', async () => {
       const verdict = await runWithCwdOverride(root, () =>
-        GrepTool.validateInput!({ pattern: 'x', path: join(root, 'gone') } as never),
+        GrepTool.validateInput!({ pattern: 'x', path: join(root, 'gone') } as never, contextWith()),
       )
       expect(verdict.result).toBe(false)
       if (verdict.result === false) expect(verdict.message).toContain(`Path does not exist: ${join(root, 'gone')}.`)
     })
+  })
+})
+
+// The two parameters the model sent most often that Grep did not have, in
+// 2026-10..11: `-o` six times (the route list, a format string), `exclude`
+// four (Glob's own name for it).
+describe('-o and exclude', () => {
+  test('the schema takes both', () => {
+    const parsed = GrepTool.inputSchema.safeParse({ pattern: 'x', '-o': true, exclude: ['*.test.ts'] })
+    expect(parsed.success).toBe(true)
+  })
+
+  test('-o prints only the matched part of each line', async () => {
+    const data = await grep({ pattern: 'askTo\\w+', path: join(root, 'src/vcs'), output_mode: 'content', '-o': true })
+    expect(data.content).toBe('src/vcs/diff/ui/DiffDialog.tsx:2:askToRevertHunk')
+  })
+
+  test('-o is ignored outside content mode', async () => {
+    const data = await grep({ pattern: 'askTo\\w+', path: join(root, 'src/vcs'), '-o': true })
+    expect(data.filenames.map(f => basename(f))).toEqual(['DiffDialog.tsx'])
+  })
+
+  // 2026-11-26 review: '' became `--glob !`, which ripgrep reads as "skip
+  // every file", and the search came back empty with no error.
+  test('an empty exclude entry leaves nothing out', async () => {
+    for (const exclude of [[''], ['!'], ['  ']]) {
+      const found = await grep({ pattern: 'retry', path: root, exclude })
+      expect({ exclude, files: found.filenames.length }).toEqual({ exclude, files: 2 })
+    }
+  })
+
+  test('exclude leaves the globs out, as a list or as one string', async () => {
+    const listed = await grep({ pattern: 'retry', path: root, exclude: ['src/tools/RunTestsTool/**'] })
+    expect(listed.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])
+    // An entry written as a negation means the same thing.
+    const negated = await grep({ pattern: 'retry', path: root, exclude: ['!src/tools/RunTestsTool/**'] })
+    expect(negated.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])
+    // One string is split by the schema, as `glob` is, before call() sees it.
+    const spelled = await grep(GrepTool.inputSchema.parse({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/**' }))
+    expect(spelled.filenames.map(f => basename(f))).toEqual(['RunTestsTool.ts'])
+    // Two globs in that string leave both files out, not one glob with a space in it.
+    const both = await grep(
+      GrepTool.inputSchema.parse({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/** src/tools/RunTestsTool/**' }),
+    )
+    expect(both.filenames).toEqual([])
+  })
+
+  test('an exclude naming a dotenv file never asks for one', async () => {
+    const decision = await runWithCwdOverride(root, () =>
+      GrepTool.checkPermissions(
+        { pattern: 'x', path: root, exclude: ['.env', '*.env', '!*.test.*'] } as never,
+        contextWith({
+          ...emptyPermissionContext,
+          additionalWorkingDirectories: new Map([[root, { path: root, source: 'session' }]]),
+        }),
+      ),
+    )
+    expect(decision.behavior).toBe('allow')
   })
 })
 

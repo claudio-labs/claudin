@@ -104,7 +104,7 @@ describe('GlobTool', () => {
     const result = await GlobTool.validateInput?.({
       pattern: '**/*',
       offset: -1,
-    } as never)
+    } as never, makeCtx())
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
       expect(result.errorCode).toBe(3)
@@ -124,6 +124,7 @@ describe('GlobTool', () => {
   test('validateInput rejects non-existent path', async () => {
     const result = await GlobTool.validateInput?.(
       { pattern: '**/*', path: '/definitely/not/here/__nope__' } as never,
+      makeCtx(),
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -134,6 +135,7 @@ describe('GlobTool', () => {
   test('validateInput rejects path that points to a file', async () => {
     const result = await GlobTool.validateInput?.(
       { pattern: '**/*', path: join(workDir, 'a.ts') } as never,
+      makeCtx(),
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -144,6 +146,7 @@ describe('GlobTool', () => {
   test('validateInput accepts an existing directory', async () => {
     const result = await GlobTool.validateInput?.(
       { pattern: '**/*.ts', path: workDir } as never,
+      makeCtx(),
     )
     expect(result?.result).toBe(true)
   })
@@ -313,12 +316,12 @@ describe('GlobTool', () => {
     const zeroLimit = await GlobTool.validateInput?.({
       pattern: '**/*',
       head_limit: 0,
-    } as never)
+    } as never, makeCtx())
     expect(zeroLimit?.result).toBe(false)
     const zeroDepth = await GlobTool.validateInput?.({
       pattern: '**/*',
       max_depth: 0,
-    } as never)
+    } as never, makeCtx())
     expect(zeroDepth?.result).toBe(false)
   })
 

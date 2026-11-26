@@ -759,8 +759,10 @@ function main(): void {
     .filter(t => t.mtimeMs >= args.since)
     .map(t => t.path)
   if (files.length === 0) {
+    // Not a failure: the census skill runs this once per project in one
+    // response, and an exit 1 skipped the runs beside it.
     console.error(`no transcripts modified since ${new Date(args.since).toISOString().slice(0, 10)} under ${dirs.join(', ')}`)
-    process.exit(1)
+    return
   }
   const report = buildReport(walk(files, args.since))
   if (args.json) {

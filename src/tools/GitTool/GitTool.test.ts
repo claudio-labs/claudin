@@ -3,7 +3,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import type { Tool } from 'src/tools/Tool.js'
 import { GitTool } from 'src/tools/GitTool/GitTool.js'
+import { cleanupAllRepos, git, repoWithCommits, writeRepoFile } from 'src/tools/GitTool/__fixtures__/repo.js'
 import { DESCRIPTION } from 'src/tools/GitTool/prompt.js'
 import { formatGitBatchResult } from 'src/tools/GitTool/run.js'
 
@@ -18,12 +20,19 @@ function scratch(): string {
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true })
+  cleanupAllRepos()
 })
 
 type CallContext = Parameters<typeof GitTool.call>[1]
 
 function callContext(): CallContext {
   return { abortController: new AbortController(), toolUseId: 'toolu_surface' } as unknown as CallContext
+}
+
+/** resolveInput the way the harness calls it (toolExecution.ts), as an optional member of any tool. */
+function resolve(input: Parameters<typeof GitTool.call>[0]) {
+  const tool = GitTool as unknown as Pick<Tool, 'resolveInput'>
+  return tool.resolveInput?.(input, callContext())
 }
 
 /**
@@ -117,6 +126,40 @@ describe('GitTool.validateInput — refusals land before anything runs', () => {
     expect(result?.result).toBe(false)
     if (result && !result.result) expect(result.message).toContain('not a directory')
   })
+})
+
+// The quoting happens once, in resolveInput, so the classifier, the permission
+// check and the run all see the command that runs; the transcript keeps the
+// model's text (Tool.resolveInput).
+describe('GitTool.resolveInput — plain arguments bash would misread', () => {
+  test('quotes them in every command and leaves the rest of the input alone', async () => {
+    const resolved = await resolve({ commands: ['git log --oneline --grep=#298 -i', 'git status'], full: true })
+    expect(resolved).toEqual({
+      ok: true,
+      input: { commands: ["git log --oneline --grep='#298' -i", 'git status'], full: true },
+    })
+  })
+
+  test('a command it cannot read stays as sent, for validateInput to refuse', async () => {
+    const resolved = await resolve({ commands: ['git status; rm x'] })
+    expect(resolved).toEqual({ ok: true, input: { commands: ['git status; rm x'] } })
+  })
+
+  test('a --grep=#1 search runs end to end and finds its commit', async () => {
+    const root = repoWithCommits(1)
+    writeRepoFile(root, 'src/fix.ts', 'export const fixed = true\n')
+    git(root, ['add', '.'])
+    git(root, ['commit', '-qm', 'fix: the crash (#1)'])
+    const resolved = await resolve({ commands: ['git log --format=%s --grep=#1'] })
+    expect(resolved?.ok).toBe(true)
+    if (!resolved?.ok) return
+    const input = resolved.input as Parameters<typeof GitTool.call>[0]
+    expect((await GitTool.validateInput?.(input))?.result).toBe(true)
+    const { data } = await runWithCwdOverride(root, () =>
+      GitTool.call(input, callContext(), (() => {}) as never, {} as never),
+    )
+    expect(data.outcomes[0]?.output).toContain('fix: the crash (#1)')
+  }, 60_000)
 })
 
 describe('GitTool — the rest of the tool surface', () => {

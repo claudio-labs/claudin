@@ -40,6 +40,7 @@ import {
   validateContentTokens,
 } from 'src/tools/FileReadTool/guards.js'
 import { readImageWithTokenBudget } from 'src/tools/FileReadTool/imageRead.js'
+import { pageOverCap } from 'src/tools/FileReadTool/overCapPage.js'
 import {
   autoOutlineOnElisionEnabled,
   findSymbolEntry,
@@ -334,6 +335,7 @@ export async function callInner(
   // offset is normalized to >= 1 in call() before reaching here.
   const lineOffset = offset - 1
   let readResult: ReadFileRangeResult | undefined
+  let overCapNote: string | undefined
   try {
     readResult = await readFileInRange(
       resolvedFilePath,
@@ -398,7 +400,38 @@ export async function callInner(
         )
       }
     }
-    throw e
+    // view='full' or a range past the token cap: the first page of what was
+    // asked, read as the range it is, so the read gate records exactly its
+    // lines (overCapPage.ts). A plain Read keeps the two pivots above.
+    if (
+      !(e instanceof MaxFileReadTokenExceededError) ||
+      readResult === undefined ||
+      symbol !== undefined ||
+      (view !== 'full' && offset === 1 && limit === undefined)
+    ) {
+      throw e
+    }
+    const page = await pageOverCap(
+      readResult.content,
+      e,
+      {
+        filePath: file_path,
+        startLine: offset,
+        totalLines: readResult.totalLines,
+        wholeFile: offset === 1 && limit === undefined,
+      },
+      candidate => validateContentTokens(candidate, ext, maxTokens),
+    )
+    overCapNote = page.note
+    readResult = {
+      ...readResult,
+      content: page.content,
+      lineCount: page.numLines,
+      readBytes: Buffer.byteLength(page.content),
+    }
+    // From here on this is a ranged read of `page.numLines` lines: no pivot, and the
+    // read state below records the range.
+    limit = page.numLines
   }
 
   const { content, lineCount, totalLines, totalBytes, readBytes, mtimeMs } =
@@ -508,6 +541,7 @@ export async function callInner(
       numLines: lineCount,
       startLine: offset,
       totalLines,
+      ...(overCapNote === undefined ? {} : { note: overCapNote }),
     },
   }
   // A memory file of any directory gets the read note (memoryAge.ts): its

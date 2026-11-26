@@ -425,6 +425,31 @@ describe('refreshChangedFile', () => {
     expect(ctx.readFileState.get(p)).toBe(entry)
   })
 
+  test('past the TOKEN cap too: the same marker, not a diff against the first page', async () => {
+    // A view='full' Read over the token cap answers with its first page
+    // (overCapPage.ts). Diffed against the whole file the model had, that
+    // page read as every later line deleted, and its entry let Write through.
+    const p = join(dir, 'overcap-tokens.ts')
+    const before = bigSource('BEFORE')
+    writeFileSync(p, before)
+    const ctx = makeContext({ maxSizeBytes: 10 * 1024 * 1024, maxTokens: 2_000 })
+    ctx.readFileState.set(p, postWriteEntry(before, getFileModificationTime(p)))
+
+    writeAhead(p, before.replace("'BEFORE-59'", "'AFTER-59'"))
+    const attachment = await refreshChangedFile(p, p, ctx.readFileState.get(p)!, ctx)
+
+    expect(attachment).toBeNull()
+    expect(ctx.readFileState.get(p)).toMatchObject({
+      content: '',
+      isPartialView: true,
+      refreshFailed: 'too-large',
+      timestamp: getFileModificationTime(p),
+    })
+    const { FileWriteTool } = await import('src/tools/FileWriteTool/FileWriteTool.js')
+    const write = await FileWriteTool.validateInput!({ file_path: p, content: 'clobber\n' }, ctx)
+    expect(write.result).toBe(false)
+  })
+
   test('a range entry of a file past the refresh cap becomes the same marker', async () => {
     const p = join(dir, 'range-overcap.txt')
     writeFileSync(p, numbered(60))

@@ -4,6 +4,10 @@ description: How to drive and confirm TUI behavior in claudindev under tmux — 
 type: reference
 ---
 
+For starting, typing into and waiting on the TUI, use `scripts/dev/tui-probe.ts` (2026-11-26,
+`ink-tui.md` §13); it takes `--config-dir`, `--fullscreen` and `--env`. What follows is what it
+does not do: mouse injection, a mock API, a stub model.
+
 Claudin only captures the mouse in **fullscreen/alt-screen** mode. By default the
 REPL runs inline (`tmux display -p '#{mouse_any_flag}'` → 0, `#{alternate_on}` →
 0), so `Box onClick`/`onMouseEnter` never fire and any injected click is ignored.

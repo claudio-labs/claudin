@@ -84,6 +84,114 @@ const UNQUOTED_OPERATORS: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * A plain argument holding `#`, `(`, `)` or a lone `&`, written for git rather
+ * than for the shell: `--grep=#298`, `--format=%(refname:short)`,
+ * `--grep=(web)`, `issues?milestone=2&state=open`. Bash reads the `#` literally
+ * but shell-quote takes it for a comment (`resolveArgs`), and the others are
+ * operators to bash. Naming the quoting fix still cost a refusal and a resend
+ * per shape (six from 2026-11-04 to 11-26), so the tool writes the quotes
+ * itself. The word holds nothing else bash would act on, so git receives
+ * exactly the characters the model wrote.
+ *
+ * A flag is quoted after its `=` (`--grep='#298'`), any other word whole.
+ * Bash's permission check asks for a flag name in quotes ("quoted characters
+ * in flag names"), so `'--grep=#298'` asked where a user's `Bash(git log:*)`
+ * rule allows `--grep='#298'`.
+ *
+ * Left for `scanShellHazards` to refuse: a word that starts with one of them
+ * (a comment, a subshell) or with `~`, a `&&` or a word-final `&` (a second
+ * command, a background job), and a word that also holds a quote, a backslash,
+ * an expansion, a brace or another operator.
+ */
+const LITERAL_TRIGGER_RE = /[#()&]/
+const NOT_PLAIN_RE = /[\s'"\\$`;|<>{}]/
+const SHELL_WORD_START_RE = /^[#()&~]/
+const SECOND_COMMAND_AMP_RE = /&&|&$/
+const WORD_BREAK_RE = /\s/
+const QUOTE_RE = /['"]/
+
+function quotesItself(word: string): boolean {
+  return (
+    LITERAL_TRIGGER_RE.test(word) &&
+    !NOT_PLAIN_RE.test(word) &&
+    !SHELL_WORD_START_RE.test(word) &&
+    !SECOND_COMMAND_AMP_RE.test(word)
+  )
+}
+
+/** `word` in single quotes the way bash reads it unchanged: a flag after its `=`, anything else whole. */
+function singleQuoted(word: string): string {
+  const eq = word.indexOf('=')
+  if (word.startsWith('-') && eq !== -1 && !LITERAL_TRIGGER_RE.test(word.slice(0, eq))) {
+    return `${word.slice(0, eq + 1)}'${word.slice(eq + 1)}'`
+  }
+  return `'${word}'`
+}
+
+type BashWord = { start: number; end: number; quoted: boolean }
+
+/**
+ * The words bash splits `command` into: a blank outside quotes ends one, a
+ * backslash escapes the next character, `'…'` is literal, and inside `"…"` a
+ * `\"` does not close it. `quoted` is any quote or backslash in the word.
+ * Unterminated quotes run to the end, for `scanShellHazards` to refuse.
+ */
+function bashWords(command: string): BashWord[] {
+  const words: BashWord[] = []
+  let i = 0
+  while (i < command.length) {
+    if (WORD_BREAK_RE.test(command[i]!)) {
+      i++
+      continue
+    }
+    const start = i
+    let quoted = false
+    while (i < command.length && !WORD_BREAK_RE.test(command[i]!)) {
+      const c = command[i]!
+      if (c === '\\') {
+        quoted = true
+        i += 2
+      } else if (c === "'") {
+        quoted = true
+        const close = command.indexOf("'", i + 1)
+        i = close === -1 ? command.length : close + 1
+      } else if (c === '"') {
+        quoted = true
+        i++
+        while (i < command.length && command[i] !== '"') i += command[i] === '\\' ? 2 : 1
+        i++
+      } else {
+        i++
+      }
+    }
+    i = Math.min(i, command.length)
+    words.push({ start, end: i, quoted })
+  }
+  return words
+}
+
+function wordAt(command: string, at: number): BashWord | undefined {
+  return bashWords(command).find(w => w.start <= at && at < w.end)
+}
+
+/**
+ * `command` with every plain argument `quotesItself` accepts put in single
+ * quotes. Words are split the way bash splits them (`bashWords`), so nothing
+ * inside a quoted message is touched; a word with any quoting of its own is
+ * copied as it is. Idempotent: a quoted word is no longer plain.
+ */
+function quoteLiteralWords(command: string): string {
+  let out = ''
+  let at = 0
+  for (const { start, end, quoted } of bashWords(command)) {
+    const word = command.slice(start, end)
+    out += command.slice(at, start) + (!quoted && quotesItself(word) ? singleQuoted(word) : word)
+    at = end
+  }
+  return out + command.slice(at)
+}
+
+/**
  * Walk the command with bash's own quoting rules and report the first thing
  * bash would do to it that git would then never see.
  *
@@ -105,9 +213,12 @@ const UNQUOTED_OPERATORS: ReadonlySet<string> = new Set([
  * arguments below — has no newline in its operator set and drops unquoted
  * newlines as plain separators, so `git status\nrm -rf /` parses to tokens with
  * no operator in them at all.
+ *
+ * `sent` is the command as the model wrote it, before `quoteLiteralWords`:
+ * the refusal shows that, not the quotes the tool added.
  */
-function scanShellHazards(command: string): string | null {
-  const shown = oneLineCommand(command)
+function scanShellHazards(command: string, sent: string = command): string | null {
+  const shown = oneLineCommand(sent)
   let inSingle = false
   let inDouble = false
 
@@ -139,10 +250,19 @@ function scanShellHazards(command: string): string | null {
     if (c === '`') {
       return `\`${shown}\` has a backtick outside single quotes, which bash would run as a command. Put that argument in single quotes ('…') — inside them a backtick is literal, which is what a PR body needs.`
     }
+    if (c === '#' && !inDouble) {
+      if (i === 0 || WORD_BREAK_RE.test(command[i - 1]!)) {
+        return `\`${shown}\` has a \`#\` that starts a comment in bash, so everything after it would never reach git. Drop the comment, or put the argument in single quotes if git should see the \`#\`.`
+      }
+      const word = wordAt(command, i)
+      const text = word ? command.slice(word.start, word.end) : '#'
+      const beside = word?.quoted ? 'quotes' : 'other characters bash reads specially'
+      return `\`${shown}\` has \`#\` inside the argument \`${text}\` beside ${beside}, which this tool cannot read the way bash does. Put that whole argument in single quotes if git should see it as written.`
+    }
     if (!inDouble && UNQUOTED_OPERATORS.has(c)) {
       const word = argumentAround(command, i)
       if (word !== null) {
-        return `\`${shown}\` has \`${c}\` inside the argument \`${word}\`, and bash reads it as an operator there. Put that argument in single quotes: '${word}'.`
+        return `\`${shown}\` has \`${c}\` inside the argument \`${word}\`, and bash reads it as an operator there. Put that argument in single quotes: ${singleQuoted(word)}.`
       }
       const named = c === '\n' || c === '\r' ? 'a newline' : `\`${c}\``
       return `\`${shown}\` contains a shell operator (${named}) outside quotes. Send one plain command per list element — several commands go in the list, not in one string — or run it with Bash if it genuinely needs a shell.`
@@ -154,9 +274,6 @@ function scanShellHazards(command: string): string | null {
   }
   return null
 }
-
-const WORD_BREAK_RE = /\s/
-const QUOTE_RE = /['"]/
 
 /**
  * The argument around a `(`, `)` or lone `&` written inside it — `--grep=(web)`,
@@ -173,12 +290,9 @@ function argumentAround(command: string, at: number): string | null {
   if (before === undefined || WORD_BREAK_RE.test(before)) return null
   if (c === '&' && (before === '&' || after === '&' || before === '>' || after === '>')) return null
   if (c === '&' && (after === undefined || WORD_BREAK_RE.test(after))) return null
-  let start = at
-  while (start > 0 && !WORD_BREAK_RE.test(command[start - 1]!)) start--
-  let end = at + 1
-  while (end < command.length && !WORD_BREAK_RE.test(command[end]!)) end++
-  const word = command.slice(start, end)
-  return QUOTE_RE.test(word) ? null : word
+  const word = wordAt(command, at)
+  if (!word || word.quoted) return null
+  return command.slice(word.start, word.end)
 }
 
 /**
@@ -698,7 +812,10 @@ export type GitCommandRefusal = {
 
 export type GitCommandAccepted = {
   ok: true
-  /** The element as sent — what runs. */
+  /**
+   * The element as it runs: as sent, with `quoteLiteralWords`' quotes around
+   * any plain argument bash would have misread.
+   */
   command: string
   /** `command` without its trailing `| head`/`| tail` trim, if it had one. */
   core: string
@@ -725,7 +842,8 @@ function classifyReadOnly(binary: GitBinary, args: readonly string[]): boolean {
 }
 
 export function parseGitCommand(raw: string): ParsedGitCommand {
-  const command = raw.trim()
+  const sent = raw.trim()
+  const command = quoteLiteralWords(sent)
   if (!command) {
     return { ok: false, reason: 'Empty command.' }
   }
@@ -734,12 +852,12 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
   if (!BINARY_SET.has(binary)) {
     return {
       ok: false,
-      reason: `\`${oneLineCommand(command)}\` does not start with \`git\` or \`gh\`. Run it with Bash instead.`,
+      reason: `\`${oneLineCommand(sent)}\` does not start with \`git\` or \`gh\`. Run it with Bash instead.`,
     }
   }
 
   const core = stripHeadTailTail(command)
-  const hazard = scanShellHazards(core)
+  const hazard = scanShellHazards(core, stripHeadTailTail(sent))
   if (hazard !== null) {
     return { ok: false, reason: hazard }
   }
@@ -748,7 +866,7 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
   if (args === null) {
     return {
       ok: false,
-      reason: `\`${oneLineCommand(command)}\` could not be read as a single plain command — the quoting is ambiguous. Simplify it, or run it with Bash, which parses shell syntax properly.`,
+      reason: `\`${oneLineCommand(sent)}\` could not be read as a single plain command — the quoting is ambiguous. Simplify it, or run it with Bash, which parses shell syntax properly.`,
     }
   }
   const typedBinary = binary as GitBinary
@@ -769,7 +887,7 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
   if (watch && core !== command) {
     return {
       ok: false,
-      reason: `\`${oneLineCommand(command)}\` is a watch, which the tool follows live and collapses to its final refresh — drop the \`| head\`/\`| tail\` and send it plain.`,
+      reason: `\`${oneLineCommand(sent)}\` is a watch, which the tool follows live and collapses to its final refresh — drop the \`| head\`/\`| tail\` and send it plain.`,
     }
   }
 

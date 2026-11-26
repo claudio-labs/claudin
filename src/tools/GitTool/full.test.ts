@@ -99,6 +99,67 @@ describe('full: true', () => {
   }, 60_000)
 })
 
+/** `lines` lines of ~70 chars, tagged so a test can name the last one. */
+function bigBody(tag: string, lines: number): string {
+  return Array.from({ length: lines }, (_, i) => `export const ${tag}_${i} = 'line ${i} of ${tag}, padded to widen the diff'`).join('\n') + '\n'
+}
+
+/** Each file committed, then rewritten on every line: its diff is ~2 × its size. */
+function rewrittenRepo(files: readonly string[], lines: number): string {
+  const root = repoWithCommits(1)
+  for (const file of files) writeRepoFile(root, file, bigBody('old', lines))
+  git(root, ['add', '.'])
+  git(root, ['commit', '-qm', 'base'])
+  for (const file of files) writeRepoFile(root, file, bigBody(file.replace(/\W/g, '_'), lines))
+  return root
+}
+
+// The shell keeps only the first BASH_MAX_OUTPUT_LENGTH (30,000) characters of
+// a run on `result.stdout` and leaves the rest in its output file. Git read
+// stdout, so 68 single-command results since 2026-09-01 came back as exactly
+// 30,000 bytes cut mid-line, 66 of them asked for with `full: true`.
+describe('output past the shell cap', () => {
+  test('full: true keeps the last line of a 200 KB diff', async () => {
+    const result = await run(rewrittenRepo(['src/big.ts'], 1500), ['git diff'], true)
+    const output = result.outcomes[0]?.output ?? ''
+    expect(Buffer.byteLength(output)).toBeGreaterThan(30_000)
+    expect(output).toContain('src_big_ts_1499')
+  }, 60_000)
+
+  test('the summary of a wide diff counts every file, not the first 30k of them', async () => {
+    const files = Array.from({ length: 8 }, (_, i) => `src/f${i}.ts`)
+    const result = await run(rewrittenRepo(files, 300), ['git diff'])
+    const output = result.outcomes[0]?.output ?? ''
+    expect(output).toContain('8 files changed')
+    expect(output).toContain('src/f7.ts')
+    expect(output).toContain('src/f0.ts  +300/-300')
+  }, 60_000)
+
+  test('each command of a batch keeps its whole output', async () => {
+    const result = await run(rewrittenRepo(['src/big.ts'], 1500), ['git diff', 'git status --short'], true)
+    expect(result.outcomes[0]?.output ?? '').toContain('src_big_ts_1499')
+    expect(result.outcomes[1]?.output).toBe(' M src/big.ts\n')
+  }, 60_000)
+
+  test('a failing command keeps the end of its output', async () => {
+    const root = rewrittenRepo(['src/big.ts'], 1500)
+    git(root, ['add', '.'])
+    const result = await run(root, ['git diff --cached --exit-code'], true)
+    expect(result.outcomes[0]?.exitCode).toBe(1)
+    expect(result.outcomes[0]?.output ?? '').toContain('src_big_ts_1499')
+  }, 60_000)
+
+  test('JSON past the cap still parses', async () => {
+    const root = repoWithCommits(1)
+    const json = JSON.stringify(Array.from({ length: 900 }, (_, i) => ({ number: i, title: `pull request ${i} with a long title` })))
+    writeRepoFile(root, 'list.json', json)
+    git(root, ['add', 'list.json'])
+    git(root, ['commit', '-qm', 'json'])
+    const result = await run(root, ['git show HEAD:list.json'], true)
+    expect(JSON.parse(result.outcomes[0]?.output ?? '')).toHaveLength(900)
+  }, 60_000)
+})
+
 describe('multi-line commit message', () => {
   test('a subject and body reach git with the blank line intact', async () => {
     const root = repoWithCommits(2)

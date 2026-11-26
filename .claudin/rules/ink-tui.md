@@ -283,3 +283,18 @@ fix the right one.
   \\<directive\\>'` in the source (`src/commands/fork/fork.ts`) — and do not
   "clean up" the backslashes. Only a real terminal shows the difference: verify
   a usage line under tmux, not by asserting on the string.
+
+## 13. Live-check a TUI change with `scripts/dev/tui-probe.ts`, one call per step
+
+- `bun run build`, then `bun scripts/dev/tui-probe.ts start <name> --cwd <dir>
+  [--config-dir <scratch>/cfg] [--fullscreen]`; `send <name> "<prompt>"`,
+  `keys <name> C-o`, `capture <name> --ansi`, `stop <name>`. `start`, `send` and
+  `keys` wait until the TUI is idle (the footer's `esc to interrupt` gone, the
+  pane still for a second) and print the pane, so no `sleep` and no second
+  capture. It runs on its own tmux server (`-L claudin-probe`).
+- Before it, one session spent 113 calls on new-session / sleep / capture-pane
+  rounds (2026-11-24), and an `until` written to wait for a turn matched the
+  prompt it had just typed, echoed in the pane. `send` gives the turn 3 s to
+  start before idle or `--until` counts.
+- The mouse, a mock API and seeded state are still recipes, not flags: team
+  memory `tmux-mouse-click-verification`.

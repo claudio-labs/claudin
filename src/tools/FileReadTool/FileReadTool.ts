@@ -30,15 +30,14 @@ import type {
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
+import { missingPathHint } from 'src/tools/shared/missingPath.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getErrnoCode, isENOENT, isFsInaccessible } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
-  findSimilarFile,
   getFileModificationTime,
   getFileModificationTimeAsync,
-  suggestPathUnderCwd,
 } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { extractGlobBaseDirectory, glob } from 'src/shared/fs/glob.js'
@@ -1054,15 +1053,8 @@ export const FileReadTool = buildTool({
           }
         }
 
-        const similarFilename = findSimilarFile(fullFilePath)
-        const cwdSuggestion = await suggestPathUnderCwd(fullFilePath)
-        let message = `File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.`
-        if (cwdSuggestion) {
-          message += ` Did you mean ${cwdSuggestion}?`
-        } else if (similarFilename) {
-          message += ` Did you mean ${similarFilename}?`
-        }
-        throw new Error(message)
+        const hint = await missingPathHint(fullFilePath, context.getAppState().toolPermissionContext)
+        throw new Error(`File does not exist. ${FILE_NOT_FOUND_CWD_NOTE} ${getCwd()}.${hint}`)
       }
       throw error
     }

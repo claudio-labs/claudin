@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { REPO_ROOT } from '../../repoRoot.js'
@@ -595,16 +595,18 @@ describe('parseArgs', () => {
     expect(parseArgs(['--since=2026-11-14', '--until=2026-11-15', '--project=-proj', '--exclude=a,b', '--json'])).toEqual({
       since: '2026-11-14',
       until: '2026-11-15',
-      project: '-proj',
+      projects: ['-proj'],
       exclude: new Set(['a', 'b']),
       json: true,
+      dump: null,
     })
+    expect(parseArgs(['--project=-a,-b', '--dump=/tmp/d.jsonl'])).toMatchObject({ projects: ['-a', '-b'], dump: '/tmp/d.jsonl' })
   })
 
   test('defaults to today, in local time, with nothing excluded', () => {
     const now = new Date()
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    expect(parseArgs([])).toEqual({ since: today, until: today, project: null, exclude: new Set(), json: false })
+    expect(parseArgs([])).toEqual({ since: today, until: today, projects: [], exclude: new Set(), json: false, dump: null })
   })
 })
 
@@ -729,10 +731,53 @@ describe('walk and the script over synthetic transcripts', () => {
     }
   })
 
-  test('the script exits 1 when the window holds no tool call', () => {
+  // An empty window is an answer, not a failure: the census runs its scripts
+  // in one response, and an exit 1 there skipped the calls beside it (two
+  // skipped on 2026-11-26, for a project with no transcripts).
+  test('the script exits 0 and says so when the window holds no tool call', () => {
     const none = run('--since=2026-11-13', '--until=2026-11-13', '--exclude=s1')
-    expect(none.exitCode).toBe(1)
+    expect(none.exitCode).toBe(0)
     expect(none.stdout.toString()).toBe('')
     expect(none.stderr.toString()).toContain('no tool calls between 2026-11-13 and 2026-11-13 under ')
+  })
+
+  // `--since=2026-11-22..2026-11-26` read as a date made every mtime compare
+  // false and came back as an empty window (2026-11-26).
+  test('a --since or --until that is not one date is refused with the usage', () => {
+    for (const arg of ['--since=2026-11-13..2026-11-14', '--until=yesterday']) {
+      const bad = run(arg)
+      expect([arg, bad.exitCode]).toEqual([arg, 2])
+      expect(bad.stderr.toString()).toContain('usage:')
+    }
+  })
+
+  test('--project takes a list', () => {
+    const other = join(root, 'projects', '-proj2', 's3.jsonl')
+    mkdirSync(dirname(other), { recursive: true })
+    writeFileSync(other, [says(14, [use('x1', 'Glob', { pattern: '*' })]), answers('x1', 'a.ts')].map(r => JSON.stringify(r)).join('\n') + '\n')
+    const both = Bun.spawnSync([process.execPath, SCRIPT, '--project=-proj,-proj2', '--since=2026-11-14', '--until=2026-11-14', '--json'], {
+      cwd: REPO_ROOT,
+      env: { ...process.env, CLAUDIN_CONFIG_DIR: root },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    expect(both.exitCode).toBe(0)
+    expect((JSON.parse(both.stdout.toString()) as Json).overview.calls).toBe(5)
+    rmSync(dirname(other), { recursive: true, force: true })
+  })
+
+  test('--dump writes one row per paired call in the window, and only the count to stdout', () => {
+    const out = join(root, 'dump.jsonl')
+    const dumped = run('--since=2026-11-14', '--until=2026-11-14', `--dump=${out}`)
+    expect(dumped.exitCode).toBe(0)
+    expect(dumped.stdout.toString().trim()).toBe(`4 calls → ${out}`)
+    const rows = readFileSync(out, 'utf8').trim().split('\n').map(l => JSON.parse(l) as Record<string, unknown>)
+    expect(rows.map(r => [r.tool, r.session, r.sub, r.isError, r.text])).toEqual([
+      ['Read', 's1', false, false, 'body'],
+      ['Bash', 's1', false, true, 'boom'],
+      ['Grep', 's1', true, false, 'a.ts:1:x'],
+      ['Edit', 's2', false, false, 'ok'],
+    ])
+    expect(rows[0]).toMatchObject({ project: '-proj', input: { file_path: '/repo/a.ts' }, chars: 4, cwd: '/repo' })
   })
 })

@@ -76,9 +76,11 @@ export class MaxFileReadTokenExceededError extends Error {
   constructor(
     public tokenCount: number,
     public maxTokens: number,
+    /** Replaces the offset/limit advice when that advice cannot help (overCapPage.ts). */
+    hint?: string,
   ) {
     super(
-      `File content (${tokenCount} tokens) exceeds maximum allowed tokens (${maxTokens}). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.`,
+      `File content (${tokenCount} tokens) exceeds maximum allowed tokens (${maxTokens}). ${hint ?? 'Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.'}`,
     )
     this.name = 'MaxFileReadTokenExceededError'
   }
