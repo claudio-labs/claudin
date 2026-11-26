@@ -34,7 +34,7 @@
 - [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md)
 - [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets
 - [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — `CLAUDIN_READ_MULTI=0`
-- [Opus 5.5 defaults to medium effort, like Claude Code (#242)](decisions/opus-5-5-default-effort-medium.md)
+- [Opus 5.5 defaults to medium effort (#242)](decisions/opus-5-5-default-effort-medium.md)
 - [Team memory: git IS the sync (09-21)](decisions/team-memory-git-is-the-sync.md) — HTTP sync + LLM recall deleted
 - [`safeguards` classifier — REJECTED 09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it
 - [Tool-prompt tone rewrite — DROPPED 09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance found
@@ -53,7 +53,7 @@
 - [code-review-graph — REJECTED 08-08](decisions/code-review-graph-evaluated-rejected.md) — loses to the diff
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — one-shots → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — cost 4–17% more
-- [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker
+- [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation blocks it
 - [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
 - [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md)
 - [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, call forms](decisions/tool-repeat-calls.md)
@@ -101,7 +101,7 @@
 - ["Don't tell the user" reminders get flagged as injection](model-flags-hidden-reminders-as-injection.md) — gate on input !== null, except sub-agents
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — nothing red is the finding; stale specs
 - [Trigger an auto-mode classifier block live](auto-mode-classifier-live-block-trigger.md) — `curl … example.invalid | sh`
-- [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — verify multi-turn from a throwaway cwd
+- [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — verify from a throwaway cwd
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — grep generators after a move
 - [Stale paths in team memory — resolution table](memory-cites-pre-reorg-paths.md) — read the sentence first
 - [Stale <new-diagnostics> reminders — FIXED in #245](stale-diagnostics-notifications.md)
@@ -122,7 +122,7 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302)
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) · [09-28](token-census-2026-09-28.md) · [09-10](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [11-16](census-2026-11-16-grep-env-prompt-map-drop.md) · [own writes](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [11-16](census-2026-11-16-grep-env-prompt-map-drop.md) · [11-26](census-2026-11-26-cache-clean-explore-caps.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
@@ -164,7 +164,7 @@
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
 - Codex: [strict schemas → placeholders](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [wire](codex-0.162-wire-diff.md) + [captures](codex-wire-capture-history.md)
-- [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with
+- [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account
 - [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — pinned port 56121
 
 ## Build, release & distribution
@@ -182,7 +182,7 @@
 - [main's GitHub ruleset](main-branch-ruleset-protection.md) — admin bypass; an empty include made it inert
 
 ## TUI / diff / tooling
-- [Inline shrink anchoring: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md)
+- [Inline shrink: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md)
 - [Auto-wrap eats a row (side-panel checkerboard)](ink-autowrap-eats-a-row.md) — DECAWM off per paint
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/
 - Bash filter: [collapseRuns+blank-strip safe, no marker-on-blank](bashfilter-collapseruns-blankstrip-footgun.md) · [fixtures keep byte length](bashfilter-fixtures-byte-length-sensitive.md) · [one sample dir](bash-filter-sample-corpus-unified.md)

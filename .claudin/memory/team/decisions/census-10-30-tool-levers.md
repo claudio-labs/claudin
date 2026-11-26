@@ -51,6 +51,11 @@ sub-agents asking for outlines), or a session needs a server stopped without the
 so. Run with `--only=base,placebo,combo`. The base arm pins the pre-10-30 defaults
 (`LEVERS_OFF`).
 
+Field evidence so far, below any gate (user kept it off, 2026-11-26): in 11-22..26 three
+markdown files of 175–211 lines were auto-outlined in sub-agents and then read whole — two plan
+files and `src/agent/cache/README.md` ([[census-2026-11-26-cache-clean-explore-caps]]), 3 calls in
+3,903.
+
 **Evidence:**
 - Reports: `/tmp/tool-gaps-ab/20261030-172617/report.md` (Sonnet) and
   `/tmp/tool-gaps-ab/20261030-182253/report.md` (Opus). `/tmp` does not survive a reboot.
