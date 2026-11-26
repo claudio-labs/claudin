@@ -93,6 +93,11 @@ const GREP_MATCH_FLAGS_RE = /^-[iEFwxv]+$/;
 /** A grep over stdin that prints at most one line per line it reads: no `-o`, no context, no recursion. */
 const GREP_FILTER_FLAGS_RE = /^-[iEFwxvnch]+$/;
 const NEWLINE_ESCAPE_RE = /\\n/g;
+/**
+ * `<rev>:<path>`, a file as it was at a revision: a rev that is no flag and
+ * no pathspec magic (`:!x`), a colon, then a path.
+ */
+const REV_PATH_RE = /^[^-:][^:]*:./;
 
 const SEARCHERS: ReadonlySet<string> = new Set(["grep", "egrep", "fgrep", "rg"]);
 const FILE_PRINTERS: ReadonlySet<string> = new Set(["cat", "nl"]);
@@ -255,8 +260,13 @@ function isBoundedFeed(words: readonly ReadWord[]): boolean {
   const [head, ...args] = words;
   if (!head) return false;
   if (FILE_PRINTERS.has(head.text) || SEARCHERS.has(head.text) || RANGE_PRINTERS.has(head.text)) return true;
-  // `git show <rev>:<path>` prints a file as it was; any other `git show` prints a commit.
-  if (head.text === "git" && args[0]?.text === "show" && args.slice(1).some((arg) => arg.text.includes(":"))) return true;
+  // `git show <rev>:<path>` prints a file as it was; any other `git show` prints
+  // a commit — so every operand must be one, and a colon in a flag
+  // (`--format='%h: %s'`) or a `:!` pathspec makes none.
+  if (head.text === "git" && args[0]?.text === "show") {
+    const operands = args.slice(1).filter((arg) => !arg.text.startsWith("-"));
+    if (operands.length > 0 && operands.every((arg) => REV_PATH_RE.test(arg.text))) return true;
+  }
   return isScopedGitDiff(words);
 }
 
