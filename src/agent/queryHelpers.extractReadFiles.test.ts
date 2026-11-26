@@ -687,6 +687,16 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
         limit: single.limit,
       })
     }
+    // An offset alone is a range too: from that line on.
+    const tail = extractReadFilesFromMessages(
+      batchRead({ file_paths: [a, b], offset: 3 }, [
+        ['a.ts', shown('a3', 3)],
+        ['b.ts', shown('b3', 3)],
+      ]),
+      dir,
+    )
+    expect(tail.get(a)).toMatchObject({ content: 'a3', offset: 3, limit: 1 })
+    expect(tail.get(b)).toMatchObject({ content: 'b3', offset: 3, limit: 1 })
   })
 
   test('a symbol looked up in every file is a slice of each', () => {

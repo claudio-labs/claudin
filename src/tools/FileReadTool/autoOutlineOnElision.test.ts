@@ -617,9 +617,19 @@ describe('FileReadTool — plain-text preview pivot', () => {
     } finally {
       rmSync(p, { force: true })
     }
-    // A .txt that is no saved result keeps the preview.
+    // A .txt that is no saved result keeps the preview — a sibling directory
+    // whose name starts like the results one included.
     const elsewhere = await read(writeFixture('toolu_lookalike-0123456789ab.txt', BIG_TXT))
     expect(elsewhere.data.type).toBe('outline')
+    const sibling = `${saved}-x`
+    mkdirSync(sibling, { recursive: true })
+    try {
+      const q = join(sibling, 'toolu_sibling-0123456789ab.txt')
+      writeFileSync(q, BIG_TXT)
+      expect((await read(q)).data.type).toBe('outline')
+    } finally {
+      rmSync(sibling, { recursive: true, force: true })
+    }
   })
 
   test('a large diff pivots to its files, and symbol=<path> unfolds one of them', async () => {
