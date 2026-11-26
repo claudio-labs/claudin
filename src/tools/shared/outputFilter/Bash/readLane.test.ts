@@ -88,6 +88,8 @@ describe("isModelDirectedRead — what the model asked to read", () => {
       "a pathspec glob the model wrote",
       "cd ../openclaude && git show 439d7534 -- src/tools/ExitWorktreeTool/ExitWorktreeTool.ts; echo ====; git show 439d7534 -- '*ExitWorktreeTool.test.ts' | head -120",
     ],
+    ["a range diff of one file", "git diff main~30..HEAD -- src/a.ts | head -150"],
+    ["a file in the parent directory", "git -C sub diff -- ../other/a.ts"],
   ])("the 11-26 census: %s", (_, command) => {
     expect(isModelDirectedRead(command)).toBe(true);
   });
@@ -118,6 +120,14 @@ describe("isModelDirectedRead — what the model asked to read", () => {
     ["a log", "git log -p -- src/a.ts"],
     ["a diff into a filter with no bound", "git show 3beebbfd -- src/utils/memoize.ts | grep '^[-+]'"],
     ["no path after the separator", "git diff main --"],
+    // The review of 11-26: each spells the whole tree, or walks commits.
+    ["the whole tree as a pathspec glob", "git --no-pager diff main...HEAD -- '*'"],
+    ["the whole tree as a shell glob", "git --no-pager diff main...HEAD -- *"],
+    ["the whole tree spelled .//", "git --no-pager diff main...HEAD -- .//"],
+    ["the whole tree spelled src/..", "git --no-pager diff main...HEAD -- src/.."],
+    ["the parent directory", "git -C sub diff -- .."],
+    ["the filesystem root", "git diff -- /"],
+    ["a range shown commit by commit, as git log -p", "git --no-pager show main~30..HEAD -- src/a.ts"],
   ])("still capped: %s", (_, command) => {
     expect(isModelDirectedRead(command)).toBe(false);
   });

@@ -699,6 +699,25 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
     expect(tail.get(b)).toMatchObject({ content: 'b3', offset: 3, limit: 1 })
   })
 
+  // Codex strict mode stores every optional field, `null` for the ones the
+  // model left out (review of 11-26): no range, so whole files.
+  test("Codex's null placeholders are no range, for a batch and for a single Read", () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const nulls = { offset: null, limit: null, symbol: null, view: null, pages: null, encoding: null }
+    const batch = extractReadFilesFromMessages(
+      batchRead({ file_paths: [a, b], file_path: null, ...nulls }, [
+        ['a.ts', shown('a1\na2')],
+        ['b.ts', shown('b1')],
+      ]),
+      dir,
+    )
+    const single = extractReadFilesFromMessages(read(a, { file_paths: null, ...nulls }, 'a1\na2'), dir)
+    for (const cache of [batch, single]) {
+      expect(cache.get(a)).toMatchObject({ content: 'a1\na2', offset: undefined, limit: undefined })
+    }
+  })
+
   test('a symbol looked up in every file is a slice of each', () => {
     const a = join(dir, 'a.ts')
     const b = join(dir, 'b.ts')

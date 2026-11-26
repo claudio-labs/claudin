@@ -57,6 +57,10 @@ describe("commandLineBound — a diff of named files feeds a bound", () => {
     ["git -C ../openclaude show 766d48db -- src/compact.ts | sed -n 118,235p", 118],
     ["git show HEAD~1:src/a.ts | head -40", 40],
     ["git show --no-color HEAD~1:src/a.ts | head -40", 40],
+    // The index copy, and the global options the scoped diff already takes.
+    ["git show :src/a.ts | head -40", 40],
+    ["git --no-pager show HEAD:src/a.ts | head -40", 40],
+    ["git -C ../openclaude show HEAD:src/a.ts | head -40", 40],
   ])("%s", (command, lines) => {
     expect(commandLineBound(command)).toBe(lines);
   });
@@ -71,6 +75,10 @@ describe("commandLineBound — a diff of named files feeds a bound", () => {
     ["git show 63a6ffc2 -- src/utils/sliceAnsi.ts ':!*.test.ts' | head -50"],
     ["git show 9b92b89c main:src/a.ts | head -40"],
     ["git show HEAD:src/a.ts ':!src/b.ts' | head -40"],
+    // `:/fix` names the commit whose message matches, not a file.
+    ["git show :/fix | head -40"],
+    ["git show --stat | head -5"],
+    ["git show $REV:src/a.ts | head -40"],
   ])("not a feed: %s", (command) => {
     expect(commandLineBound(command)).toBeNull();
   });

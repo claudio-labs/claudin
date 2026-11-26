@@ -81,11 +81,25 @@ describe('rereadsOfThread', () => {
   })
 
   test('a whole Bash print followed by a Read of part of it is a duplicate', () => {
-    const counts = rereadsOfThread([
-      call('Bash', { command: 'cat src/a.ts' }, 'whole file'),
-      call('Read', { file_path: '/repo/src/a.ts', offset: 10, limit: 5 }, numbered(10, 14)),
-    ])
-    expect(counts['reread: duplicate within 3 calls']).toBe(1)
+    // A `;` or `&&` after the print is no pipe: the file was shown whole.
+    for (const command of ['cat src/a.ts', 'cat src/a.ts; echo done', 'cat src/a.ts && echo done']) {
+      const counts = rereadsOfThread([
+        call('Bash', { command }, 'whole file'),
+        call('Read', { file_path: '/repo/src/a.ts', offset: 10, limit: 5 }, numbered(10, 14)),
+      ])
+      expect(counts['reread: duplicate within 3 calls']).toBe(1)
+    }
+  })
+
+  // A batch takes offset/limit since 11-26: its lines start where it asked.
+  test('a batch read of lines 100-104 does not cover lines 1-5', () => {
+    const batch = { type: 'batch', files: [{ filePath: '/repo/a.ts', lines: 5 }, { filePath: '/repo/b.ts', lines: 5 }] }
+    const ranged = call('Read', { file_paths: ['/repo/a.ts', '/repo/b.ts'], offset: 100, limit: 5 }, 'x', { result: batch })
+    const before = rereadsOfThread([ranged, call('Read', { file_path: '/repo/a.ts', offset: 1, limit: 5 }, numbered(1, 5))])
+    expect(before['reread: duplicate within 3 calls']).toBeUndefined()
+    expect(before['reread: new lines']).toBe(1)
+    const inside = rereadsOfThread([ranged, call('Read', { file_path: '/repo/b.ts', offset: 101, limit: 3 }, numbered(101, 103))])
+    expect(inside['reread: duplicate within 3 calls']).toBe(1)
   })
 
   // The 11-26 census counted 7 of its 16 main "auto" outlines from batch Reads

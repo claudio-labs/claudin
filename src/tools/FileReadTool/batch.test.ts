@@ -749,6 +749,10 @@ describe('batch Read — hooks', () => {
       expect(ranged.merge(ranged.inputs.map(unit => ({ ...unit, offset: 5, limit: 10 })))).toEqual({
         input: { file_paths: ['/r/a.ts', '/r/b.ts'], offset: 5, limit: 10 },
       })
+      // So is a range every unit drops.
+      expect(ranged.merge(ranged.inputs.map(({ limit: _limit, ...unit }) => unit))).toEqual({
+        input: { file_paths: ['/r/a.ts', '/r/b.ts'] },
+      })
     })
 
     test('a change for one unit alone is refused, naming the Read it changed', () => {
@@ -758,6 +762,8 @@ describe('batch Read — hooks', () => {
       })
       expect(units.merge([undefined, { file_path: '/r/b.ts', view: 'outline' }])).toEqual(refusal('/r/b.ts'))
       expect(units.merge([{ file_path: '/r/a.ts', offset: 10 }, undefined])).toEqual(refusal('/r/a.ts'))
+      const ranged = unitsOf({ file_paths: ['/r/a.ts', '/r/b.ts'], limit: 40 })
+      expect(ranged.merge([undefined, { file_path: '/r/b.ts', limit: 3 }])).toEqual(refusal('/r/b.ts'))
       expect(units.merge([{ file_path: '' }, undefined])).toEqual(refusal('/r/a.ts'))
       const symbols = unitsOf({ file_paths: ['/r/a.ts', '/r/b.ts'], symbol: ['x', 'y'] })
       expect(

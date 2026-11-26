@@ -7,7 +7,7 @@ const priorForceAutoOutline = process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION
 process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -602,9 +602,15 @@ describe('FileReadTool — plain-text preview pivot', () => {
   test('a saved tool result comes back whole, as the clip stub promised', async () => {
     // The fallback directory: the session's own one lives under the config dir.
     const saved = resultDirs()[1]!
+    // Removed after, when this test made it: one per run piled up in tmpdir.
+    const madeDir = !existsSync(saved)
     mkdirSync(saved, { recursive: true })
     const p = join(saved, 'toolu_census1126-0123456789ab.txt')
     writeFileSync(p, BIG_TXT)
+    // A paged result was shown one page: past the line a tool ships a result
+    // whole under (50k), it keeps the preview like any other .txt.
+    const paged = join(saved, 'toolu_paged1126-0123456789ab.txt')
+    writeFileSync(paged, Array.from({ length: 900 }, (_, i) => `paged line ${String(i).padStart(4, '0')} ${'p'.repeat(55)}`).join('\n'))
     try {
       const { data } = await read(p)
       expect(data.type).toBe('text')
@@ -614,8 +620,13 @@ describe('FileReadTool — plain-text preview pivot', () => {
       // Past Read's own cap the preview still answers, as it does for any .txt.
       const capped = await read(p, {}, makeContext({ maxSizeBytes: 8 * 1024, maxTokens: 25_000 }))
       expect(capped.data.type).toBe('outline')
+      // A raised token cap keeps the token count local (no API call).
+      const big = await read(paged, {}, makeContext({ maxSizeBytes: 10 * 1024 * 1024, maxTokens: 1_000_000 }))
+      expect(big.data.type).toBe('outline')
     } finally {
       rmSync(p, { force: true })
+      rmSync(paged, { force: true })
+      if (madeDir) rmSync(saved, { recursive: true, force: true })
     }
     // A .txt that is no saved result keeps the preview — a sibling directory
     // whose name starts like the results one included.

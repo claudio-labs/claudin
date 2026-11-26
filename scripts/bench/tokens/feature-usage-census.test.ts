@@ -101,6 +101,13 @@ describe('waitReport', () => {
     expect(w.repolls).toBe(1)
     expect(w.repollsAfterTimeout).toBe(1)
     expect(w.multiCallRuns).toBe(1)
+    // The same condition on another command is another wait too.
+    const other = waitReport([
+      wait('match', 5, { command: 'tail -n 5 a.log', until: 'ready' }),
+      wait('match', 5, { command: 'tail -n 5 b.log', until: 'ready' }),
+    ])
+    expect(other.runs).toBe(2)
+    expect(other.repolls).toBe(0)
   })
 
   test('a wait in another transcript starts its own run', () => {
