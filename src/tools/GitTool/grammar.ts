@@ -84,6 +84,72 @@ const UNQUOTED_OPERATORS: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * A plain argument holding `#`, `(`, `)` or a lone `&`, written for git rather
+ * than for the shell: `--grep=#298`, `--format=%(refname:short)`,
+ * `--grep=(web)`, `issues?milestone=2&state=open`. Bash reads the `#` literally
+ * but shell-quote takes it for a comment (`resolveArgs`), and the others are
+ * operators to bash. Naming the quoting fix still cost a refusal and a resend
+ * per shape (six from 2026-11-04 to 11-26), so the tool writes the quotes
+ * itself. The word holds nothing else bash would act on, so git receives
+ * exactly the characters the model wrote.
+ *
+ * Left for `scanShellHazards` to refuse: a word that starts with one of them
+ * (a comment, a subshell) or with `~`, a `&&` or a word-final `&` (a second
+ * command, a background job), and a word that also holds a quote, a backslash,
+ * an expansion, a brace or another operator.
+ */
+const LITERAL_TRIGGER_RE = /[#()&]/
+const NOT_PLAIN_RE = /[\s'"\\$`;|<>{}]/
+const SHELL_WORD_START_RE = /^[#()&~]/
+const SECOND_COMMAND_AMP_RE = /&&|&$/
+const BLANK_RE = /\s/
+
+function quotesItself(word: string): boolean {
+  return (
+    LITERAL_TRIGGER_RE.test(word) &&
+    !NOT_PLAIN_RE.test(word) &&
+    !SHELL_WORD_START_RE.test(word) &&
+    !SECOND_COMMAND_AMP_RE.test(word)
+  )
+}
+
+/**
+ * `command` with every plain argument `quotesItself` accepts put in single
+ * quotes. Words are split the way bash splits them, so nothing inside a quoted
+ * message is touched; a word with any quoting of its own is copied as it is.
+ * Idempotent: a quoted word is no longer plain.
+ */
+export function quoteLiteralWords(command: string): string {
+  let out = ''
+  let i = 0
+  while (i < command.length) {
+    if (BLANK_RE.test(command[i]!)) {
+      out += command[i]
+      i++
+      continue
+    }
+    const start = i
+    let quoted = false
+    while (i < command.length && !BLANK_RE.test(command[i]!)) {
+      const c = command[i]!
+      if (c === '\\') {
+        quoted = true
+        i += 2
+      } else if (c === "'" || c === '"') {
+        quoted = true
+        const close = command.indexOf(c, i + 1)
+        i = close === -1 ? command.length : close + 1
+      } else {
+        i++
+      }
+    }
+    const word = command.slice(start, i)
+    out += !quoted && quotesItself(word) ? `'${word}'` : word
+  }
+  return out
+}
+
+/**
  * Walk the command with bash's own quoting rules and report the first thing
  * bash would do to it that git would then never see.
  *
@@ -138,6 +204,12 @@ function scanShellHazards(command: string): string | null {
     }
     if (c === '`') {
       return `\`${shown}\` has a backtick outside single quotes, which bash would run as a command. Put that argument in single quotes ('…') — inside them a backtick is literal, which is what a PR body needs.`
+    }
+    if (c === '#' && !inDouble) {
+      if (i === 0 || WORD_BREAK_RE.test(command[i - 1]!)) {
+        return `\`${shown}\` has a \`#\` that starts a comment in bash, so everything after it would never reach git. Drop the comment, or put the argument in single quotes if git should see the \`#\`.`
+      }
+      return `\`${shown}\` has \`#\` inside an argument that also holds quotes, which this tool cannot read the way bash does. Put that whole argument in single quotes.`
     }
     if (!inDouble && UNQUOTED_OPERATORS.has(c)) {
       const word = argumentAround(command, i)
@@ -698,7 +770,10 @@ export type GitCommandRefusal = {
 
 export type GitCommandAccepted = {
   ok: true
-  /** The element as sent — what runs. */
+  /**
+   * The element as it runs: as sent, with `quoteLiteralWords`' quotes around
+   * any plain argument bash would have misread.
+   */
   command: string
   /** `command` without its trailing `| head`/`| tail` trim, if it had one. */
   core: string
@@ -725,7 +800,7 @@ function classifyReadOnly(binary: GitBinary, args: readonly string[]): boolean {
 }
 
 export function parseGitCommand(raw: string): ParsedGitCommand {
-  const command = raw.trim()
+  const command = quoteLiteralWords(raw.trim())
   if (!command) {
     return { ok: false, reason: 'Empty command.' }
   }

@@ -267,11 +267,13 @@ describe('accept / refuse', () => {
     if (!parsed.ok) expect(parsed.reason).toContain('unterminated quote')
   })
 
-  test('refuses an unquoted # — shell-quote drops the rest of the line', () => {
-    // bash treats a mid-word `#` as literal and shell-quote does not, so there
-    // is no token list here that can be classified honestly.
-    expect(acceptsGitCommand('git log --grep=#123')).toBe(false)
+  test('quotes a mid-word # before shell-quote can drop the rest of the line', () => {
+    // bash treats a mid-word `#` as literal and shell-quote does not; quoted,
+    // both read the argument git gets.
+    const parsed = parseGitCommand('git log --grep=#123')
+    expect(parsed.ok && parsed.command).toBe("git log '--grep=#123'")
     expect(acceptsGitCommand("git log --grep='#123'")).toBe(true)
+    expect(acceptsGitCommand('git log # a comment')).toBe(false)
   })
 
   test('reads flags from resolved tokens, not from inside a message', () => {

@@ -169,6 +169,18 @@ export const GitTool = buildTool({
   toAutoClassifierInput(input) {
     return input.commands.join('\n')
   },
+  resolveInput(input) {
+    // The quotes the grammar writes around a plain `--grep=#298` or
+    // `--format=%(refname:short)` (quoteLiteralWords) are part of what runs,
+    // so the classifier, the permission check and the batch all get them; the
+    // transcript keeps what the model sent. A command the grammar refuses
+    // stays as sent, for validateInput to name.
+    const commands = input.commands.map(command => {
+      const parsed = parseGitCommand(command)
+      return parsed.ok ? parsed.command : command
+    })
+    return { ok: true, input: { ...input, commands } }
+  },
   async validateInput(input) {
     for (const command of input.commands) {
       const parsed = parseGitCommand(command)
