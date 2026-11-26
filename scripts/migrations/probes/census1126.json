@@ -7,25 +7,26 @@
     "src/tools/FileReadTool/readGlobs.test.ts",
     "src/tools/FileReadTool/autoOutlineOnElision.test.ts",
     "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/agent/tools/toolResultFiles.test.ts",
     "scripts/bench/tokens/reread-census.test.ts",
     "scripts/bench/tokens/feature-usage-census.test.ts"
   ],
   "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
   "probes": [
     {
-      "name": "scoped diff: an expanded word is taken",
-      "find": "  if (words.some((word) => EXPANDED_WORD_RE.test(expandHomeTilde(word.text)))) return false;\n  let at = 1;\n",
+      "name": "git: an expanded word is taken",
+      "find": "  if (words.some((word) => EXPANDED_WORD_RE.test(expandHomeTilde(word.text)))) return null;\n  let at = 1;\n",
       "replace": "  let at = 1;\n"
     },
     {
-      "name": "scoped diff: -C <dir> is not read past",
-      "find": "    else if (option === \"-C\" && words[at + 1]) at += 2;\n",
-      "replace": ""
+      "name": "git: -C <dir> is not read past",
+      "find": "  while (words[at]?.text === \"--no-pager\" || (words[at]?.text === \"-C\" && words[at + 1])) {\n",
+      "replace": "  while (words[at]?.text === \"--no-pager\") {\n"
     },
     {
-      "name": "scoped diff: --no-pager is not read past",
-      "find": "    if (option === \"--no-pager\") at += 1;\n    else if",
-      "replace": "    if (false) at += 1;\n    else if"
+      "name": "git: --no-pager is not read past",
+      "find": "  while (words[at]?.text === \"--no-pager\" || (words[at]?.text === \"-C\" && words[at + 1])) {\n",
+      "replace": "  while (words[at]?.text === \"-C\" && words[at + 1]) {\n"
     },
     {
       "name": "scoped diff: no -- separator is taken",
@@ -34,13 +35,28 @@
     },
     {
       "name": "scoped diff: a flag that writes or runs something is taken",
-      "find": "  if (rest.slice(0, separator).some((word) => GIT_DIFF_UNSAFE_FLAG_RE.test(word.text))) return false;\n",
+      "find": "  if (options.some((word) => GIT_DIFF_UNSAFE_FLAG_RE.test(word.text))) return false;\n",
       "replace": ""
     },
     {
-      "name": "scoped diff: the whole tree is a path",
-      "find": "!WHOLE_TREE_RE.test(path.text) && ",
+      "name": "scoped diff: a show of a range is taken",
+      "find": "  if (git.subcommand === \"show\" && options.some(",
+      "replace": "  if (false && options.some("
+    },
+    {
+      "name": "scoped diff: no path names the whole tree",
+      "find": "!namesWholeTree(path.text) && ",
       "replace": ""
+    },
+    {
+      "name": "whole tree: a glob of the tree is a path",
+      "find": "  if (WHOLE_TREE_GLOB_RE.test(path)) return true;\n",
+      "replace": ""
+    },
+    {
+      "name": "whole tree: src/.. and .. are paths",
+      "find": "  return normalized === \".\" || PARENTS_ONLY_RE.test(normalized);\n",
+      "replace": "  return false;\n"
     },
     {
       "name": "scoped diff: pathspec magic is a path",
@@ -56,6 +72,36 @@
       "name": "scoped diff: git log joins show and diff",
       "find": "new Set([\"show\", \"diff\"])",
       "replace": "new Set([\"show\", \"diff\", \"log\"])"
+    },
+    {
+      "name": "rev file show: a commit beside a blob counts",
+      "find": "operands.every((arg) => REV_PATH_RE.test(arg.text))",
+      "replace": "operands.some((arg) => REV_PATH_RE.test(arg.text))"
+    },
+    {
+      "name": "rev file show: any colon reads as <rev>:<path>",
+      "find": "const REV_PATH_RE = /^(?:[^-:][^:]*)?:(?![!^(/])./;\n",
+      "replace": "const REV_PATH_RE = /:/;\n"
+    },
+    {
+      "name": "rev file show: the index form :path is refused",
+      "find": "const REV_PATH_RE = /^(?:[^-:][^:]*)?:(?![!^(/])./;\n",
+      "replace": "const REV_PATH_RE = /^[^-:][^:]*:(?![!^(/])./;\n"
+    },
+    {
+      "name": "rev file show: :/text reads as a file",
+      "find": "const REV_PATH_RE = /^(?:[^-:][^:]*)?:(?![!^(/])./;\n",
+      "replace": "const REV_PATH_RE = /^(?:[^-:][^:]*)?:(?![!^(])./;\n"
+    },
+    {
+      "name": "rev file show: a flag is an operand",
+      "find": "  const operands = git.args.filter((arg) => !arg.text.startsWith(\"-\"));\n",
+      "replace": "  const operands = git.args;\n"
+    },
+    {
+      "name": "rev file show: no operand at all counts",
+      "find": "  return operands.length > 0 && operands.every(",
+      "replace": "  return operands.every("
     },
     {
       "name": "read lane: a scoped diff is not a print",
@@ -78,8 +124,14 @@
     {
       "name": "line bound: a scoped diff feeds no bound",
       "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
-      "find": "  return isScopedGitDiff(words);\n",
-      "replace": "  return false;\n"
+      "find": "  return isRevisionFileShow(words) || isScopedGitDiff(words);\n",
+      "replace": "  return isRevisionFileShow(words);\n"
+    },
+    {
+      "name": "line bound: a file as it was feeds no bound",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  return isRevisionFileShow(words) || isScopedGitDiff(words);\n",
+      "replace": "  return isScopedGitDiff(words);\n"
     },
     {
       "name": "batch Read: offset and limit refused again",
@@ -112,22 +164,46 @@
       "replace": ""
     },
     {
+      "name": "batch Read: the call's range survives a hook that drops it",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    offset: _offset,\n    limit: _limit,\n",
+      "replace": ""
+    },
+    {
       "name": "resume: a batch offset is no range",
       "source": "src/agent/queryHelpers.ts",
-      "find": "                  input?.offset !== undefined ||\n",
+      "find": "                  input?.offset != null ||\n",
       "replace": ""
     },
     {
       "name": "resume: a batch limit is no range",
       "source": "src/agent/queryHelpers.ts",
-      "find": "                  symbolsOf(targets).length > 0 ||\n                  input?.offset !== undefined ||\n                  input?.limit !== undefined,\n",
-      "replace": "                  symbolsOf(targets).length > 0 ||\n                  input?.offset !== undefined,\n"
+      "find": "                  symbolsOf(targets).length > 0 ||\n                  input?.offset != null ||\n                  input?.limit != null,\n",
+      "replace": "                  symbolsOf(targets).length > 0 ||\n                  input?.offset != null,\n"
+    },
+    {
+      "name": "resume: a Codex null is a batch range",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "                  input?.offset != null ||\n                  input?.limit != null,\n",
+      "replace": "                  input?.offset !== undefined ||\n                  input?.limit !== undefined,\n"
+    },
+    {
+      "name": "resume: a Codex null is a single Read's range",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "              ranged:\n                input?.offset != null ||\n                input?.limit != null ||\n                input?.symbol != null,\n",
+      "replace": "              ranged:\n                input?.offset !== undefined ||\n                input?.limit !== undefined ||\n                input?.symbol !== undefined,\n"
     },
     {
       "name": "Read: a saved result gets the preview",
       "source": "src/tools/FileReadTool/readDispatch.ts",
-      "find": "    textPreviewApplies(content.length, totalLines) &&\n    !isSavedResultPath(fullFilePath)\n",
+      "find": "    textPreviewApplies(content.length, totalLines) &&\n    !(content.length <= DEFAULT_MAX_RESULT_SIZE_CHARS && isSavedResultPath(fullFilePath))\n",
       "replace": "    textPreviewApplies(content.length, totalLines)\n"
+    },
+    {
+      "name": "Read: a paged result past 50k is read whole",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "content.length <= DEFAULT_MAX_RESULT_SIZE_CHARS && isSavedResultPath(fullFilePath)",
+      "replace": "isSavedResultPath(fullFilePath)"
     },
     {
       "name": "saved results: a sibling directory counts",
@@ -136,10 +212,22 @@
       "replace": "filePath.startsWith(dir)"
     },
     {
+      "name": "saved results: the session's own directory does not count",
+      "source": "src/agent/tools/toolResultFiles.ts",
+      "find": "  return resultDirs().some(dir => filePath",
+      "replace": "  return resultDirs().slice(1).some(dir => filePath"
+    },
+    {
       "name": "census: an asked batch outline is auto",
       "source": "scripts/bench/tokens/reread-census.ts",
       "find": "    const outline = input.view === 'outline' ? 'outline asked' : 'outline'\n",
       "replace": "    const outline = 'outline'\n"
+    },
+    {
+      "name": "census: a batch range starts at line 1",
+      "source": "scripts/bench/tokens/reread-census.ts",
+      "find": "    const from = Math.max(1, input.offset ?? 1)\n",
+      "replace": "    const from = 1\n"
     },
     {
       "name": "census: a print piped onward covers its range",
@@ -148,28 +236,22 @@
       "replace": "range: cut ? null : range"
     },
     {
+      "name": "census: any joiner reads as a pipe",
+      "source": "scripts/bench/tokens/reread-census.ts",
+      "find": "    const pipedOnward = parts[i + 1] === '|'\n",
+      "replace": "    const pipedOnward = parts[i + 1] !== undefined\n"
+    },
+    {
       "name": "census: a new WaitFor command or condition continues the run",
       "source": "scripts/bench/tokens/feature-usage-census.ts",
       "find": "    if (target !== waitingFor) runLength = 0\n",
       "replace": ""
     },
     {
-      "name": "line bound: a blob beside a commit feeds a bound",
-      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
-      "find": "operands.every((arg) => REV_PATH_RE.test(arg.text))",
-      "replace": "operands.some((arg) => REV_PATH_RE.test(arg.text))"
-    },
-    {
-      "name": "line bound: any colon reads as <rev>:<path>",
-      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
-      "find": "const REV_PATH_RE = /^[^-:][^:]*:./;\n",
-      "replace": "const REV_PATH_RE = /:/;\n"
-    },
-    {
-      "name": "line bound: a flag is an operand",
-      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
-      "find": "    const operands = args.slice(1).filter((arg) => !arg.text.startsWith(\"-\"));\n",
-      "replace": "    const operands = args.slice(1);\n"
+      "name": "census: a WaitFor run keys on the condition alone",
+      "source": "scripts/bench/tokens/feature-usage-census.ts",
+      "find": "    const target = JSON.stringify([c.input.command ?? null, c.input.until ?? null])\n",
+      "replace": "    const target = JSON.stringify([c.input.until ?? null])\n"
     }
   ]
 }
