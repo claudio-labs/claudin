@@ -249,10 +249,12 @@ async function runOneCommand(params: {
 
     const result = await shellCommand.result
     const ranMs = Date.now() - startedAt
-    // A watch prints one whole block per refresh, so its answer is the LAST
-    // thing it wrote — exactly what `result.stdout` drops when it caps at
-    // BASH_MAX_OUTPUT_LENGTH (it keeps the first 30k chars, not the last).
-    const text = watch ? await readFullShellOutput(result) : result.stdout || ''
+    // `result.stdout` keeps only the first BASH_MAX_OUTPUT_LENGTH chars (30k)
+    // of a run and leaves the rest in its output file. Reading it cut 68
+    // results since 2026-09-01 mid-line, 66 of them `full: true` diffs, and
+    // fed the summarizers a diff they then miscounted; a watch's answer is
+    // the LAST block it wrote. Past Git's own result line, storage pages it.
+    const text = await readFullShellOutput(result)
 
     if (idleStall) {
       return {
