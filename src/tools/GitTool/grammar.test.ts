@@ -716,6 +716,14 @@ describe('a plain argument bash would misread is quoted and runs', () => {
     }
   })
 
+  test('a quoted message keeps its # ( ) & exactly as written', () => {
+    for (const cmd of ['git commit -m "fix (#12) & more"', "git commit -m 'fix (#12) & more'"]) {
+      const parsed = parseGitCommand(cmd)
+      expect(parsed.ok && parsed.command).toBe(cmd)
+      expect(parsed.ok && parsed.args).toEqual(['commit', '-m', 'fix (#12) & more'])
+    }
+  })
+
   test('a quoted --grep=(web) and its siblings parse unchanged', () => {
     const cmd = "git log --format=%s -300 origin/main '--grep=(web)' '--grep=(dashboard)' '--grep=(ui)'"
     const parsed = parseGitCommand(cmd)

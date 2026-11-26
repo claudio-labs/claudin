@@ -1,0 +1,53 @@
+{
+  "test": [
+    "scripts/bench/tokens/feature-usage-census.test.ts",
+    "scripts/dev/tui-probe.test.ts"
+  ],
+  "source": "scripts/bench/tokens/feature-usage-census.ts",
+  "probes": [
+    {
+      "name": "census: a range in --since passes as a date",
+      "find": "  if (DATE_RE.test(value) && ",
+      "replace": "  if (true || "
+    },
+    {
+      "name": "census: an empty window exits 1 again",
+      "find": "    return\n  }\n  if (args.dump) {\n",
+      "replace": "    process.exit(1)\n  }\n  if (args.dump) {\n"
+    },
+    {
+      "name": "census: --project reads only the first of a list",
+      "find": "args.projects.flatMap(p => projectDirs(p))",
+      "replace": "projectDirs(args.projects[0])"
+    },
+    {
+      "name": "census: --dump writes no rows",
+      "find": "    writeFileSync(args.dump, dumpRows(calls, dirs))\n",
+      "replace": "    writeFileSync(args.dump, '')\n"
+    },
+    {
+      "name": "tui-probe: the busy hint drifts from the footer",
+      "source": "scripts/dev/tui-probe.ts",
+      "find": "export const BUSY_MARKER = 'to interrupt'\n",
+      "replace": "export const BUSY_MARKER = 'to cancel'\n"
+    },
+    {
+      "name": "tui-probe: a send is idle before its turn starts",
+      "source": "scripts/dev/tui-probe.ts",
+      "find": "  const started = watch.sawBusy || now - w.startedAt >= graceMs\n",
+      "replace": "  const started = true\n"
+    },
+    {
+      "name": "tui-probe: idle without the pane settling",
+      "source": "scripts/dev/tui-probe.ts",
+      "find": "now - watch.stableSince >= SETTLE_MS",
+      "replace": "true"
+    },
+    {
+      "name": "tui-probe: the rule-map sync stays on",
+      "source": "scripts/dev/tui-probe.ts",
+      "find": "    'CLAUDIN_DISABLE_RULE_MAP_SYNC=1',\n",
+      "replace": ""
+    }
+  ]
+}

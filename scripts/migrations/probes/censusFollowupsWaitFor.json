@@ -1,0 +1,43 @@
+{
+  "test": ["src/tools/WaitForTool"],
+  "source": "src/tools/WaitForTool/untilPattern.ts",
+  "probes": [
+    {
+      "name": "untilPattern: no pattern keeps the whole-output reading",
+      "find": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
+      "replace": "  const wholeOutput = false\n"
+    },
+    {
+      "name": "untilPattern: a ^(?! lookaround reads lines (the CI idiom)",
+      "find": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
+      "replace": "  const wholeOutput = EMPTY_OUTPUT_RE.test(body)\n"
+    },
+    {
+      "name": "untilPattern: ^$ reads lines (a blank line ends the wait)",
+      "find": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body) || EMPTY_OUTPUT_RE.test(body)\n",
+      "replace": "  const wholeOutput = ANCHORED_LOOKAROUND_RE.test(body)\n"
+    },
+    {
+      "name": "untilPattern: no m flag (the ^exit timeouts)",
+      "find": "  return new RegExp(body, wholeOutput || flags.includes('m') ? flags : `${flags}m`)\n",
+      "replace": "  return new RegExp(body, flags)\n"
+    },
+    {
+      "name": "untilPattern: trailing newlines stay on the output",
+      "find": "  return until.test(output.replace(TRAILING_NEWLINES_RE, ''))\n",
+      "replace": "  return until.test(output)\n"
+    },
+    {
+      "name": "WaitForTool: the poll tests the regex itself, not untilMatches",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": "        if (untilMatches(untilRe, next)) {\n",
+      "replace": "        if (untilRe.test(next)) {\n"
+    },
+    {
+      "name": "WaitForTool: the until text stops saying how ^ and $ read",
+      "source": "src/tools/WaitForTool/WaitForTool.ts",
+      "find": " `^` and `$` match at line breaks, except after a `^(?!`/`^(?=` lookaround.",
+      "replace": ""
+    }
+  ]
+}

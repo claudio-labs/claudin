@@ -146,6 +146,9 @@ describe('WaitForTool', () => {
       ['a status line among others', "printf '200\\nlog line\\n'", '^(200|30\\d|401)$'],
       ['$ before the trailing newline', 'echo READY', 'READY$'],
       ['a pattern spanning lines that ends at a line', "printf 'stream ended\\n❯ \\n  ? for shortcuts\\n'", 'stream ended[\\s\\S]*❯\\s*$'],
+      // Whole output, so no `m`: `$` is the end of input, after the newline
+      // printf leaves unless the poll matches the output without it.
+      ['a whole-output pattern ending in $ over a trailing newline', "printf 'checks: 3 pass\\nall done\\n'", '^(?![\\s\\S]*pending)[\\s\\S]*done$'],
     ] as const) {
       test(name, async () => {
         const { data } = await wait(command, until)

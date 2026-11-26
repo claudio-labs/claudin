@@ -1,0 +1,131 @@
+{
+  "test": [
+    "src/tools/shared/missingPath.test.ts",
+    "src/tools/FileReadTool/overCapPage.test.ts",
+    "src/tools/FileReadTool/autoOutlineOnElision.test.ts",
+    "src/tools/GrepTool/GrepTool.census.test.ts"
+  ],
+  "source": "src/tools/shared/missingPath.ts",
+  "probes": [
+    {
+      "name": "missingPath: test files count as siblings",
+      "find": "(keepTests || !TEST_FILE_RE.test(entry))",
+      "replace": "true"
+    },
+    {
+      "name": "missingPath: a directory with the same name is not a guess",
+      "find": "      if (basename(dir) === name) found.add(dir)\n",
+      "replace": "      void dir\n"
+    },
+    {
+      "name": "missingPath: more than three guesses are all named",
+      "find": "  if (paths.length === 0 || paths.length > MAX_GUESSES) return undefined\n",
+      "replace": "  if (paths.length === 0) return undefined\n"
+    },
+    {
+      "name": "missingPath: the repo-wide name search is gone",
+      "find": " ?? (await likelyPaths(fullPath, listFiles))",
+      "replace": ""
+    },
+    {
+      "name": "missingPath: a path outside the cwd gets a guess",
+      "find": "  if (!fullPath.startsWith(cwd + sep)) return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "missingPath: siblings are not tried first",
+      "find": "  if (siblings.length > 0) return nameGuesses(siblings)\n",
+      "replace": ""
+    },
+    {
+      "name": "Grep: the missing path hint is not wired",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "await missingPathHint(expandPath(missing))",
+      "replace": "''"
+    },
+    {
+      "name": "Glob: the missing path hint is not wired",
+      "source": "src/tools/GlobTool/GlobTool.ts",
+      "find": "await missingPathHint(absolutePath)",
+      "replace": "''"
+    },
+    {
+      "name": "Read: the missing path hint is not wired",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "await missingPathHint(fullFilePath)",
+      "replace": "''"
+    },
+    {
+      "name": "Edit: the missing path hint is not wired",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "${await missingPathHint(fullFilePath)}",
+      "replace": ""
+    },
+    {
+      "name": "Read: view=full over the cap refuses again",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "      (view !== 'full' && offset === 1 && limit === undefined)\n",
+      "replace": "      (true)\n"
+    },
+    {
+      "name": "Read: the page is not limited to the lines that fit",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "    limit = page.numLines\n",
+      "replace": "    limit = page.numLines * 2\n"
+    },
+    {
+      "name": "Read: the page carries no note",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "      ...(overCapNote === undefined ? {} : { note: overCapNote }),\n",
+      "replace": "      ...{},\n"
+    },
+    {
+      "name": "Read: the note never reaches the result",
+      "source": "src/tools/FileReadTool/resultContent.ts",
+      "find": "(data.file.note ? ",
+      "replace": "(false && data.file.note ? "
+    },
+    {
+      "name": "overCapPage: the page fills past the cap",
+      "source": "src/tools/FileReadTool/overCapPage.ts",
+      "find": "const PAGE_FILL = 0.9\n",
+      "replace": "const PAGE_FILL = 2\n"
+    },
+    {
+      "name": "overCapPage: a first line over the cap gets no Bash cut",
+      "source": "src/tools/FileReadTool/overCapPage.ts",
+      "find": "  if (numLines === 0) {\n",
+      "replace": "  if (numLines < 0) {\n"
+    },
+    {
+      "name": "guards: the cap error drops the page hint",
+      "source": "src/tools/FileReadTool/guards.ts",
+      "find": "${hint ?? '",
+      "replace": "${undefined ?? '"
+    },
+    {
+      "name": "Grep: one exclude string is not split",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "        value => (typeof value === 'string' ? splitGlobInput(value) : value),\n",
+      "replace": "        value => (typeof value === 'string' ? [value] : value),\n"
+    },
+    {
+      "name": "Grep: -o never reaches rg",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    if (only_matching && output_mode === 'content') {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "Grep: a negated exclude entry is negated twice",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "pattern.replace(LEADING_BANG_RE, '')",
+      "replace": "pattern"
+    },
+    {
+      "name": "Grep: exclude globs never reach rg",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "      for (const g of excluded) args.push('--glob', g)\n",
+      "replace": "      for (const g of excluded) void g\n"
+    }
+  ]
+}

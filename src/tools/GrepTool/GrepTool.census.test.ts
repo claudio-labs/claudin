@@ -189,9 +189,17 @@ describe('-o and exclude', () => {
   test('exclude leaves the globs out, as a list or as one string', async () => {
     const listed = await grep({ pattern: 'retry', path: root, exclude: ['src/tools/RunTestsTool/**'] })
     expect(listed.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])
+    // An entry written as a negation means the same thing.
+    const negated = await grep({ pattern: 'retry', path: root, exclude: ['!src/tools/RunTestsTool/**'] })
+    expect(negated.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])
     // One string is split by the schema, as `glob` is, before call() sees it.
     const spelled = await grep(GrepTool.inputSchema.parse({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/**' }))
     expect(spelled.filenames.map(f => basename(f))).toEqual(['RunTestsTool.ts'])
+    // Two globs in that string leave both files out, not one glob with a space in it.
+    const both = await grep(
+      GrepTool.inputSchema.parse({ pattern: 'retry', path: root, exclude: 'src/tools/GitTool/** src/tools/RunTestsTool/**' }),
+    )
+    expect(both.filenames).toEqual([])
   })
 
   test('an exclude naming a dotenv file never asks for one', async () => {
