@@ -237,7 +237,8 @@ export function mapReadResultToToolResultBlock(
         content =
           memoryFileNotePrefix(data) +
           formatFileLines(data.file) +
-          (carriesMitigationReminder(data) ? CYBER_RISK_MITIGATION_REMINDER : '')
+          (carriesMitigationReminder(data) ? CYBER_RISK_MITIGATION_REMINDER : '') +
+          (data.file.note ? `\n\n<system-reminder>${data.file.note}</system-reminder>` : '')
       } else {
         // Determine the appropriate warning message
         content =

@@ -214,6 +214,10 @@ export const outputSchema = lazySchema(() => {
           .describe('Number of lines in the returned content'),
         startLine: z.number().describe('The starting line number'),
         totalLines: z.number().describe('Total number of lines in the file'),
+        note: z
+          .string()
+          .optional()
+          .describe('Why the content stops before what was asked, and where the rest starts'),
       }),
     }),
     z.object({
