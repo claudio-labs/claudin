@@ -10,7 +10,7 @@ import {
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
-import { linesUnderCap, pageOverCap } from 'src/tools/FileReadTool/overCapPage.js'
+import { linesUnderCap, pageOverCap, type OverCapRead, type Page } from 'src/tools/FileReadTool/overCapPage.js'
 
 describe('linesUnderCap', () => {
   const lines = Array.from({ length: 100 }, () => 'x'.repeat(99))
@@ -46,8 +46,20 @@ describe('pageOverCap', () => {
     expect(page.content.split('\n')).toHaveLength(45)
     expect(page.content.endsWith('row 045 ' + 'x'.repeat(91))).toBe(true)
     expect(page.note).toBe(
-      'Lines 1-45 of 100 are shown. The file is ~1,000 tokens, over the 500-token cap. Read with offset=46 for the rest.',
+      'Lines 1-45 of 100 are shown. The file is ~1,000 tokens, over the 500-token cap. Read with offset=46 limit=45 for the next page.',
     )
+  })
+
+  test('the last page asks for no more lines than are left', () => {
+    const page = pageOverCap(body, new MaxFileReadTokenExceededError(1_000, 700), {
+      filePath: '/tmp/a.txt',
+      startLine: 1,
+      totalLines: 100,
+      wholeFile: true,
+    })
+    // 63 lines fit; 37 are left.
+    expect(page.numLines).toBe(63)
+    expect(page.note).toEndWith('Read with offset=64 limit=37 for the next page.')
   })
 
   test('a range counts from where it starts', () => {
@@ -72,6 +84,30 @@ describe('pageOverCap', () => {
     expect(read).toThrow(
       "File content (25000 tokens) exceeds maximum allowed tokens (1000). Line 23 alone is over the cap; read part of it with Bash: sed -n '23p' '/tmp/big.json' | cut -c1-20000",
     )
+  })
+
+  // 2026-11-26 review: the page is sized from the whole range's count, and a
+  // head denser than the average (CJK, minified code) went over the cap it
+  // was cut for. The page is counted again and halved until it fits.
+  test('a page denser than the whole is counted again and halved until it fits', async () => {
+    const tokens = (s: string) => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 0x2e80 ? 1 : 0.25), 0)
+    const fits = async (page: string) => {
+      const count = Math.round(tokens(page))
+      if (count > 25_000) throw new MaxFileReadTokenExceededError(count, 25_000)
+    }
+    const dense = Array.from({ length: 1_000 }, () => '漢'.repeat(30))
+    const sparse = Array.from({ length: 1_000 }, () => 'x'.repeat(120))
+    const content = [...dense, ...sparse].join('\n')
+    const read: OverCapRead = { filePath: 'doc.md', startLine: 1, totalLines: 2_000, wholeFile: true }
+    const withCheck = pageOverCap as unknown as (
+      c: string,
+      e: MaxFileReadTokenExceededError,
+      r: OverCapRead,
+      f: (page: string) => Promise<void>,
+    ) => Page | Promise<Page>
+    const page = await withCheck(content, new MaxFileReadTokenExceededError(Math.round(tokens(content)), 25_000), read, fits)
+    expect(tokens(page.content)).toBeLessThanOrEqual(25_000)
+    expect(page.note).toStartWith(`Lines 1-${page.numLines} of 2000 are shown.`)
   })
 })
 
@@ -113,6 +149,34 @@ describe('a paged Read through the tool', () => {
     const { data } = await FileReadTool.call({ file_path: path, view: 'full' }, context, undefined as never, undefined as never)
     if (data.type !== 'text') throw new Error(`expected text, got ${data.type}`)
     expect(context.readFileState.get(path)).toMatchObject({ offset: 1, limit: data.file.numLines })
-    expect(data.file.note).toContain(`offset=${data.file.numLines + 1}`)
+    expect(data.file.note).toContain(`offset=${data.file.numLines + 1} limit=`)
+  })
+
+  // 2026-11-26 review: the note said "offset=K+1" alone, and a Read with an
+  // offset and no limit meets the 256 KB size cap again.
+  test('following the note of a ranged read past 256 KB reads the next page', async () => {
+    const path = join(dir, 'big.log')
+    writeFileSync(path, Array.from({ length: 4_000 }, (_, i) => `row ${i + 1} ${'q'.repeat(90)}`).join('\n') + '\n')
+    const context = {
+      abortController: new AbortController(),
+      readFileState: createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE),
+      fileReadingLimits: { maxSizeBytes: 256 * 1024, maxTokens: 25_000 },
+      getAppState: () => ({ toolPermissionContext: {} }),
+      setAppState: () => {},
+      options: {},
+    } as unknown as ToolUseContext
+    const first = await FileReadTool.call({ file_path: path, offset: 1, limit: 4_000 }, context, undefined as never, undefined as never)
+    if (first.data.type !== 'text') throw new Error(`expected text, got ${first.data.type}`)
+    const next = /offset=(\d+) limit=(\d+)/.exec(first.data.file.note ?? '')
+    expect(next).not.toBeNull()
+    const followed = await FileReadTool.call(
+      { file_path: path, offset: Number(next![1]), limit: Number(next![2]) },
+      context,
+      undefined as never,
+      undefined as never,
+    )
+    if (followed.data.type !== 'text') throw new Error(`expected text, got ${followed.data.type}`)
+    expect(followed.data.file.startLine).toBe(first.data.file.numLines + 1)
+    expect(followed.data.file.content).toStartWith(`row ${first.data.file.numLines + 1} `)
   })
 })

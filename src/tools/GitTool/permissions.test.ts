@@ -48,6 +48,23 @@ test('a deny anywhere in the batch refuses the whole call', async () => {
   expect(result.behavior).toBe('deny')
 })
 
+// GitTool.resolveInput quotes `--grep=#298` before permissions run: the rules
+// judge the quoted command, and a user's prefix rules still match it. The
+// whole-word form, `'--grep=#298'`, asked here ("quoted characters in flag
+// names"), which is why only the value is quoted.
+test('a command resolveInput quoted is judged by the same Bash rules', async () => {
+  const allowed = await checkGitBatchPermission(
+    { commands: ["git log --oneline --grep='#298'", "git log --grep='(web)'"] },
+    contextWith({ allow: ['Bash(git log:*)'] }),
+  )
+  expect(allowed.behavior).toBe('allow')
+  const denied = await checkGitBatchPermission(
+    { commands: ["git push origin --push-option='ci.skip#1'"] },
+    contextWith({ deny: ['Bash(git push:*)'] }),
+  )
+  expect(denied.behavior).toBe('deny')
+})
+
 test('on allow it echoes the Git input, never the synthesized Bash one', async () => {
   // bashToolHasPermission returns `updatedInput: { command }` and the harness
   // applies updatedInput verbatim. Passing it through would replace `commands`

@@ -15,6 +15,7 @@ import {
   UsageError,
   type Watch,
 } from './tui-probe.ts'
+import * as probe from './tui-probe.ts'
 
 describe('parseCommand', () => {
   test('start: defaults, flags, and a command after --', () => {
@@ -92,6 +93,13 @@ describe('startArgs and seededConfig', () => {
   test('the seeded config is onboarded and trusts the cwd', () => {
     expect(JSON.parse(seededConfig('/repo'))).toEqual({ hasCompletedOnboarding: true, projects: { '/repo': { hasTrustDialogAccepted: true } } })
   })
+
+  // 2026-11-26 review: `send p '-x'` reached tmux as a flag, sent nothing,
+  // and the probe still reported idle.
+  test('send passes its text after --, so a leading - is text', () => {
+    const sendArgs = (probe as unknown as { sendArgs?: (name: string, text: string) => string[] }).sendArgs
+    expect(sendArgs?.('p', '-x')).toEqual(['send-keys', '-t', 'p', '-l', '--', '-x'])
+  })
 })
 
 describe('observe — when a turn is over', () => {
@@ -118,6 +126,18 @@ describe('observe — when a turn is over', () => {
     expect(observe(w, echoed, 2_000, 3_000).idle).toBe(false)
     w = observe(w, echoed, 2_500, 3_000).watch
     expect(observe(w, echoed, 3_100, 3_000).idle).toBe(true)
+  })
+
+  // 2026-11-26 review: --until was tested before the grace, so it could
+  // match the prompt the probe had just typed, echoed in the pane.
+  test('nor is an --until that matches the echo before the turn starts', () => {
+    type WithUntil = (w: Watch, pane: string, now: number, graceMs: number, until: RegExp | null) => { matched?: boolean }
+    const withUntil = observe as unknown as WithUntil
+    const echoed = '❯ say ok\n'
+    expect(withUntil(fresh(0), echoed, 100, 3_000, /ok$/m).matched).toBe(false)
+    expect(withUntil(fresh(0), echoed, 3_100, 3_000, /ok$/m).matched).toBe(true)
+    expect(withUntil(fresh(0), busyPane, 100, 3_000, /interrupt/).matched).toBe(true)
+    expect(withUntil(fresh(0), echoed, 3_100, 3_000, null).matched).toBe(false)
   })
 })
 

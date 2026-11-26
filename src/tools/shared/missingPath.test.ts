@@ -12,7 +12,12 @@ import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
 } from 'src/shared/fs/fileStateCache.js'
-import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/tools/Tool.js'
+import {
+  getEmptyToolPermissionContext,
+  type ToolPermissionContext,
+  type ToolUseContext,
+  type ValidationResult,
+} from 'src/tools/Tool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 // GlobTool re-exports GrepTool's renderer; loading it first keeps the import
@@ -44,6 +49,7 @@ beforeAll(() => {
     'd/index.ts',
     'x/util.ts',
     'y/util.ts',
+    'secrets/prod.env.json',
   ]) {
     mkdirSync(join(root, file, '..'), { recursive: true })
     writeFileSync(join(root, file), 'export {}\n')
@@ -59,8 +65,7 @@ afterAll(() => {
   rmSync(elsewhere, { recursive: true, force: true })
 })
 
-function context(): ToolUseContext {
-  const toolPermissionContext = getEmptyToolPermissionContext()
+function context(toolPermissionContext: ToolPermissionContext = getEmptyToolPermissionContext()): ToolUseContext {
   return {
     abortController: new AbortController(),
     readFileState: createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE),
@@ -138,6 +143,36 @@ describe('Read, Glob and Edit name it the same way', () => {
       ),
     )
     expect(verdict.result === false && verdict.message).toContain(`Did you mean ${join(root, 'src/shared/proc/Shell.ts')}?`)
+  })
+})
+
+// 2026-11-26 review: the listing took no permission context, so a missing
+// name could be answered with a path the session's Read deny rules hide.
+describe('a path the Read deny rules hide is never named', () => {
+  const denying = (): ToolPermissionContext => ({
+    ...getEmptyToolPermissionContext(),
+    alwaysDenyRules: { cliArg: [`Read(/${root}/secrets/**)`] },
+  })
+  type ValidateWith = (input: unknown, context: ToolUseContext) => Promise<ValidationResult>
+
+  test('Grep, with the rule and without it', async () => {
+    const validate = GrepTool.validateInput as unknown as ValidateWith
+    const missing = { pattern: 'x', path: join(root, 'config/prod.env.json') }
+    const open = await runWithCwdOverride(root, () => validate(missing, context()))
+    expect(open.result === false && open.message).toContain(`Did you mean ${join(root, 'secrets/prod.env.json')}?`)
+    const denied = await runWithCwdOverride(root, () => validate(missing, context(denying())))
+    expect(denied.result === false && denied.message).not.toContain('secrets')
+  })
+
+  test('Read', async () => {
+    const message = await runWithCwdOverride(root, () =>
+      FileReadTool.call({ file_path: join(root, 'config/prod.env.json') }, context(denying()), undefined as never, undefined as never),
+    ).then(
+      () => '(read)',
+      (e: Error) => e.message,
+    )
+    expect(message).toContain('File does not exist')
+    expect(message).not.toContain('secrets')
   })
 })
 

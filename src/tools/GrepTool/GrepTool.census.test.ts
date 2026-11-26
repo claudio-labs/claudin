@@ -186,6 +186,15 @@ describe('-o and exclude', () => {
     expect(data.filenames.map(f => basename(f))).toEqual(['DiffDialog.tsx'])
   })
 
+  // 2026-11-26 review: '' became `--glob !`, which ripgrep reads as "skip
+  // every file", and the search came back empty with no error.
+  test('an empty exclude entry leaves nothing out', async () => {
+    for (const exclude of [[''], ['!'], ['  ']]) {
+      const found = await grep({ pattern: 'retry', path: root, exclude })
+      expect({ exclude, files: found.filenames.length }).toEqual({ exclude, files: 2 })
+    }
+  })
+
   test('exclude leaves the globs out, as a list or as one string', async () => {
     const listed = await grep({ pattern: 'retry', path: root, exclude: ['src/tools/RunTestsTool/**'] })
     expect(listed.filenames.map(f => basename(f))).toEqual(['GitTool.ts'])

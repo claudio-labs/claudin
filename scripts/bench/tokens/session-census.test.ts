@@ -390,9 +390,11 @@ describe('session census over synthetic transcripts', () => {
     expect(lines).toContain('(unpriced models billed at the Opus 4.5 tier: mystery-model-1)')
   })
 
-  test('the script exits 1 when no transcript was modified since the date', () => {
+  // An empty project is no failure: the census skill runs this once per
+  // project in one response, and an exit 1 skipped the runs beside it.
+  test('the script exits 0 when no transcript was modified since the date', () => {
     const none = run('--since=2026-11-14', '--project=-missing')
-    expect(none.exitCode).toBe(1)
+    expect(none.exitCode).toBe(0)
     expect(none.stdout.toString()).toBe('')
     expect(none.stderr.toString()).toContain('no transcripts modified since 2026-11-14 under ')
   })

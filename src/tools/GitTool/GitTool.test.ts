@@ -136,7 +136,7 @@ describe('GitTool.resolveInput — plain arguments bash would misread', () => {
     const resolved = await resolve({ commands: ['git log --oneline --grep=#298 -i', 'git status'], full: true })
     expect(resolved).toEqual({
       ok: true,
-      input: { commands: ["git log --oneline '--grep=#298' -i", 'git status'], full: true },
+      input: { commands: ["git log --oneline --grep='#298' -i", 'git status'], full: true },
     })
   })
 

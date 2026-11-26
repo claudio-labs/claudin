@@ -13,10 +13,22 @@ describe('compileUntil', () => {
     expect(compileUntil('checks: ^(?!.*pending)').flags).toBe('')
   })
 
-  test('an empty-output test keeps the whole output', () => {
+  // 2026-11-26 review: a lookaround anywhere reads the whole output, not only
+  // one right after ^ — the tempered "nothing pending" form put it inside.
+  test('a lookaround anywhere keeps the whole output', () => {
+    expect(compileUntil('^(?:(?!pending)[\\s\\S])*$').flags).toBe('')
+    expect(compileUntil('ok(?= all)').flags).toBe('')
+    expect(compileUntil('(?<=PASS )\\d+').flags).toBe('')
+    expect(compileUntil('\\(?=literal').flags).toBe('m')
+  })
+
+  test('an empty-output test keeps the whole output, alone or as one alternative', () => {
     expect(compileUntil('^$').flags).toBe('')
     expect(compileUntil('^\\s*$').flags).toBe('')
-    expect(compileUntil('^$|done').flags).toBe('m')
+    expect(compileUntil('^$|done').flags).toBe('')
+    expect(compileUntil('^\\s*$|^No (open )?pull requests').flags).toBe('')
+    expect(compileUntil('(?:done|^$)').flags).toBe('')
+    expect(compileUntil('^\\s*\\S').flags).toBe('m')
   })
 
   test('a leading flag group becomes flags, m once', () => {
@@ -44,12 +56,22 @@ describe('untilMatches', () => {
     expect(matches('READY$', 'READY\r\n\n')).toBe(true)
   })
 
+  test('a pattern that names the final newline still sees it', () => {
+    expect(matches('READY\\n', 'READY\n')).toBe(true)
+    expect(matches('READY\\r?\\n', 'READY\n')).toBe(true)
+    expect(matches('listening on \\d+\\n', 'listening on 8080\n')).toBe(true)
+  })
+
   test('the whole-output shapes read as before', () => {
     const notBusy = '^(?![\\s\\S]*(Clauding|esc to interrupt))[\\s\\S]*$'
     expect(matches(notBusy, 'Clauding… (esc to interrupt)\nmore\nlast\n')).toBe(false)
     expect(matches(notBusy, 'done\nmore\n')).toBe(true)
     expect(matches('^$', '123\n\n456\n')).toBe(false)
     expect(matches('^$', '\n')).toBe(true)
+    expect(matches('^(?:(?!pending)[\\s\\S])*$', 'build\tpass\ntest\tpending\nlint\tpass\n')).toBe(false)
+    expect(matches('^(?:(?!pending)[\\s\\S])*$', 'build\tpass\nlint\tpass\n')).toBe(true)
+    expect(matches('^\\s*$|^No (open )?pull requests', 'PR #12 open\n\nPR #13 open\n')).toBe(false)
+    expect(matches('^\\s*$|^No (open )?pull requests', 'No open pull requests\n')).toBe(true)
   })
 
   test('a compiled pattern carries no state between polls', () => {
