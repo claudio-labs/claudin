@@ -129,7 +129,7 @@ src/
 │                                  plugin/ (19) and install-github-app/ (17) are the big ones;
 │                                  insights.ts is a BARREL over insights/ and must keep re-exporting
 │                                  `default` — commands.ts reaches it through a dynamic import
-├── permissions/ (153)           ← rules, classifiers, always-allow, and every permission dialog
+├── permissions/ (169)           ← rules, classifiers, always-allow, and every permission dialog
 │   ├── permissions.ts           ← hasPermissionsToUseTool, the decision core, over a
 │   │                              permissions/ dir (ruleLookup, ruleMutation, requestMessage,
 │   │                              denial). Re-exports but is NOT a pure barrel
