@@ -13,6 +13,7 @@ the first place.
 | `verify/` | The CI gates. Privacy scan, rule lint, typecheck ratchet, test floor, PR intent scan, plus the standalone guard tests that have no subject in another group. | `verify:privacy`, `verify:rules`, `typecheck:ci`, `test:floor`, `security:pr-scan`, `smoke:hello`, `smoke:binary` |
 | `codegen/` | Anything that writes a file into `src/` or a report: SDK types, skill examples, help snapshots, the coverage heatmap, the spinner preview. | `generate:sdk-types`, `test:coverage` |
 | `bench/` | Measurement. Three subdirectories, cut by the question they answer — see below. | `bun run profile*`, and running a file directly |
+| `dev/` | Driving the built app by hand during development: `tui-probe.ts` starts the bundle under a private tmux server and answers each `send`/`keys` with the pane once the TUI is idle. | running a file directly |
 | `migrations/` | One-shot codemods, committed rather than thrown away so the next person can see what moved and what deliberately did not: the `CLAUDE_*` → `CLAUDIN_*` cut-over, and `reorg/` (the 2026-08 `src/` move, whose `manifest.ts` still answers "where did this file go"). | run by hand, rarely |
 
 At the top level, on purpose:
