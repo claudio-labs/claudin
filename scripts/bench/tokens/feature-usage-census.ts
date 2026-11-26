@@ -909,9 +909,11 @@ const WAITFOR_STATUS_RE = /\[WaitFor: (match|settled|timeout|aborted) after ([\d
 const CI_POLL_RE = /\bgh\s+(?:pr|run)\b/
 
 /**
- * WaitFor calls in transcript order. A run is back-to-back WaitFor calls with
- * no other tool between them: every call past the first is one more request
- * spent waiting on the same thing.
+ * WaitFor calls in transcript order. A run is back-to-back WaitFor calls on
+ * the same `command` and `until`, with no other tool between them: every call
+ * past the first is one more request spent waiting on the same thing. A new
+ * command or condition is another wait (the 11-26 census counted a pane
+ * waited on in two stages as re-polls).
  */
 export function waitReport(calls: readonly Call[]) {
   const reasons = new Map<string, number>()
@@ -926,6 +928,7 @@ export function waitReport(calls: readonly Call[]) {
   let waitedS = 0
   let file = ''
   let runLength = 0
+  let waitingFor = ''
   let lastReason = ''
   for (const c of calls) {
     if (c.file !== file) {
@@ -946,6 +949,9 @@ export function waitReport(calls: readonly Call[]) {
       ciPolls++
       if (reason === 'timeout') ciTimeouts++
     }
+    const target = JSON.stringify([c.input.command ?? null, c.input.until ?? null])
+    if (target !== waitingFor) runLength = 0
+    waitingFor = target
     if (runLength === 0) runs++
     else {
       repolls++
