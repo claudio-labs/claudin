@@ -15,6 +15,7 @@ import type { AggregatedHookResult } from 'src/platform/lifecycleHooks/types.js'
 import {
   buildGoalDirective,
   buildGoalHook,
+  buildGoalStatusText,
   clearActiveGoal,
   extractGoalReason,
   GOAL_ITERATION_CAP_INTERACTIVE,
@@ -24,7 +25,10 @@ import {
   getGoalIterationCap,
   getGoalTokenCount,
   handleGoalBlockingError,
+  pauseActiveGoal,
   resetGoalStateForSessionEnd,
+  resumePausedGoal,
+  resumePausedGoalOnQueuedReply,
   setActiveGoal,
   shouldWarnGoalCheckIncomplete,
 } from 'src/agent/goal/goal.js'
@@ -632,5 +636,112 @@ describe('helpers', () => {
 
   test('GOAL_MAX_CONDITION_LENGTH matches upstream limit', () => {
     expect(GOAL_MAX_CONDITION_LENGTH).toBe(4000)
+  })
+})
+
+describe('pausing and resuming a goal (PauseGoal)', () => {
+  test('a pause drops the judge and keeps the goal, its iterations and reason', () => {
+    const harness = createHarness()
+    setActiveGoal(harness.setAppState, SESSION_ID, 'deploy is green')
+    handleGoalBlockingError(
+      harness.setAppState,
+      SESSION_ID,
+      'deploy is green',
+      goalBlockingError('deploy is green', 'CI still red'),
+      false,
+    )
+    expect(pauseActiveGoal(harness.setAppState, SESSION_ID, 'needs the staging token')).toBe('paused')
+    expect(getRegisteredGoalEntries(harness)).toHaveLength(0)
+    const goal = harness.getState().activeGoal!
+    expect(goal.condition).toBe('deploy is green')
+    expect(goal.iterations).toBe(1)
+    expect(goal.lastCheckReason).toBe('CI still red')
+    expect(goal.paused?.reason).toBe('needs the staging token')
+  })
+
+  test('pausing again replaces the reason; with no goal there is nothing to pause', () => {
+    const harness = createHarness()
+    expect(pauseActiveGoal(harness.setAppState, SESSION_ID, 'x')).toBe('no-goal')
+    expect(harness.getState().activeGoal).toBeUndefined()
+    setActiveGoal(harness.setAppState, SESSION_ID, 'tests pass')
+    pauseActiveGoal(harness.setAppState, SESSION_ID, 'first')
+    expect(pauseActiveGoal(harness.setAppState, SESSION_ID, 'second')).toBe('already-paused')
+    expect(harness.getState().activeGoal?.paused?.reason).toBe('second')
+  })
+
+  test('resuming brings the judge back for the same goal and keeps its iterations', () => {
+    const harness = createHarness()
+    setActiveGoal(harness.setAppState, SESSION_ID, 'tests pass')
+    handleGoalBlockingError(harness.setAppState, SESSION_ID, 'tests pass', goalBlockingError('tests pass', 'two fail'), false)
+    pauseActiveGoal(harness.setAppState, SESSION_ID, 'which suite?')
+    expect(resumePausedGoal(harness.setAppState, SESSION_ID)).toBe(true)
+    const entries = getRegisteredGoalEntries(harness)
+    expect(entries).toHaveLength(1)
+    expect((entries[0]!.hook as { prompt: string }).prompt).toBe('tests pass')
+    expect(harness.getState().activeGoal?.paused).toBeUndefined()
+    expect(harness.getState().activeGoal?.iterations).toBe(1)
+    // The resumed judge still clears the goal on success.
+    entries[0]!.onHookSuccess!(entries[0]!.hook, { stopReason: 'all green' })
+    expect(harness.getState().activeGoal).toBeUndefined()
+    expect(harness.getState().lastGoalResult?.reason).toBe('all green')
+  })
+
+  test('resuming with nothing paused does nothing', () => {
+    const harness = createHarness()
+    expect(resumePausedGoal(harness.setAppState, SESSION_ID)).toBe(false)
+    setActiveGoal(harness.setAppState, SESSION_ID, 'tests pass')
+    const before = harness.getState()
+    expect(resumePausedGoal(harness.setAppState, SESSION_ID)).toBe(false)
+    expect(harness.getState()).toBe(before)
+    expect(getRegisteredGoalEntries(harness)).toHaveLength(1)
+  })
+
+  test('a reply drained mid-turn resumes it; a notification, a cron prompt or an agent\'s text does not', () => {
+    const harness = createHarness()
+    setActiveGoal(harness.setAppState, SESSION_ID, 'tests pass')
+    pauseActiveGoal(harness.setAppState, SESSION_ID, 'which suite?')
+    const notUser = [
+      { mode: 'task-notification' as const },
+      { mode: 'prompt' as const, isMeta: true },
+      { mode: 'prompt' as const, origin: { kind: 'peer' } as never },
+    ]
+    expect(resumePausedGoalOnQueuedReply(notUser, harness.setAppState, SESSION_ID)).toBe(false)
+    expect(harness.getState().activeGoal?.paused?.reason).toBe('which suite?')
+    expect(resumePausedGoalOnQueuedReply([...notUser, { mode: 'prompt' }], harness.setAppState, SESSION_ID)).toBe(true)
+    expect(harness.getState().activeGoal?.paused).toBeUndefined()
+    expect(getRegisteredGoalEntries(harness)).toHaveLength(1)
+  })
+
+  test('a paused goal raises no "check did not complete" warning', () => {
+    const paused = { condition: 'tests pass', paused: { reason: 'r', at: 1 } }
+    expect(
+      shouldWarnGoalCheckIncomplete({ goalBefore: paused, goalAfter: paused, goalJudgeBlocked: false, aborted: false }),
+    ).toBe(false)
+  })
+})
+
+describe('buildGoalStatusText (re-attached after compaction)', () => {
+  test('names the condition, the last reason and the pause', () => {
+    expect(
+      buildGoalStatusText({
+        condition: 'tests pass',
+        iterations: 2,
+        setAt: 1,
+        lastCheckReason: 'two fail',
+        paused: { reason: 'needs a token', at: 2 },
+      }),
+    ).toBe(
+      [
+        'The session goal is still active: a stop check keeps you working until a separate evaluator confirms this condition is met: "tests pass".',
+        "The evaluator's last reason it is not met: two fail",
+        "The goal is paused until the user's next message, because: needs a token",
+      ].join('\n'),
+    )
+  })
+
+  test('a fresh goal is the condition alone', () => {
+    expect(buildGoalStatusText({ condition: 'ship it', iterations: 0, setAt: 1 })).toBe(
+      'The session goal is still active: a stop check keeps you working until a separate evaluator confirms this condition is met: "ship it".',
+    )
   })
 })

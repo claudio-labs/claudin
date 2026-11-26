@@ -44,6 +44,7 @@ export {
   hasWorktreeCreateHook,
   executeWorktreeCreateHook,
   executeWorktreeRemoveHook,
+  runWorktreeRemoveHook,
 } from 'src/platform/lifecycleHooks/events.js'
 export type {
   ConfigChangeSource,

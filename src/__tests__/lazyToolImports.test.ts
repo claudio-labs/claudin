@@ -74,6 +74,11 @@ const CANDIDATES: Candidate[] = [
     current: [],
     goal: [],
   },
+  {
+    modulePath: 'src/tools/PauseGoalTool/PauseGoalTool',
+    current: [],
+    goal: [],
+  },
   // One extra value importer (ToolSelector). Easy refactor — name-constant swap.
   {
     modulePath: 'src/tools/TaskOutputTool/TaskOutputTool',

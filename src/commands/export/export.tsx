@@ -5,6 +5,7 @@ import type { ToolUseContext } from 'src/tools/Tool.js';
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import type { Message } from 'src/shared/types/message.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
+import { unwrapPastedContent } from 'src/shared/text/displayTags.js';
 import { renderMessagesToPlainText } from 'src/platform/exportRenderer.js';
 import { writeFileSync_DEPRECATED } from 'src/platform/slowOperations.js';
 function formatTimestamp(date: Date): string {
@@ -24,11 +25,11 @@ export function extractFirstPrompt(messages: Message[]): string {
   const content = firstUserMessage.message?.content;
   let result = '';
   if (typeof content === 'string') {
-    result = content.trim();
+    result = unwrapPastedContent(content).trim();
   } else if (Array.isArray(content)) {
     const textContent = content.find(item => item.type === 'text');
     if (textContent && 'text' in textContent) {
-      result = textContent.text.trim();
+      result = unwrapPastedContent(textContent.text).trim();
     }
   }
 

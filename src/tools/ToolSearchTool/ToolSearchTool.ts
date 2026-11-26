@@ -23,8 +23,8 @@ export const inputSchema = lazySchema(() =>
       ),
     max_results: z
       .number()
-      .optional()
       .default(5)
+      .optional()
       .describe('Maximum number of results to return (default: 5)'),
   }),
 )

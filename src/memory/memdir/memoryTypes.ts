@@ -342,6 +342,10 @@ export function typesSectionCombined(hasGlobal: boolean): readonly string[] {
   ]
 }
 
+// Claude Code 2.1.332: what a connector returned belongs in the answer.
+export const MCP_OUTPUT_NOT_SAVED_BULLET =
+  '- What an MCP server or connector returned: it goes in your answer, and memory takes only a bare pointer to it (a URL, a ticket id). When the user confirms or decides something about it, save that fact or decision, with only as much of the rest as it needs to make sense; a request to save it is not by itself such a decision.'
+
 /**
  * `## What NOT to save in memory` section. Identical across both modes.
  */
@@ -358,6 +362,7 @@ export const WHAT_NOT_TO_SAVE_SECTION: readonly string[] = [
   // (the MEMORY.md index is always loaded). See
   // docs/archive/discovery/claude-mem-insights/structured-extraction.md (technique 2).
   '- Routine work with no surprising outcome: trivial commands that succeeded (installs, builds, status checks), exploratory reads or searches that led to no conclusion, and plain navigation steps. A session can legitimately produce nothing worth saving — memory is for the non-obvious, not a log of activity.',
+  MCP_OUTPUT_NOT_SAVED_BULLET,
   '',
   // H2: explicit-save gate. Eval-validated (memory-prompt-iteration case 3,
   // 0/2 → 3/3): prevents "save this week's PR list" → activity-log noise.

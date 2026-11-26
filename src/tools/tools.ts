@@ -88,6 +88,8 @@ const getAskUserQuestionTool = () =>
   require('src/tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool as typeof import('src/tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool
 const getReportFindingsTool = () =>
   require('src/tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool as typeof import('src/tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool
+const getPauseGoalTool = () =>
+  require('src/tools/PauseGoalTool/PauseGoalTool.js').PauseGoalTool as typeof import('src/tools/PauseGoalTool/PauseGoalTool.js').PauseGoalTool
 const getToolSearchTool = () =>
   require('src/tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool as typeof import('src/tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool
 const getEnterPlanModeTool = () =>
@@ -216,6 +218,7 @@ export function getAllBaseTools(): Tools {
     getTaskStopTool(),
     getAskUserQuestionTool(),
     getReportFindingsTool(),
+    getPauseGoalTool(),
     getSkillTool(),
     getLSPTool(),
     getRunTestsTool(),

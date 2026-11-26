@@ -652,12 +652,23 @@ export async function executeWorktreeCreateHook(
 export async function executeWorktreeRemoveHook(
   worktreePath: string,
 ): Promise<boolean> {
+  return (await runWorktreeRemoveHook(worktreePath)).ran
+}
+
+/**
+ * Like executeWorktreeRemoveHook, and also says whether every hook that ran
+ * succeeded: a hook that ran and failed did not remove the worktree. `error`
+ * is the first failing hook's output.
+ */
+export async function runWorktreeRemoveHook(
+  worktreePath: string,
+): Promise<{ ran: boolean; error?: string }> {
   const snapshotHooks = getHooksConfigFromSnapshot()?.['WorktreeRemove']
   const registeredHooks = getRegisteredHooks()?.['WorktreeRemove']
   const hasSnapshotHooks = snapshotHooks && snapshotHooks.length > 0
   const hasRegisteredHooks = registeredHooks && registeredHooks.length > 0
   if (!hasSnapshotHooks && !hasRegisteredHooks) {
-    return false
+    return { ran: false }
   }
 
   const hookInput = {
@@ -672,17 +683,19 @@ export async function executeWorktreeRemoveHook(
   })
 
   if (results.length === 0) {
-    return false
+    return { ran: false }
   }
 
+  let error: string | undefined
   for (const result of results) {
     if (!result.succeeded) {
       logForDebugging(
         `WorktreeRemove hook failed [${result.command}]: ${result.output.trim()}`,
         { level: 'error' },
       )
+      error ??= result.output.trim().split('\n')[0] || `${result.command} failed`
     }
   }
 
-  return true
+  return error === undefined ? { ran: true } : { ran: true, error }
 }

@@ -31,8 +31,8 @@ import BashToolResultMessage from 'src/tools/BashTool/BashToolResultMessage.js';
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js';
 const inputSchema = lazySchema(() => z.strictObject({
   task_id: z.string().describe('The task ID to get output from'),
-  block: semanticBoolean(z.boolean().default(true)).describe('Whether to wait for completion'),
-  timeout: z.number().min(0).max(600000).default(30000).describe('Max wait time in ms')
+  block: semanticBoolean(z.boolean()).default(true).optional().describe('Whether to wait for completion'),
+  timeout: z.number().min(0).max(600000).default(30000).optional().describe('Max wait time in ms')
 }));
 type InputSchema = ReturnType<typeof inputSchema>;
 type TaskOutputToolInput = z.infer<InputSchema>;
@@ -228,8 +228,8 @@ export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool
   async call(input: TaskOutputToolInput, toolUseContext, _canUseTool, _parentMessage, onProgress) {
     const {
       task_id,
-      block,
-      timeout
+      block = true,
+      timeout = 30000
     } = input;
     const appState = toolUseContext.getAppState();
     const task = appState.tasks?.[task_id] as TaskState | undefined;

@@ -30,6 +30,7 @@ export {
 } from 'src/vcs/git/worktree/mutationLock.js'
 export {
   getCurrentWorktreeSession,
+  getWorktreeEnteredAt,
   restoreWorktreeSession,
   type WorktreeSession,
 } from 'src/vcs/git/worktree/session.js'
@@ -39,6 +40,7 @@ export {
   cleanupWorktree,
   hasWorktreeChanges,
   keepWorktree,
+  type WorktreeCleanup,
 } from 'src/vcs/git/worktree/sessionLifecycle.js'
 export {
   validateWorktreeSlug,

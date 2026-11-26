@@ -1,7 +1,23 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { spawnSync } from 'child_process'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
-import { restoreWorktreeSession } from 'src/vcs/git/worktree.js'
+import {
+  getOriginalCwd,
+  getProjectRoot,
+  setOriginalCwd,
+  setProjectRoot,
+} from 'src/platform/bootstrap/state.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
+import { useIsolatedHooksConfig } from 'src/platform/lifecycleHooks/__testutils__/isolatedHooksConfig.js'
+import { getWorktreeEnteredAt, restoreWorktreeSession, type WorktreeSession } from 'src/vcs/git/worktree.js'
 import { ExitWorktreeTool } from 'src/tools/ExitWorktreeTool/ExitWorktreeTool.js'
+
+// remove runs the WorktreeRemove hooks for real: only ones a test registers.
+useIsolatedHooksConfig()
 
 const attachedSession = {
   originalCwd: '/orig',
@@ -108,5 +124,232 @@ describe('ExitWorktreeTool', () => {
       content: 'Exited worktree at /tmp/wt (kept)',
       tool_use_id: 'u1',
     })
+  })
+})
+
+// `remove` for real: call() chdirs back, resets the cwd, originalCwd and
+// projectRoot and clears the session, so all of it is put back after.
+describe('ExitWorktreeTool remove reports what it removed', () => {
+  const dirs: string[] = []
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  function tempDir(): string {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-')))
+    dirs.push(dir)
+    return dir
+  }
+
+  async function remove(session: WorktreeSession): Promise<string> {
+    const prev = {
+      processCwd: process.cwd(),
+      cwd: getCwd(),
+      originalCwd: getOriginalCwd(),
+      projectRoot: getProjectRoot(),
+    }
+    restoreWorktreeSession(session)
+    try {
+      const result = await ExitWorktreeTool.call(
+        { action: 'remove', discard_changes: true } as never,
+        {} as never,
+        (() => {}) as never,
+        {} as never,
+      )
+      return result.data.message
+    } finally {
+      process.chdir(prev.processCwd)
+      setCwd(prev.cwd)
+      setOriginalCwd(prev.originalCwd)
+      setProjectRoot(prev.projectRoot)
+      restoreWorktreeSession(null)
+    }
+  }
+
+  function repoWithWorktree(branch: string): { repo: string; worktree: string } {
+    const repo = tempDir()
+    const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' })
+    git('init', '-b', 'main')
+    git('config', 'user.email', 't@t')
+    git('config', 'user.name', 't')
+    git('commit', '--allow-empty', '-m', 'init')
+    const worktree = join(tempDir(), 'wt')
+    git('worktree', 'add', '-b', branch, worktree)
+    return { repo, worktree }
+  }
+
+  test('a hook-made worktree with no WorktreeRemove hook is said to be still on disk', async () => {
+    const worktree = tempDir()
+    const message = await remove({
+      originalCwd: tempDir(),
+      worktreePath: worktree,
+      worktreeName: 'hooked',
+      sessionId: 'sess-test',
+      hookBased: true,
+    })
+    expect(existsSync(worktree)).toBe(true)
+    expect(message).not.toContain('removed worktree')
+    expect(message).toContain(`${worktree} is still on disk`)
+  })
+
+  test('a branch git refuses to delete is said to be kept', async () => {
+    const { repo, worktree } = repoWithWorktree('wt-refused')
+    // `main` is checked out in the main worktree, so `git branch -D` refuses it.
+    const message = await remove({
+      originalCwd: repo,
+      worktreePath: worktree,
+      worktreeName: 'wt',
+      worktreeBranch: 'main',
+      sessionId: 'sess-test',
+    })
+    expect(message).toContain(`removed worktree at ${worktree}`)
+    expect(message).toContain('Git refused to delete branch main, so it is still there')
+  })
+
+  test('its own branch is deleted and the result says so', async () => {
+    const { repo, worktree } = repoWithWorktree('wt-own')
+    const message = await remove({
+      originalCwd: repo,
+      worktreePath: worktree,
+      worktreeName: 'wt',
+      worktreeBranch: 'wt-own',
+      sessionId: 'sess-test',
+    })
+    expect(message).toStartWith(`Exited and removed worktree at ${worktree} and deleted its branch wt-own.`)
+    expect(existsSync(worktree)).toBe(false)
+    const branches = spawnSync('git', ['branch', '--list', 'wt-own'], { cwd: repo, encoding: 'utf8' }).stdout
+    expect(branches.trim()).toBe('')
+  })
+
+  test('the texts say a hook-made worktree or a refused delete keeps its branch', async () => {
+    const prompt = await ExitWorktreeTool.prompt({} as never)
+    expect(prompt).toContain(
+      'delete the worktree directory, and its branch too unless a hook made the worktree or git refuses the delete.',
+    )
+    const action = (ExitWorktreeTool.inputSchema as unknown as { shape: Record<string, { description?: string }> }).shape.action
+    expect(action?.description).toBe(
+      '"keep" leaves the worktree and branch on disk; "remove" deletes the worktree and, unless a hook made it or git refuses, its branch.',
+    )
+  })
+})
+
+describe('ExitWorktreeTool remove refuses while something may work in the worktree', () => {
+  const dirs: string[] = []
+  let savedConfigDir: string | undefined
+  afterEach(() => {
+    restoreWorktreeSession(null)
+    if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  // A config dir of its own, so the only other live session is the one a
+  // test writes: this test's parent process, which is alive.
+  function sessionsDir(): string {
+    savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+    const config = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-config-')))
+    dirs.push(config)
+    process.env.CLAUDIN_CONFIG_DIR = config
+    mkdirSync(join(config, 'sessions'))
+    return join(config, 'sessions')
+  }
+
+  // A real, clean git checkout, so the uncommitted-work check passes and the
+  // check after it is the one under test. `dirty` leaves a file uncommitted.
+  function enter({ dirty = false }: { dirty?: boolean } = {}): string {
+    const worktree = realpathSync(mkdtempSync(join(tmpdir(), 'exit-wt-')))
+    dirs.push(worktree)
+    const git = (...args: string[]) => spawnSync('git', args, { cwd: worktree, encoding: 'utf8' })
+    git('init', '-b', 'main')
+    git('config', 'user.email', 't@t')
+    git('config', 'user.name', 't')
+    git('commit', '--allow-empty', '-m', 'init')
+    const head = git('rev-parse', 'HEAD').stdout.trim()
+    if (dirty) writeFileSync(join(worktree, 'wip.txt'), 'unsaved')
+    restoreWorktreeSession({
+      originalCwd: '/orig',
+      worktreePath: worktree,
+      worktreeName: 'wt',
+      worktreeBranch: 'main',
+      originalHeadCommit: head,
+      sessionId: 's',
+    })
+    return worktree
+  }
+
+  function context(tasks: Record<string, unknown> = {}) {
+    return { getAppState: () => ({ tasks }) } as never
+  }
+
+  function runningShell(startTime: number) {
+    return {
+      id: 'b1',
+      type: 'local_bash',
+      status: 'running',
+      description: 'npm run dev',
+      startTime,
+      outputFile: '/tmp/b1.out',
+      outputOffset: 0,
+      notified: false,
+    }
+  }
+
+  test('another live session in the worktree refuses remove, even with discard_changes', async () => {
+    const dir = sessionsDir()
+    const worktree = enter()
+    writeFileSync(
+      join(dir, `${process.ppid}.json`),
+      JSON.stringify({ pid: process.ppid, sessionId: 'other', cwd: join(worktree, 'src') }),
+    )
+    const result = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context())
+    expect(result?.result).toBe(false)
+    if (result?.result === false) {
+      expect(result.errorCode).toBe(4)
+      expect(result.message).toContain(`Another Claudin session (pid ${process.ppid}) is running in this worktree`)
+    }
+  })
+
+  test('a task started after entering refuses remove; discard_changes lets it through', async () => {
+    sessionsDir()
+    enter()
+    const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
+    const refused = await ExitWorktreeTool.validateInput?.({ action: 'remove' } as never, context(tasks))
+    expect(refused?.result).toBe(false)
+    if (refused?.result === false) {
+      expect(refused.errorCode).toBe(5)
+      expect(refused.message).toStartWith('A background task started since you entered this worktree may still be running there ("npm run dev").')
+    }
+    const forced = await ExitWorktreeTool.validateInput?.({ action: 'remove', discard_changes: true } as never, context(tasks))
+    expect(forced?.result).toBe(true)
+  })
+
+  // discard_changes lifts both refusals, so the uncommitted files come first:
+  // the model must see what it would lose before it reaches for the flag.
+  test('a dirty worktree with a task running lists the uncommitted work first', async () => {
+    sessionsDir()
+    enter({ dirty: true })
+    const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
+    const refused = await ExitWorktreeTool.validateInput?.({ action: 'remove' } as never, context(tasks))
+    expect(refused?.result).toBe(false)
+    if (refused?.result === false) {
+      expect(refused.errorCode).toBe(2)
+      expect(refused.message).toStartWith('Worktree has 1 uncommitted file.')
+    }
+  })
+
+  test('a task started before entering does not hold the worktree', async () => {
+    sessionsDir()
+    enter()
+    const tasks = { b1: runningShell(getWorktreeEnteredAt() - 1) }
+    const result = await ExitWorktreeTool.validateInput?.({ action: 'remove' } as never, context(tasks))
+    expect(result?.result).toBe(true)
+  })
+
+  test('keep is never refused for either', async () => {
+    const dir = sessionsDir()
+    const worktree = enter()
+    writeFileSync(join(dir, `${process.ppid}.json`), JSON.stringify({ pid: process.ppid, sessionId: 'o', cwd: worktree }))
+    const tasks = { b1: runningShell(getWorktreeEnteredAt()) }
+    expect((await ExitWorktreeTool.validateInput?.({ action: 'keep' } as never, context(tasks)))?.result).toBe(true)
   })
 })

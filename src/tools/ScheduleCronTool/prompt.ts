@@ -59,7 +59,7 @@ A cron job re-runs a prompt on the clock. To watch a log, a process or a command
 
 ## Runtime behavior
 
-Jobs only fire while the REPL is idle. Durable jobs persist to .claudin/scheduled_tasks.json and survive session restarts — on next launch they resume automatically. One-shot durable tasks that were missed while the REPL was closed are surfaced for catch-up. Session-only jobs die with the process. Scheduler adds small deterministic jitter (recurring: up to 10% late, max 15 min; one-shot on :00/:30: up to 90 s early), so when you tell the user when a job runs, give the time the result reports, not the minute in the cron expression. Recurring tasks auto-expire after ${DEFAULT_MAX_AGE_DAYS} days — tell the user about this limit.
+Jobs only fire while the REPL is idle. Durable jobs persist to .claudin/scheduled_tasks.json and survive session restarts — on next launch they resume automatically. One-shot durable tasks that were missed while the REPL was closed are surfaced for catch-up. Session-only jobs die with the process. Scheduler adds small deterministic jitter (recurring: up to 10% late, max 15 min; one-shot on :00/:30: up to 90 s early), so when you tell the user when a job runs, give the time the result reports, not the minute in the cron expression. Recurring tasks auto-expire after ${DEFAULT_MAX_AGE_DAYS} days — they fire one final time, with a note that it is their last run, then are deleted. Tell the user about this limit.
 
 Returns a job ID you can pass to ${CRON_DELETE_TOOL_NAME}.`
 }

@@ -335,7 +335,9 @@ export type CronJitterConfig = {
    * uptime 61min → 53h post-#19931), and unbounded recurrence lets Tier-1
    * heap leaks compound indefinitely. The default (7 days) covers "check
    * my PRs every hour this week" workflows while capping worst-case
-   * session lifetime. Permanent tasks (assistant mode's catch-up/
+   * session lifetime. Claude Code 2.1.332 raised its own to 30 days; this
+   * stays at 7 until a multi-day RSS measurement says otherwise (team memory
+   * `claude-code-2.1.332-tool-diff`). Permanent tasks (assistant mode's catch-up/
    * morning-checkin/dream) never age out — they can't be recreated if
    * deleted because install.ts's writeIfMissing() skips existing files.
    *
@@ -351,6 +353,39 @@ export const DEFAULT_CRON_JITTER_CONFIG: CronJitterConfig = {
   oneShotFloorMs: 0,
   oneShotMinuteMod: 30,
   recurringMaxAgeMs: 7 * 24 * 60 * 60 * 1000,
+}
+
+const HOUR_MS = 60 * 60 * 1000
+const DAY_MS = 24 * HOUR_MS
+
+/**
+ * What the last fire of an aged-out recurring task carries after its prompt,
+ * in Claude Code 2.1.332's words: the job is gone, and only the user brings
+ * it back.
+ */
+export function finalRunNotice(
+  t: Pick<CronTask, 'id' | 'cron'>,
+  maxAgeMs: number,
+): string {
+  const days = Math.round(maxAgeMs / DAY_MS)
+  const hours = Math.max(1, Math.round(maxAgeMs / HOUR_MS))
+  const span =
+    days >= 1
+      ? `${days} ${days === 1 ? 'day' : 'days'}`
+      : `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+  return `Recurring job ${t.id} (cron ${t.cron}) has had its last run, just now, and is deleted: a recurring job ends ${span} after it is created. Tell the user that it has ended, and that they can ask you to create it again. Do not create it again unless they ask.`
+}
+
+/**
+ * The prompts the last fire sends. The notice follows a plain prompt in the
+ * same message; a slash command (`/loop 1h /babysit-prs` stores the bare
+ * command) fires untouched and the notice goes out as the next message,
+ * because text after the name would become the command's name or arguments.
+ */
+export function finalFirePrompts(prompt: string, notice: string): string[] {
+  return prompt.trimStart().startsWith('/')
+    ? [prompt, notice]
+    : [`${prompt}\n\n${notice}`]
 }
 
 /**

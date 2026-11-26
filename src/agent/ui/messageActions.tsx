@@ -6,6 +6,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { NormalizedUserMessage, RenderableMessage } from 'src/shared/types/message.js';
 import { isEmptyMessageText, SYNTHETIC_MESSAGES } from 'src/agent/messages/messages.js';
+import { unwrapPastedContent } from 'src/shared/text/displayTags.js';
 const NAVIGABLE_TYPES = ['user', 'assistant', 'grouped_tool_use', 'collapsed_read_search', 'system', 'attachment'] as const;
 export type NavigableType = (typeof NAVIGABLE_TYPES)[number];
 export type NavigableOf<T extends NavigableType> = Extract<RenderableMessage, {
@@ -32,7 +33,7 @@ export function isNavigableMessage(msg: NavigableMessage): boolean {
         if (SYNTHETIC_MESSAGES.has(b.text)) return false;
         // Same filter as VirtualMessageList sticky-prompt: XML-wrapped (command
         // expansions, bash-stdout, etc.) aren't real prompts.
-        return !stripSystemReminders(b.text).startsWith('<');
+        return !userTextOf(b.text).startsWith('<');
       }
     case 'system':
       // biome-ignore lint/nursery/useExhaustiveSwitchCases: blocklist — fallthrough return-true is the design
@@ -403,7 +404,11 @@ export function MessageActionsBar(t0: MessageActionsBarProps) {
   }
   return t14;
 }
-export function stripSystemReminders(text: string): string {
+/**
+ * The user's own text: leading <system-reminder> blocks dropped, and each
+ * <pasted_content> block back to the text that was pasted.
+ */
+export function userTextOf(text: string): string {
   const CLOSE = '</system-reminder>';
   let t = text.trimStart();
   while (t.startsWith('<system-reminder>')) {
@@ -411,14 +416,14 @@ export function stripSystemReminders(text: string): string {
     if (end < 0) break;
     t = t.slice(end + CLOSE.length).trimStart();
   }
-  return t;
+  return unwrapPastedContent(t);
 }
 export function copyTextOf(msg: NavigableMessage): string {
   switch (msg.type) {
     case 'user':
       {
         const b = msg.message.content[0];
-        return b?.type === 'text' ? stripSystemReminders(b.text) : '';
+        return b?.type === 'text' ? userTextOf(b.text) : '';
       }
     case 'assistant':
       {
@@ -440,7 +445,7 @@ export function copyTextOf(msg: NavigableMessage): string {
         const a = msg.attachment;
         if (a.type === 'queued_command') {
           const p = a.prompt;
-          return typeof p === 'string' ? p : p.flatMap(b => b.type === 'text' ? [b.text] : []).join('\n');
+          return unwrapPastedContent(typeof p === 'string' ? p : p.flatMap(b => b.type === 'text' ? [b.text] : []).join('\n'));
         }
         return `[${a.type}]`;
       }

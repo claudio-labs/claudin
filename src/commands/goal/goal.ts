@@ -68,9 +68,10 @@ export async function call(
       const elapsed = formatDuration(Date.now() - goal.setAt)
       const tokensUsed = getGoalTokenCount(context.messages)
       const lines = [
-        `Goal active: ${goal.condition}`,
+        `${goal.paused ? 'Goal paused' : 'Goal active'}: ${goal.condition}`,
         `Iterations: ${goal.iterations} · Elapsed: ${elapsed} · Tokens: ${tokensUsed.toLocaleString()}`,
         ...(goal.lastCheckReason ? [`Last check: ${goal.lastCheckReason}`] : []),
+        ...(goal.paused ? [`Paused: ${goal.paused.reason} · your next message resumes it`] : []),
         '/goal clear to stop early',
       ]
       onDone(lines.join('\n'), { display: 'system' })

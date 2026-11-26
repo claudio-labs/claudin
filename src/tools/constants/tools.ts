@@ -6,6 +6,7 @@ import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
+import { PAUSE_GOAL_TOOL_NAME } from 'src/tools/PauseGoalTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
@@ -46,6 +47,8 @@ export const ALL_AGENT_DISALLOWED_TOOLS = new Set([
   ENTER_PLAN_MODE_TOOL_NAME,
   ASK_USER_QUESTION_TOOL_NAME,
   TASK_STOP_TOOL_NAME,
+  // The goal's stop check belongs to the main conversation.
+  PAUSE_GOAL_TOOL_NAME,
   // Prevent recursive workflow execution inside subagents.
   ...(feature('AGENT_WORKFLOWS') ? [WORKFLOW_RUN_TOOL_NAME] : []),
 ])

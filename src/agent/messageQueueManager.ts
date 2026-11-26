@@ -15,6 +15,7 @@ import type {
 import type { PastedContent } from 'src/platform/config/config.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
 import { objectGroupBy } from 'src/shared/data/objectGroupBy.js'
+import { unwrapPastedContent } from 'src/shared/text/displayTags.js'
 import { recordQueueOperation } from 'src/sessions/sessionStorage.js'
 import { createSignal } from 'src/shared/signal.js'
 
@@ -406,8 +407,11 @@ export function popAllEditable(
     return undefined
   }
 
-  // Extract text from queued commands (handles both strings and ContentBlockParam[])
-  const queuedTexts = editable.map(cmd => extractTextFromValue(cmd.value))
+  // Extract text from queued commands (handles both strings and ContentBlockParam[]).
+  // Back in the input it is the user's text again, so pastes lose their tags.
+  const queuedTexts = editable.map(cmd =>
+    unwrapPastedContent(extractTextFromValue(cmd.value)),
+  )
   const newInput = [...queuedTexts, currentInput].filter(Boolean).join('\n')
 
   // Calculate cursor offset: length of joined queued commands + 1 + current cursor offset

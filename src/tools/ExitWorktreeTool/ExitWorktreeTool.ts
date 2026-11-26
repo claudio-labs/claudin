@@ -14,15 +14,23 @@ import { updateHooksConfigSnapshot } from 'src/platform/lifecycleHooks/hooksConf
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
-import { updateSessionCwd } from 'src/sessions/concurrentSessions.js'
+import { listLiveSessions, updateSessionCwd } from 'src/sessions/concurrentSessions.js'
 import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import {
   cleanupWorktree,
   getCurrentWorktreeSession,
+  getWorktreeEnteredAt,
   keepWorktree,
   killTmuxSession,
 } from 'src/vcs/git/worktree.js'
 import { EXIT_WORKTREE_TOOL_NAME } from 'src/tools/ExitWorktreeTool/constants.js'
+import {
+  describeRemoval,
+  sessionInWorktreeRefusal,
+  sessionsInWorktree,
+  tasksInWorktreeRefusal,
+  tasksStartedSince,
+} from 'src/tools/ExitWorktreeTool/exitGuards.js'
 import { getExitWorktreeToolPrompt } from 'src/tools/ExitWorktreeTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ExitWorktreeTool/UI.js'
 
@@ -31,13 +39,13 @@ const inputSchema = lazySchema(() =>
     action: z
       .enum(['keep', 'remove'])
       .describe(
-        '"keep" leaves the worktree and branch on disk; "remove" deletes both.',
+        '"keep" leaves the worktree and branch on disk; "remove" deletes the worktree and, unless a hook made it or git refuses, its branch.',
       ),
     discard_changes: z
       .boolean()
       .optional()
       .describe(
-        'Required true when action is "remove" and the worktree has uncommitted files or unmerged commits. The tool will refuse and list them otherwise.',
+        'Required true when action is "remove" and the worktree has uncommitted files or unmerged commits. The tool will refuse and list them otherwise. It also removes the worktree under any task still running there, so set it only after the user has confirmed.',
       ),
   }),
 )
@@ -176,7 +184,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
   toAutoClassifierInput(input) {
     return input.action
   },
-  async validateInput(input) {
+  async validateInput(input, context) {
     // Scope guard: getCurrentWorktreeSession() is null unless EnterWorktree
     // (specifically createWorktreeForSession) ran in THIS session. Worktrees
     // created by `git worktree add`, or by EnterWorktree in a previous
@@ -194,6 +202,19 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
 
     // Attached worktrees (entered via EnterWorktree `path`) are never removed —
     // call() (below) coerces them to keep — so skip the remove safety gate here.
+    // Another session holds the worktree even against discard_changes.
+    if (input.action === 'remove' && !session.attached) {
+      const sessions = sessionsInWorktree(await listLiveSessions(), session.worktreePath)
+      if (sessions.length > 0) {
+        return {
+          result: false,
+          message: sessionInWorktreeRefusal(sessions, session.worktreePath),
+          errorCode: 4,
+        }
+      }
+    }
+    // The uncommitted work is listed before the tasks are: discard_changes
+    // lifts both refusals, so the model sees what it would lose first.
     if (
       input.action === 'remove' &&
       !input.discard_changes &&
@@ -229,6 +250,10 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
           errorCode: 2,
         }
       }
+      const tasks = tasksStartedSince(context.getAppState().tasks, getWorktreeEnteredAt())
+      if (tasks.length > 0) {
+        return { result: false, message: tasksInWorktreeRefusal(tasks), errorCode: 5 }
+      }
     }
 
     return { result: true }
@@ -250,6 +275,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       worktreeBranch,
       tmuxSessionName,
       originalHeadCommit,
+      hookBased,
     } = session
 
     // --worktree startup calls setOriginalCwd(getCwd()) and
@@ -299,7 +325,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
     if (tmuxSessionName) {
       await killTmuxSession(tmuxSessionName)
     }
-    await cleanupWorktree()
+    const cleanup = await cleanupWorktree()
     restoreSessionToOriginalCwd(originalCwd, projectRootIsWorktree)
 
 
@@ -313,7 +339,9 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       )
     }
     const discardNote =
-      discardParts.length > 0 ? ` Discarded ${discardParts.join(' and ')}.` : ''
+      cleanup.removed && discardParts.length > 0
+        ? ` Discarded ${discardParts.join(' and ')}.`
+        : ''
     return {
       data: {
         action: 'remove' as const,
@@ -322,7 +350,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
         worktreeBranch,
         discardedFiles: changedFiles,
         discardedCommits: commits,
-        message: `Exited and removed worktree at ${worktreePath}.${discardNote} Session is now back in ${originalCwd}.`,
+        message: `${describeRemoval({ worktreePath, worktreeBranch, hookBased, cleanup })}${discardNote} Session is now back in ${originalCwd}.`,
       },
     }
   },

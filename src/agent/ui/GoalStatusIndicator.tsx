@@ -43,7 +43,7 @@ export function GoalStatusIndicator({
   // suffix width, then truncate the condition to whatever's left so the
   // iteration/elapsed/token metrics and the /goal clear hint stay visible
   // regardless of how long the condition is.
-  const prefix = '◎ Goal active: '
+  const prefix = activeGoal.paused ? '◎ Goal paused: ' : '◎ Goal active: '
   const suffix = ` · ${activeGoal.iterations} ${iterationLabel} · ${elapsed} · ${tokensUsed.toLocaleString()} tokens · /goal clear to stop early`
   // paddingX={2} on the Box → 2 columns of padding on each side.
   const available = Math.max(
@@ -65,6 +65,11 @@ export function GoalStatusIndicator({
       {activeGoal.lastCheckReason ? (
         <Text dimColor wrap="truncate">
           {'  '}Last check: {activeGoal.lastCheckReason}
+        </Text>
+      ) : null}
+      {activeGoal.paused ? (
+        <Text dimColor wrap="truncate">
+          {'  '}Paused: {activeGoal.paused.reason} · your next message resumes it
         </Text>
       ) : null}
     </Box>

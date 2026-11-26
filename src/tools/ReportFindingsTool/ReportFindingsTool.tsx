@@ -17,7 +17,7 @@ import { COMPACT_PROMPT, DESCRIPTION, PROMPT } from 'src/tools/ReportFindingsToo
 const findingSchema = lazySchema(() =>
   z.strictObject({
     file: z.string().describe('Repo-relative path of the file the finding is in'),
-    summary: z.string().describe('One-sentence statement of the defect'),
+    summary: z.string().describe('Statement of the defect'),
     failure_scenario: z
       .string()
       .describe('Concrete inputs/state → wrong output/crash'),
@@ -32,6 +32,12 @@ const findingSchema = lazySchema(() =>
       .optional()
       .describe(
         'Short kebab-case slug of the finding type, e.g. "correctness", "simplification", "efficiency", "test-coverage"',
+      ),
+    severity: z
+      .enum(['important', 'pre_existing', 'nit'])
+      .optional()
+      .describe(
+        'Set when the review instructions ask for it. important: a bug the change adds or makes worse; pre_existing: a bug that was there before the change; nit: a minor issue',
       ),
     verdict: z
       .enum(['CONFIRMED', 'PLAUSIBLE'])
@@ -73,6 +79,12 @@ export type Output = z.infer<OutputSchema>
 
 const countFindings = (n: number): string => `${n} finding${n === 1 ? '' : 's'}`
 
+const SEVERITY_LABEL: Record<NonNullable<Finding['severity']>, string> = {
+  important: 'important',
+  pre_existing: 'pre-existing',
+  nit: 'nit',
+}
+
 function ReportFindingsResultMessage({ findings }: { findings: Finding[] }) {
   const label =
     findings.length === 0
@@ -98,7 +110,7 @@ function ReportFindingsResultMessage({ findings }: { findings: Finding[] }) {
                     would push every continuation one column past the indent. */}
                 <Text color="inactive" wrap="wrap-trim">
                   {f.file}
-                  {f.line != null ? `:${f.line}` : ''} — {f.summary}
+                  {f.line != null ? `:${f.line}` : ''} — {f.severity ? `${SEVERITY_LABEL[f.severity]}: ` : ''}{f.summary}
                   {f.verdict ? ` (${f.verdict})` : ''}
                   {f.outcome ? ` [${f.outcome}]` : ''}
                 </Text>

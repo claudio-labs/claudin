@@ -319,11 +319,21 @@ not already in your tool list, load it first with ${TOOL_SEARCH_TOOL_NAME}
 (\`select:${REPORT_FINDINGS_TOOL_NAME}\`). Its schema names the fields; this is what
 the schema can't say:
 
-- Rank \`findings\` most-severe first, correctness before cleanup.
+- Set each finding's \`severity\`:
+  - \`important\`: a bug that should be fixed before merging because this change
+    adds it or makes it worse. A rare trigger does not lower it if someone can hit it.
+  - \`pre_existing\`: a bug that exists in the codebase but that this change did not
+    introduce. A bug in unchanged lines is \`pre_existing\` if the change only fails
+    to fix it, and \`important\` if the change re-exposes it.
+  - \`nit\`: a minor issue, worth fixing but not blocking: a broken CLAUDE.md or
+    AGENTS.md rule, a bug that harms nobody, or a cleanup.
+- Rank \`findings\` by severity, \`important\` first, then \`pre_existing\`, then
+  \`nit\`; within one, correctness before cleanup. A severity only labels and
+  orders a finding: never drop one for its severity.
 - Set \`verdict\` from the verify pass, \`category\` to the angle's axis, and
   \`level\` to the review effort.
-- Keep the ${maxFindings} most severe if more survive, and call it with an empty
-  \`findings\` array if nothing does.
+- Keep the ${maxFindings} most severe if more survive, cutting the lowest-ranked
+  first, and call it with an empty \`findings\` array if nothing does.
 `
 
 // ─── Level prompts ───────────────────────────────────────────────────────────
@@ -482,7 +492,7 @@ const HEADLESS_ADDENDUM = `
 You are running non-interactively (\`-p\`), where the ${REPORT_FINDINGS_TOOL_NAME}
 render is not shown. After the tool call, print the same findings as a JSON array
 to stdout — one object per finding with the schema's fields (\`file\`, \`line\`,
-\`summary\`, \`failure_scenario\`), ranked most-severe first, \`[]\` if nothing
+\`severity\`, \`summary\`, \`failure_scenario\`), ranked most-severe first, \`[]\` if nothing
 survived — so text-mode consumers still receive them.
 `
 

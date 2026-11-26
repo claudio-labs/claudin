@@ -20,6 +20,8 @@ import {
   type CronJitterConfig,
   type CronTask,
   DEFAULT_CRON_JITTER_CONFIG,
+  finalFirePrompts,
+  finalRunNotice,
   findMissedTasks,
   firstFireMs,
   getCronFilePath,
@@ -295,20 +297,26 @@ export function createCronScheduler(
       // reads getProjectRoot() — so on the daemon path sentinel bodies pass
       // through raw. Same dir === undefined gate as the session-only block
       // below and getNextFireTime().
-      const firePrompt =
+      const expandedPrompt =
         dir === undefined
           ? expandLoopSentinelPrompt(t.prompt, undefined, t.agentId)
           : t.prompt
-      if (onFireTask) {
-        onFireTask(firePrompt === t.prompt ? t : { ...t, prompt: firePrompt })
-      } else {
-        onFire(firePrompt)
-      }
-
       // Aged-out recurring tasks fall through to the one-shot delete paths
       // below (session tasks get synchronous removal; file tasks get the
-      // async inFlight/chokidar path). Fires one last time, then is removed.
+      // async inFlight/chokidar path). Fires one last time, with a notice
+      // that it is the last, then is removed.
       const aged = isRecurringTaskAged(t, now, jitterCfg.recurringMaxAgeMs)
+      const firePrompts = aged
+        ? finalFirePrompts(expandedPrompt, finalRunNotice(t, jitterCfg.recurringMaxAgeMs))
+        : [expandedPrompt]
+      for (const firePrompt of firePrompts) {
+        if (onFireTask) {
+          onFireTask(firePrompt === t.prompt ? t : { ...t, prompt: firePrompt })
+        } else {
+          onFire(firePrompt)
+        }
+      }
+
       if (aged) {
         const ageHours = Math.floor((now - t.createdAt) / 1000 / 60 / 60)
         logForDebugging(

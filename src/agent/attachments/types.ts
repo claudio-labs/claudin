@@ -364,6 +364,15 @@ export type Attachment =
       type: 'critical_system_reminder'
       content: string
     }
+  /**
+   * The active /goal, re-attached after a compaction so the summary cannot
+   * lose it. `content` is rendered once, by buildGoalStatusText, so a resumed
+   * process re-sends the same bytes.
+   */
+  | {
+      type: 'goal_status'
+      content: string
+    }
   | {
       type: 'plan_file_reference'
       planFilePath: string

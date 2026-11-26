@@ -12,7 +12,7 @@ import type {
   UserMessage,
 } from 'src/shared/types/message.js'
 import type { DeepImmutable } from 'src/shared/types/utils.js'
-import { stripIdeContextTags } from 'src/shared/text/displayTags.js'
+import { stripIdeContextTags, unwrapPastedContent } from 'src/shared/text/displayTags.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 import { MAIN_ADDRESS } from 'src/tools/SendMessageTool/constants.js'
 
@@ -147,7 +147,7 @@ export function textForResubmit(
     const args = extractTag(content, COMMAND_ARGS_TAG) ?? ''
     return { text: `${cmd} ${args}`, mode: 'prompt' }
   }
-  return { text: stripIdeContextTags(content), mode: 'prompt' }
+  return { text: stripIdeContextTags(unwrapPastedContent(content)), mode: 'prompt' }
 }
 
 /**

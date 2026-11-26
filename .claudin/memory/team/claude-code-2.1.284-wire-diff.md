@@ -87,6 +87,12 @@ tools have to come from the binary:
 - Minified names repeat across chunks (there were two different `OOe`), so find a definition by
   a parameter only it has.
 - The rollout state for the account is in `~/.claude.json` under `cachedGrowthBookFeatures`.
-  For example, commit/pr as on-demand skills was off there on 11-13.
+  For example, commit/pr as on-demand skills was off there on 11-13. Copying those 1498 flags
+  into the stub config's `.claude.json` changed nothing on 2.1.332 under the stub API key
+  (2026-11-25): the flagless capture is the API-key prompt.
+- New text between two versions: collect every string literal of 80+ chars from both binaries'
+  chunks, normalize `${…}`, and keep the new strings whose 5-word shingles mostly do not
+  occur in the old ones. 2.1.323→2.1.332 gave 613 strings, down from 8.6k raw. About 60% of
+  them are cloud, account or UI text.
 
 The CC behavior in [[cc-2-1-323-commands-port]] was read this way.

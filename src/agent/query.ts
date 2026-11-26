@@ -93,9 +93,11 @@ import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
   getCurrentTurnTokenBudget,
+  getSessionId,
   getTurnOutputTokens,
   incrementBudgetContinuationCount,
 } from 'src/platform/bootstrap/state.js'
+import { resumePausedGoalOnQueuedReply } from 'src/agent/goal/goal.js'
 import { createBudgetTracker, checkTokenBudget } from 'src/agent/query/tokenBudget.js'
 import { count } from 'src/shared/data/array.js'
 
@@ -1172,6 +1174,9 @@ async function* queryLoop(
         }
       }
       removeFromQueue(consumedCommands)
+      if (isMainThread) {
+        resumePausedGoalOnQueuedReply(consumedCommands, toolUseContext.setAppState, getSessionId())
+      }
     }
 
     // Instrumentation: Track file change attachments after they're added

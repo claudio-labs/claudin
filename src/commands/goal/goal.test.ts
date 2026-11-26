@@ -5,7 +5,8 @@ import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/shared/types/command.js'
-import { GOAL_MAX_CONDITION_LENGTH } from 'src/agent/goal/goal.js'
+import { GOAL_MAX_CONDITION_LENGTH, pauseActiveGoal } from 'src/agent/goal/goal.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 
 // The /goal set path consults process-global gates (hook policy snapshot +
@@ -162,6 +163,16 @@ describe('/goal command', () => {
     expect(status).toContain('Goal active: all tests pass')
     expect(status).toContain('Iterations: 0')
     expect(status).toContain('/goal clear to stop early')
+  })
+
+  test('bare /goal on a paused goal says it is paused, and why', async () => {
+    const h = createCommandHarness()
+    await call(h.onDone, h.context, 'all tests pass')
+    pauseActiveGoal(h.context.setAppState, getSessionId(), 'needs the staging token')
+    await call(h.onDone, h.context, '')
+    const status = h.onDoneCalls[1]!.result
+    expect(status).toContain('Goal paused: all tests pass')
+    expect(status).toContain('Paused: needs the staging token · your next message resumes it')
   })
 
   test('/goal clear removes the goal and confirms', async () => {

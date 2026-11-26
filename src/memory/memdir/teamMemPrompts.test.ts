@@ -312,6 +312,20 @@ describe('the v2 memory section and its write rules', () => {
     expect(prompt).toContain('skip what the code, git history or this conversation already hold')
   })
 
+  test('what an MCP server returned is not memory: said once, under the index line', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const lines = m.buildLeanCombinedMemoryPrompt().split('\n')
+    const rule = lines.filter(line => line.includes('an MCP server returned'))
+    expect(rule).toEqual([
+      "Don't save what an MCP server returned, even if asked: it goes in your answer, and only a bare pointer to it (a URL, a ticket id) belongs in memory. When the user confirms or decides something about it, save that fact or decision, with only as much of the rest as it needs to make sense.",
+    ])
+    expect(lines[lines.indexOf(KEPT_INDEX_LINE) + 1]).toBe(rule[0])
+    expect(m.buildMemoryWriteRules(DIRS.teamDir)).not.toContain('MCP server')
+    const full = m.buildCombinedMemoryPrompt()
+    expect(full).toContain('- What an MCP server or connector returned: it goes in your answer, and memory takes only a bare pointer to it (a URL, a ticket id).')
+    expect(full).toContain('a request to save it is not by itself such a decision.')
+  })
+
   test('the prompt keeps what every request needs', async () => {
     const m = await importFreshTeamMemPrompts(DIRS)
     const lines = m.buildLeanCombinedMemoryPrompt().split('\n')

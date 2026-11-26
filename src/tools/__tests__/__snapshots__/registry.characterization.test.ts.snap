@@ -20,6 +20,7 @@ exports[`tool registry — characterization the unconditional tool list matches 
   "TaskStop",
   "AskUserQuestion",
   "ReportFindings",
+  "PauseGoal",
   "Skill",
   "LSP",
   "RunTests",

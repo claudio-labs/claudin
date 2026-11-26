@@ -481,7 +481,8 @@ You have exited auto mode. The user may now want to interact more directly. You 
         createUserMessage({ content, isMeta: true }),
       ])
     }
-    case 'critical_system_reminder': {
+    case 'critical_system_reminder':
+    case 'goal_status': {
       return wrapMessagesInSystemReminder([
         createUserMessage({ content: attachment.content, isMeta: true }),
       ])

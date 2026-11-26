@@ -54,6 +54,8 @@ import {
 import { queryCheckpoint } from 'src/agent/queryProfiler.js'
 import { parseSlashCommand } from 'src/commands/slashCommandParsing.js'
 import { processTextPrompt } from 'src/agent/input/processTextPrompt.js'
+import { resumePausedGoal } from 'src/agent/goal/goal.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 export type ProcessUserInputContext = ToolUseContext & LocalJSXCommandContext
 
 export type ProcessUserInputBaseResult = {
@@ -259,6 +261,14 @@ export async function processUserInput({
     } else if (hookMessage) {
       result.messages.push(hookMessage)
     }
+  }
+
+  // The user's own message ends a PauseGoal pause: the goal's judge comes
+  // back before this turn runs. Scheduled prompts and another agent's text
+  // are not the user writing, and a prompt a hook blocked never reached the
+  // model.
+  if (mode === 'prompt' && !isMeta && !skipInputDirectives) {
+    resumePausedGoal(context.setAppState, getSessionId())
   }
   queryCheckpoint('query_hooks_end')
 
