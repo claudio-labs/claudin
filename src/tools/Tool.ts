@@ -894,6 +894,9 @@ export type Tool<
     options: {
       shouldAnimate: boolean
       tools: Tools
+      // The tool's Nerd Font icon for the group's header, as its single row
+      // shows it; undefined without the font.
+      toolIcon?: string
     },
   ): React.ReactNode | null
 }

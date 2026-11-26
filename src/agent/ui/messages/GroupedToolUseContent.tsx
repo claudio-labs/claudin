@@ -3,6 +3,8 @@ import * as React from 'react';
 import { filterToolProgressMessages, findToolByName, type Tools } from 'src/tools/Tool.js';
 import type { GroupedToolUseMessage } from 'src/shared/types/message.js';
 import type { buildMessageLookups } from 'src/agent/messages/messages.js';
+import { getToolRowIcons } from 'src/agent/ui/messages/toolRowIcons.js';
+import { useNerdFontGlyphs } from 'src/terminal/terminalFont.js';
 type Props = {
   message: GroupedToolUseMessage;
   tools: Tools;
@@ -17,6 +19,7 @@ export function GroupedToolUseContent({
   inProgressToolUseIDs,
   shouldAnimate
 }: Props): React.ReactNode {
+  const nerdFont = useNerdFontGlyphs();
   const tool = findToolByName(tools, message.toolName);
   if (!tool?.renderGroupedToolUse) {
     return null;
@@ -54,6 +57,7 @@ export function GroupedToolUseContent({
   const anyInProgress = toolUsesData.some(d => d.isInProgress);
   return tool.renderGroupedToolUse(toolUsesData, {
     shouldAnimate: shouldAnimate && anyInProgress,
-    tools
+    tools,
+    toolIcon: getToolRowIcons(tool, undefined, nerdFont).toolIcon
   });
 }
