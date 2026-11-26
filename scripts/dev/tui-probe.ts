@@ -171,6 +171,11 @@ export function seededConfig(cwd: string): string {
   return `${JSON.stringify({ hasCompletedOnboarding: true, projects: { [cwd]: { hasTrustDialogAccepted: true } } }, null, 2)}\n`
 }
 
+/** The tmux arguments that type `text` into a session; after `--` a leading `-` is text, not a flag. */
+export function sendArgs(name: string, text: string): string[] {
+  return ['send-keys', '-t', name, '-l', '--', text]
+}
+
 export function isBusy(pane: string): boolean {
   return pane.includes(BUSY_MARKER)
 }
@@ -181,12 +186,24 @@ export type Watch = { last: string; stableSince: number; sawBusy: boolean; start
  * One poll of a wait. Idle once the busy hint is gone, the pane has held still
  * for SETTLE_MS, and the turn had its chance to start: it showed the hint, or
  * `graceMs` went by without it (a slash command never shows one).
+ * `matched` is `until` matching once the turn had that chance, so it cannot
+ * match the prompt the probe just typed, echoed in the pane.
  */
-export function observe(w: Watch, pane: string, now: number, graceMs: number): { watch: Watch; idle: boolean } {
+export function observe(
+  w: Watch,
+  pane: string,
+  now: number,
+  graceMs: number,
+  until: RegExp | null = null,
+): { watch: Watch; idle: boolean; matched: boolean } {
   const busy = isBusy(pane)
   const watch = { ...w, last: pane, stableSince: pane === w.last ? w.stableSince : now, sawBusy: w.sawBusy || busy }
   const started = watch.sawBusy || now - w.startedAt >= graceMs
-  return { watch, idle: !busy && started && now - watch.stableSince >= SETTLE_MS }
+  return {
+    watch,
+    idle: !busy && started && now - watch.stableSince >= SETTLE_MS,
+    matched: started && until !== null && untilMatches(until, pane),
+  }
 }
 
 function tmux(args: readonly string[]): { ok: boolean; out: string; err: string } {
@@ -208,9 +225,9 @@ async function waitFor(name: string, opts: { until: string | null; timeoutS: num
   for (;;) {
     const pane = capture(name)
     const secs = ((Date.now() - startedAt) / 1000).toFixed(1)
-    if (until && untilMatches(until, pane)) return { pane, status: `[tui-probe: match after ${secs}s]` }
-    const step = observe(watch, pane, Date.now(), opts.graceMs)
+    const step = observe(watch, pane, Date.now(), opts.graceMs, until)
     watch = step.watch
+    if (step.matched) return { pane, status: `[tui-probe: match after ${secs}s]` }
     if (!until && step.idle && (opts.ready?.(pane) ?? true)) return { pane, status: `[tui-probe: idle after ${secs}s]` }
     if (Date.now() - startedAt >= opts.timeoutS * 1000) {
       return { pane, status: `[tui-probe: timeout after ${secs}s${isBusy(pane) ? ', still busy' : ''}]` }
@@ -240,7 +257,8 @@ async function run(c: Command): Promise<string> {
       return `${shown.pane}${shown.status}`
     }
     case 'send': {
-      tmux(['send-keys', '-t', c.name, '-l', c.text])
+      const sent = tmux(sendArgs(c.name, c.text))
+      if (!sent.ok) throw new UsageError(`could not send to ${c.name}: ${sent.err}`)
       tmux(['send-keys', '-t', c.name, 'Enter'])
       if (!c.wait) return `[tui-probe: sent to ${c.name}]`
       const shown = await waitFor(c.name, { until: c.until, timeoutS: c.timeoutS, graceMs: START_GRACE_MS })
