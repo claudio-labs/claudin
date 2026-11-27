@@ -43,9 +43,9 @@
       "replace": "join('\\n').trim() || ''"
     },
     {
-      "name": "the tool's abort controller is a fresh, unaborted one (cancellation gap pin)",
-      "find": "abortController: createAbortController(),",
-      "replace": "abortController: (() => { const c = createAbortController(); c.abort(); return c })(),"
+      "name": "a client's cancel no longer aborts the running tool",
+      "find": "          requestSignal.addEventListener('abort', () => abortController.abort(requestSignal.reason), { once: true })\n",
+      "replace": "          void requestSignal\n"
     },
     {
       "name": "every call shares the server's read-file cache",

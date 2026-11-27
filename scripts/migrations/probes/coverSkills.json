@@ -43,10 +43,10 @@
       "replace": "    return []\n"
     },
     {
-      "name": "getMcpSkillCommands starts returning AppState's MCP skills",
+      "name": "getMcpSkillCommands stops returning AppState's MCP skills",
       "source": "src/commands/commands.ts",
-      "find": "  return []\n}\n\n// SkillTool shows ALL prompt-based commands",
-      "replace": "  return _mcpCommands.filter(c => c.loadedFrom === 'mcp')\n}\n\n// SkillTool shows ALL prompt-based commands"
+      "find": "      cmd.loadedFrom === 'mcp' &&\n      !cmd.disableModelInvocation,\n",
+      "replace": "      false &&\n      !cmd.disableModelInvocation,\n"
     },
     {
       "name": "getSkillToolCommands lists a disable-model-invocation skill",
@@ -57,7 +57,7 @@
     {
       "name": "an MCP skill's inline shell blocks are executed",
       "source": "src/skills/loadSkillsDir.ts",
-      "find": "      if (loadedFrom !== 'mcp') {\n",
+      "find": "      if (!isRemote) {\n",
       "replace": "      if (true) {\n"
     },
     {

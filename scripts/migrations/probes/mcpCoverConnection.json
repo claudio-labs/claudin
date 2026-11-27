@@ -6,14 +6,15 @@
   "source": "src/mcp/client/connection.ts",
   "probes": [
     {
-      "name": "initialize announces the bare elicitation capability (Spring AI wire)",
-      "find": "            elicitation: {},\n",
-      "replace": "            elicitation: { form: {}, url: {} },\n"
+      "name": "the legacy initialize rewrite announces URL elicitation (breaks the Spring AI wire)",
+      "source": "src/mcp/client/wireRules.ts",
+      "find": "export const LEGACY_INITIALIZE_CAPABILITIES = { roots: {}, elicitation: {} } as const\n",
+      "replace": "export const LEGACY_INITIALIZE_CAPABILITIES = { roots: {}, elicitation: { form: {}, url: {} } } as const\n"
     },
     {
       "name": "roots/list answers the original cwd as a file URI",
-      "find": "              uri: `file://${getOriginalCwd()}`,\n",
-      "replace": "              uri: 'file:///',\n"
+      "find": "  return { roots: [{ uri: `file://${getOriginalCwd()}` }] }\n",
+      "replace": "  return { roots: [{ uri: 'file:///' }] }\n"
     },
     {
       "name": "long instructions are cut at the cap and marked",
@@ -42,8 +43,8 @@
     },
     {
       "name": "a claude.ai proxy 401 is needs-auth",
-      "find": "          if (errorCode === 401) {\n",
-      "replace": "          if (errorCode === 999) {\n"
+      "find": "          if (httpStatusOf(error) === 401) {\n            return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')\n",
+      "replace": "          if (httpStatusOf(error) === 999) {\n            return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')\n"
     },
     {
       "name": "a local failure closes the transport and the in-process server",

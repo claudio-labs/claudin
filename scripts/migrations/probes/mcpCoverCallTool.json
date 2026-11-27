@@ -23,8 +23,8 @@
     },
     {
       "name": "callMCPTool: the SDK UnauthorizedError is no longer mapped to McpAuthError",
-      "find": "      if (errorCode === 401 || e instanceof UnauthorizedError) {\n",
-      "replace": "      if (errorCode === 401) {\n"
+      "find": "      if (httpStatusOf(e) === 401 || e instanceof UnauthorizedError) {\n",
+      "replace": "      if (httpStatusOf(e) === 401) {\n"
     },
     {
       "name": "callMCPTool: -32000 Connection closed on HTTP is no longer a session expiry",
@@ -33,8 +33,8 @@
     },
     {
       "name": "callMCPTool: an isError result drops its _meta",
-      "find": "        '_meta' in result && result._meta ? { _meta: result._meta } : undefined,\n",
-      "replace": "        undefined,\n"
+      "find": "    result._meta ? { _meta: result._meta } : undefined,\n",
+      "replace": "    undefined,\n"
     },
     {
       "name": "callMCPTool: an expired session leaves the cached connection in place",
@@ -67,8 +67,8 @@
     {
       "name": "handler: an error while queueing answers decline instead of cancel",
       "source": "src/mcp/elicitationHandler.ts",
-      "find": "        return { action: 'cancel' as const }\n",
-      "replace": "        return { action: 'decline' as const }\n"
+      "find": "    return { action: 'cancel' as const }\n",
+      "replace": "    return { action: 'decline' as const }\n"
     }
   ]
 }

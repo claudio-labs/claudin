@@ -44,7 +44,7 @@
     },
     {
       "name": "a missing templates/list is logged as an error",
-      "find": "      if (!(error instanceof McpError && error.code === ErrorCode.MethodNotFound)) {",
+      "find": "      if (!(error instanceof ProtocolError && error.code === ProtocolErrorCode.MethodNotFound)) {",
       "replace": "      if (true) {"
     },
     {

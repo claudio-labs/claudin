@@ -53,8 +53,8 @@
     {
       "name": "B2: an unconvertible output schema throws out of tools/list again",
       "source": "src/platform/entrypoints/mcp.ts",
-      "find": "          logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)\n",
-      "replace": "          throw error\n"
+      "find": "    logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)\n",
+      "replace": "    throw error\n"
     },
     {
       "name": "B2: an unconvertible input schema throws out of tools/list again",
@@ -71,8 +71,8 @@
     {
       "name": "B3/P2: an http server's toolTimeout does not reach its fetch cap",
       "source": "src/mcp/client/transport.ts",
-      "find": "        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },\n      ),\n      requestInit: {\n        ...proxyOptions,\n",
-      "replace": "      ),\n      requestInit: {\n        ...proxyOptions,\n"
+      "find": "        toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef),\n      }),\n      requestInit: {\n        ...proxyOptions,\n",
+      "replace": "      }),\n      requestInit: {\n        ...proxyOptions,\n"
     },
     {
       "name": "B4: the SDK's headers are dropped from the event stream again",

@@ -20,8 +20,8 @@
     },
     {
       "name": "a cached verdict is not handed to the SDK, so every connect probes again",
-      "find": "        plan.prior ? { prior: plan.prior } : undefined,\n",
-      "replace": "        undefined,\n"
+      "find": "        .connect(transport, plan.prior ? { prior: plan.prior } : undefined)\n",
+      "replace": "        .connect(transport, undefined)\n"
     },
     {
       "name": "a probe answered 500 fails the connect instead of falling back to initialize",
