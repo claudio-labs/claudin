@@ -27,10 +27,12 @@ export const TransportSchema = lazySchema(() =>
 export type Transport = z.infer<ReturnType<typeof TransportSchema>>
 
 // Per-server timeouts in ms, over MCP_TIMEOUT / MCP_TOOL_TIMEOUT
-// (src/mcp/client/serverOptions.ts).
+// (src/mcp/client/serverOptions.ts). Capped at the longest delay setTimeout
+// can wait: past it, a timer fires after 1 ms.
+const MAX_TIMER_MS = 2_147_483_647
 const timeoutFields = () => ({
-  startupTimeout: z.number().int().positive().optional(),
-  toolTimeout: z.number().int().positive().optional(),
+  startupTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),
+  toolTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),
 })
 
 export const McpStdioServerConfigSchema = lazySchema(() =>
