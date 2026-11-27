@@ -41,8 +41,10 @@ const SESSION_ID = 'sess-1234'
 type Seen = { method: string; sessionId: string | null; rpc?: string }
 
 // Issues Mcp-Session-Id on initialize and records every request, reading the
-// headers while the request is live.
-function startSessionServer(): { url: string; requests: Seen[] } {
+// headers while the request is live. `onDelete` answers the DELETE.
+function startSessionServer(
+  onDelete: () => Response | Promise<Response> = () => new Response(null, { status: 200 }),
+): { url: string; requests: Seen[] } {
   const requests: Seen[] = []
   const srv = Bun.serve({
     hostname: '127.0.0.1',
@@ -50,7 +52,7 @@ function startSessionServer(): { url: string; requests: Seen[] } {
     async fetch(req) {
       const seen: Seen = { method: req.method, sessionId: req.headers.get('mcp-session-id') }
       requests.push(seen)
-      if (req.method === 'DELETE') return new Response(null, { status: 200 })
+      if (req.method === 'DELETE') return onDelete()
       if (req.method !== 'POST') return new Response(null, { status: 405 })
       const message = (await req.json()) as { id?: number; method: string }
       seen.rpc = message.method
@@ -86,5 +88,23 @@ describe('Streamable HTTP session termination', () => {
     if (connection.type !== 'connected') return
     await connection.cleanup()
     expect(server.requests.filter(r => r.method === 'DELETE')).toEqual([{ method: 'DELETE', sessionId: SESSION_ID }])
+  })
+
+  test('a server that refuses the DELETE (405) still closes cleanly', async () => {
+    const server = startSessionServer(() => new Response(null, { status: 405 }))
+    const connection = await connectToServer('session-405', { type: 'http', url: server.url, scope: 'user' })
+    if (connection.type !== 'connected') throw new Error(`not connected: ${connection.type}`)
+    await connection.cleanup()
+    expect(server.requests.filter(r => r.method === 'DELETE')).toHaveLength(1)
+  })
+
+  test('a server that never answers the DELETE holds cleanup for at most its budget', async () => {
+    const server = startSessionServer(() => new Promise<Response>(() => {}))
+    const connection = await connectToServer('session-hang', { type: 'http', url: server.url, scope: 'user' })
+    if (connection.type !== 'connected') throw new Error(`not connected: ${connection.type}`)
+    const started = Date.now()
+    await connection.cleanup()
+    expect(Date.now() - started).toBeLessThan(1_500)
+    expect(server.requests.filter(r => r.method === 'DELETE')).toHaveLength(1)
   })
 })

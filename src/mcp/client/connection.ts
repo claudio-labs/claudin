@@ -1,6 +1,7 @@
 import { feature } from 'bun:bundle'
 import {
   Client,
+  StreamableHTTPClientTransport,
   type Transport,
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
@@ -104,6 +105,35 @@ function handleRemoteAuthFailure(
   )
   setMcpAuthCacheEntry(name)
   return { name, type: 'needs-auth', config: serverRef }
+}
+
+// Shutdown gives every registered cleanup 2 s in total (gracefulShutdown.ts).
+const SESSION_DELETE_TIMEOUT_MS = 1000
+
+/**
+ * Ends a Streamable HTTP session with the DELETE the transports spec asks of
+ * a client that no longer needs it. A 2026-07-28 connection has no session,
+ * so nothing is sent. A failure only costs the server a session it expires.
+ */
+async function endHttpSession(
+  name: string,
+  transport: StreamableHTTPClientTransport,
+): Promise<void> {
+  if (transport.sessionId === undefined) return
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      transport.terminateSession(),
+      new Promise<void>(resolve => {
+        timer = setTimeout(resolve, SESSION_DELETE_TIMEOUT_MS)
+        timer.unref?.()
+      }),
+    ])
+  } catch (error) {
+    logMCPDebug(name, `Error ending the HTTP session: ${errorMessage(error)}`)
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /**
@@ -739,6 +769,10 @@ export const connectToServer = memoize(
           } catch (processError) {
             logMCPDebug(name, `Error terminating process: ${processError}`)
           }
+        }
+
+        if (transport instanceof StreamableHTTPClientTransport) {
+          await endHttpSession(name, transport)
         }
 
         // Close the client connection (which also closes the transport)
