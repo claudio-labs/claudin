@@ -6,7 +6,7 @@
  * end: `tasks/get` at the server's `pollIntervalMs` (floor 1 s, cap 30 s,
  * 2 s when it names none), its `statusMessage` reported as progress, every
  * `input_required` request answered once and sent back with `tasks/update`,
- * and `tasks/cancel` when the caller aborts.
+ * and `tasks/cancel` when the caller aborts or a poll request fails.
  *
  * An input request Claudin cannot answer (anything but an elicitation or
  * `roots/list`: sampling is not declared) cancels the task at once, so
@@ -143,7 +143,7 @@ export function taskStep(task: McpTask, answered: ReadonlySet<string>): TaskStep
 export type TaskPollDeps = {
   getTask: (taskId: string, signal: AbortSignal) => Promise<McpTask>
   updateTask: (taskId: string, inputResponses: Record<string, unknown>, signal: AbortSignal) => Promise<void>
-  /** Best effort; a failure is logged and the poll still ends as aborted. */
+  /** Best effort; a failure is logged and the poll still ends as it would have. */
   cancelTask: (taskId: string) => Promise<void>
   /** The bare response for one input request, or undefined to leave it unanswered. */
   answerInput: (key: string, request: McpTaskInputRequest, signal: AbortSignal) => Promise<unknown>
@@ -193,6 +193,16 @@ async function cancelled(state: TaskPollState, deps: TaskPollDeps): Promise<Task
   return { kind: 'aborted' }
 }
 
+/**
+ * A tasks/get or tasks/update that failed ends the poll with its error, and
+ * nothing polls the task after that: it is cancelled first, or it would run
+ * on the server until its ttl.
+ */
+async function abandoned(state: TaskPollState, deps: TaskPollDeps, error: unknown): Promise<never> {
+  await cancelPolledTask(state.task.taskId, deps)
+  throw error
+}
+
 export async function pollTask(
   state: TaskPollState,
   deps: TaskPollDeps,
@@ -225,7 +235,7 @@ export async function pollTask(
           await deps.updateTask(task.taskId, responses, signal)
         } catch (error) {
           if (signal.aborted) return cancelled(state, deps)
-          throw error
+          return abandoned(state, deps, error)
         }
       }
     }
@@ -245,7 +255,7 @@ export async function pollTask(
       state.task = await deps.getTask(task.taskId, signal)
     } catch (error) {
       if (signal.aborted) return cancelled(state, deps)
-      throw error
+      return abandoned(state, deps, error)
     }
   }
 }

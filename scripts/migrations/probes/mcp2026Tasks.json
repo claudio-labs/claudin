@@ -105,6 +105,18 @@
       "name": "call: the background poll runs on the turn's signal, so TaskStop cannot cancel it",
       "find": "  settled = finishInBackground(context, state, handle, background.signal).catch((error: unknown) =>\n",
       "replace": "  settled = finishInBackground(context, state, handle, signal).catch((error: unknown) =>\n"
+    },
+    {
+      "name": "poll: a failed tasks/get leaves the task running on the server",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "      if (signal.aborted) return cancelled(state, deps)\n      return abandoned(state, deps, error)\n",
+      "replace": "      if (signal.aborted) return cancelled(state, deps)\n      throw error\n"
+    },
+    {
+      "name": "poll: a failed tasks/update leaves the task running on the server",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "          if (signal.aborted) return cancelled(state, deps)\n          return abandoned(state, deps, error)\n",
+      "replace": "          if (signal.aborted) return cancelled(state, deps)\n          throw error\n"
     }
   ]
 }
