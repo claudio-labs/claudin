@@ -7,6 +7,7 @@
  * Only configured http and sse servers sign in this way.
  */
 import { errorMessage } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import type {
   McpHTTPServerConfig,
   McpSSEServerConfig,
@@ -46,19 +47,35 @@ function oauthServer(name: string, deps: McpCliAuthDeps): OAuthServerConfig | st
 export async function runMcpLogin(name: string, deps: McpCliAuthDeps): Promise<McpCliAuthResult> {
   const config = oauthServer(name, deps)
   if (typeof config === 'string') return { ok: false, message: config }
+  // The flow hands over the callback submitter before it has the URL; the
+  // paste prompt waits for both, so it never reads above the URL it is about.
+  let urlShown = false
+  let submit: ((callbackUrl: string) => void) | undefined
+  const askForPaste = (): void => {
+    if (!urlShown || !submit || !deps.readLine) return
+    const submitPasted = submit
+    submit = undefined
+    deps
+      .readLine('Or paste the URL your browser was sent to after authorizing, then press Enter:\n')
+      .then(line => {
+        if (line?.trim()) submitPasted(line.trim())
+      })
+      .catch(logError)
+  }
   try {
     await deps.performFlow(
       name,
       config,
-      url => deps.write(`Opening your browser to authorize "${name}". If it does not open, visit:\n  ${url}\n`),
+      url => {
+        deps.write(`Opening your browser to authorize "${name}". If it does not open, visit:\n  ${url}\n`)
+        urlShown = true
+        askForPaste()
+      },
       undefined,
       {
-        onWaitingForCallback: submit => {
-          void deps
-            .readLine?.('Or paste the URL your browser was sent to after authorizing, then press Enter:\n')
-            .then(line => {
-              if (line?.trim()) submit(line.trim())
-            })
+        onWaitingForCallback: submitCallback => {
+          submit = submitCallback
+          askForPaste()
         },
       },
     )

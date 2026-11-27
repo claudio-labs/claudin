@@ -2,7 +2,13 @@
  * MCP login and logout CLI subcommands.
  */
 import { type Command } from '@commander-js/extra-typings'
-import type { McpCliAuthDeps, McpCliAuthResult } from 'src/mcp/auth/cliLogin.js'
+import {
+  type McpCliAuthDeps,
+  type McpCliAuthResult,
+  runMcpLogin,
+  runMcpLogout,
+} from 'src/mcp/auth/cliLogin.js'
+import { cliError, cliOk } from 'src/platform/headless/exit.js'
 
 export async function cliAuthDeps(): Promise<McpCliAuthDeps> {
   const [{ getMcpConfigByName }, { performMCPOAuthFlow }, { revokeServerTokens }, { createInterface }] =
@@ -32,9 +38,18 @@ export async function cliAuthDeps(): Promise<McpCliAuthDeps> {
   }
 }
 
-async function finish(result: Promise<McpCliAuthResult>): Promise<void> {
-  const { ok, message } = await result
-  const { cliError, cliOk } = await import('src/platform/headless/exit.js')
+export async function finish(result: Promise<McpCliAuthResult>): Promise<void> {
+  // The OAuth callback server and its timeout are unref'd, so off a terminal
+  // nothing else kept the process alive: it exited before the browser came
+  // back. This holds it until the flow settles.
+  const keepAlive = setInterval(() => {}, 60_000)
+  let outcome: McpCliAuthResult
+  try {
+    outcome = await result
+  } finally {
+    clearInterval(keepAlive)
+  }
+  const { ok, message } = outcome
   if (ok) cliOk(message)
   else cliError(message)
 }
@@ -44,14 +59,12 @@ export function registerMcpLoginCommands(mcp: Command): void {
     .command('login <name>')
     .description('Sign in to an http or sse MCP server with OAuth (opens the browser)')
     .action(async (name: string) => {
-      const { runMcpLogin } = await import('src/mcp/auth/cliLogin.js')
       await finish(runMcpLogin(name, await cliAuthDeps()))
     })
   mcp
     .command('logout <name>')
     .description("Sign out of an MCP server: revoke its OAuth tokens and delete them")
     .action(async (name: string) => {
-      const { runMcpLogout } = await import('src/mcp/auth/cliLogin.js')
       await finish(runMcpLogout(name, await cliAuthDeps()))
     })
 }

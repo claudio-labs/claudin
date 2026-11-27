@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
+import type { Server } from 'bun'
 import { runMcpLogin } from 'src/mcp/auth/cliLogin.js'
 import { performMCPOAuthFlow } from 'src/mcp/auth/oauthFlow.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
@@ -10,10 +11,10 @@ import { _setSecureStorageForTesting, type SecureStorageData } from 'src/platfor
 let stored: SecureStorageData = {}
 const savedBrowser = process.env.BROWSER
 
-const srv = Bun.serve({
+const srv: Server<undefined> = Bun.serve({
   hostname: '127.0.0.1',
   port: 0,
-  async fetch(req) {
+  async fetch(req): Promise<Response> {
     const url = new URL(req.url)
     const origin = `http://127.0.0.1:${srv.port}`
     if (url.pathname.startsWith('/.well-known/oauth-protected-resource')) {

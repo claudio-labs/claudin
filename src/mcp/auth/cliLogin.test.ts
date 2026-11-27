@@ -81,18 +81,59 @@ describe('runMcpLogin', () => {
         prompts.push(prompt)
         return '  http://localhost:4000/callback?code=abc&state=s  '
       },
-      performFlow: async (_name, _config, _onUrl, _signal, options) => {
-        await new Promise<void>(resolve =>
+      performFlow: async (_name, _config, onUrl, _signal, options) => {
+        await new Promise<void>(resolve => {
           options?.onWaitingForCallback?.(url => {
             submitted.push(url)
             resolve()
-          }),
-        )
+          })
+          onUrl('https://auth.example/authorize')
+        })
       },
     })
     expect((await runMcpLogin('srv', d)).ok).toBe(true)
     expect(submitted).toEqual(['http://localhost:4000/callback?code=abc&state=s'])
     expect(prompts[0]).toContain('paste the URL')
+  })
+
+  test('the paste prompt waits for the URL, whichever the flow hands over first', async () => {
+    const order: string[] = []
+    const flow =
+      (urlFirst: boolean): McpCliAuthDeps['performFlow'] =>
+      async (_name, _config, onUrl, _signal, options) => {
+        if (urlFirst) onUrl('https://auth.example/a')
+        options?.onWaitingForCallback?.(() => {})
+        if (!urlFirst) onUrl('https://auth.example/a')
+        await Bun.sleep(5)
+      }
+    for (const urlFirst of [false, true]) {
+      const { deps: d } = deps({
+        performFlow: flow(urlFirst),
+        readLine: async () => {
+          order.push('prompt')
+          return null
+        },
+        write: () => {
+          order.push('url')
+        },
+      })
+      await runMcpLogin('srv', d)
+    }
+    expect(order).toEqual(['url', 'prompt', 'url', 'prompt'])
+  })
+
+  test('a terminal read that fails is logged, not left unhandled', async () => {
+    const { deps: d } = deps({
+      performFlow: async (_name, _config, onUrl, _signal, options) => {
+        options?.onWaitingForCallback?.(() => {})
+        onUrl('https://auth.example/a')
+        await Bun.sleep(5)
+      },
+      readLine: async () => {
+        throw new Error('stdin closed')
+      },
+    })
+    expect((await runMcpLogin('srv', d)).ok).toBe(true)
   })
 
   test('an empty line is not submitted, and without a terminal nothing is asked', async () => {
