@@ -773,6 +773,16 @@ export async function runTaskAugmentedCall({
   // stop: the poll then sends the one tasks/cancel, and the exit waits for
   // it as it waits for a monitor_mcp task's.
   const inlineStop = new AbortController()
+  // Without a background the tool timeout ends the call even inside a
+  // request: a tasks/get that never answers is cut there, not at its own
+  // TASK_REQUEST_TIMEOUT_MS.
+  let timedOut = false
+  const deadline = mayBackground
+    ? undefined
+    : setTimeout(() => {
+        timedOut = true
+        inlineStop.abort()
+      }, toolTimeoutMs)
   const inlinePoll = pollTask(
     state,
     {
@@ -796,8 +806,14 @@ export async function runTaskAugmentedCall({
   try {
     inline = await inlinePoll
   } finally {
+    clearTimeout(deadline)
     // Settled or about to be handed off: the monitor_mcp task stops it at exit from here.
     unregisterExit()
+  }
+  if (inline.kind === 'aborted' && timedOut && !signal.aborted) {
+    // Cut mid-request or mid-sleep: the poll has sent the tasks/cancel.
+    logMCPError(name, `MCP task ${task.taskId} cancelled at the tool timeout`)
+    throw toolTimeoutError(name, tool, toolTimeoutMs)
   }
   if (inline.kind !== 'pending') return taskOutcomeResult(inline, name, tool)
   if (!mayBackground) {
