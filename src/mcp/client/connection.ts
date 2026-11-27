@@ -193,7 +193,7 @@ export const connectToServer = memoize(
       // Add a timeout to connection attempts to prevent tests from hanging indefinitely
       logMCPDebug(
         name,
-        `Starting connection with timeout of ${getMcpConnectTimeoutMs()}ms`,
+        `Starting connection with timeout of ${getMcpConnectTimeoutMs(serverRef)}ms`,
       )
 
       // For HTTP transport, try a basic connectivity test first
@@ -224,7 +224,7 @@ export const connectToServer = memoize(
           const elapsed = Date.now() - connectStartTime
           logMCPDebug(
             name,
-            `Connection timeout triggered after ${elapsed}ms (limit: ${getMcpConnectTimeoutMs()}ms)`,
+            `Connection timeout triggered after ${elapsed}ms (limit: ${getMcpConnectTimeoutMs(serverRef)}ms)`,
           )
           if (inProcessServer) {
             inProcessServer.close().catch(() => { })
@@ -232,11 +232,11 @@ export const connectToServer = memoize(
           transport.close().catch(() => { })
           reject(
             new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
-              `MCP server "${name}" connection timed out after ${getMcpConnectTimeoutMs()}ms`,
+              `MCP server "${name}" connection timed out after ${getMcpConnectTimeoutMs(serverRef)}ms`,
               'MCP connection timeout',
             ),
           )
-        }, getMcpConnectTimeoutMs())
+        }, getMcpConnectTimeoutMs(serverRef))
 
         // Clean up timeout if connect resolves or rejects
         connectPromise.then(

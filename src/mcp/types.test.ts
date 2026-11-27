@@ -54,6 +54,34 @@ describe('stdio server config', () => {
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe('Command cannot be empty')
   })
+
+  test('keeps a cwd and the per-server timeouts', () => {
+    const config: McpStdioServerConfig = {
+      command: 'npx',
+      args: [],
+      cwd: '~/tools/slow',
+      startupTimeout: 60_000,
+      toolTimeout: 900_000,
+    }
+    expect(McpStdioServerConfigSchema().parse(config)).toEqual(config)
+    expect(McpStdioServerConfigSchema().safeParse({ command: 'npx', cwd: '' }).success).toBe(false)
+  })
+})
+
+describe('per-server timeouts', () => {
+  test('the remote types take them too', () => {
+    const timeouts = { startupTimeout: 1, toolTimeout: 2 }
+    expect(McpSSEServerConfigSchema().parse({ type: 'sse', url: 'u', ...timeouts })).toMatchObject(timeouts)
+    expect(McpHTTPServerConfigSchema().parse({ type: 'http', url: 'u', ...timeouts })).toMatchObject(timeouts)
+    expect(McpWebSocketServerConfigSchema().parse({ type: 'ws', url: 'u', ...timeouts })).toMatchObject(timeouts)
+  })
+
+  test('must be positive whole milliseconds', () => {
+    for (const value of [0, -1, 1.5, '60000']) {
+      expect(McpStdioServerConfigSchema().safeParse({ command: 'npx', startupTimeout: value }).success).toBe(false)
+      expect(McpHTTPServerConfigSchema().safeParse({ type: 'http', url: 'u', toolTimeout: value }).success).toBe(false)
+    }
+  })
 })
 
 describe('remote server configs', () => {

@@ -5,7 +5,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import type { Server } from 'bun'
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { createServer, type Server as NetServer, type Socket } from 'net'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -588,6 +588,36 @@ describe('createTransport — http', () => {
 
     expect(server.requests[0]!.headers.get('authorization')).toBeNull()
   })
+
+  test('a tools/call POST is capped at the server’s toolTimeout', async () => {
+    // Answers a tools/call as JSON, and only after 2 s.
+    const srv = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      async fetch(req) {
+        const body = await req.text()
+        if (!body.includes('tools/call')) return new Response(null, { status: 202 })
+        await Bun.sleep(2000)
+        return Response.json({ jsonrpc: '2.0', id: 1, result: { content: [] } })
+      },
+    })
+    servers.push(srv)
+    memoryStorage({})
+
+    const transport = await build('slow-http', {
+      type: 'http',
+      url: `http://127.0.0.1:${srv.port}/mcp`,
+      toolTimeout: 100,
+      scope: 'user',
+    })
+    transport.onerror = () => {}
+    await transport.start()
+    const started = Date.now()
+    await expect(
+      transport.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'slow' } }),
+    ).rejects.toThrow()
+    expect(Date.now() - started).toBeLessThan(1500)
+  })
 })
 
 describe('createTransport — claudeai-proxy', () => {
@@ -750,5 +780,27 @@ process.stdin.on('end', () => process.exit(0))
     expect((message as { params?: { blob?: string } }).params?.blob).toHaveLength(
       11 * 1024 * 1024,
     )
+  })
+
+  test('runs the server in its configured cwd', async () => {
+    const child = join(tempDir(), 'cwd.js')
+    writeFileSync(
+      child,
+      `process.stdout.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/cwd', params: { cwd: process.cwd() } }) + '\\n')
+process.stdin.on('data', () => {})
+process.stdin.on('end', () => process.exit(0))
+`,
+    )
+    const workDir = realpathSync(tempDir())
+
+    const transport = await build('in-dir', {
+      type: 'stdio',
+      command: process.execPath,
+      args: [child],
+      cwd: workDir,
+      scope: 'user',
+    })
+
+    expect(await firstMessage(transport)).toMatchObject({ params: { cwd: workDir } })
   })
 })

@@ -25,12 +25,22 @@ export const TransportSchema = lazySchema(() =>
 )
 export type Transport = z.infer<ReturnType<typeof TransportSchema>>
 
+// Per-server timeouts in ms, over MCP_TIMEOUT / MCP_TOOL_TIMEOUT
+// (src/mcp/client/serverOptions.ts).
+const timeoutFields = () => ({
+  startupTimeout: z.number().int().positive().optional(),
+  toolTimeout: z.number().int().positive().optional(),
+})
+
 export const McpStdioServerConfigSchema = lazySchema(() =>
   z.object({
     type: z.literal('stdio').optional(), // Optional for backwards compatibility
     command: z.string().min(1, 'Command cannot be empty'),
     args: z.array(z.string()).default([]),
     env: z.record(z.string(), z.string()).optional(),
+    // Where the server runs: `~` is the home dir, a relative path is under the project dir.
+    cwd: z.string().min(1).optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -55,6 +65,7 @@ export const McpSSEServerConfigSchema = lazySchema(() =>
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -86,6 +97,7 @@ export const McpHTTPServerConfigSchema = lazySchema(() =>
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -95,6 +107,7 @@ export const McpWebSocketServerConfigSchema = lazySchema(() =>
     url: z.string(),
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
+    ...timeoutFields(),
   }),
 )
 

@@ -1,8 +1,14 @@
 /**
- * MCP timeouts, resolved once here for every caller: `MCP_TIMEOUT` caps a
- * server's connect and `MCP_TOOL_TIMEOUT` a tool call, both in ms, over the
- * defaults below. A value that is not a positive number is ignored.
+ * Per-server MCP options, resolved once here for every caller.
+ *
+ * Timeouts, in ms: a server's own `startupTimeout` (its connect) and
+ * `toolTimeout` (each tool call) win over `MCP_TIMEOUT` / `MCP_TOOL_TIMEOUT`,
+ * which win over the defaults below. An env value that is not a positive
+ * number is ignored. A stdio server's `cwd` resolves `~` to the home dir and
+ * a relative path against the project dir.
  */
+import { isAbsolute, join, resolve } from 'path'
+import type { McpServerConfig } from 'src/mcp/types.js'
 
 export const DEFAULT_MCP_CONNECT_TIMEOUT_MS = 30_000
 
@@ -18,10 +24,23 @@ function positiveMs(raw: string | undefined): number | undefined {
   return parsed > 0 ? parsed : undefined
 }
 
-export function getMcpConnectTimeoutMs(): number {
-  return positiveMs(process.env.MCP_TIMEOUT) ?? DEFAULT_MCP_CONNECT_TIMEOUT_MS
+export function getMcpConnectTimeoutMs(config?: McpServerConfig): number {
+  const own = config && 'startupTimeout' in config ? config.startupTimeout : undefined
+  return own ?? positiveMs(process.env.MCP_TIMEOUT) ?? DEFAULT_MCP_CONNECT_TIMEOUT_MS
 }
 
-export function getMcpToolTimeoutMs(): number {
-  return positiveMs(process.env.MCP_TOOL_TIMEOUT) ?? DEFAULT_MCP_TOOL_TIMEOUT_MS
+export function getMcpToolTimeoutMs(config?: McpServerConfig): number {
+  const own = config && 'toolTimeout' in config ? config.toolTimeout : undefined
+  return own ?? positiveMs(process.env.MCP_TOOL_TIMEOUT) ?? DEFAULT_MCP_TOOL_TIMEOUT_MS
+}
+
+export function resolveStdioCwd(
+  cwd: string | undefined,
+  projectDir: string,
+  homeDir: string,
+): string | undefined {
+  if (!cwd) return undefined
+  if (cwd === '~') return homeDir
+  if (cwd.startsWith('~/')) return join(homeDir, cwd.slice(2))
+  return isAbsolute(cwd) ? cwd : resolve(projectDir, cwd)
 }

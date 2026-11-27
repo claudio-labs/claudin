@@ -13,7 +13,8 @@ import {
   type Transport,
 } from '@modelcontextprotocol/sdk/shared/transport.js'
 import mapValues from 'lodash-es/mapValues.js'
-import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { homedir } from 'os'
+import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { getMCPUserAgent } from 'src/shared/http.js'
@@ -27,6 +28,7 @@ import { subprocessEnv } from 'src/shared/proc/subprocessEnv.js'
 import { ClaudeAuthProvider, wrapFetchWithStepUpDetection } from 'src/mcp/auth.js'
 import { getMcpServerHeaders } from 'src/mcp/headersHelper.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
+import { getMcpToolTimeoutMs, resolveStdioCwd } from 'src/mcp/client/serverOptions.js'
 import {
   createClaudeAiProxyFetch,
   MCP_REQUEST_TIMEOUT_MS,
@@ -72,6 +74,7 @@ export async function createTransport(
       // SDK's handler calls auth() → tokens().
       fetch: wrapFetchWithTimeout(
         wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
+        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },
       ),
       requestInit: {
         headers: {
@@ -238,6 +241,7 @@ export async function createTransport(
       // SDK's handler calls auth() → tokens().
       fetch: wrapFetchWithTimeout(
         wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
+        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },
       ),
       requestInit: {
         ...proxyOptions,
@@ -324,6 +328,7 @@ export async function createTransport(
     transport = new StdioClientTransport({
       command: finalCommand,
       args: finalArgs,
+      cwd: resolveStdioCwd(serverRef.cwd, getOriginalCwd(), homedir()),
       env: {
         ...subprocessEnv(),
         ...serverRef.env,

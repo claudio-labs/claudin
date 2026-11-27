@@ -575,6 +575,7 @@ function expandEnvVars(config: McpServerConfig): {
         env: stdioConfig.env
           ? mapValues(stdioConfig.env, expandString)
           : undefined,
+        cwd: stdioConfig.cwd ? expandString(stdioConfig.cwd) : undefined,
       }
       break
     }
