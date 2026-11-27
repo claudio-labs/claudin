@@ -21,14 +21,14 @@
     {
       "name": "connect: the tasks extension is never declared",
       "source": "src/mcp/client/connection.ts",
-      "find": "            ...(getMcpExtensionEnabled(serverRef, 'tasks') && {\n",
-      "replace": "            ...(false && {\n"
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),\n",
+      "replace": "        ...(false && { [MCP_TASKS_EXTENSION]: {} }),\n"
     },
     {
       "name": "connect: extensions.tasks false still declares it",
       "source": "src/mcp/client/connection.ts",
-      "find": "            ...(getMcpExtensionEnabled(serverRef, 'tasks') && {\n",
-      "replace": "            ...(true && {\n"
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),\n",
+      "replace": "        ...(true && { [MCP_TASKS_EXTENSION]: {} }),\n"
     },
     {
       "name": "poll: the 1 s floor is ignored",

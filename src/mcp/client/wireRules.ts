@@ -18,7 +18,8 @@
  * `resultType: 'task'`) has no decoder in the SDK, which rejects it; the rule
  * hands the SDK an empty complete result carrying the task under
  * MCP_TASK_META_KEY instead, and taskPoll.ts takes it from there. The
- * `tasks/*` answers get the same defaults as a list page.
+ * `tasks/*` answers get the same defaults as a list page, and so do the
+ * `events/*` ones (SEP-3415, events.ts), which the SDK knows nothing of.
  *
  * To rewrite another method, add a row to WIRE_RULES or SEND_RULES.
  */
@@ -110,6 +111,9 @@ export const WIRE_RULES: Readonly<Record<string, WireRule>> = {
   'tasks/get': fillListResultFields,
   'tasks/update': fillListResultFields,
   'tasks/cancel': fillListResultFields,
+  'events/list': fillListResultFields,
+  'events/poll': fillListResultFields,
+  'events/stream': fillListResultFields,
 }
 
 /**

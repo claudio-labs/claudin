@@ -1,0 +1,87 @@
+{
+  "test": [
+    "src/mcp/client/events.test.ts",
+    "src/tools/MonitorTool/mcpEventMonitor.test.ts",
+    "src/tools/ListMcpResourcesTool/ListMcpResourcesTool.events.test.ts",
+    "src/mcp/client/fetch.test.ts",
+    "src/mcp/client/wireRules.test.ts"
+  ],
+  "source": "src/mcp/client/events.ts",
+  "probes": [
+    {
+      "name": "stream: the routing token goes out on the wire",
+      "find": "    return send({ ...message, params: { ...params, _meta: rest } } as typeof message, options)\n",
+      "replace": "    return send(message, options)\n"
+    },
+    {
+      "name": "stream: every stream hears every subscription's notifications",
+      "find": "      if (typeof id === 'string' || typeof id === 'number') sinks.get(id)?.(method, params)\n",
+      "replace": "      for (const sink of sinks.values()) sink(method, params)\n"
+    },
+    {
+      "name": "stream: heartbeat silence never reconnects",
+      "find": "    cancelWatchdog = deps.after(silence, () => settle({ kind: 'dropped', why: `no heartbeat for ${silence} ms` }))\n",
+      "replace": "    void silence\n"
+    },
+    {
+      "name": "stream: a null cursor replaces the last real one for the resume",
+      "find": "              if (typeof event.cursor === 'string') cursor = event.cursor\n",
+      "replace": "              if (event.cursor !== undefined) cursor = event.cursor ?? undefined\n"
+    },
+    {
+      "name": "dedupe: an event a resume replays is delivered again",
+      "find": "    if (controller.signal.aborted || seen.has(event.eventId)) return\n",
+      "replace": "    if (controller.signal.aborted) return\n"
+    },
+    {
+      "name": "refusal: a 2025 server is asked for events",
+      "find": "  if (server.client.getProtocolEra() !== 'modern') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "poll: hasMore waits for the next poll instead of asking again at once",
+      "find": "    if (result.hasMore && cursor !== previous) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "poll: the 1 s floor is ignored",
+      "find": "  return Math.max(EVENTS_POLL_FLOOR_MS, nextPollMs ?? EVENTS_POLL_DEFAULT_MS)\n",
+      "replace": "  return nextPollMs ?? EVENTS_POLL_DEFAULT_MS\n"
+    },
+    {
+      "name": "poll: a truncated page is not flagged as a possible gap",
+      "find": "    if (result.truncated) sink.onGap()\n",
+      "replace": ""
+    },
+    {
+      "name": "connect: the events extension is never declared",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'events') && { [MCP_EVENTS_EXTENSION]: {} }),\n",
+      "replace": ""
+    },
+    {
+      "name": "http: events/* POSTs go out without Mcp-Name",
+      "source": "src/mcp/client/transport.ts",
+      "find": "  return wrapFetchWithEventName(\n",
+      "replace": "  return ((f: FetchLike) => f)(\n"
+    },
+    {
+      "name": "http: the caller's abort is dropped once an SSE answer's headers are in, so TaskStop leaves the stream open",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "      return untilBodyEnds(response, cleanup)\n",
+      "replace": "      cleanup()\n      return response\n"
+    },
+    {
+      "name": "monitor: 20 events in a minute do not stop it",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "        if (eventTimes.length >= MONITOR_FLOOD_EVENTS) stopItself('flood')\n",
+      "replace": ""
+    },
+    {
+      "name": "monitor: TaskStop leaves the event stream open",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    onStop: halt,\n",
+      "replace": "    onStop: () => {},\n"
+    }
+  ]
+}

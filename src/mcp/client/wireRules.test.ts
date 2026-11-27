@@ -23,8 +23,11 @@ const good = { name: 'good', inputSchema: { type: 'object' } }
 const bad = { name: 'bad', inputSchema: { type: 'string' } }
 
 describe('the rule table', () => {
-  test('has a rule for each list method, tools/call and the task methods, and none for anything else', () => {
+  test('has a rule for each list method, tools/call, the task and the event methods, and none for anything else', () => {
     expect(Object.keys(WIRE_RULES).sort()).toEqual([
+      'events/list',
+      'events/poll',
+      'events/stream',
       'prompts/list',
       'resources/list',
       'resources/templates/list',
@@ -37,11 +40,22 @@ describe('the rule table', () => {
   })
 
   test('the task methods get the result fields a modern answer must carry', () => {
-    for (const method of ['tasks/get', 'tasks/update', 'tasks/cancel']) {
+    for (const method of ['tasks/get', 'tasks/update', 'tasks/cancel', 'events/stream']) {
       const result: WireResult = { taskId: 't', status: 'working' }
       run(method, result)
       expect(result).toEqual({ taskId: 't', status: 'working', resultType: 'complete', ttlMs: 0, cacheScope: 'private' })
     }
+  })
+
+  // The SDK rejects a 2026-07-28 answer without resultType, and knows
+  // nothing of the events extension (events.ts).
+  test('the event methods keep their own fields and get the ones a modern answer must carry', () => {
+    const list: WireResult = { events: [{ name: 'build' }] }
+    run('events/list', list)
+    expect(list).toEqual({ events: [{ name: 'build' }], resultType: 'complete', ttlMs: 0, cacheScope: 'private' })
+    const poll: WireResult = { events: [], cursor: 'c2', hasMore: false, resultType: 'complete', ttlMs: 0, cacheScope: 'public' }
+    run('events/poll', poll)
+    expect(poll).toEqual({ events: [], cursor: 'c2', hasMore: false, resultType: 'complete', ttlMs: 0, cacheScope: 'public' })
   })
 })
 

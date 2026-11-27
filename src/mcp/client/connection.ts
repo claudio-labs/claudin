@@ -32,6 +32,7 @@ import {
   getMcpProtocolMode,
 } from 'src/mcp/client/serverOptions.js'
 import { MCP_TASKS_EXTENSION } from 'src/mcp/client/taskPoll.js'
+import { MCP_EVENTS_EXTENSION } from 'src/mcp/client/events.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 import {
@@ -254,6 +255,10 @@ export const connectToServer = memoize(
         }
       }
 
+      const extensions = {
+        ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),
+        ...(getMcpExtensionEnabled(serverRef, 'events') && { [MCP_EVENTS_EXTENSION]: {} }),
+      }
       const client = new Client(
         getMcpClientInfo(),
         {
@@ -264,12 +269,11 @@ export const connectToServer = memoize(
             // wireRules.ts), which Spring AI servers accept.
             elicitation: { form: {}, url: {} },
             // A server may answer a tools/call with a task only from a client
-            // that declares the extension (taskPoll.ts). The 2025 initialize
-            // drops it with the rest (SEND_RULES), as tasks exist only in
-            // 2026-07-28.
-            ...(getMcpExtensionEnabled(serverRef, 'tasks') && {
-              extensions: { [MCP_TASKS_EXTENSION]: {} },
-            }),
+            // that declares the extension (taskPoll.ts), and offers events
+            // only to one that declares that one (events.ts). The 2025
+            // initialize drops both with the rest (SEND_RULES), as they exist
+            // only in 2026-07-28.
+            ...(Object.keys(extensions).length > 0 && { extensions }),
           },
           versionNegotiation:
             plan.mode === 'auto'

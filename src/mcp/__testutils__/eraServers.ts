@@ -13,7 +13,8 @@ import { createMcpHandler, McpServer } from '@modelcontextprotocol/server'
 import { McpServer as LegacyMcpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 
-export type Hit = { method: string; status: number; body?: Record<string, unknown> }
+/** `mcpName` is the Mcp-Name header, kept only when the request had one. */
+export type Hit = { method: string; status: number; body?: Record<string, unknown>; mcpName?: string }
 
 export type HttpFixture = {
   url: string
@@ -83,6 +84,8 @@ export function serveModern(
     async fetch(req) {
       const body = await readBody(req)
       const hit: Hit = { method: `${req.method} ${String(body?.method ?? '')}`.trim(), status: 0, body }
+      const mcpName = req.headers.get('mcp-name')
+      if (mcpName !== null) hit.mcpName = mcpName
       hits.push(hit)
       const tapped = tap(body)
       const res = tapped ?? options.answer?.(body) ?? (await handler.fetch(req))

@@ -30,6 +30,7 @@ import {
   createClaudeAiProxyFetch,
   MCP_REQUEST_TIMEOUT_MS,
   wrapFetchWithConfiguredAuthorization,
+  wrapFetchWithEventName,
   wrapFetchWithTimeout,
 } from 'src/mcp/client/fetch.js'
 
@@ -43,7 +44,7 @@ const MCP_STDIO_MAX_MESSAGE_BYTES = 128 * 1024 * 1024
 // The fetch a remote (sse/http) transport sends through. Step-up detection
 // wraps innermost so the 403 is seen before the SDK's handler calls auth() →
 // tokens(), and a configured Authorization header is put back over the auth
-// provider's.
+// provider's. The events extension's Mcp-Name header goes on outermost.
 function remoteFetch(
   authProvider: ClaudeAuthProvider,
   headers: Record<string, string>,
@@ -52,9 +53,11 @@ function remoteFetch(
   const configured = Object.entries(headers).find(
     ([key]) => key.toLowerCase() === 'authorization',
   )?.[1]
-  return configured === undefined
-    ? stepUpFetch
-    : wrapFetchWithConfiguredAuthorization(stepUpFetch, configured)
+  return wrapFetchWithEventName(
+    configured === undefined
+      ? stepUpFetch
+      : wrapFetchWithConfiguredAuthorization(stepUpFetch, configured),
+  )
 }
 
 /**
