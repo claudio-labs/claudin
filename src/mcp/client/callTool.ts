@@ -50,6 +50,7 @@ import {
   type TaskPollOutcome,
   type TaskPollState,
 } from 'src/mcp/client/taskPoll.js'
+import { MCP_TASK_META_KEY } from 'src/mcp/client/wireRules.js'
 import { getAgentContext } from 'src/agent/coordinator/agentContext.js'
 import { ownsBackgroundAgents } from 'src/tools/AgentTool/autoBackground.js'
 import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
@@ -405,7 +406,14 @@ export async function callMCPTool({
     })
 
     // A task-augmented call: the caller polls the task (runTaskAugmentedCall).
-    if (readTaskMarker(result._meta)) {
+    // One it cannot poll is an error, not the empty result the wire rule
+    // left in the task's place.
+    if (result._meta?.[MCP_TASK_META_KEY] !== undefined) {
+      if (!readTaskMarker(result._meta)) {
+        const message = `MCP server "${name}" tool "${tool}" answered with a task that has no taskId or status`
+        logMCPError(name, message)
+        throw new McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(message, 'MCP task without an id')
+      }
       logMCPDebug(name, `Tool '${tool}' is running as an MCP task`)
       return { content: undefined, _meta: result._meta }
     }

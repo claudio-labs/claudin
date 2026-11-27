@@ -137,6 +137,11 @@
       "name": "call: a poll cut at the tool timeout mid-request ends as an esc, not a timeout",
       "find": "  if (inline.kind === 'aborted' && timedOut && !signal.aborted) {\n",
       "replace": "  if (false) {\n"
+    },
+    {
+      "name": "call: a task answer without a taskId reaches the model as an empty success",
+      "find": "      if (!readTaskMarker(result._meta)) {\n",
+      "replace": "      if (false) {\n"
     }
   ]
 }
