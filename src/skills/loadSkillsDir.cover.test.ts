@@ -2,7 +2,8 @@
 // body that HAS shell blocks: a file skill runs them (through the permission
 // check, with its allowed-tools granted), an MCP skill keeps them as text.
 // MCP server skills are remote and untrusted, so this is the guard that keeps a
-// server's SKILL.md from running commands on the user's machine.
+// server's SKILL.md from running commands on the user's machine — and the one
+// that drops an MCP skill's allowed-tools and hooks.
 import { afterEach, describe, expect, spyOn, test } from 'bun:test'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { createSkillCommand, parseSkillFrontmatterFields } from 'src/skills/loadSkillsDir.js'
@@ -14,6 +15,7 @@ function skillCommand(loadedFrom: 'mcp' | 'skills', allowedTools: string[]) {
   const command = createSkillCommand({
     ...parseSkillFrontmatterFields({ description: 'shelly' }, '', 'shelly'),
     allowedTools,
+    hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo zz-hook' }] }] },
     skillName: loadedFrom === 'mcp' ? 'srv:shelly' : 'shelly',
     displayName: undefined,
     markdownContent: BODY,
@@ -75,5 +77,16 @@ describe('createSkillCommand — inline shell', () => {
     } finally {
       bash.mockRestore()
     }
+  })
+})
+
+describe('createSkillCommand — what an MCP skill may not bring', () => {
+  test("an MCP skill's allowed-tools and hooks are dropped; a file skill keeps both", () => {
+    const remote = skillCommand('mcp', ['Bash(echo:*)'])
+    expect(remote.allowedTools).toEqual([])
+    expect(remote.hooks).toBeUndefined()
+    const local = skillCommand('skills', ['Bash(echo:*)'])
+    expect(local.allowedTools).toEqual(['Bash(echo:*)'])
+    expect(local.hooks).toEqual({ Stop: [{ hooks: [{ type: 'command', command: 'echo zz-hook' }] }] })
   })
 })

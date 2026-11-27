@@ -1,6 +1,6 @@
-// Characterization net for the skill_listing producer before MCP server skills
-// (loadedFrom 'mcp', named `<server>:<skill>`) are fed into it: which commands
-// reach the listing, in what order and budget, and the per-agent delta latch.
+// Characterization net for the skill_listing producer, MCP server skills
+// (loadedFrom 'mcp', named `<server>:<skill>`) included: which commands reach
+// the listing, in what order and budget, and the per-agent delta latch.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -197,11 +197,14 @@ describe('getSkillListingAttachments — the real command pipeline', () => {
     expect(again).toMatchObject({ isInitial: true })
   })
 
-  test('MCP skills in AppState do not reach the listing: getMcpSkillCommands is a stub', async () => {
+  test('MCP skills in AppState join the listing under their server-qualified name; server prompts do not', async () => {
     const remote = cmd('srv:remote', 'mcp', { hasUserSpecifiedDescription: true })
-    expect(commandsModule.getMcpSkillCommands([remote])).toEqual([])
-    const [first] = await getSkillListingAttachments(ctx({ mcpCommands: [remote] }))
-    expect((first as { content: string }).content).not.toContain('srv:remote')
+    const serverPrompt = cmd('mcp__srv__p', undefined, { isMcp: true } as Partial<Command>)
+    expect(commandsModule.getMcpSkillCommands([serverPrompt, remote])).toEqual([remote])
+    const [first] = await getSkillListingAttachments(ctx({ mcpCommands: [serverPrompt, remote] }))
+    const content = (first as { content: string }).content
+    expect(content.split('\n').at(-1)).toBe('- srv:remote: srv:remote does things')
+    expect(content).not.toContain('mcp__srv__p')
   })
 })
 

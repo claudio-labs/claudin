@@ -1,0 +1,82 @@
+{
+  "test": [
+    "src/mcp/mcpSkills.test.ts",
+    "src/mcp/useManageMCPConnections.skills.test.tsx",
+    "src/mcp/listTtlRefresh.test.ts",
+    "src/tools/SkillTool/SkillTool.cover.test.ts",
+    "src/skills/loadSkillsDir.cover.test.ts",
+    "src/agent/attachments/skill-bash-gates.cover.test.ts",
+    "src/commands/commands.test.ts"
+  ],
+  "source": "src/mcp/mcpSkills.ts",
+  "probes": [
+    {
+      "name": "listing: a \"dynamic\" skill is loaded though none of its files can be verified",
+      "find": "    if (skill.resources !== 'dynamic') return true\n",
+      "replace": "    return true\n"
+    },
+    {
+      "name": "naming: two skills of one name are not told apart by their paths",
+      "find": "    if (new Set(labels).size === labels.length) return labels\n",
+      "replace": "    return labels\n"
+    },
+    {
+      "name": "invocation: a SKILL.md that fails verification throws instead of telling the model",
+      "find": "        return [{ type: 'text', text: loadFailureText(name, serverName, error) }]\n",
+      "replace": "        throw error\n"
+    },
+    {
+      "name": "listing: extensions.skills false still lists the server's skills",
+      "find": "getMcpExtensionEnabled(connection.config, 'skills') || ",
+      "replace": ""
+    },
+    {
+      "name": "permissions: an MCP skill's allowed-tools are granted",
+      "source": "src/skills/loadSkillsDir.ts",
+      "find": "    allowedTools: isRemote ? [] : allowedTools,\n",
+      "replace": "    allowedTools,\n"
+    },
+    {
+      "name": "permissions: an MCP skill's hooks are kept",
+      "source": "src/skills/loadSkillsDir.ts",
+      "find": "    hooks: isRemote ? undefined : hooks,\n",
+      "replace": "    hooks,\n"
+    },
+    {
+      "name": "resources: a skill file is read without its manifest, an unlisted one included",
+      "source": "src/tools/ReadMcpResourceTool/ReadMcpResourceTool.ts",
+      "find": "    const skill = findLoadedMcpSkill(serverName, uri)\n",
+      "replace": "    const skill = undefined as ReturnType<typeof findLoadedMcpSkill>\n"
+    },
+    {
+      "name": "listing: getMcpSkillCommands is a stub again, so no MCP skill reaches the skill listing",
+      "source": "src/commands/commands.ts",
+      "find": "      cmd.loadedFrom === 'mcp' &&\n",
+      "replace": "      false &&\n"
+    },
+    {
+      "name": "hook: a prompts/list_changed drops the server's skills",
+      "source": "src/mcp/useManageMCPConnections.ts",
+      "find": "                    ...client,\n                    commands: [...mcpPrompts, ...mcpSkills],\n",
+      "replace": "                    ...client,\n                    commands: [...mcpPrompts],\n"
+    },
+    {
+      "name": "hook: a resources/list_changed answers the skills from the memo",
+      "source": "src/mcp/useManageMCPConnections.ts",
+      "find": "                  fetchSkillsForClient.cache.delete(client.name)\n",
+      "replace": ""
+    },
+    {
+      "name": "fetch: a skills list outlives the connection it came from",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "  if (skillsListedBy.get(client.name) !== sdkClient) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "ttl: a prompts refresh drops the server's skills",
+      "source": "src/mcp/listTtlRefresh.ts",
+      "find": "      return { commands: [...prompts, ...skills] }\n",
+      "replace": "      return { commands: prompts }\n"
+    }
+  ]
+}

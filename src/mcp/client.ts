@@ -57,6 +57,7 @@ export {
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
   fetchCommandsForClient,
+  fetchSkillsForClient,
   reconnectMcpServerImpl,
   getMcpToolsCommandsAndResources,
   prefetchAllMcpResources,

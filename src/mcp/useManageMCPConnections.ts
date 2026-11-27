@@ -11,6 +11,7 @@ import {
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
+  fetchSkillsForClient,
   fetchToolsForClient,
   getMcpToolsCommandsAndResources,
   reconnectMcpServerImpl,
@@ -522,10 +523,14 @@ export function useManageMCPConnections(
                 )
                 try {
                   fetchCommandsForClient.cache.delete(client.name)
-                  const mcpPrompts = await fetchCommandsForClient(client)
+                  // The server's skills share its slice of mcp.commands.
+                  const [mcpPrompts, mcpSkills] = await Promise.all([
+                    fetchCommandsForClient(client),
+                    fetchSkillsForClient(client),
+                  ])
                   updateServer({
                     ...client,
-                    commands: [...mcpPrompts],
+                    commands: [...mcpPrompts, ...mcpSkills],
                   })
                 } catch (error) {
                   logMCPError(
@@ -548,8 +553,18 @@ export function useManageMCPConnections(
                 try {
                   fetchResourcesForClient.cache.delete(client.name)
                   fetchResourceTemplatesForClient.cache.delete(client.name)
-                  const newResources = await fetchResourcesForClient(client)
-                  updateServer({ ...client, resources: newResources })
+                  // Skills are resources: the extension announces a change here.
+                  fetchSkillsForClient.cache.delete(client.name)
+                  const [newResources, mcpPrompts, mcpSkills] = await Promise.all([
+                    fetchResourcesForClient(client),
+                    fetchCommandsForClient(client),
+                    fetchSkillsForClient(client),
+                  ])
+                  updateServer({
+                    ...client,
+                    resources: newResources,
+                    commands: [...mcpPrompts, ...mcpSkills],
+                  })
                 } catch (error) {
                   logMCPError(
                     client.name,

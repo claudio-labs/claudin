@@ -115,10 +115,9 @@ describe('SkillTool resolves MCP skills from AppState', () => {
     expect(await validate('srv:remote', context([MCP_PROMPT]))).toMatchObject({ result: false, errorCode: 2 })
   })
 
-  test('an MCP skill with only safe properties runs without asking; one granting tools asks', async () => {
+  test('an MCP skill runs without asking, even one that declares allowed-tools (they are ignored)', async () => {
     expect((await SkillTool.checkPermissions({ skill: 'srv:remote' }, context())).behavior).toBe('allow')
-    const granting = await SkillTool.checkPermissions({ skill: 'srv:granting' }, context())
-    expect(granting).toMatchObject({ behavior: 'ask', message: 'Execute skill: srv:granting' })
+    expect((await SkillTool.checkPermissions({ skill: 'srv:granting' }, context())).behavior).toBe('allow')
   })
 })
 
@@ -137,11 +136,11 @@ describe('SkillTool.call on an MCP skill', () => {
     }
   })
 
-  test("an MCP skill's allowed-tools are handed back like a disk skill's", async () => {
+  test("an MCP skill's allowed-tools are not granted: a remote server gets no tools without a prompt", async () => {
     const ctx = context()
     const result = await call({ skill: 'srv:granting' }, ctx)
-    expect(result.data).toMatchObject({ success: true, commandName: 'srv:granting', allowedTools: ['Bash(make:*)'] })
-    expect(result.contextModifier!(ctx).getAppState().toolPermissionContext.alwaysAllowRules.command).toEqual(['Bash(make:*)'])
+    expect(result.data).toEqual({ success: true, commandName: 'srv:granting', allowedTools: undefined, model: undefined })
+    expect(result.contextModifier!(ctx).getAppState().toolPermissionContext.alwaysAllowRules.command).toBeUndefined()
   })
 
   test('a disk skill of the same name wins over the MCP one', async () => {

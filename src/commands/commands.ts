@@ -435,17 +435,19 @@ export function clearCommandsCache(): void {
 }
 
 /**
- * MCP-provided skills, filtered out of AppState.mcp.commands.
- *
- * Always empty: discovering skills from an MCP server needed
- * `src/skills/mcpSkills.ts`, which this fork never received. Kept as a
- * function because `skill-bash-gates.ts` threads the result into its skill
- * index and reads better asking for the list than special-casing its absence.
+ * The model-invocable MCP server skills among AppState.mcp.commands
+ * (`loadedFrom: 'mcp'`, built by `src/mcp/mcpSkills.ts`); the server's plain
+ * prompts there are slash commands only.
  */
 export function getMcpSkillCommands(
-  _mcpCommands: readonly Command[],
+  mcpCommands: readonly Command[],
 ): readonly Command[] {
-  return []
+  return mcpCommands.filter(
+    cmd =>
+      cmd.type === 'prompt' &&
+      cmd.loadedFrom === 'mcp' &&
+      !cmd.disableModelInvocation,
+  )
 }
 
 // SkillTool shows ALL prompt-based commands that the model can invoke

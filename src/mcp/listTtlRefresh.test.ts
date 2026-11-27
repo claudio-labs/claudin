@@ -5,12 +5,16 @@ import {
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
+  fetchSkillsForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import { getListRecord, resetListTtlRecordsForTests } from 'src/mcp/client/listTtl.js'
 import { refreshExpiredMcpLists } from 'src/mcp/listTtlRefresh.js'
+import { clearLoadedMcpSkills } from 'src/mcp/mcpSkills.js'
 import type { ConnectedMCPServer, ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { type ModernFixture, serveModern } from 'src/mcp/__testutils__/eraServers.js'
+import { editableSkills } from 'src/mcp/__testutils__/skillServers.js'
+import 'src/skills/loadSkillsDir.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 
 /*
@@ -39,6 +43,7 @@ afterEach(async () => {
   for (const client of clients.splice(0)) await client.close().catch(() => {})
   for (const fixture of fixtures.splice(0)) await fixture.stop()
   resetListTtlRecordsForTests()
+  clearLoadedMcpSkills()
 })
 
 const tool = (name: string, description = `${name} tool`): Entry => ({
@@ -277,5 +282,35 @@ describe('refreshing MCP lists on TTL', () => {
     store.mcp = { ...store.mcp, clients: [{ name: connection.name, type: 'failed', config: connection.config }] }
     await refresh(store, LATER)
     expect(listCalls(fixture, 'tools/list')).toBe(1)
+  })
+
+  test('changed prompts keep the skills that share the server’s commands', async () => {
+    const skills = editableSkills()
+    await skills.add('notes', { 'SKILL.md': '---\nname: notes\ndescription: Take notes\n---\nKeep notes.\n' })
+    let prompts = [{ name: 'greet' }]
+    const fixture = serveModern(server => {
+      skills.extension.attach(server)
+      server.server.registerCapabilities({ prompts: {} })
+      server.server.setRequestHandler('prompts/list', async () => ({ prompts, ttlMs: 1 }) as never)
+    })
+    fixtures.push(fixture)
+    const connection = await connect(fixture)
+    const commands = [...(await fetchCommandsForClient(connection)), ...(await fetchSkillsForClient(connection))]
+    await Bun.sleep(5)
+    const store: Store = {
+      mcp: { clients: [connection], tools: [], commands, resources: {}, pluginReconnectKey: 0 },
+      writes: 0,
+    }
+    const name = (suffix: string) => `${connection.name}${suffix}`
+    expect(commands.map(c => c.name)).toEqual([`mcp__${connection.name}__greet`, name(':notes')])
+
+    prompts = [{ name: 'greet' }, { name: 'wave' }]
+    await refresh(store, LATER)
+    expect(store.writes).toBe(1)
+    expect(store.mcp.commands.map(c => c.name)).toEqual([
+      `mcp__${connection.name}__greet`,
+      `mcp__${connection.name}__wave`,
+      name(':notes'),
+    ])
   })
 })

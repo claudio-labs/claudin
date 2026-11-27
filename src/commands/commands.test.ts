@@ -126,8 +126,12 @@ describe('isBridgeSafeCommand', () => {
 })
 
 describe('getMcpSkillCommands', () => {
-  test('is always empty: this fork has no MCP skill discovery', () => {
-    expect(getMcpSkillCommands([command({ name: 'a', loadedFrom: 'mcp' })])).toEqual([])
+  test('keeps the model-invocable MCP skills, not the server prompts beside them', () => {
+    const skill = command({ name: 'srv:a', loadedFrom: 'mcp' })
+    const userOnly = command({ name: 'srv:b', loadedFrom: 'mcp', disableModelInvocation: true })
+    const serverPrompt = command({ name: 'mcp__srv__p', isMcp: true })
+    const local = command({ name: 'srv:c', type: 'local', loadedFrom: 'mcp' })
+    expect(getMcpSkillCommands([serverPrompt, skill, userOnly, local])).toEqual([skill])
   })
 })
 

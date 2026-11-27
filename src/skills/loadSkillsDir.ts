@@ -319,12 +319,16 @@ export function createSkillCommand({
   effort: EffortValue | undefined
   shell: FrontmatterShell | undefined
 }): Command {
+  // Security: an MCP skill is written by a remote server. Its `allowed-tools`
+  // would be granted without a prompt for the rest of the turn, and its
+  // `hooks` would run shell commands on this machine, so neither is honored.
+  const isRemote = loadedFrom === 'mcp'
   return {
     type: 'prompt',
     name: skillName,
     description,
     hasUserSpecifiedDescription,
-    allowedTools,
+    allowedTools: isRemote ? [] : allowedTools,
     argumentHint,
     argNames: argumentNames.length > 0 ? argumentNames : undefined,
     whenToUse,
@@ -345,7 +349,7 @@ export function createSkillCommand({
     },
     source,
     loadedFrom,
-    hooks,
+    hooks: isRemote ? undefined : hooks,
     skillRoot: baseDir,
     async getPromptForCommand(args, toolUseContext) {
       let finalContent = baseDir
@@ -377,7 +381,7 @@ export function createSkillCommand({
       // Security: MCP skills are remote and untrusted — never execute inline
       // shell commands (!`…` / ```! … ```) from their markdown body.
       // ${CLAUDIN_SKILL_DIR} is meaningless for MCP skills anyway.
-      if (loadedFrom !== 'mcp') {
+      if (!isRemote) {
         finalContent = await executeShellCommandsInPrompt(
           finalContent,
           {

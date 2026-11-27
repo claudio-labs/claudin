@@ -34,6 +34,7 @@ import { markClaudeAiMcpConnected } from 'src/mcp/claudeai.js'
 import { getAllMcpConfigs, isMcpServerDisabled } from 'src/mcp/config.js'
 import { buildMcpToolName } from 'src/mcp/mcpStringUtils.js'
 import { normalizeNameForMCP } from 'src/mcp/normalization.js'
+import { listMcpSkillCommands } from 'src/mcp/mcpSkills.js'
 import { createPromptArgumentCompleter } from 'src/mcp/promptCompletions.js'
 import type {
   MCPServerConnection,
@@ -532,6 +533,44 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
   (client: MCPServerConnection) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
+
+const fetchSkillsForConnection = memoizeWithLRUExceptFailures(
+  async (client: MCPServerConnection): Promise<Command[]> => {
+    if (client.type !== 'connected') return []
+    try {
+      return await listMcpSkillCommands(client, ensureConnectedClient)
+    } catch (error) {
+      logMCPError(client.name, `Failed to fetch skills: ${errorMessage(error)}`)
+      throw error
+    }
+  },
+  (): Command[] => [],
+  (client: MCPServerConnection) => client.name,
+  MCP_FETCH_CACHE_SIZE,
+)
+
+// The SDK client each memoized skills list was read from, by server name.
+const skillsListedBy = new Map<string, unknown>()
+
+/**
+ * The server's skills (src/mcp/mcpSkills.ts). They join its prompts in
+ * AppState's mcp.commands wherever those are set; the skills extension has no
+ * list_changed of its own, so resources/list_changed re-lists them.
+ *
+ * Memoized by server name like the other fetchers, but a list never outlives
+ * the connection it came from: the close and reconnect paths in connection.ts
+ * clear the other memos only, so a new SDK client lists again here.
+ */
+export function fetchSkillsForClient(client: MCPServerConnection): Promise<Command[]> {
+  const sdkClient = client.type === 'connected' ? client.client : undefined
+  if (skillsListedBy.get(client.name) !== sdkClient) {
+    fetchSkillsForConnection.cache.delete(client.name)
+    skillsListedBy.set(client.name, sdkClient)
+  }
+  return fetchSkillsForConnection(client)
+}
+fetchSkillsForClient.cache = fetchSkillsForConnection.cache
+
 /**
  * Note: This should not be called by UI components directly, they should use the reconnectMcpServer
  * function from useManageMcpConnections.
@@ -573,12 +612,13 @@ export async function reconnectMcpServerImpl(
 
     const supportsResources = !!client.capabilities?.resources
 
-    const [tools, mcpCommands, resources] = await Promise.all([
+    const [tools, mcpCommands, mcpSkills, resources] = await Promise.all([
       fetchToolsForClient(client),
       fetchCommandsForClient(client),
+      fetchSkillsForClient(client),
       supportsResources ? fetchResourcesForClient(client) : Promise.resolve([]),
     ])
-    const commands = [...mcpCommands]
+    const commands = [...mcpCommands, ...mcpSkills]
 
     // Check if we need to add resource tools
     const resourceTools: Tool[] = []
@@ -743,15 +783,16 @@ export async function getMcpToolsCommandsAndResources(
 
       const supportsResources = !!client.capabilities?.resources
 
-      const [tools, mcpCommands, resources] = await Promise.all([
+      const [tools, mcpCommands, mcpSkills, resources] = await Promise.all([
         fetchToolsForClient(client),
         fetchCommandsForClient(client),
+        fetchSkillsForClient(client),
         // Fetch resources if supported
         supportsResources
           ? fetchResourcesForClient(client)
           : Promise.resolve([]),
       ])
-      const commands = [...mcpCommands]
+      const commands = [...mcpCommands, ...mcpSkills]
 
       // If this server resources and we haven't added resource tools yet,
       // include our resource tools with this client's tools

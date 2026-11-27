@@ -17,6 +17,7 @@ import {
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
+  fetchSkillsForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import {
@@ -64,7 +65,9 @@ const REFRESHERS: Readonly<Record<McpListKind, ListRefresher>> = {
   prompts: {
     read: async client => {
       fetchCommandsForClient.cache.delete(client.name)
-      return { commands: await fetchCommandsForClient(client) }
+      // The server's skills share its slice of mcp.commands; they keep their memo.
+      const [prompts, skills] = await Promise.all([fetchCommandsForClient(client), fetchSkillsForClient(client)])
+      return { commands: [...prompts, ...skills] }
     },
   },
   resources: {

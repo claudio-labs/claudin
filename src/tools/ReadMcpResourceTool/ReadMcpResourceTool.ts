@@ -2,6 +2,7 @@ import type { ReadResourceResult } from '@modelcontextprotocol/client'
 import { ReadResourceResultSchema } from '@modelcontextprotocol/core'
 import { z } from 'zod/v4'
 import { ensureConnectedClient } from 'src/mcp/client.js'
+import { findLoadedMcpSkill, readMcpSkillResource } from 'src/mcp/mcpSkills.js'
 import { watchMcpResource } from 'src/mcp/resourceWatch.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -92,13 +93,19 @@ export const ReadMcpResourceTool = buildTool({
     }
 
     const connectedClient = await ensureConnectedClient(client)
-    const result = (await connectedClient.client.request(
-      {
-        method: 'resources/read',
-        params: { uri },
-      },
-      ReadResourceResultSchema,
-    )) as ReadResourceResult
+    // A file of one of the server's skills is read against the skill's
+    // manifest (size and digest checked); one the manifest does not list is
+    // refused, since the spec restricts a skill's reads to its manifest.
+    const skill = findLoadedMcpSkill(serverName, uri)
+    const result: Pick<ReadResourceResult, 'contents'> = skill
+      ? await readMcpSkillResource(connectedClient.client, skill, uri)
+      : ((await connectedClient.client.request(
+          {
+            method: 'resources/read',
+            params: { uri },
+          },
+          ReadResourceResultSchema,
+        )) as ReadResourceResult)
     void watchMcpResource(connectedClient, uri, context)
 
     // Intercept any blob fields: decode, write raw bytes to disk with a
