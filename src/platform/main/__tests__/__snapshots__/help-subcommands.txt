@@ -92,6 +92,8 @@ Commands:
   get <name>                                     Get details about an MCP server. Note: The workspace trust dialog is skipped and stdio servers from .mcp.json are spawned for health checks. Only use this command in directories you trust.
   help [command]                                 display help for command
   list                                           List configured MCP servers. Note: The workspace trust dialog is skipped and stdio servers from .mcp.json are spawned for health checks. Only use this command in directories you trust.
+  login <name>                                   Sign in to an http or sse MCP server with OAuth (opens the browser)
+  logout <name>                                  Sign out of an MCP server: revoke its OAuth tokens and delete them
   remove [options] <name>                        Remove an MCP server
   reset-project-choices                          Reset all approved and rejected project-scoped (.mcp.json) servers within this project
   serve [options]                                Start the Claudin MCP server
@@ -293,6 +295,24 @@ Usage: claudin mcp list [options]
 List configured MCP servers. Note: The workspace trust dialog is skipped and
 stdio servers from .mcp.json are spawned for health checks. Only use this
 command in directories you trust.
+
+Options:
+  -h, --help  Display help for command
+
+
+=== mcp login ===
+Usage: claudin mcp login [options] <name>
+
+Sign in to an http or sse MCP server with OAuth (opens the browser)
+
+Options:
+  -h, --help  Display help for command
+
+
+=== mcp logout ===
+Usage: claudin mcp logout [options] <name>
+
+Sign out of an MCP server: revoke its OAuth tokens and delete them
 
 Options:
   -h, --help  Display help for command
