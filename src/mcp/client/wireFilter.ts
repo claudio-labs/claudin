@@ -11,7 +11,8 @@
  * in the request a send rule returns.
  *
  * The same two hooks run cursorCycleGuard.ts over the list methods, so a
- * server whose cursors cycle ends its listing instead of failing it.
+ * server whose cursors cycle, or that pages past MAX_LIST_PAGES, ends its
+ * listing instead of failing it.
  *
  * The transport itself is neither wrapped nor subclassed: the SDK tells a
  * stdio transport from an HTTP one by its class, to probe on a sibling
@@ -39,6 +40,8 @@ export type WireFilterOptions = WireRuleContext & {
   sendRules?: Readonly<Record<string, SendRule>>
   /** A listing cut short because the server repeated `cursor`. */
   onCursorCycle?: (method: string, cursor: string) => void
+  /** A listing cut short at MAX_LIST_PAGES pages, with more to come. */
+  onPageLimit?: (method: string, pages: number) => void
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -102,8 +105,9 @@ export function attachWireFilter(transport: Transport, options: WireFilterOption
           // the SDK, which decodes it as it would have unfiltered.
           logError(error)
         }
-        const repeated = cursors.onResult(id!, method, result)
-        if (repeated !== undefined) options.onCursorCycle?.(method, repeated)
+        const cut = cursors.onResult(id!, method, result)
+        if (cut?.reason === 'cycle') options.onCursorCycle?.(method, cut.cursor)
+        if (cut?.reason === 'pages') options.onPageLimit?.(method, cut.pages)
       }
     }
     previous?.(message, extra)

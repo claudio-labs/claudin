@@ -89,6 +89,8 @@ export function attachMcpWireFilter(serverName: string, transport: Transport): v
     onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),
     onCursorCycle: (method, cursor) =>
       logMCPError(serverName, `${method} repeated the cursor "${cursor}"; the list stops at the entries already received`),
+    onPageLimit: (method, pages) =>
+      logMCPDebug(serverName, `${method} still had a next page after ${pages} pages; the list stops at the entries already received`),
   })
 }
 

@@ -5,6 +5,7 @@ import { SdkControlClientTransport } from 'src/mcp/SdkControlTransport.js'
 import type { McpSdkServerConfig, MCPServerConnection } from 'src/mcp/types.js'
 import { attachMcpWireFilter, fetchToolsForClient } from 'src/mcp/client/fetchCapabilities.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
+import { SDK_LIST_MAX_PAGES } from 'src/mcp/client/cursorCycleGuard.js'
 
 /**
  * Sets up SDK MCP clients by creating transports and connecting them.
@@ -37,6 +38,7 @@ export async function setupSdkMcpClients(
         {
           capabilities: {},
           versionNegotiation: { mode: 'legacy' },
+          listMaxPages: SDK_LIST_MAX_PAGES,
         },
       )
 

@@ -8,7 +8,7 @@ function page(guard: ReturnType<typeof createCursorCycleGuard>, id: number, curs
   guard.onRequest(id, M, cursor)
   const result: Record<string, unknown> = next === undefined ? {} : { nextCursor: next }
   const cut = guard.onResult(id, M, result)
-  return { repeated: cut, cut, result }
+  return { repeated: cut?.reason === 'cycle' ? cut.cursor : undefined, cut, result }
 }
 
 describe('createCursorCycleGuard', () => {

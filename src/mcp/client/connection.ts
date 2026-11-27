@@ -53,6 +53,7 @@ import {
 } from 'src/mcp/client/negotiation.js'
 import { stopMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import { resumeMcpResourceWatches } from 'src/mcp/resourceWatch.js'
+import { SDK_LIST_MAX_PAGES } from 'src/mcp/client/cursorCycleGuard.js'
 import {
   attachMcpWireFilter,
   fetchCommandsForClient,
@@ -287,6 +288,8 @@ export const connectToServer = memoize(
                   }),
                 }
               : { mode: 'legacy' },
+          // The wire filter cuts a long listing first (cursorCycleGuard.ts).
+          listMaxPages: SDK_LIST_MAX_PAGES,
         },
       )
 
