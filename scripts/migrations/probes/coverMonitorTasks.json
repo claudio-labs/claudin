@@ -27,26 +27,26 @@
     },
     {
       "name": "pill: monitor_mcp wording changes",
-      "find": "        return n === 1 ? '1 monitor' : `${n} monitors`\n",
-      "replace": "        return n === 1 ? '1 MCP monitor' : `${n} monitors`\n"
+      "find": "          parts.push(watchers === 1 ? '1 monitor' : `${watchers} monitors`)\n",
+      "replace": "          parts.push(watchers === 1 ? '1 MCP monitor' : `${watchers} monitors`)\n"
     },
     {
       "name": "kill: a finished task is killed again",
       "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
-      "find": "      if (task.status !== 'running') {\n",
-      "replace": "      if (false) {\n"
+      "find": "    if (task.status !== 'running') {\n",
+      "replace": "    if (false) {\n"
     },
     {
       "name": "kill: the killed task is not marked notified",
       "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
-      "find": "        notified: true,\n",
-      "replace": "        notified: false,\n"
+      "find": "      notified: true,\n",
+      "replace": "      notified: false,\n"
     },
     {
       "name": "kill: no end time stamped",
       "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
-      "find": "        endTime: Date.now(),\n",
-      "replace": "        endTime: undefined,\n"
+      "find": "      endTime: Date.now(),\n",
+      "replace": "      endTime: undefined,\n"
     },
     {
       "name": "agent cleanup: monitor_mcp tasks of every agent are killed",

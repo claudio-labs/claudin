@@ -1,0 +1,70 @@
+{
+  "test": [
+    "src/agent/tasks/MonitorMcpTask",
+    "src/agent/tasks/pillLabel.mcpTasks.test.ts",
+    "src/agent/tasks/pillLabel.cover.test.ts",
+    "src/agent/ui/tasks/footerTaskGeometry.mcpTasks.test.ts",
+    "src/agent/ui/tasks/MonitorMcpDetailDialog.test.tsx"
+  ],
+  "source": "src/agent/tasks/MonitorMcpTask/registerMonitorMcpTask.ts",
+  "probes": [
+    {
+      "name": "finish: a task already notified is notified again",
+      "source": "src/agent/tasks/MonitorMcpTask/transitions.ts",
+      "find": "  if (task.status !== 'running' || task.notified) return task\n",
+      "replace": "  if (task.status !== 'running') return task\n"
+    },
+    {
+      "name": "finish: the notification is queued before the output is flushed",
+      "find": "      await deps.flushOutput(taskId)\n",
+      "replace": "      void deps.flushOutput(taskId)\n"
+    },
+    {
+      "name": "handle: output after the end still reaches the file",
+      "find": "      if (!hasMonitorMcpController(taskId)) return\n      deps.appendOutput(taskId, text)\n",
+      "replace": "      deps.appendOutput(taskId, text)\n"
+    },
+    {
+      "name": "notification: call and events priorities swapped",
+      "source": "src/agent/tasks/MonitorMcpTask/notification.ts",
+      "find": "  return kind === 'call' ? 'later' : 'next'\n",
+      "replace": "  return kind === 'call' ? 'next' : 'later'\n"
+    },
+    {
+      "name": "notification: server text is not escaped",
+      "source": "src/agent/tasks/MonitorMcpTask/notification.ts",
+      "find": "<${SUMMARY_TAG}>${escapeXml(monitorMcpSummary(task, result))}</${SUMMARY_TAG}>\n",
+      "replace": "<${SUMMARY_TAG}>${monitorMcpSummary(task, result)}</${SUMMARY_TAG}>\n"
+    },
+    {
+      "name": "kill: the producer's stop never runs",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "  return stopWithin(controller.stop, MONITOR_MCP_STOP_BUDGET_MS)\n",
+      "replace": "  return Promise.resolve()\n"
+    },
+    {
+      "name": "exit: a silent server holds the stop past its budget",
+      "source": "src/agent/tasks/MonitorMcpTask/controllers.ts",
+      "find": "    const timer = setTimeout(resolve, budgetMs)\n",
+      "replace": "    const timer = setTimeout(() => {}, budgetMs)\n"
+    },
+    {
+      "name": "pill: tool calls read as monitors",
+      "source": "src/agent/tasks/pillLabel.ts",
+      "find": "          t => t.type === 'monitor_mcp' && t.kind === 'call',\n",
+      "replace": "          () => false,\n"
+    },
+    {
+      "name": "footer: tool calls fold into the Monitors group",
+      "source": "src/agent/ui/tasks/footerTaskGeometry.ts",
+      "find": "      return t.kind === 'call' ? 'mcpTasks' : 'monitors'\n",
+      "replace": "      return 'monitors'\n"
+    },
+    {
+      "name": "dialog: x stops a task that already ended",
+      "source": "src/agent/ui/tasks/MonitorMcpDetailDialog.tsx",
+      "find": "  if (key === 'x' && canStop) return 'stop';\n",
+      "replace": "  if (key === 'x') return 'stop';\n"
+    }
+  ]
+}

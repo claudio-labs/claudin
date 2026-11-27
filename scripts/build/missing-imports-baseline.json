@@ -1,6 +1,5 @@
 [
   "../compact/snipProjection.js",
-  "./MonitorMcpDetailDialog.js",
   "./Transport.js",
   "./messages/SnipBoundaryMessage.js"
 ]

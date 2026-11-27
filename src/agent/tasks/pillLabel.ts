@@ -42,8 +42,21 @@ export function getPillLabel(tasks: BackgroundTaskState[]): string {
           : `${DIAMOND_OPEN} ${n} cloud sessions`
       case 'local_workflow':
         return n === 1 ? '1 background workflow' : `${n} background workflows`
-      case 'monitor_mcp':
-        return n === 1 ? '1 monitor' : `${n} monitors`
+      case 'monitor_mcp': {
+        // An event stream reads as a monitor, as a shell Monitor does; a
+        // backgrounded tool call is not watching anything, so it has its own word.
+        const calls = count(
+          tasks,
+          t => t.type === 'monitor_mcp' && t.kind === 'call',
+        )
+        const watchers = n - calls
+        const parts: string[] = []
+        if (watchers > 0)
+          parts.push(watchers === 1 ? '1 monitor' : `${watchers} monitors`)
+        if (calls > 0)
+          parts.push(calls === 1 ? '1 MCP task' : `${calls} MCP tasks`)
+        return parts.join(', ')
+      }
       case 'dream':
         return 'dreaming'
       case 'rule_map':

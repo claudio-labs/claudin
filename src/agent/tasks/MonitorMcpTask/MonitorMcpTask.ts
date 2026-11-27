@@ -1,26 +1,47 @@
-// MonitorMcpTask — task registry entry for the 'monitor_mcp' type.
+// MonitorMcpTask — background work an MCP server drives, in two kinds:
 //
-// Architecture: MonitorTool spawns shell processes as LocalShellTask
-// (type: 'local_bash', kind: 'monitor'). The 'monitor_mcp' type exists
-// in TaskType for forward-compatibility with MCP-based monitoring (not
-// yet implemented). This module satisfies the import from tasks.ts and
-// provides killMonitorMcpTasksForAgent for agent-scoped cleanup of
-// monitor-kind shell tasks.
+//   'call'    a tools/call the server turned into a long-running task, polled
+//             in the background once it outlives the auto-background timer
+//   'events'  an MCP event stream the model watches through the Monitor tool
+//
+// A shell Monitor is still a LocalShellTask (type 'local_bash', kind
+// 'monitor'); this type is only for the MCP-backed ones. Producers create a
+// task through registerMonitorMcpTask.ts and talk to it through the handle it
+// returns. This module holds the state type and the stop path that TaskStop,
+// the background-tasks dialog, agent exit and process exit all go through.
+//
+// The task has no isBackgrounded flag, so /clear keeps it, and nothing is
+// persisted for it, so --resume does not bring it back.
 
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { dequeueAllMatching } from 'src/agent/messageQueueManager.js'
+import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js'
 import { evictTaskOutput } from 'src/agent/tasks/diskOutput.js'
 import { updateTaskState } from 'src/agent/tasks/framework.js'
 import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
 import { killTask } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
+import { stopWithin, takeMonitorMcpController } from 'src/agent/tasks/MonitorMcpTask/controllers.js'
+
+export type MonitorMcpKind = 'call' | 'events'
 
 export type MonitorMcpTaskState = TaskStateBase & {
   type: 'monitor_mcp'
+  kind: MonitorMcpKind
+  /** The MCP server the work runs on, as configured (the /mcp name). */
+  serverName: string
+  /** The producer's latest progress line (a task's statusMessage). */
+  statusMessage?: string
   agentId?: AgentId
 }
+
+/**
+ * How long a stop may hold the caller that awaits it — the exit cleanup.
+ * Under the shutdown budget, so one silent server cannot eat all of it.
+ */
+export const MONITOR_MCP_STOP_BUDGET_MS = 1_000
 
 function isMonitorMcpTask(task: unknown): task is MonitorMcpTaskState {
   return (
@@ -31,23 +52,53 @@ function isMonitorMcpTask(task: unknown): task is MonitorMcpTaskState {
   )
 }
 
+/**
+ * Kills one task and runs its producer's stop. Resolves once the stop does or
+ * its budget runs out: the exit cleanup awaits that, TaskStop does not.
+ *
+ * No notification: the task is marked notified, as a stopped shell is. The
+ * model either asked for the stop (TaskStop answers it) or the user did.
+ */
+export function stopMonitorMcpTask(taskId: string, setAppState: SetAppState): Promise<void> {
+  let killed = undefined as MonitorMcpTaskState | undefined
+  updateTaskState<MonitorMcpTaskState>(taskId, setAppState, task => {
+    if (task.status !== 'running') {
+      return task
+    }
+
+    killed = task
+    return {
+      ...task,
+      status: 'killed',
+      notified: true,
+      endTime: Date.now(),
+    }
+  })
+  void evictTaskOutput(taskId)
+  // Taken even when the state was already gone or terminal: whatever still
+  // runs behind the id is stopped once, and only once.
+  const controller = takeMonitorMcpController(taskId)
+  if (killed) {
+    // notified:true also silences print.ts's parsed task_notification, so the
+    // SDK stream hears the close from here, as stopTask does for a shell.
+    emitTaskTerminatedSdk(taskId, 'stopped', {
+      toolUseId: killed.toolUseId,
+      summary: killed.description,
+      outputFile: killed.outputFile,
+    })
+  }
+  if (!controller) return Promise.resolve()
+  controller.unregisterCleanup()
+  return stopWithin(controller.stop, MONITOR_MCP_STOP_BUDGET_MS)
+}
+
 export const MonitorMcpTask: Task = {
   name: 'MonitorMcpTask',
   type: 'monitor_mcp',
   async kill(taskId, setAppState) {
-    updateTaskState<MonitorMcpTaskState>(taskId, setAppState, task => {
-      if (task.status !== 'running') {
-        return task
-      }
-
-      return {
-        ...task,
-        status: 'killed',
-        notified: true,
-        endTime: Date.now(),
-      }
-    })
-    void evictTaskOutput(taskId)
+    // Not awaited: tasks/cancel is a network round trip, and TaskStop or the
+    // dialog's `x` must not wait on a server to report the task stopped.
+    void stopMonitorMcpTask(taskId, setAppState)
   },
 }
 
