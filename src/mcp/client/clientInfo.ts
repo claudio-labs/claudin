@@ -1,0 +1,19 @@
+import type { Implementation } from '@modelcontextprotocol/sdk/types.js'
+
+/**
+ * How Claudin introduces itself to every MCP server it connects to.
+ *
+ * `name` stays `claude-code` on purpose: a server may key behavior or an
+ * allowlist on it, so it is a compatibility value. The description and the
+ * site used to say "Anthropic's agentic coding tool" and claude.com, which
+ * told every third-party server something untrue; they describe Claudin now.
+ */
+export function getMcpClientInfo(): Implementation {
+  return {
+    name: 'claude-code',
+    title: 'Claudin',
+    version: MACRO.VERSION ?? 'unknown',
+    description: 'Claudin, an open-source coding agent',
+    websiteUrl: 'https://claudiolabs.ai',
+  }
+}

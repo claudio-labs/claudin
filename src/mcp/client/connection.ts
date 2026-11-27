@@ -9,7 +9,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { PRODUCT_URL } from 'src/shared/constants/product.js'
 import { type Tool } from 'src/tools/Tool.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -30,6 +29,7 @@ import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
+import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
@@ -163,13 +163,7 @@ export const connectToServer = memoize(
       }
 
       const client = new Client(
-        {
-          name: 'claude-code',
-          title: 'Claudin',
-          version: MACRO.VERSION ?? 'unknown',
-          description: "Anthropic's agentic coding tool",
-          websiteUrl: PRODUCT_URL,
-        },
+        getMcpClientInfo(),
         {
           capabilities: {
             roots: {},
