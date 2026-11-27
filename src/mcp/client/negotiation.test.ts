@@ -80,7 +80,7 @@ describe('planConnect', () => {
   })
 
   test('an override wins over the cache', () => {
-    expect(plan({ verdict: modern, override: { kind: 'legacy', cacheVerdict: true } })).toEqual({ mode: 'legacy' })
+    expect(plan({ verdict: modern, override: { kind: 'legacy' } })).toEqual({ mode: 'legacy' })
     expect(plan({ verdict: modern, override: { kind: 'probe' } })).toEqual({ mode: 'auto', probeTimeoutMs: 5000 })
   })
 })
@@ -102,16 +102,15 @@ describe('nextEraStep', () => {
   const timeout = new SdkError(SdkErrorCode.RequestTimeout, 'probe timed out')
   const network = new SdkError(SdkErrorCode.EraNegotiationFailed, 'probe failed: ECONNREFUSED')
 
-  test('a 5xx on the HTTP probe goes to the 2025 protocol, and that verdict is cached', () => {
+  test('a 5xx on the HTTP probe goes to the 2025 protocol', () => {
     expect(nextEraStep(http(500, SdkErrorCode.EraNegotiationFailed), { plan: probing, transport: 'http' })).toEqual({
       kind: 'legacy',
-      cacheVerdict: true,
     })
   })
 
-  test('a timed-out probe too; a network error goes there uncached', () => {
-    expect(nextEraStep(timeout, { plan: probing, transport: 'http' })).toEqual({ kind: 'legacy', cacheVerdict: true })
-    expect(nextEraStep(network, { plan: probing, transport: 'http' })).toEqual({ kind: 'legacy', cacheVerdict: false })
+  test('a timed-out probe too; a network error fails the attempt, for the transient retry to probe again', () => {
+    expect(nextEraStep(timeout, { plan: probing, transport: 'http' })).toEqual({ kind: 'legacy' })
+    expect(nextEraStep(network, { plan: probing, transport: 'http' })).toBeNull()
   })
 
   test('nothing for stdio (the SDK falls back itself), a legacy plan, or another error', () => {
@@ -165,13 +164,12 @@ describe('verdictAfterConnect', () => {
     expect(after({ era: 'modern', discover: discover(), transport: 'http' })).toBeUndefined()
   })
 
-  test('a fallback is cached only when the server turned the probe down', () => {
-    expect(after({ plan: { mode: 'legacy' }, override: { kind: 'legacy', cacheVerdict: true }, era: 'legacy' })).toEqual({
+  test('a fallback after the server turned the probe down is cached', () => {
+    expect(after({ plan: { mode: 'legacy' }, override: { kind: 'legacy' }, era: 'legacy' })).toEqual({
       kind: 'legacy',
       savedAt: NOW,
       ttlMs: LEGACY_VERDICT_TTL_MS,
     })
-    expect(after({ plan: { mode: 'legacy' }, override: { kind: 'legacy', cacheVerdict: false }, era: 'legacy' })).toBeUndefined()
   })
 
   test('nothing for a connect from the cache, a legacy plan, or an unknown era', () => {

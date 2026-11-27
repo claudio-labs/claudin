@@ -69,6 +69,12 @@
       "replace": "  return now >= verdict.savedAt\n"
     },
     {
+      "name": "a probe the network refused falls back to 2025, so a 2026-07-28 server still starting is reached in 2025 or never",
+      "source": "src/mcp/client/negotiation.ts",
+      "find": "    (error instanceof SdkHttpError && error.code === SdkErrorCode.EraNegotiationFailed && error.status >= 500) ||\n",
+      "replace": "    (error instanceof SdkError && error.code === SdkErrorCode.EraNegotiationFailed) ||\n"
+    },
+    {
       "name": "a 401 on the probe is retried in the 2025 protocol instead of asking for auth",
       "source": "src/mcp/client/negotiation.ts",
       "find": "  if (isAuthConnectError(error)) return null\n",

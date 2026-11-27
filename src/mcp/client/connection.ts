@@ -186,7 +186,8 @@ async function endHttpSession(
  * @param serverRef Scoped server configuration
  * @param retry Internal: the attempt a transient-failure retry is on, and the
  *   startup deadline every attempt shares (connectRetry.ts); `era` when this
- *   attempt follows a failed probe or a failed cached verdict (negotiation.ts)
+ *   attempt follows a probe the server turned down or a failed cached verdict
+ *   (negotiation.ts)
  * @returns A wrapped client (either connected or failed)
  */
 export const connectToServer = memoize(
@@ -376,9 +377,9 @@ export const connectToServer = memoize(
           `Successfully connected (transport: ${serverRef.type || 'stdio'}) in ${elapsed}ms`,
         )
       } catch (error) {
-        // A failed probe on HTTP is tried again in the 2025 protocol, and a
-        // failed cached verdict with a probe, each on a fresh transport and
-        // inside the same deadline. Neither counts as a retry.
+        // A probe an HTTP server turned down is tried again in the 2025
+        // protocol, and a failed cached verdict with a probe, each on a fresh
+        // transport and inside the same deadline. Neither counts as a retry.
         const eraStep = nextEraStep(error, { plan, transport: negotiable })
         if (eraStep !== null && deadline - Date.now() > 0) {
           logMCPDebug(

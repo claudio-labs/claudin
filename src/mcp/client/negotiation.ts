@@ -15,9 +15,13 @@
  *
  * The SDK falls back to `initialize` by itself when a server answers the
  * probe 4xx (a 2025 server), and on stdio when the probe times out. On HTTP a
- * 5xx, a timeout or a network error makes connect reject instead; Spring AI
- * answers the probe 500. Those are retried in the 2025 protocol on a fresh
- * transport. An auth failure is never a reason to change era.
+ * 5xx or a timeout makes connect reject instead (Spring AI answers the probe
+ * 500), and the connect is made again in the 2025 protocol on a fresh
+ * transport. A network error rejects too, but says nothing about the server:
+ * one still starting would be reached in 2025 for the session, or never if it
+ * speaks only 2026-07-28. It fails the attempt, and the transient retry
+ * (connectRetry.ts) probes again. An auth failure is never a reason to change
+ * era.
  *
  * A cached verdict that fails to connect is dropped and the connect is made
  * again with a probe. A modern one cannot fail to connect, since adopting it
@@ -46,11 +50,10 @@ export type EraVerdict =
   | { kind: 'legacy'; savedAt: number; ttlMs: number }
 
 /**
- * Why a connect does not follow the cache: the 2025 protocol after a failed
- * probe (and whether that failure was the server's own answer, worth
- * caching), or a probe after a cached verdict failed.
+ * Why a connect does not follow the cache: the 2025 protocol after the server
+ * turned the probe down, or a probe after a cached verdict failed.
  */
-export type EraOverride = { kind: 'legacy'; cacheVerdict: boolean } | { kind: 'probe' }
+export type EraOverride = { kind: 'legacy' } | { kind: 'probe' }
 
 export type ConnectPlan = {
   /** The client's `versionNegotiation.mode`. */
@@ -125,11 +128,11 @@ export function isAuthConnectError(error: unknown): boolean {
   return false
 }
 
-/** A probe that rejected: the server's 5xx, a timeout, or the network. */
-function isProbeFailure(error: unknown): boolean {
+/** A probe the server answered 5xx, or took and never answered. */
+function isProbeTurnedDown(error: unknown): boolean {
   return (
-    error instanceof SdkError &&
-    (error.code === SdkErrorCode.EraNegotiationFailed || error.code === SdkErrorCode.RequestTimeout)
+    (error instanceof SdkHttpError && error.code === SdkErrorCode.EraNegotiationFailed && error.status >= 500) ||
+    (error instanceof SdkError && error.code === SdkErrorCode.RequestTimeout)
   )
 }
 
@@ -140,15 +143,8 @@ export function nextEraStep(
 ): EraOverride | null {
   if (isAuthConnectError(error)) return null
   if (plan.prior) return { kind: 'probe' }
-  if (plan.mode !== 'auto' || transport !== 'http' || !isProbeFailure(error)) return null
-  // A 5xx, or a probe the server took and never answered, is the server
-  // turning the probe down: once initialize works, that verdict is cached. A
-  // network error says nothing about the server, and the next connect probes
-  // again.
-  const turnedDown =
-    (error instanceof SdkHttpError && error.status >= 500) ||
-    (error instanceof SdkError && error.code === SdkErrorCode.RequestTimeout)
-  return { kind: 'legacy', cacheVerdict: turnedDown }
+  if (plan.mode !== 'auto' || transport !== 'http' || !isProbeTurnedDown(error)) return null
+  return { kind: 'legacy' }
 }
 
 function discoverTtlMs(discover: DiscoverResult): number {
@@ -170,11 +166,8 @@ export function verdictAfterConnect(input: {
   discover: DiscoverResult | undefined
   now: number
 }): EraVerdict | undefined {
-  if (input.override?.kind === 'legacy') {
-    return input.override.cacheVerdict
-      ? { kind: 'legacy', savedAt: input.now, ttlMs: LEGACY_VERDICT_TTL_MS }
-      : undefined
-  }
+  // The server turned the probe down; once initialize works, that is its verdict.
+  if (input.override?.kind === 'legacy') return { kind: 'legacy', savedAt: input.now, ttlMs: LEGACY_VERDICT_TTL_MS }
   if (input.plan.mode !== 'auto' || input.plan.prior) return undefined
   if (input.era === 'modern' && input.discover && isReplayed('modern', input.transport)) {
     return { kind: 'modern', discover: input.discover, savedAt: input.now, ttlMs: discoverTtlMs(input.discover) }
