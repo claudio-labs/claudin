@@ -33,6 +33,7 @@ import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
+  fetchResourceTemplatesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import { createTransport, type InProcessMcpServer } from 'src/mcp/client/transport.js'
@@ -576,6 +577,7 @@ export const connectToServer = memoize(
         // fetch would return stale tools/resources from the old connection.
         fetchToolsForClient.cache.delete(name)
         fetchResourcesForClient.cache.delete(name)
+        fetchResourceTemplatesForClient.cache.delete(name)
         fetchCommandsForClient.cache.delete(name)
 
         connectToServer.cache.delete(key)
@@ -823,6 +825,7 @@ export async function clearServerCache(
   connectToServer.cache.delete(key)
   fetchToolsForClient.cache.delete(name)
   fetchResourcesForClient.cache.delete(name)
+  fetchResourceTemplatesForClient.cache.delete(name)
   fetchCommandsForClient.cache.delete(name)
 }
 

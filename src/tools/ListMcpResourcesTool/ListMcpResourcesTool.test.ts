@@ -62,6 +62,71 @@ describe('ListMcpResourcesTool', () => {
     expect(data).toEqual([])
   })
 
+  // An `sdk` server, so ensureConnectedClient hands it back as is; the fake
+  // validates each answer with the schema it is handed, as the SDK does.
+  function resourceServer(name: string, answers: Record<string, unknown>) {
+    return {
+      name,
+      type: 'connected',
+      capabilities: { resources: {} },
+      config: { type: 'sdk', name, scope: 'local' },
+      client: {
+        request: async (req: { method: string }, schema: { parse: (v: unknown) => unknown }) => {
+          const answer = answers[req.method]
+          if (answer instanceof Error) throw answer
+          return schema.parse(answer)
+        },
+      },
+    }
+  }
+
+  test('call() lists resources and resource templates, each with its server', async () => {
+    const { data } = await ListMcpResourcesTool.call(
+      {} as never,
+      ctxWithClients([
+        resourceServer('files', {
+          'resources/list': { resources: [{ uri: 'file:///readme', name: 'readme' }] },
+          'resources/templates/list': {
+            resourceTemplates: [{ uriTemplate: 'file:///{path}', name: 'any file' }, { name: 'no template' }],
+          },
+        }),
+      ]),
+    )
+    expect(data).toEqual([
+      { uri: 'file:///readme', name: 'readme', server: 'files' },
+      { uriTemplate: 'file:///{path}', name: 'any file', server: 'files' },
+    ])
+    expect(ListMcpResourcesTool.outputSchema!.safeParse(data).success).toBe(true)
+  })
+
+  test('call() treats a server without templates/list as having no templates', async () => {
+    const { McpError, ErrorCode } = await import('@modelcontextprotocol/sdk/types.js')
+    const { data } = await ListMcpResourcesTool.call(
+      {} as never,
+      ctxWithClients([
+        resourceServer('no-templates', {
+          'resources/list': { resources: [{ uri: 'res://only', name: 'only' }] },
+          'resources/templates/list': new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+        }),
+      ]),
+    )
+    expect(data).toEqual([{ uri: 'res://only', name: 'only', server: 'no-templates' }])
+  })
+
+  test('call() keeps the other servers when one fails its templates list', async () => {
+    const { data } = await ListMcpResourcesTool.call(
+      {} as never,
+      ctxWithClients([
+        resourceServer('flaky', {
+          'resources/list': { resources: [] },
+          'resources/templates/list': new Error('socket hang up'),
+        }),
+        resourceServer('steady', { 'resources/list': { resources: [{ uri: 'res://s', name: 's' }] }, 'resources/templates/list': { resourceTemplates: [] } }),
+      ]),
+    )
+    expect(data).toEqual([{ uri: 'res://s', name: 's', server: 'steady' }])
+  })
+
   test('mapToolResultToToolResultBlockParam handles empty and populated results', () => {
     const map = ListMcpResourcesTool.mapToolResultToToolResultBlockParam
     expect(map).toBeDefined()

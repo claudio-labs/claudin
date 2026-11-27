@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle'
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
 import type { Command } from 'src/commands/commands.js'
@@ -32,6 +33,7 @@ import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
   ServerResource,
+  ServerResourceTemplate,
 } from 'src/mcp/types.js'
 import { isMcpAuthCached } from 'src/mcp/client/authCache.js'
 // callTool.js and connection.js below form intentional ESM cycles with this
@@ -60,9 +62,11 @@ import {
   isSchemaError,
   keepValidPrompts,
   keepValidResources,
+  keepValidResourceTemplates,
   keepValidTools,
   LenientPromptsPageSchema,
   LenientResourcesPageSchema,
+  LenientResourceTemplatesPageSchema,
   LenientToolsPageSchema,
   type SkippedEntry,
 } from 'src/mcp/client/listValidation.js'
@@ -407,6 +411,39 @@ export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
     }
   },
   (): ServerResource[] => [],
+  (client: MCPServerConnection) => client.name,
+  MCP_FETCH_CACHE_SIZE,
+)
+
+// Read only by ListMcpResourcesTool, never at startup. A server with resources
+// but no templates/list answers MethodNotFound, which means it has none.
+export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
+  async (client: MCPServerConnection): Promise<ServerResourceTemplate[]> => {
+    if (client.type !== 'connected' || !client.capabilities?.resources) return []
+
+    try {
+      const listed = await collectListPages(async cursor => {
+        const page = await client.client.request(
+          { method: 'resources/templates/list', ...pageParams(cursor) },
+          LenientResourceTemplatesPageSchema,
+        )
+        return { items: page.resourceTemplates, nextCursor: page.nextCursor }
+      })
+      const { items: templates, skipped } = keepValidResourceTemplates(listed)
+      logSkippedEntries(client.name, 'resource template', skipped)
+      return templates.map(template => ({ ...template, server: client.name }))
+    } catch (error) {
+      if (error instanceof McpError && error.code === ErrorCode.MethodNotFound) {
+        return []
+      }
+      logMCPError(
+        client.name,
+        `Failed to fetch resource templates: ${errorMessage(error)}`,
+      )
+      throw error
+    }
+  },
+  (): ServerResourceTemplate[] => [],
   (client: MCPServerConnection) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
