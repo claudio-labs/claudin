@@ -1,6 +1,7 @@
 import { feature } from 'bun:bundle'
 import {
   createFetchWithInit,
+  type FetchLike,
   SSEClientTransport,
   type SSEClientTransportOptions,
   StreamableHTTPClientTransport,
@@ -28,6 +29,7 @@ import { getMcpToolTimeoutMs, resolveStdioCwd } from 'src/mcp/client/serverOptio
 import {
   createClaudeAiProxyFetch,
   MCP_REQUEST_TIMEOUT_MS,
+  wrapFetchWithConfiguredAuthorization,
   wrapFetchWithTimeout,
 } from 'src/mcp/client/fetch.js'
 
@@ -37,6 +39,23 @@ export type InProcessMcpServer = {
 }
 
 const MCP_STDIO_MAX_MESSAGE_BYTES = 128 * 1024 * 1024
+
+// The fetch a remote (sse/http) transport sends through. Step-up detection
+// wraps innermost so the 403 is seen before the SDK's handler calls auth() →
+// tokens(), and a configured Authorization header is put back over the auth
+// provider's.
+function remoteFetch(
+  authProvider: ClaudeAuthProvider,
+  headers: Record<string, string>,
+): FetchLike {
+  const stepUpFetch = wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider)
+  const configured = Object.entries(headers).find(
+    ([key]) => key.toLowerCase() === 'authorization',
+  )?.[1]
+  return configured === undefined
+    ? stepUpFetch
+    : wrapFetchWithConfiguredAuthorization(stepUpFetch, configured)
+}
 
 /**
  * Builds the MCP transport for a server based on its configured type
@@ -66,12 +85,9 @@ export async function createTransport(
     const transportOptions: SSEClientTransportOptions = {
       authProvider,
       // Use fresh timeout per request to avoid stale AbortSignal bug.
-      // Step-up detection wraps innermost so the 403 is seen before the
-      // SDK's handler calls auth() → tokens().
-      fetch: wrapFetchWithTimeout(
-        wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
-        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },
-      ),
+      fetch: wrapFetchWithTimeout(remoteFetch(authProvider, combinedHeaders), {
+        toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef),
+      }),
       requestInit: {
         headers: {
           'User-Agent': getMCPUserAgent(),
@@ -233,12 +249,9 @@ export async function createTransport(
     const transportOptions: StreamableHTTPClientTransportOptions = {
       authProvider,
       // Use fresh timeout per request to avoid stale AbortSignal bug.
-      // Step-up detection wraps innermost so the 403 is seen before the
-      // SDK's handler calls auth() → tokens().
-      fetch: wrapFetchWithTimeout(
-        wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
-        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },
-      ),
+      fetch: wrapFetchWithTimeout(remoteFetch(authProvider, combinedHeaders), {
+        toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef),
+      }),
       requestInit: {
         ...proxyOptions,
         headers: {

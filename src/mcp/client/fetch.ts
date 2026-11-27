@@ -176,6 +176,24 @@ export function wrapFetchWithTimeout(
   }
 }
 
+/**
+ * Sends a server's configured Authorization header in place of the one the
+ * SDK's auth provider sets. SDK 1.x merged `requestInit` headers after the
+ * provider's, so a static header beat stored OAuth tokens; 2.x merges them
+ * first, and the provider's token won.
+ */
+export function wrapFetchWithConfiguredAuthorization(
+  baseFetch: FetchLike,
+  authorization: string,
+): FetchLike {
+  return (url: string | URL, init?: RequestInit) => {
+    // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+    const headers = new Headers(init?.headers)
+    headers.set('authorization', authorization)
+    return baseFetch(url, { ...init, headers })
+  }
+}
+
 export function getMcpServerConnectionBatchSize(): number {
   return parseInt(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE || '', 10) || 3
 }
