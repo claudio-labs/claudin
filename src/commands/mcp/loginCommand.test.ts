@@ -24,14 +24,15 @@ describe('cliAuthDeps', () => {
   })
 
   test('asks for a pasted URL only when stdin is a terminal', async () => {
-    const isTTY = process.stdin.isTTY
+    const own = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY')
     try {
       Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true })
       expect((await cliAuthDeps()).readLine).toBeNull()
       Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
       expect(typeof (await cliAuthDeps()).readLine).toBe('function')
     } finally {
-      Object.defineProperty(process.stdin, 'isTTY', { value: isTTY, configurable: true })
+      if (own) Object.defineProperty(process.stdin, 'isTTY', own)
+      else delete (process.stdin as { isTTY?: boolean }).isTTY
     }
   })
 })

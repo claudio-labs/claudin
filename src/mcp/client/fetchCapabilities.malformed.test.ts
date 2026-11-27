@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, spyOn, test } from 'bun:test'
+import * as log from 'src/shared/log.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
@@ -52,7 +53,13 @@ describe('a tools/list with one malformed tool', () => {
     const { client } = listServer('bad-schema-type', {
       'tools/list': { tools: [goodTool, { name: 'bad', inputSchema: { type: 'string' } }] },
     })
-    expect((await fetchToolsForClient(client)).map(t => t.mcpInfo?.toolName)).toEqual(['good'])
+    const logged = spyOn(log, 'logMCPError')
+    try {
+      expect((await fetchToolsForClient(client)).map(t => t.mcpInfo?.toolName)).toEqual(['good'])
+      expect(logged.mock.calls).toContainEqual(['bad-schema-type', 'Skipped tool "bad": inputSchema type is not "object"'])
+    } finally {
+      logged.mockRestore()
+    }
   }, 10_000)
 
   test('keeps the valid tools when one name is not a string', async () => {
@@ -85,14 +92,26 @@ describe('prompts and resources lists with one malformed entry', () => {
     const { client } = listServer('bad-prompts', {
       'prompts/list': { prompts: [{ name: 'good' }, { name: 'bad', arguments: 'x' }] },
     })
-    expect((await fetchCommandsForClient(client)).map(c => c.name)).toEqual(['mcp__bad-prompts__good'])
+    const logged = spyOn(log, 'logMCPError')
+    try {
+      expect((await fetchCommandsForClient(client)).map(c => c.name)).toEqual(['mcp__bad-prompts__good'])
+      expect(logged.mock.calls.map(call => String(call[1]))).toContainEqual(expect.stringMatching(/^Skipped prompt "bad": arguments/))
+    } finally {
+      logged.mockRestore()
+    }
   })
 
   test('keeps the valid resources', async () => {
     const { client } = listServer('bad-resources', {
       'resources/list': { resources: [{ uri: 'file:///ok', name: 'ok' }, { name: 'no-uri' }] },
     })
-    expect((await fetchResourcesForClient(client)).map(r => r.uri)).toEqual(['file:///ok'])
+    const logged = spyOn(log, 'logMCPError')
+    try {
+      expect((await fetchResourcesForClient(client)).map(r => r.uri)).toEqual(['file:///ok'])
+      expect(logged.mock.calls.map(call => String(call[1]))).toContainEqual(expect.stringMatching(/^Skipped resource "no-uri": uri/))
+    } finally {
+      logged.mockRestore()
+    }
   })
 })
 

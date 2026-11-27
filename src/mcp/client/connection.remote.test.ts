@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import type { Server } from 'bun'
-import { connectToServer } from 'src/mcp/client/connection.js'
+import { readFileSync } from 'node:fs'
+import { clearServerCache, connectToServer } from 'src/mcp/client/connection.js'
+import { fetchResourceTemplatesForClient } from 'src/mcp/client/fetchCapabilities.js'
 import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js'
 
@@ -106,6 +108,73 @@ describe('connectToServer — transient failures', () => {
     })
     expect(connection.type).toBe('failed')
     expect(server.initializes()).toBe(1)
+  })
+
+  test('a hung retry is cut at the startup deadline every attempt shares', async () => {
+    // Two 503s, then an initialize that never answers. The third attempt
+    // starts ~1.25 s in, so a timer re-armed with the whole startupTimeout
+    // would end it at ~4.25 s instead of 3 s.
+    let initializes = 0
+    const srv = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      async fetch(req) {
+        if (req.method !== 'POST') return new Response(null, { status: 405 })
+        const message = (await req.json()) as { method: string }
+        if (message.method !== 'initialize') return new Response(null, { status: 202 })
+        if (initializes++ < 2) return new Response('unavailable', { status: 503 })
+        return new Promise<Response>(() => {})
+      },
+    })
+    servers.push(srv)
+    const started = Date.now()
+    const connection = await connect('http-hung-retry', {
+      type: 'http',
+      url: `http://127.0.0.1:${srv.port}/mcp`,
+      startupTimeout: 3000,
+      scope: 'user',
+    })
+    expect(connection.type).toBe('failed')
+    expect(initializes).toBe(3)
+    expect(Date.now() - started).toBeLessThan(3700)
+  }, 10_000)
+})
+
+describe('clearServerCache', () => {
+  test('clears the resource templates with the rest of the server’s lists', async () => {
+    const asked: string[] = []
+    const client = {
+      type: 'connected',
+      name: 'tpl-clear',
+      capabilities: { resources: {} },
+      config: { type: 'sdk', name: 'tpl-clear', scope: 'local' },
+      cleanup: async () => {},
+      client: {
+        request: async (req: { method: string }, schema: { parse: (v: unknown) => unknown }) => {
+          asked.push(req.method)
+          return schema.parse({ resourceTemplates: [{ uriTemplate: 'file:///{p}', name: 'f' }] })
+        },
+      },
+    } as unknown as MCPServerConnection
+    await fetchResourceTemplatesForClient(client)
+    await fetchResourceTemplatesForClient(client)
+    expect(asked).toHaveLength(1)
+    await clearServerCache(client.name, client.config)
+    await fetchResourceTemplatesForClient(client)
+    expect(asked).toHaveLength(2)
+  })
+
+  test('so do a closed connection and a resources/list_changed (source pins)', () => {
+    // Both handlers run past a real transport and the React hook; the lines
+    // that drop the templates sit beside the ones that drop the resources.
+    const connection = readFileSync(new URL('./connection.ts', import.meta.url), 'utf8')
+    const hook = readFileSync(new URL('../useManageMCPConnections.ts', import.meta.url), 'utf8')
+    expect(connection).toContain(
+      '        fetchResourcesForClient.cache.delete(name)\n        fetchResourceTemplatesForClient.cache.delete(name)\n',
+    )
+    expect(hook).toContain(
+      'fetchResourcesForClient.cache.delete(client.name)\n                  fetchResourceTemplatesForClient.cache.delete(client.name)\n',
+    )
   })
 })
 

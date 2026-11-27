@@ -15,7 +15,11 @@
     "src/commands/mcp/loginCommand.test.ts",
     "src/mcp/client/clientInfo.test.ts",
     "src/commands/mcp/cliHints.test.ts",
-    "src/mcp/types.test.ts"
+    "src/mcp/types.test.ts",
+    "src/mcp/auth/cliLogin.flow.test.ts",
+    "src/mcp/client/promptArguments.test.ts",
+    "src/plugins/mcpPluginIntegration.test.ts",
+    "src/mcp/config.signature.test.ts"
   ],
   "source": "src/mcp/client/listValidation.ts",
   "probes": [
@@ -26,7 +30,7 @@
     },
     {
       "name": "B1: an inputSchema of another type is not refused up front",
-      "find": "  if (inputSchema.type !== undefined && inputSchema.type !== 'object') return 'inputSchema type is not \"object\"'\n",
+      "find": "  if (inputSchema.type !== undefined && inputSchema.type !== 'object') {\n    return { skip: 'inputSchema type is not \"object\"' }\n  }\n",
       "replace": ""
     },
     {
@@ -133,8 +137,8 @@
     {
       "name": "P4: 501 counts as transient",
       "source": "src/mcp/client/connectRetry.ts",
-      "find": "    return code === 408 || code === 429 || (code >= 500 && code <= 599 && code !== 501)\n",
-      "replace": "    return code === 408 || code === 429 || (code >= 500 && code <= 599)\n"
+      "find": "  return status === 408 || status === 429 || (status >= 500 && status <= 599 && status !== 501)\n",
+      "replace": "  return status === 408 || status === 429 || (status >= 500 && status <= 599)\n"
     },
     {
       "name": "P4: a network code on the cause is not seen",
@@ -143,10 +147,10 @@
       "replace": "  return [code].some(c => typeof c === 'string' && TRANSIENT_NETWORK_CODES.has(c))\n"
     },
     {
-      "name": "P3: MethodNotFound on templates/list is a failure",
+      "name": "P3: a failed templates list is not cached as none",
       "source": "src/mcp/client/fetchCapabilities.ts",
-      "find": "      if (error instanceof McpError && error.code === ErrorCode.MethodNotFound) {\n",
-      "replace": "      if (false) {\n"
+      "find": "      return []\n    }\n  },\n  (): ServerResourceTemplate[] => [],\n",
+      "replace": "      throw error\n    }\n  },\n  (): ServerResourceTemplate[] => [],\n"
     },
     {
       "name": "P3: ListMcpResources stops fetching templates",
@@ -157,8 +161,8 @@
     {
       "name": "P1: an untrimmed or blank pasted line is submitted",
       "source": "src/mcp/auth/cliLogin.ts",
-      "find": "              if (line?.trim()) submit(line.trim())\n",
-      "replace": "              if (line !== null) submit(line)\n"
+      "find": "        if (line?.trim()) submitPasted(line.trim())\n",
+      "replace": "        if (line !== null) submitPasted(line)\n"
     },
     {
       "name": "P1: a stdio server is sent into the OAuth flow",
@@ -175,7 +179,7 @@
     {
       "name": "I3: prompt arguments split on single spaces again",
       "source": "src/mcp/client/fetchCapabilities.ts",
-      "find": "            const argsArray = parseArguments(args)\n",
+      "find": "            const argsArray = splitPromptArguments(args)\n",
       "replace": "            const argsArray = args.split(' ')\n"
     },
     {
@@ -195,6 +199,102 @@
       "source": "src/mcp/client/fetch.ts",
       "find": "      if (!now || now === sentToken) {\n",
       "replace": "      if (true) {\n"
+    },
+    {
+      "name": "review: the paste prompt no longer waits for the URL",
+      "source": "src/mcp/auth/cliLogin.ts",
+      "find": "    if (!urlShown || !submit || !deps.readLine) return\n",
+      "replace": "    if (!submit || !deps.readLine) return\n"
+    },
+    {
+      "name": "review: a refused ws upgrade loses its status",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "        this.refusedStatus = status\n",
+      "replace": ""
+    },
+    {
+      "name": "review: a ws open error with no status is not transient",
+      "source": "src/mcp/client/connectRetry.ts",
+      "find": "    return error.status === undefined || isTransientStatus(error.status)\n",
+      "replace": "    return isTransientStatus(error.status ?? 0)\n"
+    },
+    {
+      "name": "review: an sse stream never reached is not transient",
+      "source": "src/mcp/client/connectRetry.ts",
+      "find": "  if (error instanceof SseError && error.code === undefined) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "review: a retry's timer is re-armed with the whole startupTimeout",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        }, deadline - connectStartTime)\n",
+      "replace": "        }, getMcpConnectTimeoutMs(serverRef))\n"
+    },
+    {
+      "name": "review: clearServerCache keeps the templates",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  fetchResourcesForClient.cache.delete(name)\n  fetchResourceTemplatesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n}",
+      "replace": "  fetchResourcesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n}"
+    },
+    {
+      "name": "review: a closed connection keeps the templates",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        fetchResourceTemplatesForClient.cache.delete(name)\n",
+      "replace": ""
+    },
+    {
+      "name": "review: list_changed keeps the templates",
+      "source": "src/mcp/useManageMCPConnections.ts",
+      "find": "                  fetchResourceTemplatesForClient.cache.delete(client.name)\n",
+      "replace": ""
+    },
+    {
+      "name": "review: the templates list waits the SDK's 60 s",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "          { timeout: RESOURCE_TEMPLATES_TIMEOUT_MS },\n",
+      "replace": ""
+    },
+    {
+      "name": "review: a skipped tool is not logged",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      logSkippedEntries(client.name, 'tool', skipped)\n",
+      "replace": ""
+    },
+    {
+      "name": "review: an empty prompt line sends no argument",
+      "source": "src/mcp/client/promptArguments.ts",
+      "find": "  return args.length > 0 ? args : ['']\n",
+      "replace": "  return args\n"
+    },
+    {
+      "name": "review: single quotes stop grouping words",
+      "source": "src/mcp/client/promptArguments.ts",
+      "find": "const ARGUMENT_RE = /\"([^\"]*)\"|'([^']*)'|(\\S+)/g\n",
+      "replace": "const ARGUMENT_RE = /\"([^\"]*)\"|()(\\S+)/g\n"
+    },
+    {
+      "name": "review: a plugin cwd skips the plugin substitutions",
+      "source": "src/plugins/mcpPluginIntegration.ts",
+      "find": "        const cwd = resolveValue(stdioConfig.cwd)\n",
+      "replace": "        const cwd = stdioConfig.cwd\n"
+    },
+    {
+      "name": "review: a relative plugin cwd lands under the project",
+      "source": "src/plugins/mcpPluginIntegration.ts",
+      "find": "          isAbsolute(cwd) || cwd === '~' || cwd.startsWith('~/') ? cwd : join(plugin.path, cwd)\n",
+      "replace": "          cwd\n"
+    },
+    {
+      "name": "review: a toolTimeout past the timer limit passes the schema",
+      "source": "src/mcp/types.ts",
+      "find": "  toolTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),\n",
+      "replace": "  toolTimeout: z.number().int().positive().optional(),\n"
+    },
+    {
+      "name": "review: the dedup signature ignores cwd",
+      "source": "src/mcp/config.ts",
+      "find": "    return `stdio:${jsonStringify(cmd)}${cwd}`\n",
+      "replace": "    return `stdio:${jsonStringify(cmd)}`\n"
     }
   ]
 }

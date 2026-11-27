@@ -107,4 +107,23 @@ describe.skipIf(!existsSync(BUNDLE))('claudin mcp login', () => {
     if (exited === 'still running') login.kill()
     expect(exited).toBe('still running')
   }, 30_000)
+
+  function run(...args: string[]) {
+    const result = Bun.spawnSync(['node', BUNDLE, 'mcp', ...args], { cwd: join(root, 'cwd'), env: env(), stdin: 'ignore' })
+    return { code: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+  }
+
+  test('an unknown server exits 1 with the reason, for login and logout', () => {
+    for (const verb of ['login', 'logout']) {
+      const result = run(verb, 'nope')
+      expect(result.code).toBe(1)
+      expect(result.err).toContain('No MCP server named "nope"')
+    }
+  })
+
+  test('logout of a configured server exits 0 and says so', () => {
+    const result = run('logout', 'oauthy')
+    expect(result.code).toBe(0)
+    expect(result.out).toContain('Signed out of "oauthy"')
+  })
 })

@@ -615,7 +615,7 @@ describe('createTransport — http', () => {
     const started = Date.now()
     await expect(
       transport.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'slow' } }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('The operation timed out')
     expect(Date.now() - started).toBeLessThan(1500)
   })
 })

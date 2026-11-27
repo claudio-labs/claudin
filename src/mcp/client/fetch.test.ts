@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import {
   createClaudeAiProxyFetch,
   getMcpServerConnectionBatchSize,
@@ -164,35 +164,24 @@ describe('wrapFetchWithTimeout', () => {
     expect(seen[0]!.init!.signal!.reason).toBe('gone')
   })
 
-  test('a tools/call answered after 60 s is not cut while the tool timeout allows it', async () => {
-    jest.useFakeTimers()
+  // The cap each POST is armed with, read off setTimeout rather than waited
+  // for: Bun's fake timers stall once fake time passes the machine's uptime.
+  async function capFor(body: string, options?: { toolCallTimeoutMs?: number }): Promise<number | undefined> {
+    const timers = spyOn(globalThis, 'setTimeout')
     try {
-      const { fetchLike } = recordingFetch(
-        ({ init }) =>
-          new Promise<Response>((resolve, reject) => {
-            const timer = setTimeout(() => resolve(new Response('{}')), 61_000)
-            init!.signal!.addEventListener('abort', () => {
-              clearTimeout(timer)
-              reject(init!.signal!.reason)
-            })
-          }),
-      )
-      const pending = wrapFetchWithTimeout(fetchLike)('http://srv/mcp', {
-        method: 'POST',
-        body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'slow' } }),
-      })
-      let outcome = 'pending'
-      pending.then(
-        () => (outcome = 'answered'),
-        error => (outcome = (error as Error).name),
-      )
-      jest.advanceTimersByTime(61_000)
-      await Promise.resolve()
-      await Promise.resolve()
-      expect(outcome).toBe('answered')
+      const { fetchLike } = recordingFetch()
+      await wrapFetchWithTimeout(fetchLike, options)('http://srv/mcp', { method: 'POST', body })
+      return timers.mock.calls.map(call => call[1]).find(ms => typeof ms === 'number' && ms >= 60_000)
     } finally {
-      jest.useRealTimers()
+      timers.mockRestore()
     }
+  }
+
+  test('a tools/call POST is armed with the tool timeout, other POSTs with 60 s', async () => {
+    const toolsCall = JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'slow' } })
+    expect(await capFor(toolsCall)).toBe(300_000)
+    expect(await capFor(toolsCall, { toolCallTimeoutMs: 900_000 })).toBe(900_000)
+    expect(await capFor(JSON.stringify({ jsonrpc: '2.0', id: 8, method: 'tools/list' }))).toBe(60_000)
   })
 
   test('a failing fetch rejects with its own error', async () => {
