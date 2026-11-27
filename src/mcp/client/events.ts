@@ -42,8 +42,10 @@ export const EVENTS_POLL_DEFAULT_MS = 5_000
 export const EVENTS_HEARTBEAT_MISSES = 3
 /**
  * How long a stream may take to say `active`. A stream the server cuts
- * without a response leaves the SDK's request pending, so silence is the
- * only sign of it: before `active` this bound, after it the heartbeat.
+ * without a response leaves the SDK's request pending. Over HTTP the
+ * transport still sees the stream end; elsewhere, and for a server that
+ * keeps a dead stream open, silence is the only sign: before `active` this
+ * bound, after it the heartbeat.
  */
 export const EVENTS_OPEN_TIMEOUT_MS = 30_000
 /** Event ids remembered, so a resumed stream does not deliver one twice. */
@@ -169,22 +171,38 @@ function withServerText(summary: string, what: string, text: unknown): string {
 
 // --- stream ids -------------------------------------------------------------
 
-const streamIdWaiters = new WeakMap<Transport, Map<string, (id: RequestId) => void>>()
+type StreamWaiter = {
+  /** The id the request went out as. */
+  sent(id: RequestId): void
+  /** The transport saw the request's stream end, answered or not. */
+  ended(): void
+}
 
-function streamIdWaitersFor(transport: Transport): Map<string, (id: RequestId) => void> {
+const streamIdWaiters = new WeakMap<Transport, Map<string, StreamWaiter>>()
+
+function streamIdWaitersFor(transport: Transport): Map<string, StreamWaiter> {
   const known = streamIdWaiters.get(transport)
   if (known) return known
-  const waiters = new Map<string, (id: RequestId) => void>()
+  const waiters = new Map<string, StreamWaiter>()
   const send = transport.send.bind(transport)
   transport.send = (message, options) => {
     const params = (message as { params?: unknown }).params
     const meta = isRecord(params) ? params._meta : undefined
     const token = isRecord(meta) ? meta[STREAM_TOKEN_META_KEY] : undefined
     if (!isRecord(params) || !isRecord(meta) || typeof token !== 'string') return send(message, options)
-    waiters.get(token)?.((message as { id: RequestId }).id)
+    const waiter = waiters.get(token)
     waiters.delete(token)
+    waiter?.sent((message as { id: RequestId }).id)
+    // The SDK does not turn a stream that ends unanswered into an error, but
+    // the Streamable HTTP transport reports the end here (stdio ignores it).
+    const streamEnd = waiter && {
+      onRequestStreamEnd: () => {
+        options?.onRequestStreamEnd?.()
+        waiter.ended()
+      },
+    }
     const { [STREAM_TOKEN_META_KEY]: _token, ...rest } = meta
-    return send({ ...message, params: { ...params, _meta: rest } } as typeof message, options)
+    return send({ ...message, params: { ...params, _meta: rest } } as typeof message, { ...options, ...streamEnd })
   }
   streamIdWaiters.set(transport, waiters)
   return waiters
@@ -296,6 +314,7 @@ function streamOnce(
   const waiters = streamIdWaitersFor(client.transport!)
   let id: RequestId | undefined
   let cancelWatchdog = (): void => {}
+  let active = false
   let heartbeatMs: number | undefined
   let settle!: (outcome: StreamOutcome) => void
   const outcome = new Promise<StreamOutcome>(resolve => {
@@ -303,6 +322,9 @@ function streamOnce(
   })
 
   const arm = (): void => {
+    // Until `active` the open timeout bounds the silence: an event before it
+    // must not disarm that.
+    if (!active) return
     cancelWatchdog()
     if (heartbeatMs === undefined) return
     const silence = heartbeatMs * EVENTS_HEARTBEAT_MISSES
@@ -313,6 +335,7 @@ function streamOnce(
       case 'notifications/events/active': {
         const ms = notification.heartbeatMs
         heartbeatMs = typeof ms === 'number' && ms > 0 ? ms : undefined
+        active = true
         onActive()
         arm()
         return
@@ -335,9 +358,13 @@ function streamOnce(
   }
   const stop = (): void => settle({ kind: 'stopped' })
   signal.addEventListener('abort', stop)
-  waiters.set(token, requestId => {
-    id = requestId
-    sinks.set(requestId, sink)
+  waiters.set(token, {
+    sent: requestId => {
+      id = requestId
+      sinks.set(requestId, sink)
+    },
+    // A stream that carried its result has settled the request already.
+    ended: () => settle({ kind: 'dropped', why: 'the server closed the stream without a result' }),
   })
 
   client
