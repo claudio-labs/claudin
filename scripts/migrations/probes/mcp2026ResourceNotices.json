@@ -43,8 +43,14 @@
     {
       "name": "a 2026 stream reopens with only the newest URI instead of the whole set",
       "source": "src/mcp/client/subscriptions.ts",
-      "find": "    loop?.setResourceSubscriptions(next.uris)",
-      "replace": "    loop?.setResourceSubscriptions([uri])"
+      "find": "    loop?.setResourceSubscriptions(uris)",
+      "replace": "    loop?.setResourceSubscriptions(typeof uri === 'string' ? [uri] : uri)"
+    },
+    {
+      "name": "a reconnect ends the notices for every resource read before it",
+      "source": "src/mcp/client/connection.ts",
+      "find": "      void resumeMcpResourceWatches({ name, client })\n",
+      "replace": ""
     },
     {
       "name": "cleanup waits on the listen cancel, so a server that stopped answering holds it for the 60 s request timeout",

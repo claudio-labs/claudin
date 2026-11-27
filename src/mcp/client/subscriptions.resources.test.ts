@@ -207,4 +207,17 @@ describe('subscribeResourceUpdates', () => {
     await stopMcpSubscriptions(fake.client)
     expect(getResourceSubscriptions(fake.client)).toEqual([])
   })
+
+  test('a list of URIs: 2026 opens one stream with the newest 50, 2025 subscribes each of those', async () => {
+    const uris = Array.from({ length: 51 }, (_, i) => uriN(i))
+    const modern = make({ era: 'modern' })
+    expect(await subscribeResourceUpdates('srv', modern.client, uris, () => {})).toEqual([uriN(0)])
+    await Bun.sleep(0)
+    expect(modern.filters).toEqual([{ resourceSubscriptions: uris.slice(1) }])
+
+    const legacy = make()
+    expect(await subscribeResourceUpdates('srv', legacy.client, uris, () => {})).toEqual([uriN(0)])
+    expect(legacy.calls.filter(c => c.startsWith('subscribe '))).toEqual(uris.slice(1).map(u => `subscribe ${u}`))
+    expect(legacy.calls.filter(c => c.startsWith('unsubscribe '))).toEqual([])
+  })
 })

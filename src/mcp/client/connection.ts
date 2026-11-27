@@ -51,6 +51,7 @@ import {
   verdictAfterConnect,
 } from 'src/mcp/client/negotiation.js'
 import { stopMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
+import { resumeMcpResourceWatches } from 'src/mcp/resourceWatch.js'
 import {
   attachMcpWireFilter,
   fetchCommandsForClient,
@@ -910,6 +911,9 @@ export const connectToServer = memoize(
       }
 
       const connectionDurationMs = Date.now() - connectStartTime
+      // A reconnect: the resources read on the connections before this one
+      // are subscribed again, or their changes would go untold.
+      void resumeMcpResourceWatches({ name, client })
       return {
         name,
         client,

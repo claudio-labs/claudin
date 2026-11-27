@@ -17,7 +17,7 @@ import { setEraCacheDirForTests } from 'src/mcp/client/eraCache.js'
 import { reconnectMcpServerImpl } from 'src/mcp/client/fetchCapabilities.js'
 import { getResourceSubscriptions, type ResourceSubscribeClient } from 'src/mcp/client/subscriptions.js'
 import { getMcpResourceChanges, MAIN_THREAD, McpResourceChanges } from 'src/mcp/resourceChanges.js'
-import { watchMcpResource } from 'src/mcp/resourceWatch.js'
+import { resumeMcpResourceWatches, watchMcpResource } from 'src/mcp/resourceWatch.js'
 import type { ConnectedMCPServer, MCPServerConnection } from 'src/mcp/types.js'
 import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js'
 import type { AgentId } from 'src/shared/types/ids.js'
@@ -192,6 +192,31 @@ describe('watchMcpResource', () => {
     await watchMcpResource({ name: 'docs', client }, README, {}, changes)
     changes.record({ server: 'docs', uri: README })
     expect(changes.take(MAIN_THREAD)).toEqual([])
+  })
+})
+
+describe('resumeMcpResourceWatches', () => {
+  test("subscribes a new connection to the server's resources read before, the oldest forgotten past 50", async () => {
+    const changes = new McpResourceChanges()
+    for (let i = 0; i < 51; i++) changes.noteRead(MAIN_THREAD, { server: 'docs', uri: `docs://r${i}` })
+    changes.noteRead(MAIN_THREAD, { server: 'other', uri: README })
+    const subscribed: string[] = []
+    const client = {
+      getServerCapabilities: () => ({ resources: { subscribe: true } }),
+      getProtocolEra: () => 'legacy',
+      transport: {},
+      setNotificationHandler: () => {},
+      subscribeResource: async ({ uri }: { uri: string }) => {
+        subscribed.push(uri)
+        return {}
+      },
+      unsubscribeResource: async () => ({}),
+    } as unknown as ConnectedMCPServer['client']
+    await resumeMcpResourceWatches({ name: 'docs', client }, changes)
+    expect(subscribed).toHaveLength(50)
+    expect(subscribed[0]).toBe('docs://r1')
+    expect(changes.watchedUris('docs')).toEqual(subscribed)
+    expect(changes.watchedUris('other')).toEqual([README])
   })
 })
 

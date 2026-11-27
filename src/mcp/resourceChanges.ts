@@ -40,16 +40,16 @@ function keyOf(change: McpResourceChange): string {
 }
 
 export class McpResourceChanges {
-  /** Resource key → the threads that read it. */
-  private readonly readers = new Map<string, Set<string>>()
+  /** Resource key → the resource and the threads that read it. */
+  private readonly readers = new Map<string, { change: McpResourceChange; threads: Set<string> }>()
   /** Thread → its pending notices, by resource key, in arrival order. */
   private readonly pending = new Map<string, Map<string, McpResourceChange>>()
 
   noteRead(thread: string, change: McpResourceChange): void {
     const key = keyOf(change)
-    const threads = this.readers.get(key) ?? new Set<string>()
-    threads.add(thread)
-    this.readers.set(key, threads)
+    const entry = this.readers.get(key) ?? { change: { server: change.server, uri: change.uri }, threads: new Set() }
+    entry.threads.add(thread)
+    this.readers.set(key, entry)
   }
 
   /** The resource is no longer subscribed: later notices for it are dropped. */
@@ -57,9 +57,14 @@ export class McpResourceChanges {
     this.readers.delete(keyOf(change))
   }
 
+  /** The URIs of `server` read in this conversation and still watched, oldest first. */
+  watchedUris(server: string): string[] {
+    return [...this.readers.values()].filter(({ change }) => change.server === server).map(({ change }) => change.uri)
+  }
+
   record(change: McpResourceChange): void {
     const key = keyOf(change)
-    const threads = this.readers.get(key)
+    const threads = this.readers.get(key)?.threads
     if (!threads) return
     for (const thread of new Set([MAIN_THREAD, ...threads])) {
       const queue = this.pending.get(thread) ?? new Map<string, McpResourceChange>()
@@ -78,7 +83,7 @@ export class McpResourceChanges {
 
   /** A new conversation (/clear, a resume): what the old one read is forgotten. */
   clear(preservedThreads: ReadonlySet<string> = new Set()): void {
-    for (const [key, threads] of this.readers) {
+    for (const [key, { threads }] of this.readers) {
       for (const thread of threads) if (!preservedThreads.has(thread)) threads.delete(thread)
       if (threads.size === 0) this.readers.delete(key)
     }

@@ -24,7 +24,9 @@
  * connection subscribes each one with `resources/subscribe` and unsubscribes
  * the one it drops; a 2026 one reopens the stream with the whole set, since a
  * subscription cannot be amended. Nothing is unsubscribed at cleanup beyond
- * what closing the connection does, and the set goes with it.
+ * what closing the connection does, and the set goes with it; the next
+ * connection to the server is handed the URIs read before it in one call
+ * (resumeMcpResourceWatches in resourceWatch.ts).
  */
 import type {
   Client,
@@ -267,17 +269,18 @@ export function getResourceSubscriptions(client: ListenClient): readonly string[
 }
 
 /**
- * Subscribes the connection to `uri`'s `notifications/resources/updated`,
- * which reach `onUpdated`; the handler is set on the first subscription and
- * stays for the client's life. Resolves to the URIs dropped to stay under the
- * cap, or undefined when the server does not offer subscriptions or the
+ * Subscribes the connection to the `notifications/resources/updated` of `uri`
+ * (or of each URI, in order, with one reopened stream on 2026-07-28), which
+ * reach `onUpdated`; the handler is set on the first subscription and stays
+ * for the client's life. Resolves to the URIs dropped to stay under the cap,
+ * or undefined when the server does not offer subscriptions or the
  * connection is closed — then nothing is sent. The set changes before the
  * first await, so concurrent reads each see the other's URI.
  */
 export async function subscribeResourceUpdates(
   name: string,
   client: ResourceSubscribeClient,
-  uri: string,
+  uri: string | readonly string[],
   onUpdated: (uri: string) => void,
 ): Promise<string[] | undefined> {
   if (!canSubscribeResources(client) || client.transport === undefined) return undefined
@@ -287,29 +290,40 @@ export async function subscribeResourceUpdates(
       onUpdated(notification.params.uri)
     })
   }
-  const next = addResourceUri(current ?? [], uri)
-  resourceSubscriptions.set(client, next.uris)
-  if (!next.added) return []
+  let uris = current ?? []
+  const added: string[] = []
+  const evicted: string[] = []
+  for (const each of typeof uri === 'string' ? [uri] : uri) {
+    const next = addResourceUri(uris, each)
+    uris = next.uris
+    if (next.added) added.push(each)
+    evicted.push(...next.evicted)
+  }
+  resourceSubscriptions.set(client, uris)
+  if (added.length === 0) return []
 
   if (client.getProtocolEra() === 'modern') {
     const loop = getMcpSubscriptions(client) ?? startMcpSubscriptions(name, client)
-    loop?.setResourceSubscriptions(next.uris)
-    return next.evicted
+    loop?.setResourceSubscriptions(uris)
+    return evicted
   }
 
-  try {
-    await client.subscribeResource({ uri })
-  } catch (error) {
-    const uris = resourceSubscriptions.get(client)
-    if (uris) resourceSubscriptions.set(client, uris.filter(u => u !== uri))
-    logMCPError(name, `resources/subscribe ${uri} failed: ${errorMessage(error)}`)
+  // A URI a longer call added and then dropped again was never subscribed.
+  for (const each of added.filter(u => uris.includes(u))) {
+    try {
+      await client.subscribeResource({ uri: each })
+    } catch (error) {
+      const now = resourceSubscriptions.get(client)
+      if (now) resourceSubscriptions.set(client, now.filter(u => u !== each))
+      logMCPError(name, `resources/subscribe ${each} failed: ${errorMessage(error)}`)
+    }
   }
-  for (const old of next.evicted) {
+  for (const old of evicted.filter(u => !added.includes(u))) {
     try {
       await client.unsubscribeResource({ uri: old })
     } catch (error) {
       logMCPDebug(name, `resources/unsubscribe ${old} failed: ${errorMessage(error)}`)
     }
   }
-  return next.evicted
+  return evicted
 }
