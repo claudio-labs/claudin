@@ -51,10 +51,18 @@ export type ModernFixture = HttpFixture & {
   listens: () => number
 }
 
-/** A 2026-07-28 server built by `build` on every request, as createMcpHandler asks. */
+/**
+ * A 2026-07-28 server built by `build` on every request, as createMcpHandler
+ * asks. `answer` may answer a request itself, raw, before the SDK server sees
+ * it — a reply no SDK server would build (a task, SEP-2663).
+ */
 export function serveModern(
   build: (server: McpServer) => void,
-  options: { discoverStatus?: number; legacyInitialize?: 'stateless' | 'reject' } = {},
+  options: {
+    discoverStatus?: number
+    legacyInitialize?: 'stateless' | 'reject'
+    answer?: Tap
+  } = {},
 ): ModernFixture {
   const handler = createMcpHandler(
     () => {
@@ -77,7 +85,7 @@ export function serveModern(
       const hit: Hit = { method: `${req.method} ${String(body?.method ?? '')}`.trim(), status: 0, body }
       hits.push(hit)
       const tapped = tap(body)
-      const res = tapped ?? (await handler.fetch(req))
+      const res = tapped ?? options.answer?.(body) ?? (await handler.fetch(req))
       hit.status = res.status
       if (body?.method !== 'subscriptions/listen' || !res.body) return res
       listens++

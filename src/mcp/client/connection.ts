@@ -28,8 +28,10 @@ import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { httpStatusOf, isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import {
   getMcpConnectTimeoutMs,
+  getMcpExtensionEnabled,
   getMcpProtocolMode,
 } from 'src/mcp/client/serverOptions.js'
+import { MCP_TASKS_EXTENSION } from 'src/mcp/client/taskPoll.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 import {
@@ -84,6 +86,14 @@ export async function cleanupFailedConnection(
 
 export function isLocalMcpServer(config: ScopedMcpServerConfig): boolean {
   return !config.type || config.type === 'stdio' || config.type === 'sdk'
+}
+
+/**
+ * What Claudin answers a server's `roots/list` with: the directory it was
+ * started in. A task's `input_required` gets the same answer (callTool.ts).
+ */
+export function listRootsResult(): { roots: Array<{ uri: string }> } {
+  return { roots: [{ uri: `file://${getOriginalCwd()}` }] }
 }
 
 /**
@@ -253,6 +263,13 @@ export const connectToServer = memoize(
             // url; the 2025 initialize goes out as {} (SEND_RULES in
             // wireRules.ts), which Spring AI servers accept.
             elicitation: { form: {}, url: {} },
+            // A server may answer a tools/call with a task only from a client
+            // that declares the extension (taskPoll.ts). The 2025 initialize
+            // drops it with the rest (SEND_RULES), as tasks exist only in
+            // 2026-07-28.
+            ...(getMcpExtensionEnabled(serverRef, 'tasks') && {
+              extensions: { [MCP_TASKS_EXTENSION]: {} },
+            }),
           },
           versionNegotiation:
             plan.mode === 'auto'
@@ -273,13 +290,7 @@ export const connectToServer = memoize(
 
       client.setRequestHandler('roots/list', async () => {
         logMCPDebug(name, `Received ListRoots request from server`)
-        return {
-          roots: [
-            {
-              uri: `file://${getOriginalCwd()}`,
-            },
-          ],
-        }
+        return listRootsResult()
       })
 
       // Add a timeout to connection attempts to prevent tests from hanging indefinitely

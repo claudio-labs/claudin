@@ -14,6 +14,12 @@
  * SEND_RULES rewrites a request Claudin sends, keyed by its method, before it
  * reaches the transport.
  *
+ * A `tools/call` a 2026-07-28 server turned into a task (SEP-2663,
+ * `resultType: 'task'`) has no decoder in the SDK, which rejects it; the rule
+ * hands the SDK an empty complete result carrying the task under
+ * MCP_TASK_META_KEY instead, and taskPoll.ts takes it from there. The
+ * `tasks/*` answers get the same defaults as a list page.
+ *
  * To rewrite another method, add a row to WIRE_RULES or SEND_RULES.
  */
 import type { Tool } from '@modelcontextprotocol/client'
@@ -51,6 +57,21 @@ export function fillListResultFields(result: WireResult): void {
   if (result.cacheScope !== 'public' && result.cacheScope !== 'private') result.cacheScope = 'private'
 }
 
+/** Where a task-augmented `tools/call` result carries its task, in `_meta`. */
+export const MCP_TASK_META_KEY = 'claudin/task'
+
+/**
+ * Rewrites a `resultType: 'task'` tool result, in place, into the complete
+ * result the SDK decodes, with the task's own fields under MCP_TASK_META_KEY.
+ * Any other result is left as it came.
+ */
+export function withTaskMarker(result: WireResult): void {
+  if (result.resultType !== 'task') return
+  const { resultType: _task, ...task } = result
+  for (const key of Object.keys(result)) delete result[key]
+  Object.assign(result, { resultType: 'complete', content: [], _meta: { [MCP_TASK_META_KEY]: task } })
+}
+
 // Claudin never checked a tool's structuredContent against its outputSchema,
 // and the SDK's callTool does once the schema is listed: a tool that declares
 // one and answers without structuredContent (Portainer's, in the 10-15
@@ -85,6 +106,10 @@ export const WIRE_RULES: Readonly<Record<string, WireRule>> = {
   'prompts/list': listRule('prompts', 'prompt', keepValidPrompts),
   'resources/list': listRule('resources', 'resource', keepValidResources),
   'resources/templates/list': listRule('resourceTemplates', 'resource template', keepValidResourceTemplates),
+  'tools/call': withTaskMarker,
+  'tasks/get': fillListResultFields,
+  'tasks/update': fillListResultFields,
+  'tasks/cancel': fillListResultFields,
 }
 
 /**

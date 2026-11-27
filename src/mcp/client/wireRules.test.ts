@@ -4,9 +4,11 @@ import type { SkippedEntry } from 'src/mcp/client/listValidation.js'
 import {
   fillListResultFields,
   LEGACY_INITIALIZE_CAPABILITIES,
+  MCP_TASK_META_KEY,
   SEND_RULES,
   WIRE_RULES,
   withLegacyInitializeCapabilities,
+  withTaskMarker,
   type WireResult,
   withoutOutputSchema,
 } from 'src/mcp/client/wireRules.js'
@@ -21,13 +23,54 @@ const good = { name: 'good', inputSchema: { type: 'object' } }
 const bad = { name: 'bad', inputSchema: { type: 'string' } }
 
 describe('the rule table', () => {
-  test('has a rule for each list method, and none for anything else', () => {
+  test('has a rule for each list method, tools/call and the task methods, and none for anything else', () => {
     expect(Object.keys(WIRE_RULES).sort()).toEqual([
       'prompts/list',
       'resources/list',
       'resources/templates/list',
+      'tasks/cancel',
+      'tasks/get',
+      'tasks/update',
+      'tools/call',
       'tools/list',
     ])
+  })
+
+  test('the task methods get the result fields a modern answer must carry', () => {
+    for (const method of ['tasks/get', 'tasks/update', 'tasks/cancel']) {
+      const result: WireResult = { taskId: 't', status: 'working' }
+      run(method, result)
+      expect(result).toEqual({ taskId: 't', status: 'working', resultType: 'complete', ttlMs: 0, cacheScope: 'private' })
+    }
+  })
+})
+
+describe('withTaskMarker', () => {
+  test('turns a task result into an empty complete result carrying the task', () => {
+    const result: WireResult = {
+      resultType: 'task',
+      taskId: 't1',
+      status: 'working',
+      ttlMs: 60_000,
+      pollIntervalMs: 500,
+    }
+    const same = result
+    run('tools/call', result)
+    expect(same).toEqual({
+      resultType: 'complete',
+      content: [],
+      _meta: { [MCP_TASK_META_KEY]: { taskId: 't1', status: 'working', ttlMs: 60_000, pollIntervalMs: 500 } },
+    })
+    expect(MCP_TASK_META_KEY).toBe('claudin/task')
+  })
+
+  test('leaves any other tool result as it came', () => {
+    const result: WireResult = { content: [{ type: 'text', text: 'hi' }], _meta: { a: 1 } }
+    withTaskMarker(result)
+    expect(result).toEqual({ content: [{ type: 'text', text: 'hi' }], _meta: { a: 1 } })
+    const complete: WireResult = { resultType: 'complete', content: [] }
+    withTaskMarker(complete)
+    expect(complete).toEqual({ resultType: 'complete', content: [] })
   })
 })
 

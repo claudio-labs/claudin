@@ -93,88 +93,18 @@ export function registerElicitationHandler(
       // still reaches this handler in connection.urlElicitation.test.ts); the
       // fallback only covers a context that has none.
       const signal = ctx.mcpReq.signal ?? new AbortController().signal
-      const modern = client.getProtocolEra() === 'modern'
       logMCPDebug(
         serverName,
         `Received elicitation request: ${jsonStringify(request)}`,
       )
-
-      const mode = getElicitationMode(request.params)
-
-
-      try {
-        // Run elicitation hooks first - they can provide a response programmatically
-        const hookResponse = await runElicitationHooks(
-          serverName,
-          request.params,
-          signal,
-        )
-        if (hookResponse) {
-          logMCPDebug(
-            serverName,
-            `Elicitation resolved by hook: ${jsonStringify(hookResponse)}`,
-          )
-          return hookResponse
-        }
-
-        const elicitationId =
-          mode === 'url' && 'elicitationId' in request.params
-            ? (request.params.elicitationId as string | undefined)
-            : undefined
-
-        const response = new Promise<ElicitResult>(resolve => {
-          const onAbort = () => {
-            resolve({ action: 'cancel' })
-          }
-
-          if (signal.aborted) {
-            onAbort()
-            return
-          }
-
-          const waitingState: ElicitationWaitingState | undefined =
-            elicitationId ? { actionLabel: 'Skip confirmation' } : undefined
-
-          setAppState(prev => ({
-            ...prev,
-            elicitation: {
-              queue: [
-                ...prev.elicitation.queue,
-                {
-                  serverName,
-                  requestId: ctx.mcpReq.id,
-                  params: request.params,
-                  signal,
-                  waitingState,
-                  ...(modern && { awaitsCompletion: false }),
-                  respond: (result: ElicitResult) => {
-                    signal.removeEventListener('abort', onAbort)
-                    resolve(result)
-                  },
-                },
-              ],
-            },
-          }))
-
-          signal.addEventListener('abort', onAbort, { once: true })
-        })
-        const rawResult = await response
-        logMCPDebug(
-          serverName,
-          `Elicitation response: ${jsonStringify(rawResult)}`,
-        )
-        const result = await runElicitationResultHooks(
-          serverName,
-          rawResult,
-          signal,
-          mode,
-          elicitationId,
-        )
-        return result
-      } catch (error) {
-        logMCPError(serverName, `Elicitation error: ${error}`)
-        return { action: 'cancel' as const }
-      }
+      return elicitFromUser({
+        serverName,
+        requestId: ctx.mcpReq.id,
+        params: request.params,
+        signal,
+        modern: client.getProtocolEra() === 'modern',
+        setAppState,
+      })
     })
 
     // Register handler for elicitation completion notifications (URL mode).
@@ -215,6 +145,110 @@ export function registerElicitationHandler(
   } catch {
     // Client wasn't created with elicitation capability - nothing to register
     return
+  }
+}
+
+export type ElicitFromUserInput = {
+  serverName: string
+  /** Keys the queued dialog; unique per server connection. */
+  requestId: string | number
+  params: ElicitRequestParams
+  signal: AbortSignal
+  /** A 2026-07-28 connection, where an accepted URL step needs no completion. */
+  modern: boolean
+  setAppState: (f: (prevState: AppState) => AppState) => void
+  /**
+   * Asks someone other than the REPL's ElicitationDialog (print/SDK mode's
+   * structuredIO). Hooks still run on both sides of it.
+   */
+  ask?: (params: ElicitRequestParams, signal: AbortSignal) => Promise<ElicitResult>
+}
+
+/**
+ * Asks the user for one elicitation the way a server-initiated
+ * `elicitation/create` is asked: Elicitation hooks first, then the dialog
+ * queue, then ElicitationResult hooks. Resolves `cancel` on abort or on any
+ * failure. A task's `input_required` (taskPoll.ts) asks through this too.
+ */
+export async function elicitFromUser({
+  serverName,
+  requestId,
+  params,
+  signal,
+  modern,
+  setAppState,
+  ask,
+}: ElicitFromUserInput): Promise<ElicitResult> {
+  const mode = getElicitationMode(params)
+  try {
+    // Run elicitation hooks first - they can provide a response programmatically
+    const hookResponse = await runElicitationHooks(serverName, params, signal)
+    if (hookResponse) {
+      logMCPDebug(
+        serverName,
+        `Elicitation resolved by hook: ${jsonStringify(hookResponse)}`,
+      )
+      return hookResponse
+    }
+
+    const elicitationId =
+      mode === 'url' && 'elicitationId' in params
+        ? (params.elicitationId as string | undefined)
+        : undefined
+
+    const response = ask
+      ? ask(params, signal)
+      : new Promise<ElicitResult>(resolve => {
+          const onAbort = () => {
+            resolve({ action: 'cancel' })
+          }
+
+          if (signal.aborted) {
+            onAbort()
+            return
+          }
+
+          const waitingState: ElicitationWaitingState | undefined =
+            elicitationId ? { actionLabel: 'Skip confirmation' } : undefined
+
+          setAppState(prev => ({
+            ...prev,
+            elicitation: {
+              queue: [
+                ...prev.elicitation.queue,
+                {
+                  serverName,
+                  requestId,
+                  params,
+                  signal,
+                  waitingState,
+                  ...(modern && { awaitsCompletion: false }),
+                  respond: (result: ElicitResult) => {
+                    signal.removeEventListener('abort', onAbort)
+                    resolve(result)
+                  },
+                },
+              ],
+            },
+          }))
+
+          signal.addEventListener('abort', onAbort, { once: true })
+        })
+    const rawResult = await response
+    logMCPDebug(
+      serverName,
+      `Elicitation response: ${jsonStringify(rawResult)}`,
+    )
+    return await runElicitationResultHooks(
+      serverName,
+      rawResult,
+      signal,
+      mode,
+      elicitationId,
+    )
+  } catch (error) {
+    logMCPError(serverName, `Elicitation error: ${error}`)
+    return { action: 'cancel' as const }
   }
 }
 
