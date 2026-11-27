@@ -162,6 +162,87 @@ export function resolveUpdatedTools(
   return out
 }
 
+/** One server's new state, with the lists that changed; an undefined list is kept as it is. */
+export type McpServerUpdate = MCPServerConnection & {
+  tools?: Tool[]
+  commands?: Command[]
+  resources?: ServerResource[]
+}
+
+/**
+ * AppState's mcp slice with `update` applied. When tools, commands, or
+ * resources are undefined, the existing values are preserved. When type is
+ * 'disabled', tools/commands/resources are cleared; 'failed' clears
+ * commands/resources but KEEPS tools (prompt-cache stability — see
+ * resolveUpdatedTools).
+ */
+export function applyServerUpdate(
+  mcp: AppState['mcp'],
+  update: McpServerUpdate,
+): AppState['mcp'] {
+  const {
+    tools: rawTools,
+    commands: rawCmds,
+    resources: rawRes,
+    ...client
+  } = update
+  const commands =
+    client.type === 'disabled' || client.type === 'failed'
+      ? (rawCmds ?? [])
+      : rawCmds
+  const resources =
+    client.type === 'disabled' || client.type === 'failed'
+      ? (rawRes ?? [])
+      : rawRes
+
+  const prefix = getMcpPrefix(client.name)
+  const existingClientIndex = mcp.clients.findIndex(
+    c => c.name === client.name,
+  )
+
+  const updatedClients =
+    existingClientIndex === -1
+      ? [...mcp.clients, client]
+      : mcp.clients.map(c => (c.name === client.name ? client : c))
+
+  // Positional, failure-tolerant tool-pool update — see
+  // resolveUpdatedTools for the prompt-cache rationale.
+  const updatedTools = resolveUpdatedTools(
+    mcp.tools,
+    client.type,
+    prefix,
+    rawTools,
+  )
+
+  const updatedCommands =
+    commands === undefined
+      ? mcp.commands
+      : [
+          ...reject(mcp.commands, c =>
+            commandBelongsToServer(c, client.name),
+          ),
+          ...commands,
+        ]
+
+  const updatedResources =
+    resources === undefined
+      ? mcp.resources
+      : {
+          ...mcp.resources,
+          ...(resources.length > 0
+            ? { [client.name]: resources }
+            : omit(mcp.resources, client.name)),
+        }
+
+  return {
+    ...mcp,
+    clients: updatedClients,
+    tools: updatedTools,
+    commands: updatedCommands,
+    resources: updatedResources,
+  }
+}
+
 /**
  * Hook to manage MCP (Model Context Protocol) server connections and updates
  *
@@ -197,11 +278,7 @@ export function useManageMCPConnections(
   // (instead of queueMicrotask) ensures updates are batched even when
   // connection callbacks arrive at different times due to network I/O.
   const MCP_BATCH_FLUSH_MS = 16
-  type PendingUpdate = MCPServerConnection & {
-    tools?: Tool[]
-    commands?: Command[]
-    resources?: ServerResource[]
-  }
+  type PendingUpdate = McpServerUpdate
   const pendingUpdatesRef = useRef<PendingUpdate[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -215,67 +292,7 @@ export function useManageMCPConnections(
       let mcp = prevState.mcp
 
       for (const update of updates) {
-        const {
-          tools: rawTools,
-          commands: rawCmds,
-          resources: rawRes,
-          ...client
-        } = update
-        const commands =
-          client.type === 'disabled' || client.type === 'failed'
-            ? (rawCmds ?? [])
-            : rawCmds
-        const resources =
-          client.type === 'disabled' || client.type === 'failed'
-            ? (rawRes ?? [])
-            : rawRes
-
-        const prefix = getMcpPrefix(client.name)
-        const existingClientIndex = mcp.clients.findIndex(
-          c => c.name === client.name,
-        )
-
-        const updatedClients =
-          existingClientIndex === -1
-            ? [...mcp.clients, client]
-            : mcp.clients.map(c => (c.name === client.name ? client : c))
-
-        // Positional, failure-tolerant tool-pool update — see
-        // resolveUpdatedTools for the prompt-cache rationale.
-        const updatedTools = resolveUpdatedTools(
-          mcp.tools,
-          client.type,
-          prefix,
-          rawTools,
-        )
-
-        const updatedCommands =
-          commands === undefined
-            ? mcp.commands
-            : [
-                ...reject(mcp.commands, c =>
-                  commandBelongsToServer(c, client.name),
-                ),
-                ...commands,
-              ]
-
-        const updatedResources =
-          resources === undefined
-            ? mcp.resources
-            : {
-                ...mcp.resources,
-                ...(resources.length > 0
-                  ? { [client.name]: resources }
-                  : omit(mcp.resources, client.name)),
-              }
-
-        mcp = {
-          ...mcp,
-          clients: updatedClients,
-          tools: updatedTools,
-          commands: updatedCommands,
-          resources: updatedResources,
-        }
+        mcp = applyServerUpdate(mcp, update)
       }
 
       return { ...prevState, mcp }

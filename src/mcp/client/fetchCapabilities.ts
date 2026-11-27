@@ -65,6 +65,7 @@ import {
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
 import { splitPromptArguments } from 'src/mcp/client/promptArguments.js'
 import { isSchemaError, type SkippedEntry } from 'src/mcp/client/listValidation.js'
+import { recordListFetch } from 'src/mcp/client/listTtl.js'
 import { attachWireFilter } from 'src/mcp/client/wireFilter.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
@@ -142,7 +143,8 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         }
         throw lastError ?? new Error('tools/list failed after 3 attempts')
       }
-      const { tools } = await listTools()
+      const listed = await listTools()
+      const { tools } = listed
 
       // Sanitize tool data from MCP server
       const toolsToProcess = recursivelySanitizeUnicode(tools)
@@ -153,7 +155,7 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         isEnvTruthy(process.env.CLAUDE_AGENT_SDK_MCP_NO_PREFIX)
 
       // Convert MCP tools to our Tool format
-      return toolsToProcess
+      const converted = toolsToProcess
         .map((tool): Tool => {
           const fullyQualifiedName = buildMcpToolName(client.name, tool.name)
           return {
@@ -366,6 +368,10 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
           }
         })
         .filter(isIncludedMcpTool)
+      // Recorded only once the whole fetch succeeded: a refresh on TTL
+      // (listTtlRefresh.ts) tells a failed read by the record not moving.
+      recordListFetch(client.name, 'tools', listed, tools)
+      return converted
     } catch (error) {
       logMCPError(client.name, `Failed to fetch tools: ${errorMessage(error)}`)
       throw error
@@ -385,13 +391,16 @@ export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      const { resources } = await client.client.listResources()
+      const listed = await client.client.listResources()
+      const { resources } = listed
 
       // Add server name to each resource
-      return resources.map(resource => ({
+      const withServer = resources.map(resource => ({
         ...resource,
         server: client.name,
       }))
+      recordListFetch(client.name, 'resources', listed, resources)
+      return withServer
     } catch (error) {
       logMCPError(
         client.name,
@@ -447,13 +456,14 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
       }
 
       // Every page of the prompts list; the SDK follows the cursors
-      const { prompts } = await client.client.listPrompts()
+      const listed = await client.client.listPrompts()
+      const { prompts } = listed
 
       // Sanitize prompt data from MCP server
       const promptsToProcess = recursivelySanitizeUnicode(prompts)
 
       // Convert MCP prompts to our Command format
-      return promptsToProcess.map(prompt => {
+      const commands = promptsToProcess.map((prompt): Command => {
         const argNames = Object.values(prompt.arguments ?? {}).map(k => k.name)
         const argSpecs = (prompt.arguments ?? []).map(arg => ({
           name: arg.name,
@@ -508,6 +518,8 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
           },
         }
       })
+      recordListFetch(client.name, 'prompts', listed, prompts)
+      return commands
     } catch (error) {
       logMCPError(
         client.name,

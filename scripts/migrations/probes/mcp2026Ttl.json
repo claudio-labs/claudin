@@ -1,0 +1,55 @@
+{
+  "test": [
+    "src/mcp/client/listTtl.test.ts",
+    "src/mcp/listTtlRefresh.test.ts",
+    "src/agent/repl/controllers/useOnQuery.wiring.test.ts"
+  ],
+  "source": "src/mcp/client/listTtl.ts",
+  "probes": [
+    {
+      "name": "a short TTL is polled without the 60 s floor",
+      "find": "const due = record.fetchedAt + Math.max(record.ttlMs, LIST_TTL_FLOOR_MS) + record.jitterMs",
+      "replace": "const due = record.fetchedAt + record.ttlMs + record.jitterMs"
+    },
+    {
+      "name": "a list the server announces changes for is polled on TTL too",
+      "find": "if (server.listChanged[kind]) continue",
+      "replace": "void 0"
+    },
+    {
+      "name": "a list with ttlMs 0 is polled on the floor",
+      "find": "if (record.ttlMs <= 0) return Infinity",
+      "replace": "void 0"
+    },
+    {
+      "name": "a failed refresh is retried with no backoff",
+      "find": "if (record.failures === 0) return due",
+      "replace": "return due"
+    },
+    {
+      "name": "an unchanged list is written to AppState anyway",
+      "source": "src/mcp/listTtlRefresh.ts",
+      "find": "if (after?.hash === before?.hash) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a tools fetch records no TTL, so tools are never refreshed",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "recordListFetch(client.name, 'tools', listed, tools)",
+      "replace": "void listed"
+    },
+    {
+      "name": "the turn starts without waiting for the refresh",
+      "source": "src/agent/repl/controllers/useOnQuery.ts",
+      "find": "await refreshExpiredMcpLists({",
+      "replace": "void refreshExpiredMcpLists({"
+    },
+    {
+      "name": "control: a longer turn budget changes nothing the suites pin",
+      "source": "src/mcp/listTtlRefresh.ts",
+      "find": "export const LIST_TTL_REFRESH_BUDGET_MS = 1500",
+      "replace": "export const LIST_TTL_REFRESH_BUDGET_MS = 2000",
+      "expect": "green"
+    }
+  ]
+}

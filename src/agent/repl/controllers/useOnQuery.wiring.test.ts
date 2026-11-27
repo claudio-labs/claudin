@@ -53,3 +53,23 @@ describe('useOnQuery — a cancelled turn settles before the next prompt lands',
     expect(onQuery).toMatch(/await onQueryImpl\([^)]*thisGeneration\)/)
   })
 })
+
+// The refresh itself is tested in src/mcp/listTtlRefresh.test.ts; what is
+// pinned here is that a querying turn waits for it before the turn's tools
+// are read from the store, so a changed list goes out with that request.
+describe('useOnQuery — MCP lists past their TTL are read before the turn takes its tools', () => {
+  const onQueryImpl = body('const onQueryImpl = useCallback(', 'const onQuery = useCallback(')
+
+  test('after the no-query return, awaited, before getToolUseContext', () => {
+    const gate = onQueryImpl.indexOf('if (!shouldQuery) {')
+    const refresh = onQueryImpl.indexOf('await refreshExpiredMcpLists(')
+    const context = onQueryImpl.indexOf('const toolUseContext = getToolUseContext(')
+    expect(gate).toBeGreaterThanOrEqual(0)
+    expect(refresh).toBeGreaterThan(gate)
+    expect(context).toBeGreaterThan(refresh)
+  })
+
+  test('it writes the store only when the mcp slice changed', () => {
+    expect(onQueryImpl).toMatch(/return mcp === prev\.mcp \? prev : \{ \.\.\.prev, mcp \}/)
+  })
+})
