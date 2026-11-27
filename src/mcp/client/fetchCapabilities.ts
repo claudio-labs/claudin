@@ -1,11 +1,4 @@
 import { feature } from 'bun:bundle'
-import {
-  type ListPromptsResult,
-  ListPromptsResultSchema,
-  ListResourcesResultSchema,
-  type ListToolsResult,
-  ListToolsResultSchema,
-} from '@modelcontextprotocol/sdk/types.js'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
 import type { Command } from 'src/commands/commands.js'
@@ -63,10 +56,26 @@ import {
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
 import { collectListPages, pageParams } from 'src/mcp/client/listPagination.js'
+import {
+  isSchemaError,
+  keepValidPrompts,
+  keepValidResources,
+  keepValidTools,
+  LenientPromptsPageSchema,
+  LenientResourcesPageSchema,
+  LenientToolsPageSchema,
+  type SkippedEntry,
+} from 'src/mcp/client/listValidation.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
 const MCP_FETCH_CACHE_SIZE = 20
+
+function logSkippedEntries(server: string, kind: string, skipped: SkippedEntry[]): void {
+  for (const { name, reason } of skipped) {
+    logMCPError(server, `Skipped ${kind}${name ? ` "${name}"` : ''}: ${reason}`)
+  }
+}
 
 /**
  * Encode MCP tool input for the auto-mode security classifier.
@@ -98,16 +107,19 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
       // Retry each page of the tool list up to 2 times on transient failures.
       // Without retry, a single timeout during tools/list makes all MCP tools
       // silently disappear from the model's context until the next reconnect.
-      const listToolsPage = async (cursor: string | undefined): Promise<ListToolsResult> => {
+      // A page that fails its schema answers the same on every try, so it is
+      // not retried; entries are checked one by one below.
+      const listToolsPage = async (cursor: string | undefined) => {
         let lastError: unknown
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            return (await client.client.request(
+            return await client.client.request(
               { method: 'tools/list', ...pageParams(cursor) },
-              ListToolsResultSchema,
-            )) as ListToolsResult
+              LenientToolsPageSchema,
+            )
           } catch (err) {
             lastError = err
+            if (isSchemaError(err)) break
             if (attempt < 2) {
               logMCPDebug(
                 client.name,
@@ -119,10 +131,12 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         }
         throw lastError ?? new Error('tools/list failed after 3 attempts')
       }
-      const tools = await collectListPages(async cursor => {
+      const listed = await collectListPages(async cursor => {
         const page = await listToolsPage(cursor)
         return { items: page.tools, nextCursor: page.nextCursor }
       })
+      const { items: tools, skipped } = keepValidTools(listed)
+      logSkippedEntries(client.name, 'tool', skipped)
 
       // Sanitize tool data from MCP server
       const toolsToProcess = recursivelySanitizeUnicode(tools)
@@ -369,13 +383,15 @@ export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      const resources = await collectListPages(async cursor => {
+      const listed = await collectListPages(async cursor => {
         const page = await client.client.request(
           { method: 'resources/list', ...pageParams(cursor) },
-          ListResourcesResultSchema,
+          LenientResourcesPageSchema,
         )
         return { items: page.resources, nextCursor: page.nextCursor }
       })
+      const { items: resources, skipped } = keepValidResources(listed)
+      logSkippedEntries(client.name, 'resource', skipped)
 
       // Add server name to each resource
       return resources.map(resource => ({
@@ -405,13 +421,15 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
       }
 
       // Request every page of the prompts list from client
-      const prompts = await collectListPages(async cursor => {
-        const page = (await client.client.request(
+      const listed = await collectListPages(async cursor => {
+        const page = await client.client.request(
           { method: 'prompts/list', ...pageParams(cursor) },
-          ListPromptsResultSchema,
-        )) as ListPromptsResult
+          LenientPromptsPageSchema,
+        )
         return { items: page.prompts, nextCursor: page.nextCursor }
       })
+      const { items: prompts, skipped } = keepValidPrompts(listed)
+      logSkippedEntries(client.name, 'prompt', skipped)
 
       // Sanitize prompt data from MCP server
       const promptsToProcess = recursivelySanitizeUnicode(prompts)
