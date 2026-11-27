@@ -50,6 +50,8 @@ export type ModernFixture = HttpFixture & {
   /** Ends every open subscriptions/listen stream without a response, as a dropped connection would. */
   dropListenStreams: () => void
   listens: () => number
+  /** The listen streams that carried their `notifications/subscriptions/acknowledged`. */
+  acks: () => number
 }
 
 /**
@@ -77,6 +79,7 @@ export function serveModern(
   const tap = discoverAnswer(options.discoverStatus)
   const openStreams = new Set<() => void>()
   let listens = 0
+  let acks = 0
   const srv = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -93,6 +96,8 @@ export function serveModern(
       if (body?.method !== 'subscriptions/listen' || !res.body) return res
       listens++
       const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let head: string | undefined = ''
       let end = () => {}
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -113,6 +118,14 @@ export function serveModern(
             openStreams.delete(end)
             controller.close()
           } else {
+            // Once the ack is on the wire, the server routes notifications to this stream.
+            if (head !== undefined) {
+              head += decoder.decode(value, { stream: true })
+              if (head.includes('notifications/subscriptions/acknowledged')) {
+                acks++
+                head = undefined
+              }
+            }
             controller.enqueue(value)
           }
         },
@@ -129,6 +142,7 @@ export function serveModern(
       for (const end of [...openStreams]) end()
     },
     listens: () => listens,
+    acks: () => acks,
     stop: async () => {
       for (const end of [...openStreams]) end()
       await handler.close()
@@ -140,11 +154,19 @@ export function serveModern(
 export type LegacyFixture = HttpFixture & {
   /** The `params.capabilities` of every initialize, as it arrived. */
   initializeCapabilities: () => unknown[]
+  /** The server of each session, oldest first. */
+  servers: () => LegacyMcpServer[]
 }
 
-/** A stateful 2025 server on the 1.x SDK, one session per initialize. */
-export function serveLegacy(options: { discoverStatus?: number } = {}): LegacyFixture {
+/**
+ * A stateful 2025 server on the 1.x SDK, one session per initialize, with a
+ * `hello` tool; `build` adds to each session's server.
+ */
+export function serveLegacy(
+  options: { discoverStatus?: number; build?: (server: LegacyMcpServer) => void } = {},
+): LegacyFixture {
   const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>()
+  const servers: LegacyMcpServer[] = []
   const hits: Hit[] = []
   const tap = discoverAnswer(options.discoverStatus)
   const srv = Bun.serve({
@@ -166,12 +188,14 @@ export function serveLegacy(options: { discoverStatus?: number } = {}): LegacyFi
             sessionIdGenerator: () => crypto.randomUUID(),
             onsessioninitialized: id => {
               sessions.set(id, transport)
+              servers.push(server)
             },
           })
           const server = new LegacyMcpServer({ name: 'legacy-fixture', version: '1.32.2' })
           server.registerTool('hello', { description: 'says hi' }, async () => ({
             content: [{ type: 'text', text: 'hi' }],
           }))
+          options.build?.(server)
           await server.connect(transport)
           res = await transport.handleRequest(req, { parsedBody: body })
         }
@@ -188,6 +212,7 @@ export function serveLegacy(options: { discoverStatus?: number } = {}): LegacyFi
       hits
         .filter(h => h.body?.method === 'initialize')
         .map(h => (h.body?.params as { capabilities?: unknown } | undefined)?.capabilities),
+    servers: () => [...servers],
     stop: async () => {
       for (const transport of sessions.values()) await transport.close().catch(() => {})
       srv.stop(true)

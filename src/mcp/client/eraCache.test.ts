@@ -81,6 +81,12 @@ describe('read, save, drop', () => {
     expect(await readEraVerdict('b')).toBeDefined()
   })
 
+  test('a read issued after a drop it did not wait for sees the drop', async () => {
+    await saveEraVerdict('a', modern)
+    void dropEraVerdict('a')
+    expect(await readEraVerdict('a')).toBeUndefined()
+  })
+
   test('concurrent saves keep each other, and leave no temp file', async () => {
     await Promise.all(Array.from({ length: 10 }, (_, i) => saveEraVerdict(`k${i}`, legacy())))
     expect(Object.keys(JSON.parse(readFileSync(file(), 'utf8'))).sort()).toEqual(

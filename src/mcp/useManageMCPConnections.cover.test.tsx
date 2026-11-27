@@ -5,12 +5,16 @@
 // the SDK v2 migration — see the harness for the seams.
 
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import * as debug from 'src/shared/debug.js'
 import * as log from 'src/shared/log.js'
 import * as mcpClient from 'src/mcp/client.js'
+import { getEraCacheKey, readEraVerdict, saveEraVerdict, setEraCacheDirForTests } from 'src/mcp/client/eraCache.js'
 import {
   clientTypes,
   connected,
@@ -652,6 +656,41 @@ describe('returned functions', () => {
     await ui.until(s => clientTypes(s).manual === 'connected', 'manual connected')
     await settle()
     expect(installed.fakes.reconnectCalls).toHaveLength(2)
+  })
+
+  test("reconnectMcpServer drops the server's era verdict before it redials, so the connect probes again; the automatic retry keeps it", async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mcp-era-manual-'))
+    setEraCacheDirForTests(dir)
+    try {
+      const config = httpConfig('https://era.test/mcp', 'dynamic')
+      const key = getEraCacheKey('era', config)
+      await saveEraVerdict(key, { kind: 'legacy', savedAt: Date.now(), ttlMs: 60_000 })
+      let sdk: ReturnType<typeof connected>['sdk'] | undefined
+      installed.fakes.connect = (n, c) => {
+        const r = connected(n, c)
+        sdk = r.sdk
+        return r
+      }
+      ui = await mountConnections({ era: config })
+      await ui.until(s => clientTypes(s).era === 'connected', 'connected')
+      const seen: unknown[] = []
+      installed.spies.reconnectMcpServerImpl.mockImplementation((async (n: string, c: ScopedMcpServerConfig) => {
+        seen.push((await readEraVerdict(key))?.kind)
+        const r = connected(n, c)
+        sdk = r.sdk
+        return r
+      }) as never)
+
+      sdk!.onclose!()
+      await ui.until(() => seen.length === 1, 'the automatic retry')
+      expect(seen).toEqual(['legacy'])
+
+      await ui.api().reconnectMcpServer('era')
+      expect(seen).toEqual(['legacy', undefined])
+    } finally {
+      setEraCacheDirForTests(undefined)
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   test('all three throw for an unknown server', async () => {

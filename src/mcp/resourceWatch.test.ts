@@ -2,14 +2,19 @@
 // eras: the read subscribes, the server's notifications/resources/updated
 // queues a notice, and the thread's next attachment pass carries it once.
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
 import { McpServer as LegacyMcpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { SubscribeRequestSchema, UnsubscribeRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { getMcpResourceChangeAttachments, processMcpResourceAttachments } from 'src/agent/attachments/services.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/attachments.js'
-import { type ModernFixture, serveModern } from 'src/mcp/__testutils__/eraServers.js'
+import { type HttpFixture, serveLegacy, serveModern } from 'src/mcp/__testutils__/eraServers.js'
 import { connectToServer, getServerCacheKey } from 'src/mcp/client/connection.js'
+import { setEraCacheDirForTests } from 'src/mcp/client/eraCache.js'
+import { reconnectMcpServerImpl } from 'src/mcp/client/fetchCapabilities.js'
 import { getResourceSubscriptions, type ResourceSubscribeClient } from 'src/mcp/client/subscriptions.js'
 import { getMcpResourceChanges, MAIN_THREAD, McpResourceChanges } from 'src/mcp/resourceChanges.js'
 import { watchMcpResource } from 'src/mcp/resourceWatch.js'
@@ -190,15 +195,21 @@ describe('watchMcpResource', () => {
   })
 })
 
-describe('a 2026-07-28 server', () => {
-  let fixture: ModernFixture | undefined
+describe('over HTTP', () => {
+  let fixture: HttpFixture | undefined
   const connections: MCPServerConnection[] = []
   const macroHost = globalThis as Record<string, unknown>
   let savedMacro: unknown
+  let savedConfigDir: string | undefined
+  let dir = ''
 
   beforeEach(() => {
     savedMacro = macroHost.MACRO
     macroHost.MACRO = { ...(savedMacro as Record<string, unknown> | undefined), VERSION: '0.0.0-test' }
+    dir = mkdtempSync(join(tmpdir(), 'mcp-resource-watch-'))
+    savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    setEraCacheDirForTests(dir)
     _setSecureStorageForTesting({
       name: 'memory',
       read: () => ({}),
@@ -216,36 +227,109 @@ describe('a 2026-07-28 server', () => {
     await fixture?.stop()
     fixture = undefined
     _setSecureStorageForTesting(null)
+    setEraCacheDirForTests(undefined)
+    if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
+    rmSync(dir, { recursive: true, force: true })
     if (savedMacro === undefined) delete macroHost.MACRO
     else macroHost.MACRO = savedMacro
   })
 
-  test('the read reopens listen with the URI, and resourceUpdated becomes the notice', async () => {
-    fixture = serveModern(server => {
+  function serveModernDocs() {
+    return serveModern(server => {
       server.server.registerCapabilities({ resources: { subscribe: true } })
       server.registerResource('readme', README, { mimeType: 'text/plain' }, async uri => ({
         contents: [{ uri: uri.href, mimeType: 'text/plain', text: 'Hello.' }],
       }))
     })
-    const connection = await connectToServer('docs', { type: 'http', url: fixture.url, scope: 'user' })
+  }
+
+  async function connectDocs(url: string): Promise<ConnectedMCPServer> {
+    const connection = await connectToServer('docs', { type: 'http', url, scope: 'user' })
     connections.push(connection)
     if (connection.type !== 'connected') throw new Error(`not connected: ${connection.type}`)
+    return connection
+  }
+
+  /** What /mcp reconnect and the hook's automatic retry both run. */
+  async function reconnectDocs(previous: ConnectedMCPServer): Promise<ConnectedMCPServer> {
+    const { client } = await reconnectMcpServerImpl('docs', previous.config)
+    connections.push(client)
+    if (client.type !== 'connected') throw new Error(`reconnect failed: ${client.type}`)
+    expect(client.client).not.toBe(previous.client)
+    return client
+  }
+
+  test('2026-07-28: the read reopens listen with the URI, and resourceUpdated becomes the notice', async () => {
+    const modern = serveModernDocs()
+    fixture = modern
+    const connection = await connectDocs(modern.url)
     expect(connection.client.getProtocolEra()).toBe('modern')
     const context = contextFor([connection])
 
     await ReadMcpResourceTool.call({ server: 'docs', uri: README }, context)
     const listenWith = () =>
-      fixture!.hits.filter(h => h.body?.method === 'subscriptions/listen').map(h => (h.body?.params as { notifications?: unknown }).notifications)
+      modern.hits.filter(h => h.body?.method === 'subscriptions/listen').map(h => (h.body?.params as { notifications?: unknown }).notifications)
     await until(() => listenWith().some(n => JSON.stringify(n).includes(README)), 'the listen with the URI')
     expect(listenWith().at(-1)).toMatchObject({ resourceSubscriptions: [README] })
-    expect(fixture.methods()).not.toContain('POST resources/subscribe')
+    expect(modern.methods()).not.toContain('POST resources/subscribe')
 
     // The ack has to land before a notification is routed to the stream.
     await Bun.sleep(50)
-    fixture.notify.resourceUpdated(README)
+    modern.notify.resourceUpdated(README)
     let text: string[] = []
     await until(() => (text = noticeText(context)).length > 0, 'the notice')
     expect(text[0]).toContain(LINE)
     expect(noticeText(context)).toEqual([])
+  })
+
+  test('2026-07-28: a resource read before a reconnect is listened for on the new connection, and its change is told', async () => {
+    const modern = serveModernDocs()
+    fixture = modern
+    const first = await connectDocs(modern.url)
+    const context = contextFor([first])
+    await ReadMcpResourceTool.call({ server: 'docs', uri: README }, context)
+    const listensWithReadme = () =>
+      modern.hits.filter(h => h.body?.method === 'subscriptions/listen' && JSON.stringify(h.body).includes(README)).length
+    await until(() => listensWithReadme() === 1, 'the first listen with the URI')
+
+    await reconnectDocs(first)
+    await until(() => listensWithReadme() === 2, 'the listen with the URI on the new connection')
+    // The server routes a notification to the stream only once it acked it.
+    await until(() => modern.acks() === modern.listens(), 'the new stream acked')
+    modern.notify.resourceUpdated(README)
+    let text: string[] = []
+    await until(() => (text = noticeText(context)).length > 0, 'the notice')
+    expect(text[0]).toContain(LINE)
+  })
+
+  test('2025: a resource read before a reconnect is subscribed again on the new session, and its change is told', async () => {
+    const subscribed: string[] = []
+    const legacy = serveLegacy({
+      build: server => {
+        server.registerResource('readme', README, { mimeType: 'text/plain' }, async uri => ({
+          contents: [{ uri: uri.href, mimeType: 'text/plain', text: 'Hello.' }],
+        }))
+        server.server.registerCapabilities({ resources: { subscribe: true } })
+        server.server.setRequestHandler(SubscribeRequestSchema, async req => {
+          subscribed.push(req.params.uri)
+          return {}
+        })
+        server.server.setRequestHandler(UnsubscribeRequestSchema, async () => ({}))
+      },
+    })
+    fixture = legacy
+    const first = await connectDocs(legacy.url)
+    expect(first.client.getProtocolEra()).toBe('legacy')
+    const context = contextFor([first])
+    await ReadMcpResourceTool.call({ server: 'docs', uri: README }, context)
+    await until(() => subscribed.length === 1, 'the subscribe')
+
+    await reconnectDocs(first)
+    await until(() => subscribed.length === 2, 'the subscribe on the new session')
+    await legacy.servers().at(-1)!.server.sendResourceUpdated({ uri: README })
+    let text: string[] = []
+    await until(() => (text = noticeText(context)).length > 0, 'the notice')
+    expect(text[0]).toContain(LINE)
   })
 })

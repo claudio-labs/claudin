@@ -2,6 +2,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { SKILLS_EXTENSION_ID } from '@modelcontextprotocol/client/ext/skills'
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server'
 import { connectToServer, getServerCacheKey } from 'src/mcp/client/connection.js'
 import {
   getEraCacheKey,
@@ -9,9 +11,11 @@ import {
   saveEraVerdict,
   setEraCacheDirForTests,
 } from 'src/mcp/client/eraCache.js'
+import { fetchCommandsForClient, getMcpToolsCommandsAndResources } from 'src/mcp/client/fetchCapabilities.js'
 import type { EraVerdict } from 'src/mcp/client/negotiation.js'
 import type { ConnectedMCPServer, MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js'
+import type { Tool } from 'src/tools/Tool.js'
 import { writeStdioServer } from 'src/mcp/__testutils__/connectionHarness.js'
 import {
   type HttpFixture,
@@ -34,6 +38,7 @@ const LEGACY = '2025-11-25'
 const macroHost = globalThis as Record<string, unknown>
 let savedMacro: unknown
 let savedNegotiation: string | undefined
+let savedConfigDir: string | undefined
 let cacheDir = ''
 const fixtures: Array<{ stop: () => Promise<void> } | { dispose: () => void }> = []
 const connections: MCPServerConnection[] = []
@@ -45,6 +50,8 @@ beforeEach(() => {
   savedNegotiation = process.env.MCP_PROTOCOL_NEGOTIATION
   delete process.env.MCP_PROTOCOL_NEGOTIATION
   cacheDir = mkdtempSync(join(tmpdir(), 'mcp-era-cache-'))
+  savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+  process.env.CLAUDIN_CONFIG_DIR = cacheDir
   setEraCacheDirForTests(cacheDir)
   _setSecureStorageForTesting({
     name: 'memory',
@@ -63,6 +70,8 @@ afterEach(async () => {
   }
   _setSecureStorageForTesting(null)
   setEraCacheDirForTests(undefined)
+  if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+  else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
   rmSync(cacheDir, { recursive: true, force: true })
   if (savedNegotiation === undefined) delete process.env.MCP_PROTOCOL_NEGOTIATION
   else process.env.MCP_PROTOCOL_NEGOTIATION = savedNegotiation
@@ -105,8 +114,19 @@ type ModernToolRegistrar = Parameters<Parameters<typeof serveModern>[0]>[0]['reg
 
 const probes = (fixture: HttpFixture) => fixture.methods().filter(m => m === 'POST server/discover').length
 
+const HOUR_MS = 60 * 60 * 1000
+
+function modernVerdict(capabilities: Record<string, unknown>): EraVerdict {
+  return {
+    kind: 'modern',
+    discover: { supportedVersions: [MODERN], capabilities } as never,
+    savedAt: Date.now(),
+    ttlMs: HOUR_MS,
+  }
+}
+
 describe('http, a 2026-07-28 server', () => {
-  test('connects as 2026-07-28 and records the version and the verdict', async () => {
+  test('connects as 2026-07-28 and records the version, but no verdict: over HTTP a modern one is never replayed', async () => {
     const fixture = track(serveModern(withTool))
     const serverName = name('modern')
     const config = http(fixture.url)
@@ -115,14 +135,10 @@ describe('http, a 2026-07-28 server', () => {
     expect(connection.client.getProtocolEra()).toBe('modern')
     expect(probes(fixture)).toBe(1)
     expect(fixture.methods()).not.toContain('POST initialize')
-    const verdict = await readEraVerdict(getEraCacheKey(serverName, config))
-    expect(verdict).toMatchObject({ kind: 'modern', ttlMs: 60 * 60 * 1000, discover: { supportedVersions: [MODERN] } })
-    expect(Object.keys(JSON.parse(readFileSync(join(cacheDir, 'mcp-era-cache.json'), 'utf8')))).toEqual([
-      getEraCacheKey(serverName, config),
-    ])
+    expect(await readEraVerdict(getEraCacheKey(serverName, config))).toBeUndefined()
   })
 
-  test('a second connect adopts the cached verdict and sends nothing to connect', async () => {
+  test('a second connect probes again, with one request', async () => {
     const fixture = track(serveModern(withTool))
     const serverName = name('modern-cached')
     const config = http(fixture.url)
@@ -131,9 +147,54 @@ describe('http, a 2026-07-28 server', () => {
     fixture.hits.length = 0
     const again = await connect(serverName, config)
     expect(again.protocolVersion).toBe(MODERN)
-    expect(fixture.hits).toEqual([])
+    expect(fixture.methods()).toEqual(['POST server/discover'])
     // and the connection works
     expect((await again.client.listTools()).tools.map(t => t.name)).toEqual(['ping'])
+  })
+
+  test('a prompt the redeployed server now offers is listed on the next connect', async () => {
+    let withPrompt = false
+    const fixture = track(
+      serveModern(server => {
+        withTool(server)
+        if (withPrompt) {
+          server.registerPrompt('greet', { description: 'hi' }, async () => ({
+            messages: [{ role: 'user', content: { type: 'text', text: 'hello' } }],
+          }))
+        }
+      }),
+    )
+    const serverName = name('redeployed')
+    const config = http(fixture.url)
+    await connect(serverName, config)
+    await closeAll()
+
+    // createMcpHandler builds a new server per request: the next one has the prompt.
+    withPrompt = true
+    const again = await connect(serverName, config)
+    fetchCommandsForClient.cache.delete(serverName)
+    const prompts = await fetchCommandsForClient(again)
+    expect({ hasPromptsCapability: again.capabilities.prompts !== undefined, prompts: prompts.length }).toEqual({
+      hasPromptsCapability: true,
+      prompts: 1,
+    })
+  })
+
+  test('the client announces the skills, tasks and events extensions; extensions.skills: false leaves skills out', async () => {
+    const fixture = track(serveModern(withTool))
+    const metaOfList = () =>
+      JSON.stringify(fixture.hits.findLast(h => h.body?.method === 'tools/list')?.body?.params)
+
+    const all = await connect(name('extensions'), http(fixture.url))
+    await all.client.listTools()
+    expect(metaOfList()).toContain(SKILLS_EXTENSION_ID)
+    expect(metaOfList()).toContain('io.modelcontextprotocol/tasks')
+    expect(metaOfList()).toContain('io.modelcontextprotocol/events')
+
+    const noSkills = await connect(name('no-skills'), http(fixture.url, { extensions: { skills: false } }))
+    await noSkills.client.listTools()
+    expect(metaOfList()).not.toContain(SKILLS_EXTENSION_ID)
+    expect(metaOfList()).toContain('io.modelcontextprotocol/tasks')
   })
 })
 
@@ -179,6 +240,51 @@ describe('http, a 2025 server', () => {
   })
 })
 
+/** A 2026-07-28 server that starts listening on `port` only `afterMs` from now. */
+function serveLate(port: number, legacy: 'stateless' | 'reject', afterMs: number): { stop: () => Promise<void> } {
+  let srv: ReturnType<typeof Bun.serve> | undefined
+  const timer = setTimeout(() => {
+    const handler = createMcpHandler(
+      () => {
+        const server = new McpServer({ name: 'late', version: '2.4.0' })
+        withTool(server)
+        return server
+      },
+      { legacy },
+    )
+    srv = Bun.serve({ hostname: '127.0.0.1', port, idleTimeout: 0, fetch: req => handler.fetch(req) })
+  }, afterMs)
+  return {
+    stop: async () => {
+      clearTimeout(timer)
+      srv?.stop(true)
+    },
+  }
+}
+
+function freePort(): number {
+  const probe = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response('') })
+  const port = probe.port!
+  probe.stop(true)
+  return port
+}
+
+describe('http, a probe the network refused (the server was not up yet)', () => {
+  test('a dual-era 2026-07-28 server that comes up during the retries is reached in 2026-07-28', async () => {
+    const port = freePort()
+    track(serveLate(port, 'stateless', 120))
+    const connection = await connect(name('late-dual'), http(`http://127.0.0.1:${port}/mcp`))
+    expect(connection.protocolVersion).toBe(MODERN)
+  })
+
+  test('a 2026-07-28-only server that comes up during the retries connects', async () => {
+    const port = freePort()
+    track(serveLate(port, 'reject', 120))
+    const connection = await connect(name('late-only'), http(`http://127.0.0.1:${port}/mcp`))
+    expect(connection.protocolVersion).toBe(MODERN)
+  })
+})
+
 describe('turning negotiation off', () => {
   test('MCP_PROTOCOL_NEGOTIATION=legacy sends no probe to a 2026-07-28 server and caches nothing', async () => {
     process.env.MCP_PROTOCOL_NEGOTIATION = 'legacy'
@@ -198,7 +304,7 @@ describe('turning negotiation off', () => {
     expect(probes(fixture)).toBe(0)
   })
 
-  test('the env wins over a cached modern verdict', async () => {
+  test('the env wins over a server that answered the probe as 2026-07-28', async () => {
     const fixture = track(serveModern(withTool))
     const serverName = name('env-over-cache')
     const config = http(fixture.url)
@@ -211,33 +317,35 @@ describe('turning negotiation off', () => {
 })
 
 describe('a cached verdict the server no longer matches', () => {
-  test('a modern verdict for a server gone back to 2025: the first request drops it, and the reconnect probes', async () => {
+  test('a modern verdict for an HTTP server gone back to 2025 is not adopted: the probe finds 2025, and the first list has its tools', async () => {
     const fixture = track(serveLegacy())
     const serverName = name('downgraded')
     const config = http(fixture.url)
     const key = getEraCacheKey(serverName, config)
-    const stale: EraVerdict = {
-      kind: 'modern',
-      discover: { supportedVersions: [MODERN], capabilities: { tools: {} } } as never,
-      savedAt: Date.now(),
-      ttlMs: 60 * 60 * 1000,
-    }
-    await saveEraVerdict(key, stale)
+    await saveEraVerdict(key, modernVerdict({ tools: {} }))
 
-    const adopted = await connect(serverName, config)
-    expect(adopted.protocolVersion).toBe(MODERN)
-    expect(fixture.hits).toEqual([])
-    await expect(adopted.client.listTools()).rejects.toThrow()
-    // The 400 dropped the verdict and closed the connection, which clears the memo.
-    await waitForUndefined(() => readEraVerdict(key))
+    // The first list runs before the hook's reconnecting onclose exists, as at startup.
+    const attempts: Array<{ client: MCPServerConnection; tools: Tool[] }> = []
+    await getMcpToolsCommandsAndResources(
+      ({ client, tools }) => {
+        connections.push(client)
+        attempts.push({ client, tools })
+      },
+      { [serverName]: config },
+    )
 
-    const reconnected = await connect(serverName, config)
-    expect(reconnected.protocolVersion).toBe(LEGACY)
-    expect((await reconnected.client.listTools()).tools.map(t => t.name)).toEqual(['hello'])
+    const last = attempts.at(-1)!
+    expect(last.client.type).toBe('connected')
+    expect(last.tools.map(t => t.name.split('__').at(-1))).toEqual(['hello'])
+    expect((last.client as ConnectedMCPServer).protocolVersion).toBe(LEGACY)
+    expect(fixture.hits.slice(0, 2).map(h => `${h.method} ${h.status}`)).toEqual([
+      'POST server/discover 400',
+      'POST initialize 200',
+    ])
     expect(await readEraVerdict(key)).toMatchObject({ kind: 'legacy' })
   })
 
-  test('a legacy verdict whose connect fails is dropped and the connect probes on a fresh transport', async () => {
+  test('a legacy verdict whose connect fails is dropped and the connect probes on a fresh transport, caching nothing', async () => {
     // A modern-only server refuses initialize, so the legacy verdict fails.
     const fixture = track(serveModern(withTool, { legacyInitialize: 'reject' }))
     const serverName = name('upgraded')
@@ -247,7 +355,7 @@ describe('a cached verdict the server no longer matches', () => {
     const connection = await connect(serverName, config)
     expect(connection.protocolVersion).toBe(MODERN)
     expect(fixture.methods().slice(0, 2)).toEqual(['POST initialize', 'POST server/discover'])
-    expect(await readEraVerdict(key)).toMatchObject({ kind: 'modern' })
+    expect(await readEraVerdict(key)).toBeUndefined()
   })
 
   test('an expired verdict is not used', async () => {
@@ -309,12 +417,7 @@ describe('stdio, a cached modern verdict for a server gone back to 2025', () => 
       scope: 'user',
     } as ScopedMcpServerConfig
     const key = getEraCacheKey(serverName, config)
-    await saveEraVerdict(key, {
-      kind: 'modern',
-      discover: { supportedVersions: [MODERN], capabilities: { tools: {} } } as never,
-      savedAt: Date.now(),
-      ttlMs: 60 * 60 * 1000,
-    })
+    await saveEraVerdict(key, modernVerdict({ tools: {} }))
 
     const connection = await connect(serverName, config)
     expect(connection.protocolVersion).toBe(LEGACY)
@@ -323,11 +426,3 @@ describe('stdio, a cached modern verdict for a server gone back to 2025', () => 
     expect(await readEraVerdict(key)).toMatchObject({ kind: 'legacy' })
   }, 20_000)
 })
-
-async function waitForUndefined(read: () => Promise<unknown>): Promise<void> {
-  for (let i = 0; i < 100; i++) {
-    if ((await read()) === undefined) return
-    await Bun.sleep(10)
-  }
-  throw new Error('the cached verdict was never dropped')
-}

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { McpSubscription, SubscriptionFilter } from '@modelcontextprotocol/client'
 import { connectToServer, getServerCacheKey } from 'src/mcp/client/connection.js'
+import { setEraCacheDirForTests } from 'src/mcp/client/eraCache.js'
 import {
   DEFAULT_SUBSCRIPTION_TIMINGS,
   getMcpSubscriptions,
@@ -18,6 +22,9 @@ import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js
 import { type ModernFixture, serveLegacy, serveModern } from 'src/mcp/__testutils__/eraServers.js'
 
 const FAST: SubscriptionTimings = { baseDelayMs: 10, maxDelayMs: 40, stableMs: 10_000 }
+
+/** A response that never comes, for a server that stopped answering. */
+const NEVER = new Promise<Response>(() => {})
 
 async function until(check: () => boolean, label: string, ms = 3000): Promise<void> {
   const end = Date.now() + ms
@@ -242,10 +249,16 @@ describe('against a real 2026-07-28 server', () => {
   const connections: MCPServerConnection[] = []
   const macroHost = globalThis as Record<string, unknown>
   let savedMacro: unknown
+  let savedConfigDir: string | undefined
+  let dir = ''
 
   beforeEach(() => {
     savedMacro = macroHost.MACRO
     macroHost.MACRO = { ...(savedMacro as Record<string, unknown> | undefined), VERSION: '0.0.0-test' }
+    dir = mkdtempSync(join(tmpdir(), 'mcp-listen-'))
+    savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    setEraCacheDirForTests(dir)
     _setSecureStorageForTesting({
       name: 'memory',
       read: () => ({}),
@@ -263,6 +276,10 @@ describe('against a real 2026-07-28 server', () => {
     await fixture?.stop()
     fixture = undefined
     _setSecureStorageForTesting(null)
+    setEraCacheDirForTests(undefined)
+    if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
+    rmSync(dir, { recursive: true, force: true })
     if (savedMacro === undefined) delete macroHost.MACRO
     else macroHost.MACRO = savedMacro
   })
@@ -274,10 +291,10 @@ describe('against a real 2026-07-28 server', () => {
     return connection
   }
 
-  function serveTools(): ModernFixture {
+  function serveTools(options: Parameters<typeof serveModern>[1] = {}): ModernFixture {
     return serveModern(server => {
       server.registerTool('ping', { description: 'pong' }, async () => ({ content: [{ type: 'text', text: 'pong' }] }))
-    })
+    }, options)
   }
 
   test('tools/list_changed arrives on the stream at the handler, and a dropped stream is listened again', async () => {
@@ -293,14 +310,14 @@ describe('against a real 2026-07-28 server', () => {
     const listen = fixture.hits.find(h => h.body?.method === 'subscriptions/listen')
     expect((listen?.body?.params as { notifications?: unknown }).notifications).toEqual({ toolsListChanged: true })
 
-    // The ack has to land before a notification is routed to the stream.
-    await Bun.sleep(50)
+    // The server routes a notification to the stream only once it acked it.
+    await until(() => fixture!.acks() === 1, 'the ack')
     fixture.notify.toolsChanged()
     await until(() => changes === 1, 'the first notification')
 
     fixture.dropListenStreams()
     await until(() => fixture!.listens() === 2, 'the re-listen')
-    await Bun.sleep(50)
+    await until(() => fixture!.acks() === 2, 'the second ack')
     fixture.notify.toolsChanged()
     await until(() => changes === 2, 'a notification on the new stream')
   })
@@ -314,6 +331,26 @@ describe('against a real 2026-07-28 server', () => {
     expect(getMcpSubscriptions(connection.client)).toBeUndefined()
     await Bun.sleep(60)
     expect(fixture.listens()).toBe(1)
+  })
+
+  test('cleanup does not wait out a server that stopped answering: the listen cancel gets at most a second', async () => {
+    let hang = false
+    // Once `hang` is set no POST is answered again; the open listen stream stays open.
+    fixture = serveTools({ answer: () => (hang ? (NEVER as unknown as Response) : undefined) })
+    const connection = await connect(`listen-hung-${process.pid}`, fixture.url)
+    startMcpSubscriptions(connection.name, connection.client, { timings: FAST })
+    await until(() => fixture!.acks() === 1, 'the ack')
+    hang = true
+
+    const cleanup = connection.cleanup().then(() => 'done' as const)
+    const outcome = await Promise.race([cleanup, Bun.sleep(2000).then(() => 'still pending' as const)])
+    // What cleanup would wait on: the listen's cancel, posted to the hung server.
+    expect(fixture.methods().at(-1)).toBe('POST notifications/cancelled')
+    // Stopping the server ends the hung POST, so a cleanup still pending finishes too.
+    await fixture.stop()
+    fixture = undefined
+    await cleanup
+    expect(outcome).toBe('done')
   })
 
   test('control: a 2025 connection opens no stream', async () => {
