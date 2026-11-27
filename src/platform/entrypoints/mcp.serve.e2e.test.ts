@@ -21,7 +21,7 @@ let replies: Map<number, Reply>
 async function exchange(cwd: string, configDir: string, requests: object[]): Promise<Map<number, Reply>> {
   const proc = Bun.spawn(['node', BUNDLE, 'mcp', 'serve'], {
     cwd,
-    env: { ...process.env, CLAUDIN_CONFIG_DIR: configDir, CLAUDE_CONFIG_DIR: configDir },
+    env: { ...process.env, CLAUDIN_CONFIG_DIR: configDir },
     stdin: 'pipe',
     stdout: 'pipe',
     stderr: 'ignore',
