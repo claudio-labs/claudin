@@ -457,7 +457,7 @@ async function runPoll(
   sink: EventWatchSink,
   deps: EventWatchDeps,
   signal: AbortSignal,
-  deliver: (event: McpEvent) => void,
+  deliver: (event: McpEvent) => boolean,
 ): Promise<EventWatchEnd> {
   // null asks for "from now"; the server's cursor takes over from there.
   let cursor: string | null = null
@@ -485,15 +485,21 @@ async function runPoll(
     }
     failures = 0
     if (result.truncated) sink.onGap()
+    let delivered = false
     for (const raw of result.events) {
       const parsed = McpEventSchema.safeParse(raw)
-      if (parsed.success) deliver(parsed.data)
+      if (parsed.success && deliver(parsed.data)) delivered = true
     }
     const previous: string | null = cursor
     if (typeof result.cursor === 'string') cursor = result.cursor
     // More is waiting: ask again now, unless the cursor did not move, which
-    // would ask for the same page forever.
-    if (result.hasMore && cursor !== previous) continue
+    // would ask for the same page forever. A page that brought nothing new
+    // still waits the floor: a cursor that moves on every empty page would
+    // otherwise be polled as fast as the server answers.
+    if (result.hasMore && cursor !== previous) {
+      if (!delivered) await deps.sleep(EVENTS_POLL_FLOOR_MS, signal)
+      continue
+    }
     await deps.sleep(pollDelayMs(result.nextPollMs), signal)
   }
   return { status: 'stopped' }
@@ -502,18 +508,20 @@ async function runPoll(
 /**
  * Watches one event type until the server ends it, it fails for good, or
  * `stop` is called. Events reach `sink.onEvent` once each: an id seen among
- * the last EVENTS_DEDUPE_SIZE is dropped, as a resume may replay it.
+ * the last EVENTS_DEDUPE_SIZE is dropped, as a resume may replay it. `deliver`
+ * says whether the event was new.
  */
 export function watchEvents(options: EventWatchOptions, sink: EventWatchSink, deps: EventWatchDeps): EventWatch {
   const controller = new AbortController()
   const recent: string[] = []
   const seen = new Set<string>()
-  const deliver = (event: McpEvent): void => {
-    if (controller.signal.aborted || seen.has(event.eventId)) return
+  const deliver = (event: McpEvent): boolean => {
+    if (controller.signal.aborted || seen.has(event.eventId)) return false
     seen.add(event.eventId)
     recent.push(event.eventId)
     if (recent.length > EVENTS_DEDUPE_SIZE) seen.delete(recent.shift()!)
     sink.onEvent(event)
+    return true
   }
   const run = options.delivery === 'push' ? runStream : runPoll
   return {
