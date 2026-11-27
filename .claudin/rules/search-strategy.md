@@ -14,7 +14,7 @@ point to the rule that owns that subsystem.
 
 ```
 src/
-├── agent/ (609)                 ← the agent loop and everything that renders it
+├── agent/ (679)                 ← the agent loop and everything that renders it
 │   ├── QueryEngine.ts           ← model drive, tool dispatch, streaming, compaction
 │   ├── query.ts + query/ (12)   ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
@@ -30,7 +30,7 @@ src/
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
 │   │                              thresholds, markers, contentShape, and decisionRecord, which is
 │   │                              the sole owner of the lastDecision mutable
-│   ├── tasks/ (52)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+│   ├── tasks/ (63)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (40)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (34)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
@@ -92,7 +92,7 @@ src/
 │   └── shared/                  ← outputFilter/ (Bash noise stripping), diagnostics/ (shared
 │                                  Build+Typecheck parsers), codeOutline/ (scanSymbols), stagedWrite/
 ├── platform/ (553)              ← the host: process, config, OS integration, telemetry
-│   ├── entrypoints/ (16)        ← cli.tsx: process entry — fast-paths --version, defers heavy imports
+│   ├── entrypoints/ (20)        ← cli.tsx: process entry — fast-paths --version, defers heavy imports
 │   ├── main/ (37)               ← boot sequence: bootContext, action, commands, dispatch
 │   ├── headless/ (51)           ← headless -p / print mode, ndjson, exit handling
 │   ├── config/ (22)             ← config.ts is a BARREL over config/ (types, defaults, fileStore,
@@ -147,7 +147,7 @@ src/
 │   │                              groups read it through there, none repeats the feature() block
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
 │   └── ui/                      ← one request component per tool + rules/ editor
-├── mcp/ (96)                    ← client/ (connection, transport, callTool, authCache;
+├── mcp/ (150)                   ← client/ (connection, transport, callTool, authCache;
 │                                  listValidation checks list entries one by one, serverOptions
 │                                  resolves per-server timeouts and cwd, connectRetry, clientInfo,
 │                                  promptArguments), mcpServerApproval trust dialog, ui/. auth.ts
@@ -181,7 +181,7 @@ src/
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at the end of a turn, when
 │                                  ruleMapScheduler sees the git index move (/map is its command)
-├── skills/ (34)                 ← user-invocable skills (/<name>); bundled/ + /create authoring;
+├── skills/ (38)                 ← user-invocable skills (/<name>); bundled/ + /create authoring;
 │                                  skillsLint + skillUsageCensus feed /skill-doctor
 ├── shared/ (162)                ← cross-cutting primitives ONLY — a subsystem here is a bug.
 │   │                              moduleBoundaries.test.ts pins how many imports reach UP from
@@ -193,7 +193,7 @@ src/
 │   └── errors.ts log.ts env*.ts ← ClaudeError/isAbortError/isSdk* guards, logError, env helpers
 ├── native-ts/ (5)               ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
 ├── stubs/ (2)                   ← build-time stubs
-└── __tests__/ (10)              ← cross-cutting tests: bugfixes, moduleBoundaries,
+└── __tests__/ (14)              ← cross-cutting tests: bugfixes, moduleBoundaries,
                                    mockModuleTargets, security-hardening
 ```
 

@@ -4,7 +4,7 @@
 
 ## Decisions
 - [Transcript UI round 11-24](decisions/transcript-ui-round-2026-11-24.md) — icons take the ●, no ⎿ in results
-- Ports: [Plandex (#341)](decisions/plandex-ports.md) — rewind, /diff `x` · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /recap · [opencode MCP](decisions/opencode-mcp-ports.md) — login
+- Ports: [Plandex](decisions/plandex-ports.md) · [CC 2.1.321](decisions/cc-2-1-321-parity-limits.md) · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) · [opencode MCP](decisions/opencode-mcp-ports.md) · [MCP 2026-07-28](decisions/mcp-2026-07-28.md)
 - [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
@@ -69,7 +69,7 @@
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source
-- Latent bugs pinned, not fixed: [09-20 sleep N, rules resurrect](bugs/latent-bugs-pinned-not-fixed.md) · [WebSocket 10-17](bugs/websocket-sites-latent-bugs.md) · [providers 11-12](bugs/latent-bugs-pinned-2026-11-12.md)
+- Pinned, not fixed: [09-20 sleep N, rules resurrect](bugs/latent-bugs-pinned-not-fixed.md) · [WebSocket 10-17](bugs/websocket-sites-latent-bugs.md) · [providers 11-12](bugs/latent-bugs-pinned-2026-11-12.md) · [MCP cover 11-27](bugs/mcp-latent-bugs-pinned-2026-11-27.md)
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — reconcile, cache GC, migrate rerun
 - [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — Cloudflare block
 - [Catalog regen drops OpenCode zen/ rows](bugs/reasoning-catalog-regen-drops-opencode-endpoints.md) — add rows by hand
@@ -161,7 +161,7 @@
 - [SDK error checks: isSdk* guards, never instanceof](externalized-sdk-copies-instanceof-apierror.md) — externalized SDKs load their own copy
 - [CLAUDIN_SKIP_VERTEX_AUTH stub must return a real Headers](vertex-skip-auth-stub-needs-headers.md)
 - [Adding a /provider preset: the skill](../../skills/add-provider-preset/SKILL.md) · [old recipe](openai-compat-preset-recipe.md)
-- [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — impersonates the official CLI (gray area)
+- [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — impersonates the official CLI
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
 - Codex: [strict schemas → placeholders](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [wire](codex-0.162-wire-diff.md) + [captures](codex-wire-capture-history.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account
@@ -193,7 +193,7 @@
 ## References (sibling repos, wire formats, archives)
 - [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; next audit 9b92b89c · [audits](openclaude-audit-history.md)
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win
-- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — MCP 11-26 · [OAuth port queue](web-login-provider-port-queue.md)
+- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — MCP 11-26 · [OAuth port queue](web-login-provider-port-queue.md) · [MCP SDK v2 probed](mcp-sdk-v2-verified-behaviors.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth: wire + OAuth
-- [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — three CA env vars together
-- Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md) — five `devin-*.md` memories
+- [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — three CA env vars
+- Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md)

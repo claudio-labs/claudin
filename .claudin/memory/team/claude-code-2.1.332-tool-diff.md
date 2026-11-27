@@ -1,6 +1,6 @@
 ---
 name: claude-code-2.1.332-tool-diff
-description: Claude Code 2.1.332 vs Claudin (captured 2026-11-25, branch feat/cc-2-1-332-parity) — what was ported (privacy rule, downloads + curl env lines, pasted_content tags, defaulted fields not required, cron final-run notice, ExitWorktree honest result + refusals, peer anti-injection lines, review severity, PauseGoal + goal after compaction, MCP-output memory rule), the token cost, and what stayed out with its reason (GetGoal, cron 30 days, empty-reply reminder, inline pastes)
+description: Claude Code 2.1.332 vs Claudin (captured 2026-11-25, branch feat/cc-2-1-332-parity) — what was ported (privacy rule, downloads + curl env lines, pasted_content tags, defaulted fields not required, cron final-run notice, ExitWorktree honest result + refusals, peer anti-injection lines, review severity, PauseGoal + goal after compaction, MCP-output memory rule), the token cost, and what stayed out with its reason (GetGoal, cron 30 days, empty-reply reminder, inline pastes); plus its MCP stance grepped 11-27 (2026-07-28 auto on http/stdio, form-only elicitation, iss + application_type, tasks behind a flag, skills, no events, completions only ref/resource)
 type: project
 ---
 
@@ -85,6 +85,31 @@ The round also changed these:
 - Tests that run real hooks use `useIsolatedHooksConfig`.
 
 Left open: `/exit`'s `WorktreeExitDialog` removes a worktree without the session check.
+
+**MCP stance.** Grepped 2026-11-27 from the downloaded `@anthropic-ai/claude-code-linux-x64@2.1.332`
+binary, which was never run. The local mise install is still 2.1.278.
+- **SDK and negotiation.** It runs on the MCP SDK v2 (`MCP_SDK_GENERATION=v1` reverts to v1).
+  - It negotiates protocol 2026-07-28 in `auto` mode: it probes `server/discover` and falls back to
+    `initialize`. This covers http, stdio, claudeai-proxy and ccr-proxy, each behind a remote flag
+    `tengu_mcp_protocol_negotiation_*` that defaults on.
+  - sse, ws, ide, in-process and sdk-control stay legacy.
+  - Opt-out is `MCP_PROTOCOL_NEGOTIATION=legacy`, plus a per-server denylist flag.
+  - 2.1.278 defaulted to `auto` on http only.
+- **Capabilities.** It declares `{roots:{listChanged:true}, elicitation:{}, …extensions}`, so
+  elicitation is form-only, as in Claudin.
+- **Auth.** DCR sends `application_type` (configured, or derived from the redirect URIs).
+  RFC 9207 `iss` is checked: a mismatch throws, and so does a missing `iss` when the server
+  advertises support.
+- **Extensions:**
+  - Tasks is declared only behind `tengu_glowing_lark` (`CLAUDE_CODE_DISABLE_MCP_TASKS` turns it
+    off), with real `tasks/get` polling code.
+  - List caching is used: `cacheMode` refresh on listTools and after resources list_changed, plus
+    `MCP_DISCOVERY_CACHE*` env vars.
+  - Skills (`skills/get`) is supported. Events is absent. Resources are never subscribed to.
+  - Completions are requested only for resource-template arguments (`ref/resource`), never for
+    prompt arguments.
+- **Method.** `npm pack` the platform package into the scratchpad, take `grep -a -o` counts plus
+  ~300 chars of context, then delete the extracted binary.
 
 **How to apply:** re-capture before the next port, since CC ships weekly. Keep the extracted
 text in the scratchpad and quote only what a finding needs.

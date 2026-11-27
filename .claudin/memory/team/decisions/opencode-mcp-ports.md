@@ -28,7 +28,7 @@ paths:
 - **Identity:** clientInfo now says Claudin (description, claudiolabs.ai). `name: 'claude-code'`, the User-Agent and the claude.ai CIMD client id stay on purpose: servers may allowlist on them.
 
 **Out, and why:**
-- SDK v2 / protocol 2026-07-28 (stateless HTTP, MCP Events, pooled connections): `@modelcontextprotocol/sdk` 1.32.2 is the last 1.x and tops out at 2025-11-25; the new protocol lives only in the split v2 packages (`@modelcontextprotocol/client` 2.4.0), and opencode had to patch it. Needs its own plan.
+- SDK v2 / protocol 2026-07-28 (stateless HTTP, MCP Events, pooled connections): `@modelcontextprotocol/sdk` 1.32.2 is the last 1.x and tops out at 2025-11-25; the new protocol lives only in the split v2 packages (`@modelcontextprotocol/client` 2.4.0), and opencode had to patch it. Needs its own plan — taken up 2026-11-27 in [[mcp-2026-07-28]], with a pre-connect wire filter instead of a patch.
 - Code Mode, the inbound TUI WebSocket, MCP Skills: opencode product features, not gaps.
 - No per-tool toggle, no `/mcp` count of skipped entries: a skip is one `logMCPError` line, as in opencode.
 - `mcp serve` running tools without its own prompt is by design: the connecting client confirms each call.
