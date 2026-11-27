@@ -7,7 +7,8 @@ const M = 'tools/list'
 function page(guard: ReturnType<typeof createCursorCycleGuard>, id: number, cursor: string | undefined, next?: string) {
   guard.onRequest(id, M, cursor)
   const result: Record<string, unknown> = next === undefined ? {} : { nextCursor: next }
-  return { repeated: guard.onResult(id, M, result), result }
+  const cut = guard.onResult(id, M, result)
+  return { repeated: cut, cut, result }
 }
 
 describe('createCursorCycleGuard', () => {
@@ -73,6 +74,31 @@ describe('createCursorCycleGuard', () => {
     guard.onRequest(2, M, undefined)
     guard.forget(2)
     expect(guard.onResult(2, M, { nextCursor: 'a' })).toBeUndefined()
+  })
+
+  test('a listing is cut at page 100, with the cursor that page handed out deleted', () => {
+    const guard = createCursorCycleGuard()
+    page(guard, 1, undefined, 'c2')
+    for (let n = 2; n < 100; n++) expect(page(guard, n, `c${n}`, `c${n + 1}`).cut).toBeUndefined()
+    const hundredth = page(guard, 100, 'c100', 'c101')
+    expect(hundredth.cut).toEqual({ reason: 'pages', pages: 100 })
+    expect(hundredth.result).toEqual({})
+  })
+
+  test('a page that ends the listing on its own is not cut, whatever its number', () => {
+    const guard = createCursorCycleGuard()
+    page(guard, 1, undefined, 'c2')
+    for (let n = 2; n < 100; n++) page(guard, n, `c${n}`, `c${n + 1}`)
+    expect(page(guard, 100, 'c100').cut).toBeUndefined()
+  })
+
+  test('the page count is per listing: a new listing starts again at one', () => {
+    const guard = createCursorCycleGuard()
+    page(guard, 1, undefined, 'c2')
+    for (let n = 2; n < 99; n++) page(guard, n, `c${n}`, `c${n + 1}`)
+    expect(page(guard, 200, undefined, 'x2').cut).toBeUndefined()
+    expect(page(guard, 99, 'c99', 'c100').cut).toBeUndefined()
+    expect(page(guard, 201, 'x2', 'x3').cut).toBeUndefined()
   })
 
   test('keeps only the newest few listings waiting on one cursor', () => {

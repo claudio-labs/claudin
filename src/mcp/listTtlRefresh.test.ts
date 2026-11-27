@@ -275,6 +275,46 @@ describe('refreshing MCP lists on TTL', () => {
     expect(store.mcp).toBe(mcp)
   })
 
+  // Each write replaces the server's client object (applyServerUpdate), so a
+  // second write for the same server found it moved and was dropped.
+  test('two lists of one server that changed in the same turn land in one write', async () => {
+    const lists = state()
+    const fixture = serveLists(lists)
+    const connection = await connect(fixture)
+    const store = await loaded(connection)
+
+    lists.tools = [tool('alpha'), tool('beta')]
+    lists.resources = [{ uri: 'file:///b', name: 'b' }]
+    // The tools answer after the resources.
+    lists.toolsDelayMs = 100
+    await refresh(store, LATER)
+
+    expect(store.writes).toBe(1)
+    expect(store.mcp.tools.map(t => t.mcpInfo?.toolName)).toEqual(['alpha', 'beta'])
+    expect(store.mcp.resources[connection.name]?.map(r => r.uri)).toEqual(['file:///b'])
+  })
+
+  test('a changed list whose write was dropped is read and written again on a later turn', async () => {
+    const lists = state()
+    const fixture = serveLists(lists)
+    const connection = await connect(fixture)
+    const store = await loaded(connection)
+
+    lists.tools = [tool('alpha'), tool('beta')]
+    lists.toolsDelayMs = 200
+    const pending = refresh(store, LATER)
+    // Another write for the server lands meanwhile and replaces its client object.
+    store.mcp = { ...store.mcp, clients: [{ ...connection }] }
+    await pending
+    expect(store.mcp.tools.map(t => t.mcpInfo?.toolName)).toEqual(['alpha'])
+
+    lists.toolsDelayMs = 0
+    await Bun.sleep(5)
+    await refresh(store, 2 * LATER)
+    expect(listCalls(fixture, 'tools/list')).toBe(3)
+    expect(store.mcp.tools.map(t => t.mcpInfo?.toolName)).toEqual(['alpha', 'beta'])
+  })
+
   test('servers that are not connected are skipped', async () => {
     const fixture = serveLists(state())
     const connection = await connect(fixture)

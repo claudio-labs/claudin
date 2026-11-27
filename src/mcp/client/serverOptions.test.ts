@@ -172,6 +172,24 @@ describe('the protocol and extensions fields in .mcp.json', () => {
     expect(McpServerConfigSchema().parse({ command: 'srv', protocol: 'auto' })).toMatchObject({ protocol: 'auto' })
   })
 
+  // sse, ws and claude.ai proxy servers get MCP skills too (on both eras), so
+  // each can turn them off; `protocol` stays theirs alone, as the others
+  // always speak the 2025 protocol.
+  test('extensions parse on sse, ws and claude.ai proxy servers too, and turn the extension off', () => {
+    const others = [
+      { type: 'sse', url: 'https://srv/sse' },
+      { type: 'ws', url: 'wss://srv' },
+      { type: 'claudeai-proxy', url: 'https://claude.ai/x', id: 'srv' },
+    ]
+    for (const config of others) {
+      const parsed = McpServerConfigSchema().parse({ ...config, extensions: { skills: false } })
+      expect(parsed).toMatchObject({ extensions: { skills: false } })
+      expect(getMcpExtensionEnabled(parsed, 'skills')).toBe(false)
+      expect(getMcpExtensionEnabled(parsed, 'tasks')).toBe(true)
+      expect(McpServerConfigSchema().parse({ ...config, protocol: 'auto' })).not.toHaveProperty('protocol')
+    }
+  })
+
   test('a wrong value fails the config, like a wrong timeout', () => {
     expect(McpServerConfigSchema().safeParse({ type: 'http', url: 'https://srv/mcp', protocol: 'modern' }).success).toBe(false)
     expect(

@@ -1,10 +1,18 @@
-import { afterEach, describe, expect, spyOn, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import * as log from 'src/shared/log.js'
+import { connectToServer, getServerCacheKey } from 'src/mcp/client/connection.js'
+import { setEraCacheDirForTests } from 'src/mcp/client/eraCache.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
+import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js'
+import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js'
+import { type ModernFixture, serveModern } from 'src/mcp/__testutils__/eraServers.js'
 import { connectRawMcpServer, type RawMcpServer, type RawParams } from 'src/mcp/__testutils__/rawMcpServer.js'
 
 const servers: RawMcpServer[] = []
@@ -117,4 +125,91 @@ describe('a server whose cursors cycle', () => {
       logged.mockRestore()
     }
   })
+})
+
+// Claudin's own pager stopped at 100 pages and kept what it had; the SDK's
+// list*() throws past its listMaxPages (64 by default), and the server lost
+// every tool. Reached the way a session reaches a server: connectToServer.
+describe('a listing longer than the SDK’s default page cap', () => {
+  const macroHost = globalThis as Record<string, unknown>
+  let savedMacro: unknown
+  let savedConfigDir: string | undefined
+  let dir = ''
+  let fixture: ModernFixture | undefined
+  const connections: MCPServerConnection[] = []
+
+  beforeEach(() => {
+    savedMacro = macroHost.MACRO
+    macroHost.MACRO = { ...(savedMacro as Record<string, unknown> | undefined), VERSION: '0.0.0-test' }
+    savedConfigDir = process.env.CLAUDE_CONFIG_DIR
+    dir = mkdtempSync(join(tmpdir(), 'pager-cap-'))
+    process.env.CLAUDE_CONFIG_DIR = dir
+    setEraCacheDirForTests(dir)
+    _setSecureStorageForTesting({
+      name: 'memory',
+      read: () => ({}),
+      readAsync: async () => ({}),
+      update: () => ({ success: true }),
+      delete: () => true,
+    })
+  })
+
+  afterEach(async () => {
+    for (const c of connections.splice(0)) {
+      if (c.type === 'connected') await c.cleanup().catch(() => {})
+      connectToServer.cache.delete(getServerCacheKey(c.name, c.config))
+      fetchToolsForClient.cache.delete(c.name)
+    }
+    await fixture?.stop()
+    fixture = undefined
+    _setSecureStorageForTesting(null)
+    setEraCacheDirForTests(undefined)
+    if (savedConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR
+    else process.env.CLAUDE_CONFIG_DIR = savedConfigDir
+    rmSync(dir, { recursive: true, force: true })
+    if (savedMacro === undefined) delete macroHost.MACRO
+    else macroHost.MACRO = savedMacro
+  })
+
+  // Page n lists tool tn and points at page n + 1, up to `pages`.
+  async function connectPaging(name: string, pages: number) {
+    fixture = serveModern(server => {
+      server.server.registerCapabilities({ tools: {} })
+      server.server.setRequestHandler('tools/list', async request => {
+        const page = Number(request.params?.cursor ?? 1)
+        return {
+          tools: [{ name: `t${page}`, inputSchema: { type: 'object' } }],
+          ...(page < pages && { nextCursor: String(page + 1) }),
+        } as never
+      })
+    })
+    const config = { type: 'http', url: fixture.url, scope: 'user' } as ScopedMcpServerConfig
+    const connection = await connectToServer(name, config)
+    connections.push(connection)
+    if (connection.type !== 'connected') throw new Error(`not connected: ${connection.type}`)
+    return { connection, fixture }
+  }
+
+  test('a 90-page list is followed to its end', async () => {
+    const { connection, fixture } = await connectPaging(`pager-90-${process.pid}`, 90)
+    const tools = await fetchToolsForClient(connection)
+    expect(tools).toHaveLength(90)
+    expect(tools.at(-1)?.mcpInfo?.toolName).toBe('t90')
+    expect(fixture.methods().filter(m => m === 'POST tools/list')).toHaveLength(90)
+  })
+
+  test('a 150-page list stops at page 100 with the tools of those pages, and says so in the debug log', async () => {
+    const name = `pager-150-${process.pid}`
+    const logged = spyOn(log, 'logMCPDebug')
+    try {
+      const { connection, fixture } = await connectPaging(name, 150)
+      const tools = await fetchToolsForClient(connection)
+      expect(tools.map(t => t.mcpInfo?.toolName)).toEqual(Array.from({ length: 100 }, (_, i) => `t${i + 1}`))
+      expect(fixture.methods().filter(m => m === 'POST tools/list')).toHaveLength(100)
+      const cuts = logged.mock.calls.filter(call => call[0] === name && String(call[1]).includes('pages'))
+      expect(cuts).toEqual([[name, 'tools/list still had a next page after 100 pages; the list stops at the entries already received']])
+    } finally {
+      logged.mockRestore()
+    }
+  }, 20_000)
 })
