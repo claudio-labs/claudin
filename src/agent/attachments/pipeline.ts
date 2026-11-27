@@ -48,6 +48,7 @@ import {
   getLSPDiagnosticAttachments,
   getAsyncHookResponseAttachments,
   getTeammateMailboxAttachments,
+  getMcpResourceChangeAttachments,
 } from 'src/agent/attachments/services.js'
 import {
   getDateChangeAttachments,
@@ -341,6 +342,11 @@ export async function getAttachments(
       : []),
     maybe('agent_pending_messages', async () =>
       getAgentPendingMessageAttachments(toolUseContext),
+    ),
+    // Per-child: a sub-agent is told only of what it read itself, the main
+    // thread of every read (resourceChanges.ts).
+    maybe('mcp_resource_changed', async () =>
+      getMcpResourceChangeAttachments(toolUseContext),
     ),
     maybe('critical_system_reminder', () =>
       Promise.resolve(getCriticalSystemReminderAttachment(toolUseContext)),

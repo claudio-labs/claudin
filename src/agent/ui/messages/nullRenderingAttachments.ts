@@ -36,6 +36,8 @@ const NULL_RENDERING_TYPES = [
   'context_efficiency',
   'deferred_tools_delta',
   'mcp_instructions_delta',
+  // Told to the model only; the user did not ask for the resource to be watched.
+  'mcp_resource_changed',
   'companion_intro',
   'token_usage',
   'ultrathink_effort',

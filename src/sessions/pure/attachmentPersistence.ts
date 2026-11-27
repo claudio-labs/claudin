@@ -51,6 +51,7 @@ export const ATTACHMENT_PERSISTENCE: Readonly<Record<Attachment['type'], 'persis
   goal_status: 'persist',
   plan_file_reference: 'persist',
   mcp_resource: 'persist',
+  mcp_resource_changed: 'persist',
   command_permissions: 'skip',
   agent_mention: 'persist',
   task_status: 'persist',

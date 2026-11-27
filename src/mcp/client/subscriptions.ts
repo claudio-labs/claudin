@@ -15,6 +15,13 @@
  * then 2, 4 … up to 30 s; the delay starts over once a stream has stayed open
  * for 30 s. A stream the server ended deliberately (`'graceful'`), one closed
  * here (`'local'`) or a closed connection ends it for good.
+ *
+ * The resource URIs themselves are kept here per client, for both eras
+ * (subscribeResourceUpdates): at most 50, the oldest dropped first. A 2025
+ * connection subscribes each one with `resources/subscribe` and unsubscribes
+ * the one it drops; a 2026 one reopens the stream with the whole set, since a
+ * subscription cannot be amended. Nothing is unsubscribed at cleanup beyond
+ * what closing the connection does, and the set goes with it.
  */
 import type {
   Client,
@@ -200,8 +207,93 @@ export function getMcpSubscriptions(client: ListenClient): McpSubscriptions | un
 }
 
 export async function stopMcpSubscriptions(client: ListenClient): Promise<void> {
+  resourceSubscriptions.delete(client)
   const loop = loops.get(client)
   if (!loop) return
   loops.delete(client)
   await loop.stop()
+}
+
+/** Resource URIs one connection is subscribed to; the oldest goes first past this. */
+export const MAX_RESOURCE_SUBSCRIPTIONS = 50
+
+export type ResourceUriSet = {
+  uris: string[]
+  added: boolean
+  /** The URIs dropped to make room, oldest first. */
+  evicted: string[]
+}
+
+/** The set after subscribing `uri`: unchanged when already in it, oldest dropped past `max`. */
+export function addResourceUri(
+  uris: readonly string[],
+  uri: string,
+  max: number = MAX_RESOURCE_SUBSCRIPTIONS,
+): ResourceUriSet {
+  if (uris.includes(uri)) return { uris: [...uris], added: false, evicted: [] }
+  const next = [...uris, uri]
+  const evicted = next.splice(0, Math.max(0, next.length - max))
+  return { uris: next, added: true, evicted }
+}
+
+export type ResourceSubscribeClient = ListenClient &
+  Pick<Client, 'subscribeResource' | 'unsubscribeResource' | 'setNotificationHandler'>
+
+export function canSubscribeResources(client: Pick<Client, 'getServerCapabilities'>): boolean {
+  return client.getServerCapabilities()?.resources?.subscribe === true
+}
+
+const resourceSubscriptions = new WeakMap<ListenClient, string[]>()
+
+/** The URIs this connection is subscribed to, oldest first. */
+export function getResourceSubscriptions(client: ListenClient): readonly string[] {
+  return resourceSubscriptions.get(client) ?? []
+}
+
+/**
+ * Subscribes the connection to `uri`'s `notifications/resources/updated`,
+ * which reach `onUpdated`; the handler is set on the first subscription and
+ * stays for the client's life. Resolves to the URIs dropped to stay under the
+ * cap, or undefined when the server does not offer subscriptions or the
+ * connection is closed — then nothing is sent. The set changes before the
+ * first await, so concurrent reads each see the other's URI.
+ */
+export async function subscribeResourceUpdates(
+  name: string,
+  client: ResourceSubscribeClient,
+  uri: string,
+  onUpdated: (uri: string) => void,
+): Promise<string[] | undefined> {
+  if (!canSubscribeResources(client) || client.transport === undefined) return undefined
+  const current = resourceSubscriptions.get(client)
+  if (current === undefined) {
+    client.setNotificationHandler('notifications/resources/updated', async notification => {
+      onUpdated(notification.params.uri)
+    })
+  }
+  const next = addResourceUri(current ?? [], uri)
+  resourceSubscriptions.set(client, next.uris)
+  if (!next.added) return []
+
+  if (client.getProtocolEra() === 'modern') {
+    const loop = getMcpSubscriptions(client) ?? startMcpSubscriptions(name, client)
+    loop?.setResourceSubscriptions(next.uris)
+    return next.evicted
+  }
+
+  try {
+    await client.subscribeResource({ uri })
+  } catch (error) {
+    const uris = resourceSubscriptions.get(client)
+    if (uris) resourceSubscriptions.set(client, uris.filter(u => u !== uri))
+    logMCPError(name, `resources/subscribe ${uri} failed: ${errorMessage(error)}`)
+  }
+  for (const old of next.evicted) {
+    try {
+      await client.unsubscribeResource({ uri: old })
+    } catch (error) {
+      logMCPDebug(name, `resources/unsubscribe ${old} failed: ${errorMessage(error)}`)
+    }
+  }
+  return next.evicted
 }

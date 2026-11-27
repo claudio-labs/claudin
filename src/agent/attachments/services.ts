@@ -61,6 +61,12 @@ import { generateFileAttachment } from 'src/agent/attachments/file-pipeline.js'
 import { getNestedMemoryAttachmentsForFile } from 'src/agent/attachments/memory.js'
 import { getChangedFileAttachments } from 'src/agent/attachments/changedFile.js'
 import { ownsSessionScopedState } from 'src/agent/attachments/threadOwnership.js'
+import { watchMcpResource } from 'src/mcp/resourceWatch.js'
+import {
+  getMcpResourceChanges,
+  type McpResourceChanges,
+  resourceNoticeThread,
+} from 'src/mcp/resourceChanges.js'
 
 void _unusedGetFs
 
@@ -261,6 +267,7 @@ export async function processMcpResourceAttachments(
           const result = await client.client.readResource({
             uri,
           })
+          void watchMcpResource(client, uri, toolUseContext)
 
           return {
             type: 'mcp_resource' as const,
@@ -286,6 +293,19 @@ export async function processMcpResourceAttachments(
   return results.filter(
     (result): result is NonNullable<typeof result> => result !== null,
   ) as Attachment[]
+}
+
+/** The MCP resources this thread read that changed since (resourceChanges.ts). */
+export function getMcpResourceChangeAttachments(
+  toolUseContext: Pick<ToolUseContext, 'agentId' | 'omitClaudeMdAttachments'>,
+  changes: McpResourceChanges = getMcpResourceChanges(),
+): Attachment[] {
+  const thread = resourceNoticeThread(toolUseContext)
+  if (thread === undefined) return []
+  const changed = changes.take(thread)
+  return changed.length > 0
+    ? [{ type: 'mcp_resource_changed', changes: changed }]
+    : []
 }
 
 export async function getChangedFiles(

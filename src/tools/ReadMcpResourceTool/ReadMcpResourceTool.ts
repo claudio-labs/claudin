@@ -2,6 +2,7 @@ import type { ReadResourceResult } from '@modelcontextprotocol/client'
 import { ReadResourceResultSchema } from '@modelcontextprotocol/core'
 import { z } from 'zod/v4'
 import { ensureConnectedClient } from 'src/mcp/client.js'
+import { watchMcpResource } from 'src/mcp/resourceWatch.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
@@ -70,8 +71,9 @@ export const ReadMcpResourceTool = buildTool({
   get outputSchema(): OutputSchema {
     return outputSchema()
   },
-  async call(input, { options: { mcpClients } }) {
+  async call(input, context) {
     const { server: serverName, uri } = input
+    const { mcpClients } = context.options
 
     const client = mcpClients.find(client => client.name === serverName)
 
@@ -97,6 +99,7 @@ export const ReadMcpResourceTool = buildTool({
       },
       ReadResourceResultSchema,
     )) as ReadResourceResult
+    void watchMcpResource(connectedClient, uri, context)
 
     // Intercept any blob fields: decode, write raw bytes to disk with a
     // mime-derived extension, and replace with a path. Otherwise the base64

@@ -167,6 +167,13 @@ export const ATTACHMENT_FIXTURES: AttachmentFixtures = {
     name: 'README',
     content: { contents: [{ uri: 'docs://readme', mimeType: 'text/plain', text: 'Hello.' }] },
   },
+  mcp_resource_changed: {
+    type: 'mcp_resource_changed',
+    changes: [
+      { server: 'docs', uri: 'docs://readme' },
+      { server: 'tickets', uri: 'tickets://open' },
+    ],
+  },
   command_permissions: { type: 'command_permissions', allowedTools: ['Bash(git status:*)'] },
   agent_mention: { type: 'agent_mention', agentType: 'Code' },
   task_status: {

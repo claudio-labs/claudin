@@ -1,0 +1,67 @@
+{
+  "test": [
+    "src/mcp/resourceChanges.test.ts",
+    "src/mcp/client/subscriptions.resources.test.ts",
+    "src/mcp/resourceWatch.test.ts",
+    "src/agent/attachments/mcpResourceChanged.pipeline.test.ts"
+  ],
+  "source": "src/mcp/resourceChanges.ts",
+  "probes": [
+    {
+      "name": "two updates of one resource before the next request are told twice",
+      "find": "      if (!queue.has(key)) queue.set(key, { server: change.server, uri: change.uri })",
+      "replace": "      queue.set(`${key}#${queue.size}`, { server: change.server, uri: change.uri })"
+    },
+    {
+      "name": "a notice handed out stays pending and is told on every request",
+      "find": "    this.pending.delete(thread)\n    return [...queue.values()]",
+      "replace": "    return [...queue.values()]"
+    },
+    {
+      "name": "the main thread is not told of a resource only a sub-agent read",
+      "find": "    for (const thread of new Set([MAIN_THREAD, ...threads])) {",
+      "replace": "    for (const thread of new Set(threads)) {"
+    },
+    {
+      "name": "a slim sub-agent (omitClaudeMd) is watched and told like any other",
+      "find": "  return context.omitClaudeMdAttachments === true ? undefined : context.agentId",
+      "replace": "  return context.agentId"
+    },
+    {
+      "name": "a server without resources.subscribe is subscribed anyway",
+      "source": "src/mcp/client/subscriptions.ts",
+      "find": "  if (!canSubscribeResources(client) || client.transport === undefined) return undefined",
+      "replace": "  if (client.transport === undefined) return undefined"
+    },
+    {
+      "name": "the set grows past 50 URIs and nothing is evicted",
+      "source": "src/mcp/client/subscriptions.ts",
+      "find": "  const evicted = next.splice(0, Math.max(0, next.length - max))",
+      "replace": "  const evicted: string[] = []"
+    },
+    {
+      "name": "a 2026 stream reopens with only the newest URI instead of the whole set",
+      "source": "src/mcp/client/subscriptions.ts",
+      "find": "    loop?.setResourceSubscriptions(next.uris)",
+      "replace": "    loop?.setResourceSubscriptions([uri])"
+    },
+    {
+      "name": "ReadMcpResource reads without subscribing",
+      "source": "src/tools/ReadMcpResourceTool/ReadMcpResourceTool.ts",
+      "find": "    void watchMcpResource(connectedClient, uri, context)\n",
+      "replace": "    void connectedClient\n"
+    },
+    {
+      "name": "the attachment pass never hands out the notices",
+      "source": "src/agent/attachments/pipeline.ts",
+      "find": "      getMcpResourceChangeAttachments(toolUseContext),\n",
+      "replace": "      [],\n"
+    },
+    {
+      "name": "control: another name for the main thread's key changes nothing the suites pin",
+      "find": "export const MAIN_THREAD = 'main'",
+      "replace": "export const MAIN_THREAD = 'main-thread'",
+      "expect": "green"
+    }
+  ]
+}

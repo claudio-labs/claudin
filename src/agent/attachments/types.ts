@@ -386,6 +386,15 @@ export type Attachment =
       description?: string
       content: ReadResourceResult
     }
+  /**
+   * MCP resources that changed after this thread read them
+   * (src/mcp/resourceChanges.ts). Only the fact, never the content; renders
+   * from its own payload, so a resume re-sends the same bytes.
+   */
+  | {
+      type: 'mcp_resource_changed'
+      changes: { server: string; uri: string }[]
+    }
   | {
       type: 'command_permissions'
       allowedTools: string[]

@@ -45,6 +45,7 @@ import { createUserMessage } from 'src/agent/messages/factories.js'
 import { getAutoModeInstructions } from 'src/agent/messages/autoMode.js'
 import { getPlanModeInstructions } from 'src/agent/messages/planMode.js'
 import { renderNestedMemoryBlock } from 'src/memory/instructions/claudemd/memoryBlock.js'
+import { renderMcpResourceChanges } from 'src/mcp/resourceChanges.js'
 import {
   wrapCommandText,
   wrapInSystemReminder,
@@ -560,6 +561,14 @@ You have exited auto mode. The user may now want to interact more directly. You 
       return wrapMessagesInSystemReminder([
         createUserMessage({
           content: `The user has expressed a desire to invoke the agent "${attachment.agentType}". Please invoke the agent appropriately, passing in the required context to it. `,
+          isMeta: true,
+        }),
+      ])
+    }
+    case 'mcp_resource_changed': {
+      return wrapMessagesInSystemReminder([
+        createUserMessage({
+          content: renderMcpResourceChanges(attachment.changes),
           isMeta: true,
         }),
       ])
