@@ -40,6 +40,8 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getErrorParts } from 'src/agent/tools/toolErrors.js'
 import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 
 type ToolInput = Tool['inputSchema']
 type ToolOutput = Tool['outputSchema']
@@ -70,6 +72,58 @@ export async function loadReexposedMcpTools(): Promise<{
   })
 
   return { mcpClients, mcpTools }
+}
+
+// What tools/list answers. A schema zod has no JSON Schema form for (the
+// workflow tools' z.custom outputs) used to throw out of the handler and fail
+// the list for every tool: an output schema that cannot be converted is left
+// off its tool, and a tool whose input schema cannot be converted is left out.
+export async function listToolsForMcpServe(
+  tools: readonly InternalTool[],
+  toolPermissionContext: ReturnType<typeof getEmptyToolPermissionContext>,
+): Promise<ListToolsResult['tools']> {
+  const listed = await Promise.all(
+    tools.map(async (tool): Promise<Tool | null> => {
+      let inputSchema: ToolInput
+      try {
+        inputSchema = (tool.inputJSONSchema ?? zodToJsonSchema(tool.inputSchema)) as ToolInput
+      } catch (error) {
+        logForDebugging(`[mcp serve] ${tool.name} left out of tools/list: ${errorMessage(error)}`)
+        return null
+      }
+      let outputSchema: ToolOutput | undefined
+      if (tool.outputSchema) {
+        let convertedSchema: unknown
+        try {
+          convertedSchema = zodToJsonSchema(tool.outputSchema)
+        } catch (error) {
+          logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)
+        }
+        // MCP SDK requires outputSchema to have type: "object" at root level
+        // Skip schemas with anyOf/oneOf at root (from z.union, z.discriminatedUnion, etc.)
+        // See: https://github.com/anthropics/claude-code/issues/8014
+        if (
+          typeof convertedSchema === 'object' &&
+          convertedSchema !== null &&
+          'type' in convertedSchema &&
+          convertedSchema.type === 'object'
+        ) {
+          outputSchema = convertedSchema as ToolOutput
+        }
+      }
+      return {
+        ...tool,
+        description: await tool.prompt({
+          getToolPermissionContext: async () => toolPermissionContext,
+          tools,
+          agents: [],
+        }),
+        inputSchema,
+        outputSchema,
+      }
+    }),
+  )
+  return listed.filter((tool): tool is Tool => tool !== null)
 }
 
 export async function startMCPServer(
@@ -105,37 +159,7 @@ export async function startMCPServer(
     async (): Promise<ListToolsResult> => {
       const toolPermissionContext = getEmptyToolPermissionContext()
       const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
-      return {
-        tools: await Promise.all(
-          tools.map(async tool => {
-            let outputSchema: ToolOutput | undefined
-            if (tool.outputSchema) {
-              const convertedSchema = zodToJsonSchema(tool.outputSchema)
-              // MCP SDK requires outputSchema to have type: "object" at root level
-              // Skip schemas with anyOf/oneOf at root (from z.union, z.discriminatedUnion, etc.)
-              // See: https://github.com/anthropics/claude-code/issues/8014
-              if (
-                typeof convertedSchema === 'object' &&
-                convertedSchema !== null &&
-                'type' in convertedSchema &&
-                convertedSchema.type === 'object'
-              ) {
-                outputSchema = convertedSchema as ToolOutput
-              }
-            }
-            return {
-              ...tool,
-              description: await tool.prompt({
-                getToolPermissionContext: async () => toolPermissionContext,
-                tools,
-                agents: [],
-              }),
-              inputSchema: (tool.inputJSONSchema ?? zodToJsonSchema(tool.inputSchema)) as ToolInput,
-              outputSchema,
-            }
-          }),
-        ),
-      }
+      return { tools: await listToolsForMcpServe(tools, toolPermissionContext) }
     },
   )
 
