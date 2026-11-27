@@ -29,6 +29,7 @@ import type {
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
+import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
@@ -111,10 +112,12 @@ function handleRemoteAuthFailure(
  * Attempts to connect to a single MCP server
  * @param name Server name
  * @param serverRef Scoped server configuration
+ * @param retry Internal: the attempt a transient-failure retry is on, and the
+ *   startup deadline every attempt shares (connectRetry.ts)
  * @returns A wrapped client (either connected or failed)
  */
 export const connectToServer = memoize(
-  async (
+  async function connectAttempt(
     name: string,
     serverRef: ScopedMcpServerConfig,
     serverStats?: {
@@ -125,8 +128,11 @@ export const connectToServer = memoize(
       sseIdeCount: number
       wsIdeCount: number
     },
-  ): Promise<MCPServerConnection> => {
+    retry?: { attempt: number; deadline: number },
+  ): Promise<MCPServerConnection> {
     const connectStartTime = Date.now()
+    const deadline =
+      retry?.deadline ?? connectStartTime + getMcpConnectTimeoutMs(serverRef)
     let inProcessServer: InProcessMcpServer | undefined
     try {
       const created = await createTransport(name, serverRef)
@@ -236,7 +242,7 @@ export const connectToServer = memoize(
               'MCP connection timeout',
             ),
           )
-        }, getMcpConnectTimeoutMs(serverRef))
+        }, deadline - connectStartTime)
 
         // Clean up timeout if connect resolves or rejects
         connectPromise.then(
@@ -261,6 +267,27 @@ export const connectToServer = memoize(
           `Successfully connected (transport: ${serverRef.type || 'stdio'}) in ${elapsed}ms`,
         )
       } catch (error) {
+        // A transient failure of a remote server gets another attempt, which
+        // calls this function directly: the memoized wrapper would hand back
+        // this very attempt's promise.
+        const attempt = retry?.attempt ?? 0
+        const delay = nextConnectRetryDelay(error, {
+          type: serverRef.type ?? 'stdio',
+          attempt,
+          remainingMs: deadline - Date.now(),
+        })
+        if (delay !== null) {
+          logMCPDebug(
+            name,
+            `Connection attempt ${attempt + 1} failed: ${errorMessage(error)}. Retrying in ${delay}ms`,
+          )
+          await cleanupFailedConnection(transport)
+          await sleep(delay)
+          return connectAttempt(name, serverRef, serverStats, {
+            attempt: attempt + 1,
+            deadline,
+          })
+        }
         const elapsed = Date.now() - connectStartTime
         // SSE-specific error logging
         if (serverRef.type === 'sse' && error instanceof Error) {
