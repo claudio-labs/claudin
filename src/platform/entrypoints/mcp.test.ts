@@ -318,24 +318,29 @@ describe('startMCPServer, driven by an SDK client', () => {
     expect(glob!.description).toBe('shadowing glob')
   })
 
-  it('runs a built-in Glob in the server cwd and answers its object result as JSON text, without structuredContent', async () => {
+  it('runs a built-in Glob in the server cwd and answers its object result as JSON text and as structuredContent', async () => {
     await serve()
     const result = await callRaw('Glob', { pattern: '*.txt' })
     expect(result.isError).toBe(false)
-    expect(result.structuredContent).toBeUndefined()
+    expect(result.structuredContent).toMatchObject({ filenames: ['alpha.txt'], numFiles: 1, truncated: false })
     expect(result.content).toHaveLength(1)
     const block = result.content[0] as { type: string; text: string }
     expect(block.type).toBe('text')
     expect(JSON.parse(block.text)).toMatchObject({ filenames: ['alpha.txt'], numFiles: 1, truncated: false })
   })
 
-  it('fails the SDK client output-schema check once Glob was listed (the -32600 gap)', async () => {
+  it('passes the SDK client output-schema check once Glob was listed', async () => {
     const { client } = await serve()
     await client.listTools()
-    const error = await client.callTool({ name: 'Glob', arguments: { pattern: '*.txt' } }).catch(e => e)
-    expect(error).toBeInstanceOf(McpError)
-    expect((error as McpError).code).toBe(-32600)
-    expect((error as McpError).message).toContain('has an output schema but did not return structured content')
+    const result = await client.callTool({ name: 'Glob', arguments: { pattern: '*.txt' } })
+    expect(result.isError).toBe(false)
+    expect(result.structuredContent).toMatchObject({ filenames: ['alpha.txt'] })
+  })
+
+  it('sends no structuredContent for a tool listed without an output schema', async () => {
+    await serve([fakeMcpTool('mcp__fake__plain', { call: async () => ({ data: { a: 1 } }) })])
+    const result = await callRaw('mcp__fake__plain', {})
+    expect(result.structuredContent).toBeUndefined()
   })
 
   it('treats a "" placeholder for an optional arg as absent', async () => {
@@ -478,7 +483,7 @@ describe('startMCPServer, driven by an SDK client', () => {
     expect(second!.abortController).not.toBe(first!.abortController)
   })
 
-  it('does not abort the tool when the client cancels the request (the cancellation gap)', async () => {
+  it('aborts the tool when the client cancels the request', async () => {
     let release!: () => void
     const released = new Promise<void>(resolve => (release = resolve))
     let toolSignal: AbortSignal | undefined
@@ -504,7 +509,7 @@ describe('startMCPServer, driven by an SDK client', () => {
     // Let notifications/cancelled reach the server before looking.
     await new Promise(resolve => setTimeout(resolve, 20))
     expect(received).toContain('notifications/cancelled')
-    expect(toolSignal!.aborted).toBe(false)
+    expect(toolSignal!.aborted).toBe(true)
     release()
   })
 })

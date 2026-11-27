@@ -72,6 +72,28 @@ export async function loadReexposedMcpTools(): Promise<{
   return { mcpClients, mcpTools }
 }
 
+// The output schema tools/list advertises for a tool: its zod schema as JSON
+// Schema, only when the root is an object. The MCP SDK requires type
+// "object" at the root, so a schema with anyOf/oneOf there (z.union,
+// z.discriminatedUnion) is left off; see
+// https://github.com/anthropics/claude-code/issues/8014.
+function objectOutputSchema(tool: InternalTool): ToolOutput | undefined {
+  if (!tool.outputSchema) return undefined
+  let convertedSchema: unknown
+  try {
+    convertedSchema = zodToJsonSchema(tool.outputSchema)
+  } catch (error) {
+    logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)
+    return undefined
+  }
+  return typeof convertedSchema === 'object' &&
+    convertedSchema !== null &&
+    'type' in convertedSchema &&
+    convertedSchema.type === 'object'
+    ? (convertedSchema as ToolOutput)
+    : undefined
+}
+
 // What tools/list answers. A schema zod has no JSON Schema form for (the
 // workflow tools' z.custom outputs) used to throw out of the handler and fail
 // the list for every tool: an output schema that cannot be converted is left
@@ -89,26 +111,6 @@ export async function listToolsForMcpServe(
         logForDebugging(`[mcp serve] ${tool.name} left out of tools/list: ${errorMessage(error)}`)
         return null
       }
-      let outputSchema: ToolOutput | undefined
-      if (tool.outputSchema) {
-        let convertedSchema: unknown
-        try {
-          convertedSchema = zodToJsonSchema(tool.outputSchema)
-        } catch (error) {
-          logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)
-        }
-        // MCP SDK requires outputSchema to have type: "object" at root level
-        // Skip schemas with anyOf/oneOf at root (from z.union, z.discriminatedUnion, etc.)
-        // See: https://github.com/anthropics/claude-code/issues/8014
-        if (
-          typeof convertedSchema === 'object' &&
-          convertedSchema !== null &&
-          'type' in convertedSchema &&
-          convertedSchema.type === 'object'
-        ) {
-          outputSchema = convertedSchema as ToolOutput
-        }
-      }
       return {
         ...tool,
         description: await tool.prompt({
@@ -117,7 +119,7 @@ export async function listToolsForMcpServe(
           agents: [],
         }),
         inputSchema,
-        outputSchema,
+        outputSchema: objectOutputSchema(tool),
       }
     }),
   )
@@ -167,7 +169,7 @@ export async function startMCPServer(
 
     server.setRequestHandler(
       'tools/call',
-      async ({ params: { name, arguments: args } }): Promise<CallToolResult> => {
+      async ({ params: { name, arguments: args } }, ctx): Promise<CallToolResult> => {
         const toolPermissionContext = getEmptyToolPermissionContext()
         const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
         const tool = findToolByName(tools, name)
@@ -175,10 +177,20 @@ export async function startMCPServer(
           throw new Error(`Tool ${name} not found`)
         }
 
+        // A client that cancels the call (notifications/cancelled, or the
+        // request stream closing on 2026-07-28) stops the tool.
+        const abortController = createAbortController()
+        const requestSignal = ctx.mcpReq.signal
+        if (requestSignal.aborted) {
+          abortController.abort(requestSignal.reason)
+        } else {
+          requestSignal.addEventListener('abort', () => abortController.abort(requestSignal.reason), { once: true })
+        }
+
         // Assume MCP servers do not read messages separately from the tool
         // call arguments.
         const toolUseContext: ToolUseContext = {
-          abortController: createAbortController(),
+          abortController,
           options: {
             commands: MCP_COMMANDS,
             tools,
@@ -264,8 +276,19 @@ export async function startMCPServer(
             content = [{ type: 'text', text: jsonStringify(data) }]
           }
 
+          // A tool listed with an output schema answers with structuredContent
+          // too: SDK clients reject a result that lacks it (-32600).
+          const structured =
+            objectOutputSchema(tool) !== undefined &&
+            typeof data === 'object' &&
+            data !== null &&
+            !Array.isArray(data)
+              ? (data as Record<string, unknown>)
+              : undefined
+
           return {
             content,
+            ...(structured && { structuredContent: structured }),
             isError: !!(finalResult as any).isError,
           }
         } catch (error) {
