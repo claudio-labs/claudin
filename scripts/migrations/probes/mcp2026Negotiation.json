@@ -75,6 +75,12 @@
       "replace": "    (error instanceof SdkError && error.code === SdkErrorCode.EraNegotiationFailed) ||\n"
     },
     {
+      "name": "a read does not wait for a drop still in flight, so a reconnect can adopt the verdict just dropped",
+      "source": "src/mcp/client/eraCache.ts",
+      "find": "  await writeChain\n",
+      "replace": ""
+    },
+    {
       "name": "a 401 on the probe is retried in the 2025 protocol instead of asking for auth",
       "source": "src/mcp/client/negotiation.ts",
       "find": "  if (isAuthConnectError(error)) return null\n",

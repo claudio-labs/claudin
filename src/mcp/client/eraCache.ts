@@ -94,6 +94,9 @@ async function readCacheFile(path: string): Promise<CacheFile> {
 export async function readEraVerdict(key: string): Promise<EraVerdict | undefined> {
   const path = cachePath()
   if (path === undefined) return undefined
+  // A drop or save issued before this read lands first, so a reconnect never
+  // adopts the verdict its failed connect just dropped.
+  await writeChain
   return (await readCacheFile(path))[key]
 }
 
