@@ -29,6 +29,8 @@ export type SuggestionType =
   | 'shell'
   | 'custom-title'
   | 'slack-channel'
+  // A value for the MCP prompt argument under the cursor (completion/complete)
+  | 'prompt-argument'
   | 'none'
 
 // Visible-row window for the suggestion menu: at least MIN, at most MAX,

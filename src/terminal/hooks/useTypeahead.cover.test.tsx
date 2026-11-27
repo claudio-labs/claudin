@@ -1,7 +1,8 @@
 /**
  * Characterization of useTypeahead: what the prompt input's suggestion layer
- * shows and does today, pinned before the MCP prompt-argument completions land
- * in the `exactMatch?.type === 'prompt'` branch.
+ * shows and does today, pinned before the MCP prompt-argument completions
+ * landed (their cases are the last describe; they run in a branch of their
+ * own ahead of the `exactMatch?.type === 'prompt'` hint).
  *
  * The hook runs inside a real Ink root (AppStateProvider + KeybindingSetup) so
  * Tab / Esc / arrows reach it through the Autocomplete keybinding context the
@@ -1180,5 +1181,196 @@ describe('# slack channels', () => {
     await m.type('#gen ')
     expect(m.ctl.result.suggestions).toEqual([])
     expect(m.ctl.result.suggestionType).toBe('none')
+  })
+})
+
+// ── MCP prompt argument values (completion/complete) ───────────────────────
+
+describe('MCP prompt argument values', () => {
+  type Values = (argName: string, partial: string, filled: Readonly<Record<string, string>>) => Promise<string[]>
+
+  function mcpGreet(argumentValues?: Values): Command {
+    return {
+      type: 'prompt',
+      name: 'mcp__srv__greet',
+      description: 'Greet',
+      progressMessage: 'running',
+      contentLength: 0,
+      source: 'mcp',
+      isMcp: true,
+      argNames: ['name', 'greeting'],
+      argSpecs: [
+        { name: 'name', required: true, description: 'Who to greet' },
+        { name: 'greeting', required: false },
+      ],
+      ...(argumentValues && { argumentValues }),
+      userFacingName: () => 'srv:greet (MCP)',
+      getPromptForCommand: async () => [],
+    } as unknown as Command
+  }
+
+  function people(): { calls: Array<[string, string, Record<string, string>]>; values: Values } {
+    const calls: Array<[string, string, Record<string, string>]> = []
+    const values: Values = async (argName, partial, filled) => {
+      calls.push([argName, partial, { ...filled }])
+      if (argName === 'greeting') return ['Hello', 'Hi']
+      return ['Alice', 'Alicia', 'Bob', 'Mary Ann'].filter(p => p.startsWith(partial))
+    }
+    return { calls, values }
+  }
+
+  const shown = (m: Mounted) => m.ctl.result.suggestions.map(s => s.displayText)
+
+  test('values for the argument being typed appear after the debounce', async () => {
+    const { calls, values } = people()
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet Al')
+    expect(calls).toEqual([])
+    await settle(200)
+    expect(calls).toEqual([['name', 'Al', {}]])
+    expect(m.ctl.result.suggestionType).toBe('prompt-argument')
+    expect(shown(m)).toEqual(['Alice', 'Alicia'])
+    expect(m.ctl.result.selectedSuggestion).toBe(0)
+    // The type change re-runs the update for the same input: no second request
+    await settle(200)
+    expect(calls).toHaveLength(1)
+  })
+
+  test('between arguments the hint shows at once and the values follow', async () => {
+    const { values } = people()
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/srv:greet (MCP) ')
+    expect(m.ctl.result.commandArgumentHint).toBe('<name> [greeting] · Who to greet')
+    expect(m.ctl.result.suggestions).toEqual([])
+    await settle(200)
+    expect(shown(m)).toEqual(['Alice', 'Alicia', 'Bob', 'Mary Ann'])
+    expect(m.ctl.result.commandArgumentHint).toBe('<name> [greeting] · Who to greet')
+  })
+
+  test('a stale response is discarded', async () => {
+    const first = deferred<string[]>()
+    const values: Values = async (_arg, partial) => (partial === 'A' ? first.promise : ['Alice'])
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet A')
+    await settle(200)
+    await m.type('/mcp__srv__greet Al')
+    await settle(200)
+    expect(shown(m)).toEqual(['Alice'])
+    first.resolve(['Andrew'])
+    await settle()
+    expect(shown(m)).toEqual(['Alice'])
+  })
+
+  test('a response that lands after the line left the prompt is dropped', async () => {
+    const pending = deferred<string[]>()
+    const m = await mount('', { commands: [mcpGreet(async () => pending.promise)] })
+    await m.type('/mcp__srv__greet Al')
+    await settle(200)
+    await m.type('hello')
+    pending.resolve(['Alice'])
+    await settle()
+    expect(m.ctl.result.suggestions).toEqual([])
+    expect(m.ctl.result.suggestionType).toBe('none')
+  })
+
+  test('Tab accepts a multi-word value quoted, then asks for the next argument with it', async () => {
+    const { calls, values } = people()
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet Ma')
+    await settle(200)
+    expect(shown(m)).toEqual(['Mary Ann'])
+    await m.press(KEY.tab)
+    expect(m.ctl.input).toBe('/mcp__srv__greet "Mary Ann" ')
+    expect(m.ctl.cursor).toBe(28)
+    expect(m.calls.submits).toEqual([])
+    expect(m.ctl.result.commandArgumentHint).toBe('[greeting]')
+    await settle(200)
+    expect(calls.at(-1)).toEqual(['greeting', '', { name: 'Mary Ann' }])
+    expect(shown(m)).toEqual(['Hello', 'Hi'])
+  })
+
+  test('Enter accepts the selected value without submitting', async () => {
+    const { values } = people()
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/srv:greet (MCP) Al')
+    await settle(200)
+    await m.press(KEY.down)
+    await m.press(KEY.enter)
+    expect(m.ctl.input).toBe('/srv:greet (MCP) Alicia ')
+    expect(m.calls.submits).toEqual([])
+  })
+
+  test('rows for the previous argument go when the next one starts', async () => {
+    const later = deferred<string[]>()
+    const values: Values = async argName => (argName === 'name' ? ['Alice'] : later.promise)
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet Al')
+    await settle(200)
+    expect(shown(m)).toEqual(['Alice'])
+    await m.type('/mcp__srv__greet Al ')
+    expect(m.ctl.result.suggestions).toEqual([])
+    expect(m.ctl.result.commandArgumentHint).toBe('[greeting]')
+    later.resolve(['Hi'])
+  })
+
+  test('rows for the same argument stay while its next fetch runs', async () => {
+    const later = deferred<string[]>()
+    const values: Values = async (_arg, partial) => (partial === 'A' ? ['Alice'] : later.promise)
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet A')
+    await settle(200)
+    await m.type('/mcp__srv__greet Al')
+    expect(shown(m)).toEqual(['Alice'])
+    later.resolve(['Alicia'])
+    await settle(200)
+    expect(shown(m)).toEqual(['Alicia'])
+  })
+
+  test('no values leave only the hint', async () => {
+    const m = await mount('', { commands: [mcpGreet(async () => [])] })
+    await m.type('/mcp__srv__greet ')
+    await settle(200)
+    expect(m.ctl.result.suggestions).toEqual([])
+    expect(m.ctl.result.suggestionType).toBe('none')
+    expect(m.ctl.result.commandArgumentHint).toBe('<name> [greeting] · Who to greet')
+  })
+
+  test('a server without completions shows only the hint', async () => {
+    const m = await mount('', { commands: [mcpGreet()] })
+    await m.type('/srv:greet (MCP) ')
+    expect(m.ctl.result.commandArgumentHint).toBe('<name> [greeting] · Who to greet')
+    await settle(200)
+    expect(m.ctl.result.suggestions).toEqual([])
+    expect(m.ctl.result.suggestionType).toBe('none')
+    await m.type('/srv:greet (MCP) Al')
+    expect(m.ctl.result.commandArgumentHint).toBeUndefined()
+    await m.type('/srv:greet (MCP) Al ')
+    expect(m.ctl.result.commandArgumentHint).toBe('[greeting]')
+  })
+
+  test('typing every argument, or leaving the command, clears the values', async () => {
+    const { values } = people()
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet Al')
+    await settle(200)
+    expect(m.ctl.result.suggestionType).toBe('prompt-argument')
+    await m.type('/mcp__srv__greet Alice Hi there')
+    expect(m.ctl.result.suggestions).toEqual([])
+    expect(m.ctl.result.suggestionType).toBe('none')
+    await m.type('/mcp__srv__greet Al')
+    await settle(200)
+    await m.type('hello')
+    expect(m.ctl.result.suggestions).toEqual([])
+  })
+
+  test('Esc dismisses the values for that input', async () => {
+    const { values } = people()
+    const m = await mount('', { commands: [mcpGreet(values)] })
+    await m.type('/mcp__srv__greet Al')
+    await settle(200)
+    await m.press(KEY.escape)
+    expect(m.ctl.result.suggestions).toEqual([])
+    await settle(200)
+    expect(m.ctl.result.suggestions).toEqual([])
   })
 })

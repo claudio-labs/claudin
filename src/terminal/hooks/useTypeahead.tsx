@@ -25,6 +25,7 @@ import { applyCommandSuggestion, findMidInputSlashCommand, generateCommandSugges
 import { getDirectoryCompletions, getPathCompletions, isPathLikeToken } from 'src/terminal/suggestions/directoryCompletion.js';
 import { getShellHistoryCompletion } from 'src/terminal/suggestions/shellHistoryCompletion.js';
 import { getSlackChannelSuggestions, hasSlackMcpServer } from 'src/terminal/suggestions/slackChannelSuggestions.js';
+import { acceptPromptArgumentSuggestion, fetchPromptArgumentSuggestions, keepPromptArgumentSuggestions, planPromptArgumentCompletion, type PromptArgumentPlan } from 'src/terminal/suggestions/promptArgumentSuggestions.js';
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js';
 import { applyFileSuggestion, findLongestCommonPrefix, onIndexBuildComplete, startBackgroundCacheRefresh } from 'src/terminal/prompt-suggestion/fileSuggestions.js';
 import { generateUnifiedSuggestions } from 'src/terminal/prompt-suggestion/unifiedSuggestions.js';
@@ -470,6 +471,10 @@ export function useTypeahead({
   const latestBashInputRef = useRef('');
   // Track the latest slack channel token to discard stale results from MCP
   const latestSlackTokenRef = useRef('');
+  // The input the latest MCP prompt-argument fetch is for; null drops any in flight
+  const latestPromptArgumentInputRef = useRef<string | null>(null);
+  // The input the prompt-argument rows on screen were fetched for
+  const promptArgumentShownForRef = useRef<string | null>(null);
   // Track suggestions via ref to avoid updateSuggestions being recreated on selection changes
   const suggestionsRef = useRef(suggestions);
   suggestionsRef.current = suggestions;
@@ -566,6 +571,20 @@ export function useTypeahead({
   // First keystroke after # needs the MCP round-trip; subsequent keystrokes
   // that share the same first-word segment hit the cache synchronously.
   const debouncedFetchSlackChannels = useDebounceCallback(fetchSlackChannels, 150);
+  const fetchPromptArgumentValues = useCallback(async (plan: PromptArgumentPlan, forInput: string): Promise<void> => {
+    const items = await fetchPromptArgumentSuggestions(plan);
+    if (latestPromptArgumentInputRef.current !== forInput || prevInputRef.current !== forInput) return;
+    promptArgumentShownForRef.current = forInput;
+    setSuggestionsState(prev => ({
+      commandArgumentHint: prev.commandArgumentHint,
+      suggestions: items,
+      selectedSuggestion: getPreservedSelection(prev.suggestions, prev.selectedSuggestion, items)
+    }));
+    setSuggestionType(items.length > 0 ? 'prompt-argument' : 'none');
+    setMaxColumnWidth(undefined);
+  }, [setSuggestionsState]);
+  // The spec asks clients to debounce completion/complete; same pace as Slack
+  const debouncedFetchPromptArgumentValues = useDebounceCallback(fetchPromptArgumentValues, 150);
 
   // Handle immediate suggestion logic (cheap operations)
   // biome-ignore lint/correctness/useExhaustiveDependencies: store is a stable context ref, read imperatively at call-time
@@ -763,6 +782,30 @@ export function useTypeahead({
         clearSuggestions();
         return;
       }
+
+      // MCP prompt arguments: a <required> [optional] hint, and the server's
+      // values for the argument under the cursor when it offers completions
+      const promptArgumentPlan = planPromptArgumentCompletion(value, effectiveCursorOffset, commands);
+      if (promptArgumentPlan) {
+        latestPromptArgumentInputRef.current = value;
+        const kept = suggestionType === 'prompt-argument' ? keepPromptArgumentSuggestions(suggestionsRef.current, promptArgumentPlan) : [];
+        setSuggestionsState(prev => prev.commandArgumentHint === promptArgumentPlan.hint && (prev.suggestions === kept || prev.suggestions.length + kept.length === 0) ? prev : {
+          commandArgumentHint: promptArgumentPlan.hint,
+          suggestions: kept,
+          selectedSuggestion: kept.length > 0 ? prev.selectedSuggestion : -1
+        });
+        if (kept.length === 0) {
+          setSuggestionType('none');
+          setMaxColumnWidth(undefined);
+        }
+        if (!promptArgumentPlan.complete) {
+          debouncedFetchPromptArgumentValues.cancel();
+        } else if (suggestionType !== 'prompt-argument' || promptArgumentShownForRef.current !== value) {
+          // (Not when these rows are already this input's: the type change re-runs the update)
+          void debouncedFetchPromptArgumentValues(promptArgumentPlan, value);
+        }
+        return;
+      }
     }
 
     // Determine whether to display the argument hint and command suggestions.
@@ -844,6 +887,12 @@ export function useTypeahead({
       // we need to clear the suggestions.
       clearSuggestions();
     }
+    if (suggestionType === 'prompt-argument') {
+      // The cursor left the MCP prompt's arguments (moved, or all typed)
+      latestPromptArgumentInputRef.current = null;
+      debouncedFetchPromptArgumentValues.cancel();
+      clearSuggestions();
+    }
     if (suggestionType === 'agent' && suggestionsRef.current.some((s: SuggestionItem) => s.id?.startsWith('dm-'))) {
       // If we had team member suggestions but the input no longer has @
       // we need to clear the suggestions.
@@ -923,7 +972,7 @@ export function useTypeahead({
         clearSuggestions();
       }
     }
-  }, [suggestionType, commands, setSuggestionsState, clearSuggestions, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, mode, suppressSuggestions,
+  }, [suggestionType, commands, setSuggestionsState, clearSuggestions, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, debouncedFetchPromptArgumentValues, mode, suppressSuggestions,
   // Note: using suggestionsRef instead of suggestions to avoid recreating
   // this callback when only selectedSuggestion changes (not the suggestions list)
   allCommandsMaxWidth]);
@@ -948,6 +997,18 @@ export function useTypeahead({
     dismissedForInputRef.current = null;
     void updateSuggestions(input);
   }, [input, updateSuggestions]);
+
+  // Accepting an MCP prompt-argument value rewrites the line; the input effect
+  // then moves on to the next argument
+  const applyPromptArgumentSuggestion = useCallback((suggestion: SuggestionItem): void => {
+    latestPromptArgumentInputRef.current = null;
+    debouncedFetchPromptArgumentValues.cancel();
+    clearSuggestions();
+    const next = acceptPromptArgumentSuggestion(suggestion, input, cursorOffset);
+    if (!next) return;
+    onInputChange(next.text);
+    setCursorOffset(next.cursor);
+  }, [input, cursorOffset, onInputChange, setCursorOffset, clearSuggestions, debouncedFetchPromptArgumentValues]);
 
   // Handle tab key press - complete suggestions or trigger file suggestions
   const handleTab = useCallback(async () => {
@@ -1086,6 +1147,8 @@ export function useTypeahead({
           applyTriggerSuggestion(suggestion, input, cursorOffset, HASH_CHANNEL_RE, onInputChange, setCursorOffset);
           clearSuggestions();
         }
+      } else if (suggestionType === 'prompt-argument') {
+        if (suggestion) applyPromptArgumentSuggestion(suggestion);
       } else if (suggestionType === 'file' && suggestions.length > 0) {
         const completionToken = extractCompletionToken(input, cursorOffset, true);
         if (!completionToken) {
@@ -1199,7 +1262,7 @@ export function useTypeahead({
         setMaxColumnWidth(undefined);
       }
     }
-  }, [suggestions, selectedSuggestion, input, suggestionType, commands, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, cursorOffset, updateSuggestions, mcpResources, setSuggestionsState, agents, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, effectiveGhostText, promptSuggestionFullText, markAccepted]);
+  }, [suggestions, selectedSuggestion, input, suggestionType, commands, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, cursorOffset, updateSuggestions, mcpResources, setSuggestionsState, agents, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, effectiveGhostText, promptSuggestionFullText, markAccepted, applyPromptArgumentSuggestion]);
 
   // Handle enter key press - apply and execute suggestions
   const handleEnter = useCallback(() => {
@@ -1243,6 +1306,8 @@ export function useTypeahead({
         debouncedFetchSlackChannels.cancel();
         clearSuggestions();
       }
+    } else if (suggestionType === 'prompt-argument') {
+      if (suggestion) applyPromptArgumentSuggestion(suggestion);
     } else if (suggestionType === 'file' && selectedSuggestion < suggestions.length) {
       // Extract completion token directly when needed
       const completionInfo = extractCompletionToken(input, cursorOffset, true);
@@ -1314,7 +1379,7 @@ export function useTypeahead({
         clearSuggestions();
       }
     }
-  }, [suggestions, selectedSuggestion, suggestionType, commands, input, cursorOffset, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, setSuggestionsState, updateSuggestions]);
+  }, [suggestions, selectedSuggestion, suggestionType, commands, input, cursorOffset, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, setSuggestionsState, updateSuggestions, applyPromptArgumentSuggestion]);
 
   // Handler for autocomplete:accept - accepts current suggestion via Tab or Right Arrow
   const handleAutocompleteAccept = useCallback(() => {
@@ -1325,6 +1390,8 @@ export function useTypeahead({
   const handleAutocompleteDismiss = useCallback(() => {
     debouncedFetchFileSuggestions.cancel();
     debouncedFetchSlackChannels.cancel();
+    debouncedFetchPromptArgumentValues.cancel();
+    latestPromptArgumentInputRef.current = null;
     clearSuggestions();
     // Esc should also dismiss prompt-suggestion ghost text; otherwise the
     // overlay would linger after the dropdown is cleared.
@@ -1333,7 +1400,7 @@ export function useTypeahead({
     }
     // Remember the input when dismissed to prevent immediate re-triggering
     dismissedForInputRef.current = input;
-  }, [debouncedFetchFileSuggestions, debouncedFetchSlackChannels, clearSuggestions, input, promptSuggestionFullText, onDismissPromptSuggestion]);
+  }, [debouncedFetchFileSuggestions, debouncedFetchSlackChannels, debouncedFetchPromptArgumentValues, clearSuggestions, input, promptSuggestionFullText, onDismissPromptSuggestion]);
 
   // Handler for autocomplete:previous - selects previous suggestion
   const handleAutocompletePrevious = useCallback(() => {

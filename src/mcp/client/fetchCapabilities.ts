@@ -34,6 +34,7 @@ import { markClaudeAiMcpConnected } from 'src/mcp/claudeai.js'
 import { getAllMcpConfigs, isMcpServerDisabled } from 'src/mcp/config.js'
 import { buildMcpToolName } from 'src/mcp/mcpStringUtils.js'
 import { normalizeNameForMCP } from 'src/mcp/normalization.js'
+import { createPromptArgumentCompleter } from 'src/mcp/promptCompletions.js'
 import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
@@ -454,6 +455,16 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
       // Convert MCP prompts to our Command format
       return promptsToProcess.map(prompt => {
         const argNames = Object.values(prompt.arguments ?? {}).map(k => k.name)
+        const argSpecs = (prompt.arguments ?? []).map(arg => ({
+          name: arg.name,
+          required: arg.required === true,
+          ...(arg.description && { description: arg.description }),
+        }))
+        // Only a server that declares completions is asked for values
+        const argumentValues =
+          argSpecs.length > 0 && client.capabilities?.completions
+            ? createPromptArgumentCompleter(client, prompt.name, ensureConnectedClient)
+            : undefined
         return {
           type: 'prompt' as const,
           name: 'mcp__' + normalizeNameForMCP(client.name) + '__' + prompt.name,
@@ -470,6 +481,8 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
             return `${client.name}:${prompt.name} (MCP)`
           },
           argNames,
+          ...(argSpecs.length > 0 && { argSpecs }),
+          ...(argumentValues && { argumentValues }),
           source: 'mcp',
           async getPromptForCommand(args: string) {
             const argsArray = splitPromptArguments(args)

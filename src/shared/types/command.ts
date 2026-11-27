@@ -22,11 +22,33 @@ export type LocalCommandResult =
     }
   | { type: 'skip' } // Skip messages
 
+/** One positional argument of an MCP prompt, in `argNames` order. */
+export type PromptArgumentSpec = {
+  name: string
+  required: boolean
+  description?: string
+}
+
+/**
+ * Values the server offers for `argName` given what the user has typed of it
+ * and the arguments already filled in (MCP `completion/complete`). Resolves to
+ * [] when it has none; it never rejects.
+ */
+export type PromptArgumentValues = (
+  argName: string,
+  partial: string,
+  filledArgs: Readonly<Record<string, string>>,
+) => Promise<string[]>
+
 export type PromptCommand = {
   type: 'prompt'
   progressMessage: string
   contentLength: number // Length of command content in characters (used for token estimation)
   argNames?: string[]
+  // MCP prompts only: per-argument metadata for the prompt-input hint, and
+  // the server's value completions when it declares `completions`
+  argSpecs?: PromptArgumentSpec[]
+  argumentValues?: PromptArgumentValues
   allowedTools?: string[]
   model?: string
   source: SettingSource | 'builtin' | 'mcp' | 'plugin' | 'bundled'
