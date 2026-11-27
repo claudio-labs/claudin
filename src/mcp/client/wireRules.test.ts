@@ -3,6 +3,7 @@ import type { Tool } from '@modelcontextprotocol/client'
 import type { SkippedEntry } from 'src/mcp/client/listValidation.js'
 import {
   fillListResultFields,
+  fillResultType,
   LEGACY_INITIALIZE_CAPABILITIES,
   MCP_TASK_META_KEY,
   SEND_RULES,
@@ -23,20 +24,39 @@ const good = { name: 'good', inputSchema: { type: 'object' } }
 const bad = { name: 'bad', inputSchema: { type: 'string' } }
 
 describe('the rule table', () => {
-  test('has a rule for each list method, tools/call, the task and the event methods, and none for anything else', () => {
+  test('has a rule for each list method, each other result Claudin reads, the task and the event methods, and none for anything else', () => {
     expect(Object.keys(WIRE_RULES).sort()).toEqual([
+      'completion/complete',
       'events/list',
       'events/poll',
       'events/stream',
+      'prompts/get',
       'prompts/list',
       'resources/list',
+      'resources/read',
       'resources/templates/list',
+      'skills/list',
       'tasks/cancel',
       'tasks/get',
       'tasks/update',
       'tools/call',
       'tools/list',
     ])
+  })
+
+  // The SDK asks the cache fields of a cacheable result only, and a
+  // resultType of every one (wireRules.modernResults.test.ts drives a v2 server).
+  test('a read and the skills list get the cache fields; a call, a prompt and a completion only the resultType', () => {
+    for (const method of ['resources/read', 'skills/list']) {
+      const result: WireResult = { contents: [] }
+      run(method, result)
+      expect(result).toEqual({ contents: [], resultType: 'complete', ttlMs: 0, cacheScope: 'private' })
+    }
+    for (const method of ['tools/call', 'prompts/get', 'completion/complete']) {
+      const result: WireResult = { content: [] }
+      run(method, result)
+      expect(result).toEqual({ content: [], resultType: 'complete' })
+    }
   })
 
   test('the task methods get the result fields a modern answer must carry', () => {
@@ -114,6 +134,17 @@ describe('fillListResultFields', () => {
     const result: WireResult = { resultType: 'input_required' }
     fillListResultFields(result)
     expect(result.resultType).toBe('input_required')
+  })
+})
+
+describe('fillResultType', () => {
+  test('fills a missing resultType and keeps one the server sent', () => {
+    const missing: WireResult = { messages: [] }
+    fillResultType(missing)
+    expect(missing).toEqual({ messages: [], resultType: 'complete' })
+    const sent: WireResult = { resultType: 'input_required' }
+    fillResultType(sent)
+    expect(sent).toEqual({ resultType: 'input_required' })
   })
 })
 

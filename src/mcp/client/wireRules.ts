@@ -6,10 +6,12 @@
  * The SDK checks a list page whole, so one malformed tool failed the page and
  * the server lost every tool it had; the list rules check each entry instead
  * (listValidation.ts) and hand the SDK only the sound ones. On the 2026-07-28
- * wire a list result must also carry `resultType`, `ttlMs` and `cacheScope`,
- * or it is rejected whole too; a server that leaves them out gets the
- * defaults the spec gives an absent hint (complete, immediately stale,
- * private).
+ * wire every result must also carry `resultType`, and a cacheable one (the
+ * lists, `resources/read`, the MCP Skills `skills/list`) `ttlMs` and
+ * `cacheScope` too, or the SDK rejects it whole; a server that leaves them
+ * out gets the defaults the spec gives an absent hint (complete, immediately
+ * stale, private). `tools/call`, `prompts/get` and `completion/complete` get
+ * the `resultType` alone, as the SDK asks no cache fields of them.
  *
  * SEND_RULES rewrites a request Claudin sends, keyed by its method, before it
  * reaches the transport.
@@ -53,9 +55,14 @@ function isValidTtlMs(value: unknown): boolean {
 
 /** Fills the result fields every 2026-07-28 list answer must carry. */
 export function fillListResultFields(result: WireResult): void {
-  if (result.resultType === undefined) result.resultType = 'complete'
+  fillResultType(result)
   if (!isValidTtlMs(result.ttlMs)) result.ttlMs = 0
   if (result.cacheScope !== 'public' && result.cacheScope !== 'private') result.cacheScope = 'private'
+}
+
+/** Fills the `resultType` every 2026-07-28 answer must carry. */
+export function fillResultType(result: WireResult): void {
+  if (result.resultType === undefined) result.resultType = 'complete'
 }
 
 /** Where a task-augmented `tools/call` result carries its task, in `_meta`. */
@@ -71,6 +78,12 @@ export function withTaskMarker(result: WireResult): void {
   const { resultType: _task, ...task } = result
   for (const key of Object.keys(result)) delete result[key]
   Object.assign(result, { resultType: 'complete', content: [], _meta: { [MCP_TASK_META_KEY]: task } })
+}
+
+/** A tool result as the SDK decodes it: a task turned into its marker, and any other result complete unless it says otherwise. */
+export function fillToolCallResult(result: WireResult): void {
+  withTaskMarker(result)
+  fillResultType(result)
 }
 
 // Claudin never checked a tool's structuredContent against its outputSchema,
@@ -107,7 +120,11 @@ export const WIRE_RULES: Readonly<Record<string, WireRule>> = {
   'prompts/list': listRule('prompts', 'prompt', keepValidPrompts),
   'resources/list': listRule('resources', 'resource', keepValidResources),
   'resources/templates/list': listRule('resourceTemplates', 'resource template', keepValidResourceTemplates),
-  'tools/call': withTaskMarker,
+  'resources/read': fillListResultFields,
+  'skills/list': fillListResultFields,
+  'tools/call': fillToolCallResult,
+  'prompts/get': fillResultType,
+  'completion/complete': fillResultType,
   'tasks/get': fillListResultFields,
   'tasks/update': fillListResultFields,
   'tasks/cancel': fillListResultFields,
