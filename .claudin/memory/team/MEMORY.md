@@ -4,7 +4,7 @@
 
 ## Decisions
 - [Transcript UI round 11-24](decisions/transcript-ui-round-2026-11-24.md) — icons take the ●, no ⎿ in results
-- Ports: [Plandex (#341)](decisions/plandex-ports.md) — rewind, /diff `x` · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /recap
+- Ports: [Plandex (#341)](decisions/plandex-ports.md) — rewind, /diff `x` · [CC 2.1.321 (#347)](decisions/cc-2-1-321-parity-limits.md) — effort, bg skills · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) — /fork /recap · [opencode MCP](decisions/opencode-mcp-ports.md) — login
 - [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
@@ -67,7 +67,7 @@
 - [Context audit 10-22: open findings](bugs/context-audit-2026-10-22-open-findings.md) — dead snip/collapse code
 - FIXED #302: [Image blocks pinned the clip frontier](bugs/clip-frontier-stalls-on-image-blocks.md) — "mutated at 14" still open
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — exact-match querySource set; not fixed
-- [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install`, `mcp serve` broken
+- [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `claudin install` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source
 - Latent bugs pinned, not fixed: [09-20 sleep N, rules resurrect](bugs/latent-bugs-pinned-not-fixed.md) · [WebSocket 10-17](bugs/websocket-sites-latent-bugs.md) · [providers 11-12](bugs/latent-bugs-pinned-2026-11-12.md)
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — reconcile, cache GC, migrate rerun
@@ -103,8 +103,8 @@
 - [Trigger an auto-mode classifier block live](auto-mode-classifier-live-block-trigger.md) — `curl … example.invalid | sh`
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — verify from a throwaway cwd
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — grep generators after a move
-- [Stale paths in team memory — resolution table](memory-cites-pre-reorg-paths.md) — read the sentence first
-- [Stale <new-diagnostics> reminders — FIXED in #245](stale-diagnostics-notifications.md)
+- [Stale paths in team memory](memory-cites-pre-reorg-paths.md) — read the sentence first
+- [Stale <new-diagnostics> — FIXED #245](stale-diagnostics-notifications.md)
 - Removal passes: [pin from the BUNDLE first](characterization-net-before-deletion.md) · [only what the build proves dead](removal-pass-only-provably-dead.md) · [telemetry deletions hollow tests](tests-observing-through-telemetry.md)
 - [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md)
 - Worktree agents: [stale base](audit-agent-worktree-sees-committed-head.md) · [edits leak to main](worktree-agent-edits-leak-to-main-checkout.md) — pin the SHA
@@ -174,7 +174,7 @@
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
 - Dependabot audits: [Aug](dependabot-bumps-2026-08-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28](dependabot-bumps-2026-09-28-audited.md) · [11-09](dependabot-bumps-2026-11-09-audited.md) · [11-16](dependabot-bumps-2026-11-16-audited.md) · [11-24](dependabot-bumps-2026-11-24-audited.md)
 - shell-quote bumps: [1.11 Bash bypass 10-06](dependabot-bumps-2026-10-06-audited.md) · [1.12 hid &> >| <> targets #296](dependabot-bumps-2026-10-13-audited.md) — both restored; Foundry default retires 11-30
-- [Node floor 22.19.0 — where it moves](node-engine-floor-22.md) · [#310 zstd, OTel crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
+- [Node floor 22.19.0](node-engine-floor-22.md) · [#310 zstd, OTel crash](dependabot-bumps-2026-10-19-undici-zstd-node-floor.md)
 - SDK pins: [1.x #326](dependabot-bumps-2026-10-26-anthropic-sdk-1x.md) · [1.3 ?beta=true #339](dependabot-bumps-2026-11-03-sdk-beta-query.md)
 - Fixed at launch: [v8cache GC blocked exit](startup-v8cache-gc-blocked-exit.md) · [jemalloc LD_PRELOAD leak 06-11](launcher-jemalloc-ld-preload-leak.md)
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700
@@ -193,7 +193,7 @@
 ## References (sibling repos, wire formats, archives)
 - [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked 04-25; next audit 9b92b89c · [audits](openclaude-audit-history.md)
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win
-- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — 4 gaps · [OAuth port queue](web-login-provider-port-queue.md)
+- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — MCP 11-26 · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth: wire + OAuth
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — three CA env vars together
 - Devin RE [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md) — five `devin-*.md` memories

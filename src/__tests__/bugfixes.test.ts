@@ -210,7 +210,7 @@ describe('Web search result count improvements', () => {
 // ---------------------------------------------------------------------------
 describe('MCP tool timeout fix', () => {
   test('default MCP tool timeout is reasonable (not 27 hours)', async () => {
-    const content = await file('mcp/client/callTool.ts').text()
+    const content = await file('mcp/client/serverOptions.ts').text()
 
     // Should NOT have the old ~27.8 hour default
     expect(content).not.toContain('100_000_000')

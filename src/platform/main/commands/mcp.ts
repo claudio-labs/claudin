@@ -8,6 +8,7 @@
 import type { Command } from '@commander-js/extra-typings'
 import { registerMcpAddCommand } from 'src/commands/mcp/addCommand.js'
 import { registerMcpDoctorCommand } from 'src/commands/mcp/doctorCommand.js'
+import { registerMcpLoginCommands } from 'src/commands/mcp/loginCommand.js'
 import { createSortedHelpConfig } from 'src/platform/main/commands/_helpConfig.js'
 
 export function registerMcpCommands(program: Command): void {
@@ -33,6 +34,7 @@ export function registerMcpCommands(program: Command): void {
   // Register the mcp add subcommand (extracted for testability)
   registerMcpAddCommand(mcp)
   registerMcpDoctorCommand(mcp)
+  registerMcpLoginCommands(mcp)
   mcp.command('remove <name>').description('Remove an MCP server').option('-s, --scope <scope>', 'Configuration scope (local, user, or project) - if not specified, removes from whichever scope it exists in').action(async (name: string, options: {
     scope?: string
   }) => {
@@ -53,7 +55,7 @@ export function registerMcpCommands(program: Command): void {
     } = await import('src/platform/headless/handlers/mcp.js')
     await mcpGetHandler(name)
   })
-  mcp.command('add-json <name> <json>').description('Add an MCP server (stdio or SSE) with a JSON string').option('-s, --scope <scope>', 'Configuration scope (local, user, or project)', 'local').option('--client-secret', 'Prompt for OAuth client secret (or set MCP_CLIENT_SECRET env var)').action(async (name: string, json: string, options: {
+  mcp.command('add-json <name> <json>').description('Add an MCP server (stdio, SSE, HTTP or WebSocket) with a JSON string').option('-s, --scope <scope>', 'Configuration scope (local, user, or project)', 'local').option('--client-secret', 'Prompt for OAuth client secret (or set MCP_CLIENT_SECRET env var)').action(async (name: string, json: string, options: {
     scope?: string
     clientSecret?: true
   }) => {

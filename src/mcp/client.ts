@@ -55,6 +55,7 @@ export {
   mcpToolInputToAutoClassifierInput,
   fetchToolsForClient,
   fetchResourcesForClient,
+  fetchResourceTemplatesForClient,
   fetchCommandsForClient,
   reconnectMcpServerImpl,
   getMcpToolsCommandsAndResources,

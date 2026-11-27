@@ -1,4 +1,4 @@
-import { join } from 'path'
+import { isAbsolute, join } from 'path'
 import { expandEnvVarsInString } from 'src/mcp/envExpansion.js'
 import {
   type McpServerConfig,
@@ -436,6 +436,14 @@ export function resolvePluginMcpEnvironment(
       // Resolve args
       if (stdioConfig.args) {
         stdioConfig.args = stdioConfig.args.map(arg => resolveValue(arg))
+      }
+
+      // Resolve the working directory; a relative one is under the plugin,
+      // where its own files are, not under the project.
+      if (stdioConfig.cwd) {
+        const cwd = resolveValue(stdioConfig.cwd)
+        stdioConfig.cwd =
+          isAbsolute(cwd) || cwd === '~' || cwd.startsWith('~/') ? cwd : join(plugin.path, cwd)
       }
 
       // Resolve environment variables and add CLAUDIN_PLUGIN_ROOT / CLAUDIN_PLUGIN_DATA

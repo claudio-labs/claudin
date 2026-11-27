@@ -2,6 +2,7 @@ import { z } from 'zod/v4'
 import {
   ensureConnectedClient,
   fetchResourcesForClient,
+  fetchResourceTemplatesForClient,
 } from 'src/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
@@ -24,13 +25,22 @@ type InputSchema = ReturnType<typeof inputSchema>
 
 const outputSchema = lazySchema(() =>
   z.array(
-    z.object({
-      uri: z.string().describe('Resource URI'),
-      name: z.string().describe('Resource name'),
-      mimeType: z.string().optional().describe('MIME type of the resource'),
-      description: z.string().optional().describe('Resource description'),
-      server: z.string().describe('Server that provides this resource'),
-    }),
+    z.union([
+      z.object({
+        uri: z.string().describe('Resource URI'),
+        name: z.string().describe('Resource name'),
+        mimeType: z.string().optional().describe('MIME type of the resource'),
+        description: z.string().optional().describe('Resource description'),
+        server: z.string().describe('Server that provides this resource'),
+      }),
+      z.object({
+        uriTemplate: z.string().describe('RFC 6570 URI template; fill it in to get a resource URI'),
+        name: z.string().describe('Template name'),
+        mimeType: z.string().optional().describe('MIME type of the resources it names'),
+        description: z.string().optional().describe('Template description'),
+        server: z.string().describe('Server that provides this template'),
+      }),
+    ]),
   ),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -77,8 +87,9 @@ export const ListMcpResourcesTool = buildTool({
     }
 
     // fetchResourcesForClient is LRU-cached (by server name) and already
-    // warm from startup prefetch. Cache is invalidated on onclose and on
-    // resources/list_changed notifications, so results are never stale.
+    // warm from startup prefetch; the templates are fetched here on first
+    // use and cached the same way. Both caches are invalidated on onclose
+    // and on resources/list_changed notifications, so results are never stale.
     // ensureConnectedClient is a no-op when healthy (memoize hit), but after
     // onclose it returns a fresh connection so the re-fetch succeeds.
     const results = await Promise.all(
@@ -86,7 +97,11 @@ export const ListMcpResourcesTool = buildTool({
         if (client.type !== 'connected') return []
         try {
           const fresh = await ensureConnectedClient(client)
-          return await fetchResourcesForClient(fresh)
+          const [resources, templates] = await Promise.all([
+            fetchResourcesForClient(fresh),
+            fetchResourceTemplatesForClient(fresh),
+          ])
+          return [...resources, ...templates]
         } catch (error) {
           // One server's reconnect failure shouldn't sink the whole result.
           logMCPError(client.name, errorMessage(error))

@@ -2,9 +2,10 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import type { Server, ServerWebSocket } from 'bun'
 
-import { WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'
+import { WebSocketOpenError, WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'
 import {
   openWebSocket,
+  type WebSocketHandlers,
   type WebSocketHandle,
 } from 'src/providers/transport/webSocket.js'
 
@@ -207,6 +208,57 @@ describe('WebSocketTransport (Bun) — opening', () => {
     expect(ws.listenerLog).toEqual(['listen', 'detach'])
   })
 
+  // Node's opener reports a refused upgrade through onRefused, then closes the
+  // socket; Bun never does (the case above). A handle that only plays events
+  // stands in for the Node one.
+  function scriptedHandle(): WebSocketHandle & { handlers: WebSocketHandlers } {
+    const handle = {
+      url: 'ws://127.0.0.1:1/mcp',
+      readyState: WebSocket.CONNECTING,
+      handlers: {} as WebSocketHandlers,
+      listen(h: WebSocketHandlers) {
+        handle.handlers = h
+      },
+      send: async () => {},
+      ping() {},
+      close() {},
+      detach() {
+        handle.handlers = {}
+      },
+    }
+    return handle
+  }
+
+  test('a refused upgrade with a status rejects start with that status', async () => {
+    const ws = scriptedHandle()
+    const transport = new WebSocketTransport(ws)
+    const started = transport.start().then(
+      () => undefined,
+      (e: unknown) => e,
+    )
+    ws.handlers.onRefused?.(503, 'unavailable')
+    ws.handlers.onClose?.(1006, '')
+    const failure = await started
+    expect(failure).toBeInstanceOf(WebSocketOpenError)
+    expect((failure as WebSocketOpenError).status).toBe(503)
+    expect((failure as Error).message).toBe('WebSocket upgrade refused with HTTP 503')
+  })
+
+  test('a socket error before the open rejects start with no status', async () => {
+    const ws = scriptedHandle()
+    const transport = new WebSocketTransport(ws)
+    transport.onerror = () => {}
+    const started = transport.start().then(
+      () => undefined,
+      (e: unknown) => e,
+    )
+    ws.handlers.onError?.(new Error('connect ECONNREFUSED'))
+    const failure = await started
+    expect(failure).toBeInstanceOf(WebSocketOpenError)
+    expect((failure as WebSocketOpenError).status).toBeUndefined()
+    expect((failure as Error).message).toBe('connect ECONNREFUSED')
+  })
+
   test('start can only be called once', async () => {
     const server = startServer()
     const transport = new WebSocketTransport(connect(server.url))
@@ -381,7 +433,7 @@ describe('WebSocketTransport (Bun) — send', () => {
 })
 
 describe('WebSocketTransport (Bun) — closing', () => {
-  test('close on an open socket fires onclose twice under Bun: once from the synchronous close event, once from the cleanup', async () => {
+  test('close on an open socket fires onclose once, though Bun also emits the close event', async () => {
     const server = startServer()
     const ws = connect(server.url)
     const transport = new WebSocketTransport(ws)
@@ -396,12 +448,12 @@ describe('WebSocketTransport (Bun) — closing', () => {
     await transport.close()
 
     // Bun's ws.close() dispatches 'close' synchronously, so the persistent
-    // listener runs the cleanup first and close() then runs it again.
+    // listener runs the cleanup first; close() must not run it a second time.
     expect(ws.readyState).toBe(WebSocket.CLOSED)
-    expect(closes).toBe(2)
-    expect(ws.listenerLog).toEqual(['detach', 'detach'])
+    expect(closes).toBe(1)
+    expect(ws.listenerLog).toEqual(['detach'])
     expect(await server.closedByClient).toBe(1000)
-    expect(closes).toBe(2)
+    expect(closes).toBe(1)
   })
 
   test('close on a connecting socket asks it to close and still runs the cleanup', async () => {
@@ -423,7 +475,7 @@ describe('WebSocketTransport (Bun) — closing', () => {
     expect(ws.listenerLog).toEqual(['detach'])
   })
 
-  test('a server-side close fires onclose and removes the listeners; a later close() fires onclose again', async () => {
+  test('a server-side close fires onclose and removes the listeners; a later close() does not fire it again', async () => {
     const server = startServer()
     const ws = connect(server.url)
     const transport = new WebSocketTransport(ws)
@@ -441,10 +493,10 @@ describe('WebSocketTransport (Bun) — closing', () => {
     await until(() => closes === 1)
     expect(ws.listenerLog).toEqual(['detach'])
 
-    // close() does not call ws.close() on a CLOSED socket, but still runs the
-    // cleanup, which calls onclose unconditionally.
+    // close() does not call ws.close() on a CLOSED socket, and the cleanup
+    // already ran, so onclose stays at one.
     await transport.close()
-    expect(closes).toBe(2)
+    expect(closes).toBe(1)
   })
 
   test('send after close throws', async () => {

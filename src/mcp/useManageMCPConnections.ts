@@ -10,6 +10,7 @@ import {
   clearServerCache,
   fetchCommandsForClient,
   fetchResourcesForClient,
+  fetchResourceTemplatesForClient,
   fetchToolsForClient,
   getMcpToolsCommandsAndResources,
   reconnectMcpServerImpl,
@@ -533,6 +534,7 @@ export function useManageMCPConnections(
                 )
                 try {
                   fetchResourcesForClient.cache.delete(client.name)
+                  fetchResourceTemplatesForClient.cache.delete(client.name)
                   const newResources = await fetchResourcesForClient(client)
                   updateServer({ ...client, resources: newResources })
                 } catch (error) {

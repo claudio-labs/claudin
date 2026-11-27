@@ -1,6 +1,7 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import type {
   Resource,
+  ResourceTemplate,
   ServerCapabilities,
 } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod/v4'
@@ -25,12 +26,24 @@ export const TransportSchema = lazySchema(() =>
 )
 export type Transport = z.infer<ReturnType<typeof TransportSchema>>
 
+// Per-server timeouts in ms, over MCP_TIMEOUT / MCP_TOOL_TIMEOUT
+// (src/mcp/client/serverOptions.ts). Capped at the longest delay setTimeout
+// can wait: past it, a timer fires after 1 ms.
+const MAX_TIMER_MS = 2_147_483_647
+const timeoutFields = () => ({
+  startupTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),
+  toolTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),
+})
+
 export const McpStdioServerConfigSchema = lazySchema(() =>
   z.object({
     type: z.literal('stdio').optional(), // Optional for backwards compatibility
     command: z.string().min(1, 'Command cannot be empty'),
     args: z.array(z.string()).default([]),
     env: z.record(z.string(), z.string()).optional(),
+    // Where the server runs: `~` is the home dir, a relative path is under the project dir.
+    cwd: z.string().min(1).optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -55,6 +68,7 @@ export const McpSSEServerConfigSchema = lazySchema(() =>
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -86,6 +100,7 @@ export const McpHTTPServerConfigSchema = lazySchema(() =>
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -95,6 +110,7 @@ export const McpWebSocketServerConfigSchema = lazySchema(() =>
     url: z.string(),
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
+    ...timeoutFields(),
   }),
 )
 
@@ -220,3 +236,4 @@ export type MCPServerConnection =
 
 // Resource types
 export type ServerResource = Resource & { server: string }
+export type ServerResourceTemplate = ResourceTemplate & { server: string }

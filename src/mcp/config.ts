@@ -193,13 +193,15 @@ export function unwrapCcrProxyUrl(url: string): string {
  * Compute a dedup signature for an MCP server config.
  * Two configs with the same signature are considered "the same server" for
  * plugin deduplication. Ignores env (plugins always inject CLAUDIN_PLUGIN_ROOT)
- * and headers (same URL = same server regardless of auth).
+ * and headers (same URL = same server regardless of auth). A stdio server's
+ * cwd counts: the same command in another directory is another server.
  * Returns null only for configs with neither command nor url (sdk type).
  */
 export function getMcpServerSignature(config: McpServerConfig): string | null {
   const cmd = getServerCommandArray(config)
   if (cmd) {
-    return `stdio:${jsonStringify(cmd)}`
+    const cwd = 'cwd' in config && config.cwd ? `@${config.cwd}` : ''
+    return `stdio:${jsonStringify(cmd)}${cwd}`
   }
   const url = getServerUrl(config)
   if (url) {
@@ -265,7 +267,7 @@ export function dedupPluginMcpServers(
 /**
  * Filter claude.ai connectors, dropping any whose signature matches an enabled
  * manually-configured server. Manual wins: a user who wrote .mcp.json or ran
- * `claude mcp add` expressed higher intent than a connector toggled in the web UI.
+ * `claudin mcp add` expressed higher intent than a connector toggled in the web UI.
  *
  * Connector keys are `claude.ai <DisplayName>` so they never key-collide with
  * manual servers in the merge — this content-based check catches the case where
@@ -575,6 +577,7 @@ function expandEnvVars(config: McpServerConfig): {
         env: stdioConfig.env
           ? mapValues(stdioConfig.env, expandString)
           : undefined,
+        cwd: stdioConfig.cwd ? expandString(stdioConfig.cwd) : undefined,
       }
       break
     }

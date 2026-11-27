@@ -68,18 +68,18 @@ const uncompilable = new WeakSet<object>()
 
 export const MCPTool = buildTool({
   isMcp: true,
-  // Overridden in mcpClient.ts with the real MCP tool name + args
+  // Overridden in src/mcp/client/fetchCapabilities.ts with the real MCP tool name + args
   isOpenWorld() {
     return false
   },
-  // Overridden in mcpClient.ts
+  // Overridden in src/mcp/client/fetchCapabilities.ts
   name: 'mcp',
   maxResultSizeChars: 100_000,
-  // Overridden in mcpClient.ts
+  // Overridden in src/mcp/client/fetchCapabilities.ts
   async description() {
     return DESCRIPTION
   },
-  // Overridden in mcpClient.ts
+  // Overridden in src/mcp/client/fetchCapabilities.ts
   async prompt() {
     return PROMPT
   },
@@ -89,7 +89,7 @@ export const MCPTool = buildTool({
   get outputSchema(): OutputSchema {
     return outputSchema()
   },
-  // Overridden in mcpClient.ts
+  // Overridden in src/mcp/client/fetchCapabilities.ts
   async call(_args, _context) {
     return {
       data: '',
@@ -140,7 +140,7 @@ export const MCPTool = buildTool({
     return { result: true }
   },
   renderToolUseMessage,
-  // Overridden in mcpClient.ts
+  // Overridden in src/mcp/client/fetchCapabilities.ts
   userFacingName: () => 'mcp',
   renderToolUseProgressMessage,
   renderToolResultMessage: renderToolResultMessage as unknown as ToolDef<

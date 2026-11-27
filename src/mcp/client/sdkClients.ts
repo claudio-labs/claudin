@@ -1,11 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
-import { PRODUCT_URL } from 'src/shared/constants/product.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { logMCPError } from 'src/shared/log.js'
 import { SdkControlClientTransport } from 'src/mcp/SdkControlTransport.js'
 import type { McpSdkServerConfig, MCPServerConnection } from 'src/mcp/types.js'
 import { fetchToolsForClient } from 'src/mcp/client/fetchCapabilities.js'
+import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 
 /**
  * Sets up SDK MCP clients by creating transports and connecting them.
@@ -34,13 +34,7 @@ export async function setupSdkMcpClients(
       const transport = new SdkControlClientTransport(name, sendMcpMessage)
 
       const client = new Client(
-        {
-          name: 'claude-code',
-          title: 'Claudin',
-          version: MACRO.VERSION ?? 'unknown',
-          description: "Anthropic's agentic coding tool",
-          websiteUrl: PRODUCT_URL,
-        },
+        getMcpClientInfo(),
         {
           capabilities: {},
         },

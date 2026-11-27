@@ -9,7 +9,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { PRODUCT_URL } from 'src/shared/constants/product.js'
 import { type Tool } from 'src/tools/Tool.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -28,10 +27,13 @@ import type {
 } from 'src/mcp/types.js'
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
-import { getConnectionTimeoutMs } from 'src/mcp/client/fetch.js'
+import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
+import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
+import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
+  fetchResourceTemplatesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import { createTransport, type InProcessMcpServer } from 'src/mcp/client/transport.js'
@@ -111,10 +113,12 @@ function handleRemoteAuthFailure(
  * Attempts to connect to a single MCP server
  * @param name Server name
  * @param serverRef Scoped server configuration
+ * @param retry Internal: the attempt a transient-failure retry is on, and the
+ *   startup deadline every attempt shares (connectRetry.ts)
  * @returns A wrapped client (either connected or failed)
  */
 export const connectToServer = memoize(
-  async (
+  async function connectAttempt(
     name: string,
     serverRef: ScopedMcpServerConfig,
     serverStats?: {
@@ -125,8 +129,11 @@ export const connectToServer = memoize(
       sseIdeCount: number
       wsIdeCount: number
     },
-  ): Promise<MCPServerConnection> => {
+    retry?: { attempt: number; deadline: number },
+  ): Promise<MCPServerConnection> {
     const connectStartTime = Date.now()
+    const deadline =
+      retry?.deadline ?? connectStartTime + getMcpConnectTimeoutMs(serverRef)
     let inProcessServer: InProcessMcpServer | undefined
     try {
       const created = await createTransport(name, serverRef)
@@ -156,13 +163,7 @@ export const connectToServer = memoize(
       }
 
       const client = new Client(
-        {
-          name: 'claude-code',
-          title: 'Claudin',
-          version: MACRO.VERSION ?? 'unknown',
-          description: "Anthropic's agentic coding tool",
-          websiteUrl: PRODUCT_URL,
-        },
+        getMcpClientInfo(),
         {
           capabilities: {
             roots: {},
@@ -193,7 +194,7 @@ export const connectToServer = memoize(
       // Add a timeout to connection attempts to prevent tests from hanging indefinitely
       logMCPDebug(
         name,
-        `Starting connection with timeout of ${getConnectionTimeoutMs()}ms`,
+        `Starting connection with timeout of ${getMcpConnectTimeoutMs(serverRef)}ms`,
       )
 
       // For HTTP transport, try a basic connectivity test first
@@ -224,7 +225,7 @@ export const connectToServer = memoize(
           const elapsed = Date.now() - connectStartTime
           logMCPDebug(
             name,
-            `Connection timeout triggered after ${elapsed}ms (limit: ${getConnectionTimeoutMs()}ms)`,
+            `Connection timeout triggered after ${elapsed}ms (limit: ${getMcpConnectTimeoutMs(serverRef)}ms)`,
           )
           if (inProcessServer) {
             inProcessServer.close().catch(() => { })
@@ -232,11 +233,11 @@ export const connectToServer = memoize(
           transport.close().catch(() => { })
           reject(
             new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
-              `MCP server "${name}" connection timed out after ${getConnectionTimeoutMs()}ms`,
+              `MCP server "${name}" connection timed out after ${getMcpConnectTimeoutMs(serverRef)}ms`,
               'MCP connection timeout',
             ),
           )
-        }, getConnectionTimeoutMs())
+        }, deadline - connectStartTime)
 
         // Clean up timeout if connect resolves or rejects
         connectPromise.then(
@@ -261,6 +262,27 @@ export const connectToServer = memoize(
           `Successfully connected (transport: ${serverRef.type || 'stdio'}) in ${elapsed}ms`,
         )
       } catch (error) {
+        // A transient failure of a remote server gets another attempt, which
+        // calls this function directly: the memoized wrapper would hand back
+        // this very attempt's promise.
+        const attempt = retry?.attempt ?? 0
+        const delay = nextConnectRetryDelay(error, {
+          type: serverRef.type ?? 'stdio',
+          attempt,
+          remainingMs: deadline - Date.now(),
+        })
+        if (delay !== null) {
+          logMCPDebug(
+            name,
+            `Connection attempt ${attempt + 1} failed: ${errorMessage(error)}. Retrying in ${delay}ms`,
+          )
+          await cleanupFailedConnection(transport)
+          await sleep(delay)
+          return connectAttempt(name, serverRef, serverStats, {
+            attempt: attempt + 1,
+            deadline,
+          })
+        }
         const elapsed = Date.now() - connectStartTime
         // SSE-specific error logging
         if (serverRef.type === 'sse' && error instanceof Error) {
@@ -549,6 +571,7 @@ export const connectToServer = memoize(
         // fetch would return stale tools/resources from the old connection.
         fetchToolsForClient.cache.delete(name)
         fetchResourcesForClient.cache.delete(name)
+        fetchResourceTemplatesForClient.cache.delete(name)
         fetchCommandsForClient.cache.delete(name)
 
         connectToServer.cache.delete(key)
@@ -796,6 +819,7 @@ export async function clearServerCache(
   connectToServer.cache.delete(key)
   fetchToolsForClient.cache.delete(name)
   fetchResourcesForClient.cache.delete(name)
+  fetchResourceTemplatesForClient.cache.delete(name)
   fetchCommandsForClient.cache.delete(name)
 }
 

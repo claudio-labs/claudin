@@ -13,7 +13,8 @@ import {
   type Transport,
 } from '@modelcontextprotocol/sdk/shared/transport.js'
 import mapValues from 'lodash-es/mapValues.js'
-import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { homedir } from 'os'
+import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { getMCPUserAgent } from 'src/shared/http.js'
@@ -27,6 +28,7 @@ import { subprocessEnv } from 'src/shared/proc/subprocessEnv.js'
 import { ClaudeAuthProvider, wrapFetchWithStepUpDetection } from 'src/mcp/auth.js'
 import { getMcpServerHeaders } from 'src/mcp/headersHelper.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
+import { getMcpToolTimeoutMs, resolveStdioCwd } from 'src/mcp/client/serverOptions.js'
 import {
   createClaudeAiProxyFetch,
   MCP_REQUEST_TIMEOUT_MS,
@@ -72,6 +74,7 @@ export async function createTransport(
       // SDK's handler calls auth() → tokens().
       fetch: wrapFetchWithTimeout(
         wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
+        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },
       ),
       requestInit: {
         headers: {
@@ -88,25 +91,29 @@ export async function createTransport(
     // the persistent SSE stream.
     transportOptions.eventSourceInit = {
       fetch: async (url: string | URL, init?: RequestInit) => {
-        // Get auth headers from the auth provider
-        const authHeaders: Record<string, string> = {}
+        // The SDK hands its headers (mcp-protocol-version among them) as a
+        // Headers instance, which an object spread empties, so they are
+        // copied into one and ours are set on top.
+        // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+        const headers = new Headers(init?.headers)
+        if (!headers.has('user-agent')) {
+          headers.set('User-Agent', getMCPUserAgent())
+        }
         const tokens = await authProvider.tokens()
         if (tokens) {
-          authHeaders.Authorization = `Bearer ${tokens.access_token}`
+          headers.set('Authorization', `Bearer ${tokens.access_token}`)
         }
+        for (const [key, value] of Object.entries(combinedHeaders)) {
+          headers.set(key, value)
+        }
+        headers.set('Accept', 'text/event-stream')
 
         const proxyOptions = getProxyFetchOptions()
         // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
         return fetch(url, {
           ...init,
           ...proxyOptions,
-          headers: {
-            'User-Agent': getMCPUserAgent(),
-            ...authHeaders,
-            ...init?.headers,
-            ...combinedHeaders,
-            Accept: 'text/event-stream',
-          },
+          headers,
         })
       },
     }
@@ -234,6 +241,7 @@ export async function createTransport(
       // SDK's handler calls auth() → tokens().
       fetch: wrapFetchWithTimeout(
         wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
+        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },
       ),
       requestInit: {
         ...proxyOptions,
@@ -320,6 +328,7 @@ export async function createTransport(
     transport = new StdioClientTransport({
       command: finalCommand,
       args: finalArgs,
+      cwd: resolveStdioCwd(serverRef.cwd, getOriginalCwd(), homedir()),
       env: {
         ...subprocessEnv(),
         ...serverRef.env,

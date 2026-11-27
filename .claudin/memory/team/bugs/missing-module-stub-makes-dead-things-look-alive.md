@@ -49,14 +49,16 @@ native `install/` path, repoint it at the npm updater that already exists in
 `autoUpdater.ts`, or leave it. **Do not touch the rest of `install/`** — the npm
 updater is live with 38 importers.
 
-## `claudin mcp serve` cannot list tools
+## `claudin mcp serve` cannot list tools — FIXED 2026-11-26
 
-The handshake succeeds; `tools/list` answers
-`-32603 Custom types cannot be represented in JSON Schema`. Reproduce with three
-JSON-RPC lines on stdin (initialize, initialized, tools/list). Cause not traced
-— no `z.custom(`/`z.instanceof(` under `src/tools/`, so it is further down the
-zod-to-JSON-Schema conversion. Unrelated to the two above.
+`tools/list` answered `-32603 Custom types cannot be represented in JSON
+Schema`. Unrelated to the stub: the three AgentWorkflow tools declare
+`z.custom<Output>()` output schemas, and the handler converted every output
+schema, so one throw failed the list. `listToolsForMcpServe` now drops an
+unconvertible output schema from its tool and leaves out a tool whose input
+schema cannot be converted ([[opencode-mcp-ports]]);
+`src/platform/entrypoints/mcp.serve.e2e.test.ts` drives the bundle.
 
 Fixed in the same round: the server announced itself as `claude/<codename>`
-(`src/platform/entrypoints/mcp.ts:87`) to every connecting client — see
+(`serverInfo.name` in `startMCPServer`, `src/platform/entrypoints/mcp.ts`) to every connecting client — see
 [[defingerprinting-branch-2026-08]] for what identity is still upstream-spelled.

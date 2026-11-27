@@ -1,0 +1,300 @@
+{
+  "test": [
+    "src/mcp/client/listValidation.test.ts",
+    "src/mcp/client/fetchCapabilities.malformed.test.ts",
+    "src/platform/entrypoints/mcp.test.ts",
+    "src/mcp/client/fetch.test.ts",
+    "src/mcp/client/transport.test.ts",
+    "src/mcp/mcpWebSocketTransport.test.ts",
+    "src/mcp/client/serverOptions.test.ts",
+    "src/mcp/client/callTool.timeout.test.ts",
+    "src/mcp/client/connection.remote.test.ts",
+    "src/mcp/client/connectRetry.test.ts",
+    "src/tools/ListMcpResourcesTool/ListMcpResourcesTool.test.ts",
+    "src/mcp/auth/cliLogin.test.ts",
+    "src/commands/mcp/loginCommand.test.ts",
+    "src/mcp/client/clientInfo.test.ts",
+    "src/commands/mcp/cliHints.test.ts",
+    "src/mcp/types.test.ts",
+    "src/mcp/auth/cliLogin.flow.test.ts",
+    "src/mcp/client/promptArguments.test.ts",
+    "src/plugins/mcpPluginIntegration.test.ts",
+    "src/mcp/config.signature.test.ts"
+  ],
+  "source": "src/mcp/client/listValidation.ts",
+  "probes": [
+    {
+      "name": "B1: a malformed top-level required is sent as is",
+      "find": "      ...(Array.isArray(required) && required.every(key => typeof key === 'string') ? { required } : {}),\n",
+      "replace": "      ...(required !== undefined ? { required } : {}),\n"
+    },
+    {
+      "name": "B1: an inputSchema of another type is not refused up front",
+      "find": "  if (inputSchema.type !== undefined && inputSchema.type !== 'object') {\n    return { skip: 'inputSchema type is not \"object\"' }\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "B1: a wrong-typed optional field skips the whole entry",
+      "find": "  if ([...fields].every(field => droppable.has(field))) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "B1: the tools list is not checked entry by entry",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      const { items: tools, skipped } = keepValidTools(listed)\n",
+      "replace": "      const { items: tools, skipped } = { items: listed as never[], skipped: [] }\n"
+    },
+    {
+      "name": "B1: a schema failure is retried as if transient",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "            if (isSchemaError(err)) break\n",
+      "replace": ""
+    },
+    {
+      "name": "B2: an unconvertible output schema throws out of tools/list again",
+      "source": "src/platform/entrypoints/mcp.ts",
+      "find": "          logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)\n",
+      "replace": "          throw error\n"
+    },
+    {
+      "name": "B2: an unconvertible input schema throws out of tools/list again",
+      "source": "src/platform/entrypoints/mcp.ts",
+      "find": "        logForDebugging(`[mcp serve] ${tool.name} left out of tools/list: ${errorMessage(error)}`)\n        return null\n",
+      "replace": "        throw error\n"
+    },
+    {
+      "name": "B3: a tools/call gets the 60 s cap again",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "    ? toolCallTimeoutMs\n",
+      "replace": "    ? MCP_REQUEST_TIMEOUT_MS\n"
+    },
+    {
+      "name": "B3/P2: an http server's toolTimeout does not reach its fetch cap",
+      "source": "src/mcp/client/transport.ts",
+      "find": "        { toolCallTimeoutMs: getMcpToolTimeoutMs(serverRef) },\n      ),\n      requestInit: {\n        ...proxyOptions,\n",
+      "replace": "      ),\n      requestInit: {\n        ...proxyOptions,\n"
+    },
+    {
+      "name": "B4: the SDK's headers are dropped from the event stream again",
+      "source": "src/mcp/client/transport.ts",
+      "find": "        const headers = new Headers(init?.headers)\n",
+      "replace": "        const headers = new Headers()\n"
+    },
+    {
+      "name": "I2: a second close fires onclose again",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "    if (this.closed) return\n",
+      "replace": ""
+    },
+    {
+      "name": "P2: a stdio server ignores its cwd",
+      "source": "src/mcp/client/transport.ts",
+      "find": "      cwd: resolveStdioCwd(serverRef.cwd, getOriginalCwd(), homedir()),\n",
+      "replace": ""
+    },
+    {
+      "name": "P2: a server's toolTimeout is ignored",
+      "source": "src/mcp/client/serverOptions.ts",
+      "find": "  const own = config && 'toolTimeout' in config ? config.toolTimeout : undefined\n",
+      "replace": "  const own = undefined\n"
+    },
+    {
+      "name": "P2: a server's startupTimeout is ignored",
+      "source": "src/mcp/client/serverOptions.ts",
+      "find": "  const own = config && 'startupTimeout' in config ? config.startupTimeout : undefined\n",
+      "replace": "  const own = undefined\n"
+    },
+    {
+      "name": "P2: ~/ is not the home dir",
+      "source": "src/mcp/client/serverOptions.ts",
+      "find": "  if (cwd.startsWith('~/')) return join(homeDir, cwd.slice(2))\n",
+      "replace": ""
+    },
+    {
+      "name": "P2: the tool call ignores its server's timeout",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "    const timeoutMs = getMcpToolTimeoutMs(config)\n",
+      "replace": "    const timeoutMs = getMcpToolTimeoutMs()\n"
+    },
+    {
+      "name": "P2: config.ts stops expanding a stdio cwd",
+      "source": "src/mcp/config.ts",
+      "find": "        cwd: stdioConfig.cwd ? expandString(stdioConfig.cwd) : undefined,\n",
+      "replace": "        cwd: stdioConfig.cwd,\n"
+    },
+    {
+      "name": "P4: a transient failure is not retried",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        if (delay !== null) {\n",
+      "replace": "        if (false) {\n"
+    },
+    {
+      "name": "P4: the retry deadline ignores the server's startupTimeout",
+      "source": "src/mcp/client/connection.ts",
+      "find": "      retry?.deadline ?? connectStartTime + getMcpConnectTimeoutMs(serverRef)\n",
+      "replace": "      retry?.deadline ?? connectStartTime + getMcpConnectTimeoutMs()\n"
+    },
+    {
+      "name": "P4: 501 counts as transient",
+      "source": "src/mcp/client/connectRetry.ts",
+      "find": "  return status === 408 || status === 429 || (status >= 500 && status <= 599 && status !== 501)\n",
+      "replace": "  return status === 408 || status === 429 || (status >= 500 && status <= 599)\n"
+    },
+    {
+      "name": "P4: a network code on the cause is not seen",
+      "source": "src/mcp/client/connectRetry.ts",
+      "find": "  return [code, codeOf(cause)].some(c => typeof c === 'string' && TRANSIENT_NETWORK_CODES.has(c))\n",
+      "replace": "  return [code].some(c => typeof c === 'string' && TRANSIENT_NETWORK_CODES.has(c))\n"
+    },
+    {
+      "name": "P3: a failed templates list is not cached as none",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      return []\n    }\n  },\n  (): ServerResourceTemplate[] => [],\n",
+      "replace": "      throw error\n    }\n  },\n  (): ServerResourceTemplate[] => [],\n"
+    },
+    {
+      "name": "P3: ListMcpResources stops fetching templates",
+      "source": "src/tools/ListMcpResourcesTool/ListMcpResourcesTool.ts",
+      "find": "            fetchResourceTemplatesForClient(fresh),\n",
+      "replace": "            Promise.resolve([]),\n"
+    },
+    {
+      "name": "P1: an untrimmed or blank pasted line is submitted",
+      "source": "src/mcp/auth/cliLogin.ts",
+      "find": "        if (line?.trim()) submitPasted(line.trim())\n",
+      "replace": "        if (line !== null) submitPasted(line)\n"
+    },
+    {
+      "name": "P1: a stdio server is sent into the OAuth flow",
+      "source": "src/mcp/auth/cliLogin.ts",
+      "find": "  if (config.type !== 'sse' && config.type !== 'http') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "P1: a pasted URL is asked for without a terminal",
+      "source": "src/commands/mcp/loginCommand.ts",
+      "find": "    readLine: process.stdin.isTTY\n",
+      "replace": "    readLine: true\n"
+    },
+    {
+      "name": "I3: prompt arguments split on single spaces again",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "            const argsArray = splitPromptArguments(args)\n",
+      "replace": "            const argsArray = args.split(' ')\n"
+    },
+    {
+      "name": "I1: the clientInfo describes Anthropic's tool again",
+      "source": "src/mcp/client/clientInfo.ts",
+      "find": "    description: 'Claudin, an open-source coding agent',\n",
+      "replace": "    description: \"Anthropic's agentic coding tool\",\n"
+    },
+    {
+      "name": "I4: a hint names the claude binary again",
+      "source": "src/commands/mcp/addCommand.ts",
+      "find": "              `If this is an SSE server, use: claudin mcp add --transport sse ${name} ${actualCommand}\\n`,\n",
+      "replace": "              `If this is an SSE server, use: claude mcp add --transport sse ${name} ${actualCommand}\\n`,\n"
+    },
+    {
+      "name": "cover: a 401 retry with a newer token is skipped",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "      if (!now || now === sentToken) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "review: the paste prompt no longer waits for the URL",
+      "source": "src/mcp/auth/cliLogin.ts",
+      "find": "    if (!urlShown || !submit || !deps.readLine) return\n",
+      "replace": "    if (!submit || !deps.readLine) return\n"
+    },
+    {
+      "name": "review: a refused ws upgrade loses its status",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "        this.refusedStatus = status\n",
+      "replace": ""
+    },
+    {
+      "name": "review: a ws open error with no status is not transient",
+      "source": "src/mcp/client/connectRetry.ts",
+      "find": "    return error.status === undefined || isTransientStatus(error.status)\n",
+      "replace": "    return isTransientStatus(error.status ?? 0)\n"
+    },
+    {
+      "name": "review: an sse stream never reached is not transient",
+      "source": "src/mcp/client/connectRetry.ts",
+      "find": "  if (error instanceof SseError && error.code === undefined) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "review: a retry's timer is re-armed with the whole startupTimeout",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        }, deadline - connectStartTime)\n",
+      "replace": "        }, getMcpConnectTimeoutMs(serverRef))\n"
+    },
+    {
+      "name": "review: clearServerCache keeps the templates",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  fetchResourcesForClient.cache.delete(name)\n  fetchResourceTemplatesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n}",
+      "replace": "  fetchResourcesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n}"
+    },
+    {
+      "name": "review: a closed connection keeps the templates",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        fetchResourceTemplatesForClient.cache.delete(name)\n",
+      "replace": ""
+    },
+    {
+      "name": "review: list_changed keeps the templates",
+      "source": "src/mcp/useManageMCPConnections.ts",
+      "find": "                  fetchResourceTemplatesForClient.cache.delete(client.name)\n",
+      "replace": ""
+    },
+    {
+      "name": "review: the templates list waits the SDK's 60 s",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "          { timeout: RESOURCE_TEMPLATES_TIMEOUT_MS },\n",
+      "replace": ""
+    },
+    {
+      "name": "review: a skipped tool is not logged",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      logSkippedEntries(client.name, 'tool', skipped)\n",
+      "replace": ""
+    },
+    {
+      "name": "review: an empty prompt line sends no argument",
+      "source": "src/mcp/client/promptArguments.ts",
+      "find": "  return args.length > 0 ? args : ['']\n",
+      "replace": "  return args\n"
+    },
+    {
+      "name": "review: single quotes stop grouping words",
+      "source": "src/mcp/client/promptArguments.ts",
+      "find": "const ARGUMENT_RE = /\"([^\"]*)\"|'([^']*)'|(\\S+)/g\n",
+      "replace": "const ARGUMENT_RE = /\"([^\"]*)\"|()(\\S+)/g\n"
+    },
+    {
+      "name": "review: a plugin cwd skips the plugin substitutions",
+      "source": "src/plugins/mcpPluginIntegration.ts",
+      "find": "        const cwd = resolveValue(stdioConfig.cwd)\n",
+      "replace": "        const cwd = stdioConfig.cwd\n"
+    },
+    {
+      "name": "review: a relative plugin cwd lands under the project",
+      "source": "src/plugins/mcpPluginIntegration.ts",
+      "find": "          isAbsolute(cwd) || cwd === '~' || cwd.startsWith('~/') ? cwd : join(plugin.path, cwd)\n",
+      "replace": "          cwd\n"
+    },
+    {
+      "name": "review: a toolTimeout past the timer limit passes the schema",
+      "source": "src/mcp/types.ts",
+      "find": "  toolTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),\n",
+      "replace": "  toolTimeout: z.number().int().positive().optional(),\n"
+    },
+    {
+      "name": "review: the dedup signature ignores cwd",
+      "source": "src/mcp/config.ts",
+      "find": "    return `stdio:${jsonStringify(cmd)}${cwd}`\n",
+      "replace": "    return `stdio:${jsonStringify(cmd)}`\n"
+    }
+  ]
+}

@@ -147,11 +147,13 @@ src/
 │   │                              groups read it through there, none repeats the feature() block
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
 │   └── ui/                      ← one request component per tool + rules/ editor
-├── mcp/ (80)                    ← client/ (10: connection, transport, callTool, authCache),
-│                                  mcpServerApproval trust dialog, ui/. auth.ts is a BARREL over
-│                                  auth/ (serverKey, oauthErrors, authFetch, callbackParams,
-│                                  tokenRevocation, oauthFlow, claudeAuthProvider,
-│                                  clientSecretStore)
+├── mcp/ (96)                    ← client/ (connection, transport, callTool, authCache;
+│                                  listValidation checks list entries one by one, serverOptions
+│                                  resolves per-server timeouts and cwd, connectRetry, clientInfo,
+│                                  promptArguments), mcpServerApproval trust dialog, ui/. auth.ts
+│                                  is a BARREL over auth/ (serverKey, oauthErrors, authFetch,
+│                                  callbackParams, tokenRevocation, oauthFlow, claudeAuthProvider,
+│                                  clientSecretStore; cliLogin is `claudin mcp login|logout`)
 ├── containers/ (18)             ← docker/compose domain: project discovery, state, diagnostics.
 │                                  The TOOL is tools/ContainerTool/ and the task backend is
 │                                  agent/tasks/ContainerTask/ — this slice is neither
