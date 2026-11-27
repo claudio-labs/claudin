@@ -1,0 +1,74 @@
+{
+  "test": [
+    "src/mcp/client/callTool.cover.test.ts",
+    "src/mcp/elicitationHandler.cover.test.ts",
+    "src/mcp/client/callTool.timeout.test.ts"
+  ],
+  "source": "src/mcp/client/callTool.ts",
+  "probes": [
+    {
+      "name": "retry: a non-URL entry in the -32042 data is treated as a URL elicitation",
+      "find": "            obj.mode === 'url' &&\n",
+      "replace": "            true &&\n"
+    },
+    {
+      "name": "retry: the loop no longer stops after three retries",
+      "find": "      if (attempt >= MAX_URL_ELICITATION_RETRIES) {\n",
+      "replace": "      if (attempt >= 5) {\n"
+    },
+    {
+      "name": "retry: consent-phase accept resolves the retry instead of waiting",
+      "find": "                      if (result.action === 'accept') {\n                        return\n                      }\n",
+      "replace": ""
+    },
+    {
+      "name": "callMCPTool: the SDK UnauthorizedError is no longer mapped to McpAuthError",
+      "find": "      if (errorCode === 401 || e instanceof UnauthorizedError) {\n",
+      "replace": "      if (errorCode === 401) {\n"
+    },
+    {
+      "name": "callMCPTool: -32000 Connection closed on HTTP is no longer a session expiry",
+      "find": "        (config.type === 'http' || config.type === 'claudeai-proxy')\n",
+      "replace": "        (config.type === 'claudeai-proxy')\n"
+    },
+    {
+      "name": "callMCPTool: an isError result drops its _meta",
+      "find": "        '_meta' in result && result._meta ? { _meta: result._meta } : undefined,\n",
+      "replace": "        undefined,\n"
+    },
+    {
+      "name": "callMCPTool: an expired session leaves the cached connection in place",
+      "find": "        await clearServerCache(name, config)\n",
+      "replace": ""
+    },
+    {
+      "name": "callMCPTool: an AbortError is thrown instead of resolving undefined content",
+      "find": "    if (!(e instanceof Error) || e.name !== 'AbortError') {\n",
+      "replace": "    if (true) {\n"
+    },
+    {
+      "name": "handler: a URL elicitation loses its skip-confirmation waiting state",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "            elicitationId ? { actionLabel: 'Skip confirmation' } : undefined\n",
+      "replace": "            undefined\n"
+    },
+    {
+      "name": "handler: the completion notification does not mark the event completed",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "          queue[idx] = { ...queue[idx]!, completed: true }\n",
+      "replace": "          queue[idx] = { ...queue[idx]!, completed: false }\n"
+    },
+    {
+      "name": "handler: a completion matches an elicitation queued by another server",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "      e.serverName === serverName &&\n",
+      "replace": ""
+    },
+    {
+      "name": "handler: an error while queueing answers decline instead of cancel",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "        return { action: 'cancel' as const }\n",
+      "replace": "        return { action: 'decline' as const }\n"
+    }
+  ]
+}

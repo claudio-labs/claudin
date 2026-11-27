@@ -1,0 +1,73 @@
+{
+  "test": [
+    "src/mcp/auth/oauthFlow.cover.test.ts",
+    "src/mcp/auth/authFetch.cover.test.ts"
+  ],
+  "source": "src/mcp/auth/oauthFlow.ts",
+  "probes": [
+    {
+      "name": "a pasted URL with a forged state is no longer ignored",
+      "find": "              // Ignore so a stray or malicious URL cannot cancel an active flow.\n              return\n",
+      "replace": "              // Ignore so a stray or malicious URL cannot cancel an active flow.\n"
+    },
+    {
+      "name": "the callback error description reaches the page unsanitized",
+      "find": "              ? xss(result.errorDescription)\n",
+      "replace": "              ? result.errorDescription\n"
+    },
+    {
+      "name": "an abort rejects with a plain error instead of AuthenticationCancelledError",
+      "find": "          rejectOnce(new AuthenticationCancelledError())\n",
+      "replace": "          rejectOnce(new Error('aborted'))\n"
+    },
+    {
+      "name": "a busy callback port loses its actionable message",
+      "find": "        if (err.code === 'EADDRINUSE') {\n",
+      "replace": "        if (err.code === 'EADDRINUSE_NEVER') {\n"
+    },
+    {
+      "name": "\"Client not found\" keeps the stale stored client id",
+      "find": "        delete existingData.mcpOAuth[serverKey].clientId\n",
+      "replace": ""
+    },
+    {
+      "name": "any invalid_client drops the stored client, not only \"Client not found\"",
+      "find": "      error.message.includes('Client not found')\n",
+      "replace": "      true\n"
+    },
+    {
+      "name": "the cached resource metadata URL is not used for the new authorization",
+      "find": "      resourceMetadataUrl = new URL(cachedResourceMetadataUrl)\n",
+      "replace": "      resourceMetadataUrl = undefined\n"
+    },
+    {
+      "name": "an unquoted step-up scope is not read",
+      "find": "        const scope = match?.[1] ?? match?.[2]\n",
+      "replace": "        const scope = match?.[1]\n"
+    },
+    {
+      "name": "a lowercase post skips the error-body normalization",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "    const isPost = init?.method?.toUpperCase() === 'POST'\n",
+      "replace": "    const isPost = init?.method === 'POST'\n"
+    },
+    {
+      "name": "a POST with a caller signal is not normalized",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "      cleanup()\n      return isPost ? normalizeOAuthErrorBody(response) : response\n",
+      "replace": "      cleanup()\n      return response\n"
+    },
+    {
+      "name": "a configured http:// metadata URL is fetched",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "    if (!configuredMetadataUrl.startsWith('https://')) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a root URL re-probes the endpoints the SDK already tried",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "  if (url.pathname === '/') {\n    return undefined\n  }\n",
+      "replace": ""
+    }
+  ]
+}

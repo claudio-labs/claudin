@@ -1,0 +1,66 @@
+{
+  "test": ["src/mcp/useManageMCPConnections.cover.test.tsx"],
+  "source": "src/mcp/useManageMCPConnections.ts",
+  "probes": [
+    {
+      "name": "plugin errors are no longer deduplicated",
+      "find": "      error => !existingKeys.has(getErrorKey(error)),\n",
+      "replace": "      error => true,\n"
+    },
+    {
+      "name": "the reconnect loop gives up after 4 attempts",
+      "find": "const MAX_RECONNECT_ATTEMPTS = 5\n",
+      "replace": "const MAX_RECONNECT_ATTEMPTS = 4\n"
+    },
+    {
+      "name": "backoff grows linearly instead of doubling",
+      "find": "                    INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1),\n",
+      "replace": "                    INITIAL_BACKOFF_MS * attempt,\n"
+    },
+    {
+      "name": "a closed stdio server is redialled like a remote one",
+      "find": "            if (configType !== 'stdio' && configType !== 'sdk') {\n",
+      "replace": "            if (configType !== 'sdk') {\n"
+    },
+    {
+      "name": "a session disconnect no longer stops the close from redialling",
+      "find": "              isMcpServerDisabled(client.name) ||\n              isSessionDisconnected(client.name)\n            ) {\n",
+      "replace": "              isMcpServerDisabled(client.name) ||\n              false\n            ) {\n"
+    },
+    {
+      "name": "tools/list_changed refetches through the stale memo",
+      "find": "                  fetchToolsForClient.cache.delete(client.name)\n",
+      "replace": ""
+    },
+    {
+      "name": "a prompts capability without listChanged still gets a handler",
+      "find": "          if (client.capabilities?.prompts?.listChanged) {\n",
+      "replace": "          if (client.capabilities?.prompts) {\n"
+    },
+    {
+      "name": "a stale connected server keeps its onclose (old-config redial race)",
+      "find": "            s.client.onclose = undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "the first load is not abandoned when the config changes mid-flight",
+      "find": "          : await getClaudeCodeMcpConfigs(dynamicMcpConfig, claudeaiPromise)\n      if (cancelled) return\n",
+      "replace": "          : await getClaudeCodeMcpConfigs(dynamicMcpConfig, claudeaiPromise)\n"
+    },
+    {
+      "name": "claude.ai connectors duplicating a manual server are not suppressed",
+      "find": "          claudeaiConfigs = dedupedClaudeAi\n",
+      "replace": ""
+    },
+    {
+      "name": "unmount drops the batched update instead of flushing it",
+      "find": "        flushTimerRef.current = null\n        flushPendingUpdates()\n",
+      "replace": "        flushTimerRef.current = null\n"
+    },
+    {
+      "name": "disconnect for the session is not recorded before closing",
+      "find": "      markSessionDisconnected(serverName)\n",
+      "replace": ""
+    }
+  ]
+}
