@@ -99,18 +99,24 @@ describe('ListMcpResourcesTool', () => {
     expect(ListMcpResourcesTool.outputSchema!.safeParse(data).success).toBe(true)
   })
 
-  test('call() treats a server without templates/list as having no templates', async () => {
+  test('call() treats a server without templates/list as having no templates, and asks it once', async () => {
     const { McpError, ErrorCode } = await import('@modelcontextprotocol/sdk/types.js')
-    const { data } = await ListMcpResourcesTool.call(
-      {} as never,
-      ctxWithClients([
-        resourceServer('no-templates', {
-          'resources/list': { resources: [{ uri: 'res://only', name: 'only' }] },
-          'resources/templates/list': new McpError(ErrorCode.MethodNotFound, 'Method not found'),
-        }),
-      ]),
-    )
-    expect(data).toEqual([{ uri: 'res://only', name: 'only', server: 'no-templates' }])
+    const server = resourceServer('no-templates', {
+      'resources/list': { resources: [{ uri: 'res://only', name: 'only' }] },
+      'resources/templates/list': new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+    })
+    const asked: string[] = []
+    const request = server.client.request
+    server.client.request = async (req, schema) => {
+      asked.push(req.method)
+      return request(req, schema)
+    }
+    for (let call = 0; call < 2; call++) {
+      const { data } = await ListMcpResourcesTool.call({} as never, ctxWithClients([server]))
+      expect(data).toEqual([{ uri: 'res://only', name: 'only', server: 'no-templates' }])
+    }
+    // "No templates" is an answer, cached like one; a failure would be asked again.
+    expect(asked.filter(m => m === 'resources/templates/list')).toHaveLength(1)
   })
 
   test('call() keeps the other servers when one fails its templates list', async () => {
