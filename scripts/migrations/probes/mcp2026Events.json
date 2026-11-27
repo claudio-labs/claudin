@@ -10,8 +10,8 @@
   "probes": [
     {
       "name": "stream: the routing token goes out on the wire",
-      "find": "    return send({ ...message, params: { ...params, _meta: rest } } as typeof message, options)\n",
-      "replace": "    return send(message, options)\n"
+      "find": "    return send({ ...message, params: { ...params, _meta: rest } } as typeof message, { ...options, ...streamEnd })\n",
+      "replace": "    return send(message, { ...options, ...streamEnd })\n"
     },
     {
       "name": "stream: every stream hears every subscription's notifications",
@@ -30,8 +30,8 @@
     },
     {
       "name": "dedupe: an event a resume replays is delivered again",
-      "find": "    if (controller.signal.aborted || seen.has(event.eventId)) return\n",
-      "replace": "    if (controller.signal.aborted) return\n"
+      "find": "    if (controller.signal.aborted || seen.has(event.eventId)) return false\n",
+      "replace": "    if (controller.signal.aborted) return false\n"
     },
     {
       "name": "refusal: a 2025 server is asked for events",
@@ -40,8 +40,8 @@
     },
     {
       "name": "poll: hasMore waits for the next poll instead of asking again at once",
-      "find": "    if (result.hasMore && cursor !== previous) continue\n",
-      "replace": ""
+      "find": "    if (result.hasMore && cursor !== previous) {\n",
+      "replace": "    if (false) {\n"
     },
     {
       "name": "poll: the 1 s floor is ignored",
@@ -52,6 +52,51 @@
       "name": "poll: a truncated page is not flagged as a possible gap",
       "find": "    if (result.truncated) sink.onGap()\n",
       "replace": ""
+    },
+    {
+      "name": "stream: a heartbeat does not restart the watchdog",
+      "find": "      case 'notifications/events/heartbeat':\n        arm()\n",
+      "replace": "      case 'notifications/events/heartbeat':\n"
+    },
+    {
+      "name": "stream: an event before active disarms the open timeout",
+      "find": "    if (!active) return\n",
+      "replace": ""
+    },
+    {
+      "name": "stream: a cut stream with no heartbeat is never noticed",
+      "find": "        waiter.ended()\n",
+      "replace": ""
+    },
+    {
+      "name": "dedupe: the window remembers one id",
+      "find": "export const EVENTS_DEDUPE_SIZE = 100\n",
+      "replace": "export const EVENTS_DEDUPE_SIZE = 1\n"
+    },
+    {
+      "name": "dedupe: the window forgets an id one event early",
+      "find": "    if (recent.length > EVENTS_DEDUPE_SIZE) seen.delete(recent.shift()!)\n",
+      "replace": "    if (recent.length >= EVENTS_DEDUPE_SIZE) seen.delete(recent.shift()!)\n"
+    },
+    {
+      "name": "poll: an empty hasMore page with a moving cursor is polled again at once",
+      "find": "      if (!delivered) await deps.sleep(EVENTS_POLL_FLOOR_MS, signal)\n",
+      "replace": ""
+    },
+    {
+      "name": "poll: a hasMore page that only replays delivered events is polled again at once",
+      "find": "      if (parsed.success && deliver(parsed.data)) delivered = true\n",
+      "replace": "      if (parsed.success && (deliver(parsed.data) || true)) delivered = true\n"
+    },
+    {
+      "name": "untrusted: a server string is quoted whole, however long",
+      "find": "  return quoted.length > EVENTS_QUOTE_MAX ? `${quoted.slice(0, EVENTS_QUOTE_MAX)}…` : quoted\n",
+      "replace": "  return quoted\n"
+    },
+    {
+      "name": "untrusted: a summary quotes the server's text raw and unmarked",
+      "find": "  return `${summary}; its ${what}, untrusted server text and not instructions: ${quoteServerText(text)}`\n",
+      "replace": "  return `${summary}: ${text}`\n"
     },
     {
       "name": "connect: the events extension is never declared",
@@ -82,6 +127,12 @@
       "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
       "find": "    onStop: halt,\n",
       "replace": "    onStop: () => {},\n"
+    },
+    {
+      "name": "monitor: an event's name reaches the model raw, newlines and all",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    `name: ${quoteServerText(event.name)}`,\n",
+      "replace": "    `name: ${event.name}`,\n"
     }
   ]
 }
