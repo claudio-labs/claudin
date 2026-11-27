@@ -71,15 +71,10 @@ export function fakeResource(server: string, uri: string): ServerResource {
 
 export type FakeSdkClient = {
   onclose?: () => void
-  setNotificationHandler: (schema: unknown, handler: () => Promise<void>) => void
-  setRequestHandler: (schema: unknown, handler: unknown) => void
+  setNotificationHandler: (method: string, handler: () => Promise<void>) => void
+  setRequestHandler: (method: string, handler: unknown) => void
   notificationHandlers: Map<string, () => Promise<void>>
   requestHandlers: string[]
-}
-
-function methodOf(schema: unknown): string {
-  const shape = (schema as { shape?: { method?: { value?: string } } }).shape
-  return shape?.method?.value ?? 'unknown'
 }
 
 /** A stand-in for the SDK `Client`: it records what the hook registers on it. */
@@ -90,11 +85,11 @@ export function fakeSdkClient(): FakeSdkClient {
     onclose: undefined,
     notificationHandlers,
     requestHandlers,
-    setNotificationHandler(schema, handler) {
-      notificationHandlers.set(methodOf(schema), handler)
+    setNotificationHandler(method, handler) {
+      notificationHandlers.set(method, handler)
     },
-    setRequestHandler(schema) {
-      requestHandlers.push(methodOf(schema))
+    setRequestHandler(method) {
+      requestHandlers.push(method)
     },
   }
 }

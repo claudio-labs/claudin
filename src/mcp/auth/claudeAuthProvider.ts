@@ -4,24 +4,18 @@
  */
 
 import {
+  type AuthorizationServerMetadata,
   discoverAuthorizationServerMetadata,
+  type OAuthClientMetadata,
   type OAuthClientProvider,
   type OAuthDiscoveryState,
+  OAuthError,
+  OAuthErrorCode,
+  type OAuthTokens,
   refreshAuthorization as sdkRefreshAuthorization,
-} from '@modelcontextprotocol/sdk/client/auth.js'
-import {
-  InvalidGrantError,
-  ServerError,
-  TemporarilyUnavailableError,
-  TooManyRequestsError,
-} from '@modelcontextprotocol/sdk/server/auth/errors.js'
-import type {
-  AuthorizationServerMetadata,
-  OAuthClientInformation,
-  OAuthClientInformationFull,
-  OAuthClientMetadata,
-  OAuthTokens,
-} from '@modelcontextprotocol/sdk/shared/auth.js'
+  type StoredOAuthClientInformation,
+  type StoredOAuthTokens,
+} from '@modelcontextprotocol/client'
 import { randomBytes, randomInt } from 'crypto'
 import { mkdir } from 'fs/promises'
 import { join } from 'path'
@@ -45,6 +39,13 @@ import { redactSensitiveUrlParams } from 'src/mcp/auth/callbackParams.js'
 import { getServerKey } from 'src/mcp/auth/serverKey.js'
 
 const MAX_LOCK_RETRIES = 5
+
+// The token-endpoint answers worth another refresh attempt.
+const TRANSIENT_OAUTH_ERROR_CODES: ReadonlySet<string> = new Set([
+  OAuthErrorCode.ServerError,
+  OAuthErrorCode.TemporarilyUnavailable,
+  OAuthErrorCode.TooManyRequests,
+])
 
 export class ClaudeAuthProvider implements OAuthClientProvider {
   private serverName: string
@@ -152,7 +153,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     return this._state
   }
 
-  async clientInformation(): Promise<OAuthClientInformation | undefined> {
+  async clientInformation(): Promise<StoredOAuthClientInformation | undefined> {
     const storage = getSecureStorage()
     const data = storage.read()
     const serverKey = getServerKey(this.serverName, this.serverConfig)
@@ -186,7 +187,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
   }
 
   async saveClientInformation(
-    clientInformation: OAuthClientInformationFull,
+    clientInformation: StoredOAuthClientInformation,
   ): Promise<void> {
     const storage = getSecureStorage()
     const existingData = storage.read() || {}
@@ -222,7 +223,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     storage.update(updatedData)
   }
 
-  async tokens(): Promise<OAuthTokens | undefined> {
+  async tokens(): Promise<StoredOAuthTokens | undefined> {
     // Cross-process token changes (another CC instance refreshed or invalidated)
     // are picked up via the keychain cache TTL (see macOsKeychainStorage.ts).
     // In-process writes already invalidate the cache via storage.update().
@@ -325,7 +326,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     return tokens
   }
 
-  async saveTokens(tokens: OAuthTokens): Promise<void> {
+  async saveTokens(tokens: StoredOAuthTokens): Promise<void> {
     this._pendingStepUpScope = undefined
     const storage = getSecureStorage()
     const existingData = storage.read() || {}
@@ -766,7 +767,10 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       } catch (error) {
         // Invalid grant means the refresh token itself is invalid/revoked/expired.
         // But another process may have already refreshed successfully — check first.
-        if (error instanceof InvalidGrantError) {
+        if (
+          error instanceof OAuthError &&
+          error.code === OAuthErrorCode.InvalidGrant
+        ) {
           logMCPDebug(
             this.serverName,
             `Token refresh failed with invalid_grant: ${error.message}`,
@@ -805,9 +809,8 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
           error instanceof Error &&
           /timeout|timed out|etimedout|econnreset/i.test(error.message)
         const isTransientServerError =
-          error instanceof ServerError ||
-          error instanceof TemporarilyUnavailableError ||
-          error instanceof TooManyRequestsError
+          error instanceof OAuthError &&
+          TRANSIENT_OAUTH_ERROR_CODES.has(error.code)
         const isRetryable = isTimeoutError || isTransientServerError
 
         if (!isRetryable || attempt >= MAX_ATTEMPTS) {

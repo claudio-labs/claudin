@@ -3,9 +3,12 @@
  * redirect, and the step-up detection that runs on the transport's fetch.
  */
 
-import { auth as sdkAuth } from '@modelcontextprotocol/sdk/client/auth.js'
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js'
-import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js'
+import {
+  type FetchLike,
+  OAuthError,
+  OAuthErrorCode,
+  auth as sdkAuth,
+} from '@modelcontextprotocol/client'
 import { createServer, type Server } from 'http'
 import { parse } from 'url'
 import xss from 'xss'
@@ -151,12 +154,12 @@ export async function performMCPOAuthFlow(
     }
 
     // Setup a server to receive the callback
-    const authorizationCode = await new Promise<string>((resolve, reject) => {
+    const callback = await new Promise<{ code: string; iss?: string }>((resolve, reject) => {
       let resolved = false
-      const resolveOnce = (code: string) => {
+      const resolveOnce = (result: { code: string; iss?: string }) => {
         if (resolved) return
         resolved = true
-        resolve(code)
+        resolve(result)
       }
       const rejectOnce = (error: Error) => {
         if (resolved) return
@@ -190,6 +193,7 @@ export async function performMCPOAuthFlow(
                 error_description:
                   parsed.searchParams.get('error_description'),
                 error_uri: parsed.searchParams.get('error_uri'),
+                iss: parsed.searchParams.get('iss'),
               },
               oauthState,
             )
@@ -215,7 +219,7 @@ export async function performMCPOAuthFlow(
               `Received auth code via manual callback URL`,
             )
             cleanup()
-            resolveOnce(result.code)
+            resolveOnce(result)
           } catch {
             // Invalid URL, ignore so the user can try again
           }
@@ -268,7 +272,7 @@ export async function performMCPOAuthFlow(
             `<h1>Authentication Successful</h1><p>You can close this window. Return to Claudin.</p>`,
           )
           cleanup()
-          resolveOnce(result.code)
+          resolveOnce(result)
         }
       })
 
@@ -339,7 +343,8 @@ export async function performMCPOAuthFlow(
     logMCPDebug(serverName, `Completing auth flow with authorization code`)
     const result = await sdkAuth(provider, {
       serverUrl: serverConfig.url,
-      authorizationCode,
+      authorizationCode: callback.code,
+      iss: callback.iss,
       resourceMetadataUrl: wwwAuthParams.resourceMetadataUrl,
     })
 
@@ -366,12 +371,12 @@ export async function performMCPOAuthFlow(
   } catch (error) {
     logMCPDebug(serverName, `Error during auth completion: ${error}`)
 
-    // sdkAuth uses native fetch and throws OAuthError subclasses (InvalidGrantError,
-    // ServerError, InvalidClientError, etc.) via parseErrorResponse.
+    // sdkAuth uses native fetch and throws OAuthError with the RFC 6749
+    // error as its code, via parseErrorResponse.
     // If client not found, clear the stored client ID and suggest retry
     if (
       error instanceof OAuthError &&
-      error.errorCode === 'invalid_client' &&
+      error.code === OAuthErrorCode.InvalidClient &&
       error.message.includes('Client not found')
     ) {
       const storage = getSecureStorage()

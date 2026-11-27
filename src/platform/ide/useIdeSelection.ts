@@ -5,7 +5,6 @@ import type {
   ConnectedMCPServer,
   MCPServerConnection,
 } from 'src/mcp/types.js'
-import { asMcpSchema } from 'src/mcp/zodCompat.js'
 import { getConnectedIdeClient } from 'src/platform/ide/ide.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 export type SelectionPoint = {
@@ -29,27 +28,24 @@ export type IDESelection = {
   filePath?: string
 }
 
-// Define the selection changed notification schema
-const SelectionChangedSchema = lazySchema(() =>
+// The params of a selection_changed notification
+const SelectionChangedParamsSchema = lazySchema(() =>
   z.object({
-    method: z.literal('selection_changed'),
-    params: z.object({
-      selection: z
-        .object({
-          start: z.object({
-            line: z.number(),
-            character: z.number(),
-          }),
-          end: z.object({
-            line: z.number(),
-            character: z.number(),
-          }),
-        })
-        .nullable()
-        .optional(),
-      text: z.string().optional(),
-      filePath: z.string().optional(),
-    }),
+    selection: z
+      .object({
+        start: z.object({
+          line: z.number(),
+          character: z.number(),
+        }),
+        end: z.object({
+          line: z.number(),
+          character: z.number(),
+        }),
+      })
+      .nullable()
+      .optional(),
+    text: z.string().optional(),
+    filePath: z.string().optional(),
   }),
 )
 
@@ -111,16 +107,14 @@ export function useIdeSelection(
 
     // Register notification handler for selection_changed events
     ideClient.client.setNotificationHandler(
-      asMcpSchema(SelectionChangedSchema()),
-      notification => {
+      'selection_changed',
+      { params: SelectionChangedParamsSchema() },
+      selectionData => {
         if (currentIDERef.current !== ideClient) {
           return
         }
 
         try {
-          // Get the selection data from the notification params
-          const selectionData = notification.params
-
           // Process selection data - validate it has required properties
           if (
             selectionData.selection &&

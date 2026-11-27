@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import type {
   ElicitResult,
   JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/client'
 import { randomUUID } from 'crypto'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import type {

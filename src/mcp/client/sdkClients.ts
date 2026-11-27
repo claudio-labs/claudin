@@ -1,5 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
+import { Client, type JSONRPCMessage } from '@modelcontextprotocol/client'
 import type { Tool } from 'src/tools/Tool.js'
 import { logMCPError } from 'src/shared/log.js'
 import { SdkControlClientTransport } from 'src/mcp/SdkControlTransport.js'
@@ -37,6 +36,7 @@ export async function setupSdkMcpClients(
         getMcpClientInfo(),
         {
           capabilities: {},
+          versionNegotiation: { mode: 'legacy' },
         },
       )
 

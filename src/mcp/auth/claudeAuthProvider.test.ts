@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test'
-import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
+import { auth } from '@modelcontextprotocol/client'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'

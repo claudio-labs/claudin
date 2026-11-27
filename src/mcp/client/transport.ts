@@ -1,15 +1,13 @@
 import { feature } from 'bun:bundle'
 import {
+  createFetchWithInit,
   SSEClientTransport,
   type SSEClientTransportOptions,
-} from '@modelcontextprotocol/sdk/client/sse.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import {
   StreamableHTTPClientTransport,
   type StreamableHTTPClientTransportOptions,
-} from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { createFetchWithInit } from '@modelcontextprotocol/client'
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
+  type Transport,
+} from '@modelcontextprotocol/client'
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 import mapValues from 'lodash-es/mapValues.js'
 import { homedir } from 'os'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'

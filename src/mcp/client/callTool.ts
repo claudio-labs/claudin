@@ -1,11 +1,10 @@
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
 import {
-  CallToolResultSchema,
   type ElicitRequestURLParams,
   type ElicitResult,
-  ErrorCode,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js'
+  ProtocolError,
+  ProtocolErrorCode,
+  UnauthorizedError,
+} from '@modelcontextprotocol/client'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { detectCodeIndexingFromMcpServerName } from 'src/shared/fs/codeIndexing.js'
@@ -25,6 +24,8 @@ import type {
 } from 'src/mcp/types.js'
 import { clearServerCache } from 'src/mcp/client/connection.js'
 import {
+  httpStatusOf,
+  isMcpConnectionClosedError,
   isMcpSessionExpiredError,
   McpAuthError,
   McpSessionExpiredError,
@@ -99,11 +100,11 @@ export async function callMCPToolWithUrlElicitationRetry({
         onProgress,
       })
     } catch (error) {
-      // The MCP SDK's Protocol creates plain McpError (not UrlElicitationRequiredError)
+      // The MCP SDK's Protocol creates plain ProtocolError (not UrlElicitationRequiredError)
       // for error responses, so we check the error code instead of instanceof.
       if (
-        !(error instanceof McpError) ||
-        error.code !== ErrorCode.UrlElicitationRequired
+        !(error instanceof ProtocolError) ||
+        error.code !== ProtocolErrorCode.UrlElicitationRequired
       ) {
         throw error
       }
@@ -335,7 +336,6 @@ export async function callMCPTool({
           arguments: args,
           _meta: meta,
         },
-        CallToolResultSchema,
         {
           signal,
           timeout: timeoutMs,
@@ -427,10 +427,9 @@ export async function callMCPTool({
     }
 
     // Check for 401 errors indicating expired/invalid OAuth tokens
-    // The MCP SDK's StreamableHTTPError has a `code` property with the HTTP status
+    // The MCP SDK's SdkHttpError carries the HTTP status
     if (e instanceof Error) {
-      const errorCode = 'code' in e ? (e.code as number | undefined) : undefined
-      if (errorCode === 401 || e instanceof UnauthorizedError) {
+      if (httpStatusOf(e) === 401 || e instanceof UnauthorizedError) {
         logMCPDebug(
           name,
           `Tool call returned 401 Unauthorized - token may have expired`,
@@ -442,17 +441,15 @@ export async function callMCPTool({
       }
 
       // Check for session expiry — two error shapes can surface here:
-      // 1. Direct 404 + JSON-RPC -32001 from the server (StreamableHTTPError)
-      // 2. -32000 "Connection closed" (McpError) — the SDK closes the transport
+      // 1. Direct 404 + JSON-RPC -32001 from the server (SdkHttpError)
+      // 2. "Connection closed" (SdkError) — the SDK closes the transport
       //    after the onerror handler fires, so the pending callTool() rejects
       //    with this derived error instead of the original 404.
       // In both cases, clear the connection cache so the next tool call
       // creates a fresh session.
       const isSessionExpired = isMcpSessionExpiredError(e)
       const isConnectionClosedOnHttp =
-        'code' in e &&
-        (e as Error & { code?: number }).code === -32000 &&
-        e.message.includes('Connection closed') &&
+        isMcpConnectionClosedError(e) &&
         (config.type === 'http' || config.type === 'claudeai-proxy')
       if (isSessionExpired || isConnectionClosedOnHttp) {
         logMCPDebug(

@@ -3,7 +3,7 @@
 // notifications/elicitation/complete marks a queued URL elicitation — over a
 // real SDK Client/Server pair, with real lifecycle hooks.
 import { afterEach, describe, expect, test } from 'bun:test'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { Client } from '@modelcontextprotocol/client'
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js'
 
 import {

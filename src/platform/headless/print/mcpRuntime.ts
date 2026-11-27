@@ -36,10 +36,6 @@ import {
   runElicitationResultHooks,
 } from 'src/mcp/elicitationHandler.js'
 import { executeNotificationHooks } from 'src/platform/lifecycleHooks/hooks.js'
-import {
-  ElicitRequestSchema,
-  ElicitationCompleteNotificationSchema,
-} from '@modelcontextprotocol/sdk/types.js'
 import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
 import { filterToolsByServer } from 'src/mcp/utils.js'
 import { setupVscodeSdkMcp } from 'src/mcp/vscodeSdkMcp.js'
@@ -88,8 +84,9 @@ export function registerElicitationHandlers(
     // created with elicitation capability declared (e.g., SDK-created clients).
     try {
       connection.client.setRequestHandler(
-        ElicitRequestSchema,
-        async (request, extra) => {
+        'elicitation/create',
+        async (request, requestCtx) => {
+          const { signal } = requestCtx.mcpReq
           logMCPDebug(
             serverName,
             `Elicitation request received in print mode: ${jsonStringify(request)}`,
@@ -102,7 +99,7 @@ export function registerElicitationHandlers(
           const hookResponse = await runElicitationHooks(
             serverName,
             request.params,
-            extra.signal,
+            signal,
           )
           if (hookResponse) {
             logMCPDebug(
@@ -131,7 +128,7 @@ export function registerElicitationHandlers(
             serverName,
             request.params.message,
             requestedSchema,
-            extra.signal,
+            signal,
             mode,
             url,
             elicitationId,
@@ -140,7 +137,7 @@ export function registerElicitationHandlers(
           const result = await runElicitationResultHooks(
             serverName,
             rawResult,
-            extra.signal,
+            signal,
             mode,
             elicitationId,
           )
@@ -151,7 +148,7 @@ export function registerElicitationHandlers(
 
       // Surface completion notifications to SDK consumers (URL mode)
       connection.client.setNotificationHandler(
-        ElicitationCompleteNotificationSchema,
+        'notifications/elicitation/complete',
         notification => {
           const { elicitationId } = notification.params
           logMCPDebug(

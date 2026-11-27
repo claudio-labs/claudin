@@ -1,20 +1,22 @@
 import { describe, expect, test } from 'bun:test'
-import { SseError } from '@modelcontextprotocol/sdk/client/sse.js'
+import { SdkErrorCode, SdkHttpError, SseError } from '@modelcontextprotocol/client'
 import { isTransientConnectError, nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { WebSocketOpenError } from 'src/mcp/mcpWebSocketTransport.js'
 
 const withCode = (code: unknown, cause?: unknown) => Object.assign(new Error('failed'), { code }, cause ? { cause } : {})
+// What the Streamable HTTP transport throws for a non-OK response.
+const httpError = (status: number) => new SdkHttpError(SdkErrorCode.ClientHttpNotImplemented, 'failed', { status })
 
 describe('isTransientConnectError', () => {
   test('HTTP 408, 429 and 5xx except 501 are transient', () => {
     for (const status of [408, 429, 500, 502, 503, 504, 599]) {
-      expect(isTransientConnectError(withCode(status))).toBe(true)
+      expect(isTransientConnectError(httpError(status))).toBe(true)
     }
   })
 
   test('other HTTP statuses are not', () => {
     for (const status of [400, 401, 403, 404, 501, 600, 302]) {
-      expect(isTransientConnectError(withCode(status))).toBe(false)
+      expect(isTransientConnectError(httpError(status))).toBe(false)
     }
   })
 
@@ -47,7 +49,7 @@ describe('isTransientConnectError', () => {
 })
 
 describe('nextConnectRetryDelay', () => {
-  const transient = withCode(503)
+  const transient = httpError(503)
 
   test('retries a remote server twice: 250 ms, then 1 s', () => {
     for (const type of ['http', 'sse', 'ws']) {
@@ -69,6 +71,6 @@ describe('nextConnectRetryDelay', () => {
   })
 
   test('does not retry a failure that is not transient', () => {
-    expect(nextConnectRetryDelay(withCode(401), { type: 'http', attempt: 0, remainingMs: 30_000 })).toBeNull()
+    expect(nextConnectRetryDelay(httpError(401), { type: 'http', attempt: 0, remainingMs: 30_000 })).toBeNull()
   })
 })

@@ -1,10 +1,8 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import {
-  ElicitationCompleteNotificationSchema,
-  type ElicitRequestParams,
-  ElicitRequestSchema,
-  type ElicitResult,
-} from '@modelcontextprotocol/sdk/types.js'
+import type {
+  Client,
+  ElicitRequestParams,
+  ElicitResult,
+} from '@modelcontextprotocol/client'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import {
   executeElicitationHooks,
@@ -70,7 +68,8 @@ export function registerElicitationHandler(
   // Wrapped in try/catch because setRequestHandler throws if the client wasn't
   // created with elicitation capability declared.
   try {
-    client.setRequestHandler(ElicitRequestSchema, async (request, extra) => {
+    client.setRequestHandler('elicitation/create', async (request, ctx) => {
+      const { signal } = ctx.mcpReq
       logMCPDebug(
         serverName,
         `Received elicitation request: ${jsonStringify(request)}`,
@@ -84,7 +83,7 @@ export function registerElicitationHandler(
         const hookResponse = await runElicitationHooks(
           serverName,
           request.params,
-          extra.signal,
+          signal,
         )
         if (hookResponse) {
           logMCPDebug(
@@ -104,7 +103,7 @@ export function registerElicitationHandler(
             resolve({ action: 'cancel' })
           }
 
-          if (extra.signal.aborted) {
+          if (signal.aborted) {
             onAbort()
             return
           }
@@ -119,12 +118,12 @@ export function registerElicitationHandler(
                 ...prev.elicitation.queue,
                 {
                   serverName,
-                  requestId: extra.requestId,
+                  requestId: ctx.mcpReq.id,
                   params: request.params,
-                  signal: extra.signal,
+                  signal,
                   waitingState,
                   respond: (result: ElicitResult) => {
-                    extra.signal.removeEventListener('abort', onAbort)
+                    signal.removeEventListener('abort', onAbort)
                     resolve(result)
                   },
                 },
@@ -132,7 +131,7 @@ export function registerElicitationHandler(
             },
           }))
 
-          extra.signal.addEventListener('abort', onAbort, { once: true })
+          signal.addEventListener('abort', onAbort, { once: true })
         })
         const rawResult = await response
         logMCPDebug(
@@ -142,7 +141,7 @@ export function registerElicitationHandler(
         const result = await runElicitationResultHooks(
           serverName,
           rawResult,
-          extra.signal,
+          signal,
           mode,
           elicitationId,
         )
@@ -156,7 +155,7 @@ export function registerElicitationHandler(
     // Register handler for elicitation completion notifications (URL mode).
     // Sets `completed: true` on the matching queue event; the dialog reacts to this flag.
     client.setNotificationHandler(
-      ElicitationCompleteNotificationSchema,
+      'notifications/elicitation/complete',
       notification => {
         const { elicitationId } = notification.params
         logMCPDebug(

@@ -1,5 +1,9 @@
 import { feature } from 'bun:bundle'
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
+import {
+  ProtocolError,
+  ProtocolErrorCode,
+  SdkError,
+} from '@modelcontextprotocol/client'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
 import type { Command } from 'src/commands/commands.js'
@@ -327,9 +331,9 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
                     })
                   }
                   // Wrap MCP SDK errors so telemetry gets useful context
-                  // instead of just "Error" or "McpError" (the constructor
-                  // name). MCP SDK errors are protocol-level messages and
-                  // don't contain user file paths or code.
+                  // instead of just "Error" or "ProtocolError" (the
+                  // constructor name). MCP SDK errors are protocol-level
+                  // messages and don't contain user file paths or code.
                   if (
                     error instanceof Error &&
                     !(
@@ -344,13 +348,9 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
                         error.message.slice(0, 200),
                       )
                     }
-                    // McpError has a numeric `code` with the JSON-RPC error
-                    // code (e.g. -32000 ConnectionClosed, -32001 RequestTimeout)
-                    if (
-                      name === 'McpError' &&
-                      'code' in error &&
-                      typeof error.code === 'number'
-                    ) {
+                    // ProtocolError carries the JSON-RPC error code (-32603…),
+                    // SdkError a local one (CONNECTION_CLOSED, REQUEST_TIMEOUT…)
+                    if (error instanceof ProtocolError || error instanceof SdkError) {
                       throw new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
                         error.message,
                         `McpError ${error.code}`,
@@ -441,7 +441,7 @@ export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
       logSkippedEntries(client.name, 'resource template', skipped)
       return templates.map(template => ({ ...template, server: client.name }))
     } catch (error) {
-      if (!(error instanceof McpError && error.code === ErrorCode.MethodNotFound)) {
+      if (!(error instanceof ProtocolError && error.code === ProtocolErrorCode.MethodNotFound)) {
         logMCPError(
           client.name,
           `Failed to fetch resource templates, listing none: ${errorMessage(error)}`,

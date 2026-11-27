@@ -1,5 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import {
@@ -46,7 +45,7 @@ export type InMemoryMcpServer = {
 }
 
 /**
- * A real v1 SDK Server and Client joined by InMemoryTransport, wrapped in the
+ * A real v1 SDK Server (a legacy fixture) and the v2 Client joined by InMemoryTransport, wrapped in the
  * ConnectedMCPServer shape the fetchers take. The config defaults to `sdk` so
  * ensureConnectedClient hands the connection straight back instead of
  * reconnecting through connectToServer.

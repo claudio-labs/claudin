@@ -8,10 +8,13 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spyOn } from 'bun:test'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import {
+  InMemoryTransport,
+  type JSONRPCMessage,
+  type ServerCapabilities,
+  type Transport,
+} from '@modelcontextprotocol/client'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
-import type { JSONRPCMessage, ServerCapabilities } from '@modelcontextprotocol/sdk/types.js'
 import * as transportModule from 'src/mcp/client/transport.js'
 import type { InProcessMcpServer } from 'src/mcp/client/transport.js'
 

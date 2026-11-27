@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
+import type { JSONRPCMessage } from '@modelcontextprotocol/client'
 import type { Server, ServerWebSocket } from 'bun'
 
 import { WebSocketOpenError, WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'

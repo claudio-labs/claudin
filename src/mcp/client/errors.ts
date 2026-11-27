@@ -1,3 +1,9 @@
+import {
+  SdkError,
+  SdkErrorCode,
+  SdkHttpError,
+  SseError,
+} from '@modelcontextprotocol/client'
 import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/shared/errors.js'
 
 /**
@@ -43,14 +49,27 @@ export class McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS extends T
 }
 
 /**
+ * The HTTP status an SDK transport error carries: `SdkHttpError` keeps it in
+ * `data.status`, `SseError` as its numeric `code`.
+ */
+export function httpStatusOf(error: unknown): number | undefined {
+  if (error instanceof SdkHttpError) return error.status
+  if (error instanceof SseError) return error.code
+  return undefined
+}
+
+/** The SDK's local "Connection closed", which rejects every pending request. */
+export function isMcpConnectionClosedError(error: unknown): boolean {
+  return error instanceof SdkError && error.code === SdkErrorCode.ConnectionClosed
+}
+
+/**
  * Detects whether an error is an MCP "Session not found" error (HTTP 404 + JSON-RPC code -32001).
  * Per the MCP spec, servers return 404 when a session ID is no longer valid.
  * We check both signals to avoid false positives from generic 404s (wrong URL, server gone, etc.).
  */
 export function isMcpSessionExpiredError(error: Error): boolean {
-  const httpStatus =
-    'code' in error ? (error as Error & { code?: number }).code : undefined
-  if (httpStatus !== 404) {
+  if (httpStatusOf(error) !== 404) {
     return false
   }
   // The SDK embeds the response body text in the error message.

@@ -1,12 +1,10 @@
 import { feature } from 'bun:bundle'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import {
-  ElicitRequestSchema,
-  ListRootsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+  Client,
+  type Transport,
+  UnauthorizedError,
+} from '@modelcontextprotocol/client'
+import type { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { type Tool } from 'src/tools/Tool.js'
@@ -26,7 +24,7 @@ import type {
   ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
-import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
+import { httpStatusOf, isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
@@ -172,6 +170,9 @@ export const connectToServer = memoize(
             // has zero fields and fails on unknown properties.
             elicitation: {},
           },
+          // The 2025-era initialize handshake, explicitly: the wire stays the
+          // 1.x SDK's until protocol negotiation is turned on.
+          versionNegotiation: { mode: 'legacy' },
         },
       )
 
@@ -180,7 +181,7 @@ export const connectToServer = memoize(
         logMCPDebug(name, `Client created, setting up request handler`)
       }
 
-      client.setRequestHandler(ListRootsRequestSchema, async () => {
+      client.setRequestHandler('roots/list', async () => {
         logMCPDebug(name, `Received ListRoots request from server`)
         return {
           roots: [
@@ -326,9 +327,7 @@ export const connectToServer = memoize(
           )
           logMCPError(name, error)
 
-          // StreamableHTTPError has a `code` property with the HTTP status
-          const errorCode = (error as Error & { code?: number }).code
-          if (errorCode === 401) {
+          if (httpStatusOf(error) === 401) {
             return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')
           }
         } else         if (inProcessServer) {
@@ -376,7 +375,7 @@ export const connectToServer = memoize(
       // Register default elicitation handler that returns cancel during the
       // window before registerElicitationHandler overwrites it in
       // onConnectionAttempt (useManageMCPConnections).
-      client.setRequestHandler(ElicitRequestSchema, async request => {
+      client.setRequestHandler('elicitation/create', async request => {
         logMCPDebug(
           name,
           `Elicitation request received during initialization: ${jsonStringify(request)}`,
@@ -416,7 +415,7 @@ export const connectToServer = memoize(
 
       // client.close() → transport.close() → transport.onclose → SDK's _onclose():
       // rejects all pending request handlers (so hung callTool() promises fail with
-      // McpError -32000 "Connection closed") and then invokes our client.onclose
+      // SdkError CONNECTION_CLOSED) and then invokes our client.onclose
       // handler below (which clears the memo cache so the next call reconnects).
       // Calling client.onclose?.() directly would only clear the cache — pending
       // tool calls would stay hung.

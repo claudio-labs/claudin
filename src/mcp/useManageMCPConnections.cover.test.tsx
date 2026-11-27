@@ -5,8 +5,7 @@
 // the SDK v2 migration — see the harness for the seams.
 
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import * as debug from 'src/shared/debug.js'

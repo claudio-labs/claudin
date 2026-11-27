@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, mock, spyOn, test } from 'bun:test'
 import type { Server } from 'bun'
-import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
+import { auth } from '@modelcontextprotocol/client'
 import { runMcpLogin } from 'src/mcp/auth/cliLogin.js'
 import { ClaudeAuthProvider } from 'src/mcp/auth/claudeAuthProvider.js'
 import { performMCPOAuthFlow } from 'src/mcp/auth/oauthFlow.js'

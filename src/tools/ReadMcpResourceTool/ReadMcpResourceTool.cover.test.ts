@@ -2,8 +2,7 @@
 // of the SDK v2 migration and of resource subscriptions: what a text resource,
 // a blob resource and a failing read hand back to the model.
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'

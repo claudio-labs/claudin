@@ -3,13 +3,17 @@
 // what the retry loop queues for the dialog — over a real SDK Client/Server
 // pair where the protocol matters, an injected call function where it doesn't.
 import { afterEach, describe, expect, spyOn, test } from 'bun:test'
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import {
-  CallToolRequestSchema,
-  ErrorCode,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js'
+  ProtocolError,
+  ProtocolErrorCode,
+  SdkError,
+  SdkErrorCode,
+  SdkHttpError,
+  UnauthorizedError,
+} from '@modelcontextprotocol/client'
+// The fixture server stays on the 1.x SDK: a realistic legacy server.
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import { CallToolRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js'
 
 import {
   callMCPTool,
@@ -67,6 +71,13 @@ function fakeServer(
 }
 
 const signal = () => new AbortController().signal
+
+/** What the Streamable HTTP transport throws for a non-OK POST. */
+const httpError = (status: number, body: string) =>
+  new SdkHttpError(SdkErrorCode.ClientHttpNotImplemented, `Error POSTing to endpoint: ${body}`, {
+    status,
+    text: body,
+  })
 
 describe('callMCPTool — results', () => {
   test('returns the processed content, structuredContent and _meta, and sends args and meta', async () => {
@@ -173,7 +184,7 @@ describe('callMCPTool — results', () => {
     })
   })
 
-  test('aborting a real v1 call rejects with the SDK McpError -32001 (not an AbortError)', async () => {
+  test('aborting a real call rejects with the SDK REQUEST_TIMEOUT error (not an AbortError)', async () => {
     const controller = new AbortController()
     const client = await serverWith(
       (_request, extra) =>
@@ -182,8 +193,8 @@ describe('callMCPTool — results', () => {
     const pending = callMCPTool({ client, tool: 'hang', args: {}, signal: controller.signal })
     setTimeout(() => controller.abort(), 5)
     const error = await pending.catch(e => e)
-    expect(error).toBeInstanceOf(McpError)
-    expect(error.code).toBe(-32001)
+    expect(error).toBeInstanceOf(SdkError)
+    expect(error.code).toBe(SdkErrorCode.RequestTimeout)
     expect(error.message).toContain('AbortError')
   })
 
@@ -236,19 +247,19 @@ describe('callMCPTool — isError results', () => {
 })
 
 describe('callMCPTool — protocol and transport errors', () => {
-  test('a JSON-RPC error from the server is rethrown as the SDK McpError', async () => {
+  test('a JSON-RPC error from the server is rethrown as the SDK ProtocolError', async () => {
     const client = await serverWith(async () => {
-      throw new McpError(ErrorCode.InvalidParams, 'nope')
+      throw new McpError(ProtocolErrorCode.InvalidParams, 'nope')
     })
     const error = await callMCPTool({ client, tool: 't', args: {}, signal: signal() }).catch(e => e)
-    expect(error).toBeInstanceOf(McpError)
-    expect(error.code).toBe(ErrorCode.InvalidParams)
+    expect(error).toBeInstanceOf(ProtocolError)
+    expect(error.code).toBe(ProtocolErrorCode.InvalidParams)
     expect(error.message).toContain('nope')
   })
 
   test('an HTTP 401 becomes McpAuthError for the server', async () => {
     const client = fakeServer(async () => {
-      throw Object.assign(new Error('Unauthorized'), { code: 401 })
+      throw httpError(401, 'Unauthorized')
     }, undefined, 'authy')
     const error = await callMCPTool({ client, tool: 't', args: {}, signal: signal() }).catch(e => e)
     expect(error).toBeInstanceOf(McpAuthError)
@@ -286,10 +297,7 @@ describe('callMCPTool — protocol and transport errors', () => {
   test('a 404 carrying JSON-RPC -32001 clears the cached connection and throws McpSessionExpiredError', async () => {
     const seeded = seedConnection('sess', HTTP)
     const client = fakeServer(async () => {
-      throw Object.assign(
-        new Error('Error POSTing to endpoint (HTTP 404): {"jsonrpc":"2.0","error":{"code":-32001,"message":"Session not found"}}'),
-        { code: 404 },
-      )
+      throw httpError(404, '{"jsonrpc":"2.0","error":{"code":-32001,"message":"Session not found"}}')
     }, HTTP, 'sess')
     const error = await callMCPTool({ client, tool: 't', args: {}, signal: signal() }).catch(e => e)
     expect(error).toBeInstanceOf(McpSessionExpiredError)
@@ -299,17 +307,17 @@ describe('callMCPTool — protocol and transport errors', () => {
   })
 
   test('a plain 404 is not a session expiry', async () => {
-    const original = Object.assign(new Error('HTTP 404 Not Found'), { code: 404 })
+    const original = httpError(404, 'Not Found')
     const client = fakeServer(async () => {
       throw original
     }, HTTP)
     await expect(callMCPTool({ client, tool: 't', args: {}, signal: signal() })).rejects.toBe(original)
   })
 
-  test('-32000 "Connection closed" on HTTP is treated as an expired session', async () => {
+  test('"Connection closed" on HTTP is treated as an expired session', async () => {
     const seeded = seedConnection('closed', HTTP)
     const client = fakeServer(async () => {
-      throw new McpError(-32000, 'Connection closed')
+      throw new SdkError(SdkErrorCode.ConnectionClosed, 'Connection closed')
     }, HTTP, 'closed')
     await expect(callMCPTool({ client, tool: 't', args: {}, signal: signal() })).rejects.toBeInstanceOf(
       McpSessionExpiredError,
@@ -317,8 +325,8 @@ describe('callMCPTool — protocol and transport errors', () => {
     expect(seeded.cleaned()).toBe(1)
   })
 
-  test('-32000 "Connection closed" on stdio is rethrown as is', async () => {
-    const original = new McpError(-32000, 'Connection closed')
+  test('"Connection closed" on stdio is rethrown as is', async () => {
+    const original = new SdkError(SdkErrorCode.ConnectionClosed, 'Connection closed')
     const client = fakeServer(async () => {
       throw original
     })
@@ -346,7 +354,7 @@ describe('extractToolUseId', () => {
 
 const ELICIT = { mode: 'url', message: 'Sign in', url: 'https://auth.example/a', elicitationId: 'e-1' }
 const urlRequired = (elicitations: unknown[] = [ELICIT]) =>
-  new McpError(ErrorCode.UrlElicitationRequired, 'URL elicitation required', { elicitations })
+  new ProtocolError(ProtocolErrorCode.UrlElicitationRequired, 'URL elicitation required', { elicitations })
 
 const conn = (name = 'retry'): MCPServerConnection =>
   ({ type: 'connected', name }) as unknown as MCPServerConnection
@@ -443,7 +451,7 @@ describe('callMCPToolWithUrlElicitationRetry — print/SDK handler', () => {
 
   test('a -32042 with no valid elicitation data is rethrown', async () => {
     for (const data of [undefined, { elicitations: 'nope' }, { elicitations: [{ mode: 'url' }] }]) {
-      const error = new McpError(ErrorCode.UrlElicitationRequired, 'x', data)
+      const error = new ProtocolError(ProtocolErrorCode.UrlElicitationRequired, 'x', data)
       const { fn } = scripted(error)
       const handle = async () => ({ action: 'accept' as const })
       const { promise } = retry({ callToolFn: fn as never, handleElicitation: handle })
@@ -452,7 +460,7 @@ describe('callMCPToolWithUrlElicitationRetry — print/SDK handler', () => {
   })
 
   test('other errors pass straight through', async () => {
-    const other = new McpError(ErrorCode.InternalError, 'down')
+    const other = new ProtocolError(ProtocolErrorCode.InternalError, 'down')
     const plain = new Error('plain')
     for (const error of [other, plain]) {
       const { fn, calls } = scripted(error)

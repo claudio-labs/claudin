@@ -107,10 +107,10 @@ describe('ListMcpResourcesTool', () => {
   })
 
   test('call() treats a server without templates/list as having no templates, and asks it once', async () => {
-    const { McpError, ErrorCode } = await import('@modelcontextprotocol/sdk/types.js')
+    const { ProtocolError, ProtocolErrorCode } = await import('@modelcontextprotocol/client')
     const server = resourceServer('no-templates', {
       'resources/list': { resources: [{ uri: 'res://only', name: 'only' }] },
-      'resources/templates/list': new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+      'resources/templates/list': new ProtocolError(ProtocolErrorCode.MethodNotFound, 'Method not found'),
     })
     for (let call = 0; call < 2; call++) {
       const { data } = await ListMcpResourcesTool.call({} as never, ctxWithClients([server]))

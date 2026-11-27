@@ -2,11 +2,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, te
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
-import type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { SdkErrorCode, SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
+import type { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
+import { CallToolResultSchema } from '@modelcontextprotocol/core'
+// The fixture server stays on the 1.x SDK: a realistic legacy server.
 import {
   CallToolRequestSchema,
-  CallToolResultSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import {
@@ -90,6 +91,10 @@ function asConnected(connection: MCPServerConnection): ConnectedMCPServer {
 }
 
 const httpConfig = (url = 'http://127.0.0.1:1/mcp'): ScopedMcpServerConfig => ({ type: 'http', url, scope: 'user' })
+
+/** What the Streamable HTTP transport throws for a non-OK response. */
+const httpError = (status: number, message: string) =>
+  new SdkHttpError(SdkErrorCode.ClientHttpNotImplemented, message, { status })
 
 async function waitFor(check: () => boolean, ms = 2000): Promise<void> {
   const until = Date.now() + ms
@@ -244,14 +249,14 @@ describe('connectToServer — failures', () => {
     process.env.CLAUDIN_CONFIG_DIR = configDir
     try {
       const config = { type: 'claudeai-proxy', url: 'https://x', id: 'srv', scope: 'claudeai' } as ScopedMcpServerConfig
-      const err401 = Object.assign(new Error('Unauthorized'), { code: 401 })
+      const err401 = httpError(401, 'Unauthorized')
       let spy = stubCreateTransport(() => ({ transport: failingTransport(err401) }))
       const authName = uniqueName('proxy-401')
       expect(await connect(authName, config)).toEqual({ name: authName, type: 'needs-auth', config })
       spy.mockRestore()
       await waitFor(() => existsSync(join(configDir, 'mcp-needs-auth-cache.json')))
 
-      const transport = failingTransport(Object.assign(new Error('Forbidden'), { code: 403 }))
+      const transport = failingTransport(httpError(403, 'Forbidden'))
       spy = stubCreateTransport(() => ({ transport }))
       const failName = uniqueName('proxy-403')
       expect(await connect(failName, config)).toEqual({ name: failName, type: 'failed', config, error: 'Forbidden' })
@@ -362,7 +367,7 @@ describe('connectToServer — transport errors after connect', () => {
     expect(await settled(pending)).toBe('pending')
     expect(remote.closes()).toBe(0)
     fireError(new Error('write EPIPE'))
-    expect(await pending).toBe('MCP error -32000: Connection closed')
+    expect(await pending).toBe('Connection closed')
     expect(remote.closes()).toBe(1)
     // onclose dropped the memoized connection so the next call reconnects.
     expect(connectToServer.cache.has(getServerCacheKey(name, config))).toBe(false)
@@ -378,33 +383,33 @@ describe('connectToServer — transport errors after connect', () => {
     expect(await settled(pending)).toBe('pending')
     expect(remote.closes()).toBe(0)
     fireError(new Error('SSE stream disconnected'))
-    expect(await pending).toBe('MCP error -32000: Connection closed')
+    expect(await pending).toBe('Connection closed')
   })
 
   test('an exhausted SSE reconnect closes at once', async () => {
     const { remote, pending, fireError } = await connectWithHangingTool('claudeai-proxy')
     fireError(new Error('Maximum reconnection attempts (2) exceeded.'))
-    expect(await pending).toBe('MCP error -32000: Connection closed')
+    expect(await pending).toBe('Connection closed')
     expect(remote.closes()).toBe(1)
   })
 
   test('an http session-expired 404 closes at once', async () => {
     const { remote, pending, fireError } = await connectWithHangingTool('http')
-    fireError(Object.assign(new Error('Error POSTing: {"error":{"code":-32001,"message":"Session not found"}}'), { code: 404 }))
-    expect(await pending).toBe('MCP error -32000: Connection closed')
+    fireError(httpError(404, 'Error POSTing: {"error":{"code":-32001,"message":"Session not found"}}'))
+    expect(await pending).toBe('Connection closed')
     expect(remote.closes()).toBe(1)
   })
 
   test('a plain 404 on http is not a session expiry', async () => {
     const { remote, pending, fireError } = await connectWithHangingTool('http')
-    fireError(Object.assign(new Error('Not Found'), { code: 404 }))
+    fireError(httpError(404, 'Not Found'))
     expect(await settled(pending)).toBe('pending')
     expect(remote.closes()).toBe(0)
   })
 
   test('the same 404 on sse is not treated as an expiry', async () => {
     const { remote, pending, fireError } = await connectWithHangingTool('sse')
-    fireError(Object.assign(new Error('{"code":-32001}'), { code: 404 }))
+    fireError(httpError(404, '{"code":-32001}'))
     expect(await settled(pending)).toBe('pending')
     expect(remote.closes()).toBe(0)
   })
@@ -594,7 +599,7 @@ describe('stdio servers (a real child process)', () => {
     const logSpy = track(spyOn(log, 'logMCPError'))
     const name = uniqueName('early-exit')
     const connection = await connect(name, stdioConfig({ FIXTURE_STDERR: 'fatal: no config', FIXTURE_EXIT_EARLY: '1' }))
-    expect(connection).toMatchObject({ type: 'failed', error: 'MCP error -32000: Connection closed' })
+    expect(connection).toMatchObject({ type: 'failed', error: 'Connection closed' })
     expect(logSpy).toHaveBeenCalledWith(name, 'Server stderr: fatal: no config')
   })
 
