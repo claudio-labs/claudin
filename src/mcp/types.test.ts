@@ -76,6 +76,15 @@ describe('per-server timeouts', () => {
     expect(McpWebSocketServerConfigSchema().parse({ type: 'ws', url: 'u', ...timeouts })).toMatchObject(timeouts)
   })
 
+  test('stop at the largest delay a timer can wait (2^31−1 ms)', () => {
+    // setTimeout turns anything above it into 1 ms, so a larger value timed out at once.
+    for (const key of ['startupTimeout', 'toolTimeout']) {
+      expect(McpStdioServerConfigSchema().safeParse({ command: 'npx', [key]: 2_147_483_647 }).success).toBe(true)
+      expect(McpStdioServerConfigSchema().safeParse({ command: 'npx', [key]: 2_147_483_648 }).success).toBe(false)
+      expect(McpHTTPServerConfigSchema().safeParse({ type: 'http', url: 'u', [key]: 1e10 }).success).toBe(false)
+    }
+  })
+
   test('must be positive whole milliseconds', () => {
     for (const value of [0, -1, 1.5, '60000']) {
       expect(McpStdioServerConfigSchema().safeParse({ command: 'npx', startupTimeout: value }).success).toBe(false)

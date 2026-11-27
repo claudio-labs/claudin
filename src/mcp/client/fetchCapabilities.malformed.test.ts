@@ -116,4 +116,32 @@ describe('MCP prompt arguments', () => {
     await (command as unknown as PromptCommand).getPromptForCommand('src/a.ts "error handling"')
     expect(prompts).toEqual([{ name: 'review', arguments: { file: 'src/a.ts', focus: 'error handling' } }])
   })
+
+  // What the server receives for each line typed after the command: quotes
+  // group words, and nothing else in the line is read as shell syntax.
+  const cases: Array<[string, Record<string, string>]> = [
+    ["src/a.ts 'error handling'", { file: 'src/a.ts', focus: 'error handling' }],
+    ['#123 urgent', { file: '#123', focus: 'urgent' }],
+    ['src/*.ts errors', { file: 'src/*.ts', focus: 'errors' }],
+    ['x>1 y|z', { file: 'x>1', focus: 'y|z' }],
+    ["src/a.ts don't", { file: 'src/a.ts', focus: "don't" }],
+    ['C:\\Users\\me regex\\d+', { file: 'C:\\Users\\me', focus: 'regex\\d+' }],
+    ['$HOME/a.ts $1', { file: '$HOME/a.ts', focus: '$1' }],
+    ['a.ts   spaced', { file: 'a.ts', focus: 'spaced' }],
+  ]
+  for (const [line, expected] of cases) {
+    test(`${JSON.stringify(line)} reaches the prompt as typed`, async () => {
+      const { client, prompts } = listServer(`args-${line}`, reviewPrompt)
+      const [command] = await fetchCommandsForClient(client)
+      await (command as unknown as PromptCommand).getPromptForCommand(line)
+      expect(prompts).toEqual([{ name: 'review', arguments: expected }])
+    })
+  }
+
+  test('no arguments send the first one empty, as before', async () => {
+    const { client, prompts } = listServer('args-none', reviewPrompt)
+    const [command] = await fetchCommandsForClient(client)
+    await (command as unknown as PromptCommand).getPromptForCommand('')
+    expect(JSON.stringify(prompts)).toBe(JSON.stringify([{ name: 'review', arguments: { file: '' } }]))
+  })
 })

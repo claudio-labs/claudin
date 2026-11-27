@@ -65,13 +65,20 @@ describe('ListMcpResourcesTool', () => {
   // An `sdk` server, so ensureConnectedClient hands it back as is; the fake
   // validates each answer with the schema it is handed, as the SDK does.
   function resourceServer(name: string, answers: Record<string, unknown>) {
+    const asked: Array<{ method: string; timeout?: number }> = []
     return {
       name,
       type: 'connected',
       capabilities: { resources: {} },
       config: { type: 'sdk', name, scope: 'local' },
+      asked,
       client: {
-        request: async (req: { method: string }, schema: { parse: (v: unknown) => unknown }) => {
+        request: async (
+          req: { method: string },
+          schema: { parse: (v: unknown) => unknown },
+          options?: { timeout?: number },
+        ) => {
+          asked.push({ method: req.method, timeout: options?.timeout })
           const answer = answers[req.method]
           if (answer instanceof Error) throw answer
           return schema.parse(answer)
@@ -105,32 +112,50 @@ describe('ListMcpResourcesTool', () => {
       'resources/list': { resources: [{ uri: 'res://only', name: 'only' }] },
       'resources/templates/list': new McpError(ErrorCode.MethodNotFound, 'Method not found'),
     })
-    const asked: string[] = []
-    const request = server.client.request
-    server.client.request = async (req, schema) => {
-      asked.push(req.method)
-      return request(req, schema)
-    }
     for (let call = 0; call < 2; call++) {
       const { data } = await ListMcpResourcesTool.call({} as never, ctxWithClients([server]))
       expect(data).toEqual([{ uri: 'res://only', name: 'only', server: 'no-templates' }])
     }
-    // "No templates" is an answer, cached like one; a failure would be asked again.
-    expect(asked.filter(m => m === 'resources/templates/list')).toHaveLength(1)
+    // "No templates" is an answer, cached like one.
+    expect(server.asked.filter(a => a.method === 'resources/templates/list')).toHaveLength(1)
   })
 
-  test('call() keeps the other servers when one fails its templates list', async () => {
+  test('call() keeps a server’s resources, and the other servers, when its templates list fails', async () => {
     const { data } = await ListMcpResourcesTool.call(
       {} as never,
       ctxWithClients([
         resourceServer('flaky', {
-          'resources/list': { resources: [] },
+          'resources/list': { resources: [{ uri: 'res://f', name: 'f' }] },
           'resources/templates/list': new Error('socket hang up'),
         }),
         resourceServer('steady', { 'resources/list': { resources: [{ uri: 'res://s', name: 's' }] }, 'resources/templates/list': { resourceTemplates: [] } }),
       ]),
     )
-    expect(data).toEqual([{ uri: 'res://s', name: 's', server: 'steady' }])
+    expect(data).toEqual([
+      { uri: 'res://f', name: 'f', server: 'flaky' },
+      { uri: 'res://s', name: 's', server: 'steady' },
+    ])
+  })
+
+  test('call() takes any failed templates list as no templates, until the cache is cleared', async () => {
+    const server = resourceServer('broken-templates', {
+      'resources/list': { resources: [{ uri: 'res://b', name: 'b' }] },
+      'resources/templates/list': new Error('Internal error'),
+    })
+    for (let call = 0; call < 2; call++) {
+      const { data } = await ListMcpResourcesTool.call({} as never, ctxWithClients([server]))
+      expect(data).toEqual([{ uri: 'res://b', name: 'b', server: 'broken-templates' }])
+    }
+    expect(server.asked.filter(a => a.method === 'resources/templates/list')).toHaveLength(1)
+  })
+
+  test('call() gives the templates list 10 s, so a server that never answers cannot hold the tool for 60 s', async () => {
+    const server = resourceServer('slow-templates', {
+      'resources/list': { resources: [] },
+      'resources/templates/list': { resourceTemplates: [] },
+    })
+    await ListMcpResourcesTool.call({} as never, ctxWithClients([server]))
+    expect(server.asked.find(a => a.method === 'resources/templates/list')?.timeout).toBe(10_000)
   })
 
   test('mapToolResultToToolResultBlockParam handles empty and populated results', () => {
