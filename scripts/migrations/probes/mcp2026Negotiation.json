@@ -20,6 +20,11 @@
       "replace": "            elicitation: {},\n"
     },
     {
+      "name": "the modern client stops announcing the skills extension",
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'skills') && { [SKILLS_EXTENSION_ID]: {} }),\n",
+      "replace": ""
+    },
+    {
       "name": "a cached verdict is not handed to the SDK, so every connect probes again",
       "find": "        .connect(transport, plan.prior ? { prior: plan.prior } : undefined)\n",
       "replace": "        .connect(transport, undefined)\n"

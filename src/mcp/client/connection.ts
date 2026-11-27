@@ -6,6 +6,7 @@ import {
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
+import { SKILLS_EXTENSION_ID } from '@modelcontextprotocol/client/ext/skills'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { type Tool } from 'src/tools/Tool.js'
@@ -256,6 +257,7 @@ export const connectToServer = memoize(
       }
 
       const extensions = {
+        ...(getMcpExtensionEnabled(serverRef, 'skills') && { [SKILLS_EXTENSION_ID]: {} }),
         ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),
         ...(getMcpExtensionEnabled(serverRef, 'events') && { [MCP_EVENTS_EXTENSION]: {} }),
       }
@@ -268,11 +270,12 @@ export const connectToServer = memoize(
             // url; the 2025 initialize goes out as {} (SEND_RULES in
             // wireRules.ts), which Spring AI servers accept.
             elicitation: { form: {}, url: {} },
-            // A server may answer a tools/call with a task only from a client
-            // that declares the extension (taskPoll.ts), and offers events
-            // only to one that declares that one (events.ts). The 2025
-            // initialize drops both with the rest (SEND_RULES), as they exist
-            // only in 2026-07-28.
+            // Every extension Claudin runs is declared: a server may answer a
+            // tools/call with a task only from a client that declares tasks
+            // (taskPoll.ts), offers events only to one that declares events
+            // (events.ts), and skills are declared because Claudin loads them
+            // (mcpSkills.ts). The 2025 initialize drops them with the rest
+            // (SEND_RULES), as extensions exist only in 2026-07-28.
             ...(Object.keys(extensions).length > 0 && { extensions }),
           },
           versionNegotiation:
