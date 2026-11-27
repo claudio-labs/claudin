@@ -46,15 +46,11 @@ function entryName(entry: unknown): string | undefined {
   return isRecord(entry) && typeof entry.name === 'string' ? entry.name : undefined
 }
 
-type EntrySchema<T> = {
-  safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: z.core.$ZodError }
-}
-
 // Parse one entry. A failure confined to the droppable fields drops them and
 // parses again (zod reports every issue at once, so one drop is enough); a
 // failure anywhere else skips the entry.
 function parseEntry<T>(
-  schema: EntrySchema<T>,
+  schema: z.ZodType<T>,
   entry: Record<string, unknown>,
   droppable: ReadonlySet<string>,
 ): { ok: true; value: T } | { ok: false; skipped: SkippedEntry } {
@@ -70,11 +66,13 @@ function parseEntry<T>(
   return { ok: false, skipped: { name: entryName(entry), reason } }
 }
 
+type Normalized = { entry: Record<string, unknown> } | { skip: string }
+
 function keepValid<T>(
   raw: readonly unknown[],
-  schema: EntrySchema<T>,
+  schema: z.ZodType<T>,
   droppable: ReadonlySet<string>,
-  normalize: (entry: Record<string, unknown>) => Record<string, unknown> | string = entry => entry,
+  normalize: (entry: Record<string, unknown>) => Normalized = entry => ({ entry }),
 ): ValidatedList<T> {
   const items: T[] = []
   const skipped: SkippedEntry[] = []
@@ -84,11 +82,11 @@ function keepValid<T>(
       continue
     }
     const normalized = normalize(entry)
-    if (typeof normalized === 'string') {
-      skipped.push({ name: entryName(entry), reason: normalized })
+    if ('skip' in normalized) {
+      skipped.push({ name: entryName(entry), reason: normalized.skip })
       continue
     }
-    const parsed = parseEntry(schema, normalized, droppable)
+    const parsed = parseEntry(schema, normalized.entry, droppable)
     if (parsed.ok) items.push(parsed.value)
     else skipped.push(parsed.skipped)
   }
@@ -103,35 +101,39 @@ const RESOURCE_DROPPABLE = new Set(['title', 'description', 'mimeType', 'annotat
 // JSON Schema metaschema, so a wrong-typed `properties` or `required` there is
 // dropped rather than sent; nested property schemas are left as the server
 // wrote them (as opencode does, packages/core/src/mcp/client.ts).
-function normalizeTool(entry: Record<string, unknown>): Record<string, unknown> | string {
-  if (typeof entry.name !== 'string' || entry.name === '') return 'name is not a non-empty string'
+function normalizeTool(entry: Record<string, unknown>): Normalized {
+  if (typeof entry.name !== 'string' || entry.name === '') return { skip: 'name is not a non-empty string' }
   const inputSchema = entry.inputSchema
-  if (!isRecord(inputSchema)) return 'inputSchema is not an object'
-  if (inputSchema.type !== undefined && inputSchema.type !== 'object') return 'inputSchema type is not "object"'
+  if (!isRecord(inputSchema)) return { skip: 'inputSchema is not an object' }
+  if (inputSchema.type !== undefined && inputSchema.type !== 'object') {
+    return { skip: 'inputSchema type is not "object"' }
+  }
   const { properties, required, ...rest } = inputSchema
   return {
-    ...entry,
-    inputSchema: {
-      ...rest,
-      type: 'object',
-      ...(isRecord(properties) ? { properties } : {}),
-      ...(Array.isArray(required) && required.every(key => typeof key === 'string') ? { required } : {}),
+    entry: {
+      ...entry,
+      inputSchema: {
+        ...rest,
+        type: 'object',
+        ...(isRecord(properties) ? { properties } : {}),
+        ...(Array.isArray(required) && required.every(key => typeof key === 'string') ? { required } : {}),
+      },
     },
   }
 }
 
 export function keepValidTools(raw: readonly unknown[]): ValidatedList<Tool> {
-  return keepValid(raw, ToolSchema as unknown as EntrySchema<Tool>, TOOL_DROPPABLE, normalizeTool)
+  return keepValid(raw, ToolSchema, TOOL_DROPPABLE, normalizeTool)
 }
 
 export function keepValidPrompts(raw: readonly unknown[]): ValidatedList<Prompt> {
-  return keepValid(raw, PromptSchema as unknown as EntrySchema<Prompt>, PROMPT_DROPPABLE)
+  return keepValid(raw, PromptSchema, PROMPT_DROPPABLE)
 }
 
 export function keepValidResources(raw: readonly unknown[]): ValidatedList<Resource> {
-  return keepValid(raw, ResourceSchema as unknown as EntrySchema<Resource>, RESOURCE_DROPPABLE)
+  return keepValid(raw, ResourceSchema, RESOURCE_DROPPABLE)
 }
 
 export function keepValidResourceTemplates(raw: readonly unknown[]): ValidatedList<ResourceTemplate> {
-  return keepValid(raw, ResourceTemplateSchema as unknown as EntrySchema<ResourceTemplate>, RESOURCE_DROPPABLE)
+  return keepValid(raw, ResourceTemplateSchema, RESOURCE_DROPPABLE)
 }

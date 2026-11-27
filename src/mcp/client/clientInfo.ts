@@ -5,8 +5,7 @@ import type { Implementation } from '@modelcontextprotocol/sdk/types.js'
  *
  * `name` stays `claude-code` on purpose: a server may key behavior or an
  * allowlist on it, so it is a compatibility value. The description and the
- * site used to say "Anthropic's agentic coding tool" and claude.com, which
- * told every third-party server something untrue; they describe Claudin now.
+ * site are Claudin's own.
  */
 export function getMcpClientInfo(): Implementation {
   return {
