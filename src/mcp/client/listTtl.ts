@@ -143,6 +143,26 @@ export function getListRecords(): ReadonlyMap<string, ListTtlRecord> {
   return records
 }
 
+/**
+ * Puts `previous` back as the list's record while `fetched` is still the one
+ * held: a refresh whose AppState write was dropped left the old entries
+ * there, and only the old hash says so — the new one would make the next
+ * refresh find the list unchanged and never write it. The old record is also
+ * due again, so that next refresh is the next turn's. A record a later fetch
+ * wrote (a reconnect's) is kept.
+ */
+export function revertListRecord(
+  server: string,
+  kind: McpListKind,
+  fetched: ListTtlRecord,
+  previous: ListTtlRecord | undefined,
+): void {
+  const key = listKey(server, kind)
+  if (records.get(key) !== fetched) return
+  if (previous === undefined) records.delete(key)
+  else records.set(key, previous)
+}
+
 export function markListRefreshFailed(server: string, kind: McpListKind, now: number): void {
   const key = listKey(server, kind)
   const record = records.get(key)

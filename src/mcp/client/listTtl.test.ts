@@ -14,6 +14,7 @@ import {
   readTtlMs,
   recordListFetch,
   resetListTtlRecordsForTests,
+  revertListRecord,
   withFailedRefresh,
 } from 'src/mcp/client/listTtl.js'
 
@@ -143,5 +144,19 @@ describe('the records', () => {
     expect(getListRecord('srv', 'prompts')).toMatchObject({ failures: 1, failedAt: T0 + 5 })
     markListRefreshFailed('srv', 'resources', T0)
     expect(getListRecord('srv', 'resources')).toBeUndefined()
+  })
+
+  test('a revert puts the old record back, unless a later fetch replaced the one it reverts', () => {
+    recordListFetch('srv', 'tools', { ttlMs: 1 }, [{ name: 'old' }], T0, 0)
+    const previous = getListRecord('srv', 'tools')!
+    recordListFetch('srv', 'tools', { ttlMs: 1 }, [{ name: 'new' }], T0 + 1, 0)
+    const fetched = getListRecord('srv', 'tools')!
+    revertListRecord('srv', 'tools', fetched, previous)
+    expect(getListRecord('srv', 'tools')).toBe(previous)
+
+    recordListFetch('srv', 'tools', { ttlMs: 1 }, [{ name: 'new' }], T0 + 2, 0)
+    const reconnected = getListRecord('srv', 'tools')!
+    revertListRecord('srv', 'tools', fetched, previous)
+    expect(getListRecord('srv', 'tools')).toBe(reconnected)
   })
 })

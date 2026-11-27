@@ -6,6 +6,12 @@
  * list must leave the pool's objects alone, or the next request rewrites the
  * cached prefix for nothing (cache.md §5).
  *
+ * The lists of one server that changed go to AppState in one write: each
+ * write replaces the server's client object, so a second one would find it
+ * moved and be dropped. A write that is dropped anyway (the server
+ * reconnected, or another write landed first) puts the old record back
+ * (revertListRecord), so the next turn reads the list again.
+ *
  * The turn waits at most LIST_TTL_REFRESH_BUDGET_MS. A read still running then
  * goes on and lands when it answers, as a list_changed refresh would; a read
  * that fails keeps the list AppState has and backs off (listTtl.ts).
@@ -25,9 +31,11 @@ import {
   getListRecord,
   getListRecords,
   listKey,
+  type ListTtlRecord,
   type ListTtlServer,
   markListRefreshFailed,
   type McpListKind,
+  revertListRecord,
 } from 'src/mcp/client/listTtl.js'
 import type { ConnectedMCPServer, MCPServerConnection } from 'src/mcp/types.js'
 import { applyServerUpdate, type McpServerUpdate } from 'src/mcp/useManageMCPConnections.js'
@@ -41,7 +49,7 @@ type McpState = AppState['mcp']
 
 export type ListTtlRefreshDeps = {
   getMcp: () => McpState
-  /** Applied only when a list changed. */
+  /** Applied only when a list changed; runs `update` before it returns, as the AppState store does. */
   setMcp: (update: (mcp: McpState) => McpState) => void
   now?: () => number
   budgetMs?: number
@@ -97,42 +105,71 @@ function ttlServer(client: ConnectedMCPServer): ListTtlServer {
   }
 }
 
-async function refreshList(
+type ChangedList = {
+  kind: McpListKind
+  lists: RefreshedLists
+  before: ListTtlRecord | undefined
+  after: ListTtlRecord
+}
+
+/** Reads one due list; resolves to what changed, or to undefined. */
+async function readList(
   client: ConnectedMCPServer,
   kind: McpListKind,
-  deps: ListTtlRefreshDeps,
   now: () => number,
-): Promise<void> {
-  const key = listKey(client.name, kind)
-  inFlight.add(key)
+): Promise<ChangedList | undefined> {
   const before = getListRecord(client.name, kind)
   try {
-    const refresher = REFRESHERS[kind]
-    const lists = await refresher.read(client)
+    const lists = await REFRESHERS[kind].read(client)
     const after = getListRecord(client.name, kind)
     // The fetchers answer a failed read with an empty list and record
     // nothing; the record not moving is the failure.
-    if (after === before) {
+    if (after === undefined || after === before) {
       markListRefreshFailed(client.name, kind, now())
       logMCPDebug(client.name, `${kind} list refresh on TTL failed; keeping the list already loaded`)
-      return
+      return undefined
     }
-    if (after?.hash === before?.hash) {
+    if (after.hash === before?.hash) {
       logMCPDebug(client.name, `${kind} list refreshed on TTL, unchanged`)
-      return
+      return undefined
     }
     logMCPDebug(client.name, `${kind} list refreshed on TTL, changed`)
-    refresher.changed?.(client)
-    deps.setMcp(mcp => {
-      // A reconnect in the meantime brought its own lists.
-      const current = mcp.clients.find(c => c.name === client.name)
-      return current === client ? applyServerUpdate(mcp, { ...client, ...lists }) : mcp
-    })
+    return { kind, lists, before, after }
   } catch (error) {
     markListRefreshFailed(client.name, kind, now())
     logMCPDebug(client.name, `${kind} list refresh on TTL failed: ${errorMessage(error)}`)
+    return undefined
+  }
+}
+
+/** Reads the due lists of one server, and writes the ones that changed in one AppState write. */
+async function refreshServer(
+  client: ConnectedMCPServer,
+  kinds: readonly McpListKind[],
+  deps: ListTtlRefreshDeps,
+  now: () => number,
+): Promise<void> {
+  const keys = kinds.map(kind => listKey(client.name, kind))
+  for (const key of keys) inFlight.add(key)
+  try {
+    const reads = await Promise.all(kinds.map(kind => readList(client, kind, now)))
+    const changed = reads.filter((read): read is ChangedList => read !== undefined)
+    if (changed.length === 0) return
+    for (const { kind } of changed) REFRESHERS[kind].changed?.(client)
+    const lists = changed.reduce<RefreshedLists>((all, read) => ({ ...all, ...read.lists }), {})
+    let applied = false
+    deps.setMcp(mcp => {
+      // A reconnect in the meantime brought its own lists.
+      const current = mcp.clients.find(c => c.name === client.name)
+      if (current !== client) return mcp
+      applied = true
+      return applyServerUpdate(mcp, { ...client, ...lists })
+    })
+    if (!applied) {
+      for (const read of changed) revertListRecord(client.name, read.kind, read.after, read.before)
+    }
   } finally {
-    inFlight.delete(key)
+    for (const key of keys) inFlight.delete(key)
   }
 }
 
@@ -146,7 +183,15 @@ export async function refreshExpiredMcpLists(deps: ListTtlRefreshDeps): Promise<
   if (due.length === 0) return
 
   const byName = new Map(clients.map(client => [client.name, client]))
-  const work = Promise.all(due.map(list => refreshList(byName.get(list.server)!, list.kind, deps, now)))
+  const kindsByServer = new Map<string, McpListKind[]>()
+  for (const list of due) {
+    const kinds = kindsByServer.get(list.server) ?? []
+    kinds.push(list.kind)
+    kindsByServer.set(list.server, kinds)
+  }
+  const work = Promise.all(
+    [...kindsByServer].map(([server, kinds]) => refreshServer(byName.get(server)!, kinds, deps, now)),
+  )
   const budgetMs = deps.budgetMs ?? LIST_TTL_REFRESH_BUDGET_MS
   let timer: ReturnType<typeof setTimeout> | undefined
   const expired = new Promise<'expired'>(resolve => {
