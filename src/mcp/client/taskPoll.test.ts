@@ -305,9 +305,10 @@ describe('pollTask', () => {
     expect(calls).toEqual(['t9'])
   })
 
-  test('a failing tasks/get or tasks/update that is not an abort is thrown', async () => {
+  test('a failing tasks/get or tasks/update that is not an abort cancels the task, then is thrown', async () => {
     const gone = script([new Error('-32602 unknown task')])
     await expect(pollTask(startTaskPoll(working, 0), gone.deps, { signal: signal() })).rejects.toThrow('unknown task')
+    expect(gone.log).toEqual(['sleep 1000', 'get t1', 'cancel t1'])
 
     const input: McpTask = { ...working, status: 'input_required', inputRequests: { a: ask } }
     const refused = script([], {
@@ -316,5 +317,14 @@ describe('pollTask', () => {
       },
     })
     await expect(pollTask(startTaskPoll(input, 0), refused.deps, { signal: signal() })).rejects.toThrow('bad responses')
+    expect(refused.log).toEqual(['ask a', 'cancel t1'])
+
+    // The cancel is best effort: its own failure leaves the poll's error standing.
+    const both = script([new Error('-32603 backend down')], {
+      cancelTask: async () => {
+        throw new Error('cancel refused')
+      },
+    })
+    await expect(pollTask(startTaskPoll(working, 0), both.deps, { signal: signal() })).rejects.toThrow('backend down')
   })
 })

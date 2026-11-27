@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { ProtocolError } from '@modelcontextprotocol/client'
 import { z } from 'zod/v4'
 import { runWithAgentContext } from 'src/agent/coordinator/agentContext.js'
 import { stopMonitorMcpTask } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js'
@@ -131,12 +132,17 @@ function world() {
   return { get: () => state, setAppState }
 }
 
-/** A fake clock that each sleep advances, plus a monitor_mcp registry on fake disk and queue. */
+/**
+ * A fake clock that each sleep advances, plus a monitor_mcp registry on fake
+ * disk and queue. `exits` holds the call's own exit cleanups, never the
+ * process's real registry.
+ */
 function harness(over: Partial<McpTaskCallDeps> = {}) {
   let clock = 1_000_000
   const output: string[] = []
   const queued: QueuedCommand[] = []
   const registered: RegisterMonitorMcpTaskInput[] = []
+  const exits: Array<() => Promise<void>> = []
   const monitorDeps: MonitorMcpTaskDeps = {
     initOutput: async () => undefined,
     appendOutput: (_id, text) => output.push(text),
@@ -156,9 +162,16 @@ function harness(over: Partial<McpTaskCallDeps> = {}) {
       registered.push(input)
       return registerMonitorMcpTask(input, monitorDeps)
     },
+    registerCleanup: cleanup => {
+      exits.push(cleanup)
+      return () => {
+        const at = exits.indexOf(cleanup)
+        if (at >= 0) exits.splice(at, 1)
+      }
+    },
     ...over,
   }
-  return { deps, output, queued, registered }
+  return { deps, output, queued, registered, exits }
 }
 
 function call(
@@ -186,7 +199,7 @@ describe('a 2026-07-28 task-augmented tool call', () => {
     const { modern, seen } = serveTasks(gets => (gets < 3 ? { status: 'working', statusMessage: `step ${gets}` } : DONE))
     const connection = await connect('tasks-inline', { type: 'http', url: modern.url, scope: 'user' })
     expect(connection.client.getProtocolEra()).toBe('modern')
-    const { deps, registered } = harness()
+    const { deps, registered, exits } = harness()
     const progress: string[] = []
 
     const result = await call(connection, world(), deps, undefined, {
@@ -197,6 +210,7 @@ describe('a 2026-07-28 task-augmented tool call', () => {
     expect(seen.gets).toBe(3)
     expect(progress).toEqual(['step 1', 'step 2'])
     expect(registered).toEqual([])
+    expect(exits).toEqual([])
     const capabilities = JSON.stringify(seen.call?._meta)
     expect(capabilities).toContain('io.modelcontextprotocol/tasks')
   })
@@ -289,11 +303,13 @@ describe('a 2026-07-28 task-augmented tool call', () => {
     const { modern, seen } = serveTasks(() => (finished ? DONE : { status: 'working', statusMessage: 'crawling' }))
     const connection = await connect('tasks-bg', { type: 'http', url: modern.url, scope: 'user' })
     const box = world()
-    const { deps, output, queued, registered } = harness()
+    const { deps, output, queued, registered, exits } = harness()
 
     const result = await call(connection, box, deps)
 
     expect(registered).toHaveLength(1)
+    // The monitor_mcp task owns the exit stop from here.
+    expect(exits).toEqual([])
     expect(registered[0]).toMatchObject({ kind: 'call', serverName: 'tasks-bg', description: 'longjob', toolUseId: 'toolu_task' })
     const taskId = Object.keys(box.get().tasks)[0]!
     const row = box.get().tasks[taskId] as unknown as { status: string; statusMessage?: string; outputFile: string }
@@ -444,6 +460,136 @@ describe('a 2026-07-28 task-augmented tool call', () => {
     // Backgrounded at 2 s: polls at 1 s (the floor) and at 2 s.
     expect(seen.gets).toBe(2)
     await stopMonitorMcpTask(Object.keys(box.get().tasks)[0]!, box.setAppState)
+  })
+})
+
+const methods = (server: RawMcpServer) => server.requests.map(r => r.method)
+const WORKING_TASK = { resultType: 'task', ...BASE, status: 'working', pollIntervalMs: 10 }
+
+describe('a task-augmented call that goes wrong', () => {
+  test('a tasks/get error on the inline poll cancels the task before failing the call', async () => {
+    raw = await connectRawMcpServer('tasks-get-error', {
+      capabilities: { tools: {} },
+      answers: {
+        'tools/call': () => WORKING_TASK,
+        'tasks/get': () => {
+          throw new ProtocolError(-32603, 'backend hiccup')
+        },
+        'tasks/cancel': () => ({ ...BASE, status: 'cancelled' }),
+      },
+    })
+    const error = await call(raw.connection, world(), harness().deps).catch((e: unknown) => e)
+    expect((error as Error).message).toContain('backend hiccup')
+    expect(methods(raw)).toEqual(['tools/call', 'tasks/get', 'tasks/cancel'])
+  })
+
+  test('a tasks/get error in the background cancels the task and fails the monitor_mcp task', async () => {
+    let failing = false
+    raw = await connectRawMcpServer('tasks-bg-get-error', {
+      capabilities: { tools: {} },
+      answers: {
+        'tools/call': () => WORKING_TASK,
+        'tasks/get': () => {
+          if (failing) throw new ProtocolError(-32603, 'backend hiccup')
+          return { ...BASE, status: 'working' }
+        },
+        'tasks/cancel': () => ({ ...BASE, status: 'cancelled' }),
+      },
+    })
+    const box = world()
+    const { deps, queued } = harness()
+    await call(raw.connection, box, deps)
+    expect(Object.keys(box.get().tasks)).toHaveLength(1)
+    failing = true
+    await waitUntil(() => queued.length === 1, 'the failed notification')
+    expect(String(queued[0]!.value)).toContain('<status>failed</status>')
+    expect(methods(raw).filter(m => m === 'tasks/cancel')).toHaveLength(1)
+  })
+
+  test('without a background, a tasks/get that never answers ends at the tool timeout, cancelled', async () => {
+    raw = await connectRawMcpServer(
+      'tasks-silent-get',
+      {
+        capabilities: { tools: {} },
+        answers: {
+          'tools/call': () => WORKING_TASK,
+          'tasks/get': () => new Promise(() => {}),
+          'tasks/cancel': () => ({ ...BASE, status: 'cancelled' }),
+        },
+      },
+      { type: 'sdk', name: 'tasks-silent-get', scope: 'local', toolTimeout: 1_500 } as ScopedMcpServerConfig,
+    )
+    const controller = new AbortController()
+    // The real clock and sleep, as `-p` runs it; only the exit registry is fake.
+    const { deps, exits } = harness()
+    const pending = call(
+      raw.connection,
+      world(),
+      { isBackgroundHidden: () => true, registerCleanup: deps.registerCleanup },
+      controller.signal,
+    )
+    const outcome = await Promise.race([
+      pending.then(
+        () => 'resolved',
+        (e: unknown) => (e as Error).message,
+      ),
+      new Promise<string>(resolve => setTimeout(() => resolve('still pending at 6 s'), 6_000)),
+    ])
+    const cancels = methods(raw).filter(m => m === 'tasks/cancel').length
+    // Release a poll that is still hung, so nothing outlives the test.
+    controller.abort()
+    await pending.catch(() => {})
+    expect(outcome).toBe('MCP server "tasks-silent-get" tool "longjob" timed out after 1s')
+    expect(cancels).toBe(1)
+    expect(exits).toEqual([])
+  }, 15_000)
+
+  test('process exit during the inline window sends tasks/cancel once, and the exit hook goes with the call', async () => {
+    raw = await connectRawMcpServer('tasks-exit-inline', {
+      capabilities: { tools: {} },
+      answers: {
+        'tools/call': () => WORKING_TASK,
+        'tasks/get': () => ({ ...BASE, status: 'working' }),
+        'tasks/cancel': () => ({ ...BASE, status: 'cancelled' }),
+      },
+    })
+    const controller = new AbortController()
+    // The real 120 s window on a real clock; the exit comes inside it.
+    const { deps, exits } = harness({
+      inlineMs: () => 120_000,
+      now: () => Date.now(),
+      sleep: (ms, signal) =>
+        new Promise<void>(resolve => {
+          const timer = setTimeout(resolve, Math.min(ms, 50))
+          signal.addEventListener('abort', () => (clearTimeout(timer), resolve()), { once: true })
+        }),
+    })
+    const pending = call(raw.connection, world(), deps, controller.signal)
+    await waitUntil(() => methods(raw!).includes('tasks/get'), 'the first poll')
+    // What gracefulShutdown does: run every registered cleanup. An exit
+    // (SIGTERM, SIGHUP, a second Ctrl+C) does not abort the turn's signal.
+    await Promise.all(exits.map(cleanup => cleanup()))
+    const cancelsAtExit = methods(raw).filter(m => m === 'tasks/cancel').length
+    controller.abort()
+    await pending.catch(() => {})
+    expect(cancelsAtExit).toBe(1)
+    expect(methods(raw).filter(m => m === 'tasks/cancel')).toHaveLength(1)
+    expect(exits).toEqual([])
+  })
+
+  test('a task answer without a taskId is a tool error naming it, not an empty success', async () => {
+    raw = await connectRawMcpServer('tasks-bad-marker', {
+      capabilities: { tools: {} },
+      answers: { 'tools/call': () => ({ resultType: 'task', status: 'working', ttlMs: 60_000 }) },
+    })
+    const outcome = await call(raw.connection, world(), harness().deps).then(
+      result => ({ resolved: result.content }),
+      (e: unknown) => ({ rejected: (e as Error).message }),
+    )
+    expect(outcome).toEqual({
+      rejected: 'MCP server "tasks-bad-marker" tool "longjob" answered with a task that has no taskId or status',
+    })
+    expect(methods(raw)).toEqual(['tools/call'])
   })
 })
 
