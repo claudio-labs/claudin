@@ -26,13 +26,12 @@ first-party Anthropic OAuth, where the backend inspects them. Gate on
 `isFirstPartyAnthropicBaseUrl()`, never on a provider tag — see
 [[provider-tag-not-anthropic-includes-cloud]].
 
-**Still upstream-spelled on the MCP wire (found 2026-09-15, NOT fixed).**
-`src/mcp/client/connection.ts:189` and `sdkClients.ts:38` announce
-`name: 'claude-code'`, `description: "Anthropic's agentic coding tool"` and a
-`websiteUrl` of claude.com to **every third-party MCP server** — only `title` says
-Claudin. It is a half-done rename, not a deliberate lane like the OAuth one
-above, but changing `name` could break a server that allowlists clients, so it
-needs a decision rather than a sweep. The server side was fixed in the same
+**MCP wire identity (found 2026-09-15, decided 2026-11-26).** Both MCP clients
+used to announce `description: "Anthropic's agentic coding tool"` and a claude.com
+`websiteUrl` to every third-party server. They now share `getMcpClientInfo()`
+(`src/mcp/client/clientInfo.ts`), which describes Claudin. `name: 'claude-code'`,
+the `claude-code/<ver>` User-Agent and the claude.ai CIMD client id were kept on
+purpose, since a server may allowlist on them ([[opencode-mcp-ports]]). The server side was fixed in the same
 round: `mcp serve` used to introduce itself as `claude/<codename>`
 (`src/platform/entrypoints/mcp.ts:87`).
 

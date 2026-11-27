@@ -45,8 +45,9 @@ fixing one means changing its test on purpose, in its own `fix(…)` commit.
   the replay loop), skipping a backoff step; `close()` leaves the state `closing`, never
   `closed`; Bun has no upgrade headers, so it never evicts confirmed messages and every
   reconnect resends up to 1000.
-- **MCP WebSocketTransport**: `onclose` fires twice on Bun when `close()` closes an open
-  socket; the `sse` transport spreads `init.headers` (a `Headers`) and loses the SDK's.
+- **MCP WebSocketTransport — FIXED 2026-11-26** ([[opencode-mcp-ports]]): `onclose` fired
+  twice on Bun when `close()` closed an open socket; the `sse` transport spread
+  `init.headers` (a `Headers`) and lost the SDK's `mcp-protocol-version`.
 - **direct connect**: `{"type":"control_request"}` with no `request` throws inside the
   handler and the rest of that frame's lines are lost; a second `connect()` leaks the
   first socket.

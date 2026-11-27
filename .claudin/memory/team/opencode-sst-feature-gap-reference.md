@@ -51,3 +51,5 @@ type: reference
 **2026-11-12 round ([[sibling-ports-2026-11]]):**
 - Ported: the context-overflow phrases plus exclusions (from `packages/ai/src/provider-error.ts`) and the `.env` read ask, extended to the Bash and PowerShell gates.
 - Measured and dropped: tool-input repair (1 wrong-type rejection in ~21k uses), Read on a directory, formatter-on-write, cross-pending (claudin already has it) and doom_loop (gone upstream).
+
+**2026-11-26 MCP round ([[opencode-mcp-ports]]):** opencode's MCP lives in `packages/core/src/mcp/` (~4.6k lines, `@modelcontextprotocol/client` 2.4.0). Ported mcp login/logout, per-server timeouts and cwd, resource templates and the connect retry; the SDK v2 / 2026-07-28 protocol stays for its own plan.
