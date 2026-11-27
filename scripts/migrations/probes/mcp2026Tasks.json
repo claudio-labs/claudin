@@ -117,6 +117,16 @@
       "source": "src/mcp/client/taskPoll.ts",
       "find": "          if (signal.aborted) return cancelled(state, deps)\n          return abandoned(state, deps, error)\n",
       "replace": "          if (signal.aborted) return cancelled(state, deps)\n          throw error\n"
+    },
+    {
+      "name": "call: process exit during the inline window sends no tasks/cancel",
+      "find": "    inlineStop.abort()\n    return stopWithin(",
+      "replace": "    return stopWithin("
+    },
+    {
+      "name": "call: the inline exit hook outlives the call",
+      "find": "    unregisterExit()\n",
+      "replace": ""
     }
   ]
 }

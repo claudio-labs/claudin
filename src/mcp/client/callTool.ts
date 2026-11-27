@@ -58,6 +58,9 @@ import {
   registerMonitorMcpTask,
   type RegisterMonitorMcpTaskInput,
 } from 'src/agent/tasks/MonitorMcpTask/registerMonitorMcpTask.js'
+import { stopWithin } from 'src/agent/tasks/MonitorMcpTask/controllers.js'
+import { MONITOR_MCP_STOP_BUDGET_MS } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { sleep } from 'src/shared/sleep.js'
 
 /**
@@ -552,6 +555,8 @@ export type McpTaskCallDeps = {
   /** True where nothing may run in the background: `-p`, CLAUDIN_DISABLE_BACKGROUND_TASKS. */
   isBackgroundHidden: () => boolean
   registerTask: (input: RegisterMonitorMcpTaskInput) => MonitorMcpTaskHandle
+  /** The process-exit hook of the inline poll; the monitor_mcp task has its own. */
+  registerCleanup: (cleanup: () => Promise<void>) => () => void
 }
 
 const defaultTaskCallDeps: McpTaskCallDeps = {
@@ -560,6 +565,7 @@ const defaultTaskCallDeps: McpTaskCallDeps = {
   inlineMs: () => MCP_TASK_INLINE_MS,
   isBackgroundHidden: isRunInBackgroundHidden,
   registerTask: input => registerMonitorMcpTask(input),
+  registerCleanup,
 }
 
 type TaskCallContext = {
@@ -763,7 +769,11 @@ export async function runTaskAugmentedCall({
     deps.now() + (mayBackground ? inlineTaskBudgetMs(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)
   const io = taskPollIO(context, task.taskId)
 
-  const inline = await pollTask(
+  // An exit does not abort the turn's signal, so the inline poll has its own
+  // stop: the poll then sends the one tasks/cancel, and the exit waits for
+  // it as it waits for a monitor_mcp task's.
+  const inlineStop = new AbortController()
+  const inlinePoll = pollTask(
     state,
     {
       ...io,
@@ -776,8 +786,19 @@ export async function runTaskAugmentedCall({
           progressMessage: message,
         }),
     },
-    { signal, stopAt },
+    { signal: AbortSignal.any([signal, inlineStop.signal]), stopAt },
   )
+  const unregisterExit = deps.registerCleanup(() => {
+    inlineStop.abort()
+    return stopWithin(() => inlinePoll.then(() => {}, () => {}), MONITOR_MCP_STOP_BUDGET_MS)
+  })
+  let inline: TaskPollOutcome
+  try {
+    inline = await inlinePoll
+  } finally {
+    // Settled or about to be handed off: the monitor_mcp task stops it at exit from here.
+    unregisterExit()
+  }
   if (inline.kind !== 'pending') return taskOutcomeResult(inline, name, tool)
   if (!mayBackground) {
     await cancelPolledTask(task.taskId, io)
