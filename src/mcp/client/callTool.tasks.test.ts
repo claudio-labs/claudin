@@ -440,6 +440,9 @@ describe('a 2026-07-28 task-augmented tool call', () => {
       call(connection, world(), sub.deps),
     ).catch((e: unknown) => e)
     expect((error as Error).message).toBe('MCP server "tasks-sub-timeout" tool "longjob" timed out after 3s')
+    // Ended by the poll's own deadline on the fake clock (polls at 1 s and
+    // 3 s), not by the real-time cut the hung-request case relies on.
+    expect(seen.gets).toBe(2)
     expect(seen.cancels).toHaveLength(1)
     expect(seen.cancels[0]).toMatchObject({ taskId: 'srv-task-1' })
     expect(sub.registered).toEqual([])
