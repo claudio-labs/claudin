@@ -9,7 +9,8 @@
     "src/mcp/client/connection.cover.test.ts",
     "src/mcp/client/connection.negotiation.test.ts",
     "src/mcp/client/connection.urlElicitation.test.ts",
-    "src/mcp/useManageMCPConnections.listen.test.tsx"
+    "src/mcp/useManageMCPConnections.listen.test.tsx",
+    "src/mcp/useManageMCPConnections.cover.test.tsx"
   ],
   "source": "src/mcp/client/connection.ts",
   "probes": [
@@ -96,6 +97,12 @@
       "name": "the hook never opens the listen stream, so list_changed never reaches it on a modern server",
       "source": "src/mcp/useManageMCPConnections.ts",
       "find": "          startMcpSubscriptions(client.name, client.client)\n",
+      "replace": ""
+    },
+    {
+      "name": "/mcp reconnect keeps the era verdict, so the server's new capabilities wait out the TTL",
+      "source": "src/mcp/useManageMCPConnections.ts",
+      "find": "      await dropEraVerdict(getEraCacheKey(serverName, client.config))\n",
       "replace": ""
     },
     {

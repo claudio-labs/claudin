@@ -47,6 +47,7 @@ import {
   fetchClaudeAIMcpConfigsIfEligible,
 } from 'src/mcp/claudeai.js'
 import { registerElicitationHandler } from 'src/mcp/elicitationHandler.js'
+import { dropEraVerdict, getEraCacheKey } from 'src/mcp/client/eraCache.js'
 import { startMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
 import {
@@ -866,6 +867,11 @@ export function useManageMCPConnections(
       // Dialling on purpose takes back a session disconnect — otherwise the
       // server comes up now and then never auto-reconnects again.
       clearSessionDisconnected(serverName)
+
+      // A reconnect the user asked for probes the server again (the automatic
+      // retry keeps the cache): a cached verdict replays the capabilities it
+      // was saved with, so one the server just gained would wait out the TTL.
+      await dropEraVerdict(getEraCacheKey(serverName, client.config))
 
       const result = await reconnectMcpServerImpl(serverName, client.config)
 
