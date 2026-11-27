@@ -166,7 +166,9 @@ describe('a resource that moved to another authorization server', () => {
     code_challenge_methods_supported: ['S256'],
   })
 
-  test('re-authorization follows the resource to the new server and its client', async () => {
+  // Re-authorizes with stored state from a login against AS-A, while the
+  // resource's metadata names `listed`. Returns where authorize went.
+  async function reauthorize(listed: string[]): Promise<{ authorizeOrigin: string; clientId: string | null }> {
     const config: McpHTTPServerConfig = { type: 'http', url: SERVER_URL }
     const key = getServerKey(SERVER_NAME, config)
     // An earlier login against AS-A: its discovery state and a client stamped
@@ -199,9 +201,8 @@ describe('a resource that moved to another authorization server', () => {
 
     const fetchFn = async (input: string | URL): Promise<Response> => {
       const url = String(input)
-      // The resource's protected-resource metadata now names AS-B only.
       if (url.includes('/.well-known/oauth-protected-resource')) {
-        return Response.json({ resource: SERVER_URL, authorization_servers: [AS_B] })
+        return Response.json({ resource: SERVER_URL, authorization_servers: listed })
       }
       if (url.startsWith(AS_A) && url.includes('/.well-known/')) return Response.json(asMetadata(AS_A))
       if (url.startsWith(AS_B) && url.includes('/.well-known/')) return Response.json(asMetadata(AS_B))
@@ -211,12 +212,20 @@ describe('a resource that moved to another authorization server', () => {
       return new Response('not found', { status: 404 })
     }
 
+    // The provider checks the recorded server against the resource's metadata
+    // with its own fetch, so the fake network answers it too.
+    spyOn(globalThis, 'fetch').mockImplementation(((input: string | URL) => fetchFn(input)) as typeof fetch)
     const provider = new ClaudeAuthProvider(SERVER_NAME, config, 'http://localhost:54321/callback')
     expect(await auth(provider, { serverUrl: SERVER_URL, fetchFn })).toBe('REDIRECT')
     const authorizeUrl = new URL(provider.authorizationUrl!)
-    expect({
-      authorizeOrigin: `${authorizeUrl.origin}/`,
-      clientId: authorizeUrl.searchParams.get('client_id'),
-    }).toEqual({ authorizeOrigin: AS_B, clientId: 'client-registered-at-b' })
+    return { authorizeOrigin: `${authorizeUrl.origin}/`, clientId: authorizeUrl.searchParams.get('client_id') }
+  }
+
+  test('control: a resource still naming the recorded server keeps it and its client', async () => {
+    expect(await reauthorize([AS_A])).toEqual({ authorizeOrigin: AS_A, clientId: 'client-registered-at-a' })
+  })
+
+  test('re-authorization follows the resource to the new server and its client', async () => {
+    expect(await reauthorize([AS_B])).toEqual({ authorizeOrigin: AS_B, clientId: 'client-registered-at-b' })
   })
 })
