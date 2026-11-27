@@ -68,6 +68,7 @@ import { splitPromptArguments } from 'src/mcp/client/promptArguments.js'
 import { isSchemaError, type SkippedEntry } from 'src/mcp/client/listValidation.js'
 import { recordListFetch } from 'src/mcp/client/listTtl.js'
 import { attachWireFilter } from 'src/mcp/client/wireFilter.js'
+import { SEND_RULES } from 'src/mcp/client/wireRules.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
@@ -83,9 +84,19 @@ function logSkippedEntries(server: string, kind: string, skipped: SkippedEntry[]
  * The wire filter every MCP connection goes through before `client.connect`:
  * each list page reaches the SDK with its malformed entries already dropped,
  * and each one dropped is logged under the server's name.
+ *
+ * `keepInitialize` sends the 2025 `initialize` as the Client built it, for an
+ * SDK-control client (sdkClients.ts): it is built with `capabilities: {}` and
+ * handles none of the server requests the rewrite would announce.
  */
-export function attachMcpWireFilter(serverName: string, transport: Transport): void {
+export function attachMcpWireFilter(
+  serverName: string,
+  transport: Transport,
+  options: { keepInitialize?: boolean } = {},
+): void {
+  const { initialize: _rewrite, ...otherSendRules } = SEND_RULES
   attachWireFilter(transport, {
+    sendRules: options.keepInitialize ? otherSendRules : SEND_RULES,
     onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),
     onCursorCycle: (method, cursor) =>
       logMCPError(serverName, `${method} repeated the cursor "${cursor}"; the list stops at the entries already received`),

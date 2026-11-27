@@ -43,8 +43,9 @@ export async function setupSdkMcpClients(
       )
 
       try {
-        // Connect the client
-        attachMcpWireFilter(name, transport)
+        // Connect the client. Its initialize announces the `{}` it was built
+        // with: it serves no roots/list or elicitation.
+        attachMcpWireFilter(name, transport, { keepInitialize: true })
         await client.connect(transport)
 
         // Get capabilities from the server
