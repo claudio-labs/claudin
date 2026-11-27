@@ -12,7 +12,7 @@
 import type {
   CallToolResult,
   ToolAnnotations,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/server'
 import type { z } from 'zod/v4'
 
 // Re-export core types (common serializable types)

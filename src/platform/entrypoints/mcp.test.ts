@@ -3,14 +3,16 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod/v4'
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio'
+// The client driving the server is a 1.x SDK one, as the clients that run
+// `claudin mcp serve` today (Claude Code among them) are.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getEmptyToolPermissionContext, type Tool as InternalTool, type ToolUseContext } from 'src/tools/Tool.js'
 import { getTools } from 'src/tools/tools.js'
-import { McpError, type CallToolResult, type Tool } from '@modelcontextprotocol/sdk/types.js'
+import { McpError } from '@modelcontextprotocol/sdk/types.js'
+import type { CallToolResult, Tool } from '@modelcontextprotocol/server'
 import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
 import {
   getCombinedTools,
@@ -206,15 +208,13 @@ describe('listToolsForMcpServe', () => {
   })
 })
 
-// startMCPServer builds its own stdio transport. Server.prototype.connect is
-// spied so the real server instance is connected to one end of an in-memory
-// pair instead, and a real SDK Client drives it from the other end. These pin
+// startMCPServer serves over its own stdio transport. Its start() is spied so
+// that transport rides one end of an in-memory pair instead of the process's
+// stdio, and a real SDK Client drives it from the other end. These pin
 // what `claudin mcp serve` answers TODAY, gaps included (no structuredContent,
 // an abortController not tied to the request) — the SDK v2 migration and the
 // fixes after it change them on purpose.
 describe('startMCPServer, driven by an SDK client', () => {
-  const realConnect = Server.prototype.connect
-  const serverOwnedConnect = Object.hasOwn(Server.prototype, 'connect')
   const macroHost = globalThis as { MACRO?: unknown }
   const savedMacro = macroHost.MACRO
   let savedCwd: string
@@ -240,9 +240,16 @@ describe('startMCPServer, driven by an SDK client', () => {
     })
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
     const handed: unknown[] = []
-    spyOn(Server.prototype, 'connect').mockImplementation(function (this: Server, transport) {
-      handed.push(transport)
-      return realConnect.call(this, serverSide)
+    spyOn(StdioServerTransport.prototype, 'start').mockImplementation(function (this: StdioServerTransport) {
+      handed.push(this)
+      // What serveStdio sends goes to the client, what the client sends
+      // reaches serveStdio, and a close on either side closes the other.
+      const wire = this
+      wire.send = message => serverSide.send(message)
+      wire.close = () => serverSide.close()
+      serverSide.onmessage = message => wire.onmessage?.(message)
+      serverSide.onclose = () => wire.onclose?.()
+      return serverSide.start()
     })
     await startMCPServer(tmp, debug, verbose)
     // Record what reaches the server, ahead of the server's own handler.
@@ -272,11 +279,6 @@ describe('startMCPServer, driven by an SDK client', () => {
     await client?.close()
     client = undefined
     mock.restore()
-    // Server inherits connect from Protocol: make sure the spy left no own
-    // property behind on Server.prototype.
-    if (!serverOwnedConnect && Object.hasOwn(Server.prototype, 'connect')) {
-      delete (Server.prototype as { connect?: unknown }).connect
-    }
     mockGetMcpToolsCommandsAndResources.mockReset()
     setCwdState(savedCwd)
     if (savedMacro === undefined) delete macroHost.MACRO

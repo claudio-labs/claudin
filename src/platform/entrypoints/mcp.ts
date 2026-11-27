@@ -4,16 +4,14 @@
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { ZodError } from 'zod/v4'
 import {
-  CallToolRequestSchema,
   type CallToolResult,
-  ListToolsRequestSchema,
   type ListToolsResult,
+  Server,
   type Tool,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/server'
+import { serveStdio } from '@modelcontextprotocol/server/stdio'
+import { ZodError } from 'zod/v4'
 import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import review from 'src/commands/review.js'
 import type { Command } from 'src/commands/commands.js'
@@ -136,172 +134,174 @@ export async function startMCPServer(
     READ_FILE_STATE_CACHE_SIZE,
   )
   setCwd(cwd)
-  const server = new Server(
-    {
-      // Upstream sent `claude/<codename>` here — its internal codename, announced to
-      // every MCP client that connects to `claudin mcp serve`. This fork does
-      // not present itself as upstream, and `serverInfo.name` is informational
-      // in MCP (clients route on the transport, not on this string).
-      name: 'claudin',
-      version: MACRO.VERSION,
-    },
-    {
-      capabilities: {
-        tools: {},
-      },
-    },
-  )
-
   const { mcpClients, mcpTools } = await loadReexposedMcpTools()
 
-  server.setRequestHandler(
-    ListToolsRequestSchema,
-    async (): Promise<ListToolsResult> => {
-      const toolPermissionContext = getEmptyToolPermissionContext()
-      const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
-      return { tools: await listToolsForMcpServe(tools, toolPermissionContext) }
-    },
-  )
-
-  server.setRequestHandler(
-    CallToolRequestSchema,
-    async ({ params: { name, arguments: args } }): Promise<CallToolResult> => {
-      const toolPermissionContext = getEmptyToolPermissionContext()
-      const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
-      const tool = findToolByName(tools, name)
-      if (!tool) {
-        throw new Error(`Tool ${name} not found`)
-      }
-
-      // Assume MCP servers do not read messages separately from the tool
-      // call arguments.
-      const toolUseContext: ToolUseContext = {
-        abortController: createAbortController(),
-        options: {
-          commands: MCP_COMMANDS,
-          tools,
-          mainLoopModel: getMainLoopModel(),
-          thinkingConfig: { type: 'disabled' },
-          mcpClients,
-          mcpResources: {},
-          isNonInteractiveSession: true,
-          debug,
-          verbose,
-          agentDefinitions: { activeAgents: [], allAgents: [] },
+  // One server per connection, built by serveStdio for the era the client
+  // opens with: a 2025-era client gets the initialize handshake it always
+  // got, a 2026-07-28 one gets server/discover.
+  const createServer = (): Server => {
+    const server = new Server(
+      {
+        // Upstream sent `claude/<codename>` here — its internal codename, announced to
+        // every MCP client that connects to `claudin mcp serve`. This fork does
+        // not present itself as upstream, and `serverInfo.name` is informational
+        // in MCP (clients route on the transport, not on this string).
+        name: 'claudin',
+        version: MACRO.VERSION,
+      },
+      {
+        capabilities: {
+          tools: {},
         },
-        getAppState: () => getDefaultAppState(),
-        setAppState: () => {},
-        messages: [],
-        readFileState: readFileStateCache,
-        setInProgressToolUseIDs: () => {},
-        setResponseLength: () => {},
-        updateFileHistoryState: () => {},
-        updateAttributionState: () => {},
-      }
+      },
+    )
 
-      try {
-        if (!tool.isEnabled()) {
-          throw new Error(`Tool ${name} is not enabled`)
+    server.setRequestHandler(
+      'tools/list',
+      async (): Promise<ListToolsResult> => {
+        const toolPermissionContext = getEmptyToolPermissionContext()
+        const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
+        return { tools: await listToolsForMcpServe(tools, toolPermissionContext) }
+      },
+    )
+
+    server.setRequestHandler(
+      'tools/call',
+      async ({ params: { name, arguments: args } }): Promise<CallToolResult> => {
+        const toolPermissionContext = getEmptyToolPermissionContext()
+        const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
+        const tool = findToolByName(tools, name)
+        if (!tool) {
+          throw new Error(`Tool ${name} not found`)
         }
 
-        // Validate input types with zod. Clients driving us through a
-        // strict-schema model send "" / null for optional args they mean to
-        // leave out — same normalization the in-process tool loop applies.
-        const parsedArgs = tool.inputSchema.parse(
-          stripPlaceholderOptionalFields(tool, args ?? {}),
-        )
-        // The same resolution the in-process tool loop applies (Tool.resolveInput).
-        const resolved = tool.resolveInput
-          ? await tool.resolveInput(parsedArgs as never, toolUseContext)
-          : ({ ok: true, input: parsedArgs } as const)
-        if (!resolved.ok) {
-          throw new Error(`Tool ${name} input is invalid: ${resolved.message}`)
+        // Assume MCP servers do not read messages separately from the tool
+        // call arguments.
+        const toolUseContext: ToolUseContext = {
+          abortController: createAbortController(),
+          options: {
+            commands: MCP_COMMANDS,
+            tools,
+            mainLoopModel: getMainLoopModel(),
+            thinkingConfig: { type: 'disabled' },
+            mcpClients,
+            mcpResources: {},
+            isNonInteractiveSession: true,
+            debug,
+            verbose,
+            agentDefinitions: { activeAgents: [], allAgents: [] },
+          },
+          getAppState: () => getDefaultAppState(),
+          setAppState: () => {},
+          messages: [],
+          readFileState: readFileStateCache,
+          setInProgressToolUseIDs: () => {},
+          setResponseLength: () => {},
+          updateFileHistoryState: () => {},
+          updateAttributionState: () => {},
         }
-        const toolArgs = resolved.input
 
-        const validationResult = await tool.validateInput?.(
-          (toolArgs as never) ?? {},
-          toolUseContext,
-        )
-        if (validationResult && !validationResult.result) {
-          throw new Error(
-            `Tool ${name} input is invalid: ${validationResult.message}`,
+        try {
+          if (!tool.isEnabled()) {
+            throw new Error(`Tool ${name} is not enabled`)
+          }
+
+          // Validate input types with zod. Clients driving us through a
+          // strict-schema model send "" / null for optional args they mean to
+          // leave out — same normalization the in-process tool loop applies.
+          const parsedArgs = tool.inputSchema.parse(
+            stripPlaceholderOptionalFields(tool, args ?? {}),
           )
-        }
-        const finalResult = await tool.call(
-          (toolArgs ?? {}) as never,
-          toolUseContext,
-          hasPermissionsToUseTool,
-          createAssistantMessage({
-            content: [],
-          }),
-        )
+          // The same resolution the in-process tool loop applies (Tool.resolveInput).
+          const resolved = tool.resolveInput
+            ? await tool.resolveInput(parsedArgs as never, toolUseContext)
+            : ({ ok: true, input: parsedArgs } as const)
+          if (!resolved.ok) {
+            throw new Error(`Tool ${name} input is invalid: ${resolved.message}`)
+          }
+          const toolArgs = resolved.input
 
-        let content: CallToolResult['content']
-        const data = finalResult.data as string | { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] | unknown
+          const validationResult = await tool.validateInput?.(
+            (toolArgs as never) ?? {},
+            toolUseContext,
+          )
+          if (validationResult && !validationResult.result) {
+            throw new Error(
+              `Tool ${name} input is invalid: ${validationResult.message}`,
+            )
+          }
+          const finalResult = await tool.call(
+            (toolArgs ?? {}) as never,
+            toolUseContext,
+            hasPermissionsToUseTool,
+            createAssistantMessage({
+              content: [],
+            }),
+          )
 
-        if (typeof data === 'string') {
-          content = [{ type: 'text', text: data }]
-        } else if (Array.isArray(data)) {
-          content = data.map((block: any) => {
-            if (block.type === 'text') {
-              return { type: 'text', text: block.text || '' }
-            } else if (block.type === 'image' && block.source) {
-              return {
-                type: 'image',
-                data: block.source.data,
-                mimeType: block.source.media_type,
+          let content: CallToolResult['content']
+          const data = finalResult.data as string | { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] | unknown
+
+          if (typeof data === 'string') {
+            content = [{ type: 'text', text: data }]
+          } else if (Array.isArray(data)) {
+            content = data.map((block: any) => {
+              if (block.type === 'text') {
+                return { type: 'text', text: block.text || '' }
+              } else if (block.type === 'image' && block.source) {
+                return {
+                  type: 'image',
+                  data: block.source.data,
+                  mimeType: block.source.media_type,
+                }
+              } else {
+                // eslint-disable-next-line custom-rules/no-top-level-side-effects, no-console
+                console.warn(`Unmapped content block type from tool ${name}: ${block.type || 'unknown'}`)
+                return { type: 'text', text: jsonStringify(block) }
               }
-            } else {
-              // eslint-disable-next-line custom-rules/no-top-level-side-effects, no-console
-              console.warn(`Unmapped content block type from tool ${name}: ${block.type || 'unknown'}`)
-              return { type: 'text', text: jsonStringify(block) }
+            }) as CallToolResult['content']
+          } else {
+            content = [{ type: 'text', text: jsonStringify(data) }]
+          }
+
+          return {
+            content,
+            isError: !!(finalResult as any).isError,
+          }
+        } catch (error) {
+          logError(error)
+
+          if (error instanceof ZodError) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text',
+                  text: `Tool ${name} input is invalid:\n${error.issues.map(e => `- ${e.path.join('.')}: ${e.message}`).join('\n')}`,
+                },
+              ],
             }
-          }) as CallToolResult['content']
-        } else {
-          content = [{ type: 'text', text: jsonStringify(data) }]
-        }
+          }
 
-        return {
-          content,
-          isError: !!(finalResult as any).isError,
-        }
-      } catch (error) {
-        logError(error)
+          const parts =
+            error instanceof Error ? getErrorParts(error) : [String(error)]
+          const errorText = parts.filter(Boolean).join('\n').trim() || 'Error'
 
-        if (error instanceof ZodError) {
           return {
             isError: true,
             content: [
               {
                 type: 'text',
-                text: `Tool ${name} input is invalid:\n${error.issues.map(e => `- ${e.path.join('.')}: ${e.message}`).join('\n')}`,
+                text: errorText,
               },
             ],
           }
         }
+      },
+    )
 
-        const parts =
-          error instanceof Error ? getErrorParts(error) : [String(error)]
-        const errorText = parts.filter(Boolean).join('\n').trim() || 'Error'
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: errorText,
-            },
-          ],
-        }
-      }
-    },
-  )
-
-  async function runServer() {
-    const transport = new StdioServerTransport()
-    await server.connect(transport)
+    return server
   }
 
-  return await runServer()
+  serveStdio(createServer, { legacy: 'serve' })
 }
