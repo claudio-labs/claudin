@@ -549,6 +549,11 @@ export function MCPRemoteServerMenu({
 
           {server.client.type === 'connected' && <CapabilitiesSection serverToolsCount={serverToolsCount} serverPromptsCount={serverCommandsCount} serverResourcesCount={mcp.resources[server.name]?.length || 0} />}
 
+          {server.client.type === 'connected' && server.client.protocolVersion && <Box>
+              <Text bold>Protocol: </Text>
+              <Text dimColor>{server.client.protocolVersion}</Text>
+            </Box>}
+
           {server.client.type === 'connected' && serverToolsCount > 0 && <Box>
               <Text bold>Tools: </Text>
               <Text dimColor>{serverToolsCount} tools</Text>

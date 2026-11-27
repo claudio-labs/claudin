@@ -265,3 +265,55 @@ describe('on the 2026-07-28 era', () => {
     expect((await client.listTools()).tools.map(t => t.name)).toEqual(['good'])
   })
 })
+
+// --- send rules -------------------------------------------------------------
+
+describe('attachWireFilter — outgoing requests', () => {
+  function sending(sendRules?: Parameters<typeof attachWireFilter>[1]['sendRules']) {
+    const { transport, sent } = fakeTransport()
+    attachWireFilter(transport, { onSkipped: () => {}, rules: RULES, sendRules })
+    return { transport, sent }
+  }
+
+  const initialize = () =>
+    ({
+      jsonrpc: '2.0',
+      id: 0,
+      method: 'initialize',
+      params: { protocolVersion: '2025-11-25', capabilities: { roots: {}, elicitation: { form: {}, url: {} } } },
+    }) as JSONRPCMessage
+
+  test('the 2025 initialize announces exactly {roots:{}, elicitation:{}}, and the SDK keeps its own copy', async () => {
+    const { transport, sent } = sending()
+    const message = initialize()
+    await transport.send(message)
+    expect((sent[0] as unknown as { params: unknown }).params).toEqual({
+      protocolVersion: '2025-11-25',
+      capabilities: { roots: {}, elicitation: {} },
+    })
+    expect((message as unknown as { params: { capabilities: unknown } }).params.capabilities).toEqual({
+      roots: {},
+      elicitation: { form: {}, url: {} },
+    })
+  })
+
+  test('a method with no send rule goes out as it was', async () => {
+    const { transport, sent } = sending()
+    const discover = { jsonrpc: '2.0', id: 'server-discover-probe-1', method: 'server/discover' } as JSONRPCMessage
+    await transport.send(discover)
+    expect(sent[0]).toBe(discover)
+  })
+
+  test('a send rule that throws is logged and the request goes out unchanged', async () => {
+    const logged = spyOn(log, 'logError').mockImplementation(() => {})
+    try {
+      const { transport, sent } = sending({ initialize: () => { throw new Error('send rule broke') } })
+      const message = initialize()
+      await transport.send(message)
+      expect(sent[0]).toBe(message)
+      expect(String(logged.mock.calls[0]![0])).toContain('send rule broke')
+    } finally {
+      logged.mockRestore()
+    }
+  })
+})

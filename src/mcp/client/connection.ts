@@ -5,7 +5,7 @@ import {
   type Transport,
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
-import type { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { type Tool } from 'src/tools/Tool.js'
@@ -26,9 +26,30 @@ import type {
 } from 'src/mcp/types.js'
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { httpStatusOf, isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
-import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
+import {
+  getMcpConnectTimeoutMs,
+  getMcpProtocolMode,
+} from 'src/mcp/client/serverOptions.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
+import {
+  dropEraVerdict,
+  getEraCacheKey,
+  readEraVerdict,
+  saveEraVerdict,
+} from 'src/mcp/client/eraCache.js'
+import {
+  checksPriorLazily,
+  confirmsPriorInPlace,
+  type EraOverride,
+  isStaleModernVerdictError,
+  type NegotiableTransport,
+  nextEraStep,
+  planConnect,
+  probeTimeoutMs,
+  verdictAfterConnect,
+} from 'src/mcp/client/negotiation.js'
+import { stopMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import {
   attachMcpWireFilter,
   fetchCommandsForClient,
@@ -63,6 +84,18 @@ export async function cleanupFailedConnection(
 
 export function isLocalMcpServer(config: ScopedMcpServerConfig): boolean {
   return !config.type || config.type === 'stdio' || config.type === 'sdk'
+}
+
+/**
+ * Which SDK transport this is, for negotiation.ts. A stdio server is probed
+ * on a sibling process only through the SDK's own base class (a subclass is
+ * probed in place, which kills servers that exit on a pre-`initialize`
+ * request), and an in-process server has nothing to negotiate.
+ */
+function negotiableTransportOf(transport: Transport): NegotiableTransport {
+  if (transport instanceof StreamableHTTPClientTransport) return 'http'
+  if (Object.getPrototypeOf(transport) === StdioClientTransport.prototype) return 'stdio'
+  return 'other'
 }
 
 // For the IDE MCP servers, we only include specific tools
@@ -143,7 +176,8 @@ async function endHttpSession(
  * @param name Server name
  * @param serverRef Scoped server configuration
  * @param retry Internal: the attempt a transient-failure retry is on, and the
- *   startup deadline every attempt shares (connectRetry.ts)
+ *   startup deadline every attempt shares (connectRetry.ts); `era` when this
+ *   attempt follows a failed probe or a failed cached verdict (negotiation.ts)
  * @returns A wrapped client (either connected or failed)
  */
 export const connectToServer = memoize(
@@ -158,7 +192,7 @@ export const connectToServer = memoize(
       sseIdeCount: number
       wsIdeCount: number
     },
-    retry?: { attempt: number; deadline: number },
+    retry?: { attempt: number; deadline: number; era?: EraOverride },
   ): Promise<MCPServerConnection> {
     const connectStartTime = Date.now()
     const deadline =
@@ -168,6 +202,25 @@ export const connectToServer = memoize(
       const created = await createTransport(name, serverRef)
       const transport = created.transport
       inProcessServer = created.inProcessServer
+
+      const negotiable = negotiableTransportOf(transport)
+      const protocolMode = getMcpProtocolMode(serverRef)
+      const eraKey = getEraCacheKey(name, serverRef)
+      const plan = planConnect({
+        mode: protocolMode,
+        transport: negotiable,
+        verdict:
+          protocolMode === 'auto' && negotiable !== 'other' && !retry?.era
+            ? await readEraVerdict(eraKey)
+            : undefined,
+        override: retry?.era,
+        startupTimeoutMs: deadline - Date.now(),
+        now: Date.now(),
+      })
+      logMCPDebug(
+        name,
+        `Protocol negotiation: ${plan.prior ? `cached ${plan.prior.kind} verdict` : plan.mode === 'auto' ? `probe (${plan.probeTimeoutMs}ms)` : 'legacy'}`,
+      )
 
       // Set up stderr logging for stdio transport before connecting in case there are any stderr
       // outputs emitted during the connection start (this can be useful for debugging failed connections).
@@ -196,14 +249,20 @@ export const connectToServer = memoize(
         {
           capabilities: {
             roots: {},
-            // Empty object declares the capability. Sending {form:{},url:{}}
-            // breaks Java MCP SDK servers (Spring AI) whose Elicitation class
-            // has zero fields and fails on unknown properties.
-            elicitation: {},
+            // A 2026-07-28 server asks for a URL only from a client that says
+            // url; the 2025 initialize goes out as {} (SEND_RULES in
+            // wireRules.ts), which Spring AI servers accept.
+            elicitation: { form: {}, url: {} },
           },
-          // The 2025-era initialize handshake, explicitly: the wire stays the
-          // 1.x SDK's until protocol negotiation is turned on.
-          versionNegotiation: { mode: 'legacy' },
+          versionNegotiation:
+            plan.mode === 'auto'
+              ? {
+                  mode: 'auto',
+                  ...(plan.probeTimeoutMs !== undefined && {
+                    probe: { timeoutMs: plan.probeTimeoutMs },
+                  }),
+                }
+              : { mode: 'legacy' },
         },
       )
 
@@ -254,7 +313,14 @@ export const connectToServer = memoize(
       // Before connect, which chains the filter's onmessage ahead of the
       // SDK's decode (wireFilter.ts).
       attachMcpWireFilter(name, transport)
-      const connectPromise = client.connect(transport)
+      const connectPromise = client
+        .connect(transport, plan.prior ? { prior: plan.prior } : undefined)
+        .then(async () => {
+          // A failure here drops the verdict and probes (negotiation.ts).
+          if (confirmsPriorInPlace(plan, negotiable)) {
+            await client.discover({ timeout: probeTimeoutMs(deadline - Date.now()) })
+          }
+        })
       const timeoutPromise = new Promise<never>((_, reject) => {
         const timeoutId = setTimeout(() => {
           const elapsed = Date.now() - connectStartTime
@@ -297,6 +363,23 @@ export const connectToServer = memoize(
           `Successfully connected (transport: ${serverRef.type || 'stdio'}) in ${elapsed}ms`,
         )
       } catch (error) {
+        // A failed probe on HTTP is tried again in the 2025 protocol, and a
+        // failed cached verdict with a probe, each on a fresh transport and
+        // inside the same deadline. Neither counts as a retry.
+        const eraStep = nextEraStep(error, { plan, transport: negotiable })
+        if (eraStep !== null && deadline - Date.now() > 0) {
+          logMCPDebug(
+            name,
+            `Connection failed during protocol negotiation: ${errorMessage(error)}. ${eraStep.kind === 'probe' ? 'Dropping the cached verdict and probing again' : 'Connecting in the 2025 protocol'}`,
+          )
+          if (eraStep.kind === 'probe') await dropEraVerdict(eraKey)
+          await cleanupFailedConnection(transport)
+          return connectAttempt(name, serverRef, serverStats, {
+            attempt: retry?.attempt ?? 0,
+            deadline,
+            era: eraStep,
+          })
+        }
         // A transient failure of a remote server gets another attempt, which
         // calls this function directly: the memoized wrapper would hand back
         // this very attempt's promise.
@@ -316,6 +399,7 @@ export const connectToServer = memoize(
           return connectAttempt(name, serverRef, serverStats, {
             attempt: attempt + 1,
             deadline,
+            era: retry?.era,
           })
         }
         const elapsed = Date.now() - connectStartTime
@@ -378,6 +462,18 @@ export const connectToServer = memoize(
       const capabilities = client.getServerCapabilities()
       const serverVersion = client.getServerVersion()
       const rawInstructions = client.getInstructions()
+      // Read while connected: the SDK forgets the era once the client closes.
+      const protocolVersion = client.getNegotiatedProtocolVersion()
+      const era = client.getProtocolEra()
+      logMCPDebug(name, `Protocol ${protocolVersion ?? 'unknown'} (${era ?? 'unknown'} era)`)
+      const verdict = verdictAfterConnect({
+        plan,
+        override: retry?.era,
+        era,
+        discover: client.getDiscoverResult(),
+        now: Date.now(),
+      })
+      if (verdict) await saveEraVerdict(eraKey, verdict)
       let instructions = rawInstructions
       if (
         rawInstructions &&
@@ -446,6 +542,11 @@ export const connectToServer = memoize(
       // Guard against re-entry: close() aborts in-flight streams which may fire
       // onerror again before the close chain completes.
       let hasTriggeredClose = false
+
+      // A connection adopted from a cached 2026-07-28 verdict sent nothing to
+      // prove it; the first request a 2025 server rejects drops the verdict
+      // and closes, and the reconnect probes again (negotiation.ts).
+      let modernVerdictUnproven = checksPriorLazily(plan, negotiable)
 
       // client.close() → transport.close() → transport.onclose → SDK's _onclose():
       // rejects all pending request handlers (so hung callTool() promises fail with
@@ -524,6 +625,20 @@ export const connectToServer = memoize(
           } else {
             logMCPDebug(name, `Connection error: ${error.message}`)
           }
+        }
+
+        if (modernVerdictUnproven && isStaleModernVerdictError(error)) {
+          modernVerdictUnproven = false
+          logMCPDebug(
+            name,
+            `The server answered as a 2025 server; dropping its cached 2026-07-28 verdict and reconnecting`,
+          )
+          void dropEraVerdict(eraKey)
+          closeTransportAndRejectPending('stale protocol verdict')
+          if (originalOnerror) {
+            originalOnerror(error)
+          }
+          return
         }
 
         // For HTTP transports, detect session expiry (404 + JSON-RPC -32001)
@@ -616,6 +731,7 @@ export const connectToServer = memoize(
       }
 
       const cleanup = async () => {
+        await stopMcpSubscriptions(client)
         // In-process servers (e.g. Chrome MCP) don't have child processes or stderr
         if (inProcessServer) {
           try {
@@ -807,6 +923,7 @@ export const connectToServer = memoize(
         instructions,
         config: serverRef,
         cleanup: wrappedCleanup,
+        protocolVersion,
       }
     } catch (error) {
       const connectionDurationMs = Date.now() - connectStartTime

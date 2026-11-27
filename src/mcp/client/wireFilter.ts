@@ -1,12 +1,14 @@
 /**
- * Runs wireRules.ts on a server's responses before the SDK decodes them.
+ * Runs wireRules.ts on a server's responses before the SDK decodes them, and
+ * on Claudin's own requests before they reach the transport.
  *
  * The seam is the SDK's own: Protocol.connect keeps a `transport.onmessage`
  * that was set before it, and calls it first with the same message object it
  * then decodes, so an edit made here is what the SDK parses. The discover
  * probe swaps it out for its one round trip and puts it back. A response
  * carries only its id, so the transport instance's `send` is wrapped to note
- * which method each tracked request id went out as.
+ * which method each tracked request id went out as; the same wrapper swaps
+ * in the request a send rule returns.
  *
  * The same two hooks run cursorCycleGuard.ts over the list methods, so a
  * server whose cursors cycle ends its listing instead of failing it.
@@ -19,7 +21,10 @@ import type { JSONRPCMessage, Transport } from '@modelcontextprotocol/client'
 import { logError } from 'src/shared/log.js'
 import { createCursorCycleGuard } from 'src/mcp/client/cursorCycleGuard.js'
 import {
+  SEND_RULES,
+  type SendRule,
   WIRE_RULES,
+  type WireRequest,
   type WireResult,
   type WireRule,
   type WireRuleContext,
@@ -30,6 +35,8 @@ type RequestId = string | number
 export type WireFilterOptions = WireRuleContext & {
   /** The rule table; WIRE_RULES unless a test swaps it. */
   rules?: Readonly<Record<string, WireRule>>
+  /** The outgoing rule table; SEND_RULES unless a test swaps it. */
+  sendRules?: Readonly<Record<string, SendRule>>
   /** A listing cut short because the server repeated `cursor`. */
   onCursorCycle?: (method: string, cursor: string) => void
 }
@@ -43,8 +50,19 @@ function requestId(message: JSONRPCMessage): RequestId | undefined {
   return typeof id === 'string' || typeof id === 'number' ? id : undefined
 }
 
+function applySendRule(rule: SendRule, message: JSONRPCMessage): JSONRPCMessage {
+  try {
+    return rule(message as unknown as WireRequest) as unknown as JSONRPCMessage
+  } catch (error) {
+    // A rule that breaks is logged, and the request goes out as the SDK built it.
+    logError(error)
+    return message
+  }
+}
+
 export function attachWireFilter(transport: Transport, options: WireFilterOptions): void {
   const rules = options.rules ?? WIRE_RULES
+  const sendRules = options.sendRules ?? SEND_RULES
   const context: WireRuleContext = { onSkipped: options.onSkipped }
   // Only requests some rule rewrites are tracked; an entry leaves with its
   // response, success or error.
@@ -60,7 +78,11 @@ export function attachWireFilter(transport: Transport, options: WireFilterOption
       const params = (message as { params?: unknown }).params
       cursors.onRequest(id, method, isRecord(params) ? params.cursor : undefined)
     }
-    return send(message, sendOptions)
+    const outgoing =
+      typeof method === 'string' && Object.hasOwn(sendRules, method)
+        ? applySendRule(sendRules[method]!, message)
+        : message
+    return send(outgoing, sendOptions)
   }
 
   const previous = transport.onmessage

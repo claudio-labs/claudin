@@ -6,9 +6,23 @@
  * which win over the defaults below. An env value that is not a positive
  * number is ignored. A stdio server's `cwd` resolves `~` to the home dir and
  * a relative path against the project dir.
+ *
+ * Protocol era: an http or stdio server negotiates MCP 2026-07-28 with a
+ * `server/discover` probe and falls back to the 2025 `initialize` handshake
+ * (`protocol: 'auto'`, the default); `protocol: 'legacy'` skips the probe.
+ * sse, ws, the IDE transports, sdk and claude.ai proxy servers always speak
+ * the 2025 protocol.
+ *
+ * `MCP_PROTOCOL_NEGOTIATION=legacy` (the name Claude Code reads) is the
+ * killswitch: every server is reached in the 2025 protocol, whatever its own
+ * `protocol` says, and so without the extensions that exist only in
+ * 2026-07-28 (tasks, events).
+ *
+ * `extensions: { skills, tasks, events }` turns a 2026-07-28 extension off
+ * for one server; each is on unless set to false.
  */
 import { isAbsolute, join, resolve } from 'path'
-import type { McpServerConfig } from 'src/mcp/types.js'
+import type { McpExtensionName, McpServerConfig } from 'src/mcp/types.js'
 
 export const DEFAULT_MCP_CONNECT_TIMEOUT_MS = 30_000
 
@@ -32,6 +46,20 @@ export function getMcpConnectTimeoutMs(config?: McpServerConfig): number {
 export function getMcpToolTimeoutMs(config?: McpServerConfig): number {
   const own = config && 'toolTimeout' in config ? config.toolTimeout : undefined
   return own ?? positiveMs(process.env.MCP_TOOL_TIMEOUT) ?? DEFAULT_MCP_TOOL_TIMEOUT_MS
+}
+
+export type McpProtocolMode = 'auto' | 'legacy'
+
+/** Whether a connect to this server probes for 2026-07-28 or goes straight to `initialize`. */
+export function getMcpProtocolMode(config: McpServerConfig): McpProtocolMode {
+  if (process.env.MCP_PROTOCOL_NEGOTIATION === 'legacy') return 'legacy'
+  if (config.type !== undefined && config.type !== 'stdio' && config.type !== 'http') return 'legacy'
+  return config.protocol ?? 'auto'
+}
+
+export function getMcpExtensionEnabled(config: McpServerConfig, name: McpExtensionName): boolean {
+  const own = 'extensions' in config ? config.extensions?.[name] : undefined
+  return own ?? true
 }
 
 export function resolveStdioCwd(

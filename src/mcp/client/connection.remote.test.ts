@@ -5,6 +5,7 @@ import { clearServerCache, connectToServer } from 'src/mcp/client/connection.js'
 import { fetchResourceTemplatesForClient } from 'src/mcp/client/fetchCapabilities.js'
 import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js'
+import { refuseDiscoverProbe } from 'src/mcp/__testutils__/connectionHarness.js'
 
 /*
  * connectToServer against real local MCP endpoints: a Streamable HTTP server
@@ -55,6 +56,8 @@ function startHttpServer(statuses: number[]): { url: string; initializes: () => 
     async fetch(req) {
       if (req.method !== 'POST') return new Response(null, { status: 405 })
       const message = (await req.json()) as { id?: number; method: string }
+      const refused = refuseDiscoverProbe(message)
+      if (refused) return refused
       if (message.method !== 'initialize') return new Response(null, { status: 202 })
       const status = statuses[initializes++] ?? 200
       if (status !== 200) return new Response('unavailable', { status })
@@ -121,6 +124,8 @@ describe('connectToServer — transient failures', () => {
       async fetch(req) {
         if (req.method !== 'POST') return new Response(null, { status: 405 })
         const message = (await req.json()) as { method: string }
+        const refused = refuseDiscoverProbe(message)
+        if (refused) return refused
         if (message.method !== 'initialize') return new Response(null, { status: 202 })
         if (initializes++ < 2) return new Response('unavailable', { status: 503 })
         return new Promise<Response>(() => {})

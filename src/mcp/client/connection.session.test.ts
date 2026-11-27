@@ -3,6 +3,7 @@ import type { Server } from 'bun'
 import { connectToServer } from 'src/mcp/client/connection.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { _setSecureStorageForTesting } from 'src/platform/secureStorage/index.js'
+import { refuseDiscoverProbe } from 'src/mcp/__testutils__/connectionHarness.js'
 
 /*
  * Streamable HTTP session termination: a client that no longer needs a
@@ -56,6 +57,8 @@ function startSessionServer(
       if (req.method !== 'POST') return new Response(null, { status: 405 })
       const message = (await req.json()) as { id?: number; method: string }
       seen.rpc = message.method
+      const refused = refuseDiscoverProbe(message)
+      if (refused) return refused
       if (message.method !== 'initialize') return new Response(null, { status: 202 })
       return Response.json(
         {
@@ -77,7 +80,9 @@ describe('Streamable HTTP session termination', () => {
     const connection = await connectToServer('session-ctl', { type: 'http', url: server.url, scope: 'user' })
     connections.push(connection)
     expect(connection.type).toBe('connected')
-    expect(server.requests[0]).toMatchObject({ method: 'POST', rpc: 'initialize', sessionId: null })
+    // After the 2026-07-28 probe, which the server refuses.
+    expect(server.requests[0]).toMatchObject({ method: 'POST', rpc: 'server/discover', sessionId: null })
+    expect(server.requests[1]).toMatchObject({ method: 'POST', rpc: 'initialize', sessionId: null })
     expect(server.requests.find(r => r.rpc === 'notifications/initialized')?.sessionId).toBe(SESSION_ID)
   })
 

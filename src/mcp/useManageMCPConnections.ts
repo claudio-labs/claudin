@@ -46,6 +46,7 @@ import {
   fetchClaudeAIMcpConfigsIfEligible,
 } from 'src/mcp/claudeai.js'
 import { registerElicitationHandler } from 'src/mcp/elicitationHandler.js'
+import { startMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
 import {
   clearSessionDisconnected,
@@ -541,6 +542,10 @@ export function useManageMCPConnections(
               },
             )
           }
+
+          // A 2026-07-28 server sends these notifications only on a listen
+          // stream; opened after the handlers so none is missed.
+          startMcpSubscriptions(client.name, client.client)
           break
         }
 

@@ -3,7 +3,10 @@ import type { Tool } from '@modelcontextprotocol/client'
 import type { SkippedEntry } from 'src/mcp/client/listValidation.js'
 import {
   fillListResultFields,
+  LEGACY_INITIALIZE_CAPABILITIES,
+  SEND_RULES,
   WIRE_RULES,
+  withLegacyInitializeCapabilities,
   type WireResult,
   withoutOutputSchema,
 } from 'src/mcp/client/wireRules.js'
@@ -140,5 +143,31 @@ describe('withoutOutputSchema', () => {
   test('drops the outputSchema and keeps the rest', () => {
     const tool = { ...good, description: 'd', outputSchema: { type: 'object' } } as Tool
     expect(withoutOutputSchema(tool)).toEqual({ ...good, description: 'd' } as Tool)
+  })
+})
+
+describe('the send rule table', () => {
+  test('rewrites initialize only', () => {
+    expect(Object.keys(SEND_RULES)).toEqual(['initialize'])
+  })
+
+  test('the 2025 initialize capabilities are the wire Spring AI accepts, whatever the client holds', () => {
+    const request = {
+      method: 'initialize',
+      id: 0,
+      params: { protocolVersion: '2025-11-25', capabilities: { roots: {}, elicitation: { form: {}, url: {} }, extra: {} } },
+    }
+    const sent = withLegacyInitializeCapabilities(request)
+    expect(sent).toEqual({
+      method: 'initialize',
+      id: 0,
+      params: { protocolVersion: '2025-11-25', capabilities: { roots: {}, elicitation: {} } },
+    })
+    expect(request.params.capabilities.elicitation).toEqual({ form: {}, url: {} })
+    expect(LEGACY_INITIALIZE_CAPABILITIES).toEqual({ roots: {}, elicitation: {} })
+    // Each request gets its own object, so nothing downstream edits the constant.
+    expect(withLegacyInitializeCapabilities({ method: 'initialize' }).params!.capabilities).not.toBe(
+      LEGACY_INITIALIZE_CAPABILITIES,
+    )
   })
 })

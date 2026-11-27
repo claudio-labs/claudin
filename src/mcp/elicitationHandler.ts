@@ -38,10 +38,28 @@ export type ElicitationRequestEvent = {
   onWaitingDismiss?: (action: 'dismiss' | 'retry' | 'cancel') => void
   /** Set to true by the completion notification handler when the server confirms completion. */
   completed?: boolean
+  /**
+   * False on a 2026-07-28 connection, which has no completion notification:
+   * the server asks again when the retried request finds the URL step
+   * unfinished, so an accepted URL elicitation is done once answered.
+   */
+  awaitsCompletion?: boolean
 }
 
 function getElicitationMode(params: ElicitRequestParams): 'form' | 'url' {
   return params.mode === 'url' ? 'url' : 'form'
+}
+
+/**
+ * Whether an answered elicitation stays queued, its dialog waiting for the
+ * server's `notifications/elicitation/complete`: a URL accept on a 2025
+ * connection.
+ */
+export function waitsForElicitationCompletion(
+  event: { params: { mode?: string }; awaitsCompletion?: boolean },
+  action: unknown,
+): boolean {
+  return event.params.mode === 'url' && action === 'accept' && event.awaitsCompletion !== false
 }
 
 /** Find a queued elicitation event by server name and elicitationId. */
@@ -69,7 +87,13 @@ export function registerElicitationHandler(
   // created with elicitation capability declared.
   try {
     client.setRequestHandler('elicitation/create', async (request, ctx) => {
-      const { signal } = ctx.mcpReq
+      // An elicitation the SDK fulfils for a 2026-07-28 input_required
+      // result carries the signal of the call it came from. SDK 2.4.0 hands
+      // one over even for a call made without a signal (a call with no signal
+      // still reaches this handler in connection.urlElicitation.test.ts); the
+      // fallback only covers a context that has none.
+      const signal = ctx.mcpReq.signal ?? new AbortController().signal
+      const modern = client.getProtocolEra() === 'modern'
       logMCPDebug(
         serverName,
         `Received elicitation request: ${jsonStringify(request)}`,
@@ -122,6 +146,7 @@ export function registerElicitationHandler(
                   params: request.params,
                   signal,
                   waitingState,
+                  ...(modern && { awaitsCompletion: false }),
                   respond: (result: ElicitResult) => {
                     signal.removeEventListener('abort', onAbort)
                     resolve(result)

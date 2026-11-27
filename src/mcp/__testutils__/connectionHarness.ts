@@ -111,9 +111,11 @@ export function stubCreateTransport(
 //   FIXTURE_STDERR          written to stderr at startup
 //   FIXTURE_EXIT_EARLY=1    exits with code 3 before answering anything
 //   FIXTURE_IGNORE          comma list of signals to ignore (INT, TERM)
+//   FIXTURE_SPAWN_LOG       a file each start appends a line to
 // It exits when stdin closes, which is how StdioClientTransport.close() ends it.
 const STDIO_SERVER_SOURCE = `
 const ignore = (process.env.FIXTURE_IGNORE || '').split(',').filter(Boolean)
+if (process.env.FIXTURE_SPAWN_LOG) require('fs').appendFileSync(process.env.FIXTURE_SPAWN_LOG, 'spawn\\n')
 for (const sig of ignore) process.on('SIG' + sig, () => {})
 if (process.env.FIXTURE_STDERR) process.stderr.write(process.env.FIXTURE_STDERR)
 if (process.env.FIXTURE_EXIT_EARLY === '1') {
@@ -138,6 +140,13 @@ if (process.env.FIXTURE_EXIT_EARLY === '1') {
             serverInfo: { name: 'stdio-fixture', version: '1.0.0' },
           },
         }) + '\\n')
+      } else if (msg.id !== undefined && msg.method) {
+        // As a 2025 server answers the 2026-07-28 server/discover probe.
+        process.stdout.write(JSON.stringify({
+          jsonrpc: '2.0',
+          id: msg.id,
+          error: { code: -32601, message: 'Method not found' },
+        }) + '\\n')
       }
     }
   })
@@ -156,6 +165,19 @@ export function writeStdioServer(): StdioFixture {
     args: [script],
     dispose: () => rmSync(dir, { recursive: true, force: true }),
   }
+}
+
+/**
+ * For a hand-built Streamable HTTP fixture: the answer a 2025 server built on
+ * the 1.x SDK gives the 2026-07-28 `server/discover` probe (HTTP 400), after
+ * which the client goes on to initialize. Undefined for any other message.
+ */
+export function refuseDiscoverProbe(message: { id?: unknown; method?: unknown }): Response | undefined {
+  if (message.method !== 'server/discover') return undefined
+  return Response.json(
+    { jsonrpc: '2.0', id: message.id, error: { code: -32601, message: 'Method not found' } },
+    { status: 400 },
+  )
 }
 
 export function isAlive(pid: number): boolean {

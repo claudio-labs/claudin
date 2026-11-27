@@ -11,7 +11,10 @@
  * defaults the spec gives an absent hint (complete, immediately stale,
  * private).
  *
- * To rewrite another method, add a row to WIRE_RULES.
+ * SEND_RULES rewrites a request Claudin sends, keyed by its method, before it
+ * reaches the transport.
+ *
+ * To rewrite another method, add a row to WIRE_RULES or SEND_RULES.
  */
 import type { Tool } from '@modelcontextprotocol/client'
 import {
@@ -31,6 +34,11 @@ export type WireRuleContext = {
 }
 
 export type WireRule = (result: WireResult, context: WireRuleContext) => void
+
+export type WireRequest = { method: string; params?: Record<string, unknown> } & Record<string, unknown>
+
+/** Returns the request to send in place of `request`, which it leaves untouched. */
+export type SendRule = (request: WireRequest) => WireRequest
 
 function isValidTtlMs(value: unknown): boolean {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
@@ -77,4 +85,25 @@ export const WIRE_RULES: Readonly<Record<string, WireRule>> = {
   'prompts/list': listRule('prompts', 'prompt', keepValidPrompts),
   'resources/list': listRule('resources', 'resource', keepValidResources),
   'resources/templates/list': listRule('resourceTemplates', 'resource template', keepValidResourceTemplates),
+}
+
+/**
+ * What the 2025 `initialize` announces, as it always has. The client is built
+ * with `elicitation: { form: {}, url: {} }`, which a 2026-07-28 server needs
+ * to see before it asks for a URL; on the 2025 wire, Java MCP SDK servers
+ * (Spring AI) fail on any field inside `elicitation`, whose empty object
+ * reads as form support. `initialize` goes out only on the 2025 era, so URL
+ * elicitation is offered on modern connections alone.
+ */
+export const LEGACY_INITIALIZE_CAPABILITIES = { roots: {}, elicitation: {} } as const
+
+export function withLegacyInitializeCapabilities(request: WireRequest): WireRequest {
+  return {
+    ...request,
+    params: { ...request.params, capabilities: structuredClone(LEGACY_INITIALIZE_CAPABILITIES) },
+  }
+}
+
+export const SEND_RULES: Readonly<Record<string, SendRule>> = {
+  initialize: withLegacyInitializeCapabilities,
 }

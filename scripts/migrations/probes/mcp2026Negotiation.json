@@ -1,0 +1,95 @@
+{
+  "test": [
+    "src/mcp/client/negotiation.test.ts",
+    "src/mcp/client/eraCache.test.ts",
+    "src/mcp/client/serverOptions.test.ts",
+    "src/mcp/client/subscriptions.test.ts",
+    "src/mcp/client/wireRules.test.ts",
+    "src/mcp/client/wireFilter.test.ts",
+    "src/mcp/client/connection.cover.test.ts",
+    "src/mcp/client/connection.negotiation.test.ts",
+    "src/mcp/client/connection.urlElicitation.test.ts",
+    "src/mcp/useManageMCPConnections.listen.test.tsx"
+  ],
+  "source": "src/mcp/client/connection.ts",
+  "probes": [
+    {
+      "name": "the client stops saying url, so a 2026-07-28 server never asks for one (-32021)",
+      "find": "            elicitation: { form: {}, url: {} },\n",
+      "replace": "            elicitation: {},\n"
+    },
+    {
+      "name": "a cached verdict is not handed to the SDK, so every connect probes again",
+      "find": "        plan.prior ? { prior: plan.prior } : undefined,\n",
+      "replace": "        undefined,\n"
+    },
+    {
+      "name": "a probe answered 500 fails the connect instead of falling back to initialize",
+      "find": "        if (eraStep !== null && deadline - Date.now() > 0) {\n",
+      "replace": "        if (eraStep !== null && false) {\n"
+    },
+    {
+      "name": "a successful probe is never cached",
+      "find": "      if (verdict) await saveEraVerdict(eraKey, verdict)\n",
+      "replace": ""
+    },
+    {
+      "name": "a modern verdict for a server gone back to 2025 is kept, and every connect fails its first request",
+      "find": "        if (modernVerdictUnproven && isStaleModernVerdictError(error)) {\n",
+      "replace": "        if (modernVerdictUnproven && false) {\n"
+    },
+    {
+      "name": "a cached modern verdict for a stdio server gone back to 2025 is never confirmed, and the server stays broken until the TTL",
+      "find": "          if (confirmsPriorInPlace(plan, negotiable)) {\n",
+      "replace": "          if (false) {\n"
+    },
+    {
+      "name": "the 2025 initialize announces elicitation {form, url}, which Spring AI servers reject",
+      "source": "src/mcp/client/wireRules.ts",
+      "find": "  initialize: withLegacyInitializeCapabilities,\n",
+      "replace": ""
+    },
+    {
+      "name": "MCP_PROTOCOL_NEGOTIATION=legacy no longer turns negotiation off",
+      "source": "src/mcp/client/serverOptions.ts",
+      "find": "  if (process.env.MCP_PROTOCOL_NEGOTIATION === 'legacy') return 'legacy'\n",
+      "replace": ""
+    },
+    {
+      "name": "the probe waits for the whole startup timeout instead of 5 s",
+      "source": "src/mcp/client/negotiation.ts",
+      "find": "  return Math.min(MAX_PROBE_TIMEOUT_MS, startupTimeoutMs)\n",
+      "replace": "  return startupTimeoutMs\n"
+    },
+    {
+      "name": "an expired verdict is still used",
+      "source": "src/mcp/client/negotiation.ts",
+      "find": "  return now >= verdict.savedAt && now - verdict.savedAt < verdict.ttlMs\n",
+      "replace": "  return now >= verdict.savedAt\n"
+    },
+    {
+      "name": "a 401 on the probe is retried in the 2025 protocol instead of asking for auth",
+      "source": "src/mcp/client/negotiation.ts",
+      "find": "  if (isAuthConnectError(error)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "a listen stream the server dropped is not opened again",
+      "source": "src/mcp/client/subscriptions.ts",
+      "find": "    logMCPDebug(this.name, 'subscriptions/listen stream dropped; reopening')\n    this.scheduleReopen(generation)\n",
+      "replace": "    logMCPDebug(this.name, 'subscriptions/listen stream dropped; reopening')\n"
+    },
+    {
+      "name": "the hook never opens the listen stream, so list_changed never reaches it on a modern server",
+      "source": "src/mcp/useManageMCPConnections.ts",
+      "find": "          startMcpSubscriptions(client.name, client.client)\n",
+      "replace": ""
+    },
+    {
+      "name": "an accepted URL elicitation on a modern connection waits for a completion notice that never comes",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "                  ...(modern && { awaitsCompletion: false }),\n",
+      "replace": ""
+    }
+  ]
+}

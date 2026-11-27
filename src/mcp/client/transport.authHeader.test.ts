@@ -4,6 +4,7 @@ import { getServerKey } from 'src/mcp/auth/serverKey.js'
 import { connectToServer } from 'src/mcp/client/connection.js'
 import type { McpHTTPServerConfig, MCPServerConnection } from 'src/mcp/types.js'
 import { _setSecureStorageForTesting, type SecureStorageData } from 'src/platform/secureStorage/index.js'
+import { refuseDiscoverProbe } from 'src/mcp/__testutils__/connectionHarness.js'
 
 /*
  * A server configured with a static Authorization header that also has
@@ -40,6 +41,8 @@ function startServer(): { url: string; authorizations: Array<string | null> } {
       if (req.method !== 'POST') return new Response(null, { status: 405 })
       authorizations.push(req.headers.get('authorization'))
       const message = (await req.json()) as { id?: number; method: string }
+      const refused = refuseDiscoverProbe(message)
+      if (refused) return refused
       if (message.method !== 'initialize') return new Response(null, { status: 202 })
       return Response.json({
         jsonrpc: '2.0',

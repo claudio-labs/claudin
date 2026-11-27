@@ -73,6 +73,8 @@ export type FakeSdkClient = {
   onclose?: () => void
   setNotificationHandler: (method: string, handler: () => Promise<void>) => void
   setRequestHandler: (method: string, handler: unknown) => void
+  /** A 2025 connection, which opens no listen stream. */
+  getProtocolEra: () => 'legacy'
   notificationHandlers: Map<string, () => Promise<void>>
   requestHandlers: string[]
 }
@@ -91,6 +93,7 @@ export function fakeSdkClient(): FakeSdkClient {
     setRequestHandler(method) {
       requestHandlers.push(method)
     },
+    getProtocolEra: () => 'legacy',
   }
 }
 
