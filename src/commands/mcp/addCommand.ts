@@ -29,13 +29,13 @@ export function registerMcpAddCommand(mcp: Command): void {
       'Add an MCP server to Claudin.\n\n' +
         'Examples:\n' +
         '  # Add HTTP server:\n' +
-        '  claude mcp add --transport http sentry https://mcp.sentry.dev/mcp\n\n' +
+        '  claudin mcp add --transport http sentry https://mcp.sentry.dev/mcp\n\n' +
         '  # Add HTTP server with headers:\n' +
-        '  claude mcp add --transport http corridor https://app.corridor.dev/api/mcp --header "Authorization: Bearer ..."\n\n' +
+        '  claudin mcp add --transport http corridor https://app.corridor.dev/api/mcp --header "Authorization: Bearer ..."\n\n' +
         '  # Add stdio server with environment variables:\n' +
-        '  claude mcp add -e API_KEY=xxx my-server -- npx my-mcp-server\n\n' +
+        '  claudin mcp add -e API_KEY=xxx my-server -- npx my-mcp-server\n\n' +
         '  # Add stdio server with subprocess flags:\n' +
-        '  claude mcp add my-server -- my-command --some-flag arg1',
+        '  claudin mcp add my-server -- my-command --some-flag arg1',
     )
     .option(
       '-s, --scope <scope>',
@@ -52,7 +52,7 @@ export function registerMcpAddCommand(mcp: Command): void {
     )
     .option(
       '-H, --header <header...>',
-      'Set WebSocket headers (e.g. -H "X-Api-Key: abc123" -H "X-Custom: value")',
+      'Set request headers for HTTP and SSE servers (e.g. -H "X-Api-Key: abc123" -H "X-Custom: value")',
     )
     .option('--client-id <clientId>', 'OAuth client ID for HTTP/SSE servers')
     .option(
@@ -205,10 +205,10 @@ export function registerMcpAddCommand(mcp: Command): void {
               `\nWarning: The command "${actualCommand}" looks like a URL, but is being interpreted as a stdio server as --transport was not specified.\n`,
             )
             process.stderr.write(
-              `If this is an HTTP server, use: claude mcp add --transport http ${name} ${actualCommand}\n`,
+              `If this is an HTTP server, use: claudin mcp add --transport http ${name} ${actualCommand}\n`,
             )
             process.stderr.write(
-              `If this is an SSE server, use: claude mcp add --transport sse ${name} ${actualCommand}\n`,
+              `If this is an SSE server, use: claudin mcp add --transport sse ${name} ${actualCommand}\n`,
             )
           }
 

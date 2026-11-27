@@ -55,7 +55,7 @@ export function registerMcpCommands(program: Command): void {
     } = await import('src/platform/headless/handlers/mcp.js')
     await mcpGetHandler(name)
   })
-  mcp.command('add-json <name> <json>').description('Add an MCP server (stdio or SSE) with a JSON string').option('-s, --scope <scope>', 'Configuration scope (local, user, or project)', 'local').option('--client-secret', 'Prompt for OAuth client secret (or set MCP_CLIENT_SECRET env var)').action(async (name: string, json: string, options: {
+  mcp.command('add-json <name> <json>').description('Add an MCP server (stdio, SSE, HTTP or WebSocket) with a JSON string').option('-s, --scope <scope>', 'Configuration scope (local, user, or project)', 'local').option('--client-secret', 'Prompt for OAuth client secret (or set MCP_CLIENT_SECRET env var)').action(async (name: string, json: string, options: {
     scope?: string
     clientSecret?: true
   }) => {
