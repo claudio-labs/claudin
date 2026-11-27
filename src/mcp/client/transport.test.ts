@@ -469,6 +469,26 @@ describe('createTransport — sse', () => {
     expect(server.requests[0]!.headers.get('authorization')).toBeNull()
     expect(server.requests[0]!.headers.get('accept')).toBe('text/event-stream')
   })
+
+  test('the headers the SDK adds reach the event stream, each sent once', async () => {
+    const server = startSseServer()
+    memoryStorage({})
+
+    const transport = await build('sse-srv', {
+      type: 'sse',
+      url: server.url,
+      headers: { 'X-Static': 'static-value' },
+      scope: 'user',
+    })
+    ;(transport as SSEClientTransport).setProtocolVersion('2025-06-18')
+    await transport.start()
+
+    const headers = server.requests[0]!.headers
+    expect(headers.get('mcp-protocol-version')).toBe('2025-06-18')
+    expect(headers.get('user-agent')).toBe(getMCPUserAgent())
+    expect(headers.get('x-static')).toBe('static-value')
+    expect(headers.get('accept')).toBe('text/event-stream')
+  })
 })
 
 describe('createTransport — sse-ide', () => {

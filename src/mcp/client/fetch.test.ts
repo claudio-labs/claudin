@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test'
 import {
   createClaudeAiProxyFetch,
   getConnectionTimeoutMs,
@@ -155,6 +155,37 @@ describe('wrapFetchWithTimeout', () => {
     })
     expect(seen[0]!.init!.signal!.aborted).toBe(true)
     expect(seen[0]!.init!.signal!.reason).toBe('gone')
+  })
+
+  test('a tools/call answered after 60 s is not cut while the tool timeout allows it', async () => {
+    jest.useFakeTimers()
+    try {
+      const { fetchLike } = recordingFetch(
+        ({ init }) =>
+          new Promise<Response>((resolve, reject) => {
+            const timer = setTimeout(() => resolve(new Response('{}')), 61_000)
+            init!.signal!.addEventListener('abort', () => {
+              clearTimeout(timer)
+              reject(init!.signal!.reason)
+            })
+          }),
+      )
+      const pending = wrapFetchWithTimeout(fetchLike)('http://srv/mcp', {
+        method: 'POST',
+        body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'slow' } }),
+      })
+      let outcome = 'pending'
+      pending.then(
+        () => (outcome = 'answered'),
+        error => (outcome = (error as Error).name),
+      )
+      jest.advanceTimersByTime(61_000)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(outcome).toBe('answered')
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   test('a failing fetch rejects with its own error', async () => {

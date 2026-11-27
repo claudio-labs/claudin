@@ -381,7 +381,7 @@ describe('WebSocketTransport (Bun) — send', () => {
 })
 
 describe('WebSocketTransport (Bun) — closing', () => {
-  test('close on an open socket fires onclose twice under Bun: once from the synchronous close event, once from the cleanup', async () => {
+  test('close on an open socket fires onclose once, though Bun also emits the close event', async () => {
     const server = startServer()
     const ws = connect(server.url)
     const transport = new WebSocketTransport(ws)
@@ -396,12 +396,12 @@ describe('WebSocketTransport (Bun) — closing', () => {
     await transport.close()
 
     // Bun's ws.close() dispatches 'close' synchronously, so the persistent
-    // listener runs the cleanup first and close() then runs it again.
+    // listener runs the cleanup first; close() must not run it a second time.
     expect(ws.readyState).toBe(WebSocket.CLOSED)
-    expect(closes).toBe(2)
-    expect(ws.listenerLog).toEqual(['detach', 'detach'])
+    expect(closes).toBe(1)
+    expect(ws.listenerLog).toEqual(['detach'])
     expect(await server.closedByClient).toBe(1000)
-    expect(closes).toBe(2)
+    expect(closes).toBe(1)
   })
 
   test('close on a connecting socket asks it to close and still runs the cleanup', async () => {
@@ -423,7 +423,7 @@ describe('WebSocketTransport (Bun) — closing', () => {
     expect(ws.listenerLog).toEqual(['detach'])
   })
 
-  test('a server-side close fires onclose and removes the listeners; a later close() fires onclose again', async () => {
+  test('a server-side close fires onclose and removes the listeners; a later close() does not fire it again', async () => {
     const server = startServer()
     const ws = connect(server.url)
     const transport = new WebSocketTransport(ws)
@@ -441,10 +441,10 @@ describe('WebSocketTransport (Bun) — closing', () => {
     await until(() => closes === 1)
     expect(ws.listenerLog).toEqual(['detach'])
 
-    // close() does not call ws.close() on a CLOSED socket, but still runs the
-    // cleanup, which calls onclose unconditionally.
+    // close() does not call ws.close() on a CLOSED socket, and the cleanup
+    // already ran, so onclose stays at one.
     await transport.close()
-    expect(closes).toBe(2)
+    expect(closes).toBe(1)
   })
 
   test('send after close throws', async () => {
