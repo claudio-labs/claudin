@@ -5,8 +5,13 @@
  * A server in `auto` mode is probed with `server/discover` and reached in
  * 2026-07-28 when it answers, in the 2025 `initialize` handshake otherwise.
  * The verdict is cached per server (eraCache.ts) and handed back to the SDK
- * as `connect(t, { prior })`, which skips the probe: no round trip, and one
- * spawn of a stdio server instead of two.
+ * as `connect(t, { prior })`, which skips the probe: one spawn of a stdio
+ * server instead of two, and no 400 from a 2025 HTTP server. A modern verdict
+ * is never replayed over HTTP: adopting it sends nothing, so a server gone
+ * back to 2025 failed only on the first list request, before anything could
+ * reconnect it, and its capabilities were the cached ones for an hour or
+ * more. The probe there is one request, what any check would cost, and it
+ * brings the server's current capabilities.
  *
  * The SDK falls back to `initialize` by itself when a server answers the
  * probe 4xx (a 2025 server), and on stdio when the probe times out. On HTTP a
@@ -16,15 +21,11 @@
  *
  * A cached verdict that fails to connect is dropped and the connect is made
  * again with a probe. A modern one cannot fail to connect, since adopting it
- * sends nothing. Over HTTP a server that went back to 2025 rejects the first
- * request instead, with an HTTP 400 for the session it never opened
- * (isStaleModernVerdictError), and the hook reconnects. A stdio server is
- * never reconnected by the hook, and the first requests go out before the
- * hook is even listening, so on stdio the verdict is confirmed inside the
- * connect with one `server/discover` on the session's own pipe
- * (confirmsPriorInPlace): a round trip, still without the probe's second
- * spawn. A 2025 server answers it with an error or exits, and the connect
- * drops the verdict and probes once.
+ * sends nothing, so on stdio it is confirmed inside the connect with one
+ * `server/discover` on the session's own pipe (confirmsPriorInPlace): a
+ * round trip, still without the probe's second spawn. A 2025 server answers
+ * it with an error or exits, and the connect drops the verdict and probes
+ * once.
  */
 import {
   type DiscoverResult,
@@ -79,6 +80,11 @@ function toPrior(verdict: EraVerdict): PriorDiscovery {
   return verdict.kind === 'modern' ? { kind: 'modern', discover: verdict.discover } : { kind: 'legacy' }
 }
 
+/** Whether a verdict of this kind is cached for, and replayed on, this transport (see the header). */
+function isReplayed(kind: EraVerdict['kind'], transport: NegotiableTransport): boolean {
+  return kind === 'legacy' || transport === 'stdio'
+}
+
 export function planConnect(input: {
   mode: McpProtocolMode
   transport: NegotiableTransport
@@ -91,7 +97,11 @@ export function planConnect(input: {
   if (input.override?.kind === 'legacy') return { mode: 'legacy' }
   const probe: ConnectPlan = { mode: 'auto', probeTimeoutMs: probeTimeoutMs(input.startupTimeoutMs) }
   if (input.override?.kind === 'probe') return probe
-  if (input.verdict && isVerdictFresh(input.verdict, input.now)) {
+  if (
+    input.verdict &&
+    isVerdictFresh(input.verdict, input.now) &&
+    isReplayed(input.verdict.kind, input.transport)
+  ) {
     return { mode: 'auto', prior: toPrior(input.verdict) }
   }
   return probe
@@ -100,11 +110,6 @@ export function planConnect(input: {
 /** Whether the connect confirms a cached modern verdict before handing the connection out. */
 export function confirmsPriorInPlace(plan: ConnectPlan, transport: NegotiableTransport): boolean {
   return plan.prior?.kind === 'modern' && transport === 'stdio'
-}
-
-/** Whether a 2025 server's HTTP 400 on a request can expose a cached modern verdict. */
-export function checksPriorLazily(plan: ConnectPlan, transport: NegotiableTransport): boolean {
-  return plan.prior?.kind === 'modern' && transport === 'http'
 }
 
 export function isAuthConnectError(error: unknown): boolean {
@@ -159,6 +164,7 @@ function discoverTtlMs(discover: DiscoverResult): number {
  */
 export function verdictAfterConnect(input: {
   plan: ConnectPlan
+  transport: NegotiableTransport
   override: EraOverride | undefined
   era: ProtocolEra | undefined
   discover: DiscoverResult | undefined
@@ -170,19 +176,9 @@ export function verdictAfterConnect(input: {
       : undefined
   }
   if (input.plan.mode !== 'auto' || input.plan.prior) return undefined
-  if (input.era === 'modern' && input.discover) {
+  if (input.era === 'modern' && input.discover && isReplayed('modern', input.transport)) {
     return { kind: 'modern', discover: input.discover, savedAt: input.now, ttlMs: discoverTtlMs(input.discover) }
   }
   if (input.era === 'legacy') return { kind: 'legacy', savedAt: input.now, ttlMs: LEGACY_VERDICT_TTL_MS }
   return undefined
-}
-
-/**
- * A request on a connection adopted from a modern verdict that a 2025 server
- * answered: HTTP 400 or 404 with no JSON-RPC error for the request (a modern
- * server's 400 carries one, which the SDK delivers as the response).
- */
-export function isStaleModernVerdictError(error: unknown): boolean {
-  if (!(error instanceof SdkHttpError)) return false
-  return error.status === 400 || error.status === 404
 }

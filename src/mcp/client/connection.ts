@@ -42,10 +42,8 @@ import {
   saveEraVerdict,
 } from 'src/mcp/client/eraCache.js'
 import {
-  checksPriorLazily,
   confirmsPriorInPlace,
   type EraOverride,
-  isStaleModernVerdictError,
   type NegotiableTransport,
   nextEraStep,
   planConnect,
@@ -483,6 +481,7 @@ export const connectToServer = memoize(
       logMCPDebug(name, `Protocol ${protocolVersion ?? 'unknown'} (${era ?? 'unknown'} era)`)
       const verdict = verdictAfterConnect({
         plan,
+        transport: negotiable,
         override: retry?.era,
         era,
         discover: client.getDiscoverResult(),
@@ -557,11 +556,6 @@ export const connectToServer = memoize(
       // Guard against re-entry: close() aborts in-flight streams which may fire
       // onerror again before the close chain completes.
       let hasTriggeredClose = false
-
-      // A connection adopted from a cached 2026-07-28 verdict sent nothing to
-      // prove it; the first request a 2025 server rejects drops the verdict
-      // and closes, and the reconnect probes again (negotiation.ts).
-      let modernVerdictUnproven = checksPriorLazily(plan, negotiable)
 
       // client.close() → transport.close() → transport.onclose → SDK's _onclose():
       // rejects all pending request handlers (so hung callTool() promises fail with
@@ -640,20 +634,6 @@ export const connectToServer = memoize(
           } else {
             logMCPDebug(name, `Connection error: ${error.message}`)
           }
-        }
-
-        if (modernVerdictUnproven && isStaleModernVerdictError(error)) {
-          modernVerdictUnproven = false
-          logMCPDebug(
-            name,
-            `The server answered as a 2025 server; dropping its cached 2026-07-28 verdict and reconnecting`,
-          )
-          void dropEraVerdict(eraKey)
-          closeTransportAndRejectPending('stale protocol verdict')
-          if (originalOnerror) {
-            originalOnerror(error)
-          }
-          return
         }
 
         // For HTTP transports, detect session expiry (404 + JSON-RPC -32001)

@@ -7,12 +7,10 @@ import {
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
 import {
-  checksPriorLazily,
   confirmsPriorInPlace,
   type ConnectPlan,
   type EraVerdict,
   isAuthConnectError,
-  isStaleModernVerdictError,
   isVerdictFresh,
   LEGACY_VERDICT_TTL_MS,
   MAX_VERDICT_TTL_MS,
@@ -71,9 +69,14 @@ describe('planConnect', () => {
     expect(plan({ verdict: { ...legacy, savedAt: NOW - 60_000 } })).toEqual({ mode: 'auto', probeTimeoutMs: 5000 })
   })
 
-  test('a fresh verdict is handed to the SDK as the prior', () => {
-    expect(plan({ verdict: modern })).toEqual({ mode: 'auto', prior: { kind: 'modern', discover: modern.discover } })
+  test('a fresh verdict is handed to the SDK as the prior; over HTTP only a legacy one', () => {
+    expect(plan({ transport: 'stdio', verdict: modern })).toEqual({
+      mode: 'auto',
+      prior: { kind: 'modern', discover: modern.discover },
+    })
+    expect(plan({ transport: 'stdio', verdict: legacy })).toEqual({ mode: 'auto', prior: { kind: 'legacy' } })
     expect(plan({ verdict: legacy })).toEqual({ mode: 'auto', prior: { kind: 'legacy' } })
+    expect(plan({ verdict: modern })).toEqual({ mode: 'auto', probeTimeoutMs: 5000 })
   })
 
   test('an override wins over the cache', () => {
@@ -131,7 +134,15 @@ describe('nextEraStep', () => {
 describe('verdictAfterConnect', () => {
   const probing = plan()
   const after = (input: Partial<Parameters<typeof verdictAfterConnect>[0]>) =>
-    verdictAfterConnect({ plan: probing, override: undefined, era: undefined, discover: undefined, now: NOW, ...input })
+    verdictAfterConnect({
+      plan: probing,
+      transport: 'stdio',
+      override: undefined,
+      era: undefined,
+      discover: undefined,
+      now: NOW,
+      ...input,
+    })
 
   test('a probed modern server: the discover result, its ttlMs clamped to 1 h–24 h', () => {
     expect(after({ era: 'modern', discover: discover() })).toEqual({
@@ -147,6 +158,11 @@ describe('verdictAfterConnect', () => {
 
   test('a probed legacy server: 24 h', () => {
     expect(after({ era: 'legacy' })).toEqual({ kind: 'legacy', savedAt: NOW, ttlMs: LEGACY_VERDICT_TTL_MS })
+    expect(after({ era: 'legacy', transport: 'http' })).toEqual({ kind: 'legacy', savedAt: NOW, ttlMs: LEGACY_VERDICT_TTL_MS })
+  })
+
+  test('over HTTP a modern server is not cached, since nothing would replay it', () => {
+    expect(after({ era: 'modern', discover: discover(), transport: 'http' })).toBeUndefined()
   })
 
   test('a fallback is cached only when the server turned the probe down', () => {
@@ -166,28 +182,15 @@ describe('verdictAfterConnect', () => {
   })
 })
 
-describe('isStaleModernVerdictError', () => {
-  test('an HTTP 400 or 404 only', () => {
-    expect(isStaleModernVerdictError(http(400))).toBe(true)
-    expect(isStaleModernVerdictError(http(404))).toBe(true)
-    expect(isStaleModernVerdictError(http(500))).toBe(false)
-    expect(isStaleModernVerdictError(new Error('400'))).toBe(false)
-  })
-})
-
 describe('checking a cached modern verdict', () => {
-  const adopted = plan({ verdict: modern })
-  test('stdio confirms it in place; http waits for a 2025 server to reject a request', () => {
+  const adopted = plan({ transport: 'stdio', verdict: modern })
+  test('stdio confirms it in place', () => {
     expect(confirmsPriorInPlace(adopted, 'stdio')).toBe(true)
-    expect(confirmsPriorInPlace(adopted, 'http')).toBe(false)
-    expect(checksPriorLazily(adopted, 'http')).toBe(true)
-    expect(checksPriorLazily(adopted, 'stdio')).toBe(false)
   })
 
   test('nothing to check without a modern prior', () => {
-    for (const p of [plan(), plan({ verdict: legacy }), plan({ mode: 'legacy' })]) {
+    for (const p of [plan(), plan({ verdict: legacy }), plan({ verdict: modern }), plan({ mode: 'legacy' })]) {
       expect(confirmsPriorInPlace(p, 'stdio')).toBe(false)
-      expect(checksPriorLazily(p, 'http')).toBe(false)
     }
   })
 })

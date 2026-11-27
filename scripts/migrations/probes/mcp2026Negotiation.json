@@ -34,9 +34,10 @@
       "replace": ""
     },
     {
-      "name": "a modern verdict for a server gone back to 2025 is kept, and every connect fails its first request",
-      "find": "        if (modernVerdictUnproven && isStaleModernVerdictError(error)) {\n",
-      "replace": "        if (modernVerdictUnproven && false) {\n"
+      "name": "a cached modern verdict is replayed over HTTP again: a server gone back to 2025 ends connected without tools, and new capabilities wait out the TTL",
+      "source": "src/mcp/client/negotiation.ts",
+      "find": "  return kind === 'legacy' || transport === 'stdio'\n",
+      "replace": "  return true\n"
     },
     {
       "name": "a cached modern verdict for a stdio server gone back to 2025 is never confirmed, and the server stays broken until the TTL",
