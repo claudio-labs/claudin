@@ -19,6 +19,7 @@ import {
  */
 export class WebSocketTransport implements Transport {
   private started = false
+  private closed = false
   private opened: Promise<void>
   /** Settles `opened` with the first open or error; later ones are no-ops. */
   private settleOpen: ((error?: Error) => void) | undefined
@@ -74,9 +75,12 @@ export class WebSocketTransport implements Transport {
     this.onerror?.(toError(error))
   }
 
-  // Runs on every close event and on every close() call, so onclose can fire
-  // twice when close() itself makes the socket emit 'close'.
+  // Reached from the close event and from close(), and on Bun close() makes the
+  // socket emit 'close' synchronously; only the first call counts, or onclose
+  // fired twice and the reconnect logic behind it ran twice.
   private handleCloseCleanup(): void {
+    if (this.closed) return
+    this.closed = true
     this.onclose?.()
     // Detached, the socket can no longer report that it never opened.
     this.settleOpen?.(new Error('WebSocket closed before it opened.'))
