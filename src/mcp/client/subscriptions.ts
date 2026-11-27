@@ -15,6 +15,9 @@
  * then 2, 4 … up to 30 s; the delay starts over once a stream has stayed open
  * for 30 s. A stream the server ended deliberately (`'graceful'`), one closed
  * here (`'local'`) or a closed connection ends it for good.
+ * Closing it posts `notifications/cancelled`, which the SDK waits on for up
+ * to the 60 s request timeout; stop() gives it 1 s, so the cleanup of a
+ * server that stopped answering, and the reconnect behind it, are not held.
  *
  * The resource URIs themselves are kept here per client, for both eras
  * (subscribeResourceUpdates): at most 50, the oldest dropped first. A 2025
@@ -46,6 +49,8 @@ export const DEFAULT_SUBSCRIPTION_TIMINGS: SubscriptionTimings = {
   maxDelayMs: 30_000,
   stableMs: 30_000,
 }
+
+const STOP_CLOSE_TIMEOUT_MS = 1000
 
 export function listenFilter(
   capabilities: ServerCapabilities | undefined,
@@ -170,7 +175,18 @@ class ListenLoop implements McpSubscriptions {
     clearTimeout(this.timer)
     const previous = this.current
     this.current = undefined
-    if (previous) await this.close(previous)
+    if (previous) await this.closeWithin(previous, STOP_CLOSE_TIMEOUT_MS)
+  }
+
+  private async closeWithin(subscription: McpSubscription, ms: number): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timedOut = new Promise<true>(resolve => {
+      timer = setTimeout(() => resolve(true), ms)
+      timer.unref?.()
+    })
+    const late = await Promise.race([this.close(subscription).then(() => false), timedOut])
+    clearTimeout(timer)
+    if (late) logMCPDebug(this.name, `The listen stream's cancel got no answer in ${ms}ms; closing without it`)
   }
 
   private async close(subscription: McpSubscription): Promise<void> {

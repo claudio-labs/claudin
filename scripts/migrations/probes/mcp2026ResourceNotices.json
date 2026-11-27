@@ -2,6 +2,7 @@
   "test": [
     "src/mcp/resourceChanges.test.ts",
     "src/mcp/client/subscriptions.resources.test.ts",
+    "src/mcp/client/subscriptions.test.ts",
     "src/mcp/resourceWatch.test.ts",
     "src/agent/attachments/mcpResourceChanged.pipeline.test.ts"
   ],
@@ -44,6 +45,12 @@
       "source": "src/mcp/client/subscriptions.ts",
       "find": "    loop?.setResourceSubscriptions(next.uris)",
       "replace": "    loop?.setResourceSubscriptions([uri])"
+    },
+    {
+      "name": "cleanup waits on the listen cancel, so a server that stopped answering holds it for the 60 s request timeout",
+      "source": "src/mcp/client/subscriptions.ts",
+      "find": "    if (previous) await this.closeWithin(previous, STOP_CLOSE_TIMEOUT_MS)\n",
+      "replace": "    if (previous) await this.close(previous)\n"
     },
     {
       "name": "ReadMcpResource reads without subscribing",
