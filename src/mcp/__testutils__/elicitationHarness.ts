@@ -123,6 +123,10 @@ export function useElicitationHooks(): {
     )
     resetSettingsCache()
     resetHooksConfigSnapshot()
+    // Memoized by cwd only: a hook that reads the transcript path while the
+    // config dir points here would pin it for every later file in the run.
+    const { getProjectDir } = await import('src/sessions/pure/paths.js')
+    getProjectDir.cache.clear?.()
   }
   beforeEach(async () => {
     savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
