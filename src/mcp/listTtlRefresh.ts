@@ -1,10 +1,11 @@
 /**
  * Re-reads the MCP lists whose TTL ran out, at the start of a user turn on
- * the main thread (useOnQuery). Which lists are due is listTtl.ts's call; this
- * reads them through the same fetchers connect and list_changed use, and
- * writes AppState only for a list whose entries changed — an unchanged tools
- * list must leave the pool's objects alone, or the next request rewrites the
- * cached prefix for nothing (cache.md §5).
+ * the main thread: the REPL's (useOnQuery) and each headless one (turnLoop.ts,
+ * as a stream-json or SDK session is many turns). Which lists are due is
+ * listTtl.ts's call; this reads them through the same fetchers connect and
+ * list_changed use, and writes AppState only for a list whose entries
+ * changed — an unchanged tools list must leave the pool's objects alone, or
+ * the next request rewrites the cached prefix for nothing (cache.md §5).
  *
  * The lists of one server that changed go to AppState in one write: each
  * write replaces the server's client object, so a second one would find it
@@ -16,8 +17,9 @@
  * goes on and lands when it answers, as a list_changed refresh would; a read
  * that fails keeps the list AppState has and backs off (listTtl.ts).
  *
- * Sub-agents and headless `-p` do not refresh on TTL: a sub-agent reads the
- * fetchers' memo, which this refresh replaces, and a `-p` run is one turn.
+ * Sub-agents do not refresh on TTL: a sub-agent reads the fetchers' memo,
+ * which this refresh replaces. A `-p` run takes the same path as a headless
+ * session, but its one turn starts inside the 60 s floor, so it reads nothing.
  */
 import {
   fetchCommandsForClient,
