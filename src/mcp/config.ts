@@ -193,13 +193,15 @@ export function unwrapCcrProxyUrl(url: string): string {
  * Compute a dedup signature for an MCP server config.
  * Two configs with the same signature are considered "the same server" for
  * plugin deduplication. Ignores env (plugins always inject CLAUDIN_PLUGIN_ROOT)
- * and headers (same URL = same server regardless of auth).
+ * and headers (same URL = same server regardless of auth). A stdio server's
+ * cwd counts: the same command in another directory is another server.
  * Returns null only for configs with neither command nor url (sdk type).
  */
 export function getMcpServerSignature(config: McpServerConfig): string | null {
   const cmd = getServerCommandArray(config)
   if (cmd) {
-    return `stdio:${jsonStringify(cmd)}`
+    const cwd = 'cwd' in config && config.cwd ? `@${config.cwd}` : ''
+    return `stdio:${jsonStringify(cmd)}${cwd}`
   }
   const url = getServerUrl(config)
   if (url) {
