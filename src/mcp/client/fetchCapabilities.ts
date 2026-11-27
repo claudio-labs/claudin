@@ -3,7 +3,6 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
 import type { Command } from 'src/commands/commands.js'
-import { parseArguments } from 'src/commands/argumentSubstitution.js'
 import {
   type Tool,
   type ToolCallProgress,
@@ -59,6 +58,7 @@ import {
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
 import { collectListPages, pageParams } from 'src/mcp/client/listPagination.js'
+import { splitPromptArguments } from 'src/mcp/client/promptArguments.js'
 import {
   isSchemaError,
   keepValidPrompts,
@@ -499,8 +499,7 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
           argNames,
           source: 'mcp',
           async getPromptForCommand(args: string) {
-            // Shell-style, as a skill's $ARGUMENTS: "error handling" is one argument.
-            const argsArray = parseArguments(args)
+            const argsArray = splitPromptArguments(args)
             try {
               const connectedClient = await ensureConnectedClient(client)
               const result = await connectedClient.client.getPrompt({
