@@ -416,8 +416,14 @@ export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
   MCP_FETCH_CACHE_SIZE,
 )
 
-// Read only by ListMcpResourcesTool, never at startup. A server with resources
-// but no templates/list answers MethodNotFound, which means it has none.
+// Templates are optional and read only by ListMcpResourcesTool, never at
+// startup. A server with resources but no templates/list answers
+// MethodNotFound; any other failure means the same here, cached like an
+// answer (until a reconnect or a list_changed clears it), so a server that
+// mishandles the method is not asked on every call. The short timeout keeps
+// one that never answers from holding the tool for the SDK's 60 s.
+const RESOURCE_TEMPLATES_TIMEOUT_MS = 10_000
+
 export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
   async (client: MCPServerConnection): Promise<ServerResourceTemplate[]> => {
     if (client.type !== 'connected' || !client.capabilities?.resources) return []
@@ -427,6 +433,7 @@ export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
         const page = await client.client.request(
           { method: 'resources/templates/list', ...pageParams(cursor) },
           LenientResourceTemplatesPageSchema,
+          { timeout: RESOURCE_TEMPLATES_TIMEOUT_MS },
         )
         return { items: page.resourceTemplates, nextCursor: page.nextCursor }
       })
@@ -434,14 +441,13 @@ export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
       logSkippedEntries(client.name, 'resource template', skipped)
       return templates.map(template => ({ ...template, server: client.name }))
     } catch (error) {
-      if (error instanceof McpError && error.code === ErrorCode.MethodNotFound) {
-        return []
+      if (!(error instanceof McpError && error.code === ErrorCode.MethodNotFound)) {
+        logMCPError(
+          client.name,
+          `Failed to fetch resource templates, listing none: ${errorMessage(error)}`,
+        )
       }
-      logMCPError(
-        client.name,
-        `Failed to fetch resource templates: ${errorMessage(error)}`,
-      )
-      throw error
+      return []
     }
   },
   (): ServerResourceTemplate[] => [],
