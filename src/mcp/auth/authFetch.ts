@@ -7,8 +7,8 @@ import {
   discoverAuthorizationServerMetadata,
   discoverOAuthServerInfo,
 } from '@modelcontextprotocol/sdk/client/auth.js'
-import { OAuthMetadataSchema } from '@modelcontextprotocol/sdk/shared/auth.js'
-import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js'
+import type { FetchLike } from '@modelcontextprotocol/client'
+import { OAuthMetadataSchema } from '@modelcontextprotocol/core'
 import { errorMessage } from 'src/shared/errors.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { normalizeOAuthErrorBody } from 'src/mcp/auth/oauthErrors.js'

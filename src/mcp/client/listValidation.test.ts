@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import type { Tool } from '@modelcontextprotocol/client'
 import { z } from 'zod/v4'
 import {
   isSchemaError,

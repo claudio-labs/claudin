@@ -1,7 +1,5 @@
-import {
-  type ReadResourceResult,
-  ReadResourceResultSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+import type { ReadResourceResult } from '@modelcontextprotocol/client'
+import { ReadResourceResultSchema } from '@modelcontextprotocol/core'
 import { z } from 'zod/v4'
 import { ensureConnectedClient } from 'src/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'

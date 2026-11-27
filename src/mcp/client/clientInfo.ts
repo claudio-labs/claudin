@@ -1,4 +1,4 @@
-import type { Implementation } from '@modelcontextprotocol/sdk/types.js'
+import type { Implementation } from '@modelcontextprotocol/client'
 
 /**
  * How Claudin introduces itself to every MCP server it connects to.

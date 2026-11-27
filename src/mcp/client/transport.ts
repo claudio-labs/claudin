@@ -8,10 +8,8 @@ import {
   StreamableHTTPClientTransport,
   type StreamableHTTPClientTransportOptions,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import {
-  createFetchWithInit,
-  type Transport,
-} from '@modelcontextprotocol/sdk/shared/transport.js'
+import { createFetchWithInit } from '@modelcontextprotocol/client'
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import mapValues from 'lodash-es/mapValues.js'
 import { homedir } from 'os'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'

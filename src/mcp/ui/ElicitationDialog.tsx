@@ -1,5 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
-import type { ElicitRequestFormParams, ElicitRequestURLParams, ElicitResult, PrimitiveSchemaDefinition } from '@modelcontextprotocol/sdk/types.js';
+import type { ElicitRequestFormParams, ElicitRequestURLParams, ElicitResult, PrimitiveSchemaDefinition } from '@modelcontextprotocol/client';
 import figures from 'figures';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';

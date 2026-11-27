@@ -10,16 +10,18 @@
  * optional field of the wrong type is dropped from an entry that is
  * otherwise sound.
  */
+import type {
+  Prompt,
+  Resource,
+  ResourceTemplateType,
+  Tool,
+} from '@modelcontextprotocol/client'
 import {
-  type Prompt,
   PromptSchema,
-  type Resource,
   ResourceSchema,
-  type ResourceTemplate,
   ResourceTemplateSchema,
-  type Tool,
   ToolSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/core'
 import { z } from 'zod/v4'
 
 export type SkippedEntry = { name?: string; reason: string }
@@ -100,7 +102,9 @@ const RESOURCE_DROPPABLE = new Set(['title', 'description', 'mimeType', 'annotat
 // The top level of a tool's inputSchema is what providers check against the
 // JSON Schema metaschema, so a wrong-typed `properties` or `required` there is
 // dropped rather than sent; nested property schemas are left as the server
-// wrote them (as opencode does, packages/core/src/mcp/client.ts).
+// wrote them (as opencode does, packages/core/src/mcp/client.ts), except one
+// that is not an object at all, which skips the tool: the 1.x SDK schema
+// rejected it and the v2 one types properties as any JSON value.
 function normalizeTool(entry: Record<string, unknown>): Normalized {
   if (typeof entry.name !== 'string' || entry.name === '') return { skip: 'name is not a non-empty string' }
   const inputSchema = entry.inputSchema
@@ -109,6 +113,10 @@ function normalizeTool(entry: Record<string, unknown>): Normalized {
     return { skip: 'inputSchema type is not "object"' }
   }
   const { properties, required, ...rest } = inputSchema
+  if (isRecord(properties)) {
+    const notSchema = Object.keys(properties).find(key => typeof properties[key] !== 'object' || properties[key] === null)
+    if (notSchema !== undefined) return { skip: `inputSchema.properties.${notSchema}: not a schema` }
+  }
   return {
     entry: {
       ...entry,
@@ -134,6 +142,6 @@ export function keepValidResources(raw: readonly unknown[]): ValidatedList<Resou
   return keepValid(raw, ResourceSchema, RESOURCE_DROPPABLE)
 }
 
-export function keepValidResourceTemplates(raw: readonly unknown[]): ValidatedList<ResourceTemplate> {
+export function keepValidResourceTemplates(raw: readonly unknown[]): ValidatedList<ResourceTemplateType> {
   return keepValid(raw, ResourceTemplateSchema, RESOURCE_DROPPABLE)
 }

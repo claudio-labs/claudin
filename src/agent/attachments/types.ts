@@ -11,7 +11,7 @@ import type { UUID } from 'crypto'
 import type {
   ContentBlockParam,
 } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js'
+import type { ReadResourceResult } from '@modelcontextprotocol/client'
 // DiscoverySignal lives in a stubbed/feature-gated module on external builds;
 // inline the structural shape used by the Attachment union to avoid an
 // unresolved-module error during typecheck.

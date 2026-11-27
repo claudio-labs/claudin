@@ -1,9 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import type {
-  Resource,
-  ResourceTemplate,
-  ServerCapabilities,
-} from '@modelcontextprotocol/sdk/types.js'
+import type { Resource, ResourceTemplateType } from '@modelcontextprotocol/client'
+import type { ServerCapabilities } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod/v4'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 
@@ -236,4 +233,4 @@ export type MCPServerConnection =
 
 // Resource types
 export type ServerResource = Resource & { server: string }
-export type ServerResourceTemplate = ResourceTemplate & { server: string }
+export type ServerResourceTemplate = ResourceTemplateType & { server: string }
