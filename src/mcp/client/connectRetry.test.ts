@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
+import { SseError } from '@modelcontextprotocol/sdk/client/sse.js'
 import { isTransientConnectError, nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
+import { WebSocketOpenError } from 'src/mcp/mcpWebSocketTransport.js'
 
 const withCode = (code: unknown, cause?: unknown) => Object.assign(new Error('failed'), { code }, cause ? { cause } : {})
 
@@ -27,6 +29,20 @@ describe('isTransientConnectError', () => {
     expect(isTransientConnectError(new Error('MCP server "x" connection timed out after 30000ms'))).toBe(false)
     expect(isTransientConnectError('ECONNRESET')).toBe(false)
     expect(isTransientConnectError(null)).toBe(false)
+  })
+
+  test('a websocket that never opened: by its upgrade status when there is one, else transient', () => {
+    expect(isTransientConnectError(new WebSocketOpenError('refused', 503))).toBe(true)
+    expect(isTransientConnectError(new WebSocketOpenError('refused', 400))).toBe(false)
+    expect(isTransientConnectError(new WebSocketOpenError('refused', 401))).toBe(false)
+    expect(isTransientConnectError(new WebSocketOpenError('Expected 101 status code'))).toBe(true)
+  })
+
+  test('an sse stream that could not be reached is transient; one answered with a status goes by it', () => {
+    const sseError = (code: number | undefined, message: string) => new SseError(code, message, {} as ErrorEvent)
+    expect(isTransientConnectError(sseError(undefined, 'fetch failed'))).toBe(true)
+    expect(isTransientConnectError(sseError(503, 'Service Unavailable'))).toBe(true)
+    expect(isTransientConnectError(sseError(404, 'Not Found'))).toBe(false)
   })
 })
 

@@ -4,13 +4,27 @@ import {
   JSONRPCMessageSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { toError } from 'src/shared/errors.js'
+import { ClaudeError, toError } from 'src/shared/errors.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import {
   WS_CONNECTING,
   WS_OPEN,
   type WebSocketHandle,
 } from 'src/providers/transport/webSocket.js'
+
+/**
+ * The socket never opened. `status` is the server's HTTP answer to the
+ * upgrade when the runtime reports it (Node does, Bun does not), so a connect
+ * retry can tell a 503 from a 400 (src/mcp/client/connectRetry.ts).
+ */
+export class WebSocketOpenError extends ClaudeError {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message)
+  }
+}
 
 /**
  * An MCP transport over a socket from the shared opener, which already hides
@@ -20,6 +34,7 @@ import {
 export class WebSocketTransport implements Transport {
   private started = false
   private closed = false
+  private refusedStatus: number | undefined
   private opened: Promise<void>
   /** Settles `opened` with the first open or error; later ones are no-ops. */
   private settleOpen: ((error?: Error) => void) | undefined
@@ -45,6 +60,9 @@ export class WebSocketTransport implements Transport {
       onMessage: this.onSocketMessage,
       onError: this.onSocketError,
       onClose: () => this.handleCloseCleanup(),
+      onRefused: status => {
+        this.refusedStatus = status
+      },
     })
   }
 
@@ -65,7 +83,10 @@ export class WebSocketTransport implements Transport {
   private onSocketError = (error: Error) => {
     if (this.settleOpen) {
       logForDiagnosticsNoPII('error', 'mcp_websocket_connect_fail')
-      this.settleOpen(error)
+      const openError = new WebSocketOpenError(error.message, this.refusedStatus)
+      this.settleOpen(openError)
+      this.handleError(openError)
+      return
     }
     this.handleError(error)
   }
@@ -83,7 +104,14 @@ export class WebSocketTransport implements Transport {
     this.closed = true
     this.onclose?.()
     // Detached, the socket can no longer report that it never opened.
-    this.settleOpen?.(new Error('WebSocket closed before it opened.'))
+    this.settleOpen?.(
+      new WebSocketOpenError(
+        this.refusedStatus === undefined
+          ? 'WebSocket closed before it opened.'
+          : `WebSocket upgrade refused with HTTP ${this.refusedStatus}`,
+        this.refusedStatus,
+      ),
+    )
     this.ws.detach()
   }
 

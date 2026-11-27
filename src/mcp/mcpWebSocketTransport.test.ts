@@ -2,9 +2,10 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import type { Server, ServerWebSocket } from 'bun'
 
-import { WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'
+import { WebSocketOpenError, WebSocketTransport } from 'src/mcp/mcpWebSocketTransport.js'
 import {
   openWebSocket,
+  type WebSocketHandlers,
   type WebSocketHandle,
 } from 'src/providers/transport/webSocket.js'
 
@@ -205,6 +206,57 @@ describe('WebSocketTransport (Bun) — opening', () => {
     expect(errors).toEqual([failure as Error])
     // The close then detached the handlers.
     expect(ws.listenerLog).toEqual(['listen', 'detach'])
+  })
+
+  // Node's opener reports a refused upgrade through onRefused, then closes the
+  // socket; Bun never does (the case above). A handle that only plays events
+  // stands in for the Node one.
+  function scriptedHandle(): WebSocketHandle & { handlers: WebSocketHandlers } {
+    const handle = {
+      url: 'ws://127.0.0.1:1/mcp',
+      readyState: WebSocket.CONNECTING,
+      handlers: {} as WebSocketHandlers,
+      listen(h: WebSocketHandlers) {
+        handle.handlers = h
+      },
+      send: async () => {},
+      ping() {},
+      close() {},
+      detach() {
+        handle.handlers = {}
+      },
+    }
+    return handle
+  }
+
+  test('a refused upgrade with a status rejects start with that status', async () => {
+    const ws = scriptedHandle()
+    const transport = new WebSocketTransport(ws)
+    const started = transport.start().then(
+      () => undefined,
+      (e: unknown) => e,
+    )
+    ws.handlers.onRefused?.(503, 'unavailable')
+    ws.handlers.onClose?.(1006, '')
+    const failure = await started
+    expect(failure).toBeInstanceOf(WebSocketOpenError)
+    expect((failure as WebSocketOpenError).status).toBe(503)
+    expect((failure as Error).message).toBe('WebSocket upgrade refused with HTTP 503')
+  })
+
+  test('a socket error before the open rejects start with no status', async () => {
+    const ws = scriptedHandle()
+    const transport = new WebSocketTransport(ws)
+    transport.onerror = () => {}
+    const started = transport.start().then(
+      () => undefined,
+      (e: unknown) => e,
+    )
+    ws.handlers.onError?.(new Error('connect ECONNREFUSED'))
+    const failure = await started
+    expect(failure).toBeInstanceOf(WebSocketOpenError)
+    expect((failure as WebSocketOpenError).status).toBeUndefined()
+    expect((failure as Error).message).toBe('connect ECONNREFUSED')
   })
 
   test('start can only be called once', async () => {

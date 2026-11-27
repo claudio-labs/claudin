@@ -134,21 +134,10 @@ describe('connectToServer — transient failures over ws and sse', () => {
     expect(upgrades).toBe(3)
   })
 
-  test('ws: a 400 on the upgrade is not retried', async () => {
-    let upgrades = 0
-    const srv = Bun.serve({
-      hostname: '127.0.0.1',
-      port: 0,
-      fetch() {
-        upgrades++
-        return new Response('bad', { status: 400 })
-      },
-    })
-    servers.push(srv)
-    const connection = await connect('ws-400', { type: 'ws', url: `ws://127.0.0.1:${srv.port}/mcp`, scope: 'user' })
-    expect(connection.type).toBe('failed')
-    expect(upgrades).toBe(1)
-  })
+  // A 400 on the upgrade is not retried where the runtime reports the status
+  // (Node); Bun reports none, so there it counts as transient. The Node case
+  // is pinned on the transport (mcpWebSocketTransport.test.ts) and the rule
+  // in connectRetry.test.ts.
 
   test('control: http retries a refused port', async () => {
     const started = Date.now()
