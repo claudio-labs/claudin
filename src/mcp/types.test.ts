@@ -12,6 +12,10 @@ import {
   McpWebSocketIDEServerConfigSchema,
   McpWebSocketServerConfigSchema,
   TransportSchema,
+  type McpHTTPServerConfig,
+  type McpSSEServerConfig,
+  type McpStdioServerConfig,
+  type McpWebSocketServerConfig,
 } from 'src/mcp/types.js'
 
 describe('config scopes and transports', () => {
@@ -41,7 +45,7 @@ describe('stdio server config', () => {
   })
 
   test('keeps args and env', () => {
-    const config = { type: 'stdio', command: 'node', args: ['srv.js'], env: { A: '1' } }
+    const config: McpStdioServerConfig = { type: 'stdio', command: 'node', args: ['srv.js'], env: { A: '1' } }
     expect(McpStdioServerConfigSchema().parse(config)).toEqual(config)
   })
 
@@ -54,7 +58,7 @@ describe('stdio server config', () => {
 
 describe('remote server configs', () => {
   test('sse keeps headers, headersHelper and oauth', () => {
-    const config = {
+    const config: McpSSEServerConfig = {
       type: 'sse',
       url: 'https://srv/sse',
       headers: { 'X-A': '1' },
@@ -65,7 +69,7 @@ describe('remote server configs', () => {
   })
 
   test('http keeps the same fields', () => {
-    const config = { type: 'http', url: 'https://srv/mcp', oauth: { clientId: 'cid' } }
+    const config: McpHTTPServerConfig = { type: 'http', url: 'https://srv/mcp', oauth: { clientId: 'cid' } }
     expect(McpHTTPServerConfigSchema().parse(config)).toEqual(config)
   })
 
@@ -88,7 +92,7 @@ describe('remote server configs', () => {
   })
 
   test('ws keeps headers and headersHelper', () => {
-    const config = { type: 'ws', url: 'wss://srv/ws', headers: { 'X-A': '1' }, headersHelper: 'h' }
+    const config: McpWebSocketServerConfig = { type: 'ws', url: 'wss://srv/ws', headers: { 'X-A': '1' }, headersHelper: 'h' }
     expect(McpWebSocketServerConfigSchema().parse(config)).toEqual(config)
   })
 })

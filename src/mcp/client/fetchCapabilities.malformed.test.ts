@@ -8,6 +8,7 @@ import type { MCPServerConnection } from 'src/mcp/types.js'
 
 type ListRequest = { method: string; params?: { cursor?: string } }
 type Schema = { parse: (value: unknown) => unknown }
+type PromptCommand = { getPromptForCommand: (args: string) => Promise<unknown> }
 
 // A server whose every list answers one fixed page. Like the SDK's
 // Client.request, the fake validates the result with the schema it is
@@ -105,16 +106,14 @@ describe('MCP prompt arguments', () => {
   test('control: space-separated words fill the arguments in order', async () => {
     const { client, prompts } = listServer('args-plain', reviewPrompt)
     const [command] = await fetchCommandsForClient(client)
-    await (command as { getPromptForCommand: (a: string) => Promise<unknown> }).getPromptForCommand('src/a.ts errors')
+    await (command as unknown as PromptCommand).getPromptForCommand('src/a.ts errors')
     expect(prompts).toEqual([{ name: 'review', arguments: { file: 'src/a.ts', focus: 'errors' } }])
   })
 
   test('a quoted argument keeps its spaces', async () => {
     const { client, prompts } = listServer('args-quoted', reviewPrompt)
     const [command] = await fetchCommandsForClient(client)
-    await (command as { getPromptForCommand: (a: string) => Promise<unknown> }).getPromptForCommand(
-      'src/a.ts "error handling"',
-    )
+    await (command as unknown as PromptCommand).getPromptForCommand('src/a.ts "error handling"')
     expect(prompts).toEqual([{ name: 'review', arguments: { file: 'src/a.ts', focus: 'error handling' } }])
   })
 })
