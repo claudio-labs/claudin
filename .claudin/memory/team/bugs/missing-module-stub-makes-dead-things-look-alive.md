@@ -60,5 +60,5 @@ schema cannot be converted ([[opencode-mcp-ports]]);
 `src/platform/entrypoints/mcp.serve.e2e.test.ts` drives the bundle.
 
 Fixed in the same round: the server announced itself as `claude/<codename>`
-(`src/platform/entrypoints/mcp.ts:87`) to every connecting client — see
+(`serverInfo.name` in `startMCPServer`, `src/platform/entrypoints/mcp.ts`) to every connecting client — see
 [[defingerprinting-branch-2026-08]] for what identity is still upstream-spelled.

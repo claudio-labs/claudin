@@ -33,7 +33,7 @@ used to announce `description: "Anthropic's agentic coding tool"` and a claude.c
 the `claude-code/<ver>` User-Agent and the claude.ai CIMD client id were kept on
 purpose, since a server may allowlist on them ([[opencode-mcp-ports]]). The server side was fixed in the same
 round: `mcp serve` used to introduce itself as `claude/<codename>`
-(`src/platform/entrypoints/mcp.ts:87`).
+(`serverInfo.name` in `startMCPServer`, `src/platform/entrypoints/mcp.ts`).
 
 **Deleted outright, do not go looking for them:** `platform/privacy/grove.ts`
 plus the `/privacy-settings` command, `platform/settingsSync/`, `mcp/xaa.ts` +
