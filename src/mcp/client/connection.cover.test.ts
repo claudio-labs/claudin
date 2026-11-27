@@ -207,6 +207,26 @@ describe('connectToServer — a connected in-process server', () => {
     expect(spy).toHaveBeenCalledTimes(1)
   })
 
+  test('lists through the wire filter: one malformed tool is skipped, logged, and the rest kept', async () => {
+    const remote = createInMemoryRemote()
+    remote.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: [
+        { name: 'good', inputSchema: { type: 'object' } },
+        { name: 'bad', inputSchema: { type: 'string' } } as never,
+      ],
+    }))
+    track(stubCreateTransport(() => ({ transport: remote.clientTransport })))
+    const name = uniqueName('wire-filter')
+    const connection = asConnected(await connect(name, httpConfig()))
+    const logged = track(spyOn(log, 'logMCPError'))
+    try {
+      expect((await fetchToolsForClient(connection)).map(t => t.mcpInfo?.toolName)).toEqual(['good'])
+      expect(logged.mock.calls).toContainEqual([name, 'Skipped tool "bad": inputSchema type is not "object"'])
+    } finally {
+      fetchToolsForClient.cache.delete(name)
+    }
+  })
+
   test('an unparsable http URL still connects (the URL is only logged)', async () => {
     const remote = createInMemoryRemote()
     track(stubCreateTransport(() => ({ transport: remote.clientTransport })))

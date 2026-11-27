@@ -4,17 +4,20 @@
  *
  * The SDK's list schemas check a whole page at once, so one malformed tool
  * (an inputSchema of type "string", a name that is a number) failed the page
- * and the server lost every tool it had. Here a page is requested with its
- * entries unchecked, and each entry is checked on its own against the SDK's
+ * and the server lost every tool it had. Here each entry of a raw page is
+ * checked on its own (wireRules.ts runs this before the SDK decodes the
+ * page), against the SDK's
  * schema for that kind: a broken entry is skipped with its reason, and an
  * optional field of the wrong type is dropped from an entry that is
  * otherwise sound.
  */
-import type {
-  Prompt,
-  Resource,
-  ResourceTemplateType,
-  Tool,
+import {
+  type Prompt,
+  type Resource,
+  type ResourceTemplateType,
+  SdkError,
+  SdkErrorCode,
+  type Tool,
 } from '@modelcontextprotocol/client'
 import {
   PromptSchema,
@@ -27,17 +30,9 @@ import { z } from 'zod/v4'
 export type SkippedEntry = { name?: string; reason: string }
 export type ValidatedList<T> = { items: T[]; skipped: SkippedEntry[] }
 
-// Pages whose entries are left for the keepValid* functions below.
-const entries = z.array(z.unknown())
-const nextCursor = z.string().optional()
-export const LenientToolsPageSchema = z.object({ tools: entries, nextCursor }).passthrough()
-export const LenientPromptsPageSchema = z.object({ prompts: entries, nextCursor }).passthrough()
-export const LenientResourcesPageSchema = z.object({ resources: entries, nextCursor }).passthrough()
-export const LenientResourceTemplatesPageSchema = z.object({ resourceTemplates: entries, nextCursor }).passthrough()
-
 /** A list response that is itself malformed: retrying it gets the same answer. */
 export function isSchemaError(error: unknown): boolean {
-  return error instanceof z.core.$ZodError
+  return error instanceof SdkError && error.code === SdkErrorCode.InvalidResult
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

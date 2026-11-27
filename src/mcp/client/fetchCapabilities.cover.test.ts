@@ -111,18 +111,14 @@ function httpConfig(url = 'https://mcp.invalid/mcp'): ScopedMcpServerConfig {
 }
 
 // A connection whose lists answer from fixed pages without a protocol round
-// trip, for the paths that only need what the fetchers make of a list.
+// trip, for the paths that only need what the fetchers make of a list. Every
+// entry here is well-formed, so the wire filter would pass it unchanged.
 function staticConnection(
   name: string,
   config: ScopedMcpServerConfig,
   lists: { tools?: unknown[]; prompts?: unknown[]; resources?: unknown[] },
 ): MCPServerConnection {
   usedNames.add(name)
-  const pages: Record<string, unknown> = {
-    'tools/list': { tools: lists.tools ?? [] },
-    'prompts/list': { prompts: lists.prompts ?? [] },
-    'resources/list': { resources: lists.resources ?? [] },
-  }
   return {
     type: 'connected',
     name,
@@ -134,8 +130,9 @@ function staticConnection(
       ...(lists.resources && { resources: {} }),
     },
     client: {
-      request: async (req: { method: string }, schema: { parse: (v: unknown) => unknown }) =>
-        schema.parse(pages[req.method]),
+      listTools: async () => ({ tools: lists.tools ?? [] }),
+      listPrompts: async () => ({ prompts: lists.prompts ?? [] }),
+      listResources: async () => ({ resources: lists.resources ?? [] }),
     },
   } as unknown as MCPServerConnection
 }

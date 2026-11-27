@@ -30,6 +30,7 @@ import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 import {
+  attachMcpWireFilter,
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
@@ -250,6 +251,9 @@ export const connectToServer = memoize(
         }
       }
 
+      // Before connect, which chains the filter's onmessage ahead of the
+      // SDK's decode (wireFilter.ts).
+      attachMcpWireFilter(name, transport)
       const connectPromise = client.connect(transport)
       const timeoutPromise = new Promise<never>((_, reject) => {
         const timeoutId = setTimeout(() => {

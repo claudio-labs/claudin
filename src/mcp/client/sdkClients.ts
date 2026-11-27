@@ -3,7 +3,7 @@ import type { Tool } from 'src/tools/Tool.js'
 import { logMCPError } from 'src/shared/log.js'
 import { SdkControlClientTransport } from 'src/mcp/SdkControlTransport.js'
 import type { McpSdkServerConfig, MCPServerConnection } from 'src/mcp/types.js'
-import { fetchToolsForClient } from 'src/mcp/client/fetchCapabilities.js'
+import { attachMcpWireFilter, fetchToolsForClient } from 'src/mcp/client/fetchCapabilities.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 
 /**
@@ -42,6 +42,7 @@ export async function setupSdkMcpClients(
 
       try {
         // Connect the client
+        attachMcpWireFilter(name, transport)
         await client.connect(transport)
 
         // Get capabilities from the server

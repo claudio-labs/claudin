@@ -18,6 +18,7 @@ import {
   type ServerRequest,
   type Tool as McpTool,
 } from '@modelcontextprotocol/sdk/types.js'
+import { attachMcpWireFilter } from 'src/mcp/client/fetchCapabilities.js'
 import type { ConnectedMCPServer, ScopedMcpServerConfig } from 'src/mcp/types.js'
 
 type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>
@@ -46,7 +47,8 @@ export type InMemoryMcpServer = {
 
 /**
  * A real v1 SDK Server (a legacy fixture) and the v2 Client joined by InMemoryTransport, wrapped in the
- * ConnectedMCPServer shape the fetchers take. The config defaults to `sdk` so
+ * ConnectedMCPServer shape the fetchers take, through the wire filter
+ * connectToServer attaches. The config defaults to `sdk` so
  * ensureConnectedClient hands the connection straight back instead of
  * reconnecting through connectToServer.
  */
@@ -96,6 +98,7 @@ export async function connectInMemoryMcpServer(
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
   const client = new Client({ name: 'cover-client', version: '1.0.0' })
   await server.connect(serverTransport)
+  attachMcpWireFilter(name, clientTransport)
   await client.connect(clientTransport)
 
   const close = async () => {

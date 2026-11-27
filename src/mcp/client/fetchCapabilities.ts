@@ -3,6 +3,7 @@ import {
   ProtocolError,
   ProtocolErrorCode,
   SdkError,
+  type Transport,
 } from '@modelcontextprotocol/client'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
@@ -61,20 +62,9 @@ import {
   getRemoteMcpServerConnectionBatchSize,
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
-import { collectListPages, pageParams } from 'src/mcp/client/listPagination.js'
 import { splitPromptArguments } from 'src/mcp/client/promptArguments.js'
-import {
-  isSchemaError,
-  keepValidPrompts,
-  keepValidResources,
-  keepValidResourceTemplates,
-  keepValidTools,
-  LenientPromptsPageSchema,
-  LenientResourcesPageSchema,
-  LenientResourceTemplatesPageSchema,
-  LenientToolsPageSchema,
-  type SkippedEntry,
-} from 'src/mcp/client/listValidation.js'
+import { isSchemaError, type SkippedEntry } from 'src/mcp/client/listValidation.js'
+import { attachWireFilter } from 'src/mcp/client/wireFilter.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
@@ -84,6 +74,19 @@ function logSkippedEntries(server: string, kind: string, skipped: SkippedEntry[]
   for (const { name, reason } of skipped) {
     logMCPError(server, `Skipped ${kind}${name ? ` "${name}"` : ''}: ${reason}`)
   }
+}
+
+/**
+ * The wire filter every MCP connection goes through before `client.connect`:
+ * each list page reaches the SDK with its malformed entries already dropped,
+ * and each one dropped is logged under the server's name.
+ */
+export function attachMcpWireFilter(serverName: string, transport: Transport): void {
+  attachWireFilter(transport, {
+    onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),
+    onCursorCycle: (method, cursor) =>
+      logMCPError(serverName, `${method} repeated the cursor "${cursor}"; the list stops at the entries already received`),
+  })
 }
 
 /**
@@ -113,19 +116,17 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      // Retry each page of the tool list up to 2 times on transient failures.
+      // Retry the tool list up to 2 times on transient failures.
       // Without retry, a single timeout during tools/list makes all MCP tools
       // silently disappear from the model's context until the next reconnect.
-      // A page that fails its schema answers the same on every try, so it is
-      // not retried; entries are checked one by one below.
-      const listToolsPage = async (cursor: string | undefined) => {
+      // A list that fails its schema answers the same on every try, so it is
+      // not retried; its entries were already checked one by one on the wire
+      // (attachMcpWireFilter).
+      const listTools = async () => {
         let lastError: unknown
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            return await client.client.request(
-              { method: 'tools/list', ...pageParams(cursor) },
-              LenientToolsPageSchema,
-            )
+            return await client.client.listTools()
           } catch (err) {
             lastError = err
             if (isSchemaError(err)) break
@@ -140,12 +141,7 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         }
         throw lastError ?? new Error('tools/list failed after 3 attempts')
       }
-      const listed = await collectListPages(async cursor => {
-        const page = await listToolsPage(cursor)
-        return { items: page.tools, nextCursor: page.nextCursor }
-      })
-      const { items: tools, skipped } = keepValidTools(listed)
-      logSkippedEntries(client.name, 'tool', skipped)
+      const { tools } = await listTools()
 
       // Sanitize tool data from MCP server
       const toolsToProcess = recursivelySanitizeUnicode(tools)
@@ -388,15 +384,7 @@ export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      const listed = await collectListPages(async cursor => {
-        const page = await client.client.request(
-          { method: 'resources/list', ...pageParams(cursor) },
-          LenientResourcesPageSchema,
-        )
-        return { items: page.resources, nextCursor: page.nextCursor }
-      })
-      const { items: resources, skipped } = keepValidResources(listed)
-      logSkippedEntries(client.name, 'resource', skipped)
+      const { resources } = await client.client.listResources()
 
       // Add server name to each resource
       return resources.map(resource => ({
@@ -429,17 +417,10 @@ export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
     if (client.type !== 'connected' || !client.capabilities?.resources) return []
 
     try {
-      const listed = await collectListPages(async cursor => {
-        const page = await client.client.request(
-          { method: 'resources/templates/list', ...pageParams(cursor) },
-          LenientResourceTemplatesPageSchema,
-          { timeout: RESOURCE_TEMPLATES_TIMEOUT_MS },
-        )
-        return { items: page.resourceTemplates, nextCursor: page.nextCursor }
+      const { resourceTemplates } = await client.client.listResourceTemplates(undefined, {
+        timeout: RESOURCE_TEMPLATES_TIMEOUT_MS,
       })
-      const { items: templates, skipped } = keepValidResourceTemplates(listed)
-      logSkippedEntries(client.name, 'resource template', skipped)
-      return templates.map(template => ({ ...template, server: client.name }))
+      return resourceTemplates.map(template => ({ ...template, server: client.name }))
     } catch (error) {
       if (!(error instanceof ProtocolError && error.code === ProtocolErrorCode.MethodNotFound)) {
         logMCPError(
@@ -464,16 +445,8 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      // Request every page of the prompts list from client
-      const listed = await collectListPages(async cursor => {
-        const page = await client.client.request(
-          { method: 'prompts/list', ...pageParams(cursor) },
-          LenientPromptsPageSchema,
-        )
-        return { items: page.prompts, nextCursor: page.nextCursor }
-      })
-      const { items: prompts, skipped } = keepValidPrompts(listed)
-      logSkippedEntries(client.name, 'prompt', skipped)
+      // Every page of the prompts list; the SDK follows the cursors
+      const { prompts } = await client.client.listPrompts()
 
       // Sanitize prompt data from MCP server
       const promptsToProcess = recursivelySanitizeUnicode(prompts)

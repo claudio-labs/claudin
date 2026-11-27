@@ -40,9 +40,9 @@
     },
     {
       "name": "B1: the tools list is not checked entry by entry",
-      "source": "src/mcp/client/fetchCapabilities.ts",
-      "find": "      const { items: tools, skipped } = keepValidTools(listed)\n",
-      "replace": "      const { items: tools, skipped } = { items: listed as never[], skipped: [] }\n"
+      "source": "src/mcp/client/wireRules.ts",
+      "find": "  'tools/list': listRule('tools', 'tool', keepValidTools, withoutOutputSchema),\n",
+      "replace": "  'tools/list': result => fillListResultFields(result),\n"
     },
     {
       "name": "B1: a schema failure is retried as if transient",
@@ -251,14 +251,14 @@
     {
       "name": "review: the templates list waits the SDK's 60 s",
       "source": "src/mcp/client/fetchCapabilities.ts",
-      "find": "          { timeout: RESOURCE_TEMPLATES_TIMEOUT_MS },\n",
+      "find": "        timeout: RESOURCE_TEMPLATES_TIMEOUT_MS,\n",
       "replace": ""
     },
     {
       "name": "review: a skipped tool is not logged",
       "source": "src/mcp/client/fetchCapabilities.ts",
-      "find": "      logSkippedEntries(client.name, 'tool', skipped)\n",
-      "replace": ""
+      "find": "    onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),\n",
+      "replace": "    onSkipped: () => {},\n"
     },
     {
       "name": "review: an empty prompt line sends no argument",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Tool } from '@modelcontextprotocol/client'
+import { SdkError, SdkErrorCode, type Tool } from '@modelcontextprotocol/client'
 import { z } from 'zod/v4'
 import {
   isSchemaError,
@@ -7,31 +7,13 @@ import {
   keepValidResources,
   keepValidResourceTemplates,
   keepValidTools,
-  LenientPromptsPageSchema,
-  LenientResourcesPageSchema,
-  LenientResourceTemplatesPageSchema,
-  LenientToolsPageSchema,
 } from 'src/mcp/client/listValidation.js'
 
-describe('lenient page schemas', () => {
-  test('accept any entries and keep the cursor and extra fields', () => {
-    const page = { tools: [1, 'two', { name: 'x' }], nextCursor: 'c2', _meta: { a: 1 } }
-    expect(LenientToolsPageSchema.parse(page)).toEqual(page)
-    expect(LenientPromptsPageSchema.parse({ prompts: [null] })).toEqual({ prompts: [null] })
-    expect(LenientResourcesPageSchema.parse({ resources: [] })).toEqual({ resources: [] })
-    expect(LenientResourceTemplatesPageSchema.parse({ resourceTemplates: [7] })).toEqual({ resourceTemplates: [7] })
-  })
-
-  test('refuse a page whose list is not a list, as a schema error', () => {
-    const result = LenientToolsPageSchema.safeParse({ tools: 'nope' })
-    expect(result.success).toBe(false)
-    expect(isSchemaError(result.error)).toBe(true)
-  })
-})
-
 describe('isSchemaError', () => {
-  test('is true for a zod error only', () => {
-    expect(isSchemaError(z.string().safeParse(1).error)).toBe(true)
+  test('is true for the SDK’s invalid-result error only', () => {
+    expect(isSchemaError(new SdkError(SdkErrorCode.InvalidResult, 'Invalid result for tools/list'))).toBe(true)
+    expect(isSchemaError(new SdkError(SdkErrorCode.RequestTimeout, 'Request timed out'))).toBe(false)
+    expect(isSchemaError(z.string().safeParse(1).error)).toBe(false)
     expect(isSchemaError(new Error('ECONNRESET'))).toBe(false)
     expect(isSchemaError('boom')).toBe(false)
   })

@@ -150,9 +150,9 @@ describe('clearServerCache', () => {
       config: { type: 'sdk', name: 'tpl-clear', scope: 'local' },
       cleanup: async () => {},
       client: {
-        request: async (req: { method: string }, schema: { parse: (v: unknown) => unknown }) => {
-          asked.push(req.method)
-          return schema.parse({ resourceTemplates: [{ uriTemplate: 'file:///{p}', name: 'f' }] })
+        listResourceTemplates: async () => {
+          asked.push('resources/templates/list')
+          return { resourceTemplates: [{ uriTemplate: 'file:///{p}', name: 'f' }] }
         },
       },
     } as unknown as MCPServerConnection
