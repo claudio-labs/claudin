@@ -88,25 +88,29 @@ export async function createTransport(
     // the persistent SSE stream.
     transportOptions.eventSourceInit = {
       fetch: async (url: string | URL, init?: RequestInit) => {
-        // Get auth headers from the auth provider
-        const authHeaders: Record<string, string> = {}
+        // The SDK hands its headers (mcp-protocol-version among them) as a
+        // Headers instance, which an object spread empties, so they are
+        // copied into one and ours are set on top.
+        // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+        const headers = new Headers(init?.headers)
+        if (!headers.has('user-agent')) {
+          headers.set('User-Agent', getMCPUserAgent())
+        }
         const tokens = await authProvider.tokens()
         if (tokens) {
-          authHeaders.Authorization = `Bearer ${tokens.access_token}`
+          headers.set('Authorization', `Bearer ${tokens.access_token}`)
         }
+        for (const [key, value] of Object.entries(combinedHeaders)) {
+          headers.set(key, value)
+        }
+        headers.set('Accept', 'text/event-stream')
 
         const proxyOptions = getProxyFetchOptions()
         // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
         return fetch(url, {
           ...init,
           ...proxyOptions,
-          headers: {
-            'User-Agent': getMCPUserAgent(),
-            ...authHeaders,
-            ...init?.headers,
-            ...combinedHeaders,
-            Accept: 'text/event-stream',
-          },
+          headers,
         })
       },
     }
