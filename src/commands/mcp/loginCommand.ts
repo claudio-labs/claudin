@@ -38,7 +38,7 @@ export async function cliAuthDeps(): Promise<McpCliAuthDeps> {
   }
 }
 
-export async function finish(result: Promise<McpCliAuthResult>): Promise<void> {
+async function finish(result: Promise<McpCliAuthResult>): Promise<void> {
   // The OAuth callback server and its timeout are unref'd, so off a terminal
   // nothing else kept the process alive: it exited before the browser came
   // back. This holds it until the flow settles.
