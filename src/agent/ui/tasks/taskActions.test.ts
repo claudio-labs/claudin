@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, mock, spyOn, test } from 'bun:t
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
 import { LocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
+import { MonitorMcpTask } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
 
 // killBackgroundTask dispatches to each task class's static .kill — mock
 // every callee at the module boundary so we can assert "right kill fired,
@@ -12,7 +13,9 @@ const localShellKill = mock(() => Promise.resolve());
 // LocalAgentTask.test.ts asserts on the real ones.
 const localAgentKill = spyOn(LocalAgentTask, 'kill').mockImplementation(() => Promise.resolve());
 const teammateKill = mock(() => Promise.resolve());
-const monitorMcpKill = mock(() => Promise.resolve());
+// Spied for the same reason: MonitorMcpTask.cover.test.ts asserts on the real
+// killMonitorMcp / killMonitorMcpTasksForAgent.
+const monitorMcpKill = spyOn(MonitorMcpTask, 'kill').mockImplementation(() => Promise.resolve());
 const dreamKill = mock(() => Promise.resolve());
 const remoteAgentKill = mock(() => Promise.resolve());
 const debugMock = mock((_msg: string) => {});
@@ -22,9 +25,6 @@ mock.module('src/agent/tasks/LocalShellTask/LocalShellTask.js', () => ({
 }));
 mock.module('src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js', () => ({
   InProcessTeammateTask: { kill: teammateKill },
-}));
-mock.module('src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js', () => ({
-  MonitorMcpTask: { kill: monitorMcpKill },
 }));
 mock.module('src/agent/tasks/DreamTask/DreamTask.js', () => ({
   DreamTask: { kill: dreamKill },
@@ -40,6 +40,7 @@ const { killBackgroundTask } = await import('src/agent/ui/tasks/taskActions.js')
 
 afterAll(() => {
   localAgentKill.mockRestore();
+  monitorMcpKill.mockRestore();
 });
 
 const setAppState = mock((_: (prev: AppState) => AppState) => {});

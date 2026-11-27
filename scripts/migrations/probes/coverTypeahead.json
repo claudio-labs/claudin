@@ -1,0 +1,66 @@
+{
+  "test": "src/terminal/hooks/useTypeahead.cover.test.tsx",
+  "source": "src/terminal/hooks/useTypeahead.tsx",
+  "probes": [
+    {
+      "name": "progressive hint over a prompt command's remaining argNames is dropped",
+      "find": "commandArgumentHint = generateProgressiveArgumentHint(exactMatch.argNames, typedArgs);",
+      "replace": "commandArgumentHint = undefined;"
+    },
+    {
+      "name": "static argumentHint shows on any trailing whitespace, not exactly one space",
+      "find": "if (exactMatch?.argumentHint && hasExactlyOneTrailingSpace) {",
+      "replace": "if (exactMatch?.argumentHint) {"
+    },
+    {
+      "name": "stale @ file result is not discarded",
+      "find": "    if (latestSearchTokenRef.current !== searchToken) {\n      return;\n    }",
+      "replace": "    if (false) {\n      return;\n    }"
+    },
+    {
+      "name": "stale Slack channel result is not discarded",
+      "find": "if (latestSlackTokenRef.current !== partial) return;",
+      "replace": "if (false) return;"
+    },
+    {
+      "name": "Slack fetch is not debounced",
+      "find": "useDebounceCallback(fetchSlackChannels, 150)",
+      "replace": "useDebounceCallback(fetchSlackChannels, 0)"
+    },
+    {
+      "name": "@ file fetch is not debounced",
+      "find": "useDebounceCallback(fetchFileSuggestions, 50)",
+      "replace": "useDebounceCallback(fetchFileSuggestions, 0)"
+    },
+    {
+      "name": "Esc-dismissed input re-triggers suggestions",
+      "find": "if (dismissedForInputRef.current === input) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "stale @ path completion result is not discarded",
+      "find": "if (latestPathTokenRef.current !== searchToken) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "prompt-suggestion ghost shows with the cursor mid-input",
+      "find": "if (cursorOffset !== input.length) return undefined;",
+      "replace": "if (false) return undefined;"
+    },
+    {
+      "name": "agent member description loses its task status",
+      "find": "description: status ? `send message · ${status}` : 'send message'",
+      "replace": "description: 'send message'"
+    },
+    {
+      "name": "Tab skips the common-prefix completion",
+      "find": "if (commonPrefix.length > effectiveTokenLength) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "Enter on /add-dir directory rewrites the argument instead of just closing",
+      "find": "        if (isCommandInput(input)) {\n          debouncedFetchFileSuggestions.cancel();\n          clearSuggestions();\n          return;\n        }",
+      "replace": "        if (false) {\n          debouncedFetchFileSuggestions.cancel();\n          clearSuggestions();\n          return;\n        }"
+    }
+  ]
+}

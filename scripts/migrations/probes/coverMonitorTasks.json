@@ -1,0 +1,70 @@
+{
+  "test": [
+    "src/agent/tasks/pillLabel.cover.test.ts",
+    "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.cover.test.ts"
+  ],
+  "source": "src/agent/tasks/pillLabel.ts",
+  "probes": [
+    {
+      "name": "pill: mixed types are read as one type",
+      "find": "  const allSameType = tasks.every(t => t.type === tasks[0]!.type)\n",
+      "replace": "  const allSameType = true\n"
+    },
+    {
+      "name": "pill: monitors are counted as shells too",
+      "find": "        const shells = n - monitors\n",
+      "replace": "        const shells = n\n"
+    },
+    {
+      "name": "pill: zero shells still get a part",
+      "find": "        if (shells > 0)\n",
+      "replace": "        if (shells >= 0)\n"
+    },
+    {
+      "name": "pill: teammates counted by member instead of team",
+      "find": "            t.type === 'in_process_teammate' ? t.identity.teamName : '',\n",
+      "replace": "            t.id,\n"
+    },
+    {
+      "name": "pill: monitor_mcp wording changes",
+      "find": "        return n === 1 ? '1 monitor' : `${n} monitors`\n",
+      "replace": "        return n === 1 ? '1 MCP monitor' : `${n} monitors`\n"
+    },
+    {
+      "name": "kill: a finished task is killed again",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "      if (task.status !== 'running') {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "kill: the killed task is not marked notified",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "        notified: true,\n",
+      "replace": "        notified: false,\n"
+    },
+    {
+      "name": "kill: no end time stamped",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "        endTime: Date.now(),\n",
+      "replace": "        endTime: undefined,\n"
+    },
+    {
+      "name": "agent cleanup: monitor_mcp tasks of every agent are killed",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "      isMonitorMcpTask(task) &&\n      task.agentId === agentId &&\n",
+      "replace": "      isMonitorMcpTask(task) &&\n"
+    },
+    {
+      "name": "agent cleanup: plain shells are killed along with monitors",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "      task.kind === 'monitor' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "agent cleanup: the wrong notifications are purged",
+      "source": "src/agent/tasks/MonitorMcpTask/MonitorMcpTask.ts",
+      "find": "  dequeueAllMatching(cmd => cmd.agentId === agentId)\n",
+      "replace": "  dequeueAllMatching(cmd => cmd.agentId === undefined)\n"
+    }
+  ]
+}
