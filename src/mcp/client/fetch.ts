@@ -4,6 +4,7 @@ import {
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
 } from 'src/providers/auth/auth.js'
+import { getMcpToolTimeoutMs } from 'src/mcp/client/serverOptions.js'
 
 /**
  * Fetch wrapper for claude.ai proxy connections. Attaches the OAuth bearer
@@ -63,14 +64,26 @@ export function createClaudeAiProxyFetch(innerFetch: FetchLike): FetchLike {
   }
 }
 
-export function getConnectionTimeoutMs(): number {
-  return parseInt(process.env.MCP_TIMEOUT || '', 10) || 30000
-}
-
 /**
  * Default timeout for individual MCP requests (auth, tool calls, etc.)
  */
 export const MCP_REQUEST_TIMEOUT_MS = 60000
+
+const TOOLS_CALL_BODY_RE = /"method"\s*:\s*"tools\/call"/
+
+/**
+ * The cap on one POST. A tools/call answered as JSON holds its request open
+ * until the tool is done, so it gets the tool timeout; a 60 s cap there cut
+ * every slow tool of a Streamable HTTP server short of MCP_TOOL_TIMEOUT.
+ */
+export function requestTimeoutMs(
+  init: RequestInit | undefined,
+  toolCallTimeoutMs: number = getMcpToolTimeoutMs(),
+): number {
+  return typeof init?.body === 'string' && TOOLS_CALL_BODY_RE.test(init.body)
+    ? toolCallTimeoutMs
+    : MCP_REQUEST_TIMEOUT_MS
+}
 
 /**
  * MCP Streamable HTTP spec requires clients to advertise acceptance of both
@@ -84,7 +97,8 @@ const MCP_STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream'
  * Wraps a fetch function to apply a fresh timeout signal to each request.
  * This avoids the bug where a single AbortSignal.timeout() created at connection
  * time becomes stale after 60 seconds, causing all subsequent requests to fail
- * immediately with "The operation timed out." Uses a 60-second timeout.
+ * immediately with "The operation timed out." Uses a 60-second timeout, or the
+ * tool timeout for a tools/call (requestTimeoutMs).
  *
  * Also ensures the Accept header required by the MCP Streamable HTTP spec is
  * present on POSTs. The MCP SDK sets this inside StreamableHTTPClientTransport.send(),
@@ -99,7 +113,10 @@ const MCP_STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream'
  *
  * @param baseFetch - The fetch function to wrap
  */
-export function wrapFetchWithTimeout(baseFetch: FetchLike): FetchLike {
+export function wrapFetchWithTimeout(
+  baseFetch: FetchLike,
+  options: { toolCallTimeoutMs?: number } = {},
+): FetchLike {
   return async (url: string | URL, init?: RequestInit) => {
     const method = (init?.method ?? 'GET').toUpperCase()
 
@@ -127,7 +144,7 @@ export function wrapFetchWithTimeout(baseFetch: FetchLike): FetchLike {
     const timer = setTimeout(
       c =>
         c.abort(new DOMException('The operation timed out.', 'TimeoutError')),
-      MCP_REQUEST_TIMEOUT_MS,
+      requestTimeoutMs(init, options.toolCallTimeoutMs),
       controller,
     )
     timer.unref?.()

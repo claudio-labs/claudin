@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test'
 import {
   createClaudeAiProxyFetch,
-  getConnectionTimeoutMs,
   getMcpServerConnectionBatchSize,
   getRemoteMcpServerConnectionBatchSize,
+  MCP_REQUEST_TIMEOUT_MS,
+  requestTimeoutMs,
   wrapFetchWithTimeout,
 } from 'src/mcp/client/fetch.js'
 import { clearOAuthTokenCache } from 'src/providers/auth/auth.js'
@@ -14,7 +15,7 @@ type Seen = { url: string; init?: RequestInit }
 // Every env var fetch.ts (or the claude.ai token lookup behind it) reads,
 // cleared per test so the developer's shell cannot leak a value in.
 const ENV_KEYS = [
-  'MCP_TIMEOUT',
+  'MCP_TOOL_TIMEOUT',
   'MCP_SERVER_CONNECTION_BATCH_SIZE',
   'MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE',
   'CLAUDE_CODE_OAUTH_TOKEN',
@@ -58,19 +59,25 @@ function recordingFetch(respond: (seen: Seen) => Response | Promise<Response> = 
   return { seen, fetchLike }
 }
 
-describe('getConnectionTimeoutMs', () => {
-  test('defaults to 30 s', () => {
-    expect(getConnectionTimeoutMs()).toBe(30_000)
+describe('requestTimeoutMs', () => {
+  const toolsCall = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 't' } })
+
+  test('a POST that is not a tool call gets 60 s', () => {
+    expect(MCP_REQUEST_TIMEOUT_MS).toBe(60_000)
+    expect(requestTimeoutMs({ body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })).toBe(60_000)
+    expect(requestTimeoutMs(undefined)).toBe(60_000)
+    expect(requestTimeoutMs({ body: new URLSearchParams('method=tools/call') })).toBe(60_000)
   })
 
-  test('MCP_TIMEOUT overrides it', () => {
-    process.env.MCP_TIMEOUT = '5000'
-    expect(getConnectionTimeoutMs()).toBe(5000)
+  test('a tools/call gets the tool timeout it is handed', () => {
+    expect(requestTimeoutMs({ body: toolsCall }, 900_000)).toBe(900_000)
+    expect(requestTimeoutMs({ body: '{ "method" : "tools/call" }' }, 1234)).toBe(1234)
   })
 
-  test('a value that is not a number falls back to the default', () => {
-    process.env.MCP_TIMEOUT = 'soon'
-    expect(getConnectionTimeoutMs()).toBe(30_000)
+  test('without one it uses MCP_TOOL_TIMEOUT, then the 5 min default', () => {
+    expect(requestTimeoutMs({ body: toolsCall })).toBe(300_000)
+    process.env.MCP_TOOL_TIMEOUT = '120000'
+    expect(requestTimeoutMs({ body: toolsCall })).toBe(120_000)
   })
 })
 

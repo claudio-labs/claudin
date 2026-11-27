@@ -31,25 +31,7 @@ import {
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/mcp/client/errors.js'
 import { processMCPResult } from 'src/mcp/client/toolResult.js'
-
-/**
- * Default timeout for MCP tool calls (5 minutes — reasonable for most tools).
- * Use MCP_TOOL_TIMEOUT env var to override per-server.
- * The previous default of ~27.8 hours effectively meant no timeout, causing
- * tools to hang indefinitely on unresponsive servers.
- */
-export const DEFAULT_MCP_TOOL_TIMEOUT_MS = 300_000
-
-/**
- * Gets the timeout for MCP tool calls in milliseconds.
- * Uses MCP_TOOL_TIMEOUT environment variable if set, otherwise defaults to ~27.8 hours.
- */
-function getMcpToolTimeoutMs(): number {
-  return (
-    parseInt(process.env.MCP_TOOL_TIMEOUT || '', 10) ||
-    DEFAULT_MCP_TOOL_TIMEOUT_MS
-  )
-}
+import { getMcpToolTimeoutMs } from 'src/mcp/client/serverOptions.js'
 
 /**
  * Call an MCP tool, handling UrlElicitationRequiredError (-32042) by
