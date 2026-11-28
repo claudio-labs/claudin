@@ -7,6 +7,7 @@ paths:
   - "src/mcp/auth/oauthFlow.ts"
   - "src/mcp/client/connection.ts"
   - "src/mcp/client/callTool.ts"
+  - "src/mcp/client/taskCall.ts"
   - "src/mcp/elicitationHandler.ts"
   - "src/mcp/useManageMCPConnections.ts"
   - "src/agent/tasks/pillLabel.ts"
@@ -93,7 +94,7 @@ test on purpose.
 **Found building the features (not pinned):**
 22. In print mode (`-p`), an MCP task's input goes through `handleElicitation`, which drops the form's
     `requestedSchema`. A form request inside a task therefore reaches the SDK caller with only its message.
-    Seen while building task-augmented calls (fb7e9a7a, `src/mcp/client/callTool.ts`).
+    Seen while building task-augmented calls (fb7e9a7a; the code is `src/mcp/client/taskCall.ts` since 11-28).
 
 **Status:** open as of 2026-11-27.
 

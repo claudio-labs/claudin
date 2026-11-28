@@ -74,8 +74,9 @@ lost) against v2 2.4.0 and v1 1.32.2 servers, plus reading the dist. None of it 
   `server/discover` on the session's own pipe, since the first list requests go out before the hook
   attaches its close handler and the hook never redials stdio.
 - A modern stdio connect resolves before the session child has run: count spawns only after a request.
-- `listTools()` and friends page up to `listMaxPages` (64) and then throw; only an identical repeated page
-  stops early, so a cursor cycle (a→b→a) fails the whole list — Claudin cuts it (`cursorCycleGuard.ts`).
+- `listTools()` and friends page up to `listMaxPages` (a Client option, default 64) and then throw
+  `ListPaginationExceeded` (`public-CvV4ZHkX.mjs:3431`); only an identical repeated page stops early, so a
+  cursor cycle (a→b→a) fails the whole list — Claudin cuts it, and cuts at 100 pages (`cursorCycleGuard.ts`).
   They also write the SDK's own cache, so a server sending `ttlMs > 0` can be answered from it.
 - An elicitation the SDK fulfils for an `input_required` result gets an abort signal even when the
   originating call passed none (a break-probe on the `?? new AbortController().signal` fallback stayed green).
@@ -94,6 +95,15 @@ lost) against v2 2.4.0 and v1 1.32.2 servers, plus reading the dist. None of it 
   the request is sent. The `subscriptionId` survives in a notification's `params._meta`.
 - With `versionNegotiation: { mode: 'legacy' }` and capabilities `{ roots: {}, elicitation: {} }` the wire
   recorded against 1.x was identical except the key order inside `notifications/initialized`.
+
+**Found in the review round (11-28)**
+- Every modern result without `resultType` is rejected, whatever the method (`client/dist/src-CeKsbNLO.mjs:3957`).
+  Lists, `resources/read` (`ReadResourceResultSchema`, `:2886`) and `skills/list` (`ext/skills/index.mjs:755-776`)
+  also need `ttlMs` and `cacheScope`; `tools/call`, `prompts/get` and `completion/complete` need only
+  `resultType`; `server/discover` tolerates both missing.
+- `TransportSendOptions.onRequestStreamEnd` reports that a Streamable HTTP request's stream ended, answered or
+  not (the SDK's own `listen()` uses it); stdio ignores it. When a result arrives and then the stream closes,
+  the request has settled before the hook fires.
 
 **Why:** about ten agent runs went into establishing these; the branch's wire filter, era cache and
 fallback rest on them.
