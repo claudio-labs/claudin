@@ -23,6 +23,7 @@ import {
   isToolSearchEnabled,
   isToolSearchEnabledOptimistic,
   isToolSearchToolAvailable,
+  isClientGatewayTool,
   isUnloadedDeferredTool,
   maybeLatchLegacyDeferredAnnouncement,
   modelSupportsToolReference,
@@ -687,5 +688,20 @@ describe('client-side tool search: wires without server-side search defer tools 
   ] as const)('%s keeps the kill switch: unchanged', (_, profile) => {
     useProfile(profile)
     expect(getToolSearchMode()).toBe('standard')
+  })
+
+  // The gateway goes out non-strict, so a deferred tool called through it
+  // carries the model's own arguments: a strict-mode placeholder strip
+  // (toolExecution.ts) would drop a real "" or null.
+  test('a deferred tool on a client-deferring wire is called through the gateway', () => {
+    const mcp = tool({ name: 'mcp__srv__x', isMcp: true })
+    useProfile(CODEX)
+    expect(isClientGatewayTool(mcp, CODEX.model)).toBe(true)
+    expect(isClientGatewayTool(READ, CODEX.model)).toBe(false)
+    process.env.CLAUDIN_SHIM_TOOL_SEARCH = '0'
+    expect(isClientGatewayTool(mcp, CODEX.model)).toBe(false)
+    delete process.env.CLAUDIN_SHIM_TOOL_SEARCH
+    useProfile(ANTHROPIC_PROXY)
+    expect(isClientGatewayTool(mcp)).toBe(false)
   })
 })

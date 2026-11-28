@@ -99,12 +99,12 @@ describe('resolveCompatWire', () => {
 describe('rejectWireOnFailure', () => {
   const url = 'https://api.openai.com/v1'
 
-  test('400, 404 and 422 reject once; the second call says no', () => {
+  test('400, 404 and 422 reject the pair; a request already in flight on it goes back to chat too', () => {
     for (const status of [400, 404, 422]) {
       _resetWireFallbackForTesting()
       expect(rejectWireOnFailure('responses', url, 'gpt-5.5', { status, body: 'unsupported' })).toBe(true)
       expect(isWireRejected('responses', url, 'gpt-5.5')).toBe(true)
-      expect(rejectWireOnFailure('responses', url, 'gpt-5.5', { status, body: 'unsupported' })).toBe(false)
+      expect(rejectWireOnFailure('responses', url, 'gpt-5.5', { status, body: 'unsupported' })).toBe(true)
     }
   })
 

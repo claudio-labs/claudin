@@ -440,6 +440,12 @@ describe('transportSendsStrictToolSchemas', () => {
     expect(resolveProviderRequest().transport).toBe('chat_completions')
     expect(transportSendsStrictToolSchemas()).toBe(true)
   })
+
+  test('GPT-5 on api.openai.com rides the Responses API with strict tools', () => {
+    useProfile({ model: 'gpt-5.5' })
+    expect(resolveProviderRequest().transport).toBe('openai_responses')
+    expect(transportSendsStrictToolSchemas()).toBe(true)
+  })
 })
 
 describe('getAdditionalModelOptionsCacheScope', () => {
@@ -481,10 +487,20 @@ describe('getAdditionalModelOptionsCacheScope', () => {
     useProfile({ baseUrl: 'https://API.Example.com/V1/', model: 'gpt-4.1' })
     expect(getAdditionalModelOptionsCacheScope()).toBe('openai:https://api.example.com/v1')
   })
+
+  test('GPT-5 on api.openai.com keeps the scope of its base URL on the Responses API', () => {
+    useProfile({ model: 'gpt-5.5' })
+    expect(getAdditionalModelOptionsCacheScope()).toBe('openai:https://api.openai.com/v1')
+  })
 })
 
 describe('isDirectOpenAIProvider', () => {
   test('no profile resolves to the default OpenAI URL', () => {
+    expect(isDirectOpenAIProvider()).toBe(true)
+  })
+
+  test('a GPT-5 profile on api.openai.com is direct, on the Responses API too', () => {
+    useProfile({ model: 'gpt-5.5' })
     expect(isDirectOpenAIProvider()).toBe(true)
   })
 

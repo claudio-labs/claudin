@@ -156,6 +156,11 @@ describe('which requests take the vendor endpoint', () => {
       { ...DASHSCOPE, id: 'plan', baseUrl: 'https://coding-intl.dashscope.aliyuncs.com/v1', model: 'qwen3.6-plus' },
       { ...MINIMAX, id: 'zai', baseUrl: 'https://api.z.ai/api/coding/paas/v4', model: 'glm-5.2' },
       { ...MINIMAX, id: 'ds', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro' },
+      // On a recorded host, a family no recording covers.
+      { ...MINIMAX, id: 'mm-old', model: 'MiniMax-M2.5' },
+      { ...MOONSHOT, id: 'kimi-k2', model: 'kimi-k2-0905-preview' },
+      { ...DASHSCOPE, id: 'qwen-max', model: 'qwen-max' },
+      { ...DASHSCOPE, id: 'qwen3-coder', model: 'qwen3-coder-plus' },
     ]
     for (const profile of unverified) {
       useProfile(profile)
