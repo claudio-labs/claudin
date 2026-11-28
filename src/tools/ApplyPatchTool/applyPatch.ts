@@ -634,7 +634,7 @@ function stageFile(group: FileGroup): StagedFile {
   }
 
   // update (optionally a move): every section matched against the file as it is.
-  // A pure rename has no section to apply, and moves the bytes as they are.
+  // A pure rename has no section to apply: the file is renamed, never rewritten.
   const pureMove = group.hunks.every(h => h.type === 'update' && h.chunks.length === 0)
   const { text, outcomes } = pureMove
     ? { text: current.content, outcomes: [] }
@@ -666,6 +666,7 @@ function stageFile(group: FileGroup): StagedFile {
       type: movePath ? 'move' : 'update',
       absPath,
       movePath,
+      ...(pureMove && movePath && { rename: true as const }),
       oldContent: current.content,
       newContent: text,
       encoding: current.encoding,

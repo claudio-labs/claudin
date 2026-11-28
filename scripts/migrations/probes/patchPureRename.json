@@ -12,6 +12,18 @@
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
       "find": "  const pureMove = group.hunks.every(h => h.type === 'update' && h.chunks.length === 0)",
       "replace": "  const pureMove = false"
+    },
+    {
+      "name": "a pure rename is written through text",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "      ...(pureMove && movePath && { rename: true as const }),\n",
+      "replace": ""
+    },
+    {
+      "name": "a rename is not a rename on disk",
+      "source": "src/tools/shared/stagedWrite/stagedWrite.ts",
+      "find": "      if (change.rename) {\n        fs.renameSync(change.absPath, change.movePath!)\n        break\n      }\n",
+      "replace": ""
     }
   ]
 }
