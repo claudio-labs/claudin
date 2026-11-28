@@ -9,13 +9,13 @@ import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvi
 import {
   CALL_TOOL,
   CALL_TOOL_NAME,
-  clientDefersTools,
-  clientToolSearchDisabled,
   gatewayInput,
-  planToolDeferral,
-  renderLoadedTools,
   unwrapGatewayCall,
-} from 'src/providers/shims/clientToolSearch/index.js'
+} from 'src/providers/shims/clientToolSearch/callTool.js'
+import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
+import { planToolDeferral } from 'src/providers/shims/clientToolSearch/deferral.js'
+import { clientToolSearchDisabled } from 'src/providers/shims/clientToolSearch/gate.js'
+import { renderLoadedTools } from 'src/providers/shims/clientToolSearch/renderToolReference.js'
 
 const savedKillswitch = process.env.CLAUDIN_SHIM_TOOL_SEARCH
 

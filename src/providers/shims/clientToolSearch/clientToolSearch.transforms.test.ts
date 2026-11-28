@@ -1,13 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import {
-  applyClientToolSearch,
-  CALL_TOOL,
-  CALL_TOOL_NAME,
-  gatewayEvents,
-  gatewayMessage,
-  withClientToolSearch,
-} from 'src/providers/shims/clientToolSearch/index.js'
+import { CALL_TOOL, CALL_TOOL_NAME } from 'src/providers/shims/clientToolSearch/callTool.js'
+import { gatewayEvents, gatewayMessage } from 'src/providers/shims/clientToolSearch/eventTransform.js'
+import { applyClientToolSearch } from 'src/providers/shims/clientToolSearch/paramsTransform.js'
+import { withClientToolSearch } from 'src/providers/shims/clientToolSearch/wrapClient.js'
 
 const savedKillswitch = process.env.CLAUDIN_SHIM_TOOL_SEARCH
 

@@ -12,7 +12,8 @@ import {
   type FetchType,
   type OpenAIShimClient,
 } from 'src/providers/shims/openaiShim/__testutils__/shimHarness.js'
-import { CALL_TOOL_NAME, withClientToolSearch } from 'src/providers/shims/clientToolSearch/index.js'
+import { CALL_TOOL_NAME } from 'src/providers/shims/clientToolSearch/callTool.js'
+import { withClientToolSearch } from 'src/providers/shims/clientToolSearch/wrapClient.js'
 
 useShimHarness()
 
