@@ -199,11 +199,19 @@ describe('getPromptCachingEnabled — which providers get cache_control', () => 
     ['foundry', FOUNDRY],
     ['openai', OPENAI],
     ['gemini', GEMINI],
-    ['minimax', MINIMAX],
   ] as const)('%s never caches, even for a Claude model name', (provider, profile) => {
     useProfile(profile)
     expect(getAPIProvider()).toBe(provider)
     expect(getPromptCachingEnabled(profile.model)).toBe(false)
+    expect(getPromptCachingEnabled('claude-sonnet-4-5')).toBe(false)
+  })
+
+  // Its models go to MiniMax's own Anthropic endpoint (compatWires.ts); a
+  // model the table does not list there stays on chat, without markers.
+  test('minimax caches its own models on its Anthropic endpoint, and nothing else', () => {
+    useProfile(MINIMAX)
+    expect(getAPIProvider()).toBe('minimax')
+    expect(getPromptCachingEnabled(MINIMAX.model)).toBe(true)
     expect(getPromptCachingEnabled('claude-sonnet-4-5')).toBe(false)
   })
 

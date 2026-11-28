@@ -46,6 +46,9 @@ const TRAILING_SLASH_RE = /\/+$/
 // GPT-5 and every later major, as providerConfig's GPT_REASONING_FAMILY_RE.
 const GPT_5_PLUS_RE = /^gpt-(?:[5-9]|[1-9]\d+)(?:[.-]|$)/
 const GROK_4_PLUS_RE = /^grok-(?:[4-9]|[1-9]\d+)(?:[.-]|$)/
+const MINIMAX_RE = /^minimax-m\d/
+const KIMI_RE = /^(?:kimi-)?k\d/
+const QWEN_RE = /^qwen/
 
 export const COMPAT_WIRES: readonly CompatWireRow[] = [
   // Recorded: cassettes/openai-responses (reasoning replayed under store:false).
@@ -60,6 +63,56 @@ export const COMPAT_WIRES: readonly CompatWireRow[] = [
     verified: true,
   },
   { id: 'xai', wire: 'responses', host: 'api.x.ai', models: GROK_4_PLUS_RE, verified: false },
+
+  // Recorded: cassettes/minimax-messages, anthropic-compatible-messages (M2.7, M3).
+  {
+    id: 'minimax',
+    wire: 'anthropic',
+    host: 'api.minimax.io',
+    models: MINIMAX_RE,
+    verified: true,
+    anthropicBaseUrl: 'https://api.minimax.io/anthropic',
+  },
+  // Recorded: cassettes/moonshot-messages (k3, kimi-k3 through a tool loop).
+  {
+    id: 'moonshot',
+    wire: 'anthropic',
+    host: 'api.moonshot.ai',
+    models: KIMI_RE,
+    verified: true,
+    anthropicBaseUrl: 'https://api.moonshot.ai/anthropic',
+  },
+  // Recorded: cassettes/alibaba-messages (qwen 3.7 / 3.8, pay-as-you-go intl).
+  {
+    id: 'dashscope-intl',
+    wire: 'anthropic',
+    host: 'dashscope-intl.aliyuncs.com',
+    models: QWEN_RE,
+    verified: true,
+    anthropicBaseUrl: 'https://dashscope-intl.aliyuncs.com/apps/anthropic',
+  },
+  // From the vendors' docs, never recorded.
+  { id: 'minimax-cn', wire: 'anthropic', host: 'api.minimaxi.com', models: MINIMAX_RE, verified: false, anthropicBaseUrl: 'https://api.minimaxi.com/anthropic' },
+  { id: 'moonshot-cn', wire: 'anthropic', host: 'api.moonshot.cn', models: KIMI_RE, verified: false, anthropicBaseUrl: 'https://api.moonshot.cn/anthropic' },
+  { id: 'dashscope-cn', wire: 'anthropic', host: 'dashscope.aliyuncs.com', models: QWEN_RE, verified: false, anthropicBaseUrl: 'https://dashscope.aliyuncs.com/apps/anthropic' },
+  {
+    id: 'dashscope-coding-intl',
+    wire: 'anthropic',
+    host: 'coding-intl.dashscope.aliyuncs.com',
+    models: QWEN_RE,
+    verified: false,
+    anthropicBaseUrl: 'https://coding-intl.dashscope.aliyuncs.com/apps/anthropic',
+  },
+  {
+    id: 'dashscope-coding-cn',
+    wire: 'anthropic',
+    host: 'coding.dashscope.aliyuncs.com',
+    models: QWEN_RE,
+    verified: false,
+    anthropicBaseUrl: 'https://coding.dashscope.aliyuncs.com/apps/anthropic',
+  },
+  { id: 'zai', wire: 'anthropic', host: 'api.z.ai', models: /^glm-/, verified: false, anthropicBaseUrl: 'https://api.z.ai/api/anthropic' },
+  { id: 'deepseek', wire: 'anthropic', host: 'api.deepseek.com', models: /^deepseek-/, verified: false, anthropicBaseUrl: 'https://api.deepseek.com/anthropic' },
 ]
 
 const ENV_OF: Record<CompatWireKind, string> = {

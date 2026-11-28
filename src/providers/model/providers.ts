@@ -1,5 +1,6 @@
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import type { ResolvedProvider, Transport } from 'src/providers/presets/activeProvider.js'
+import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
 
 export type APIProvider =
   | 'firstParty'
@@ -92,6 +93,21 @@ export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
 }
 
 /**
+ * True when the active provider's request for `resolvedModel` goes out over
+ * the Anthropic Messages API through the native SDK although the profile is
+ * not an Anthropic one: Copilot running Claude, or an openai_compat profile
+ * the wire table sends to its vendor's `/anthropic` endpoint (compatWires.ts).
+ * The provider tag stays the profile's, so first-party gates stay off.
+ */
+export function usesNativeAnthropicWire(resolvedModel?: string): boolean {
+  if (isGithubNativeAnthropicMode(resolvedModel)) return true
+  const profile = tryGetActiveProvider()
+  if (profile?.transport !== 'openai_compat') return false
+  const model = resolvedModel?.trim() || profile.model?.trim() || ''
+  return resolveCompatWire(profile.baseUrl, model).wire === 'anthropic'
+}
+
+/**
  * Transports whose requests are translated by the OpenAI-compatible shim
  * (`openaiShim.ts`) rather than sent through the native Anthropic SDK. Kept in
  * sync with the client factory in `client.ts`.
@@ -112,20 +128,14 @@ const OPENAI_SHIM_TRANSPORTS: ReadonlySet<Transport> = new Set([
  * avoid a 400 "Extra inputs are not permitted".
  *
  * Mirrors the shim-vs-native decision in `client.ts` exactly, including the
- * github_copilot + Claude-model carve-out: that combination is routed through
- * the native Anthropic SDK (`isGithubNativeAnthropicMode`), so it is NOT a shim
- * request even though the transport is in the shim set.
+ * native-wire carve-outs: Copilot running Claude and a vendor's `/anthropic`
+ * endpoint go through the native Anthropic SDK (`usesNativeAnthropicWire`),
+ * so they are NOT shim requests even though the transport is in the shim set.
  */
 export function activeTransportUsesOpenAiShim(resolvedModel?: string): boolean {
   const transport = tryGetActiveProvider()?.transport ?? 'anthropic'
   if (!OPENAI_SHIM_TRANSPORTS.has(transport)) return false
-  if (
-    transport === 'github_copilot' &&
-    isGithubNativeAnthropicMode(resolvedModel)
-  ) {
-    return false
-  }
-  return true
+  return !usesNativeAnthropicWire(resolvedModel)
 }
 
 export function getAPIProviderForStatsig(): string {

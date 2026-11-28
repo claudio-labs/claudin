@@ -35,6 +35,7 @@ import {
 } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
+import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
 
 const importRuntimeModule = new Function(
   'specifier',
@@ -251,6 +252,27 @@ async function buildAnthropicClient({
       fetch: wrapFetchWithCopilotHeaders(resolvedFetch ?? globalThis.fetch),
     }
     return new Anthropic(nativeArgs)
+  }
+  // A vendor's own Anthropic endpoint for an openai_compat profile (compatWires.ts).
+  const vendorWire =
+    transport === 'openai_compat'
+      ? resolveCompatWire(activeProvider?.baseUrl, model?.trim() || activeProvider?.model?.trim() || '')
+      : undefined
+  if (vendorWire?.wire === 'anthropic' && activeProvider) {
+    const { createVendorAnthropicClient } = await import('src/providers/shims/vendorAnthropic/client.js')
+    const shimOptions = { defaultHeaders, maxRetries, timeout: getApiTimeoutMs() }
+    return createVendorAnthropicClient({
+      sdkOptions: ARGS,
+      baseUrl: vendorWire.baseUrl,
+      apiKey: activeProvider.apiKey ?? '',
+      row: vendorWire.row,
+      compatBaseUrl: activeProvider.baseUrl ?? '',
+      model: model?.trim() || activeProvider.model?.trim() || '',
+      fallback: async () => {
+        const { createOpenAIShimClient } = await import('src/providers/shims/openaiShim.js')
+        return createOpenAIShimClient(shimOptions) as never
+      },
+    })
   }
   if (
     transport === 'openai_compat' ||
