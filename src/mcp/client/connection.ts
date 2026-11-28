@@ -261,7 +261,7 @@ export const connectToServer = memoize(
           capabilities: {
             roots: {},
             // A 2026-07-28 server asks for a URL only from a client that says
-            // url; the 2025 initialize goes out as {} (SEND_RULES in
+            // url; the 2025 initialize says `elicitation: {}` (SEND_RULES in
             // wireRules.ts), which Spring AI servers accept.
             elicitation: { form: {}, url: {} },
             // Every extension Claudin runs is declared: a server may answer a

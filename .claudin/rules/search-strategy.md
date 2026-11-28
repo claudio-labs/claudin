@@ -110,7 +110,7 @@ src/
 │   │                              directConnectManager.ts: DIRECT_CONNECT was folded
 │   │                              false, so its entry points and stubs are deleted
 │   └── teams/ policyLimits/ wiki/ github/  ← misc host services
-├── terminal/ (387)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
+├── terminal/ (394)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
 │   ├── ink/ (115)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
 │   ├── prompt-input/ (21)       ← the input box, its modes and suggestions. `input/` (8) is a
 │   │                              different thing: Cursor, keyboardShortcuts, pasteStore
@@ -147,10 +147,15 @@ src/
 │   │                              groups read it through there, none repeats the feature() block
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
 │   └── ui/                      ← one request component per tool + rules/ editor
-├── mcp/ (150)                   ← client/ (connection, transport, callTool, authCache;
+├── mcp/ (154)                   ← client/ (connection, transport, callTool, authCache;
 │                                  listValidation checks list entries one by one, serverOptions
 │                                  resolves per-server timeouts and cwd, connectRetry, clientInfo,
-│                                  promptArguments), mcpServerApproval trust dialog, ui/. auth.ts
+│                                  promptArguments; negotiation + eraCache pick the protocol era,
+│                                  wireFilter runs wireRules + cursorCycleGuard on the wire,
+│                                  taskCall + taskPoll run task-augmented calls, events,
+│                                  subscriptions, listTtl), serverUpdate (applyServerUpdate),
+│                                  listTtlRefresh, mcpSkills, resourceChanges + resourceWatch,
+│                                  promptCompletions, mcpServerApproval trust dialog, ui/. auth.ts
 │                                  is a BARREL over auth/ (serverKey, oauthErrors, authFetch,
 │                                  callbackParams, tokenRevocation, oauthFlow, claudeAuthProvider,
 │                                  clientSecretStore; cliLogin is `claudin mcp login|logout`)

@@ -629,6 +629,25 @@ Two of these went red on main in 2026-09 (#153) after #152 added one file:
   `providerNeutrality.invariant.test.ts` found Gemini models in the OpenAI
   picker. Clear such a key yourself before the reset
   (`clearActiveOpenAIModelOptionsCache()`).
+- **The config dir is `CLAUDIN_CONFIG_DIR`.** `CLAUDE_CONFIG_DIR` is not read,
+  so a suite that sets it isolates nothing; `envNaming.test.ts` fails on the
+  stray name. Two MCP suites shipped it that way (2026-11-28). And
+  `getProjectDir` is memoized by cwd alone, so a suite that points the config
+  dir at a temp dir while something resolves the project dir must clear that
+  memo too: the elicitation harness pinned a deleted `/tmp/elicit-hooks-*` dir
+  for `rerootSession.test.ts` until it did (f14c972a).
+- **MCP state that outlives a connection.** The era cache
+  (`src/mcp/client/eraCache.ts`) is off under `NODE_ENV=test`; a suite that
+  connects either leaves it off or points it at a temp dir with
+  `setEraCacheDirForTests`, never at the developer's config home. A suite that
+  flips `NODE_ENV` gets the real cache unless it also sets the config dir. The
+  fetch memos (`fetchToolsForClient.cache` and its siblings) are keyed by the
+  server's NAME, so a suite that connects a real server deletes its entries in
+  `afterEach`: two files both naming a server `live` handed the first one's
+  tools to the second, which then failed its `list_changed` test.
+  A behavior that differs per protocol era gets a test on both eras
+  (`src/mcp/__testutils__/eraServers.ts`), and a new server wire quirk is a
+  rule in `wireRules.ts`, pinned against a real fixture server.
 
 **How to apply:** snapshot in `beforeAll` (or at module load, beside the
 assignment) and restore in `afterAll`, restoring *before* any `rmSync` of a dir

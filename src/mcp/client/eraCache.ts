@@ -118,7 +118,7 @@ function updateCache(edit: (entries: CacheFile) => void): Promise<void> {
       await writeFile(temp, jsonStringify(entries), 'utf8')
       await rename(temp, path)
     } catch (error) {
-      await unlink(temp).catch(() => {})
+      await unlink(temp).catch(unlinkError => logMCPDebug('era-cache', `Failed to remove ${temp}: ${unlinkError}`))
       throw error
     }
   })
