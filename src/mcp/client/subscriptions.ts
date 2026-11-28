@@ -36,6 +36,7 @@ import type {
 } from '@modelcontextprotocol/client'
 import { errorMessage } from 'src/shared/errors.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
+import { cappedDoublingMs } from 'src/shared/sleep.js'
 
 export type ListenClient = Pick<Client, 'listen' | 'getProtocolEra' | 'getServerCapabilities' | 'transport'>
 
@@ -83,7 +84,7 @@ export function unhonored(asked: SubscriptionFilter, honored: SubscriptionFilter
 }
 
 export function reopenDelayMs(attempt: number, timings: SubscriptionTimings): number {
-  return Math.min(timings.maxDelayMs, timings.baseDelayMs * 2 ** attempt)
+  return cappedDoublingMs(attempt, timings.baseDelayMs, timings.maxDelayMs)
 }
 
 export type McpSubscriptions = {

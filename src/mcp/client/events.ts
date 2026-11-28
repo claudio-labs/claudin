@@ -24,6 +24,7 @@
 import { type Client, ProtocolError, type Transport } from '@modelcontextprotocol/client'
 import { z } from 'zod/v4'
 import { errorMessage } from 'src/shared/errors.js'
+import { cappedDoublingMs, sleep } from 'src/shared/sleep.js'
 import { getMcpExtensionEnabled } from 'src/mcp/client/serverOptions.js'
 import type { McpServerConfig } from 'src/mcp/types.js'
 
@@ -145,7 +146,7 @@ export function pickDelivery(type: Pick<McpEventType, 'delivery'>): EventDeliver
 
 /** The wait before reconnect `attempt` (0-based): doubling from 1 s to 30 s, jittered to 50-100%. */
 export function reconnectDelayMs(attempt: number, random: number): number {
-  return Math.min(RECONNECT_CAP_MS, RECONNECT_BASE_MS * 2 ** attempt) * (0.5 + random / 2)
+  return cappedDoublingMs(attempt, RECONNECT_BASE_MS, RECONNECT_CAP_MS) * (0.5 + random / 2)
 }
 
 /** The wait before the next poll: the server's hint, never under the floor. */
@@ -276,17 +277,7 @@ export type EventWatch = {
 }
 
 export const defaultEventWatchTimers: Omit<EventWatchDeps, 'getClient'> = {
-  sleep: (ms, signal) =>
-    new Promise(resolve => {
-      const timer = setTimeout(done, ms)
-      timer.unref?.()
-      signal.addEventListener('abort', done, { once: true })
-      function done(): void {
-        clearTimeout(timer)
-        signal.removeEventListener('abort', done)
-        resolve()
-      }
-    }),
+  sleep: (ms, signal) => sleep(ms, signal, { unref: true }),
   after: (ms, fn) => {
     const timer = setTimeout(fn, ms)
     timer.unref?.()

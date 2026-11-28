@@ -19,7 +19,7 @@ import {
 import { maybeNotifyIDEConnected } from 'src/platform/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { sleep } from 'src/shared/sleep.js'
+import { sleep, withTimeout } from 'src/shared/sleep.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
@@ -167,19 +167,14 @@ async function endHttpSession(
   transport: StreamableHTTPClientTransport,
 ): Promise<void> {
   if (transport.sessionId === undefined) return
-  let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    await Promise.race([
+    await withTimeout(
       transport.terminateSession(),
-      new Promise<void>(resolve => {
-        timer = setTimeout(resolve, SESSION_DELETE_TIMEOUT_MS)
-        timer.unref?.()
-      }),
-    ])
+      SESSION_DELETE_TIMEOUT_MS,
+      `the DELETE got no answer within ${SESSION_DELETE_TIMEOUT_MS} ms`,
+    )
   } catch (error) {
     logMCPDebug(name, `Error ending the HTTP session: ${errorMessage(error)}`)
-  } finally {
-    clearTimeout(timer)
   }
 }
 
