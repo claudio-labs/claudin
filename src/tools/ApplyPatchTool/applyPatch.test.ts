@@ -203,6 +203,48 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
+  test('a pure rename of a file never read is refused, as a Delete is', async () => {
+    const src = join(dir, 'app.txt')
+    writeFileSync(src, 'line1\n')
+    await expect(
+      runApplyPatch({ patchText: envelope(`*** Update File: ${src}\n*** Move to: ${join(dir, 'b.txt')}`) }, ctx, randomUUID()),
+    ).rejects.toThrow('has not been read yet')
+    expect(existsSync(src)).toBe(true)
+    cleanup()
+  })
+
+  test('renames a file with no hunks, its bytes untouched', async () => {
+    const src = join(dir, 'app.txt')
+    const dest = join(dir, 'main.txt')
+    writeFileSync(src, 'line1\r\nline2')
+    markRead(src)
+    const { output } = await runApplyPatch(
+      { patchText: envelope(`*** Update File: ${src}\n*** Move to: ${dest}`) },
+      ctx,
+      randomUUID(),
+    )
+    expect(existsSync(src)).toBe(false)
+    expect(readFileSync(dest, 'utf8')).toBe('line1\r\nline2')
+    expect(output.files[0]).toMatchObject({ type: 'move' })
+    cleanup()
+  })
+
+  test('a pure rename of a binary file keeps it byte for byte', async () => {
+    const src = join(dir, 'logo.png')
+    const dest = join(dir, 'assets-logo.png')
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff, 0xfe, 0x80, 0xc3, 0x28])
+    writeFileSync(src, bytes)
+    markRead(src)
+    await runApplyPatch(
+      { patchText: envelope(`*** Update File: ${src}\n*** Move to: ${dest}`) },
+      ctx,
+      randomUUID(),
+    )
+    expect(existsSync(src)).toBe(false)
+    expect(readFileSync(dest).toString('hex')).toBe(bytes.toString('hex'))
+    cleanup()
+  })
+
   test('applies multiple files in one call', async () => {
     const a = join(dir, 'a.ts')
     const b = join(dir, 'old.ts')

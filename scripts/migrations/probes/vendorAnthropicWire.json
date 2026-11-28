@@ -1,0 +1,79 @@
+{
+  "test": [
+    "src/providers/shims/vendorAnthropic/client.cassette.test.ts",
+    "src/providers/presets/compatWires.test.ts",
+    "src/providers/shims/claude/paramBuilders.test.ts",
+    "src/providers/model/providers.test.ts",
+    "src/providers/presets/wireFallback.test.ts"
+  ],
+  "source": "src/providers/shims/vendorAnthropic/client.ts",
+  "probes": [
+    {
+      "name": "the factory never builds the vendor client",
+      "source": "src/providers/transport/client.ts",
+      "find": "  if (vendorWire?.wire === 'anthropic' && activeProvider) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "MiniMax loses its row",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "    id: 'minimax',\n    wire: 'anthropic',",
+      "replace": "    id: 'minimax',\n    wire: 'responses',"
+    },
+    {
+      "name": "the coding plan counts as verified",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "    host: 'coding-intl.dashscope.aliyuncs.com',\n    models: QWEN_RE,\n    verified: false,",
+      "replace": "    host: 'coding-intl.dashscope.aliyuncs.com',\n    models: QWEN_RE,\n    verified: true,"
+    },
+    {
+      "name": "the shim params go to the vendor",
+      "source": "src/providers/model/providers.ts",
+      "find": "  return !usesNativeAnthropicWire(resolvedModel)",
+      "replace": "  return true"
+    },
+    {
+      "name": "no cache_control on the vendor wire",
+      "source": "src/providers/shims/claude/paramBuilders.ts",
+      "find": "    !nativeWire\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "metadata reaches the vendor",
+      "find": "  const { metadata: _metadata, betas, ...rest } = params",
+      "replace": "  const { betas, ...rest } = params"
+    },
+    {
+      "name": "every beta reaches the vendor",
+      "find": "  const kept = Array.isArray(betas) ? betas.filter(beta => KEPT_BETAS.has(String(beta))) : []",
+      "replace": "  const kept = Array.isArray(betas) ? betas : []"
+    },
+    {
+      "name": "the key is not sent",
+      "find": "    authToken: options.apiKey,\n    apiKey: null,",
+      "replace": "    authToken: null,\n    apiKey: null,"
+    },
+    {
+      "name": "the vendor gets keep-alive pings",
+      "find": "  const messages = overrideMembers(native, { create, keepAlivePingParams: () => null, countTokens: undefined })",
+      "replace": "  const messages = overrideMembers(native, { create, countTokens: undefined })"
+    },
+    {
+      "name": "count_tokens reaches the vendor",
+      "find": "  const messages = overrideMembers(native, { create, keepAlivePingParams: () => null, countTokens: undefined })",
+      "replace": "  const messages = overrideMembers(native, { create, keepAlivePingParams: () => null })"
+    },
+    {
+      "name": "a rejected first request is not retried over chat",
+      "find": "    if (rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })) return attempts.chat()\n",
+      "replace": "    rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })\n",
+      "source": "src/providers/presets/wireFallback.ts"
+    },
+    {
+      "name": "a rejected pair keeps trying the vendor",
+      "find": "  if (isWireRejected(wire, baseUrl, model)) return attempts.chat()\n",
+      "replace": "",
+      "source": "src/providers/presets/wireFallback.ts"
+    }
+  ]
+}

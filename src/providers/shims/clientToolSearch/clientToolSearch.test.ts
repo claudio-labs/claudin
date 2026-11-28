@@ -9,13 +9,13 @@ import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvi
 import {
   CALL_TOOL,
   CALL_TOOL_NAME,
-  clientToolSearchDisabled,
-  gatewayArguments,
-  planToolDeferral,
-  renderLoadedTools,
+  gatewayInput,
   unwrapGatewayCall,
-  usesShimChatCompletions,
-} from 'src/providers/shims/clientToolSearch/index.js'
+} from 'src/providers/shims/clientToolSearch/callTool.js'
+import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
+import { planToolDeferral } from 'src/providers/shims/clientToolSearch/deferral.js'
+import { clientToolSearchDisabled } from 'src/providers/shims/clientToolSearch/gate.js'
+import { renderLoadedTools } from 'src/providers/shims/clientToolSearch/renderToolReference.js'
 
 const savedKillswitch = process.env.CLAUDIN_SHIM_TOOL_SEARCH
 
@@ -41,17 +41,17 @@ afterEach(() => {
   invalidateActiveProviderCache()
 })
 
-describe('usesShimChatCompletions', () => {
+describe('clientDefersTools', () => {
   const base = { name: 'p', model: 'm' }
 
   test('openai-compatible and Mistral profiles', () => {
     useProfile({ ...base, id: 'o', provider: 'openai', baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b' })
-    expect(usesShimChatCompletions()).toBe(true)
+    expect(clientDefersTools()).toBe(true)
     useProfile({ ...base, id: 'mi', provider: 'mistral', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' })
-    expect(usesShimChatCompletions()).toBe(true)
+    expect(clientDefersTools()).toBe(true)
   })
 
-  test('Copilot on chat completions, but not Copilot running Claude or GPT-5 on /responses', () => {
+  test('Copilot on chat completions and on /responses, but not Copilot running Claude natively', () => {
     const copilot: ProviderProfile = {
       ...base,
       id: 'gh',
@@ -61,20 +61,23 @@ describe('usesShimChatCompletions', () => {
       extras: { githubToken: 't' },
     }
     useProfile(copilot)
-    expect(usesShimChatCompletions('gpt-4o')).toBe(true)
-    expect(usesShimChatCompletions('claude-sonnet-4-6')).toBe(false)
-    expect(usesShimChatCompletions('gpt-5.4')).toBe(false)
+    expect(clientDefersTools('gpt-4o')).toBe(true)
+    expect(clientDefersTools('gpt-5.4')).toBe(true)
+    expect(clientDefersTools('claude-sonnet-4-6')).toBe(false)
   })
 
-  test('no profile, Anthropic, Gemini, Codex: no', () => {
-    useProfile(null)
-    expect(usesShimChatCompletions()).toBe(false)
-    useProfile({ ...base, id: 'a', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' })
-    expect(usesShimChatCompletions()).toBe(false)
+  test('Gemini and Codex: yes', () => {
     useProfile({ ...base, id: 'g', provider: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-3-pro' })
-    expect(usesShimChatCompletions()).toBe(false)
+    expect(clientDefersTools()).toBe(true)
     useProfile({ ...base, id: 'c', provider: 'openai', baseUrl: 'https://chatgpt.com/backend-api/codex', model: 'gpt-5.5' })
-    expect(usesShimChatCompletions()).toBe(false)
+    expect(clientDefersTools()).toBe(true)
+  })
+
+  test('no profile, Anthropic: no', () => {
+    useProfile(null)
+    expect(clientDefersTools()).toBe(false)
+    useProfile({ ...base, id: 'a', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' })
+    expect(clientDefersTools()).toBe(false)
   })
 })
 
@@ -119,18 +122,18 @@ describe('planToolDeferral', () => {
 
 describe('the gateway call', () => {
   test('CALL_TOOL takes a name and free-form arguments', () => {
-    expect(CALL_TOOL.function.name).toBe(CALL_TOOL_NAME)
-    expect(CALL_TOOL.function.parameters).toMatchObject({
+    expect(CALL_TOOL.name).toBe(CALL_TOOL_NAME)
+    expect(CALL_TOOL.input_schema).toMatchObject({
       required: ['name', 'arguments'],
       properties: { name: { type: 'string' }, arguments: { type: 'object' } },
     })
   })
 
   test('round trip: a deferred tool_use goes out as gateway arguments and comes back', () => {
-    const args = gatewayArguments('mcp__a', { select: 'x' })
+    const args = JSON.stringify(gatewayInput('mcp__a', { select: 'x' }))
     expect(args).toBe('{"name":"mcp__a","arguments":{"select":"x"}}')
     expect(unwrapGatewayCall(args)).toEqual({ name: 'mcp__a', input: { select: 'x' } })
-    expect(gatewayArguments('mcp__a', undefined)).toBe('{"name":"mcp__a","arguments":{}}')
+    expect(JSON.stringify(gatewayInput('mcp__a', undefined))).toBe('{"name":"mcp__a","arguments":{}}')
   })
 
   test('arguments encoded twice are decoded; undecodable ones become {}', () => {

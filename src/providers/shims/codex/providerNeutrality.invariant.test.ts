@@ -387,7 +387,29 @@ describe('the shared message pipeline', () => {
     ]
   }
 
-  test.each([ANTHROPIC, OPENAI, COPILOT, LOCAL])(
+  // OpenAI below GPT-5 stays on Chat Completions; from GPT-5 on it is the
+  // Responses API, which replays the items itself (the next test).
+  const OPENAI_CHAT: ProviderProfile = { ...OPENAI, id: 'neutral-openai-chat', model: 'gpt-4.1' }
+
+  test('a session continued under the OpenAI Responses API keeps the item state it replays', () => {
+    useProfile(OPENAI)
+    const { messages } = renderMessagesForAPI(
+      [
+        createUserMessage({ content: 'hi' }),
+        createAssistantMessage({ content: CODEX_ASSISTANT_BLOCKS as never }),
+        createUserMessage({
+          content: [{ type: 'tool_result', tool_use_id: 'call_abc', content: 'numbers' }] as never,
+        }),
+      ],
+      [],
+      { useToolSearch: false, advisor: false, ...historyRedactions() },
+    )
+    const wire = JSON.stringify(messages.map(m => m.message.content))
+    expect(wire).toContain('enc-1')
+    expect(wire).toContain('fc_real')
+  })
+
+  test.each([ANTHROPIC, OPENAI_CHAT, COPILOT, LOCAL])(
     'a Codex session continued under %o renders no Codex state',
     profile => {
       useProfile(profile)

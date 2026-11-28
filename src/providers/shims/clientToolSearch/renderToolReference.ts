@@ -1,8 +1,9 @@
 /**
- * A ToolSearch result as the model reads it on an OpenAI-compatible server.
+ * A ToolSearch result as the model reads it on a wire without server-side
+ * tool search.
  *
  * Anthropic's API expands each `tool_reference` block into the tool's
- * definition at that point of the conversation. The shim writes the same thing
+ * definition at that point of the conversation. The gateway writes the same thing
  * as text: the schema in the `<functions>` form, and how to call it. The text
  * is built only from the tool's own name, description and input schema
  * (stableStringify), so it is byte-identical on every later request and the

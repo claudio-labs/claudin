@@ -6,8 +6,8 @@ paths:
   - "src/mcp/client/**"
 ---
 
-Verified 2026-11-27 for the `feat/mcp-2026-07-28` migration by running probe scripts (scratchpad, since
-lost) against v2 2.4.0 and v1 1.32.2 servers, plus reading the dist. None of it is in the v2 docs.
+Verified 2026-11-27 for the SDK v2 migration ([[mcp-2026-07-28]], shipped in #373) by running probe scripts
+(scratchpad, since lost) against v2 2.4.0 and v1 1.32.2 servers, plus reading the dist. None of it is in the v2 docs.
 
 **Negotiation**
 - `versionNegotiation: { mode: 'legacy' | 'auto' | { pin }, probe: { timeoutMs, maxRetries } }`, default
@@ -104,6 +104,21 @@ lost) against v2 2.4.0 and v1 1.32.2 servers, plus reading the dist. None of it 
 - `TransportSendOptions.onRequestStreamEnd` reports that a Streamable HTTP request's stream ended, answered or
   not (the SDK's own `listen()` uses it); stdio ignores it. When a result arrives and then the stream closes,
   the request has settled before the hook fires.
+
+**Re-running the live check** (the 11-28 scripts lived in the scratchpad and are lost; rebuild them like this):
+- **Host script.** Import `src/mcp/__testutils__/eraServers.ts` by absolute path and start four servers: `serveModern`
+  with one tool, `serveLegacy()`, `serveLegacy({ discoverStatus: 500 })` and `writeModernStdioServer()`.
+  - Write their configs to a JSON file.
+  - Serve `/reset` (marks the hit counts) and `/report` (each fixture's hits since then, plus stdio spawns).
+- **Register the servers.** Run `bin/claudin mcp add-json <name> '<json>' --scope user` with `CLAUDIN_CONFIG_DIR`
+  set to a temp dir. The era cache then lives in that dir; delete it for a cold run.
+- **`mcp list` twice.** Run 1 shows the probes and fallbacks, run 2 the cached verdicts.
+- **One `-p` turn.**
+  - The command is `-p "<prompt>" --model haiku --strict-mcp-config --mcp-config '{"mcpServers":{…}}' --allowedTools mcp__<s>__<tool>`.
+  - Put the prompt right after `-p`: `--allowedTools` is variadic and takes a later prompt as a tool name. The run
+    then fails with "Input must be provided either through stdin or as a prompt argument".
+  - It uses the real config, for the credentials. Point it only at a modern HTTP server, which writes no era
+    verdict, so `~/.claudin/mcp-era-cache.json` stays untouched.
 
 **Why:** about ten agent runs went into establishing these; the branch's wire filter, era cache and
 fallback rest on them.

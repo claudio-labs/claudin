@@ -10,6 +10,7 @@ paths:
   - "src/mcp/client/taskCall.ts"
   - "src/mcp/elicitationHandler.ts"
   - "src/mcp/useManageMCPConnections.ts"
+  - "src/mcp/serverUpdate.ts"
   - "src/agent/tasks/pillLabel.ts"
   - "src/skills/loadSkillsDir.ts"
   - "src/tools/SkillTool/SkillTool.ts"
@@ -18,9 +19,9 @@ paths:
   - "src/tools/ListMcpResourcesTool/ListMcpResourcesTool.ts"
 ---
 
-Found while covering files to ≥70% before the SDK v2 migration (branch `feat/mcp-2026-07-28`). Every
-symptom is pinned as current behavior by a cover suite on that branch, so fixing one means changing its
-test on purpose.
+Found while covering files to ≥70% before the SDK v2 migration (branch `feat/mcp-2026-07-28`, merged as
+#373 on 2026-11-28). Every symptom is pinned as current behavior by a cover suite, now on main, so fixing
+one means changing its test on purpose.
 
 **mcp serve** (`src/platform/entrypoints/mcp.ts`, `startMCPServer`; pinned in `mcp.test.ts`):
 1. `tools/list` spreads the whole internal tool object (`...tool`), so `isMcp`, `searchHint` and other
@@ -66,10 +67,11 @@ test on purpose.
     `loadSkillsDir.cover.test.ts` were flipped on purpose, as was `getMcpSkillCommands` returning `[]`.
 
 **Connections hook** (`src/mcp/useManageMCPConnections.ts`; pinned in `useManageMCPConnections.cover.test.tsx`):
-14. A server's resources are never removed from the pool (~266-274): the update builds
-    `{ ...mcp.resources, ...omit(mcp.resources, name) }`, spreading the old map first, so a failed or
-    disabled server — or a refresh that returns `[]` — keeps its resources. Marked "CURRENT BEHAVIOR (bug)"
-    in the suite; the branch's resource-subscription work builds on this map.
+14. A server's resources are never removed from the pool. The reducer is now `applyServerUpdate` in
+    `src/mcp/serverUpdate.ts` (~137-145): it builds `{ ...mcp.resources, ...omit(mcp.resources, name) }` for an
+    empty list, spreading the old map first, so a failed or disabled server — or a refresh that returns `[]` —
+    keeps its resources. Marked "CURRENT BEHAVIOR (bug)" in the suite; the resource-subscription work builds on
+    this map.
 15. `void loadAndConnectMcpConfigs()` (~783) has no `.catch`: a rejected config load or claude.ai fetch
     in that effect is an unhandled rejection. The other effect catches.
 16. After five failed reconnects the last failed result carries `tools: []` and empties the server's
@@ -96,7 +98,8 @@ test on purpose.
     `requestedSchema`. A form request inside a task therefore reaches the SDK caller with only its message.
     Seen while building task-augmented calls (fb7e9a7a; the code is `src/mcp/client/taskCall.ts` since 11-28).
 
-**Status:** open as of 2026-11-27.
+**Status:** open, re-checked on main 2026-11-28: 1 is still the `...tool` spread (`mcp.ts:115`), 2 the
+`Tool ${name} not found` throw (`mcp.ts:177`), 14 the spread above.
 
 **Why not fixed:** out of the migration plan's scope; 1 and 2 were to be offered to the user as a
-decision at the end of the round.
+decision, and #373 shipped without them.

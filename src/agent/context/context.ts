@@ -6,6 +6,11 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCanonicalName } from 'src/providers/model/model.js'
 import { getModelCapability } from 'src/providers/model/modelCapabilities.js'
 import { getOpenAIContextWindow, getOpenAIMaxOutputTokens } from 'src/providers/model/openaiContextWindows.js'
+import {
+  converseContextWindow,
+  converseMaxOutputTokens,
+  usesConverse,
+} from 'src/providers/shims/bedrockConverse/models.js'
 import { getTokenCountFromUsage } from 'src/agent/context/usageTokens.js'
 
 function isOpenAIShimTransport(): boolean {
@@ -17,6 +22,11 @@ function isOpenAIShimTransport(): boolean {
     transport === 'github_copilot' ||
     transport === 'codex_responses'
   )
+}
+
+/** A non-Claude model on Bedrock: Converse, with its own limits. */
+function isBedrockConverseModel(model: string): boolean {
+  return tryGetActiveProvider()?.transport === 'bedrock' && usesConverse(model)
 }
 
 // Model context window size (200k tokens for all models right now)
@@ -103,6 +113,10 @@ export function getContextWindowForModel(
       )
     }
     return OPENAI_FALLBACK_CONTEXT_WINDOW
+  }
+
+  if (isBedrockConverseModel(model)) {
+    return converseContextWindow(model)
   }
 
   // Dormant in the external build: getModelCapability() is a stub that always
@@ -209,6 +223,11 @@ export function getModelMaxOutputTokens(model: string): {
     if (openaiMax !== undefined) {
       return { default: openaiMax, upperLimit: openaiMax }
     }
+  }
+
+  if (isBedrockConverseModel(model)) {
+    const max = converseMaxOutputTokens(model)
+    return { default: max, upperLimit: max }
   }
 
   const m = getCanonicalName(model)

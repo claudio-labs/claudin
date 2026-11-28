@@ -53,6 +53,8 @@ export type StagedChange = {
   type: StagedChangeType
   absPath: string
   movePath?: string
+  /** A move with no edit: the file is renamed, its bytes never read as text. */
+  rename?: true
   // null when the file did not exist before (an `add`).
   oldContent: string | null
   // '' for a delete.
@@ -187,6 +189,10 @@ export function writeChange(change: StagedChange): void {
       break
     case 'move':
       fs.mkdirSync(dirname(change.movePath!))
+      if (change.rename) {
+        fs.renameSync(change.absPath, change.movePath!)
+        break
+      }
       writeTextContent(
         change.movePath!,
         change.newContent,
@@ -221,6 +227,10 @@ export function rollbackChange(change: StagedChange): void {
         }
         break
       case 'move':
+        if (change.rename) {
+          if (change.movePath && fs.existsSync(change.movePath)) fs.renameSync(change.movePath, change.absPath)
+          break
+        }
         if (change.oldContent !== null) {
           writeTextContent(
             change.absPath,

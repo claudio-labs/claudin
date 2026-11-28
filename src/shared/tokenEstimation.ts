@@ -17,6 +17,7 @@ import {
   createBedrockRuntimeClient,
   getInferenceProfileBackingModel,
   isFoundationModel,
+  usesConverse,
 } from 'src/providers/model/bedrock.js'
 import {
   getDefaultSonnetModel,
@@ -636,6 +637,8 @@ async function countTokensWithBedrock({
   betas: string[]
   containsThinking: boolean
 }): Promise<number | null> {
+  // CountTokens takes the Anthropic body, which a Converse model does not read.
+  if (usesConverse(model)) return null
   try {
     const client = await createBedrockRuntimeClient()
     // Bedrock CountTokens requires a model ID, not an inference profile / ARN

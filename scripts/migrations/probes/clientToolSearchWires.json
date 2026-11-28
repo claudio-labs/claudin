@@ -1,0 +1,81 @@
+{
+  "test": [
+    "src/providers/shims/clientToolSearch",
+    "src/providers/shims/openaiShim/clientToolSearch.e2e.test.ts",
+    "src/providers/shims/codexShim.test.ts",
+    "src/agent/tools/toolSearch.test.ts"
+  ],
+  "source": "src/providers/shims/clientToolSearch/paramsTransform.ts",
+  "probes": [
+    {
+      "name": "the factory hands out the bare client",
+      "source": "src/providers/transport/client.ts",
+      "find": "  if (!clientDefersTools(options.model)) return client\n",
+      "replace": "  return client\n"
+    },
+    {
+      "name": "Gemini loses client-side tool search",
+      "source": "src/providers/shims/clientToolSearch/capability.ts",
+      "find": "  'gemini',\n",
+      "replace": ""
+    },
+    {
+      "name": "the Responses path loses client-side tool search",
+      "source": "src/providers/shims/clientToolSearch/capability.ts",
+      "find": "  'codex_responses',\n",
+      "replace": ""
+    },
+    {
+      "name": "Copilot running Claude natively gets the gateway too",
+      "source": "src/providers/shims/clientToolSearch/capability.ts",
+      "find": "  return !(transport === 'github_copilot' && isGithubNativeAnthropicMode(model))",
+      "replace": "  return true"
+    },
+    {
+      "name": "the gateway goes out strict on Responses",
+      "source": "src/providers/shims/codexShim.ts",
+      "find": "      if (tool.name === CALL_TOOL_NAME) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "a deferred call in history keeps its own name",
+      "find": "    if (block?.type !== 'tool_use' || typeof block.name !== 'string' || !deferred.has(block.name)) return block",
+      "replace": "    return block"
+    },
+    {
+      "name": "a tool_reference is not expanded",
+      "find": "    if (names.length === 0) return block\n",
+      "replace": "    return block\n"
+    },
+    {
+      "name": "the stubs no longer run before the rewrite",
+      "find": "    ? applyStableInputStubs(applyStableStubs(params.messages as Message[])).map(message =>",
+      "replace": "    ? (params.messages as Message[]).map(message =>",
+      "expect": "green"
+    },
+    {
+      "name": "blocks after a held call are released before it",
+      "source": "src/providers/shims/clientToolSearch/eventTransform.ts",
+      "find": "    if (queue.length === 0) {\n      yield raw\n      continue\n    }\n    queue.push({ event })",
+      "replace": "    yield raw"
+    },
+    {
+      "name": "a stream cut mid-call drops the held call",
+      "source": "src/providers/shims/clientToolSearch/eventTransform.ts",
+      "find": "  for (const held of open.values()) {\n    held.events = unwrappedEvents(held)\n    held.done = true\n  }\n",
+      "replace": "  for (const held of open.values()) queue.splice(queue.findIndex(slot => 'held' in slot && slot.held === held), 1)\n"
+    },
+    {
+      "name": "withResponse hands back the raw data",
+      "source": "src/providers/shims/clientFacade.ts",
+      "find": "    return { ...result, data: map(result.data) }",
+      "replace": "    return result"
+    },
+    {
+      "name": "the wrapper hides the client's own methods' this",
+      "source": "src/providers/shims/clientFacade.ts",
+      "find": "      return typeof value === 'function' ? value.bind(obj) : value",
+      "replace": "      return value"
+    }
+  ]
+}

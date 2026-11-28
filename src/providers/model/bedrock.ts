@@ -4,6 +4,9 @@ import { getAWSRegion, isEnvTruthy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'
 import { getAWSClientProxyConfig } from 'src/providers/transport/proxy.js'
 
+// Which Bedrock ids take Converse, for the callers that already reach this module.
+export { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
+
 export const getBedrockInferenceProfiles = memoize(async function (): Promise<
   string[]
 > {
@@ -111,12 +114,15 @@ async function createBedrockClient() {
   return new BedrockClient(clientConfig)
 }
 
-export async function createBedrockRuntimeClient() {
-  // BedrockRuntimeClient comes from a package this fork stubs, and (unlike
-  // '@aws-sdk/client-bedrock', a bodyless ambient module that falls back to
-  // `any` for every export) the client-bedrock-runtime stub in
-  // stubbed-modules.d.ts only declares CountTokensCommand — so the real
-  // constructor has to be cast in locally rather than destructured as-is.
+/**
+ * `http1` keeps the request on HTTP/1.1, as AnthropicBedrock's fetch does: the
+ * runtime client defaults to HTTP/2, which never completes against a plain-HTTP
+ * endpoint (a gateway, a proxy, the smoke mock). A proxy brings its own handler.
+ * `region` is the one the caller resolved (the profile's); the env's otherwise.
+ */
+export async function createBedrockRuntimeClient(options: { http1?: boolean; region?: string } = {}) {
+  // The ambient declaration of client-bedrock-runtime in stubbed-modules.d.ts
+  // names only the commands, so the constructor is cast in locally.
   const { BedrockRuntimeClient } = (await import(
     '@aws-sdk/client-bedrock-runtime'
   )) as unknown as {
@@ -124,7 +130,7 @@ export async function createBedrockRuntimeClient() {
       send: (command: unknown) => Promise<{ inputTokens?: number }>
     }
   }
-  const region = getAWSRegion()
+  const region = options.region ?? getAWSRegion()
   const skipAuth = isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH)
 
   const clientConfig: Record<string, unknown> = {
@@ -148,6 +154,9 @@ export async function createBedrockRuntimeClient() {
       ],
       httpAuthSchemeProvider: () => [{ schemeId: 'smithy.api#noAuth' }],
     }),
+  }
+  if (options.http1 && !clientConfig.requestHandler) {
+    clientConfig.requestHandler = new (await import('@smithy/node-http-handler')).NodeHttpHandler()
   }
 
   if (!skipAuth && !process.env.AWS_BEARER_TOKEN_BEDROCK) {

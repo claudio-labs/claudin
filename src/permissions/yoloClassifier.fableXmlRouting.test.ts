@@ -9,22 +9,25 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { enableConfigs } from 'src/platform/config/config.js'
 
-let mainLoopModel = 'claude-fable-5'
+// undefined once this file is done: a module that imported getMainLoopModel
+// while the mock was installed keeps the mock bound, and gets the real answer.
+let mainLoopModel: string | undefined = 'claude-fable-5'
 let capturedOpts: Array<Record<string, unknown>> = []
 // Answers handed out in order; once empty, every call gets the stage-1 allow.
 let responses: Array<Record<string, unknown>> = []
 
-const actualModel = await import('src/providers/model/model.js')
+// Copied before mock.module: the call rewrites this live namespace, so a copy
+// taken after it is the mock, and a "restore" from it restores nothing.
+const realModelModule = { ...(await import('src/providers/model/model.js')) }
 mock.module('src/providers/model/model.js', () => ({
-  ...actualModel,
-  getMainLoopModel: () => mainLoopModel,
+  ...realModelModule,
+  getMainLoopModel: () => mainLoopModel ?? realModelModule.getMainLoopModel(),
 }))
 
 // Both mocks outlive this file unless afterAll re-installs the real modules —
 // `mock.restore()` does not undo `mock.module` (.claudin/rules/testing.md,
 // "Cross-file mock leaks"). The sideQuery stub below never reaches the network,
 // so leaving it installed makes every later classifier test pass vacuously.
-const realModelModule = { ...actualModel }
 const realSideQueryModule = { ...(await import('src/agent/sideQuery.js')) }
 
 mock.module('src/agent/sideQuery.js', () => ({
@@ -101,6 +104,7 @@ beforeAll(() => {
 
 afterAll(() => {
   __setClassifierPromptsForTests(null)
+  mainLoopModel = undefined
   mock.module('src/providers/model/model.js', () => realModelModule)
   mock.module('src/agent/sideQuery.js', () => realSideQueryModule)
 })

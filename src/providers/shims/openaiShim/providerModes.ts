@@ -81,6 +81,30 @@ export function isDeepSeekBaseUrl(baseUrl: string | undefined): boolean {
   }
 }
 
+// api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
+// prompt_cache_retention; everything else gets the params withheld.
+export function isOfficialOpenAIUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const host = new URL(baseUrl).host
+    return host === 'api.openai.com' || host.endsWith('.api.openai.com')
+  } catch {
+    return false
+  }
+}
+
+/** An Azure OpenAI / Cognitive Services host, by hostname (a path segment does not count). */
+export function isAzureOpenAIUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const { hostname } = new URL(baseUrl)
+    return hostname.endsWith('.azure.com') &&
+      (hostname.includes('cognitiveservices') || hostname.includes('openai') || hostname.includes('services.ai'))
+  } catch {
+    return false
+  }
+}
+
 /**
  * Detects whether a profile baseUrl points at the OpenCode Zen gateway
  * (`https://opencode.ai/zen/v1`, the `opencode-zen` preset) or its Go lane

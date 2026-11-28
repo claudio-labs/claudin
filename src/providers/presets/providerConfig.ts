@@ -13,6 +13,7 @@ import {
   parseChatgptAccountId,
 } from 'src/providers/oauth/codexOAuthShared.js'
 import { CODEX_DEFAULT_MODEL } from 'src/providers/model/codexModelCatalog.js'
+import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 export const DEFAULT_CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex'
 export const DEFAULT_XAI_BASE_URL = 'https://api.x.ai/v1'
@@ -138,7 +139,13 @@ export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 const OPENAI_CODEX_SHORTCUT_ALIASES = new Set(['codexplan', 'codexspark'])
 
-export type ProviderTransport = 'chat_completions' | 'codex_responses'
+/**
+ * The wire one request goes out on. `codex_responses` is the Responses path
+ * the Codex backend and Copilot's GPT-5+ share; `openai_responses` is the
+ * Responses API of a host compatWires.ts lists for an openai_compat profile.
+ * Everything that only the Codex/Copilot path does keys on the former.
+ */
+export type ProviderTransport = 'chat_completions' | 'codex_responses' | 'openai_responses'
 
 export type ResolvedProviderRequest = {
   transport: ProviderTransport
@@ -593,7 +600,7 @@ export function resolveProviderRequest(options?: {
     ? normalizeGithubModelsApiModel(requestedModel)
     : requestedModel
 
-  const transport: ProviderTransport =
+  const routedTransport: ProviderTransport =
     shouldUseCodexTransport(requestedModel, finalBaseUrl) ||
       (isGithubCopilot && shouldUseGithubResponsesApi(githubResolvedModel))
       ? 'codex_responses'
@@ -616,18 +623,22 @@ export function resolveProviderRequest(options?: {
          ? { effort: activeProvider.extras.reasoningEffort }
          : undefined))
 
+  const baseUrl = (finalBaseUrl ?? (isGithubMode ? GITHUB_COPILOT_BASE_URL : DEFAULT_OPENAI_BASE_URL))
+    .replace(TRAILING_SLASH_RE, '')
+
+  // An openai_compat profile on a host the wire table lists for Responses.
+  const transport: ProviderTransport =
+    routedTransport === 'chat_completions' &&
+    transportFromProfile === 'openai_compat' &&
+    resolveCompatWire(baseUrl, resolvedModel).wire === 'responses'
+      ? 'openai_responses'
+      : routedTransport
+
   return {
     transport,
     requestedModel,
     resolvedModel,
-    baseUrl:
-      (finalBaseUrl ??
-        (isGithubCopilot && transport === 'codex_responses'
-          ? GITHUB_COPILOT_BASE_URL
-          : (isGithubMode
-            ? GITHUB_COPILOT_BASE_URL
-            : DEFAULT_OPENAI_BASE_URL))
-      ).replace(TRAILING_SLASH_RE, ''),
+    baseUrl,
     reasoning,
   }
 }
@@ -658,7 +669,7 @@ export function resolveProviderRequest(options?: {
  * and `--fallback-model` all diverge from the profile's primary model.
  */
 export function transportSendsStrictToolSchemas(model?: string): boolean {
-  if (resolveProviderRequest({ model }).transport === 'codex_responses') return true
+  if (resolveProviderRequest({ model }).transport !== 'chat_completions') return true
   return tryGetActiveProviderShape()?.transport === 'github_copilot'
 }
 
@@ -711,7 +722,7 @@ export function getAdditionalModelOptionsCacheScope(): string | null {
   }
 
   const request = resolveProviderRequest()
-  if (request.transport !== 'chat_completions') {
+  if (request.transport === 'codex_responses') {
     return null
   }
 
@@ -727,7 +738,7 @@ export function getAdditionalModelOptionsCacheScope(): string | null {
  */
 export function isDirectOpenAIProvider(): boolean {
   const request = resolveProviderRequest()
-  if (request.transport !== 'chat_completions') return false
+  if (request.transport === 'codex_responses') return false
   const url = request.baseUrl.toLowerCase()
   // Hostname comparison, not substring — `url.includes('api.openai.com')` also
   // matches lookalike hosts (api.openai.com.evil.example) and path segments.

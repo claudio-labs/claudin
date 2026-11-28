@@ -142,6 +142,16 @@ describe('parsePatch', () => {
     )
   })
 
+  test('a Move to with no chunks is a pure rename, as the apply_patch grammar allows', () => {
+    expect(parsePatch(envelope('*** Update File: a.txt\n*** Move to: b.txt')).hunks).toEqual([
+      { type: 'update', path: 'a.txt', movePath: 'b.txt', chunks: [] },
+    ])
+    expect(parsePatch(envelope('*** Update File: a.txt\n*** Move to: b.txt\n*** Delete File: c.txt')).hunks).toEqual([
+      { type: 'update', path: 'a.txt', movePath: 'b.txt', chunks: [] },
+      { type: 'delete', path: 'c.txt' },
+    ])
+  })
+
   test('collapses an Update header repeated for the same file', () => {
     // The model names the path twice — absolute, then repo-relative — and the
     // body belongs to the second. Rejecting the whole patch over a duplicated

@@ -1,5 +1,6 @@
-import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { requestModelFor, tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import type { ResolvedProvider, Transport } from 'src/providers/presets/activeProvider.js'
+import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
 
 export type APIProvider =
   | 'firstParty'
@@ -72,7 +73,7 @@ export function usesAnthropicAccountFlow(): boolean {
 export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
   const profile = tryGetActiveProvider()
   if (profile?.transport !== 'github_copilot') return false
-  const model = resolvedModel?.trim() || profile.model?.trim() || ''
+  const model = requestModelFor(profile, resolvedModel)
   // Claude models only: downstream consumers of the native mode (image token
   // estimation, cache profile) assume Anthropic semantics, so a non-Claude
   // model advertising /v1/messages must still take the OpenAI shim.
@@ -89,6 +90,20 @@ export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
     // catalog unavailable — keep the name heuristic's answer
   }
   return true
+}
+
+/**
+ * True when the active provider's request for `resolvedModel` goes out over
+ * the Anthropic Messages API through the native SDK although the profile is
+ * not an Anthropic one: Copilot running Claude, or an openai_compat profile
+ * the wire table sends to its vendor's `/anthropic` endpoint (compatWires.ts).
+ * The provider tag stays the profile's, so first-party gates stay off.
+ */
+export function usesNativeAnthropicWire(resolvedModel?: string): boolean {
+  if (isGithubNativeAnthropicMode(resolvedModel)) return true
+  const profile = tryGetActiveProvider()
+  if (profile?.transport !== 'openai_compat') return false
+  return resolveCompatWire(profile.baseUrl, requestModelFor(profile, resolvedModel)).wire === 'anthropic'
 }
 
 /**
@@ -112,20 +127,14 @@ const OPENAI_SHIM_TRANSPORTS: ReadonlySet<Transport> = new Set([
  * avoid a 400 "Extra inputs are not permitted".
  *
  * Mirrors the shim-vs-native decision in `client.ts` exactly, including the
- * github_copilot + Claude-model carve-out: that combination is routed through
- * the native Anthropic SDK (`isGithubNativeAnthropicMode`), so it is NOT a shim
- * request even though the transport is in the shim set.
+ * native-wire carve-outs: Copilot running Claude and a vendor's `/anthropic`
+ * endpoint go through the native Anthropic SDK (`usesNativeAnthropicWire`),
+ * so they are NOT shim requests even though the transport is in the shim set.
  */
 export function activeTransportUsesOpenAiShim(resolvedModel?: string): boolean {
   const transport = tryGetActiveProvider()?.transport ?? 'anthropic'
   if (!OPENAI_SHIM_TRANSPORTS.has(transport)) return false
-  if (
-    transport === 'github_copilot' &&
-    isGithubNativeAnthropicMode(resolvedModel)
-  ) {
-    return false
-  }
-  return true
+  return !usesNativeAnthropicWire(resolvedModel)
 }
 
 export function getAPIProviderForStatsig(): string {

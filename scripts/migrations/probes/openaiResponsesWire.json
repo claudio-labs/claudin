@@ -1,0 +1,160 @@
+{
+  "test": [
+    "src/providers/shims/openaiShim/responsesApi.cassette.test.ts",
+    "src/providers/presets/compatWires.test.ts",
+    "src/providers/presets/providerConfig.resolve.test.ts",
+    "src/providers/shims/codex/backend.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
+    "src/providers/shims/codexShim.test.ts",
+    "src/providers/presets/wireFallback.test.ts",
+    "src/agent/tools/toolSearch.test.ts",
+    "src/agent/tools/toolExecution.test.ts",
+    "src/providers/shims/vendorAnthropic/client.cassette.test.ts"
+  ],
+  "source": "src/providers/shims/codexShim.ts",
+  "probes": [
+    {
+      "name": "the resolver never picks the Responses API",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "    resolveCompatWire(baseUrl, resolvedModel).wire === 'responses'\n",
+      "replace": "    false\n"
+    },
+    {
+      "name": "OpenAI loses its row",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "  { id: 'openai', wire: 'responses', host: 'api.openai.com', models: GPT_5_PLUS_RE, verified: true },\n",
+      "replace": ""
+    },
+    {
+      "name": "xAI counts as verified",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "  { id: 'xai', wire: 'responses', host: 'api.x.ai', models: GROK_4_PLUS_RE, verified: false },",
+      "replace": "  { id: 'xai', wire: 'responses', host: 'api.x.ai', models: GROK_4_PLUS_RE, verified: true },"
+    },
+    {
+      "name": "the Codex headers reach api.openai.com",
+      "find": "  const codexPath = options.request.transport === 'codex_responses'\n",
+      "replace": "  const codexPath = true\n"
+    },
+    {
+      "name": "the Codex URL rewrite reaches api.openai.com",
+      "find": "    if (responsesApi) return isAzureOpenAIUrl(options.request.baseUrl) ? `${raw}?api-version=v1` : raw\n",
+      "replace": ""
+    },
+    {
+      "name": "Azure loses its api-version",
+      "find": "isAzureOpenAIUrl(options.request.baseUrl) ? `${raw}?api-version=v1` : raw",
+      "replace": "raw"
+    },
+    {
+      "name": "the reasoning is not asked back",
+      "find": "  } else if (replayCodexItems) {\n    body.include = ['reasoning.encrypted_content']\n  }",
+      "replace": "  }"
+    },
+    {
+      "name": "messages are replayed under their ids on the Responses API",
+      "find": "    replayMessageIds: onCodexBackend,\n",
+      "replace": "    replayMessageIds: true,\n"
+    },
+    {
+      "name": "OpenAI gets no prompt cache key",
+      "find": "    ...(responsesApi && isOfficialOpenAIUrl(options.request.baseUrl) && {",
+      "replace": "    ...(false && {"
+    },
+    {
+      "name": "no output cap on the Responses API",
+      "find": "  if (responsesApi && Number(options.params.max_tokens) > 0) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "the replay stays Codex-only",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return codexReplayActive(request) || (request.transport === 'openai_responses' && isCodexReasoningReplayEnabled())",
+      "replace": "  return codexReplayActive(request)"
+    },
+    {
+      "name": "Azure gets a bearer instead of api-key",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "        authHeaders: isAzureOpenAIUrl(request.baseUrl) ? { 'api-key': apiKey } : undefined,",
+      "replace": "        authHeaders: undefined,"
+    },
+    {
+      "name": "a rejected first request is not retried over chat",
+      "source": "src/providers/presets/wireFallback.ts",
+      "find": "    if (rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })) return attempts.chat()\n",
+      "replace": "    rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })\n"
+    },
+    {
+      "name": "a refused replay falls back to chat",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "        keepsWire: body => body.includes(CODEX_REPLAY_REFUSED_CODE),\n",
+      "replace": ""
+    },
+    {
+      "name": "the effort is not clamped",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "    const clamped = effort && levels ? clampEffortToValues(effort, levels) : effort\n",
+      "replace": "    const clamped = effort\n"
+    },
+    {
+      "name": "the answer is read as chat",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "      if (request.transport === 'codex_responses' || responsesApiAnswers.has(response)) {",
+      "replace": "      if (request.transport === 'codex_responses') {"
+    },
+    {
+      "name": "a request in flight when the pair is rejected surfaces its error",
+      "source": "src/providers/presets/wireFallback.ts",
+      "find": "  if (rejected.has(key)) return true\n",
+      "replace": "  if (rejected.has(key)) return false\n"
+    },
+    {
+      "name": "the replay reads the profile model",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "resolveProviderRequest({ model: sessionModel(provider.model), baseUrl: provider.baseUrl })",
+      "replace": "resolveProviderRequest({ model: provider.model, baseUrl: provider.baseUrl })"
+    },
+    {
+      "name": "a gateway call is stripped like a strict one",
+      "source": "src/agent/tools/toolSearch.ts",
+      "find": "  return isToolSearchEnabledOptimistic() && isDeferredTool(tool) && clientDefersTools(model)",
+      "replace": "  return false"
+    },
+    {
+      "name": "every Kimi model is verified",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "    models: KIMI_K3_RE,",
+      "replace": "    models: KIMI_RE,"
+    },
+    {
+      "name": "every Qwen model is verified",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "    models: QWEN_3_7_OR_3_8_RE,",
+      "replace": "    models: QWEN_RE,"
+    },
+    {
+      "name": "every MiniMax model is verified",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "    models: MINIMAX_M3_RE,",
+      "replace": "    models: MINIMAX_RE,"
+    },
+    {
+      "name": "GPT-5 on api.openai.com is not direct",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "  if (request.transport === 'codex_responses') return false\n",
+      "replace": "  if (request.transport !== 'chat_completions') return false\n"
+    },
+    {
+      "name": "GPT-5 on api.openai.com loses its options-cache scope",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "  if (request.transport === 'codex_responses') {",
+      "replace": "  if (request.transport !== 'chat_completions') {"
+    },
+    {
+      "name": "GPT-5 on api.openai.com is not strict",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "  if (resolveProviderRequest({ model }).transport !== 'chat_completions') return true",
+      "replace": "  if (resolveProviderRequest({ model }).transport === 'codex_responses') return true"
+    }
+  ]
+}

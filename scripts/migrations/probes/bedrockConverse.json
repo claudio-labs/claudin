@@ -1,0 +1,165 @@
+{
+  "test": [
+    "src/providers/shims/bedrockConverse/converse.cassette.test.ts",
+    "src/shared/tokenEstimation.apiCount.test.ts",
+    "src/agent/cache/cacheProfile.test.ts"
+  ],
+  "source": "src/providers/shims/bedrockConverse/request.ts",
+  "probes": [
+    {
+      "name": "Claude takes Converse too",
+      "source": "src/providers/shims/bedrockConverse/models.ts",
+      "find": "  return !id.includes('anthropic') && !id.includes('claude')",
+      "replace": "  return true"
+    },
+    {
+      "name": "the factory never routes to Converse",
+      "source": "src/providers/transport/client.ts",
+      "find": "    if (usesConverse(wireModel)) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "tool search is off for Converse",
+      "source": "src/providers/shims/clientToolSearch/capability.ts",
+      "find": "  if (transport === 'bedrock') return usesConverse(requestModelFor(profile, model))",
+      "replace": "  if (transport === 'bedrock') return false"
+    },
+    {
+      "name": "the context window ignores the table",
+      "source": "src/agent/context/context.ts",
+      "find": "  if (isBedrockConverseModel(model)) {\n    return converseContextWindow(model)\n  }",
+      "replace": ""
+    },
+    {
+      "name": "the output cap ignores the table",
+      "source": "src/agent/context/context.ts",
+      "find": "    const max = converseMaxOutputTokens(model)\n    return { default: max, upperLimit: max }",
+      "replace": "    const max = 32_000\n    return { default: max, upperLimit: max }"
+    },
+    {
+      "name": "count_tokens is asked for a Converse model",
+      "source": "src/shared/tokenEstimation.ts",
+      "find": "  if (usesConverse(model)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "cache_control text rides into system",
+      "find": "    .map(block => ({ text: String(block.text) }))",
+      "replace": "    .map(block => ({ text: String(block.text), ...(block.cache_control && { cachePoint: block.cache_control }) }))"
+    },
+    {
+      "name": "a blank text block is sent",
+      "find": "          if (typeof block.text === 'string' && block.text.trim()) content.push({ text: block.text })",
+      "replace": "          if (typeof block.text === 'string') content.push({ text: block.text })"
+    },
+    {
+      "name": "thinking goes back as text",
+      "find": "        default:\n          // thinking, redacted_thinking and server-side blocks stay behind.\n          break",
+      "replace": "        default:\n          if (block.type === 'thinking') content.push({ text: String(block.thinking) })\n          break"
+    },
+    {
+      "name": "an error result reads as success",
+      "find": "                    status: block.is_error ? 'error' : 'success',",
+      "replace": "                    status: 'success',"
+    },
+    {
+      "name": "tool blocks go as toolUse without tools",
+      "find": "    messages: convertMessages(messages, { toolBlocks: config !== undefined }),",
+      "replace": "    messages: convertMessages(messages, { toolBlocks: true }),"
+    },
+    {
+      "name": "a forced tool is not forced",
+      "find": "        ? { tool: { name: choice.name } }",
+      "replace": "        ? { auto: {} }"
+    },
+    {
+      "name": "temperature stays behind",
+      "find": "  if (typeof params.temperature === 'number') inferenceConfig.temperature = params.temperature",
+      "replace": ""
+    },
+    {
+      "name": "tool input deltas are dropped",
+      "source": "src/providers/shims/bedrockConverse/stream.ts",
+      "find": "          yield { type: 'content_block_delta', index: block.index, delta: { type: 'input_json_delta', partial_json: delta.toolUse.input } }",
+      "replace": "          void block"
+    },
+    {
+      "name": "the signature is dropped",
+      "source": "src/providers/shims/bedrockConverse/stream.ts",
+      "find": "          yield { type: 'content_block_delta', index, delta: { type: 'signature_delta', signature: reasoning.signature } }",
+      "replace": "          void index"
+    },
+    {
+      "name": "an unstopped block stays open",
+      "source": "src/providers/shims/bedrockConverse/stream.ts",
+      "find": "  for (const at of [...open.keys()]) yield* stop(at)\n",
+      "replace": ""
+    },
+    {
+      "name": "cache reads are lost from usage",
+      "source": "src/providers/shims/bedrockConverse/stream.ts",
+      "find": "    cache_read_input_tokens: Number(usage?.cacheReadInputTokens ?? 0),",
+      "replace": "    cache_read_input_tokens: 0,"
+    },
+    {
+      "name": "the stop reason is always end_turn",
+      "source": "src/providers/shims/bedrockConverse/stream.ts",
+      "find": "      stop_reason: STOP_REASONS[String(stopReason)] ?? (sawToolUse ? 'tool_use' : 'end_turn'),",
+      "replace": "      stop_reason: 'end_turn',"
+    },
+    {
+      "name": "a rejected request keeps the SDK's error",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "  return isAbort(error) ? error : converseApiError(error as never)",
+      "replace": "  return error"
+    },
+    {
+      "name": "a non-streaming caller gets a stream",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "      const data = params.stream\n",
+      "replace": "      const data = true\n"
+    },
+    {
+      "name": "Converse keeps the SDK's HTTP/2 default",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "        http1: true,\n",
+      "replace": ""
+    },
+    {
+      "name": "a Claude alias takes Converse",
+      "source": "src/providers/shims/bedrockConverse/models.ts",
+      "find": "  if (!id.includes('.') || id.startsWith('arn:')) return false",
+      "replace": "  if (!id || id.startsWith('arn:')) return false"
+    },
+    {
+      "name": "Converse ignores the profile region",
+      "source": "src/providers/transport/client.ts",
+      "find": "      return createConverseClient({ region: awsRegion }) as unknown as Anthropic",
+      "replace": "      return createConverseClient() as unknown as Anthropic"
+    },
+    {
+      "name": "the runtime client ignores the region it is given",
+      "source": "src/providers/model/bedrock.ts",
+      "find": "  const region = options.region ?? getAWSRegion()",
+      "replace": "  const region = getAWSRegion()"
+    },
+    {
+      "name": "an abort waits for the next frame",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "      const next = await Promise.race([iterator.next(), aborted])",
+      "replace": "      const next = await iterator.next()"
+    },
+    {
+      "name": "an abort reads as an API error",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "  if (signal.aborted) return new APIUserAbortError()\n",
+      "replace": ""
+    },
+    {
+      "name": "Converse retains like Claude",
+      "source": "src/agent/cache/cacheProfile.ts",
+      "find": "  if (transport === 'bedrock' && usesConverse(model)) return AGGRESSIVE_PROFILE\n",
+      "replace": ""
+    }
+  ]
+}

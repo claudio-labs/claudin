@@ -33,7 +33,10 @@ import {
   getVertexRegionForModel,
   isEnvTruthy,
 } from 'src/shared/envUtils.js'
-import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { requestModelFor, tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
+import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
+import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 const importRuntimeModule = new Function(
   'specifier',
@@ -132,19 +135,31 @@ class AnthropicWithApiKeyHeader extends Anthropic {
   }
 }
 
-export async function getAnthropicClient({
-  apiKey,
-  maxRetries,
-  model,
-  fetchOverride,
-  source,
-}: {
+type AnthropicClientOptions = {
   apiKey?: string
   maxRetries: number
   model?: string
   fetchOverride?: ClientOptions['fetch']
   source?: string
-}): Promise<Anthropic> {
+}
+
+export async function getAnthropicClient(options: AnthropicClientOptions): Promise<Anthropic> {
+  const client = await buildAnthropicClient(options)
+  // A wire without server-side tool search gets the client-side half in
+  // front of whatever client it uses; first-party and the other native
+  // Anthropic lanes come back untouched.
+  if (!clientDefersTools(options.model)) return client
+  const { withClientToolSearch } = await import('src/providers/shims/clientToolSearch/wrapClient.js')
+  return withClientToolSearch(client)
+}
+
+async function buildAnthropicClient({
+  apiKey,
+  maxRetries,
+  model,
+  fetchOverride,
+  source,
+}: AnthropicClientOptions): Promise<Anthropic> {
   const containerId = process.env.CLAUDE_CODE_CONTAINER_ID
   const remoteSessionId = process.env.CLAUDE_CODE_REMOTE_SESSION_ID
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP
@@ -239,6 +254,28 @@ export async function getAnthropicClient({
     }
     return new Anthropic(nativeArgs)
   }
+  // A vendor's own Anthropic endpoint for an openai_compat profile (compatWires.ts).
+  const wireModel = requestModelFor(activeProvider, model)
+  const vendorWire =
+    transport === 'openai_compat'
+      ? resolveCompatWire(activeProvider?.baseUrl, wireModel)
+      : undefined
+  if (vendorWire?.wire === 'anthropic' && activeProvider) {
+    const { createVendorAnthropicClient } = await import('src/providers/shims/vendorAnthropic/client.js')
+    const shimOptions = { defaultHeaders, maxRetries, timeout: getApiTimeoutMs() }
+    return createVendorAnthropicClient({
+      sdkOptions: ARGS,
+      baseUrl: vendorWire.baseUrl,
+      apiKey: activeProvider.apiKey ?? '',
+      row: vendorWire.row,
+      compatBaseUrl: activeProvider.baseUrl ?? '',
+      model: wireModel,
+      fallback: async () => {
+        const { createOpenAIShimClient } = await import('src/providers/shims/openaiShim.js')
+        return createOpenAIShimClient(shimOptions) as never
+      },
+    })
+  }
   if (
     transport === 'openai_compat' ||
     transport === 'gemini' ||
@@ -254,13 +291,18 @@ export async function getAnthropicClient({
     }) as unknown as Anthropic
   }
   if (transport === 'bedrock') {
-    const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
     // Use region override for small fast model if specified
     const awsRegion =
       model === getSmallFastModel() &&
       process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         ? process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         : (activeProvider?.extras?.awsRegion ?? getAWSRegion())
+    // Every model on Bedrock but Claude speaks only Converse (bedrockConverse/models.ts).
+    if (usesConverse(wireModel)) {
+      const { createConverseClient } = await import('src/providers/shims/bedrockConverse/client.js')
+      return createConverseClient({ region: awsRegion }) as unknown as Anthropic
+    }
+    const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
 
     // ConstructorParameters<typeof AnthropicBedrock>[0] resolves to the LAST
     // overload (the deprecated "SecretOnly" one, requiring awsSecretKey and

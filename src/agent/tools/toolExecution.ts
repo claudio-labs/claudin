@@ -90,7 +90,7 @@ import {
   processPreMappedToolResultBlock,
   processToolResultBlock,
 } from 'src/agent/tools/toolResultStorage.js'
-import { isUnloadedDeferredTool } from 'src/agent/tools/toolSearch.js'
+import { isClientGatewayTool, isUnloadedDeferredTool } from 'src/agent/tools/toolSearch.js'
 import {
   McpAuthError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -301,10 +301,15 @@ export async function* runToolUse(
   // a legitimate argument everywhere else; the model is passed explicitly
   // since a session can run a different model than its profile's primary
   // (`/model`, a sub-agent override, the fallback model). The whole tool goes
-  // in, not its zod schema: an MCP tool's real schema is inputJSONSchema.
+  // in, not its zod schema: an MCP tool's real schema is inputJSONSchema. A
+  // deferred tool called through the non-strict tool-search gateway sent its
+  // arguments as written, so they stay.
   let toolInput = toolUse.input as { [key: string]: string }
   try {
-    if (transportSendsStrictToolSchemas(toolUseContext.options.mainLoopModel)) {
+    if (
+      transportSendsStrictToolSchemas(toolUseContext.options.mainLoopModel) &&
+      !isClientGatewayTool(tool, toolUseContext.options.mainLoopModel)
+    ) {
       toolInput = stripPlaceholderOptionalFields(tool, toolInput)
     }
 

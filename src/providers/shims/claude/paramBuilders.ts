@@ -30,7 +30,7 @@ import {
 } from "src/providers/model/model.js";
 import {
   getAPIProvider,
-  isGithubNativeAnthropicMode,
+  usesNativeAnthropicWire,
 } from "src/providers/model/providers.js";
 import type { SystemPrompt } from "src/agent/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/shared/tokenEstimation.js";
@@ -114,16 +114,16 @@ export function getPromptCachingEnabled(model: string): boolean {
   // do not understand cache_control blocks and strict backends (e.g. Azure
   // Foundry) reject or flag requests that contain them.
   //
-  // Exception: when the GitHub provider is configured in native Anthropic API
-  // mode (CLAUDE_CODE_GITHUB_ANTHROPIC_API=1), requests are sent in Anthropic
-  // format, so cache_control blocks are supported.
+  // Exception: a request on a native Anthropic wire of a non-Anthropic
+  // profile — Copilot running Claude, a vendor's `/anthropic` endpoint — is
+  // in Anthropic format, so cache_control blocks are supported.
   const provider = getAPIProvider();
-  const isNativeGithub = isGithubNativeAnthropicMode(model);
+  const nativeWire = usesNativeAnthropicWire(model);
   if (
     provider !== "firstParty" &&
     provider !== "bedrock" &&
     provider !== "vertex" &&
-    !isNativeGithub
+    !nativeWire
   ) {
     return false;
   }

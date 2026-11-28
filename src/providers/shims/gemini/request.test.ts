@@ -57,6 +57,35 @@ describe('convertMessagesToGeminiContents', () => {
     ])
   })
 
+  test('a block with no source Gemini can carry (Files API id, none at all) is left out, not sent empty', () => {
+    const contents = convertMessagesToGeminiContents(
+      [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'file', file_id: 'file_1' } },
+            { type: 'document' },
+            { type: 'text', text: 'see above' },
+          ],
+        },
+        { role: 'assistant', content: [{ type: 'tool_use', id: 'c1', name: 'Read', input: {}, signature: 's' }] },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'c1',
+              content: [{ type: 'text', text: 'out' }, { type: 'image', source: { type: 'file', file_id: 'file_2' } }],
+            },
+          ],
+        },
+      ],
+      'gemini-3-flash-preview',
+    )
+    expect(contents[0]!.parts).toEqual([{ text: 'see above' }])
+    expect(contents[2]!.parts).toEqual([{ functionResponse: { id: 'c1', name: 'Read', response: { output: 'out' } } }])
+  })
+
   test('a turn that thought and answered in text: the thought signature rides the first text part', () => {
     const contents = convertMessagesToGeminiContents(
       [

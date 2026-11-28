@@ -54,7 +54,13 @@ import {
   performCodexRequest,
   type ShimCreateParams,
 } from 'src/providers/shims/codexShim.js'
-import { codexKeepAlivePingParams, codexReplayActive } from 'src/providers/shims/codex/backend.js'
+import {
+  CODEX_REPLAY_REFUSED_CODE,
+  codexKeepAlivePingParams,
+  codexReplayActive,
+  responsesReplayActive,
+} from 'src/providers/shims/codex/backend.js'
+import { withWireFallback } from 'src/providers/presets/wireFallback.js'
 import {
   isGeminiNativeRequest,
   performGeminiRequest,
@@ -100,12 +106,14 @@ import { filterAnthropicHeaders, formatRetryAfterHint } from 'src/providers/shim
 import { makeMessageId, sleepMs } from 'src/providers/shims/openaiShim/helpers.js'
 import { convertMessages, convertSystemPrompt } from 'src/providers/shims/openaiShim/messageConverter.js'
 import {
+  isAzureOpenAIUrl,
   isDeepSeekBaseUrl,
   isGeminiMode,
   isGithubModelsMode,
   isGlmCompatibleBaseUrl,
   isMistralMode,
   isMoonshotCompatibleBaseUrl,
+  isOfficialOpenAIUrl,
   isOpencodeZenBaseUrl,
   normalizeDeepSeekReasoningEffort,
 } from 'src/providers/shims/openaiShim/providerModes.js'
@@ -122,30 +130,12 @@ import {
   refreshOllamaLoadedContext,
 } from 'src/providers/model/ollamaModelInfo.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import {
-  CALL_TOOL,
-  CALL_TOOL_NAME,
-  clientToolSearchDisabled,
-  planToolDeferral,
-  unwrapGatewayCall,
-} from 'src/providers/shims/clientToolSearch/index.js'
 
 // An Anthropic model by name, however a gateway spells it: `claude-…`,
 // `anthropic/…`, a Bedrock region prefix (`us.anthropic.claude-…`) or a bare
 // family alias (`sonnet-4-6`).
 const ANTHROPIC_MODEL_RE = /(?:^|[/.:])(?:claude|anthropic)\b|(?:^|[/.:])(?:sonnet|opus|haiku)-\d/i
 
-// api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
-// prompt_cache_retention; everything else gets the params withheld.
-function isOfficialOpenAIUrl(baseUrl: string | undefined): boolean {
-  if (!baseUrl) return false
-  try {
-    const host = new URL(baseUrl).host
-    return host === 'api.openai.com' || host.endsWith('.api.openai.com')
-  } catch {
-    return false
-  }
-}
 import { convertTools } from 'src/providers/shims/openaiShim/toolConverter.js'
 import { isHy3Model, recoverXmlToolCallsFromText } from 'src/providers/shims/openaiShim/xmlToolCallParser.js'
 import type { SecretValueSource } from 'src/providers/shims/openaiShim/types.js'
@@ -155,6 +145,11 @@ import { redactUrlForDiagnostics } from 'src/providers/shims/openaiShim/urlRedac
 // response: the fallback usage for a server that reports none counts what
 // actually went on the wire — tools included, which were most of it.
 const requestBodyTokens = new WeakMap<Response, number>()
+
+// Responses the `openai_responses` wire answered. Its request can fall back
+// to chat inside _doRequest (wireFallback.ts), so the reader is chosen by what
+// actually answered, not by the transport the request resolved to.
+const responsesApiAnswers = new WeakSet<Response>()
 
 /**
  * Messages + system prompt, for a stream that did not come from a Chat
@@ -250,12 +245,6 @@ class OpenAIShimMessages {
           .map(t => (t as { name?: unknown }).name)
           .filter((n): n is string => typeof n === 'string'),
       )
-      // Client-side tool search sent the CallTool gateway in place of the
-      // deferred tools (_doOpenAIRequest): its calls come back as the real tool.
-      const gateway =
-        !clientToolSearchDisabled() &&
-        (params.tools ?? []).some(t => (t as { defer_loading?: unknown }).defer_loading === true)
-      if (gateway) toolNames.add(CALL_TOOL_NAME)
 
       if (geminiNative) {
         return params.stream
@@ -269,24 +258,24 @@ class OpenAIShimMessages {
         // emit usage) can report non-zero input instead of 0.
         const estimatedInputTokens =
           requestBodyTokens.get(response) ?? estimateMessagesAndSystemTokens(params)
+        const responsesApi = responsesApiAnswers.has(response)
         return new OpenAIShimStream(
-          (request.transport === 'codex_responses' || isResponsesStream)
+          (request.transport === 'codex_responses' || responsesApi || isResponsesStream)
             ? codexStreamToAnthropic(response, request.resolvedModel, options?.signal, {
-                captureCodexItems: codexReplayActive(request),
+                captureCodexItems: responsesApi ? responsesReplayActive(request) : codexReplayActive(request),
               })
             : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens, toolNames, {
                 kvCache: isOllama,
-                gateway,
               }),
         )
       }
 
-      if (request.transport === 'codex_responses') {
+      if (request.transport === 'codex_responses' || responsesApiAnswers.has(response)) {
         const data = await collectCodexCompletedResponse(response, options?.signal)
         return convertCodexResponseToAnthropicMessage(
           data,
           request.resolvedModel,
-          { captureCodexItems: codexReplayActive(request) },
+          { captureCodexItems: responsesReplayActive(request) },
         )
       }
 
@@ -305,14 +294,14 @@ class OpenAIShimMessages {
               request.resolvedModel,
             )
           }
-          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames, { kvCache: isOllama, gateway })
+          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames, { kvCache: isOllama })
         }
       }
 
       const contentType = response.headers.get('content-type') ?? ''
       if (contentType.includes('application/json')) {
         const data = await response.json()
-        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames, { kvCache: isOllama, gateway })
+        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames, { kvCache: isOllama })
       }
 
       const textBody = await response.text().catch(() => '')
@@ -357,6 +346,10 @@ class OpenAIShimMessages {
         },
         signal: options?.signal,
       })
+    }
+
+    if (request.transport === 'openai_responses') {
+      return this._doResponsesApiRequest(request, params, options)
     }
 
     if (isGithubWithCodexTransport) {
@@ -437,6 +430,55 @@ class OpenAIShimMessages {
     return this._doOpenAIRequest(request, params, options)
   }
 
+  /**
+   * An openai_compat profile on a host the wire table sends to its Responses
+   * API (compatWires.ts): the Codex request builder, with the profile's key
+   * and none of the Codex backend's headers. Effort is clamped as on the chat
+   * path. A first request the host rejects goes out again over chat, and the
+   * pair stays there (wireFallback.ts).
+   */
+  private async _doResponsesApiRequest(
+    request: ReturnType<typeof resolveProviderRequest>,
+    params: ShimCreateParams,
+    options?: { signal?: AbortSignal; headers?: Record<string, string> },
+  ): Promise<Response> {
+    const profile = tryGetActiveProvider()
+    const oauthAuth = await resolveOAuthProviderAuth(profile)
+    const apiKey = profile?.apiKey ?? oauthAuth.accessToken ?? ''
+    const levels = resolveShimEffortValues(request.baseUrl, request.resolvedModel)
+    const effort = request.reasoning?.effort
+    const clamped = effort && levels ? clampEffortToValues(effort, levels) : effort
+    return withWireFallback(
+      { wire: 'responses', baseUrl: request.baseUrl, model: request.resolvedModel },
+      {
+        primary: async () => {
+          const response = await performCodexRequest({
+            // The body forwards the level as the host's catalog spells it.
+            request: {
+              ...request,
+              reasoning: clamped && clamped !== 'default' ? { effort: clamped as ReasoningEffort } : undefined,
+            },
+            credentials: { apiKey, source: 'env' },
+            params,
+            defaultHeaders: {
+              ...this.defaultHeaders,
+              ...filterAnthropicHeaders(options?.headers),
+              ...(oauthAuth.userAgent && { 'User-Agent': oauthAuth.userAgent }),
+            },
+            authHeaders: isAzureOpenAIUrl(request.baseUrl) ? { 'api-key': apiKey } : undefined,
+            signal: options?.signal,
+          })
+          responsesApiAnswers.add(response)
+          return response
+        },
+        chat: () => this._doOpenAIRequest({ ...request, transport: 'chat_completions' }, params, options),
+        // A replayed reasoning item the host cannot decrypt (one from another
+        // account or backend) is the thinking-strip retry's to answer.
+        keepsWire: body => body.includes(CODEX_REPLAY_REFUSED_CODE),
+      },
+    )
+  }
+
   private async _doOpenAIRequest(
     request: ReturnType<typeof resolveProviderRequest>,
     params: ShimCreateParams,
@@ -454,19 +496,6 @@ class OpenAIShimMessages {
         }>,
       ),
     )
-    // Client-side tool search: tools flagged defer_loading stay behind the
-    // CallTool gateway (src/providers/shims/clientToolSearch/).
-    const toolChoice = params.tool_choice as { type?: string; name?: string } | undefined
-    const toolPlan = planToolDeferral(
-      (params.tools ?? []) as Array<{
-        name: string
-        description?: string
-        input_schema?: Record<string, unknown>
-        type?: string
-        defer_loading?: boolean
-      }>,
-      toolChoice?.type === 'tool' ? toolChoice.name : undefined,
-    )
     const openaiMessages = convertMessages(compressedMessages, params.system, {
       // Moonshot/Kimi Code requires every assistant tool-call message to carry
       // reasoning_content when its thinking feature is active. DeepSeek does
@@ -476,7 +505,6 @@ class OpenAIShimMessages {
         isMoonshotCompatibleBaseUrl(request.baseUrl) ||
         isDeepSeekBaseUrl(request.baseUrl) ||
         isGlmCompatibleBaseUrl(request.baseUrl),
-      deferredTools: toolPlan.deferred,
     })
 
     const body: Record<string, unknown> = {
@@ -628,8 +656,14 @@ class OpenAIShimMessages {
     }
 
     if (params.tools && params.tools.length > 0) {
-      const converted = convertTools(toolPlan.sent)
-      if (toolPlan.deferred.size > 0) converted.push(CALL_TOOL)
+      const converted = convertTools(
+        params.tools as Array<{
+          name: string
+          description?: string
+          input_schema?: Record<string, unknown>
+          type?: string
+        }>,
+      )
       if (converted.length > 0) {
         body.tools = converted
         if (params.tool_choice) {
@@ -678,12 +712,7 @@ class OpenAIShimMessages {
       ''
     // Detect Azure endpoints by hostname (not raw URL) to prevent bypass via
     // path segments like https://evil.com/cognitiveservices.azure.com/
-    let isAzure = false
-    try {
-      const { hostname } = new URL(request.baseUrl)
-      isAzure = hostname.endsWith('.azure.com') &&
-        (hostname.includes('cognitiveservices') || hostname.includes('openai') || hostname.includes('services.ai'))
-    } catch { /* malformed URL — not Azure */ }
+    const isAzure = isAzureOpenAIUrl(request.baseUrl)
 
     let isBankr = false
     try {
@@ -1210,7 +1239,7 @@ class OpenAIShimMessages {
     },
     model: string,
     toolNames?: Set<string>,
-    opts: { kvCache?: boolean; gateway?: boolean } = {},
+    opts: { kvCache?: boolean } = {},
   ) {
     const choice = data.choices?.[0]
     const content: Array<Record<string, unknown>> = []
@@ -1252,17 +1281,11 @@ class OpenAIShimMessages {
           content.push({ type: 'text', text: recovered.visibleText })
         }
         for (const tc of recovered.calls) {
-          const viaGateway =
-            opts.gateway && tc.name === CALL_TOOL_NAME
-              ? unwrapGatewayCall(JSON.stringify(tc.arguments))
-              : null
           content.push({
             type: 'tool_use',
             id: tc.id,
-            name: viaGateway?.name ?? tc.name,
-            input: viaGateway
-              ? viaGateway.input
-              : normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
+            name: tc.name,
+            input: normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
           })
         }
         recoveredXmlToolUse = true
@@ -1295,18 +1318,11 @@ class OpenAIShimMessages {
 
     if (choice?.message?.tool_calls) {
       for (const tc of choice.message.tool_calls) {
-        // A gateway call names the real tool in its arguments.
-        const viaGateway =
-          opts.gateway && tc.function.name === CALL_TOOL_NAME
-            ? unwrapGatewayCall(tc.function.arguments)
-            : null
-        const input = viaGateway
-          ? viaGateway.input
-          : normalizeToolArguments(tc.function.name, tc.function.arguments)
+        const input = normalizeToolArguments(tc.function.name, tc.function.arguments)
         content.push({
           type: 'tool_use',
           id: tc.id,
-          name: viaGateway?.name ?? tc.function.name,
+          name: tc.function.name,
           input,
           ...(tc.extra_content ? { extra_content: tc.extra_content } : {}),
           // Extract Gemini signature from extra_content

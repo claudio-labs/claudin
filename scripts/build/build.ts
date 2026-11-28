@@ -736,17 +736,15 @@ ${exports}
     // (src/shared/fs/ripgrep.ts). Externalised so Bun never inlines the package
     // and its internal per-platform binary path resolution stays intact.
     '@vscode/ripgrep',
-    // AWS/Azure SDKs are "bring your own" — NOT declared in package.json and
-    // NOT installed (dynamically imported in src/providers/model/bedrock.ts for
-    // AWS-native Bedrock model discovery, wrapped in try/catch). They can't be
-    // bundled (not present), so they stay external for BOTH builds. Under the
-    // compiled binary the dynamic import fails gracefully, exactly as it would
-    // for a Node user who hasn't installed them. Core Bedrock inference goes
-    // through @anthropic-ai/bedrock-sdk (below), which IS bundled.
+    // AWS/Azure SDKs Claudin does not install: the Bedrock control plane
+    // (model discovery in src/providers/model/bedrock.ts, wrapped in
+    // try/catch), STS and Azure identity. They can't be bundled (not
+    // present), so they stay external for BOTH builds, and under the compiled
+    // binary the dynamic import fails gracefully, as it would for a Node user
+    // who hasn't installed them. The Bedrock runtime and the credential chain
+    // ARE installed and declared: see the isCompile list below.
     '@aws-sdk/client-bedrock',
-    '@aws-sdk/client-bedrock-runtime',
     '@aws-sdk/client-sts',
-    '@aws-sdk/credential-providers',
     '@azure/identity',
     // Anthropic provider SDKs + google-auth-library — real installed deps. For
     // the NODE bundle they stay external so Bun never co-mingles them into a
@@ -755,6 +753,10 @@ ${exports}
     // build they MUST bundle IN — a standalone binary has no node_modules beside
     // it to resolve them from — so drop them from `external` when isCompile
     // (pure JS → embed into the binary's virtual FS, giving full parity).
+    // The Bedrock runtime and the AWS credential chain are the same case:
+    // @anthropic-ai/bedrock-sdk requires the first when it loads and imports
+    // the second for the default chain. Left external, the binary's
+    // AnthropicBedrock was undefined (`bun run smoke:binary`, bedrock lane).
     ...(isCompile
       ? []
       : [
@@ -762,6 +764,8 @@ ${exports}
           '@anthropic-ai/bedrock-sdk',
           '@anthropic-ai/vertex-sdk',
           '@anthropic-ai/foundry-sdk',
+          '@aws-sdk/client-bedrock-runtime',
+          '@aws-sdk/credential-providers',
         ]),
   ],
 })

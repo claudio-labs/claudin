@@ -432,6 +432,14 @@ export function parsePatch(patchText: string): { hunks: Hunk[] } {
         header.nextIdx,
         header.filePath,
       )
+      if (chunks.length === 0 && header.movePath) {
+        // A Move to with no chunks is a pure rename: the grammar the Codex
+        // CLI ships for apply_patch allows `change?` to be empty, and the
+        // staging writes the file's bytes to the new path unchanged.
+        hunks.push({ type: 'update', path: header.filePath, movePath: header.movePath, chunks })
+        i = nextIdx
+        continue
+      }
       if (chunks.length === 0) {
         // A chunk-less Update header immediately followed by another Update
         // header for the SAME file is the model naming the path twice — the

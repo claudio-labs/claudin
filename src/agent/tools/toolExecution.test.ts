@@ -363,9 +363,9 @@ describe('placeholder-input wiring', () => {
   // costs more than these pin. What they catch is the wiring being dropped or
   // ungated by a refactor; the semantics are covered behaviorally in
   // toolInputPlaceholders.test.ts and the gate in codexShim.test.ts.
-  test('the strip runs, gated on the transport', () => {
+  test('the strip runs, gated on the transport and off for a call through the tool-search gateway', () => {
     expect(src).toContain(
-      'if (transportSendsStrictToolSchemas(toolUseContext.options.mainLoopModel)) {',
+      'transportSendsStrictToolSchemas(toolUseContext.options.mainLoopModel) &&\n      !isClientGatewayTool(tool, toolUseContext.options.mainLoopModel)',
     )
     expect(src).toContain(
       'toolInput = stripPlaceholderOptionalFields(tool, toolInput)',

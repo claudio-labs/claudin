@@ -6,6 +6,7 @@ import {
   type ProviderProfile,
 } from 'src/platform/config/config.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
+import { setMainLoopModelOverride } from 'src/platform/bootstrap/state.js'
 import {
   activeSessionOnCodexBackend,
   activeSessionReplaysCodexItems,
@@ -34,6 +35,7 @@ function useProfile(profile: ProviderProfile): void {
 afterEach(() => {
   if (originalSwitch === undefined) delete process.env.CLAUDIN_CODEX_REASONING_REPLAY
   else process.env.CLAUDIN_CODEX_REASONING_REPLAY = originalSwitch
+  setMainLoopModelOverride(undefined)
   resetGlobalConfigForTests()
   invalidateActiveProviderCache()
 })
@@ -100,8 +102,8 @@ describe('the keep-alive ping on the Responses path', () => {
 
 describe('which sessions go to the Codex backend', () => {
   test.each([
-    [{ id: 'b-codex', name: 'Codex OAuth', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'codexplan' }, true],
-    [{ id: 'b-codex-model', name: 'Codex', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'gpt-5.6-terra' }, true],
+    [{ id: 'b-codex', name: 'Codex OAuth', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'codexplan' }, true, true],
+    [{ id: 'b-codex-model', name: 'Codex', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'gpt-5.6-terra' }, true, true],
     [
       {
         id: 'b-copilot',
@@ -112,14 +114,16 @@ describe('which sessions go to the Codex backend', () => {
         extras: { githubToken: 'gh' },
       },
       false,
+      false,
     ],
-    [{ id: 'b-openai', name: 'OpenAI', provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.5' }, false],
-    [{ id: 'b-local', name: 'Local', provider: 'openai', baseUrl: 'http://localhost:8000/v1', model: 'codexplan' }, false],
-    [{ id: 'b-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' }, false],
-  ] as Array<[ProviderProfile, boolean]>)('$1: %o', (profile, expected) => {
+    [{ id: 'b-openai', name: 'OpenAI', provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.5' }, false, true],
+    [{ id: 'b-local', name: 'Local', provider: 'openai', baseUrl: 'http://localhost:8000/v1', model: 'codexplan' }, false, false],
+    [{ id: 'b-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' }, false, false],
+  ] as Array<[ProviderProfile, boolean, boolean]>)('%o: on the backend %p, replays %p', (profile, onBackend, replays) => {
+    // The Responses API on api.openai.com replays the reasoning too, off the backend.
     useProfile(profile)
-    expect(activeSessionReplaysCodexItems()).toBe(expected)
-    expect(activeSessionOnCodexBackend()).toBe(expected)
+    expect(activeSessionReplaysCodexItems()).toBe(replays)
+    expect(activeSessionOnCodexBackend()).toBe(onBackend)
   })
 
   test('no profile is no Codex session', () => {
@@ -132,6 +136,18 @@ describe('which sessions go to the Codex backend', () => {
     process.env.CLAUDIN_CODEX_REASONING_REPLAY = '0'
     expect(activeSessionReplaysCodexItems()).toBe(false)
     expect(activeSessionOnCodexBackend()).toBe(true)
+  })
+
+  test('the session model decides, not the profile default: /model gpt-5.5 on a gpt-4.1 profile replays', () => {
+    // The request goes out for the session model, over the Responses API; the
+    // render must keep what that wire replays.
+    useProfile({ id: 'b-openai-41', name: 'OpenAI', provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4.1' })
+    expect(activeSessionReplaysCodexItems()).toBe(false)
+    setMainLoopModelOverride('gpt-5.5')
+    expect(activeSessionReplaysCodexItems()).toBe(true)
+    useProfile({ id: 'b-openai-55', name: 'OpenAI', provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.5' })
+    setMainLoopModelOverride('gpt-4.1')
+    expect(activeSessionReplaysCodexItems()).toBe(false)
   })
 })
 
