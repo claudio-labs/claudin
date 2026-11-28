@@ -1,6 +1,6 @@
 ---
 name: opencode-mcp-ports
-description: The 2026-11-26/27 MCP round against opencode — four ports (mcp login/logout, per-server startupTimeout/toolTimeout/cwd, resource templates, connect retry), the bugs fixed (malformed lists, mcp serve -32603, 60 s HTTP tools/call cap, SSE headers, quote-only prompt args), what stayed out (SDK v2 / 2026-07-28, Code Mode), and the review round's fixes
+description: The 2026-11-26/27 MCP round against opencode, shipped in #372 — four ports (mcp login/logout, per-server startupTimeout/toolTimeout/cwd, resource templates, connect retry), the bugs fixed (malformed lists, mcp serve -32603, 60 s HTTP tools/call cap, SSE headers, quote-only prompt args), what stayed out (SDK v2 / 2026-07-28, Code Mode), and the review round's fixes
 type: project
 scope: mcp
 impact: functional
@@ -13,7 +13,7 @@ paths:
   - "src/platform/entrypoints/mcp.ts"
 ---
 
-**Decision:** on branch `feat/mcp-opencode-gaps` (2026-11-26/27), from a comparison with `../opencode/packages/core/src/mcp/` (HEAD 449c128a5b):
+**Decision:** shipped in PR #372 (squash-merged as b18319e1) from branch `feat/mcp-opencode-gaps` (2026-11-26/27), from a comparison with `../opencode/packages/core/src/mcp/` (HEAD 449c128a5b):
 - **Ported:**
   - `claudin mcp login|logout <name>`, for configured http/sse servers (`getMcpConfigByName`). Off a terminal the process is held until the flow settles: the OAuth callback server and timer are unref'd.
   - Per-server `startupTimeout`/`toolTimeout` in ms, over `MCP_TIMEOUT`/`MCP_TOOL_TIMEOUT` and capped at 2^31−1 (a bigger delay fires after 1 ms). Also a stdio `cwd`; a plugin's is resolved against the plugin, and it counts in the dedup signature.
@@ -28,7 +28,7 @@ paths:
 - **Identity:** clientInfo now says Claudin (description, claudiolabs.ai). `name: 'claude-code'`, the User-Agent and the claude.ai CIMD client id stay on purpose: servers may allowlist on them.
 
 **Out, and why:**
-- SDK v2 / protocol 2026-07-28 (stateless HTTP, MCP Events, pooled connections): `@modelcontextprotocol/sdk` 1.32.2 is the last 1.x and tops out at 2025-11-25; the new protocol lives only in the split v2 packages (`@modelcontextprotocol/client` 2.4.0), and opencode had to patch it. Needs its own plan — taken up 2026-11-27 in [[mcp-2026-07-28]], with a pre-connect wire filter instead of a patch.
+- SDK v2 / protocol 2026-07-28 (stateless HTTP, MCP Events, pooled connections): `@modelcontextprotocol/sdk` 1.32.2 is the last 1.x and tops out at 2025-11-25; the new protocol lives only in the split v2 packages (`@modelcontextprotocol/client` 2.4.0), and opencode had to patch it. Needs its own plan — taken up 2026-11-27 and shipped in #373 ([[mcp-2026-07-28]]), with a pre-connect wire filter instead of a patch.
 - Code Mode, the inbound TUI WebSocket, MCP Skills: opencode product features, not gaps.
 - No per-tool toggle, no `/mcp` count of skipped entries: a skip is one `logMCPError` line, as in opencode.
 - `mcp serve` running tools without its own prompt is by design: the connecting client confirms each call.

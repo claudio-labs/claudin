@@ -1,6 +1,6 @@
 ---
 name: census-2026-11-26-cache-clean-explore-caps
-description: Census 11-22..26 (claudin + ferrous-dns, v1.2.3) — cache and context clean (4 drops, all explained; 0 compactions); fixed on fix/census-2026-11-26 — scoped git diffs kept by the read lane (26 of 63 caps), batch Read takes offset/limit, saved results up to 50k read whole, census miscounts (re-reads, WaitFor); Playwright re-pointed at Brave; mergeable 8.4→12.5% is the work mix
+description: Census 11-22..26 (claudin + ferrous-dns, v1.2.3) — cache and context clean (4 drops, all explained; 0 compactions); fixed in #370 — scoped git diffs kept by the read lane (26 of 63 caps), batch Read takes offset/limit, saved results up to 50k read whole, census miscounts (re-reads, WaitFor); Playwright re-pointed at Brave; mergeable 8.4→12.5% is the work mix
 type: project
 expires: 2027-01-26
 ---
@@ -59,7 +59,7 @@ The same pattern shows in 24 sessions 10-28..11-21; the onset was checked only i
 (7.3 per 1k tool uses, 28.6 before) with 10 `child_written_files`; 1 Patch result `resolved
 against the project root`. Playwright in ferrous-dns failed 2/2 on `/usr/bin/chromium` on 11-22.
 
-**Fixed on `fix/census-2026-11-26` (2026-11-26):**
+**Fixed on `fix/census-2026-11-26` (2026-11-26; PR #370, merged as 0ee1fcfd):**
 - The read lane keeps a diff of named paths (`isScopedGitDiff`, `fileReadShape.ts`) and reads a
   closing bare `| cat` as the identity ([[bash-read-lane]]). A whole commit, `--stat`, `-s`, `git
   log`, a show of a range, paths that spell the whole tree (`.`, `.//`, `src/..`, `'*'`, `*`,

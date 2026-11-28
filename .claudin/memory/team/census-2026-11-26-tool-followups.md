@@ -1,6 +1,6 @@
 ---
 name: census-2026-11-26-tool-followups
-description: Tool census 11-19..26 (claudin + ferrous-dns, 5,939 paired uses) checked against the corpus since 09-01 (94k calls) — Git cut full:true output at 30,000 bytes (68 results), WaitFor ^/$ anchored the whole output (12 timeouts with the line present), missing paths named no file (top error Oct–Nov); fixed with Git word quoting, Read over-cap paging, Grep -o/exclude, census exits/--dump and scripts/dev/tui-probe on fix/tool-census-followups-2026-11-26; the review round fixed 10 more (Read refresh marker, page recount, flag-value quoting)
+description: Tool census 11-19..26 (claudin + ferrous-dns, 5,939 paired uses) checked against the corpus since 09-01 (94k calls) — Git cut full:true output at 30,000 bytes (68 results), WaitFor ^/$ anchored the whole output (12 timeouts with the line present), missing paths named no file (top error Oct–Nov); fixed in #371 with Git word quoting, Read over-cap paging, Grep -o/exclude, census exits/--dump and scripts/dev/tui-probe; the review round fixed 10 more (Read refresh marker, page recount, flag-value quoting)
 type: project
 expires: 2027-01-26
 ---
@@ -10,7 +10,7 @@ uses. Each finding was then re-counted over the corpus since 2026-09-01 (94,205 
 reproduced on `main` before any fix: 21 red, 9 controls green. This is a different census from
 [[census-2026-11-26-cache-clean-explore-caps]] (11-22..26, Explore caps, batch Read range).
 
-**Found and fixed on `fix/tool-census-followups-2026-11-26` (2026-11-26):**
+**Found and fixed on `fix/tool-census-followups-2026-11-26` (2026-11-26; PR #371, merged as ee797cd5):**
 - **Git cut at 30,000 bytes, silently.** 68 single-command results since 09-01 at exactly the
   cap, 66 with `full: true`, mostly review sub-agents reading `git diff main...HEAD`; a wide
   diff was summarized from its first 30k (8 files counted as 1). `run.ts` read `result.stdout`

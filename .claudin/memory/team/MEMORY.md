@@ -1,10 +1,11 @@
 # Team Memory
 
-> Coding gotchas live in `.claudin/rules/` (loaded by path). This index holds state, decisions, refs.
+> Coding gotchas live in `.claudin/rules/`; this index holds state, decisions, refs.
 
 ## Decisions
 - [Transcript UI round 11-24](decisions/transcript-ui-round-2026-11-24.md) — icons take the ●, no ⎿ in results
-- Ports: [Plandex](decisions/plandex-ports.md) · [CC 2.1.321](decisions/cc-2-1-321-parity-limits.md) · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) · [opencode MCP](decisions/opencode-mcp-ports.md) · [MCP 2026-07-28](decisions/mcp-2026-07-28.md)
+- Ports: [Plandex](decisions/plandex-ports.md) · [CC 2.1.321](decisions/cc-2-1-321-parity-limits.md) · [CC 2.1.323](decisions/cc-2-1-323-commands-port.md) · [opencode MCP #372](decisions/opencode-mcp-ports.md) · [MCP v2 #373](decisions/mcp-2026-07-28.md)
+- opencode 11-28: [wires: Responses, vendor /anthropic, Converse, freeform](decisions/provider-wire-protocols-2026-11.md) · [4 integration REJECTED](decisions/opencode-integration-protocols-dropped.md)
 - [Sibling round 11-12](decisions/sibling-ports-2026-11.md) — 10 inherited bugs, .env ask, auto-mode ask rule
 - [AskUserQuestion: a note on any option (#335)](decisions/ask-user-question-option-notes.md) — `n`, `⎿` under the option
 - [Memory cleans itself (10-31)](decisions/memory-hygiene.md) — the dream deletes merged/folded
@@ -12,8 +13,8 @@
 - [Gemini talks native generateContent (#327)](decisions/gemini-native-transport.md) — Code Assist REJECTED (ToS)
 - [Classifier transcript stable cut (#321)](decisions/classifier-transcript-stable-cut.md) — writes −72%
 - [Early 1M compaction NOT PROMOTED](decisions/large-window-compaction.md) — −33% $ but 9× lookups
-- [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile, `~` estimates
-- [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md) — footer, status line and /context agree
+- [/usage by provider + provider-first alerts (#316)](decisions/usage-grouped-by-provider.md) — chip per profile
+- [Context counts share one sum (#315)](decisions/context-counts-share-one-sum.md)
 - [ai-memory ideas in memory (#320)](decisions/memory-ai-memory-ideas.md) — `memory audit`, expires:
 - Codex: [CLI wire #307/#308](decisions/codex-backend-speaks-codex-cli-wire.md) · [keep-alive capped](decisions/codex-keepalive-ping-capped.md) · [cross-session REJECTED](decisions/codex-cross-session-prefix-rejected.md) · [models per account](decisions/codex-model-list-per-account.md)
 - Collapse: [Git (10-15)](decisions/git-tool-collapse.md) · [MCP calls, batch clock (#284)](decisions/mcp-calls-collapse-with-clock.md) · [writes: one ⎿ line (10-12)](decisions/collapsed-writes-one-line.md)
@@ -38,13 +39,13 @@
 - [Team memory: git IS the sync (09-21)](decisions/team-memory-git-is-the-sync.md) — HTTP sync + LLM recall deleted
 - [`safeguards` classifier — REJECTED 09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it
 - [Tool-prompt tone rewrite — DROPPED 09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance found
-- [Seven catch-all dirs retired](decisions/reorg-catch-all-dirs-retired.md) — 15 slices; moduleBoundaries.test.ts
+- [Seven catch-all dirs retired](decisions/reorg-catch-all-dirs-retired.md) — 15 slices
 - [memory_delta deleted 08-07](decisions/memory-delta-removed-double-send.md) — a full second copy, not a delta
 - Repo map — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only, cache-safe
 - [Explore agent: removed 08-18, back ON 09-25](decisions/explore-agent-removed.md) — calls −29%, wall +30%
 - [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks
-- [Git tool (D2), shipped 08-04](decisions/git-tool-design.md) — cost −11.5%; batching claim failed the A/B
+- [Git tool (D2), shipped 08-04](decisions/git-tool-design.md) — cost −11.5%
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — `/effort inherit` clears
 - [Adaptive thinking on by default (07-13)](decisions/adaptive-thinking-default-on.md) — `CLAUDIN_ENABLE_ADAPTIVE_THINKING=0` opts out
 - [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests
@@ -54,7 +55,7 @@
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — one-shots → SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (09-23)](decisions/defer-cache-marker-shipped.md) — cost 4–17% more
 - [Devin provider port halted 06-06](decisions/devin-provider-port-halted.md) — f31 attestation blocks it
-- [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays; the levers ship off
+- [Patch-thinking levers NOT promoted (#314)](decisions/patch-thinking-levers-not-promoted.md) — batched Patch stays
 - [Plan approval names task ids; file-reads note off (#329)](decisions/census-10-30-tool-levers.md)
 - [Repeats cut 10-31: Grep slash globs, WaitFor 1800 s, call forms](decisions/tool-repeat-calls.md)
 - [Deferred call forms + one-shot -p cache at 5m (10-31)](decisions/census-10-30-compaction-meta-ttl.md) — both with killswitches
@@ -78,9 +79,8 @@
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run alone
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches dedupe by uuid
 - [Team path tests miss symlinks and case variants](bugs/team-path-symlink-case-gap.md) — they get the private carve-out
-- [TaskList order + task ids FIXED (#329)](bugs/tasklist-unordered-exitplan-seeds-without-ids.md)
 - FIXED, resume: [refused Write](bugs/resume-restores-refused-write.md) · [cache prefix](bugs/resume-rewrites-cache-prefix.md) · memory: [frontmatter " #" cut](bugs/frontmatter-hash-truncates-values.md)
-- FIXED, tools: [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md)
+- FIXED, tools: [Agent schema](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md) · [WaitFor](bugs/waitfor-drops-optional-params.md) · [TaskList ids #329](bugs/tasklist-unordered-exitplan-seeds-without-ids.md)
 - FIXED, other: [legacy team copy](bugs/legacy-memory-migration-resurrects-team-files.md) · [release smoke](bugs/release-smoke-only-runs-version.md) · [turn-opening rewrites](bugs/turn-opening-full-prefix-rewrites.md) · [sub-agent model](bugs/subagents-ran-on-parent-model.md) · [/models fields 11-12](bugs/context-window-discovery-field-names.md)
 
 ## Docs
@@ -91,7 +91,7 @@
 - [Adding a Claude model](docs/claude-model-launch.md) — #237/#267/#348 templates, launch capture
 
 ## Conventions
-- [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs
+- [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md)
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md)
 - CC prompt: [2.1.270](claude-code-2.1.270-prompt-diff.md) · [2.1.284](claude-code-2.1.284-wire-diff.md) · [2.1.316](claude-code-2.1.316-tool-prompt-diff.md) · [2.1.321](claude-code-2.1.321-tool-diff.md) · [2.1.332](claude-code-2.1.332-tool-diff.md)
@@ -117,7 +117,7 @@
 - [De-fingerprinting round (08-15)](defingerprinting-branch-2026-08.md) — env clusters move as units
 - [tsc --noEmit reached ZERO (08-13)](typecheck-backlog-shape.md) — the ratchet's fingerprint trap
 - Removed: [upsell commands 09-15](upsell-commands-missing-login.md) · [growthbook.ts 09-25](growthbook-source-dead-stub-is-real.md) — dead but tested
-- [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
+- [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — `bun run build` is the gate
 - [TTL-expiry check 10-12](ttl-expiry-check-2026-10-12.md) — main is 1h; clip→next-turn floor unexplained
 - [Cache-break census 10-15](cache-break-census-2026-10-15.md) — uncached tail (fixed #302)
 - Token censuses: weekly [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) · [09-28](token-census-2026-09-28.md) · [09-10](token-census-2026-09-10-hidden-injections.md)
@@ -150,7 +150,7 @@
 - [Session cache A/B vs Claude Code (09-23..10-15)](session-cache-ab-bench-2026-09-23.md) — Opus +7%, Sonnet 5.5 −18%
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal
 - Thinking vs CC: [effort medium closes it (09-23)](session-cost-round-3-2026-09-23.md) · [bash-first edits neutral 10-21](edit-method-census-2026-10-21.md) · [2x is Opus-only, Patch-shaped](thinking-gap-is-patch-shape-2026-10-21.md)
-- [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
+- [Prompts v2 — default since #242](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k)
 - Prefix levers 09-23/24: [prefix breakdown, eager tools ≈20k](request-prefix-size-2026-09-23.md) · [dev tools deferred, −3.3k](dev-tools-deferred-advice-ab-2026-09-24.md) · [Build `directory` −7.7%](build-tool-ab-directory-gap.md)
 - Read/request A/Bs: [batch Read ties CC](cat-read-and-batch-read-ab-2026-09-24.md) · [read-files failed](read-files-ab-2026-09-29.md) · [`then` + cap promoted](request-count-levers-2026-09-24.md) · [cuts ~0.3%](cut-results-request-cost-2026-09-25.md)
 
@@ -165,7 +165,7 @@
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
 - Codex: [strict schemas → placeholders](codex-strict-schema-placeholder-args.md) · [prompt cache: key only](codex-oauth-prompt-cache-params.md) · [wire](codex-0.162-wire-diff.md) + [captures](codex-wire-capture-history.md)
 - [Grok cache hint x-grok-conv-id — UNMEASURED](grok-cache-hint-missing.md) — no xAI account
-- [xAI / Grok OAuth provider — on main since 09-10](xai-oauth-provider-shipped.md) — pinned port 56121
+- [xAI / Grok OAuth provider (09-10)](xai-oauth-provider-shipped.md) — pinned port 56121
 
 ## Build, release & distribution
 - [Native-binary distribution (bun --compile)](compile-binary-distribution.md) — rg+sharp vendored; strip breaks binaries
@@ -185,7 +185,7 @@
 - [Inline shrink: #182's fits-frame routing REVERSED 10-16](inline-fullreset-per-message.md)
 - [Auto-wrap eats a row (side-panel checkerboard)](ink-autowrap-eats-a-row.md) — DECAWM off per paint
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/
-- Bash filter: [collapseRuns+blank-strip safe, no marker-on-blank](bashfilter-collapseruns-blankstrip-footgun.md) · [fixtures keep byte length](bashfilter-fixtures-byte-length-sensitive.md) · [one sample dir](bash-filter-sample-corpus-unified.md)
+- Bash filter: [collapseRuns+blank-strip safe](bashfilter-collapseruns-blankstrip-footgun.md) · [fixtures keep byte length](bashfilter-fixtures-byte-length-sensitive.md) · [one sample dir](bash-filter-sample-corpus-unified.md)
 - [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen + SGR send-keys
 - [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — mostly read gates (lifted #242)
 - ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md)
