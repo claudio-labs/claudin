@@ -36,6 +36,11 @@ describe('resolveProfileForProvider', () => {
     }
   })
 
+  test('a non-Claude model on Bedrock goes through Converse, which writes no cache point: aggressive', () => {
+    expect(resolveProfileForProvider('bedrock', 'https://bedrock.example', 'us.amazon.nova-micro-v1:0')).toBe(AGGRESSIVE_PROFILE)
+    expect(resolveProfileForProvider('bedrock', 'https://bedrock.example', 'sonnet')).toBe(RETAIN_PROFILE)
+  })
+
   test('deepseek over openai_compat gets the retain profile', () => {
     expect(
       resolveProfileForProvider('openai_compat', 'https://api.deepseek.com/v1', 'deepseek-chat'),

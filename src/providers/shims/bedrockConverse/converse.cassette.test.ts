@@ -5,12 +5,15 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { EventStreamCodec } from '@smithy/eventstream-codec'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 
 import { resetGlobalConfigForTests, saveGlobalConfig, type ProviderProfile } from 'src/platform/config/config.js'
 import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
 import { CALL_TOOL_NAME } from 'src/providers/shims/clientToolSearch/callTool.js'
+import { isUserAbort } from 'src/providers/shims/claude/userAbort.js'
 import { getContextWindowForModel, getModelMaxOutputTokens } from 'src/agent/context/context.js'
 import {
   converseContextWindow,
@@ -28,7 +31,19 @@ import {
 const g = globalThis as Record<string, unknown>
 const savedMacro = g.MACRO
 g.MACRO = { VERSION: '99.0.0', DISPLAY_VERSION: '0.0.0-test' }
-const ENVS = ['ANTHROPIC_BEDROCK_BASE_URL', 'CLAUDIN_SKIP_BEDROCK_AUTH', 'AWS_REGION', 'CLAUDIN_SHIM_TOOL_SEARCH'] as const
+// The AWS variables a signed request reads: the host's own must not reach it.
+const AWS_ENVS = [
+  'AWS_REGION',
+  'AWS_DEFAULT_REGION',
+  'AWS_PROFILE',
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
+  'AWS_SESSION_TOKEN',
+  'AWS_CONFIG_FILE',
+  'AWS_SHARED_CREDENTIALS_FILE',
+  'AWS_BEARER_TOKEN_BEDROCK',
+] as const
+const ENVS = ['ANTHROPIC_BEDROCK_BASE_URL', 'CLAUDIN_SKIP_BEDROCK_AUTH', 'CLAUDIN_SHIM_TOOL_SEARCH', ...AWS_ENVS] as const
 const savedEnv = Object.fromEntries(ENVS.map(name => [name, process.env[name]]))
 
 const NOVA = 'us.amazon.nova-micro-v1:0'
@@ -45,22 +60,34 @@ const WEATHER = {
 }
 
 let server: CassetteServer | undefined
+let stalling: Server | undefined
 
-function useBedrock(model: string, baseUrl = 'http://127.0.0.1:1'): void {
-  const profile: ProviderProfile = { id: 'bedrock', name: 'Bedrock', provider: 'bedrock', baseUrl, model }
+function useBedrock(model: string, baseUrl = 'http://127.0.0.1:1', extras?: ProviderProfile['extras']): void {
+  const profile: ProviderProfile = { id: 'bedrock', name: 'Bedrock', provider: 'bedrock', baseUrl, model, ...(extras && { extras }) }
   saveGlobalConfig(current => ({ ...current, providerProfiles: [profile], activeProviderProfileId: profile.id }))
   invalidateActiveProviderCache()
 }
 
-async function serve(cassettes: Cassette[], model = NOVA): Promise<CassetteServer> {
+async function serve(cassettes: Cassette[], model = NOVA, extras?: ProviderProfile['extras']): Promise<CassetteServer> {
   server = await startCassetteServer(cassettes)
   process.env.ANTHROPIC_BEDROCK_BASE_URL = server.url
-  useBedrock(model, server.url)
+  useBedrock(model, server.url, extras)
   return server
+}
+
+/** Signs with fake env credentials instead of skip-auth. */
+function signWithEnvCredentials(): void {
+  delete process.env.CLAUDIN_SKIP_BEDROCK_AUTH
+  process.env.AWS_ACCESS_KEY_ID = 'AKIDCASSETTE'
+  process.env.AWS_SECRET_ACCESS_KEY = 'cassette-secret'
+  // No file of this machine's: the chain stops at the env.
+  process.env.AWS_CONFIG_FILE = '/nonexistent/aws-config'
+  process.env.AWS_SHARED_CREDENTIALS_FILE = '/nonexistent/aws-credentials'
 }
 
 beforeEach(() => {
   resetGlobalConfigForTests()
+  for (const name of AWS_ENVS) delete process.env[name]
   process.env.CLAUDIN_SKIP_BEDROCK_AUTH = '1'
   process.env.AWS_REGION = 'us-east-1'
   delete process.env.CLAUDIN_SHIM_TOOL_SEARCH
@@ -69,6 +96,9 @@ beforeEach(() => {
 afterEach(async () => {
   await server?.close()
   server = undefined
+  stalling?.closeAllConnections()
+  await new Promise<void>(resolve => (stalling ? stalling.close(() => resolve()) : resolve()))
+  stalling = undefined
   for (const name of ENVS) {
     if (savedEnv[name] === undefined) delete process.env[name]
     else process.env[name] = savedEnv[name]
@@ -132,6 +162,14 @@ describe('which Bedrock models take Converse', () => {
     for (const model of [CLAUDE, 'anthropic.claude-3-haiku-20240307-v1:0', 'arn:aws:bedrock:us-east-1:1:application-inference-profile/x', '', undefined]) {
       expect(usesConverse(model)).toBe(false)
     }
+  })
+
+  test('a Claude alias is Claude: Converse ids carry a vendor prefix', () => {
+    for (const alias of ['sonnet', 'opus', 'opus[1m]', 'opusplan', 'haiku', 'claude-sonnet-4-6']) {
+      expect(usesConverse(alias)).toBe(false)
+    }
+    useBedrock('sonnet')
+    expect(clientDefersTools()).toBe(false)
   })
 
   test('the factory hands Claude to AnthropicBedrock and Nova to the Converse client, wrapped for tool search', async () => {
@@ -283,25 +321,63 @@ describe('the recorded Converse exchanges', () => {
 
   test('signed with env credentials, the request goes over HTTP/1.1 and reaches a plain-HTTP endpoint', async () => {
     // The runtime client's HTTP/2 default never completes against http://.
-    const saved = { id: process.env.AWS_ACCESS_KEY_ID, secret: process.env.AWS_SECRET_ACCESS_KEY }
-    delete process.env.CLAUDIN_SKIP_BEDROCK_AUTH
-    process.env.AWS_ACCESS_KEY_ID = 'AKIDCASSETTE'
-    process.env.AWS_SECRET_ACCESS_KEY = 'cassette-secret'
+    signWithEnvCredentials()
+    const srv = await serve([loadCassette('bedrock-converse/streams-text')])
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5_000)
     try {
-      const srv = await serve([loadCassette('bedrock-converse/streams-text')])
-      const answer = stream({ max_tokens: 16, messages: [{ role: 'user', content: 'Say hello.' }] })
-      const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 10_000))
-      const events = await Promise.race([answer, timeout])
-      expect(events).not.toBe('timeout')
-      expect(summarize(events as Array<Record<string, any>>).content).toEqual([{ type: 'text', text: 'Hello' }])
+      const { data } = await (await messages())
+        .create({ model: NOVA, max_tokens: 16, stream: true, messages: [{ role: 'user', content: 'Say hello.' }] }, { signal: controller.signal } as never)
+        .withResponse()
+      const events: Array<Record<string, any>> = []
+      for await (const event of data) events.push(event)
+      expect(summarize(events).content).toEqual([{ type: 'text', text: 'Hello' }])
       expect(String(srv.captures[0]!.headers.authorization)).toStartWith('AWS4-HMAC-SHA256 Credential=AKIDCASSETTE/')
     } finally {
-      if (saved.id === undefined) delete process.env.AWS_ACCESS_KEY_ID
-      else process.env.AWS_ACCESS_KEY_ID = saved.id
-      if (saved.secret === undefined) delete process.env.AWS_SECRET_ACCESS_KEY
-      else process.env.AWS_SECRET_ACCESS_KEY = saved.secret
+      clearTimeout(timer)
     }
-  })
+  }, 15_000)
+
+  test("the profile's own region signs the request, as it does for Claude", async () => {
+    signWithEnvCredentials()
+    delete process.env.AWS_REGION
+    const srv = await serve([loadCassette('bedrock-converse/streams-text')], NOVA, { awsRegion: 'eu-west-1' })
+    await stream({ max_tokens: 16, messages: [{ role: 'user', content: 'Say hello.' }] })
+    expect(String(srv.captures[0]!.headers.authorization)).toContain('/eu-west-1/bedrock/aws4_request')
+  }, 15_000)
+
+  test('Esc in the middle of a stream ends it as a user abort, not an API error', async () => {
+    // messageStart and the first delta, then the server stalls.
+    const body = Buffer.from(loadCassette('bedrock-converse/streams-text').interactions[0]!.response.body!, 'base64')
+    stalling = createServer((req, res) => {
+      req.on('data', () => {})
+      req.on('end', () => {
+        res.writeHead(200, { 'content-type': 'application/vnd.amazon.eventstream' })
+        res.write(body.subarray(0, 153 + 189))
+      })
+    })
+    await new Promise<void>(resolve => stalling!.listen(0, '127.0.0.1', () => resolve()))
+    process.env.ANTHROPIC_BEDROCK_BASE_URL = `http://127.0.0.1:${(stalling.address() as AddressInfo).port}`
+    useBedrock(NOVA, process.env.ANTHROPIC_BEDROCK_BASE_URL)
+
+    const controller = new AbortController()
+    const { data } = await (await messages())
+      .create({ model: NOVA, max_tokens: 16, stream: true, messages: [{ role: 'user', content: 'hi' }] }, { signal: controller.signal } as never)
+      .withResponse()
+    const drained = (async () => {
+      for await (const event of data) if (event.type === 'content_block_delta') controller.abort()
+    })()
+    const outcome = await Promise.race([
+      drained.then(
+        () => ({ ended: true as const }),
+        (error: unknown) => ({ error }),
+      ),
+      new Promise<'still iterating'>(resolve => setTimeout(() => resolve('still iterating'), 3_000)),
+    ])
+    expect(outcome).not.toBe('still iterating')
+    expect(outcome).toHaveProperty('error')
+    expect(isUserAbort((outcome as { error: unknown }).error, controller.signal)).toBe(true)
+  }, 15_000)
 
   test('a whole message for a caller that does not stream', async () => {
     await serve([loadCassette('bedrock-converse/streams-text')])
