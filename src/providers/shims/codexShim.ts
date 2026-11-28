@@ -835,11 +835,10 @@ export async function performCodexRequest(options: {
     // backend. OpenCode sets this from input.sessionID; we use our own
     // process-wide session id. Required on long sessions for WS continuity.
     headers['session-id'] = getSessionId()
-    // NOTE: we intentionally do not set `max_output_tokens` on the body
-    // above, except on a keep-alive ping. The Codex CLI strips it, and so does
-    // OpenCode (`chat.params` → `output.maxOutputTokens = undefined`).
-    // performCodexRequest builds the body from scratch and only forwards the
-    // fields Codex accepts, so no upstream `params.max_tokens` leak is possible here.
+    // NOTE: the Codex path sets `max_output_tokens` only on a keep-alive ping.
+    // The Codex CLI strips it, and so does OpenCode (`chat.params` →
+    // `output.maxOutputTokens = undefined`). The Responses API
+    // (`openai_responses`) does get it, from params.max_tokens, above.
     headers.originator ??= 'claudin'
   }
 

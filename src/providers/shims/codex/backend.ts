@@ -1,6 +1,10 @@
 /**
  * What the ChatGPT Codex backend gets beyond the plain Responses API, and the
  * one place that decides whether a request, or a whole session, talks to it.
+ * It also decides whether a request replays Responses items at all: the
+ * Codex backend, and the Responses API of api.openai.com and Azure
+ * (`openai_responses`, compatWires.ts), which takes the reasoning back the
+ * same way without the backend's message ids.
  *
  * From Codex CLI 0.162.1 on the wire (mitmproxy, gpt-5.6-terra, 2026-10-16):
  *   include: ["reasoning.encrypted_content"]  the reasoning comes back, encrypted
@@ -15,14 +19,15 @@
  * The gate is the backend, not the provider tag: GitHub Copilot sends its GPT-5+
  * models through the same Responses code.
  *
- * Killswitch: CLAUDIN_CODEX_REASONING_REPLAY=0 sends what Claudin sent before:
- * no include, context or verbosity, no reasoning items, synthetic call ids, and
- * resume and every render strip the Codex item state as for any other
+ * Killswitch: CLAUDIN_CODEX_REASONING_REPLAY=0 sends what Claudin sent before,
+ * on both: no include, context or verbosity, no reasoning items, synthetic
+ * call ids, and resume and every render strip the item state as for any other
  * provider. The stream-error fix in codexShim.ts stays on either way.
  */
 import { isSdkApiError } from 'src/shared/errors.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import {
   isCodexBaseUrl,
   resolveProviderRequest,
@@ -106,12 +111,21 @@ export function activeSessionOnCodexBackend(): boolean {
 /**
  * Whether the active session replays Responses items. Decides, for everything
  * that runs before the shim (rendering, resume), whether the item state is
- * kept or redacted.
+ * kept or redacted. The session's model, not the profile default, picks the
+ * wire: `/model gpt-5.5` on a gpt-4.1 profile rides the Responses API.
  */
 export function activeSessionReplaysCodexItems(): boolean {
   const provider = tryGetActiveProvider()
   if (!provider) return false
-  return responsesReplayActive(resolveProviderRequest({ model: provider.model, baseUrl: provider.baseUrl }))
+  return responsesReplayActive(resolveProviderRequest({ model: sessionModel(provider.model), baseUrl: provider.baseUrl }))
+}
+
+function sessionModel(profileModel: string): string {
+  try {
+    return getMainLoopModel() || profileModel
+  } catch {
+    return profileModel
+  }
 }
 
 /**

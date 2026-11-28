@@ -607,6 +607,16 @@ export function isUnloadedDeferredTool(
   return !extractDiscoveredToolNames(messages).has(tool.name)
 }
 
+/**
+ * Whether calls of this tool reach the model through the client-side
+ * tool-search gateway (src/providers/shims/clientToolSearch/): a deferred tool
+ * on a wire without server-side tool search, with tool search on. The gateway
+ * goes out non-strict, so the arguments are the model's own.
+ */
+export function isClientGatewayTool(tool: Tool, model?: string): boolean {
+  return isToolSearchEnabledOptimistic() && isDeferredTool(tool) && clientDefersTools(model)
+}
+
 export type DeferredToolsDelta = {
   addedNames: string[]
   /** Rendered lines for addedNames; the scan reconstructs from names. */
