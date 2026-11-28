@@ -18,7 +18,7 @@
 import { isWireRejected, type FallbackWire } from 'src/providers/presets/wireFallback.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
-export type CompatWireKind = FallbackWire
+type CompatWireKind = FallbackWire
 
 export type CompatWireRow = {
   /** Names the row in debug lines and tests. */

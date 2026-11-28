@@ -29,7 +29,7 @@ const STOP_REASONS: Record<string, 'end_turn' | 'tool_use' | 'max_tokens' | 'sto
   content_filtered: 'end_turn',
 }
 
-export function converseUsage(usage: Event | undefined): Record<string, number> {
+function converseUsage(usage: Event | undefined): Record<string, number> {
   return {
     input_tokens: Number(usage?.inputTokens ?? 0),
     output_tokens: Number(usage?.outputTokens ?? 0),

@@ -21,7 +21,7 @@ import {
 
 type Block = Record<string, any>
 type ConverseBlock = Record<string, unknown>
-export type ConverseMessage = { role: 'user' | 'assistant'; content: ConverseBlock[] }
+type ConverseMessage = { role: 'user' | 'assistant'; content: ConverseBlock[] }
 
 const IMAGE_FORMATS: Record<string, string> = {
   'image/png': 'png',
@@ -84,7 +84,7 @@ function toolResultAsText(block: Block): string {
   return `[Result of ${String(block.tool_use_id)}${block.is_error ? ' (error)' : ''}]\n${text}`
 }
 
-export function convertMessages(
+function convertMessages(
   messages: Array<{ role?: string; message?: { role?: string; content?: unknown }; content?: unknown }>,
   options: { toolBlocks: boolean },
 ): ConverseMessage[] {
