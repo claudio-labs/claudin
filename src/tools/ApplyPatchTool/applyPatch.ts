@@ -633,12 +633,16 @@ function stageFile(group: FileGroup): StagedFile {
     }
   }
 
-  // update (optionally a move): every section matched against the file as it is
-  const { text, outcomes } = applySections(
-    absPath,
-    group.hunks.map(h => (h.type === 'update' ? h.chunks : [])),
-    current.content,
-  )
+  // update (optionally a move): every section matched against the file as it is.
+  // A pure rename has no section to apply, and moves the bytes as they are.
+  const pureMove = group.hunks.every(h => h.type === 'update' && h.chunks.length === 0)
+  const { text, outcomes } = pureMove
+    ? { text: current.content, outcomes: [] }
+    : applySections(
+        absPath,
+        group.hunks.map(h => (h.type === 'update' ? h.chunks : [])),
+        current.content,
+      )
   const flat = outcomes.flat()
   const failed = flat.flatMap(o => (o.kind === 'failed' ? [o.message] : []))
   const already = flat.flatMap(o => (o.kind === 'already' ? [`${group.rel}: a hunk is already applied at line ${o.line}`] : []))

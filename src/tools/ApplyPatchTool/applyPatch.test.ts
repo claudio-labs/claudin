@@ -203,10 +203,21 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
+  test('a pure rename of a file never read is refused, as a Delete is', async () => {
+    const src = join(dir, 'app.txt')
+    writeFileSync(src, 'line1\n')
+    await expect(
+      runApplyPatch({ patchText: envelope(`*** Update File: ${src}\n*** Move to: ${join(dir, 'b.txt')}`) }, ctx, randomUUID()),
+    ).rejects.toThrow('has not been read yet')
+    expect(existsSync(src)).toBe(true)
+    cleanup()
+  })
+
   test('renames a file with no hunks, its bytes untouched', async () => {
     const src = join(dir, 'app.txt')
     const dest = join(dir, 'main.txt')
     writeFileSync(src, 'line1\r\nline2')
+    markRead(src)
     const { output } = await runApplyPatch(
       { patchText: envelope(`*** Update File: ${src}\n*** Move to: ${dest}`) },
       ctx,

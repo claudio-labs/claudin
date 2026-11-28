@@ -1,0 +1,17 @@
+{
+  "test": ["src/tools/ApplyPatchTool/patchFormat.test.ts", "src/tools/ApplyPatchTool/applyPatch.test.ts"],
+  "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+  "probes": [
+    {
+      "name": "a chunk-less Move to is refused again",
+      "find": "      if (chunks.length === 0 && header.movePath) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "a pure rename rewrites the bytes it moves",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "  const pureMove = group.hunks.every(h => h.type === 'update' && h.chunks.length === 0)",
+      "replace": "  const pureMove = false"
+    }
+  ]
+}
