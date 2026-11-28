@@ -10,7 +10,8 @@
     "src/mcp/client/connection.negotiation.test.ts",
     "src/mcp/client/connection.urlElicitation.test.ts",
     "src/mcp/useManageMCPConnections.listen.test.tsx",
-    "src/mcp/useManageMCPConnections.cover.test.tsx"
+    "src/mcp/useManageMCPConnections.cover.test.tsx",
+    "src/platform/headless/print/mcpControlHandlers.reconnect.test.ts"
   ],
   "source": "src/mcp/client/connection.ts",
   "probes": [
@@ -123,6 +124,12 @@
       "name": "/mcp reconnect keeps the era verdict, so the server's new capabilities wait out the TTL",
       "source": "src/mcp/useManageMCPConnections.ts",
       "find": "      await dropEraVerdict(getEraCacheKey(serverName, client.config))\n",
+      "replace": ""
+    },
+    {
+      "name": "an mcp_reconnect control request keeps the era verdict",
+      "source": "src/platform/headless/print/mcpControlHandlers.ts",
+      "find": "    await dropEraVerdict(getEraCacheKey(serverName, config))\n",
       "replace": ""
     },
     {

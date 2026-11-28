@@ -33,6 +33,7 @@ import {
   revokeServerTokens,
 } from 'src/mcp/auth.js'
 import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
+import { dropEraVerdict, getEraCacheKey } from 'src/mcp/client/eraCache.js'
 import { commandBelongsToServer } from 'src/mcp/utils.js'
 import type {
   HeadlessStreamingContext,
@@ -80,6 +81,9 @@ export async function handleMcpReconnect(
   if (!config) {
     ctx.sendControlResponseError(message, `Server not found: ${serverName}`)
   } else {
+    // A reconnect the caller asked for probes the server again, as
+    // /mcp reconnect does (useManageMCPConnections.ts).
+    await dropEraVerdict(getEraCacheKey(serverName, config))
     const result = await reconnectMcpServerImpl(serverName, config)
     // Update appState.mcp with the new client, tools, commands, and resources
     const prefix = getMcpPrefix(serverName)
