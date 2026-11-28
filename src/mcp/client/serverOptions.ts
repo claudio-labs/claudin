@@ -19,7 +19,8 @@
  * 2026-07-28 (tasks, events).
  *
  * `extensions: { skills, tasks, events }` turns a 2026-07-28 extension off
- * for one server; each is on unless set to false.
+ * for one server; each is on unless set to false. sse, ws and claude.ai
+ * proxy servers take it too, as they get MCP skills on the 2025 protocol.
  */
 import { isAbsolute, join, resolve } from 'path'
 import type { McpExtensionName, McpServerConfig } from 'src/mcp/types.js'

@@ -37,11 +37,12 @@ const timeoutFields = () => ({
 
 // Which protocol era a server is reached in, and which 2026-07-28 extensions
 // Claudin uses with it (src/mcp/client/serverOptions.ts). Only http and stdio
-// servers negotiate; the other transports always speak the 2025 protocol.
+// servers negotiate, so only they take `protocol`; the other transports
+// always speak the 2025 protocol, where MCP skills still work, so sse, ws and
+// claude.ai proxy servers take `extensions` too.
 export const MCP_EXTENSION_NAMES = ['skills', 'tasks', 'events'] as const
 export type McpExtensionName = (typeof MCP_EXTENSION_NAMES)[number]
-const protocolFields = () => ({
-  protocol: z.enum(['auto', 'legacy']).optional(),
+const extensionsField = () => ({
   extensions: z
     .object({
       skills: z.boolean().optional(),
@@ -49,6 +50,10 @@ const protocolFields = () => ({
       events: z.boolean().optional(),
     })
     .optional(),
+})
+const protocolFields = () => ({
+  protocol: z.enum(['auto', 'legacy']).optional(),
+  ...extensionsField(),
 })
 
 export const McpStdioServerConfigSchema = lazySchema(() =>
@@ -86,6 +91,7 @@ export const McpSSEServerConfigSchema = lazySchema(() =>
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
     ...timeoutFields(),
+    ...extensionsField(),
   }),
 )
 
@@ -129,6 +135,7 @@ export const McpWebSocketServerConfigSchema = lazySchema(() =>
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
     ...timeoutFields(),
+    ...extensionsField(),
   }),
 )
 
@@ -145,6 +152,7 @@ export const McpClaudeAIProxyServerConfigSchema = lazySchema(() =>
     type: z.literal('claudeai-proxy'),
     url: z.string(),
     id: z.string(),
+    ...extensionsField(),
   }),
 )
 
