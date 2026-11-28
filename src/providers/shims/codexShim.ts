@@ -17,6 +17,12 @@ declare const MACRO: { VERSION: string; DISPLAY_VERSION?: string }
 import { sanitizeSchemaForOpenAICompat } from 'src/providers/shims/openaiSchemaSanitizer.js'
 import { CALL_TOOL_NAME } from 'src/providers/shims/clientToolSearch/callTool.js'
 import {
+  FREEFORM_TOOLS,
+  freeformDescription,
+  isFreeformPatchEnabled,
+  modelTakesFreeformTools,
+} from 'src/tools/ApplyPatchTool/freeformGrammar.js'
+import {
   createThinkTagFilter,
   stripThinkTags,
 } from 'src/providers/shims/thinkTagSanitizer.js'
@@ -110,15 +116,39 @@ type ResponsesInputItem =
       call_id: string
       output: string
     }
+  | {
+      type: 'custom_tool_call'
+      id: string
+      call_id: string
+      name: string
+      input: string
+    }
+  | {
+      type: 'custom_tool_call_output'
+      call_id: string
+      output: string
+    }
   | CodexReasoningInputItem
 
-type ResponsesTool = {
+type ResponsesFunctionTool = {
   type: 'function'
   name: string
   description: string
   parameters: Record<string, unknown>
   strict?: boolean
 }
+
+type ResponsesTool =
+  | ResponsesFunctionTool
+  | {
+      type: 'custom'
+      name: string
+      description: string
+      format: { type: 'grammar'; syntax: 'lark'; definition: string }
+    }
+
+/** Tools sent as custom (freeform) tools on this request: name → the input field their text fills. */
+type FreeformTools = ReadonlyMap<string, { field: string }>
 
 type CodexSseEvent = {
   event: string
@@ -264,8 +294,20 @@ function convertContentBlocksToResponsesParts(
 function functionCallItem(
   toolUse: { id?: string; name?: string; input?: unknown },
   itemId?: string,
+  freeform?: FreeformTools,
 ): ResponsesInputItem {
   const normalized = normalizeToolUseId(toolUse.id)
+  const custom = toolUse.name ? freeform?.get(toolUse.name) : undefined
+  if (custom) {
+    const text = (toolUse.input as Record<string, unknown> | undefined)?.[custom.field]
+    return {
+      type: 'custom_tool_call',
+      id: itemId ?? normalized.id,
+      call_id: normalized.callId,
+      name: toolUse.name!,
+      input: typeof text === 'string' ? text : '',
+    }
+  }
   return {
     type: 'function_call',
     id: itemId ?? normalized.id,
@@ -290,7 +332,7 @@ function functionCallItem(
  * Responses API's recordings show it (cassettes/openai-responses): reasoning
  * and calls keep theirs.
  */
-function replayAssistantItems(content: unknown, messageIds: boolean): ResponsesInputItem[] {
+function replayAssistantItems(content: unknown, messageIds: boolean, freeform?: FreeformTools): ResponsesInputItem[] {
   if (!Array.isArray(content)) {
     const parts = convertContentBlocksToResponsesParts(content, 'assistant')
     return parts.length > 0 ? [{ type: 'message', role: 'assistant', content: parts }] : []
@@ -308,7 +350,7 @@ function replayAssistantItems(content: unknown, messageIds: boolean): ResponsesI
       continue
     }
     if (block?.type === 'tool_use') {
-      items.push(functionCallItem(block, codexStateOf(block)?.id))
+      items.push(functionCallItem(block, codexStateOf(block)?.id, freeform))
       message = undefined
       continue
     }
@@ -333,9 +375,24 @@ function replayAssistantItems(content: unknown, messageIds: boolean): ResponsesI
 
 export function convertAnthropicMessagesToResponsesInput(
   messages: Array<{ role?: string; message?: { role?: string; content?: unknown }; content?: unknown }>,
-  options: { replayCodexItems?: boolean; replayMessageIds?: boolean } = {},
+  options: { replayCodexItems?: boolean; replayMessageIds?: boolean; freeformTools?: FreeformTools } = {},
 ): ResponsesInputItem[] {
   const items: ResponsesInputItem[] = []
+  const freeform = options.freeformTools?.size ? options.freeformTools : undefined
+  // The results of custom calls go back as custom outputs: collect their ids first.
+  const customCallIds = new Set<string>()
+  if (freeform) {
+    for (const message of messages) {
+      const inner = message.message ?? message
+      const content = (inner as { content?: unknown }).content
+      if (!Array.isArray(content)) continue
+      for (const block of content as Array<{ type?: string; id?: string; name?: string }>) {
+        if (block?.type === 'tool_use' && block.name && freeform.has(block.name)) {
+          customCallIds.add(normalizeToolUseId(block.id).callId)
+        }
+      }
+    }
+  }
 
   for (const message of messages) {
     const inner = message.message ?? message
@@ -354,7 +411,7 @@ export function convertAnthropicMessagesToResponsesInput(
         for (const toolResult of toolResults) {
           const { callId } = normalizeToolUseId(toolResult.tool_use_id)
           items.push({
-            type: 'function_call_output',
+            type: customCallIds.has(callId) ? 'custom_tool_call_output' : 'function_call_output',
             call_id: callId,
             output: (() => {
               const out = convertToolResultToText(toolResult.content)
@@ -384,7 +441,7 @@ export function convertAnthropicMessagesToResponsesInput(
 
     if (role === 'assistant') {
       if (options.replayCodexItems) {
-        items.push(...replayAssistantItems(content, options.replayMessageIds ?? true))
+        items.push(...replayAssistantItems(content, options.replayMessageIds ?? true, freeform))
         continue
       }
 
@@ -405,7 +462,7 @@ export function convertAnthropicMessagesToResponsesInput(
         for (const toolUse of content.filter(
           (block: { type?: string }) => block.type === 'tool_use',
         )) {
-          items.push(functionCallItem(toolUse))
+          items.push(functionCallItem(toolUse, undefined, freeform))
         }
       }
     }
@@ -545,13 +602,28 @@ function allowNull(schema: Record<string, unknown>): Record<string, unknown> {
   return { ...schema, type: [type, 'null'] }
 }
 
+type ToolDefinition = { name?: string; description?: string; input_schema?: Record<string, unknown> }
+
+/** Without `freeform` every tool is a function tool. */
+export function convertToolsToResponsesTools(tools: ToolDefinition[], options?: { freeform?: false }): ResponsesFunctionTool[]
+export function convertToolsToResponsesTools(tools: ToolDefinition[], options: { freeform?: boolean }): ResponsesTool[]
 export function convertToolsToResponsesTools(
-  tools: Array<{ name?: string; description?: string; input_schema?: Record<string, unknown> }>,
+  tools: ToolDefinition[],
+  options: { freeform?: boolean } = {},
 ): ResponsesTool[] {
   return tools
     .filter(tool => tool.name)
-    .map(tool => {
+    .map((tool): ResponsesTool => {
       const rawParameters = tool.input_schema ?? { type: 'object', properties: {} }
+      const custom = options.freeform ? FREEFORM_TOOLS.get(tool.name!) : undefined
+      if (custom) {
+        return {
+          type: 'custom',
+          name: tool.name!,
+          description: freeformDescription(tool.description ?? ''),
+          format: { type: 'grammar', syntax: 'lark', definition: custom.grammar },
+        }
+      }
       // The tool-search gateway takes free-form `arguments`, which strict mode
       // cannot express: an object with no properties would be dropped.
       if (tool.name === CALL_TOOL_NAME) {
@@ -584,7 +656,7 @@ export function convertToolsToResponsesTools(
     })
 }
 
-function convertToolChoice(toolChoice: unknown): unknown {
+function convertToolChoice(toolChoice: unknown, freeform?: FreeformTools): unknown {
   const choice = toolChoice as { type?: string; name?: string } | undefined
   if (!choice?.type) return undefined
   if (choice.type === 'auto') return 'auto'
@@ -592,7 +664,7 @@ function convertToolChoice(toolChoice: unknown): unknown {
   if (choice.type === 'none') return 'none'
   if (choice.type === 'tool' && choice.name) {
     return {
-      type: 'function',
+      type: freeform?.has(choice.name) ? 'custom' : 'function',
       name: choice.name,
     }
   }
@@ -617,6 +689,14 @@ export async function performCodexRequest(options: {
   const responsesApi = options.request.transport === 'openai_responses'
   // Copilot shares the Codex path, its headers included.
   const codexPath = options.request.transport === 'codex_responses'
+  // Patch as a custom grammar tool (freeformGrammar.ts): the Codex backend and
+  // a Responses API host, on the models the Codex CLI ships it for. Copilot
+  // keeps the JSON tool.
+  const freeform =
+    isFreeformPatchEnabled() &&
+    (isCodexBackendRequest(options.request) || responsesApi) &&
+    modelTakesFreeformTools(options.request.resolvedModel)
+  const freeformTools: FreeformTools | undefined = freeform ? FREEFORM_TOOLS : undefined
   // applyStableStubs runs at the API boundary so the stable bytes are
   // what goes on the wire. No ensureToolResultPairing analogue exists
   // here — convertAnthropicMessagesToResponsesInput handles orphan
@@ -633,6 +713,7 @@ export async function performCodexRequest(options: {
   const input = convertAnthropicMessagesToResponsesInput(compressedMessages, {
     replayCodexItems,
     replayMessageIds: onCodexBackend,
+    freeformTools,
   })
   const body: Record<string, unknown> = {
     model: options.request.resolvedModel,
@@ -669,7 +750,7 @@ export async function performCodexRequest(options: {
     body.instructions = instructions
   }
 
-  const toolChoice = convertToolChoice(options.params.tool_choice)
+  const toolChoice = convertToolChoice(options.params.tool_choice, freeformTools)
   if (toolChoice) {
     body.tool_choice = toolChoice
   }
@@ -681,6 +762,7 @@ export async function performCodexRequest(options: {
         description?: string
         input_schema?: Record<string, unknown>
       }>,
+      { freeform },
     )
     if (convertedTools.length > 0) {
       body.tools = convertedTools
@@ -918,6 +1000,11 @@ async function* readSseEvents(response: Response, signal?: AbortSignal): AsyncGe
   }
 }
 
+/** `text` as it reads inside a JSON string, without the quotes: deltas escaped one by one concatenate. */
+function escapeJsonText(text: string): string {
+  return JSON.stringify(text).slice(1, -1)
+}
+
 function determineStopReason(
   response: Record<string, any> | undefined,
   sawToolUse: boolean,
@@ -925,7 +1012,7 @@ function determineStopReason(
   const output = Array.isArray(response?.output) ? response.output : []
   if (
     sawToolUse ||
-    output.some((item: { type?: string }) => item?.type === 'function_call')
+    output.some((item: { type?: string }) => item?.type === 'function_call' || item?.type === 'custom_tool_call')
   ) {
     return 'tool_use'
   }
@@ -1031,7 +1118,9 @@ export async function* codexStreamToAnthropic(
   const capture = options.captureCodexItems === true
   const toolBlocksByItemId = new Map<
     string,
-    { index: number; toolUseId: string }
+    // `field` marks a custom (freeform) call: its raw text streams into that
+    // input field of a JSON object the deltas write piece by piece.
+    { index: number; toolUseId: string; field?: string; text?: string }
   >()
   let activeTextBlockIndex: number | null = null
   // The message item the next text block belongs to, set on its
@@ -1138,6 +1227,28 @@ export async function* codexStreamToAnthropic(
           }
         }
       }
+      if (item?.type === 'custom_tool_call') {
+        yield* closeActiveTextBlock()
+        const blockIndex = nextContentBlockIndex++
+        const toolUseId = item.call_id ?? item.id ?? `call_${blockIndex}`
+        const name = item.name ?? 'tool'
+        const field = FREEFORM_TOOLS.get(name)?.field ?? 'input'
+        const text = typeof item.input === 'string' ? item.input : ''
+        toolBlocksByItemId.set(String(item.id ?? toolUseId), { index: blockIndex, toolUseId, field, text })
+        sawToolUse = true
+        const callState = capture ? callStateFor(item) : undefined
+        yield {
+          type: 'content_block_start',
+          index: blockIndex,
+          content_block: { type: 'tool_use', id: toolUseId, name, input: {}, ...(callState && { codex: callState }) },
+        }
+        // The object opens now; each delta is its text, escaped, and done closes it.
+        yield {
+          type: 'content_block_delta',
+          index: blockIndex,
+          delta: { type: 'input_json_delta', partial_json: `{${JSON.stringify(field)}:"${escapeJsonText(text)}` },
+        }
+      }
       continue
     }
 
@@ -1181,11 +1292,36 @@ export async function* codexStreamToAnthropic(
       continue
     }
 
+    if (event.event === 'response.custom_tool_call_input.delta') {
+      const toolBlock = toolBlocksByItemId.get(String(payload.item_id ?? ''))
+      if (toolBlock?.field !== undefined) {
+        const delta = String(payload.delta ?? '')
+        toolBlock.text += delta
+        yield {
+          type: 'content_block_delta',
+          index: toolBlock.index,
+          delta: { type: 'input_json_delta', partial_json: escapeJsonText(delta) },
+        }
+      }
+      continue
+    }
+
     if (event.event === 'response.output_item.done') {
       const item = payload.item
-      if (item?.type === 'function_call') {
+      if (item?.type === 'function_call' || item?.type === 'custom_tool_call') {
         const toolBlock = toolBlocksByItemId.get(String(item.id ?? ''))
         if (toolBlock) {
+          if (toolBlock.field !== undefined) {
+            // A text the deltas never carried arrives whole on the done item.
+            const rest = typeof item.input === 'string' && item.input.startsWith(toolBlock.text ?? '')
+              ? item.input.slice((toolBlock.text ?? '').length)
+              : ''
+            yield {
+              type: 'content_block_delta',
+              index: toolBlock.index,
+              delta: { type: 'input_json_delta', partial_json: `${escapeJsonText(rest)}"}` },
+            }
+          }
           yield {
             type: 'content_block_stop',
             index: toolBlock.index,
@@ -1226,6 +1362,9 @@ export async function* codexStreamToAnthropic(
 
   yield* closeActiveTextBlock()
   for (const toolBlock of toolBlocksByItemId.values()) {
+    if (toolBlock.field !== undefined) {
+      yield { type: 'content_block_delta', index: toolBlock.index, delta: { type: 'input_json_delta', partial_json: '"}' } }
+    }
     yield {
       type: 'content_block_stop',
       index: toolBlock.index,
@@ -1294,6 +1433,18 @@ export function convertCodexResponseToAnthropicMessage(
         id: item.call_id ?? item.id ?? makeMessageId(),
         name: item.name ?? 'tool',
         input,
+        ...(callState && { codex: callState }),
+      })
+    }
+
+    if (item?.type === 'custom_tool_call') {
+      const name = item.name ?? 'tool'
+      const callState = capture ? callStateFor(item) : undefined
+      content.push({
+        type: 'tool_use',
+        id: item.call_id ?? item.id ?? makeMessageId(),
+        name,
+        input: { [FREEFORM_TOOLS.get(name)?.field ?? 'input']: typeof item.input === 'string' ? item.input : '' },
         ...(callState && { codex: callState }),
       })
     }

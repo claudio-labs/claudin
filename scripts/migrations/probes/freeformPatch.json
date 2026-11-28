@@ -1,0 +1,68 @@
+{
+  "test": "src/providers/shims/codexShim.freeform.test.ts",
+  "source": "src/providers/shims/codexShim.ts",
+  "probes": [
+    {
+      "name": "the flag does not gate it",
+      "source": "src/tools/ApplyPatchTool/freeformGrammar.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_FREEFORM_PATCH)",
+      "replace": "  return true"
+    },
+    {
+      "name": "every model takes it",
+      "source": "src/tools/ApplyPatchTool/freeformGrammar.ts",
+      "find": "  return FREEFORM_MODEL_RE.test(model.trim().toLowerCase())",
+      "replace": "  return true"
+    },
+    {
+      "name": "Copilot gets it too",
+      "find": "    (isCodexBackendRequest(options.request) || responsesApi) &&",
+      "replace": "    true &&"
+    },
+    {
+      "name": "the description keeps asking for JSON",
+      "find": "          description: freeformDescription(tool.description ?? ''),",
+      "replace": "          description: tool.description ?? '',"
+    },
+    {
+      "name": "a forced Patch stays a function choice",
+      "find": "      type: freeform?.has(choice.name) ? 'custom' : 'function',",
+      "replace": "      type: 'function',"
+    },
+    {
+      "name": "a Patch result goes back as a function output",
+      "find": "            type: customCallIds.has(callId) ? 'custom_tool_call_output' : 'function_call_output',",
+      "replace": "            type: 'function_call_output',"
+    },
+    {
+      "name": "a replayed Patch call loses its text",
+      "find": "      input: typeof text === 'string' ? text : '',\n    }",
+      "replace": "      input: '',\n    }"
+    },
+    {
+      "name": "deltas go out unescaped",
+      "find": "          delta: { type: 'input_json_delta', partial_json: escapeJsonText(delta) },",
+      "replace": "          delta: { type: 'input_json_delta', partial_json: delta },"
+    },
+    {
+      "name": "the done item's tail is dropped",
+      "find": "              delta: { type: 'input_json_delta', partial_json: `${escapeJsonText(rest)}\"}` },",
+      "replace": "              delta: { type: 'input_json_delta', partial_json: '\"}' },"
+    },
+    {
+      "name": "a cut stream leaves the input open",
+      "find": "      yield { type: 'content_block_delta', index: toolBlock.index, delta: { type: 'input_json_delta', partial_json: '\"}' } }\n    }",
+      "replace": "    }"
+    },
+    {
+      "name": "a custom call does not stop for tool use",
+      "find": "    output.some((item: { type?: string }) => item?.type === 'function_call' || item?.type === 'custom_tool_call')",
+      "replace": "    output.some((item: { type?: string }) => item?.type === 'function_call')"
+    },
+    {
+      "name": "the whole response drops a custom call",
+      "find": "    if (item?.type === 'custom_tool_call') {\n      const name = item.name ?? 'tool'\n      const callState = capture ? callStateFor(item) : undefined\n      content.push({",
+      "replace": "    if (item?.type === 'custom_tool_call_never') {\n      const name = item.name ?? 'tool'\n      const callState = capture ? callStateFor(item) : undefined\n      content.push({"
+    }
+  ]
+}
