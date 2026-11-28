@@ -57,8 +57,8 @@
     {
       "name": "hook: a prompts/list_changed drops the server's skills",
       "source": "src/mcp/useManageMCPConnections.ts",
-      "find": "                    ...client,\n                    commands: [...mcpPrompts, ...mcpSkills],\n",
-      "replace": "                    ...client,\n                    commands: [...mcpPrompts],\n"
+      "find": "                    ...client,\n                    commands: await fetchServerCommandsForClient(client),\n",
+      "replace": "                    ...client,\n                    commands: await fetchCommandsForClient(client),\n"
     },
     {
       "name": "hook: a resources/list_changed answers the skills from the memo",
@@ -75,8 +75,14 @@
     {
       "name": "ttl: a prompts refresh drops the server's skills",
       "source": "src/mcp/listTtlRefresh.ts",
-      "find": "      return { commands: [...prompts, ...skills] }\n",
-      "replace": "      return { commands: prompts }\n"
+      "find": "      return { commands: await fetchServerCommandsForClient(client) }\n",
+      "replace": "      return { commands: await fetchCommandsForClient(client) }\n"
+    },
+    {
+      "name": "fetch: a server's commands at connect and reconnect leave out its skills",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "  return [...prompts, ...skills]\n",
+      "replace": "  return prompts\n"
     }
   ]
 }

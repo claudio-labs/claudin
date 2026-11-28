@@ -233,8 +233,8 @@
     {
       "name": "review: clearServerCache keeps the templates",
       "source": "src/mcp/client/connection.ts",
-      "find": "  fetchResourcesForClient.cache.delete(name)\n  fetchResourceTemplatesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n}",
-      "replace": "  fetchResourcesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n}"
+      "find": "  fetchResourcesForClient.cache.delete(name)\n  fetchResourceTemplatesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n  fetchEventTypesForClient.cache.delete(name)\n}",
+      "replace": "  fetchResourcesForClient.cache.delete(name)\n  fetchCommandsForClient.cache.delete(name)\n  fetchEventTypesForClient.cache.delete(name)\n}"
     },
     {
       "name": "review: a closed connection keeps the templates",
@@ -256,7 +256,7 @@
     },
     {
       "name": "review: a skipped tool is not logged",
-      "source": "src/mcp/client/fetchCapabilities.ts",
+      "source": "src/mcp/client/wireFilter.ts",
       "find": "    onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),\n",
       "replace": "    onSkipped: () => {},\n"
     },

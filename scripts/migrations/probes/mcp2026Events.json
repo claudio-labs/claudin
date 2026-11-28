@@ -156,6 +156,12 @@
       "source": "src/mcp/client/connection.ts",
       "find": "        fetchCommandsForClient.cache.delete(name)\n        fetchEventTypesForClient.cache.delete(name)\n\n",
       "replace": "        fetchCommandsForClient.cache.delete(name)\n\n"
+    },
+    {
+      "name": "backoff: the reconnect wait doubles past its 30 s cap",
+      "source": "src/shared/sleep.ts",
+      "find": "  return Math.min(capMs, baseMs * 2 ** attempt)\n",
+      "replace": "  return baseMs * 2 ** attempt\n"
     }
   ]
 }

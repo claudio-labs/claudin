@@ -1,16 +1,16 @@
 {
   "test": [
-    "src/mcp/client/callTool.tasks.test.ts",
+    "src/mcp/client/taskCall.test.ts",
     "src/mcp/client/taskPoll.test.ts",
     "src/mcp/client/wireRules.test.ts"
   ],
-  "source": "src/mcp/client/callTool.ts",
+  "source": "src/mcp/client/taskCall.ts",
   "probes": [
     {
       "name": "wire: a task result reaches the SDK, which rejects it",
       "source": "src/mcp/client/wireRules.ts",
-      "find": "  'tools/call': withTaskMarker,\n",
-      "replace": ""
+      "find": "  'tools/call': fillToolCallResult,\n",
+      "replace": "  'tools/call': fillResultType,\n"
     },
     {
       "name": "wire: a tasks/update answer without ttlMs/cacheScope is not filled",
@@ -88,13 +88,13 @@
     },
     {
       "name": "call: the main thread polls inline past the tool timeout",
-      "find": "    deps.now() + (mayBackground ? inlineTaskBudgetMs(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)\n",
+      "find": "    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)\n",
       "replace": "    deps.now() + (mayBackground ? deps.inlineMs() : toolTimeoutMs)\n"
     },
     {
       "name": "call: without a background the task is not bounded by the tool timeout",
-      "find": "    deps.now() + (mayBackground ? inlineTaskBudgetMs(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)\n",
-      "replace": "    deps.now() + (mayBackground ? inlineTaskBudgetMs(deps.inlineMs(), toolTimeoutMs) : Infinity)\n"
+      "find": "    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)\n",
+      "replace": "    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : Infinity)\n"
     },
     {
       "name": "call: a task cut at the tool timeout is not cancelled",
@@ -141,7 +141,13 @@
     {
       "name": "call: a task answer without a taskId reaches the model as an empty success",
       "find": "      if (!readTaskMarker(result._meta)) {\n",
-      "replace": "      if (false) {\n"
+      "replace": "      if (false) {\n",
+      "source": "src/mcp/client/callTool.ts"
+    },
+    {
+      "name": "call: a tool call answered with a task returns the empty stand-in result instead of polling",
+      "find": "  if (!task) return result\n",
+      "replace": "  if (task) return result\n"
     }
   ]
 }

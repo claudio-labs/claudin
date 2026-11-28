@@ -1,12 +1,12 @@
 {
   "test": [
-    "src/mcp/promptArgumentInput.test.ts",
+    "src/terminal/suggestions/promptArgumentInput.test.ts",
     "src/mcp/promptCompletions.test.ts",
     "src/mcp/promptCompletions.integration.test.ts",
     "src/terminal/suggestions/promptArgumentSuggestions.test.ts",
     "src/terminal/hooks/useTypeahead.cover.test.tsx"
   ],
-  "source": "src/mcp/promptArgumentInput.ts",
+  "source": "src/terminal/suggestions/promptArgumentInput.ts",
   "probes": [
     {
       "name": "an open quote is read as bare words, not the value being typed",

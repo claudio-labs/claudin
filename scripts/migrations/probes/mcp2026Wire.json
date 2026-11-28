@@ -138,7 +138,7 @@
     },
     {
       "name": "keepInitialize rewrites the initialize anyway",
-      "source": "src/mcp/client/fetchCapabilities.ts",
+      "source": "src/mcp/client/wireFilter.ts",
       "find": "    sendRules: options.keepInitialize ? otherSendRules : SEND_RULES,\n",
       "replace": "    sendRules: SEND_RULES,\n"
     },
