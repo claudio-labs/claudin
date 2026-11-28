@@ -324,7 +324,7 @@ describe('thinking on resume, per provider', () => {
       ])
     })
 
-    test('are stripped like any thinking everywhere else, and with the killswitch off', () => {
+    test('survive a resume on the OpenAI Responses API, which replays them too', () => {
       expect(
         codexTranscriptBlocks({
           id: 'r-openai',
@@ -332,6 +332,19 @@ describe('thinking on resume, per provider', () => {
           provider: 'openai',
           baseUrl: 'https://api.openai.com/v1',
           model: 'gpt-5.6-terra',
+        }),
+      ).toEqual([[codexReasoning, codexText]])
+    })
+
+    test('are stripped like any thinking everywhere else, and with the killswitch off', () => {
+      // Below GPT-5, api.openai.com stays on Chat Completions.
+      expect(
+        codexTranscriptBlocks({
+          id: 'r-openai-chat',
+          name: 'OpenAI',
+          provider: 'openai',
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-4.1',
         }),
       ).toEqual([[codexText]])
 

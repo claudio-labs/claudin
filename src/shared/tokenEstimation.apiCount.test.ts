@@ -111,6 +111,9 @@ function useProfile(profile: ProviderProfile): void {
   invalidateActiveProviderCache()
   invalidateClientCache()
   clearOAuthTokenCache()
+  // The main-loop model is the profile's. Pinned, because a full run can leave
+  // src/providers/model/model.js mocked by an earlier file (ten files mock it).
+  spies.push(spyOn(modelModule, 'getMainLoopModel').mockImplementation(() => profile.model))
 }
 
 // ── env / global state ──────────────────────────────────────────────────────
