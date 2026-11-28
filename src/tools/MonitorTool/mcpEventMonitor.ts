@@ -33,6 +33,7 @@ import {
   pickDelivery,
   quoteServerText,
   watchEvents,
+  withServerText,
 } from 'src/mcp/client/events.js'
 import type { ConnectedMCPServer, MCPServerConnection } from 'src/mcp/types.js'
 import { errorMessage } from 'src/shared/errors.js'
@@ -73,7 +74,7 @@ export async function resolveMcpEventSource(
     connection = await ensureConnected(listed)
     types = await listEventTypes(connection.client)
   } catch (error) {
-    return { refusal: `MCP server "${source.server}" did not list its events: ${errorMessage(error)}` }
+    return { refusal: withServerText(`MCP server "${source.server}" did not list its events`, 'error', errorMessage(error)) }
   }
   const type = types.find(t => t.name === source.event)
   if (!type) {
