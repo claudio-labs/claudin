@@ -67,13 +67,13 @@
     },
     {
       "name": "withResponse hands back the raw data",
-      "source": "src/providers/shims/clientToolSearch/wrapClient.ts",
-      "find": "      return { ...result, data: unwrapResult(result.data) }",
-      "replace": "      return result"
+      "source": "src/providers/shims/clientFacade.ts",
+      "find": "    return { ...result, data: map(result.data) }",
+      "replace": "    return result"
     },
     {
       "name": "the wrapper hides the client's own methods' this",
-      "source": "src/providers/shims/clientToolSearch/wrapClient.ts",
+      "source": "src/providers/shims/clientFacade.ts",
       "find": "      return typeof value === 'function' ? value.bind(obj) : value",
       "replace": "      return value"
     }

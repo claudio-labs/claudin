@@ -133,6 +133,11 @@ export function invalidateActiveProviderCache(): void {
   cachedResolved = null
 }
 
+/** The model a request names, else the profile's own: what each wire decision reads. */
+export function requestModelFor(profile: Pick<ResolvedProvider, 'model'> | null | undefined, model?: string): string {
+  return model?.trim() || profile?.model?.trim() || ''
+}
+
 /** Test-only: read the cached value without recomputing. Returns null if not cached. */
 export function _peekActiveProviderCacheForTesting(): ResolvedProvider | null {
   return cachedResolved

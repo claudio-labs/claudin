@@ -20,17 +20,12 @@
  */
 import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk'
 import type { CompatWireRow } from 'src/providers/presets/compatWires.js'
-import {
-  isWireRejected,
-  noteWireSuccess,
-  rejectWireOnFailure,
-} from 'src/providers/presets/wireFallback.js'
-import { isSdkApiError } from 'src/shared/errors.js'
+import { withWireFallback } from 'src/providers/presets/wireFallback.js'
+import { apiPromise, overrideMembers, type ApiPromise, type ApiResult } from 'src/providers/shims/clientFacade.js'
 
 const KEPT_BETAS: ReadonlySet<string> = new Set(['interleaved-thinking-2025-05-14'])
 
-type CreateResult = Promise<unknown> & { withResponse: () => Promise<{ data: unknown; [key: string]: unknown }> }
-type Messages = { create: (params: Record<string, unknown>, options?: unknown) => CreateResult }
+type Messages = { create: (params: Record<string, unknown>, options?: unknown) => ApiPromise }
 type ShimClient = { beta: { messages: Messages } }
 
 export type VendorAnthropicClientOptions = {
@@ -54,10 +49,6 @@ export function vendorParams(params: Record<string, unknown>): Record<string, un
   return kept.length > 0 ? { ...rest, betas: kept } : rest
 }
 
-function failureBody(error: { error?: unknown; message?: string }): string {
-  return `${JSON.stringify(error.error ?? {})} ${error.message ?? ''}`
-}
-
 export function createVendorAnthropicClient(options: VendorAnthropicClientOptions): Anthropic {
   const { defaultHeaders, ...sdkOptions } = options.sdkOptions
   // Betas, and any credential meant for Anthropic, stay off the vendor's wire.
@@ -78,60 +69,17 @@ export function createVendorAnthropicClient(options: VendorAnthropicClientOption
   const native = sdk.beta.messages as unknown as Messages
   let shim: Promise<ShimClient> | undefined
   const fallback = () => (shim ??= options.fallback())
+  const pair = { wire: 'anthropic' as const, baseUrl: options.compatBaseUrl, model: options.model }
 
-  function create(params: Record<string, unknown>, requestOptions?: unknown): CreateResult {
-    const onChat = isWireRejected('anthropic', options.compatBaseUrl, options.model)
-    const answered = (async () => {
-      if (onChat) return (await fallback()).beta.messages.create(params, requestOptions).withResponse()
-      try {
-        const result = await native.create(vendorParams(params), requestOptions).withResponse()
-        noteWireSuccess('anthropic', options.compatBaseUrl, options.model)
-        return result
-      } catch (error) {
-        if (
-          isSdkApiError(error) &&
-          typeof error.status === 'number' &&
-          rejectWireOnFailure('anthropic', options.compatBaseUrl, options.model, {
-            status: error.status,
-            body: failureBody(error),
-          })
-        ) {
-          return (await fallback()).beta.messages.create(params, requestOptions).withResponse()
-        }
-        throw error
-      }
-    })()
-    const out = answered.then(result => result.data) as CreateResult
-    // A caller that only takes withResponse() never awaits `out` itself.
-    out.catch(() => {})
-    out.withResponse = () => answered
-    return out
+  function create(params: Record<string, unknown>, requestOptions?: unknown): ApiPromise {
+    return apiPromise<unknown>(
+      withWireFallback<ApiResult>(pair, {
+        primary: () => native.create(vendorParams(params), requestOptions).withResponse(),
+        chat: async () => (await fallback()).beta.messages.create(params, requestOptions).withResponse(),
+      }),
+    )
   }
 
-  const messages = new Proxy(native, {
-    get(target, prop) {
-      if (prop === 'create') return create
-      if (prop === 'keepAlivePingParams') return () => null
-      if (prop === 'countTokens') return undefined
-      const value = Reflect.get(target, prop, target)
-      return typeof value === 'function' ? value.bind(target) : value
-    },
-    has(target, prop) {
-      return prop === 'countTokens' ? false : Reflect.has(target, prop)
-    },
-  })
-  const beta = new Proxy(sdk.beta, {
-    get(target, prop) {
-      if (prop === 'messages') return messages
-      const value = Reflect.get(target, prop, target)
-      return typeof value === 'function' ? value.bind(target) : value
-    },
-  })
-  return new Proxy(sdk, {
-    get(target, prop) {
-      if (prop === 'beta') return beta
-      const value = Reflect.get(target, prop, target)
-      return typeof value === 'function' ? value.bind(target) : value
-    },
-  })
+  const messages = overrideMembers(native, { create, keepAlivePingParams: () => null, countTokens: undefined })
+  return overrideMembers(sdk, { beta: overrideMembers(sdk.beta, { messages }) })
 }

@@ -13,6 +13,7 @@
  */
 import { classifyOpenAIHttpFailure } from 'src/providers/shims/openaiErrorClassification.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { isSdkApiError } from 'src/shared/errors.js'
 import type { CompatWireKind } from 'src/providers/presets/compatWires.js'
 
 const FALLBACK_STATUSES: ReadonlySet<number> = new Set([400, 404, 422])
@@ -59,4 +60,28 @@ export function rejectWireOnFailure(
 export function _resetWireFallbackForTesting(): void {
   succeeded.clear()
   rejected.clear()
+}
+
+/**
+ * One request on a wire the table chose: `primary` on it, `chat` when the
+ * pair was rejected before or is rejected by this failure. `keepsWire` names
+ * a failure that is not the wire's to answer, whatever its status.
+ */
+export async function withWireFallback<T>(
+  pair: { wire: CompatWireKind; baseUrl: string; model: string },
+  attempts: { primary: () => Promise<T>; chat: () => Promise<T>; keepsWire?: (body: string) => boolean },
+): Promise<T> {
+  const { wire, baseUrl, model } = pair
+  if (isWireRejected(wire, baseUrl, model)) return attempts.chat()
+  try {
+    const result = await attempts.primary()
+    noteWireSuccess(wire, baseUrl, model)
+    return result
+  } catch (error) {
+    if (!isSdkApiError(error) || typeof error.status !== 'number') throw error
+    const body = `${JSON.stringify(error.error ?? {})} ${error.message}`
+    if (attempts.keepsWire?.(body)) throw error
+    if (rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })) return attempts.chat()
+    throw error
+  }
 }

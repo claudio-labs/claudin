@@ -26,6 +26,7 @@ import {
   type ConverseEvent,
 } from 'src/providers/shims/bedrockConverse/stream.js'
 import { converseApiError, isAbort } from 'src/providers/shims/bedrockConverse/errors.js'
+import { apiPromise, type ApiPromise, type ApiResult } from 'src/providers/shims/clientFacade.js'
 
 type RuntimeClient = {
   send: (
@@ -34,8 +35,6 @@ type RuntimeClient = {
   ) => Promise<{ stream?: AsyncIterable<ConverseEvent>; $metadata?: { requestId?: string } }>
 }
 type CreateOptions = { signal?: AbortSignal; headers?: Record<string, string> } | undefined
-type Result = { data: unknown; response: Response; request_id: string | undefined }
-type CreateResult = Promise<unknown> & { withResponse: () => Promise<Result> }
 
 /** The stream the native path iterates; `controller` is how it aborts one. */
 class ConverseMessageStream {
@@ -82,8 +81,8 @@ async function* abortable(stream: AsyncIterable<ConverseEvent> | undefined, sign
 export function createConverseClient(options: { region?: string } = {}): Record<string, unknown> {
   let runtime: Promise<RuntimeClient> | undefined
 
-  function create(params: Record<string, unknown>, requestOptions?: CreateOptions): CreateResult {
-    const answered = (async (): Promise<Result> => {
+  function create(params: Record<string, unknown>, requestOptions?: CreateOptions): ApiPromise {
+    return apiPromise((async (): Promise<ApiResult> => {
       const { ConverseStreamCommand } = await import('@aws-sdk/client-bedrock-runtime')
       const client = await (runtime ??= createBedrockRuntimeClient({
         http1: true,
@@ -107,12 +106,7 @@ export function createConverseClient(options: { region?: string } = {}): Record<
         response: new Response(null, { status: 200, headers: requestId ? { 'x-amzn-requestid': requestId } : {} }),
         request_id: requestId,
       }
-    })()
-    const out = answered.then(result => result.data) as CreateResult
-    // A caller that only takes withResponse() never awaits `out` itself.
-    out.catch(() => {})
-    out.withResponse = () => answered
-    return out
+    })())
   }
 
   const messages = { create, keepAlivePingParams: () => null }

@@ -1,4 +1,4 @@
-import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { requestModelFor, tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import type { ResolvedProvider, Transport } from 'src/providers/presets/activeProvider.js'
 import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
 
@@ -73,7 +73,7 @@ export function usesAnthropicAccountFlow(): boolean {
 export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
   const profile = tryGetActiveProvider()
   if (profile?.transport !== 'github_copilot') return false
-  const model = resolvedModel?.trim() || profile.model?.trim() || ''
+  const model = requestModelFor(profile, resolvedModel)
   // Claude models only: downstream consumers of the native mode (image token
   // estimation, cache profile) assume Anthropic semantics, so a non-Claude
   // model advertising /v1/messages must still take the OpenAI shim.
@@ -103,8 +103,7 @@ export function usesNativeAnthropicWire(resolvedModel?: string): boolean {
   if (isGithubNativeAnthropicMode(resolvedModel)) return true
   const profile = tryGetActiveProvider()
   if (profile?.transport !== 'openai_compat') return false
-  const model = resolvedModel?.trim() || profile.model?.trim() || ''
-  return resolveCompatWire(profile.baseUrl, model).wire === 'anthropic'
+  return resolveCompatWire(profile.baseUrl, requestModelFor(profile, resolvedModel)).wire === 'anthropic'
 }
 
 /**

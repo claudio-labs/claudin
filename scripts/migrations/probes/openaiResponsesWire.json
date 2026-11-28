@@ -80,21 +80,21 @@
     },
     {
       "name": "a rejected first request is not retried over chat",
-      "source": "src/providers/shims/openaiShim/messagesClient.ts",
-      "find": "        return this._doOpenAIRequest({ ...request, transport: 'chat_completions' }, params, options)\n      }\n      throw error",
-      "replace": "      }\n      throw error"
+      "source": "src/providers/presets/wireFallback.ts",
+      "find": "    if (rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })) return attempts.chat()\n",
+      "replace": "    rejectWireOnFailure(wire, baseUrl, model, { status: error.status, body })\n"
     },
     {
       "name": "a refused replay falls back to chat",
       "source": "src/providers/shims/openaiShim/messagesClient.ts",
-      "find": "        !body.includes(CODEX_REPLAY_REFUSED_CODE) &&\n",
+      "find": "        keepsWire: body => body.includes(CODEX_REPLAY_REFUSED_CODE),\n",
       "replace": ""
     },
     {
       "name": "the effort is not clamped",
       "source": "src/providers/shims/openaiShim/messagesClient.ts",
-      "find": "    const clamped = effort && levels ? clampEffortToValues(effort, levels) : effort\n    try {",
-      "replace": "    const clamped = effort\n    try {"
+      "find": "    const clamped = effort && levels ? clampEffortToValues(effort, levels) : effort\n",
+      "replace": "    const clamped = effort\n"
     },
     {
       "name": "the answer is read as chat",

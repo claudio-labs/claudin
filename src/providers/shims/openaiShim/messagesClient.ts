@@ -60,8 +60,7 @@ import {
   codexReplayActive,
   responsesReplayActive,
 } from 'src/providers/shims/codex/backend.js'
-import { noteWireSuccess, rejectWireOnFailure } from 'src/providers/presets/wireFallback.js'
-import { isSdkApiError } from 'src/shared/errors.js'
+import { withWireFallback } from 'src/providers/presets/wireFallback.js'
 import {
   isGeminiNativeRequest,
   performGeminiRequest,
@@ -449,43 +448,35 @@ class OpenAIShimMessages {
     const levels = resolveShimEffortValues(request.baseUrl, request.resolvedModel)
     const effort = request.reasoning?.effort
     const clamped = effort && levels ? clampEffortToValues(effort, levels) : effort
-    try {
-      const response = await performCodexRequest({
-        // The body forwards the level as the host's catalog spells it.
-        request: {
-          ...request,
-          reasoning: clamped && clamped !== 'default' ? { effort: clamped as ReasoningEffort } : undefined,
+    return withWireFallback(
+      { wire: 'responses', baseUrl: request.baseUrl, model: request.resolvedModel },
+      {
+        primary: async () => {
+          const response = await performCodexRequest({
+            // The body forwards the level as the host's catalog spells it.
+            request: {
+              ...request,
+              reasoning: clamped && clamped !== 'default' ? { effort: clamped as ReasoningEffort } : undefined,
+            },
+            credentials: { apiKey, source: 'env' },
+            params,
+            defaultHeaders: {
+              ...this.defaultHeaders,
+              ...filterAnthropicHeaders(options?.headers),
+              ...(oauthAuth.userAgent && { 'User-Agent': oauthAuth.userAgent }),
+            },
+            authHeaders: isAzureOpenAIUrl(request.baseUrl) ? { 'api-key': apiKey } : undefined,
+            signal: options?.signal,
+          })
+          responsesApiAnswers.add(response)
+          return response
         },
-        credentials: { apiKey, source: 'env' },
-        params,
-        defaultHeaders: {
-          ...this.defaultHeaders,
-          ...filterAnthropicHeaders(options?.headers),
-          ...(oauthAuth.userAgent && { 'User-Agent': oauthAuth.userAgent }),
-        },
-        authHeaders: isAzureOpenAIUrl(request.baseUrl) ? { 'api-key': apiKey } : undefined,
-        signal: options?.signal,
-      })
-      noteWireSuccess('responses', request.baseUrl, request.resolvedModel)
-      responsesApiAnswers.add(response)
-      return response
-    } catch (error) {
-      const body = isSdkApiError(error) ? `${JSON.stringify(error.error ?? {})} ${error.message}` : ''
-      if (
-        isSdkApiError(error) &&
-        typeof error.status === 'number' &&
+        chat: () => this._doOpenAIRequest({ ...request, transport: 'chat_completions' }, params, options),
         // A replayed reasoning item the host cannot decrypt (one from another
         // account or backend) is the thinking-strip retry's to answer.
-        !body.includes(CODEX_REPLAY_REFUSED_CODE) &&
-        rejectWireOnFailure('responses', request.baseUrl, request.resolvedModel, {
-          status: error.status,
-          body,
-        })
-      ) {
-        return this._doOpenAIRequest({ ...request, transport: 'chat_completions' }, params, options)
-      }
-      throw error
-    }
+        keepsWire: body => body.includes(CODEX_REPLAY_REFUSED_CODE),
+      },
+    )
   }
 
   private async _doOpenAIRequest(

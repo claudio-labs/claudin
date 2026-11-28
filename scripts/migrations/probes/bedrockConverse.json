@@ -15,13 +15,13 @@
     {
       "name": "the factory never routes to Converse",
       "source": "src/providers/transport/client.ts",
-      "find": "    if (usesConverse(model?.trim() || activeProvider?.model)) {",
+      "find": "    if (usesConverse(wireModel)) {",
       "replace": "    if (false) {"
     },
     {
       "name": "tool search is off for Converse",
       "source": "src/providers/shims/clientToolSearch/capability.ts",
-      "find": "  if (transport === 'bedrock') return usesConverse(model?.trim() || profile?.model)",
+      "find": "  if (transport === 'bedrock') return usesConverse(requestModelFor(profile, model))",
       "replace": "  if (transport === 'bedrock') return false"
     },
     {

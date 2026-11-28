@@ -12,7 +12,7 @@
  * Foundry clients are never wrapped.
  */
 import { isGithubNativeAnthropicMode } from 'src/providers/model/providers.js'
-import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { requestModelFor, tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 const CLIENT_SEARCH_TRANSPORTS: ReadonlySet<string> = new Set([
@@ -26,7 +26,7 @@ const CLIENT_SEARCH_TRANSPORTS: ReadonlySet<string> = new Set([
 export function clientDefersTools(model?: string): boolean {
   const profile = tryGetActiveProvider()
   const transport = profile?.transport
-  if (transport === 'bedrock') return usesConverse(model?.trim() || profile?.model)
+  if (transport === 'bedrock') return usesConverse(requestModelFor(profile, model))
   if (!transport || !CLIENT_SEARCH_TRANSPORTS.has(transport)) return false
   return !(transport === 'github_copilot' && isGithubNativeAnthropicMode(model))
 }

@@ -33,7 +33,7 @@ import {
   getVertexRegionForModel,
   isEnvTruthy,
 } from 'src/shared/envUtils.js'
-import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { requestModelFor, tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
 import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
 import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
@@ -255,9 +255,10 @@ async function buildAnthropicClient({
     return new Anthropic(nativeArgs)
   }
   // A vendor's own Anthropic endpoint for an openai_compat profile (compatWires.ts).
+  const wireModel = requestModelFor(activeProvider, model)
   const vendorWire =
     transport === 'openai_compat'
-      ? resolveCompatWire(activeProvider?.baseUrl, model?.trim() || activeProvider?.model?.trim() || '')
+      ? resolveCompatWire(activeProvider?.baseUrl, wireModel)
       : undefined
   if (vendorWire?.wire === 'anthropic' && activeProvider) {
     const { createVendorAnthropicClient } = await import('src/providers/shims/vendorAnthropic/client.js')
@@ -268,7 +269,7 @@ async function buildAnthropicClient({
       apiKey: activeProvider.apiKey ?? '',
       row: vendorWire.row,
       compatBaseUrl: activeProvider.baseUrl ?? '',
-      model: model?.trim() || activeProvider.model?.trim() || '',
+      model: wireModel,
       fallback: async () => {
         const { createOpenAIShimClient } = await import('src/providers/shims/openaiShim.js')
         return createOpenAIShimClient(shimOptions) as never
@@ -297,7 +298,7 @@ async function buildAnthropicClient({
         ? process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         : (activeProvider?.extras?.awsRegion ?? getAWSRegion())
     // Every model on Bedrock but Claude speaks only Converse (bedrockConverse/models.ts).
-    if (usesConverse(model?.trim() || activeProvider?.model)) {
+    if (usesConverse(wireModel)) {
       const { createConverseClient } = await import('src/providers/shims/bedrockConverse/client.js')
       return createConverseClient({ region: awsRegion }) as unknown as Anthropic
     }
