@@ -168,7 +168,10 @@ semantic analysis for the whole program and report near-zero.
 ## What the `--compile` binary is NOT
 
 `CLAUDIN_COMPILE=1` produces `bin/claudin.exe` via `bun --compile`, and that
-binary — not the Node bundle — is what a user runs. `install.cjs` hardlinks it
+binary — not the Node bundle — is what a user runs. It also leaves no
+`dist/cli.mjs`: every build deletes it first, and a compile build writes only
+`dist/bin/`, so `claudindev` and the suites that read the bundle fail until the
+next `bun run build`. `install.cjs` hardlinks it
 over the wrapper package's bin stub, so `claudin` execs it directly;
 `cli-wrapper.cjs` states this at its own top (*"bin/claudin.exe, so this file is
 never invoked"*). Four consequences, each measured on the shipped binary, each
