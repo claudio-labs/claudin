@@ -229,6 +229,22 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
+  test('a pure rename of a binary file keeps it byte for byte', async () => {
+    const src = join(dir, 'logo.png')
+    const dest = join(dir, 'assets-logo.png')
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff, 0xfe, 0x80, 0xc3, 0x28])
+    writeFileSync(src, bytes)
+    markRead(src)
+    await runApplyPatch(
+      { patchText: envelope(`*** Update File: ${src}\n*** Move to: ${dest}`) },
+      ctx,
+      randomUUID(),
+    )
+    expect(existsSync(src)).toBe(false)
+    expect(readFileSync(dest).toString('hex')).toBe(bytes.toString('hex'))
+    cleanup()
+  })
+
   test('applies multiple files in one call', async () => {
     const a = join(dir, 'a.ts')
     const b = join(dir, 'old.ts')
