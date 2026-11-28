@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import {
-  attachMcpWireFilter,
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
@@ -9,6 +8,7 @@ import {
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import { getListRecord, resetListTtlRecordsForTests } from 'src/mcp/client/listTtl.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 import { refreshExpiredMcpLists } from 'src/mcp/listTtlRefresh.js'
 import { clearLoadedMcpSkills } from 'src/mcp/mcpSkills.js'
 import type { ConnectedMCPServer, ScopedMcpServerConfig } from 'src/mcp/types.js'

@@ -11,7 +11,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod/v4'
 
 import { connectInMemoryMcpServer } from 'src/mcp/__testutils__/inMemoryMcpServer.js'
-import { attachMcpWireFilter, fetchCommandsForClient } from 'src/mcp/client/fetchCapabilities.js'
+import { fetchCommandsForClient } from 'src/mcp/client/fetchCapabilities.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 import type { ConnectedMCPServer, ScopedMcpServerConfig } from 'src/mcp/types.js'
 import type { Command } from 'src/shared/types/command.js'
 

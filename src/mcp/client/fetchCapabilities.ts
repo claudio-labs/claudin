@@ -66,45 +66,12 @@ import {
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
 import { splitPromptArguments } from 'src/mcp/client/promptArguments.js'
-import { isSchemaError, type SkippedEntry } from 'src/mcp/client/listValidation.js'
+import { isSchemaError } from 'src/mcp/client/listValidation.js'
 import { recordListFetch } from 'src/mcp/client/listTtl.js'
-import { attachWireFilter } from 'src/mcp/client/wireFilter.js'
-import { SEND_RULES } from 'src/mcp/client/wireRules.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
 const MCP_FETCH_CACHE_SIZE = 20
-
-function logSkippedEntries(server: string, kind: string, skipped: SkippedEntry[]): void {
-  for (const { name, reason } of skipped) {
-    logMCPError(server, `Skipped ${kind}${name ? ` "${name}"` : ''}: ${reason}`)
-  }
-}
-
-/**
- * The wire filter every MCP connection goes through before `client.connect`:
- * each list page reaches the SDK with its malformed entries already dropped,
- * and each one dropped is logged under the server's name.
- *
- * `keepInitialize` sends the 2025 `initialize` as the Client built it, for an
- * SDK-control client (sdkClients.ts): it is built with `capabilities: {}` and
- * handles none of the server requests the rewrite would announce.
- */
-export function attachMcpWireFilter(
-  serverName: string,
-  transport: Transport,
-  options: { keepInitialize?: boolean } = {},
-): void {
-  const { initialize: _rewrite, ...otherSendRules } = SEND_RULES
-  attachWireFilter(transport, {
-    sendRules: options.keepInitialize ? otherSendRules : SEND_RULES,
-    onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),
-    onCursorCycle: (method, cursor) =>
-      logMCPError(serverName, `${method} repeated the cursor "${cursor}"; the list stops at the entries already received`),
-    onPageLimit: (method, pages) =>
-      logMCPDebug(serverName, `${method} still had a next page after ${pages} pages; the list stops at the entries already received`),
-  })
-}
 
 /**
  * Encode MCP tool input for the auto-mode security classifier.
@@ -138,7 +105,7 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
       // silently disappear from the model's context until the next reconnect.
       // A list that fails its schema answers the same on every try, so it is
       // not retried; its entries were already checked one by one on the wire
-      // (attachMcpWireFilter).
+      // (attachMcpWireFilter, wireFilter.ts).
       const listTools = async () => {
         let lastError: unknown
         for (let attempt = 0; attempt < 3; attempt++) {

@@ -18,7 +18,7 @@ import {
   type ServerRequest,
   type Tool as McpTool,
 } from '@modelcontextprotocol/sdk/types.js'
-import { attachMcpWireFilter } from 'src/mcp/client/fetchCapabilities.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 import type { ConnectedMCPServer, ScopedMcpServerConfig } from 'src/mcp/types.js'
 
 type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>

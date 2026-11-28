@@ -55,7 +55,6 @@ import { stopMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import { resumeMcpResourceWatches } from 'src/mcp/resourceWatch.js'
 import { SDK_LIST_MAX_PAGES } from 'src/mcp/client/cursorCycleGuard.js'
 import {
-  attachMcpWireFilter,
   fetchCommandsForClient,
   fetchEventTypesForClient,
   fetchResourcesForClient,
@@ -63,6 +62,7 @@ import {
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import { createTransport, type InProcessMcpServer } from 'src/mcp/client/transport.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 
 // connection.ts <-> fetchCapabilities.ts form an intentional ESM cycle: each
 // references the other only inside function bodies (never at module-eval time),

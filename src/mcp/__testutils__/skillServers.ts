@@ -20,7 +20,7 @@ import {
   skillEntry,
 } from '@modelcontextprotocol/server/ext/skills'
 import { type ModernFixture, serveModern } from 'src/mcp/__testutils__/eraServers.js'
-import { attachMcpWireFilter } from 'src/mcp/client/fetchCapabilities.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 import type { ConnectedMCPServer, ScopedMcpServerConfig } from 'src/mcp/types.js'
 
 export type Era = 'legacy' | 'modern'

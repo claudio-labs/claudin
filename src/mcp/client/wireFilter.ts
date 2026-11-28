@@ -17,10 +17,15 @@
  * The transport itself is neither wrapped nor subclassed: the SDK tells a
  * stdio transport from an HTTP one by its class, to probe on a sibling
  * process or to classify HTTP errors, and a stand-in would defeat both.
+ *
+ * attachMcpWireFilter is the filter as connections attach it, logging under
+ * the server's name. It lives here rather than beside the fetchers so that
+ * attaching one does not pull in fetchCapabilities.ts.
  */
 import type { JSONRPCMessage, Transport } from '@modelcontextprotocol/client'
-import { logError } from 'src/shared/log.js'
+import { logError, logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { createCursorCycleGuard } from 'src/mcp/client/cursorCycleGuard.js'
+import type { SkippedEntry } from 'src/mcp/client/listValidation.js'
 import {
   SEND_RULES,
   type SendRule,
@@ -112,4 +117,35 @@ export function attachWireFilter(transport: Transport, options: WireFilterOption
     }
     previous?.(message, extra)
   }
+}
+
+function logSkippedEntries(server: string, kind: string, skipped: SkippedEntry[]): void {
+  for (const { name, reason } of skipped) {
+    logMCPError(server, `Skipped ${kind}${name ? ` "${name}"` : ''}: ${reason}`)
+  }
+}
+
+/**
+ * The wire filter every MCP connection goes through before `client.connect`:
+ * each list page reaches the SDK with its malformed entries already dropped,
+ * and each one dropped is logged under the server's name.
+ *
+ * `keepInitialize` sends the 2025 `initialize` as the Client built it, for an
+ * SDK-control client (sdkClients.ts): it is built with `capabilities: {}` and
+ * handles none of the server requests the rewrite would announce.
+ */
+export function attachMcpWireFilter(
+  serverName: string,
+  transport: Transport,
+  options: { keepInitialize?: boolean } = {},
+): void {
+  const { initialize: _rewrite, ...otherSendRules } = SEND_RULES
+  attachWireFilter(transport, {
+    sendRules: options.keepInitialize ? otherSendRules : SEND_RULES,
+    onSkipped: (kind, skipped) => logSkippedEntries(serverName, kind, skipped),
+    onCursorCycle: (method, cursor) =>
+      logMCPError(serverName, `${method} repeated the cursor "${cursor}"; the list stops at the entries already received`),
+    onPageLimit: (method, pages) =>
+      logMCPDebug(serverName, `${method} still had a next page after ${pages} pages; the list stops at the entries already received`),
+  })
 }
