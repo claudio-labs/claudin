@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -370,6 +370,64 @@ describe('a cached verdict the server no longer matches', () => {
     const connection = await connect(serverName, config)
     expect(connection.protocolVersion).toBe(MODERN)
     expect(probes(fixture)).toBe(1)
+  })
+
+  test('a cached verdict whose connect keeps failing is dropped, even when nothing replaces it', async () => {
+    const fixture = track(serveModern(withTool, { answer: () => new Response('down', { status: 500 }) }))
+    const serverName = name('down')
+    const config = http(fixture.url, { startupTimeout: 1000 })
+    const key = getEraCacheKey(serverName, config)
+    await saveEraVerdict(key, { kind: 'legacy', savedAt: Date.now(), ttlMs: 60_000 })
+    const connection = await connectToServer(serverName, config)
+    connections.push(connection)
+    expect(connection.type).toBe('failed')
+    expect(fixture.methods().slice(0, 2)).toEqual(['POST initialize', 'POST server/discover'])
+    expect(await readEraVerdict(key)).toBeUndefined()
+  })
+})
+
+/** A response that never comes: a server that took the request and hangs. */
+const NEVER = new Promise<Response>(() => {})
+
+describe('the probe and the startup deadline', () => {
+  test('a probe the server never answers gets 5 s, and the 2025 protocol the rest of the startup timeout', async () => {
+    const fixture = track(
+      serveModern(withTool, {
+        answer: body => (body?.method === 'server/discover' ? (NEVER as unknown as Response) : undefined),
+      }),
+    )
+    const serverName = name('silent-probe')
+    const config = http(fixture.url, { startupTimeout: 8000 })
+    const started = Date.now()
+    const connection = await connect(serverName, config)
+    expect(connection.protocolVersion).toBe(LEGACY)
+    expect(Date.now() - started).toBeLessThan(7000)
+    expect(fixture.methods().slice(0, 2)).toEqual(['POST server/discover', 'POST initialize'])
+    expect(await readEraVerdict(getEraCacheKey(serverName, config))).toMatchObject({ kind: 'legacy' })
+  }, 15_000)
+
+  test('a probe turned down after the deadline fails the connect instead of starting another one', async () => {
+    const realNow = Date.now.bind(Date)
+    let skew = 0
+    const now = spyOn(Date, 'now').mockImplementation(() => realNow() + skew)
+    try {
+      const fixture = track(
+        serveModern(withTool, {
+          answer: body => {
+            if (body?.method !== 'server/discover') return undefined
+            // The startup timeout is spent by the time the 500 is read.
+            skew = 10_000
+            return new Response('probe refused', { status: 500 })
+          },
+        }),
+      )
+      const connection = await connectToServer(name('late-500'), http(fixture.url, { startupTimeout: 2000 }))
+      connections.push(connection)
+      expect(connection).toMatchObject({ type: 'failed', error: expect.stringContaining('HTTP 500') })
+      expect(fixture.methods()).toEqual(['POST server/discover'])
+    } finally {
+      now.mockRestore()
+    }
   })
 })
 

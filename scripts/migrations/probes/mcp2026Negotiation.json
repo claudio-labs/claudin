@@ -35,6 +35,21 @@
       "replace": "        if (eraStep !== null && false) {\n"
     },
     {
+      "name": "an era step past the startup deadline connects again with no time left instead of failing",
+      "find": "        if (eraStep !== null && deadline - Date.now() > 0) {\n",
+      "replace": "        if (eraStep !== null && true) {\n"
+    },
+    {
+      "name": "a failed cached verdict is not dropped, so it is replayed again whenever nothing replaces it",
+      "find": "          if (eraStep.kind === 'probe') await dropEraVerdict(eraKey)\n",
+      "replace": ""
+    },
+    {
+      "name": "the probe gets the SDK's 60 s instead of 5 s, so a probe nobody answers eats the startup timeout",
+      "find": "                    probe: { timeoutMs: plan.probeTimeoutMs },\n",
+      "replace": ""
+    },
+    {
       "name": "a successful probe is never cached",
       "find": "      if (verdict) await saveEraVerdict(eraKey, verdict)\n",
       "replace": ""
