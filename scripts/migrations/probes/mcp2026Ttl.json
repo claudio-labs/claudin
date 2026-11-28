@@ -2,7 +2,8 @@
   "test": [
     "src/mcp/client/listTtl.test.ts",
     "src/mcp/listTtlRefresh.test.ts",
-    "src/agent/repl/controllers/useOnQuery.wiring.test.ts"
+    "src/agent/repl/controllers/useOnQuery.wiring.test.ts",
+    "src/platform/headless/print/turnLoop.listTtl.test.ts"
   ],
   "source": "src/mcp/client/listTtl.ts",
   "probes": [
@@ -29,7 +30,7 @@
     {
       "name": "an unchanged list is written to AppState anyway",
       "source": "src/mcp/listTtlRefresh.ts",
-      "find": "if (after?.hash === before?.hash) {",
+      "find": "if (after.hash === before?.hash) {",
       "replace": "if (false) {"
     },
     {
@@ -43,6 +44,29 @@
       "source": "src/agent/repl/controllers/useOnQuery.ts",
       "find": "await refreshExpiredMcpLists({",
       "replace": "void refreshExpiredMcpLists({"
+    },
+    {
+      "name": "a dropped write keeps the new hash, so the change is never written",
+      "source": "src/mcp/listTtlRefresh.ts",
+      "find": "      for (const read of changed) revertListRecord(client.name, read.kind, read.after, read.before)\n",
+      "replace": ""
+    },
+    {
+      "name": "each list of a server is written on its own, and the second write is dropped",
+      "source": "src/mcp/listTtlRefresh.ts",
+      "find": "[...kindsByServer].map(([server, kinds]) => refreshServer(byName.get(server)!, kinds, deps, now)),",
+      "replace": "[...kindsByServer].flatMap(([server, kinds]) => kinds.map(kind => refreshServer(byName.get(server)!, [kind], deps, now))),"
+    },
+    {
+      "name": "a revert overwrites the record a reconnect fetched",
+      "find": "  if (records.get(key) !== fetched) return\n",
+      "replace": ""
+    },
+    {
+      "name": "a headless turn starts without waiting for the refresh",
+      "source": "src/platform/headless/print/turnLoop.ts",
+      "find": "        await refreshExpiredMcpLists({\n          getMcp: () => getAppState().mcp,",
+      "replace": "        void refreshExpiredMcpLists({\n          getMcp: () => getAppState().mcp,"
     },
     {
       "name": "control: a longer turn budget changes nothing the suites pin",
