@@ -504,6 +504,24 @@ describe('Monitor refuses what it cannot watch, sending nothing', () => {
   })
 })
 
+describe('the event types a server lists', () => {
+  test('are asked once per connection: validation and the call share them, and a new connection asks again', async () => {
+    const { fixture, connection } = await serve()
+    const lists = () => fixture.eventHits().filter(hit => hit.method === 'POST events/list').length
+    await resolveMcpEventSource({ server: 'ci', event: 'build' }, [connection], async c => c)
+    expect(await resolveMcpEventSource({ server: 'ci', event: 'deploy' }, [connection], async c => c)).toMatchObject({
+      delivery: 'poll',
+    })
+    expect(lists()).toBe(1)
+
+    await connection.cleanup()
+    const again = await connectToServer('ci', connection.config)
+    connections.push(again)
+    await resolveMcpEventSource({ server: 'ci', event: 'build' }, [again], async c => c)
+    expect(lists()).toBe(2)
+  })
+})
+
 describe('MonitorTool with an mcp_event source', () => {
   test('starts a monitor_mcp task whose events reach the queue, and TaskStop ends it', async () => {
     const { fixture, connection } = await serve()

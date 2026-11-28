@@ -144,6 +144,18 @@
       "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
       "find": "    return { refusal: withServerText(`MCP server \"${source.server}\" did not list its events`, 'error', errorMessage(error)) }\n",
       "replace": "    return { refusal: `MCP server \"${source.server}\" did not list its events: ${errorMessage(error)}` }\n"
+    },
+    {
+      "name": "events/list: every Monitor resolve asks the server again",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    types = await fetchEventTypesForClient(connection)\n",
+      "replace": "    fetchEventTypesForClient.cache.delete(connection.name)\n    types = await fetchEventTypesForClient(connection)\n"
+    },
+    {
+      "name": "events/list: a closed connection's event types outlive it",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        fetchCommandsForClient.cache.delete(name)\n        fetchEventTypesForClient.cache.delete(name)\n\n",
+      "replace": "        fetchCommandsForClient.cache.delete(name)\n\n"
     }
   ]
 }

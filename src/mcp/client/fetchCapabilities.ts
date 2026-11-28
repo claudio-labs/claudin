@@ -37,12 +37,14 @@ import { normalizeNameForMCP } from 'src/mcp/normalization.js'
 import { listMcpSkillCommands } from 'src/mcp/mcpSkills.js'
 import { createPromptArgumentCompleter } from 'src/mcp/promptCompletions.js'
 import type {
+  ConnectedMCPServer,
   MCPServerConnection,
   ScopedMcpServerConfig,
   ServerResource,
   ServerResourceTemplate,
 } from 'src/mcp/types.js'
 import { isMcpAuthCached } from 'src/mcp/client/authCache.js'
+import { listEventTypes, type McpEventType } from 'src/mcp/client/events.js'
 // callTool.js, taskCall.js and connection.js below form intentional ESM cycles
 // with this module: every cross-module symbol is dereferenced inside function
 // bodies, not at module-eval time, so live bindings resolve safely. Do not
@@ -543,6 +545,20 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
   },
   (): Command[] => [],
   (client: MCPServerConnection) => client.name,
+  MCP_FETCH_CACHE_SIZE,
+)
+
+// The event types a server publishes (events.ts), asked by ListMcpResources
+// and twice per Monitor call (validateInput, then call). The extension has
+// no list_changed, so a list lasts until the connection closes or is cleared
+// (connection.ts). A failure is not kept and still rejects: Monitor's refusal
+// and ListMcpResources' log quote it.
+export const fetchEventTypesForClient = memoizeWithLRUExceptFailures(
+  (client: ConnectedMCPServer): Promise<McpEventType[]> => listEventTypes(client.client),
+  (error: unknown): never => {
+    throw error
+  },
+  (client: ConnectedMCPServer) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
 

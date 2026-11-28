@@ -27,7 +27,6 @@ import {
   type EventWatch,
   type EventWatchDeps,
   eventsRefusal,
-  listEventTypes,
   type McpEvent,
   type McpEventType,
   pickDelivery,
@@ -35,6 +34,7 @@ import {
   watchEvents,
   withServerText,
 } from 'src/mcp/client/events.js'
+import { fetchEventTypesForClient } from 'src/mcp/client/fetchCapabilities.js'
 import type { ConnectedMCPServer, MCPServerConnection } from 'src/mcp/types.js'
 import { errorMessage } from 'src/shared/errors.js'
 import type { AgentId } from 'src/shared/types/ids.js'
@@ -72,7 +72,7 @@ export async function resolveMcpEventSource(
   let types: McpEventType[]
   try {
     connection = await ensureConnected(listed)
-    types = await listEventTypes(connection.client)
+    types = await fetchEventTypesForClient(connection)
   } catch (error) {
     return { refusal: withServerText(`MCP server "${source.server}" did not list its events`, 'error', errorMessage(error)) }
   }

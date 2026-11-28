@@ -57,6 +57,7 @@ import { SDK_LIST_MAX_PAGES } from 'src/mcp/client/cursorCycleGuard.js'
 import {
   attachMcpWireFilter,
   fetchCommandsForClient,
+  fetchEventTypesForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
   fetchToolsForClient,
@@ -724,6 +725,7 @@ export const connectToServer = memoize(
         fetchResourcesForClient.cache.delete(name)
         fetchResourceTemplatesForClient.cache.delete(name)
         fetchCommandsForClient.cache.delete(name)
+        fetchEventTypesForClient.cache.delete(name)
 
         connectToServer.cache.delete(key)
         logMCPDebug(name, `Cleared connection cache for reconnection`)
@@ -981,6 +983,7 @@ export async function clearServerCache(
   fetchResourcesForClient.cache.delete(name)
   fetchResourceTemplatesForClient.cache.delete(name)
   fetchCommandsForClient.cache.delete(name)
+  fetchEventTypesForClient.cache.delete(name)
 }
 
 /**

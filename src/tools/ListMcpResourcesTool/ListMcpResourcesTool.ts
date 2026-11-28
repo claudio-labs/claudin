@@ -4,7 +4,8 @@ import {
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
 } from 'src/mcp/client.js'
-import { eventsRefusal, listEventTypes } from 'src/mcp/client/events.js'
+import { eventsRefusal } from 'src/mcp/client/events.js'
+import { fetchEventTypesForClient } from 'src/mcp/client/fetchCapabilities.js'
 import type { ConnectedMCPServer } from 'src/mcp/types.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
@@ -69,7 +70,7 @@ function isEventEntry(entry: Entry): entry is EventEntry {
 async function eventEntries(connection: ConnectedMCPServer): Promise<EventEntry[]> {
   if (eventsRefusal(connection)) return []
   try {
-    const types = await listEventTypes(connection.client)
+    const types = await fetchEventTypesForClient(connection)
     return types.map(type => ({
       event: type.name,
       ...(type.description !== undefined && { description: type.description }),
