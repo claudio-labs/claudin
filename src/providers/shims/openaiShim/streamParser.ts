@@ -44,7 +44,6 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { makeMessageId } from 'src/providers/shims/openaiShim/helpers.js'
 import { extractReasoningDelta } from 'src/providers/shims/openaiShim/reasoningNormalizer.js'
 import type { OpenAIStreamChunk } from 'src/providers/shims/openaiShim/types.js'
-import { CALL_TOOL_NAME, unwrapGatewayCall } from 'src/providers/shims/clientToolSearch/index.js'
 import {
   findXmlToolCallOpener,
   isHy3Model,
@@ -96,10 +95,6 @@ export function repairPossiblyTruncatedObjectJson(raw: string): string | null {
  *
  * `kvCache` reads the server's usage as a KV cache (Ollama): see
  * buildAnthropicUsageFromRawUsage.
- *
- * `gateway` is client-side tool search: a call to CallTool carries the real
- * tool in its arguments, so it is held until those arguments are whole and
- * then emitted as a tool_use of the real tool (clientToolSearch/callTool.ts).
  */
 export async function* openaiStreamToAnthropic(
   response: Response,
@@ -107,7 +102,7 @@ export async function* openaiStreamToAnthropic(
   signal?: AbortSignal,
   estimatedInputTokens?: number,
   toolNames?: Set<string>,
-  opts: { kvCache?: boolean; gateway?: boolean } = {},
+  opts: { kvCache?: boolean } = {},
 ): AsyncGenerator<AnthropicStreamEvent> {
   const messageId = makeMessageId()
   let contentBlockIndex = 0
@@ -119,8 +114,6 @@ export async function* openaiStreamToAnthropic(
       index: number
       jsonBuffer: string
       normalizeAtStop: boolean
-      /** A CallTool call whose tool_use is not emitted yet. */
-      gatewayPending?: boolean
     }
   >()
   let hasEmittedContentStart = false
@@ -151,33 +144,6 @@ export async function* openaiStreamToAnthropic(
   // Set by finalizeXmlBuffer when it recovers ≥1 tool call, so the caller can
   // rewrite the stop reason to tool_use.
   let xmlRecoveredStopReason: 'tool_use' | null = null
-
-  // A held gateway call, emitted whole as the tool it names. Malformed
-  // arguments keep the CallTool name, so the agent loop reports an unknown
-  // tool to the model instead of running a guess.
-  const emitGatewayCall = function* (tc: { id: string; index: number; jsonBuffer: string; gatewayPending?: boolean }) {
-    tc.gatewayPending = false
-    const call = unwrapGatewayCall(tc.jsonBuffer)
-    yield {
-      type: 'content_block_start',
-      index: tc.index,
-      content_block: { type: 'tool_use', id: tc.id, name: call?.name ?? CALL_TOOL_NAME, input: {} },
-    } as AnthropicStreamEvent
-    yield {
-      type: 'content_block_delta',
-      index: tc.index,
-      delta: { type: 'input_json_delta', partial_json: JSON.stringify(call?.input ?? {}) },
-    } as AnthropicStreamEvent
-    yield { type: 'content_block_stop', index: tc.index } as AnthropicStreamEvent
-  }
-
-  // Before another tool call opens, a held gateway call whose arguments are
-  // already whole goes out, so blocks keep arriving in index order.
-  const flushCompleteGatewayCalls = function* () {
-    for (const [, tc] of activeToolCalls) {
-      if (tc.gatewayPending && unwrapGatewayCall(tc.jsonBuffer)) yield* emitGatewayCall(tc)
-    }
-  }
 
   // Emit message_start
   yield {
@@ -350,17 +316,11 @@ export async function* openaiStreamToAnthropic(
         if (recovered.visibleText) yield* emitVisibleText(recovered.visibleText)
         if (hasEmittedContentStart) yield* closeActiveContentBlock()
         for (const tc of recovered.calls) {
-          // A gateway call recovered from XML text names the real tool too.
-          const viaGateway =
-            opts.gateway && tc.name === CALL_TOOL_NAME
-              ? unwrapGatewayCall(JSON.stringify(tc.arguments))
-              : null
-          const name = viaGateway?.name ?? tc.name
           const toolBlockIndex = contentBlockIndex
           yield {
             type: 'content_block_start',
             index: toolBlockIndex,
-            content_block: { type: 'tool_use', id: tc.id, name, input: {} },
+            content_block: { type: 'tool_use', id: tc.id, name: tc.name, input: {} },
           }
           contentBlockIndex++
           yield {
@@ -369,9 +329,7 @@ export async function* openaiStreamToAnthropic(
             delta: {
               type: 'input_json_delta',
               partial_json: JSON.stringify(
-                viaGateway
-                  ? viaGateway.input
-                  : normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
+                normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
               ),
             },
           }
@@ -472,7 +430,6 @@ export async function* openaiStreamToAnthropic(
           }
           for (const tc of delta.tool_calls) {
             if (tc.id && tc.function?.name) {
-              yield* flushCompleteGatewayCalls()
               // New tool call starting — close any open thinking block first
               if (hasEmittedThinkingStart && !hasClosedThinking) {
                 yield { type: 'content_block_stop', index: contentBlockIndex }
@@ -485,21 +442,6 @@ export async function* openaiStreamToAnthropic(
 
               const toolBlockIndex = contentBlockIndex
               const initialArguments = tc.function.arguments ?? ''
-              if (opts.gateway && tc.function.name === CALL_TOOL_NAME) {
-                // The real name is inside the arguments: hold the block.
-                processStreamChunk(streamState, initialArguments)
-                estimatedOutputChars += initialArguments.length
-                activeToolCalls.set(tc.index, {
-                  id: tc.id,
-                  name: CALL_TOOL_NAME,
-                  index: toolBlockIndex,
-                  jsonBuffer: initialArguments,
-                  normalizeAtStop: true,
-                  gatewayPending: true,
-                })
-                contentBlockIndex++
-                continue
-              }
               const normalizeAtStop = hasToolFieldMapping(tc.function.name)
               processStreamChunk(streamState, tc.function.arguments ?? '')
               activeToolCalls.set(tc.index, {
@@ -594,10 +536,6 @@ export async function* openaiStreamToAnthropic(
           }
           // Close active tool calls
           for (const [, tc] of activeToolCalls) {
-            if (tc.name === CALL_TOOL_NAME && tc.gatewayPending !== undefined) {
-              if (tc.gatewayPending) yield* emitGatewayCall(tc)
-              continue
-            }
             if (tc.normalizeAtStop) {
               let partialJson: string
               if (choice.finish_reason === 'length') {

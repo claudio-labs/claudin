@@ -15,6 +15,7 @@ import type {
 import { isCodexBaseUrl } from 'src/providers/presets/providerConfig.js'
 declare const MACRO: { VERSION: string; DISPLAY_VERSION?: string }
 import { sanitizeSchemaForOpenAICompat } from 'src/providers/shims/openaiSchemaSanitizer.js'
+import { CALL_TOOL_NAME } from 'src/providers/shims/clientToolSearch/callTool.js'
 import {
   createThinkTagFilter,
   stripThinkTags,
@@ -542,9 +543,20 @@ export function convertToolsToResponsesTools(
   tools: Array<{ name?: string; description?: string; input_schema?: Record<string, unknown> }>,
 ): ResponsesTool[] {
   return tools
-    .filter(tool => tool.name && tool.name !== 'ToolSearchTool')
+    .filter(tool => tool.name)
     .map(tool => {
       const rawParameters = tool.input_schema ?? { type: 'object', properties: {} }
+      // The tool-search gateway takes free-form `arguments`, which strict mode
+      // cannot express: an object with no properties would be dropped.
+      if (tool.name === CALL_TOOL_NAME) {
+        return {
+          type: 'function',
+          name: CALL_TOOL_NAME,
+          description: tool.description ?? '',
+          parameters: sanitizeSchemaForOpenAICompat(rawParameters),
+          strict: false,
+        }
+      }
       // Codex requires strict schemas: all properties must be required. This
       // was an unsourced claim from the initial commit until 2026-07-29, when
       // sending a truthful `required` under `strict: true` was answered with

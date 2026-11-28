@@ -57,6 +57,7 @@ const { CODEX_HONOR_MAX_TOKENS } = await import('src/providers/shims/codex/backe
 const keepAlive = await import('src/agent/cache/anthropic/keepAlive.js')
 const { __test: webSearchToolTest } = await import('src/tools/WebSearchTool/WebSearchTool.js')
 const { _resetReplayTrustForTesting } = await import('src/providers/shims/codex/items.js')
+const { CALL_TOOL } = await import('src/providers/shims/clientToolSearch/callTool.js')
 const { getCodexLimits, resetCodexLimitsForTesting } = await import('src/providers/codexLimits.js')
 
 // A refusal latches process-wide (codex/items.ts); the error-event tests raise one.
@@ -1465,7 +1466,6 @@ describe('Codex input conversion (characterization)', () => {
 
   test('tool schemas: filtered names, missing schemas, uri formats and tuple items', () => {
     const tools = convertToolsToResponsesTools([
-      { name: 'ToolSearchTool', input_schema: { type: 'object', properties: {} } },
       { description: 'no name' },
       { name: 'Bare' },
       { name: 'NoProps', input_schema: { type: 'object' } },
@@ -1617,9 +1617,19 @@ describe('performCodexRequest body, headers and URL (characterization)', () => {
     expect(forced.body).not.toHaveProperty('tools')
     expect(forced.body).not.toHaveProperty('parallel_tool_calls')
 
-    const onlySearch = await send({ params: { tools: [{ name: 'ToolSearchTool' }] } })
-    expect(onlySearch.body).not.toHaveProperty('tools')
-    expect(onlySearch.body).not.toHaveProperty('tool_choice')
+    const onlyNameless = await send({ params: { tools: [{ description: 'no name' }] } })
+    expect(onlyNameless.body).not.toHaveProperty('tools')
+    expect(onlyNameless.body).not.toHaveProperty('tool_choice')
+  })
+
+  test('the tool-search gateway goes out non-strict, its free-form arguments kept', () => {
+    const [gateway, other] = convertToolsToResponsesTools([
+      { name: CALL_TOOL.name, description: CALL_TOOL.description, input_schema: CALL_TOOL.input_schema },
+      { name: 'ToolSearch', input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
+    ] as never)
+    expect(gateway).toMatchObject({ name: 'CallTool', strict: false })
+    expect(gateway?.parameters).toMatchObject({ properties: { arguments: { type: 'object' } }, required: ['name', 'arguments'] })
+    expect(other).toMatchObject({ name: 'ToolSearch', strict: true })
   })
 
   test('reasoning goes out as resolved, and sampling only for models that are not GPT or Codex', async () => {

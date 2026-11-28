@@ -122,13 +122,6 @@ import {
   refreshOllamaLoadedContext,
 } from 'src/providers/model/ollamaModelInfo.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import {
-  CALL_TOOL,
-  CALL_TOOL_NAME,
-  clientToolSearchDisabled,
-  planToolDeferral,
-  unwrapGatewayCall,
-} from 'src/providers/shims/clientToolSearch/index.js'
 
 // An Anthropic model by name, however a gateway spells it: `claude-…`,
 // `anthropic/…`, a Bedrock region prefix (`us.anthropic.claude-…`) or a bare
@@ -250,12 +243,6 @@ class OpenAIShimMessages {
           .map(t => (t as { name?: unknown }).name)
           .filter((n): n is string => typeof n === 'string'),
       )
-      // Client-side tool search sent the CallTool gateway in place of the
-      // deferred tools (_doOpenAIRequest): its calls come back as the real tool.
-      const gateway =
-        !clientToolSearchDisabled() &&
-        (params.tools ?? []).some(t => (t as { defer_loading?: unknown }).defer_loading === true)
-      if (gateway) toolNames.add(CALL_TOOL_NAME)
 
       if (geminiNative) {
         return params.stream
@@ -276,7 +263,6 @@ class OpenAIShimMessages {
               })
             : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens, toolNames, {
                 kvCache: isOllama,
-                gateway,
               }),
         )
       }
@@ -305,14 +291,14 @@ class OpenAIShimMessages {
               request.resolvedModel,
             )
           }
-          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames, { kvCache: isOllama, gateway })
+          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames, { kvCache: isOllama })
         }
       }
 
       const contentType = response.headers.get('content-type') ?? ''
       if (contentType.includes('application/json')) {
         const data = await response.json()
-        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames, { kvCache: isOllama, gateway })
+        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames, { kvCache: isOllama })
       }
 
       const textBody = await response.text().catch(() => '')
@@ -454,19 +440,6 @@ class OpenAIShimMessages {
         }>,
       ),
     )
-    // Client-side tool search: tools flagged defer_loading stay behind the
-    // CallTool gateway (src/providers/shims/clientToolSearch/).
-    const toolChoice = params.tool_choice as { type?: string; name?: string } | undefined
-    const toolPlan = planToolDeferral(
-      (params.tools ?? []) as Array<{
-        name: string
-        description?: string
-        input_schema?: Record<string, unknown>
-        type?: string
-        defer_loading?: boolean
-      }>,
-      toolChoice?.type === 'tool' ? toolChoice.name : undefined,
-    )
     const openaiMessages = convertMessages(compressedMessages, params.system, {
       // Moonshot/Kimi Code requires every assistant tool-call message to carry
       // reasoning_content when its thinking feature is active. DeepSeek does
@@ -476,7 +449,6 @@ class OpenAIShimMessages {
         isMoonshotCompatibleBaseUrl(request.baseUrl) ||
         isDeepSeekBaseUrl(request.baseUrl) ||
         isGlmCompatibleBaseUrl(request.baseUrl),
-      deferredTools: toolPlan.deferred,
     })
 
     const body: Record<string, unknown> = {
@@ -628,8 +600,14 @@ class OpenAIShimMessages {
     }
 
     if (params.tools && params.tools.length > 0) {
-      const converted = convertTools(toolPlan.sent)
-      if (toolPlan.deferred.size > 0) converted.push(CALL_TOOL)
+      const converted = convertTools(
+        params.tools as Array<{
+          name: string
+          description?: string
+          input_schema?: Record<string, unknown>
+          type?: string
+        }>,
+      )
       if (converted.length > 0) {
         body.tools = converted
         if (params.tool_choice) {
@@ -1210,7 +1188,7 @@ class OpenAIShimMessages {
     },
     model: string,
     toolNames?: Set<string>,
-    opts: { kvCache?: boolean; gateway?: boolean } = {},
+    opts: { kvCache?: boolean } = {},
   ) {
     const choice = data.choices?.[0]
     const content: Array<Record<string, unknown>> = []
@@ -1252,17 +1230,11 @@ class OpenAIShimMessages {
           content.push({ type: 'text', text: recovered.visibleText })
         }
         for (const tc of recovered.calls) {
-          const viaGateway =
-            opts.gateway && tc.name === CALL_TOOL_NAME
-              ? unwrapGatewayCall(JSON.stringify(tc.arguments))
-              : null
           content.push({
             type: 'tool_use',
             id: tc.id,
-            name: viaGateway?.name ?? tc.name,
-            input: viaGateway
-              ? viaGateway.input
-              : normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
+            name: tc.name,
+            input: normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
           })
         }
         recoveredXmlToolUse = true
@@ -1295,18 +1267,11 @@ class OpenAIShimMessages {
 
     if (choice?.message?.tool_calls) {
       for (const tc of choice.message.tool_calls) {
-        // A gateway call names the real tool in its arguments.
-        const viaGateway =
-          opts.gateway && tc.function.name === CALL_TOOL_NAME
-            ? unwrapGatewayCall(tc.function.arguments)
-            : null
-        const input = viaGateway
-          ? viaGateway.input
-          : normalizeToolArguments(tc.function.name, tc.function.arguments)
+        const input = normalizeToolArguments(tc.function.name, tc.function.arguments)
         content.push({
           type: 'tool_use',
           id: tc.id,
-          name: viaGateway?.name ?? tc.function.name,
+          name: tc.function.name,
           input,
           ...(tc.extra_content ? { extra_content: tc.extra_content } : {}),
           // Extract Gemini signature from extra_content

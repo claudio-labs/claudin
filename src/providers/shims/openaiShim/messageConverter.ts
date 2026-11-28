@@ -20,16 +20,6 @@
 import { logForDebugging } from 'src/shared/debug.js'
 import { isGeminiMode } from 'src/providers/shims/openaiShim/providerModes.js'
 import type { OpenAIMessage } from 'src/providers/shims/openaiShim/types.js'
-import {
-  CALL_TOOL_NAME,
-  gatewayArguments,
-  renderLoadedTools,
-  type DeferredToolSchema,
-} from 'src/providers/shims/clientToolSearch/index.js'
-
-// The sibling text normalize.ts appends after a tool_result that loaded tools
-// (TOOL_REFERENCE_TURN_BOUNDARY there): a turn boundary Anthropic's API needs.
-const TOOL_LOADED_TEXT = 'Tool loaded.'
 
 /**
  * Identity caches for the two heavyweight per-block conversions.
@@ -78,30 +68,6 @@ function convertToolResultBlockCached(block: {
   const result = convertToolResultContent(block.content, block.is_error)
   toolResultContentCache.set(block, result)
   return result
-}
-
-function toolReferenceNames(content: unknown): string[] {
-  if (!Array.isArray(content)) return []
-  return content
-    .filter((b: { type?: string }) => b?.type === 'tool_reference')
-    .map((b: { tool_name?: unknown }) => b.tool_name)
-    .filter((n): n is string => typeof n === 'string')
-}
-
-/**
- * A ToolSearch result under client-side tool search: whatever text it had,
- * then the loaded schemas written out (renderLoadedTools). Not cached — it
- * depends on the request's deferred set as well as on the block.
- */
-function convertToolResultWithReferences(
-  block: { content?: unknown; is_error?: boolean },
-  deferredTools: ReadonlyMap<string, DeferredToolSchema>,
-): ReturnType<typeof convertToolResultContent> {
-  const rest = (block.content as Array<{ type?: string }>).filter(b => b?.type !== 'tool_reference')
-  const base = rest.length > 0 ? convertToolResultContent(rest, block.is_error) : ''
-  const rendered = renderLoadedTools(toolReferenceNames(block.content), deferredTools)
-  if (Array.isArray(base)) return [...base, { type: 'text', text: rendered }]
-  return base ? `${base}\n${rendered}` : rendered
 }
 
 function stringifyToolUseArguments(input: unknown): string {
@@ -268,12 +234,9 @@ export function convertMessages(
   system: unknown,
   options?: {
     preserveReasoningContent?: boolean
-    /** Client-side tool search: the tools behind the CallTool gateway. */
-    deferredTools?: ReadonlyMap<string, DeferredToolSchema>
   },
 ): OpenAIMessage[] {
   const preserveReasoningContent = options?.preserveReasoningContent === true
-  const deferredTools = options?.deferredTools?.size ? options.deferredTools : undefined
   const result: OpenAIMessage[] = []
   const knownToolCallIds = new Set<string>()
 
@@ -315,19 +278,9 @@ export function convertMessages(
         const toolResults = content.filter(
           (b: { type?: string }) => b.type === 'tool_result',
         )
-        let otherContent = content.filter(
+        const otherContent = content.filter(
           (b: { type?: string }) => b.type !== 'tool_result',
         )
-        const loadsTools =
-          deferredTools !== undefined &&
-          toolResults.some((tr: { content?: unknown }) => toolReferenceNames(tr.content).length > 0)
-        if (loadsTools) {
-          // The rendered result already says "Loaded."; as a user message after
-          // the tool message it made the coalescer invent an interrupted turn.
-          otherContent = otherContent.filter(
-            (b: { type?: string; text?: string }) => !(b.type === 'text' && b.text === TOOL_LOADED_TEXT),
-          )
-        }
 
         // Emit tool results as tool messages, but ONLY if we have a matching tool_use ID.
         // Mistral/OpenAI strictly require tool messages to follow an assistant message with tool_calls.
@@ -339,10 +292,7 @@ export function convertMessages(
             result.push({
               role: 'tool',
               tool_call_id: id,
-              content:
-                deferredTools && toolReferenceNames(tr.content).length > 0
-                  ? convertToolResultWithReferences(tr, deferredTools)
-                  : convertToolResultBlockCached(tr),
+              content: convertToolResultBlockCached(tr),
             })
           } else {
             logForDebugging(
@@ -428,20 +378,15 @@ export function convertMessages(
                 }
 
                 knownToolCallIds.add(id)
-                // A deferred tool is called through the gateway, so that is
-                // how its call goes back into the history.
-                const viaGateway = deferredTools !== undefined && tu.name !== undefined && deferredTools.has(tu.name)
                 const toolCall: NonNullable<
                   OpenAIMessage['tool_calls']
                 >[number] = {
                   id,
                   type: 'function' as const,
-                  function: viaGateway
-                    ? { name: CALL_TOOL_NAME, arguments: gatewayArguments(tu.name!, tu.input) }
-                    : {
-                        name: tu.name ?? 'unknown',
-                        arguments: stringifyToolUseArguments(tu.input),
-                      },
+                  function: {
+                    name: tu.name ?? 'unknown',
+                    arguments: stringifyToolUseArguments(tu.input),
+                  },
                 }
 
                 // Preserve existing extra_content if present

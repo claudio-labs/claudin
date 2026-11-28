@@ -617,7 +617,7 @@ describe('isDeferredToolsDiscoveredOnly', () => {
   })
 })
 
-// ── client-side tool search on the openai shim ──────────────────────────────
+// ── client-side tool search on the wires without server-side search ─────────
 
 const OPENROUTER: ProviderProfile = {
   id: 'ts-openrouter',
@@ -641,7 +641,7 @@ const CODEX: ProviderProfile = {
   model: 'gpt-5.5',
 }
 
-describe('client-side tool search: the openai shim defers tools itself', () => {
+describe('client-side tool search: wires without server-side search defer tools themselves', () => {
   beforeEach(() => {
     process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS = '1'
   })
@@ -676,9 +676,15 @@ describe('client-side tool search: the openai shim defers tools itself', () => {
   test.each([
     ['gemini', GEMINI],
     ['codex', CODEX],
+  ] as const)('%s defers on the client under the kill switch too', (_, profile) => {
+    useProfile(profile)
+    expect(getToolSearchMode()).toBe('tst')
+  })
+
+  test.each([
     ['bedrock', BEDROCK],
     ['anthropic proxy', ANTHROPIC_PROXY],
-  ] as const)('%s is not the openai chat-completions path: unchanged', (_, profile) => {
+  ] as const)('%s keeps the kill switch: unchanged', (_, profile) => {
     useProfile(profile)
     expect(getToolSearchMode()).toBe('standard')
   })

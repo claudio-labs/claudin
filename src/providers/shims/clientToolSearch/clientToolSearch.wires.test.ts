@@ -129,7 +129,7 @@ async function send(kind: keyof typeof PROFILES, messages: unknown[]): Promise<S
   const result = await client.beta.messages
     .create({ model: PROFILES[kind]!.model, max_tokens: 64, stream: true, tools: TOOLS, messages } as never)
     .withResponse()
-  for await (const _ of result.data as AsyncIterable<unknown>) {
+  for await (const _ of result.data as unknown as AsyncIterable<unknown>) {
     // drain
   }
   expect(sent).toHaveLength(1)
@@ -168,7 +168,8 @@ describe('tools[] on each wire', () => {
     expect(body.tools.map((t: any) => t.name)).toEqual(['Bash', 'ToolSearch', CALL_TOOL_NAME])
     const gateway = body.tools.find((t: any) => t.name === CALL_TOOL_NAME)
     expect(gateway.strict).toBe(false)
-    expect(Object.keys(gateway.parameters.properties)).toEqual(['name', 'arguments'])
+    expect(Object.keys(gateway.parameters.properties).sort()).toEqual(['arguments', 'name'])
+    expect(gateway.parameters.properties.arguments.type).toBe('object')
   })
 
   test('Gemini: the deferred tool stays behind the gateway', async () => {

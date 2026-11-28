@@ -1,12 +1,16 @@
 export {
   CALL_TOOL,
   CALL_TOOL_NAME,
-  gatewayArguments,
+  gatewayInput,
   unwrapGatewayCall,
 } from 'src/providers/shims/clientToolSearch/callTool.js'
+export { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
 export { planToolDeferral } from 'src/providers/shims/clientToolSearch/deferral.js'
-export { clientToolSearchDisabled, usesShimChatCompletions } from 'src/providers/shims/clientToolSearch/gate.js'
+export { gatewayEvents, gatewayMessage } from 'src/providers/shims/clientToolSearch/eventTransform.js'
+export { clientToolSearchDisabled } from 'src/providers/shims/clientToolSearch/gate.js'
+export { applyClientToolSearch } from 'src/providers/shims/clientToolSearch/paramsTransform.js'
 export {
   renderLoadedTools,
   type DeferredToolSchema,
 } from 'src/providers/shims/clientToolSearch/renderToolReference.js'
+export { withClientToolSearch } from 'src/providers/shims/clientToolSearch/wrapClient.js'

@@ -34,6 +34,7 @@ import {
   isEnvTruthy,
 } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
 
 const importRuntimeModule = new Function(
   'specifier',
@@ -132,19 +133,31 @@ class AnthropicWithApiKeyHeader extends Anthropic {
   }
 }
 
-export async function getAnthropicClient({
-  apiKey,
-  maxRetries,
-  model,
-  fetchOverride,
-  source,
-}: {
+type AnthropicClientOptions = {
   apiKey?: string
   maxRetries: number
   model?: string
   fetchOverride?: ClientOptions['fetch']
   source?: string
-}): Promise<Anthropic> {
+}
+
+export async function getAnthropicClient(options: AnthropicClientOptions): Promise<Anthropic> {
+  const client = await buildAnthropicClient(options)
+  // A wire without server-side tool search gets the client-side half in
+  // front of whatever client it uses; first-party and the other native
+  // Anthropic lanes come back untouched.
+  if (!clientDefersTools(options.model)) return client
+  const { withClientToolSearch } = await import('src/providers/shims/clientToolSearch/wrapClient.js')
+  return withClientToolSearch(client)
+}
+
+async function buildAnthropicClient({
+  apiKey,
+  maxRetries,
+  model,
+  fetchOverride,
+  source,
+}: AnthropicClientOptions): Promise<Anthropic> {
   const containerId = process.env.CLAUDE_CODE_CONTAINER_ID
   const remoteSessionId = process.env.CLAUDE_CODE_REMOTE_SESSION_ID
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP

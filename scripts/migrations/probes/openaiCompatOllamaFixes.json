@@ -65,20 +65,21 @@
     },
     {
       "name": "the CallTool gateway is not sent",
-      "find": "      if (toolPlan.deferred.size > 0) converted.push(CALL_TOOL)\n",
-      "replace": ""
+      "source": "src/providers/shims/clientToolSearch/paramsTransform.ts",
+      "find": "    params: { ...params, tools: [...sent, CALL_TOOL], messages },",
+      "replace": "    params: { ...params, tools: sent, messages },"
     },
     {
       "name": "the Tool loaded. sibling is kept beside an expanded reference",
-      "source": "src/providers/shims/openaiShim/messageConverter.ts",
-      "find": "            (b: { type?: string; text?: string }) => !(b.type === 'text' && b.text === TOOL_LOADED_TEXT),",
-      "replace": "            () => true,"
+      "source": "src/providers/shims/clientToolSearch/paramsTransform.ts",
+      "find": "  return out.filter(block => !(block?.type === 'text' && block.text === TOOL_LOADED_TEXT))",
+      "replace": "  return out"
     },
     {
       "name": "a streamed gateway call keeps the gateway name",
-      "source": "src/providers/shims/openaiShim/streamParser.ts",
-      "find": "      content_block: { type: 'tool_use', id: tc.id, name: call?.name ?? CALL_TOOL_NAME, input: {} },",
-      "replace": "      content_block: { type: 'tool_use', id: tc.id, name: CALL_TOOL_NAME, input: {} },"
+      "source": "src/providers/shims/clientToolSearch/eventTransform.ts",
+      "find": "      content_block: { ...held.start.content_block, name: call?.name ?? CALL_TOOL_NAME, input: {} },",
+      "replace": "      content_block: { ...held.start.content_block, name: CALL_TOOL_NAME, input: {} },"
     },
     {
       "name": "the shim path falls back under the experimental-betas kill switch",

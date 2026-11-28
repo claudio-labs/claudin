@@ -8,8 +8,9 @@
  *    into `properties`, `items`, and combinators. Gemini mode skips strict.
  *  - `convertTools` wraps the loop: filters out Anthropic server-side
  *    tools, promotes Agent sub-fields, runs the schema through
- *    `normalizeSchemaForOpenAI`. Deferred tools never reach it: the shim
- *    keeps them behind the CallTool gateway (src/providers/shims/clientToolSearch/).
+ *    `normalizeSchemaForOpenAI`. Deferred tools never reach it: the
+ *    tool-search gateway in front of the client keeps them behind CallTool
+ *    (src/providers/shims/clientToolSearch/).
  *
  * Reads `CLAUDIN_DISABLE_STRICT_TOOLS` env to skip strict mode at runtime.
  */

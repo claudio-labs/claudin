@@ -41,10 +41,8 @@ import {
 } from 'src/providers/model/providers.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
-import {
-  clientToolSearchDisabled,
-  usesShimChatCompletions,
-} from 'src/providers/shims/clientToolSearch/gate.js'
+import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
+import { clientToolSearchDisabled } from 'src/providers/shims/clientToolSearch/gate.js'
 
 /**
  * Default percentage of context window at which to auto-enable tool search.
@@ -180,10 +178,10 @@ export function getToolSearchMode(): ToolSearchMode {
   // Handle auto:N syntax - check edge cases first
   const autoPercent = value ? parseAutoPercentage(value) : null
 
-  // The openai shim's Chat Completions path defers tools on the client
-  // (src/providers/shims/clientToolSearch/): no beta shape reaches its wire,
-  // so the kill switch below does not apply to it — its own does.
-  const shimDefersTools = usesShimChatCompletions()
+  // A wire without server-side tool search defers tools on the client
+  // (src/providers/shims/clientToolSearch/): no beta shape reaches it, so the
+  // kill switch below does not apply to it — its own does.
+  const shimDefersTools = clientDefersTools()
   if (shimDefersTools && clientToolSearchDisabled()) return 'standard'
 
   // CLAUDIN_DISABLE_EXPERIMENTAL_BETAS is a kill switch for beta API

@@ -12,7 +12,7 @@ import {
   type FetchType,
   type OpenAIShimClient,
 } from 'src/providers/shims/openaiShim/__testutils__/shimHarness.js'
-import { CALL_TOOL_NAME } from 'src/providers/shims/clientToolSearch/index.js'
+import { CALL_TOOL_NAME, withClientToolSearch } from 'src/providers/shims/clientToolSearch/index.js'
 
 useShimHarness()
 
@@ -72,8 +72,13 @@ function capture(bodies: Body[], chunks: () => string[] = textChunks): FetchType
   }) as FetchType
 }
 
+// The client the factory hands an openai-compatible profile.
+function shimClient(): OpenAIShimClient {
+  return withClientToolSearch(createOpenAIShimClient({}) as OpenAIShimClient)
+}
+
 async function send(params: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
-  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  const client = shimClient()
   const result = await client.beta.messages
     .create({ model: 'qwen3:8b', max_tokens: 64, stream: true, tools: TOOLS, ...params })
     .withResponse()
@@ -278,7 +283,7 @@ describe('the model calling through the gateway', () => {
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
       })) as FetchType
 
-    const client = createOpenAIShimClient({}) as OpenAIShimClient
+    const client = shimClient()
     const message = (await client.beta.messages.create({
       model: 'qwen3:8b',
       max_tokens: 64,
