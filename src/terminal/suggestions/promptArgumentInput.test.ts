@@ -6,7 +6,7 @@ import {
   formatPromptArgumentHint,
   locatePromptArgument,
   quotePromptArgument,
-} from 'src/mcp/promptArgumentInput.js'
+} from 'src/terminal/suggestions/promptArgumentInput.js'
 
 const NAMES = ['name', 'greeting']
 

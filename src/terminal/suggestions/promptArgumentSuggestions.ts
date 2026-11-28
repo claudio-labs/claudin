@@ -2,7 +2,7 @@
  * The prompt input's side of MCP prompt-argument completion: which prompt the
  * line invokes and which of its arguments the cursor is on, the hint for the
  * rest, the server's values as suggestion rows, and what accepting one does to
- * the line. The argument reading itself is `src/mcp/promptArgumentInput.ts`;
+ * the line. The argument reading itself is `promptArgumentInput.ts` beside it;
  * useTypeahead only debounces the fetch and discards stale answers.
  */
 import {
@@ -10,7 +10,7 @@ import {
   formatPromptArgumentHint,
   locatePromptArgument,
   type PromptArgumentPosition,
-} from 'src/mcp/promptArgumentInput.js'
+} from 'src/terminal/suggestions/promptArgumentInput.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import {
