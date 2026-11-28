@@ -23,6 +23,8 @@
  * while the Node bundle answered, and `--version` and the first lane passed.
  * The mock answers in AWS event-stream frames, and the credentials come from
  * the environment through the SDK's default chain, its other dependency.
+ * A third lane runs a non-Claude Bedrock model, which goes through Converse
+ * on the SDK's own client instead (src/providers/shims/bedrockConverse/).
  */
 
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -34,10 +36,11 @@ const DEFAULT_TIMEOUT_MS = 90_000
 /** The session running this leaks its own; they would pick the provider. */
 const HOST_ENV_RE = /^(?:CLAUDECODE$|CLAUDE_CODE_|_?CLAUDIN_|ANTHROPIC_|GIT_|AWS_)/
 
-export type SmokeLane = 'anthropic' | 'bedrock'
-export const SMOKE_LANES: readonly SmokeLane[] = ['anthropic', 'bedrock']
+export type SmokeLane = 'anthropic' | 'bedrock' | 'converse'
+export const SMOKE_LANES: readonly SmokeLane[] = ['anthropic', 'bedrock', 'converse']
 
 const BEDROCK_MODEL = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+const CONVERSE_MODEL = 'us.amazon.nova-micro-v1:0'
 
 function messagesEvents(text: string): Array<Record<string, unknown>> {
   return [
@@ -73,16 +76,15 @@ const eventStream = new EventStreamCodec(
   text => utf8.encode(text),
 )
 
-/** The same events as Bedrock's invoke-with-response-stream sends them: one `chunk` frame each. */
-export function bedrockStream(text: string): Uint8Array {
-  const frames = messagesEvents(text).map(event =>
+function eventFrames(events: Array<[type: string, body: object]>): Uint8Array {
+  const frames = events.map(([type, body]) =>
     eventStream.encode({
       headers: {
-        ':event-type': { type: 'string', value: 'chunk' },
+        ':event-type': { type: 'string', value: type },
         ':content-type': { type: 'string', value: 'application/json' },
         ':message-type': { type: 'string', value: 'event' },
       },
-      body: utf8.encode(JSON.stringify({ bytes: Buffer.from(JSON.stringify(event)).toString('base64') })),
+      body: utf8.encode(JSON.stringify(body)),
     }),
   )
   const out = new Uint8Array(frames.reduce((n, f) => n + f.length, 0))
@@ -92,6 +94,24 @@ export function bedrockStream(text: string): Uint8Array {
     at += frame.length
   }
   return out
+}
+
+/** The same events as Bedrock's invoke-with-response-stream sends them: one `chunk` frame each. */
+export function bedrockStream(text: string): Uint8Array {
+  return eventFrames(
+    messagesEvents(text).map(event => ['chunk', { bytes: Buffer.from(JSON.stringify(event)).toString('base64') }]),
+  )
+}
+
+/** A Converse answer as converse-stream frames it, one event per frame. */
+export function converseStream(text: string): Uint8Array {
+  return eventFrames([
+    ['messageStart', { role: 'assistant' }],
+    ['contentBlockDelta', { contentBlockIndex: 0, delta: { text } }],
+    ['contentBlockStop', { contentBlockIndex: 0 }],
+    ['messageStop', { stopReason: 'end_turn' }],
+    ['metadata', { usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }, metrics: { latencyMs: 1 } }],
+  ])
 }
 
 // A crash dumps the minified source line it died on, which can be megabytes.
@@ -129,8 +149,14 @@ export async function smokeBinary(
           headers: { 'content-type': 'application/vnd.amazon.eventstream' },
         })
       }
+      if (lane === 'converse' && path.endsWith('/converse-stream')) {
+        requests++
+        return new Response(converseStream(answer), {
+          headers: { 'content-type': 'application/vnd.amazon.eventstream' },
+        })
+      }
       // A side query (the session title) asks for one whole message.
-      if (lane === 'bedrock' && path.endsWith('/invoke')) {
+      if (lane !== 'anthropic' && path.endsWith('/invoke')) {
         return Response.json({
           id: 'msg_smoke_side',
           type: 'message',
@@ -154,9 +180,9 @@ export async function smokeBinary(
     mkdirSync(cwd)
     mkdirSync(configDir)
     const baseUrl = `http://127.0.0.1:${server.port}`
-    const model = lane === 'bedrock' ? BEDROCK_MODEL : 'claude-smoke'
+    const model = lane === 'bedrock' ? BEDROCK_MODEL : lane === 'converse' ? CONVERSE_MODEL : 'claude-smoke'
     const profile =
-      lane === 'bedrock'
+      lane !== 'anthropic'
         ? { id: 'smoke-binary', name: 'smoke-binary mock', provider: 'bedrock', baseUrl, model }
         : {
             id: 'smoke-binary',
@@ -202,7 +228,7 @@ export async function smokeBinary(
         env: {
           ...env,
           CLAUDIN_CONFIG_DIR: configDir,
-          ...(lane === 'bedrock'
+          ...(lane !== 'anthropic'
             ? {
                 ANTHROPIC_BEDROCK_BASE_URL: baseUrl,
                 AWS_REGION: 'us-east-1',

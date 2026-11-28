@@ -281,6 +281,28 @@ describe('the recorded Converse exchanges', () => {
     ])
   })
 
+  test('signed with env credentials, the request goes over HTTP/1.1 and reaches a plain-HTTP endpoint', async () => {
+    // The runtime client's HTTP/2 default never completes against http://.
+    const saved = { id: process.env.AWS_ACCESS_KEY_ID, secret: process.env.AWS_SECRET_ACCESS_KEY }
+    delete process.env.CLAUDIN_SKIP_BEDROCK_AUTH
+    process.env.AWS_ACCESS_KEY_ID = 'AKIDCASSETTE'
+    process.env.AWS_SECRET_ACCESS_KEY = 'cassette-secret'
+    try {
+      const srv = await serve([loadCassette('bedrock-converse/streams-text')])
+      const answer = stream({ max_tokens: 16, messages: [{ role: 'user', content: 'Say hello.' }] })
+      const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 10_000))
+      const events = await Promise.race([answer, timeout])
+      expect(events).not.toBe('timeout')
+      expect(summarize(events as Array<Record<string, any>>).content).toEqual([{ type: 'text', text: 'Hello' }])
+      expect(String(srv.captures[0]!.headers.authorization)).toStartWith('AWS4-HMAC-SHA256 Credential=AKIDCASSETTE/')
+    } finally {
+      if (saved.id === undefined) delete process.env.AWS_ACCESS_KEY_ID
+      else process.env.AWS_ACCESS_KEY_ID = saved.id
+      if (saved.secret === undefined) delete process.env.AWS_SECRET_ACCESS_KEY
+      else process.env.AWS_SECRET_ACCESS_KEY = saved.secret
+    }
+  })
+
   test('a whole message for a caller that does not stream', async () => {
     await serve([loadCassette('bedrock-converse/streams-text')])
     const message = await (await messages()).create({ model: NOVA, max_tokens: 16, messages: [{ role: 'user', content: 'Say hello.' }] })
