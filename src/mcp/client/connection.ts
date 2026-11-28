@@ -49,6 +49,7 @@ import {
   nextEraStep,
   planConnect,
   probeTimeoutMs,
+  readsCachedVerdict,
   verdictAfterConnect,
 } from 'src/mcp/client/negotiation.js'
 import { stopMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
@@ -215,14 +216,10 @@ export const connectToServer = memoize(
       const negotiable = negotiableTransportOf(transport)
       const protocolMode = getMcpProtocolMode(serverRef)
       const eraKey = getEraCacheKey(name, serverRef)
+      const negotiation = { mode: protocolMode, transport: negotiable, override: retry?.era }
       const plan = planConnect({
-        mode: protocolMode,
-        transport: negotiable,
-        verdict:
-          protocolMode === 'auto' && negotiable !== 'other' && !retry?.era
-            ? await readEraVerdict(eraKey)
-            : undefined,
-        override: retry?.era,
+        ...negotiation,
+        verdict: readsCachedVerdict(negotiation) ? await readEraVerdict(eraKey) : undefined,
         startupTimeoutMs: deadline - Date.now(),
         now: Date.now(),
       })

@@ -88,6 +88,19 @@ function isReplayed(kind: EraVerdict['kind'], transport: NegotiableTransport): b
   return kind === 'legacy' || transport === 'stdio'
 }
 
+/**
+ * Whether planConnect looks at a cached verdict: an `auto` connect on a
+ * transport that negotiates, with no override. The caller reads the cache
+ * only then.
+ */
+export function readsCachedVerdict(input: {
+  mode: McpProtocolMode
+  transport: NegotiableTransport
+  override: EraOverride | undefined
+}): boolean {
+  return input.mode === 'auto' && input.transport !== 'other' && input.override === undefined
+}
+
 export function planConnect(input: {
   mode: McpProtocolMode
   transport: NegotiableTransport
@@ -99,7 +112,8 @@ export function planConnect(input: {
   if (input.mode === 'legacy' || input.transport === 'other') return { mode: 'legacy' }
   if (input.override?.kind === 'legacy') return { mode: 'legacy' }
   const probe: ConnectPlan = { mode: 'auto', probeTimeoutMs: probeTimeoutMs(input.startupTimeoutMs) }
-  if (input.override?.kind === 'probe') return probe
+  // Past the two legacy cases, only a probe override is left to refuse the cache.
+  if (!readsCachedVerdict(input)) return probe
   if (
     input.verdict &&
     isVerdictFresh(input.verdict, input.now) &&

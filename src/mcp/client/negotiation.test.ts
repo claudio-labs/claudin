@@ -18,6 +18,7 @@ import {
   nextEraStep,
   planConnect,
   probeTimeoutMs,
+  readsCachedVerdict,
   verdictAfterConnect,
 } from 'src/mcp/client/negotiation.js'
 
@@ -54,6 +55,18 @@ describe('isVerdictFresh', () => {
     expect(isVerdictFresh(legacy, NOW)).toBe(true)
     expect(isVerdictFresh(legacy, NOW - 10 + 60_000)).toBe(false)
     expect(isVerdictFresh(legacy, NOW - 11)).toBe(false)
+  })
+})
+
+describe('readsCachedVerdict', () => {
+  test('only for an auto connect on http or stdio with no override', () => {
+    const reads = (overrides: Partial<Parameters<typeof readsCachedVerdict>[0]>) =>
+      readsCachedVerdict({ mode: 'auto', transport: 'http', override: undefined, ...overrides })
+    expect([reads({}), reads({ transport: 'stdio' })]).toEqual([true, true])
+    expect(reads({ mode: 'legacy' })).toBe(false)
+    expect(reads({ transport: 'other' })).toBe(false)
+    expect(reads({ override: { kind: 'probe' } })).toBe(false)
+    expect(reads({ override: { kind: 'legacy' } })).toBe(false)
   })
 })
 

@@ -137,6 +137,12 @@
       "source": "src/mcp/elicitationHandler.ts",
       "find": "                  ...(modern && { awaitsCompletion: false }),\n",
       "replace": ""
+    },
+    {
+      "name": "a probe override still replays the cached verdict that just failed",
+      "source": "src/mcp/client/negotiation.ts",
+      "find": "  return input.mode === 'auto' && input.transport !== 'other' && input.override === undefined\n",
+      "replace": "  return input.mode === 'auto' && input.transport !== 'other'\n"
     }
   ]
 }
