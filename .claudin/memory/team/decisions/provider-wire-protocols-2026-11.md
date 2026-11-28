@@ -26,12 +26,15 @@ only where a recording proves the wire (user, 2026-11-28). Plan: `.claudin/plans
   `performCodexRequest` without the Codex URL rewrite, headers or `codexBackendBodyFields`; reasoning
   and calls replay under their ids, messages without them, as the recordings do. Everything Codex- or
   Copilot-only still keys on `codex_responses`.
-- **Vendor /anthropic** (`vendorAnthropic/client.ts`): MiniMax, Moonshot, DashScope intl (recorded);
-  Z.ai, DeepSeek, CN hosts, coding plans unverified; Kimi Code OAuth stays on chat (no OAuth hook in
-  the native client). The profile keeps its base URL and tag, so first-party gates stay off; the
-  client cuts `metadata`, every beta but interleaved thinking, keep-alive and count_tokens.
-- **Bedrock Converse** (`bedrockConverse/`): every Bedrock model but Claude and ARNs. Limits are a
-  conservative table (Llama 3 output 2048: Bedrock caps it). Reasoning is not requested; returned
+- **Vendor /anthropic** (`vendorAnthropic/client.ts`): verified only for the recorded models —
+  MiniMax-M3, kimi-k3, qwen3.7/3.8 on DashScope intl; every other model of those hosts, Z.ai,
+  DeepSeek, CN hosts and coding plans are unverified rows. Kimi Code OAuth stays on chat (no OAuth
+  hook in the native client). The profile keeps its base URL and tag, so first-party gates stay off;
+  the client cuts `metadata`, every beta but interleaved thinking, keep-alive and count_tokens.
+- **Bedrock Converse** (`bedrockConverse/`): every vendor-prefixed Bedrock id but Claude (a bare alias
+  such as `sonnet` and an ARN stay on the Claude client). Same region as the Claude lane
+  (`extras.awsRegion`), HTTP/1.1, the aggressive cache profile (no `cachePoint` is written). Limits are
+  a conservative table (Llama 3 output 2048: Bedrock caps it). Reasoning is not requested; returned
   reasoning becomes thinking, never replayed.
 - **Freeform Patch** behind `CLAUDIN_FREEFORM_PATCH=1`, off: the Codex CLI 0.172 grammar, gpt-5.5+ on
   the Codex backend and the Responses API, not Copilot. Live probe 2026-11-28 on gpt-6-luna: the backend
@@ -50,9 +53,17 @@ only live account was a free Codex plan.
 
 **What changes for a teammate:** a new `openai_compat` wire is a row in `compatWires.ts`, not a branch
 in `resolveProviderRequest`; a new client the factory builds for a wire without server-side tool
-search must be covered by `clientDefersTools`. Known gaps: a Converse exception frame mid-stream
-arrives from the SDK as a bare `{message}`, so it retries as a 500 whatever its type; a Bedrock
-profile's small fast model is still a Claude Haiku id; Converse models have no cost rows.
+search must be covered by `clientDefersTools`; a facade client builds its promise and member view
+through `shims/clientFacade.ts` and its fallback through `withWireFallback`. A deferred tool called
+through `CallTool` keeps its arguments on Codex (`isClientGatewayTool`): the gateway is non-strict.
+
+**Known gaps, on purpose:** a Converse exception frame mid-stream arrives from the SDK as a bare
+`{message}`, so it retries as a 500 whatever its type; a Bedrock profile's small fast model is still a
+Claude Haiku id; Converse models have no cost rows. Deviations from the plan, accepted at the review
+round of 2026-11-28: no per-row vendor thinking caps, no `modelSupportOverrides` lookup and no
+`openaiContextWindows` rows (the vendor's thinking default and the 128k fallback apply, as on chat);
+no `reasoning.summary` on Responses (the stream reader drops summary events); no Converse `cachePoint`;
+`cache-probe` still probes chat for a Responses session; the chat e2e wraps the shim by hand.
 
 **Rejected:** reusing `codex_responses` for the Responses API (nine consumers key on it, from the
 Codex OAuth branch to the URL rewrite); `anthropic` profiles with a vendor base URL (the SDK ignores the
@@ -60,4 +71,7 @@ profile's `baseUrl`, and the tag would turn every first-party gate on); Bedrock 
 
 **Evidence:** the cassettes under `src/providers/__fixtures__/cassettes/` (opencode's recordings, MIT),
 one break-probe spec per area under `scripts/migrations/probes/`, `smoke:binary` on the compiled
-binary, and the live freeform probe above.
+binary, and the live freeform probe above. The 3-agent review of 2026-11-28 found 5 bugs with repros
+(binary pure rename, Converse region and Esc, replay on the profile model, concurrent fallback) and 4
+regressions (Codex strip via CallTool, Converse on RETAIN, Bedrock aliases, routing wider than the
+recordings); each now has a red-first test and a probe.

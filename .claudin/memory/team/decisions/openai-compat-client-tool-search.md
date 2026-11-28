@@ -11,8 +11,15 @@ paths:
   - "src/agent/tools/toolSearch.ts"
 ---
 
+**Superseded in part (2026-11-28, [[provider-wire-protocols-2026-11]]):** the gateway no longer
+lives in the Chat Completions converter. It transforms Anthropic-format params and the answer in a
+wrapper the client factory puts in front of every wire without server-side tool search
+(`clientDefersTools`, `clientToolSearch/capability.ts`): chat, Responses (Codex, Copilot GPT-5,
+OpenAI/Azure), native Gemini, the vendor `/anthropic` endpoints and Bedrock Converse.
+`usesShimChatCompletions` is gone. The bullets below still describe what the gateway does.
+
 **Decision:** on `openai_compat`, `mistral` and non-Claude `github_copilot` profiles whose
-requests go out as Chat Completions (`usesShimChatCompletions`, `clientToolSearch/gate.ts`),
+requests go out as Chat Completions (then `usesShimChatCompletions`, `clientToolSearch/gate.ts`),
 tool search stays on under `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS` and the shim does the
 server's half itself:
 - a `defer_loading` tool leaves `tools[]` (`planToolDeferral`); a forced `tool_choice` is sent whole;
@@ -22,7 +29,7 @@ server's half itself:
 - the model calls a loaded tool through `CallTool {name, arguments}`; the stream/non-stream
   parsers rewrite it to a `tool_use` of the real tool, and the history writes it back as a gateway call.
 `tools[]` never changes mid-session, so a discovery only appends — Ollama's KV prefix survives.
-Gemini (native or compat) and the Responses path (Codex, Copilot GPT-5) still send every tool.
+Gemini and the Responses path still sent every tool then; since 2026-11-28 they get the gateway too.
 `CLAUDIN_SHIM_TOOL_SEARCH=0` restores the old path.
 
 **Why:** a project with a Portainer MCP (239 tools) sent 305 schemas on every request — 94k of a
@@ -53,5 +60,5 @@ Ollama's Qwen parser types arguments from the schema).
   citing an unrelated `cat`.
 
 **What changes for a teammate:** a new OpenAI-compatible request path must decide whether it
-honors `defer_loading`; if it converts tools itself, either route through `planToolDeferral`
-or leave `usesShimChatCompletions` false for it. Not done: the same gateway for Gemini/Codex.
+honors `defer_loading`: a new wire without server-side tool search says so in
+`clientDefersTools`, and the factory wraps its client; it never converts the gateway itself.
