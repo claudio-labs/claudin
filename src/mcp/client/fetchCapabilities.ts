@@ -43,13 +43,12 @@ import type {
   ServerResourceTemplate,
 } from 'src/mcp/types.js'
 import { isMcpAuthCached } from 'src/mcp/client/authCache.js'
-// callTool.js and connection.js below form intentional ESM cycles with this
-// module: every cross-module symbol is dereferenced inside function bodies, not
-// at module-eval time, so live bindings resolve safely. Do not collapse them.
-import {
-  callMCPToolWithUrlElicitationRetry,
-  extractToolUseId,
-} from 'src/mcp/client/callTool.js'
+// callTool.js, taskCall.js and connection.js below form intentional ESM cycles
+// with this module: every cross-module symbol is dereferenced inside function
+// bodies, not at module-eval time, so live bindings resolve safely. Do not
+// collapse them.
+import { extractToolUseId } from 'src/mcp/client/callTool.js'
+import { callMCPToolWithTasks } from 'src/mcp/client/taskCall.js'
 import {
   clearServerCache,
   connectToServer,
@@ -267,7 +266,7 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
               for (let attempt = 0; ; attempt++) {
                 try {
                   const connectedClient = await ensureConnectedClient(client)
-                  const mcpResult = await callMCPToolWithUrlElicitationRetry({
+                  const mcpResult = await callMCPToolWithTasks({
                     client: connectedClient,
                     clientConnection: client,
                     tool: tool.name,

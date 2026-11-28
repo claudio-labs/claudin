@@ -8,11 +8,7 @@ import {
   type RegisterMonitorMcpTaskInput,
   registerMonitorMcpTask,
 } from 'src/agent/tasks/MonitorMcpTask/registerMonitorMcpTask.js'
-import {
-  callMCPToolWithUrlElicitationRetry,
-  type McpTaskCallDeps,
-  taskResultSummary,
-} from 'src/mcp/client/callTool.js'
+import { callMCPToolWithTasks, type McpTaskCallDeps, taskResultSummary } from 'src/mcp/client/taskCall.js'
 import { connectToServer, getServerCacheKey, listRootsResult } from 'src/mcp/client/connection.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { ConnectedMCPServer, MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js'
@@ -26,7 +22,7 @@ import { connectRawMcpServer, type RawMcpServer } from 'src/mcp/__testutils__/ra
 /*
  * Task-augmented tool calls (SEP-2663) end to end: a 2026-07-28 server
  * reached through connectToServer answers tools/call with a task and
- * tasks/get with a scripted status, and callMCPToolWithUrlElicitationRetry
+ * tasks/get with a scripted status, and callMCPToolWithTasks
  * polls it inline or hands it to a monitor_mcp task. The clock is fake (each
  * sleep advances it), the server and the SDK are real.
  */
@@ -179,9 +175,9 @@ function call(
   box: ReturnType<typeof world>,
   deps: Partial<McpTaskCallDeps>,
   signal: AbortSignal = new AbortController().signal,
-  extra: Partial<Parameters<typeof callMCPToolWithUrlElicitationRetry>[0]> = {},
+  extra: Partial<Parameters<typeof callMCPToolWithTasks>[0]> = {},
 ) {
-  return callMCPToolWithUrlElicitationRetry({
+  return callMCPToolWithTasks({
     client: connection,
     clientConnection: connection,
     tool: 'longjob',

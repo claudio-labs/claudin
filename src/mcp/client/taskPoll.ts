@@ -14,7 +14,7 @@
  *
  * The decisions are pure; pollTask is the one loop, over injected I/O, clock
  * and sleep. It can stop at a deadline with the task still running and pick
- * up again from the same state, which is how callTool.ts hands a call that
+ * up again from the same state, which is how taskCall.ts hands a call that
  * outlives its inline window to a background monitor_mcp task.
  */
 import { z } from 'zod/v4'

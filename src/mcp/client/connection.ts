@@ -92,7 +92,7 @@ export function isLocalMcpServer(config: ScopedMcpServerConfig): boolean {
 
 /**
  * What Claudin answers a server's `roots/list` with: the directory it was
- * started in. A task's `input_required` gets the same answer (callTool.ts).
+ * started in. A task's `input_required` gets the same answer (taskCall.ts).
  */
 export function listRootsResult(): { roots: Array<{ uri: string }> } {
   return { roots: [{ uri: `file://${getOriginalCwd()}` }] }
