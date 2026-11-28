@@ -99,6 +99,11 @@
       "replace": "  return `${summary}: ${text}`\n"
     },
     {
+      "name": "untrusted: a transport error reaches onRetry and the failed summary unmarked",
+      "find": "  return withServerText('the request failed', 'error', errorMessage(error))\n",
+      "replace": "  return errorMessage(error)\n"
+    },
+    {
       "name": "connect: the events extension is never declared",
       "source": "src/mcp/client/connection.ts",
       "find": "        ...(getMcpExtensionEnabled(serverRef, 'events') && { [MCP_EVENTS_EXTENSION]: {} }),\n",
@@ -133,6 +138,12 @@
       "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
       "find": "    `name: ${quoteServerText(event.name)}`,\n",
       "replace": "    `name: ${event.name}`,\n"
+    },
+    {
+      "name": "monitor: a failed events/list quotes the error raw and unmarked in its refusal",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    return { refusal: withServerText(`MCP server \"${source.server}\" did not list its events`, 'error', errorMessage(error)) }\n",
+      "replace": "    return { refusal: `MCP server \"${source.server}\" did not list its events: ${errorMessage(error)}` }\n"
     }
   ]
 }
