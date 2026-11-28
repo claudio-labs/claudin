@@ -290,18 +290,18 @@ async function buildAnthropicClient({
     }) as unknown as Anthropic
   }
   if (transport === 'bedrock') {
-    // Every model on Bedrock but Claude speaks only Converse (bedrockConverse/models.ts).
-    if (usesConverse(model?.trim() || activeProvider?.model)) {
-      const { createConverseClient } = await import('src/providers/shims/bedrockConverse/client.js')
-      return createConverseClient() as unknown as Anthropic
-    }
-    const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
     // Use region override for small fast model if specified
     const awsRegion =
       model === getSmallFastModel() &&
       process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         ? process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         : (activeProvider?.extras?.awsRegion ?? getAWSRegion())
+    // Every model on Bedrock but Claude speaks only Converse (bedrockConverse/models.ts).
+    if (usesConverse(model?.trim() || activeProvider?.model)) {
+      const { createConverseClient } = await import('src/providers/shims/bedrockConverse/client.js')
+      return createConverseClient({ region: awsRegion }) as unknown as Anthropic
+    }
+    const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
 
     // ConstructorParameters<typeof AnthropicBedrock>[0] resolves to the LAST
     // overload (the deprecated "SecretOnly" one, requiring awsSecretKey and

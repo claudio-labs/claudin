@@ -5,17 +5,18 @@
  * Claude stays on @anthropic-ai/bedrock-sdk (InvokeModel with the Anthropic
  * body); every other model on Bedrock speaks only Converse. An application
  * inference profile ARN does not name its model, so it stays on the Claude
- * path, as it did before Converse existed.
+ * path, as it did before Converse existed, and so does any id without a
+ * vendor prefix (`amazon.`, `us.meta.`): a Claude alias such as `sonnet`.
  *
  * The limits are the model cards' where they are stated plainly, and
  * conservative otherwise: a context window too small only compacts early, an
  * output cap too large is a ValidationException on every request.
  */
 
-/** A model id Converse answers for: neither Claude nor an opaque ARN. */
+/** A model id Converse answers for: a vendor-prefixed id that is not Claude. */
 export function usesConverse(model: string | undefined): boolean {
   const id = (model ?? '').trim().toLowerCase()
-  if (!id || id.startsWith('arn:')) return false
+  if (!id.includes('.') || id.startsWith('arn:')) return false
   return !id.includes('anthropic') && !id.includes('claude')
 }
 

@@ -19,7 +19,18 @@ import {
   applyStableStubs,
 } from 'src/agent/compact/stableStubState.js'
 
-type Block = Record<string, any>
+/** An Anthropic content block, read field by field. */
+type Block = {
+  type?: string
+  text?: unknown
+  id?: unknown
+  name?: unknown
+  input?: unknown
+  tool_use_id?: unknown
+  is_error?: unknown
+  content?: unknown
+  source?: { type?: string; media_type?: string; data?: unknown }
+}
 type ConverseBlock = Record<string, unknown>
 type ConverseMessage = { role: 'user' | 'assistant'; content: ConverseBlock[] }
 
@@ -41,14 +52,14 @@ function bytesOf(data: string): Uint8Array {
 }
 
 function imageBlock(block: Block): ConverseBlock | undefined {
-  const source = block.source as Block | undefined
+  const source = block.source
   const format = source?.type === 'base64' ? IMAGE_FORMATS[String(source.media_type)] : undefined
   return format ? { image: { format, source: { bytes: bytesOf(String(source!.data)) } } } : undefined
 }
 
 /** Document names must be unique in a request and plain: letters, digits, spaces, dashes. */
 function documentBlock(block: Block, ordinal: number): ConverseBlock | undefined {
-  const source = block.source as Block | undefined
+  const source = block.source
   if (source?.type === 'base64' && source.media_type === 'application/pdf') {
     return { document: { format: 'pdf', name: `document-${ordinal}`, source: { bytes: bytesOf(String(source.data)) } } }
   }
@@ -59,7 +70,7 @@ function documentBlock(block: Block, ordinal: number): ConverseBlock | undefined
 function toolResultContent(block: Block, documents: { n: number }): ConverseBlock[] {
   const parts: ConverseBlock[] = []
   for (const part of blocksOf(block.content)) {
-    if (part.type === 'text' && part.text) parts.push({ text: part.text })
+    if (part.type === 'text' && typeof part.text === 'string' && part.text) parts.push({ text: part.text })
     else if (part.type === 'image') {
       const image = imageBlock(part)
       if (image) parts.push(image)
@@ -182,7 +193,20 @@ function toolConfig(
   return { tools: specs, ...(toolChoice && { toolChoice }) }
 }
 
-export function buildConverseInput(params: Record<string, any>): Record<string, unknown> {
+type Params = {
+  model?: unknown
+  system?: unknown
+  messages?: Array<{ role?: string; message?: { role?: string; content?: unknown }; content?: unknown }>
+  tools?: unknown
+  tool_choice?: { type?: string; name?: string }
+  max_tokens?: unknown
+  temperature?: unknown
+  top_p?: unknown
+  stop_sequences?: unknown
+}
+
+export function buildConverseInput(input: Record<string, unknown>): Record<string, unknown> {
+  const params = input as Params
   const tools = Array.isArray(params.tools) ? (params.tools as ToolDefinition[]) : []
   const config = params.tool_choice?.type === 'none' ? undefined : toolConfig(tools, params.tool_choice)
   // The stable stubs run at the API boundary, as on every other wire.

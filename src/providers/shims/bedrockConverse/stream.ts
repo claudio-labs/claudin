@@ -16,7 +16,30 @@
  */
 import type { AnthropicStreamEvent } from 'src/providers/shims/codexShim.js'
 
-type Event = Record<string, any>
+type ConverseUsage = {
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
+}
+
+/** One ConverseStream event as the SDK yields it: one member set. */
+export type ConverseEvent = {
+  messageStart?: { role?: string }
+  contentBlockStart?: { contentBlockIndex?: number; start?: { toolUse?: { toolUseId?: string; name?: string } } }
+  contentBlockDelta?: {
+    contentBlockIndex?: number
+    delta?: {
+      text?: string
+      toolUse?: { input?: string }
+      reasoningContent?: { text?: string; signature?: string }
+    }
+  }
+  contentBlockStop?: { contentBlockIndex?: number }
+  messageStop?: { stopReason?: string }
+  metadata?: { usage?: ConverseUsage }
+}
+
 type OpenBlock = { index: number; kind: 'text' | 'tool_use' | 'thinking' }
 
 const STOP_REASONS: Record<string, 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence'> = {
@@ -29,7 +52,7 @@ const STOP_REASONS: Record<string, 'end_turn' | 'tool_use' | 'max_tokens' | 'sto
   content_filtered: 'end_turn',
 }
 
-function converseUsage(usage: Event | undefined): Record<string, number> {
+function converseUsage(usage: ConverseUsage | undefined): Record<string, number> {
   return {
     input_tokens: Number(usage?.inputTokens ?? 0),
     output_tokens: Number(usage?.outputTokens ?? 0),
@@ -43,7 +66,7 @@ function makeMessageId(): string {
 }
 
 export async function* converseStreamToAnthropic(
-  stream: AsyncIterable<Event>,
+  stream: AsyncIterable<ConverseEvent>,
   model: string,
 ): AsyncGenerator<AnthropicStreamEvent> {
   yield {
@@ -63,7 +86,7 @@ export async function* converseStreamToAnthropic(
   const open = new Map<number, OpenBlock>()
   let next = 0
   let stopReason: string | undefined
-  let usage: Event | undefined
+  let usage: ConverseUsage | undefined
   let sawToolUse = false
 
   function* start(at: number, kind: OpenBlock['kind'], block: Record<string, unknown>): Generator<AnthropicStreamEvent> {
@@ -142,38 +165,49 @@ export async function* converseStreamToAnthropic(
   yield { type: 'message_stop' }
 }
 
+type Collected = { text?: string; thinking?: string; signature?: string; input?: unknown; [key: string]: unknown }
+type CollectedEvent = {
+  type: string
+  index?: number
+  message?: Record<string, unknown>
+  content_block?: Collected
+  delta?: { type?: string; text?: string; thinking?: string; signature?: string; partial_json?: string; stop_reason?: unknown; stop_sequence?: unknown }
+  usage?: unknown
+}
+
 /** The whole message a stream of Anthropic events adds up to, for a non-streaming caller. */
 export async function collectMessage(events: AsyncIterable<AnthropicStreamEvent>): Promise<Record<string, unknown>> {
-  let message: Record<string, any> = {}
-  const content: Array<Record<string, any>> = []
+  let message: Record<string, unknown> = {}
+  const content: Collected[] = []
   const json = new Map<number, string>()
   for await (const raw of events) {
-    const event = raw as Record<string, any>
+    const event = raw as unknown as CollectedEvent
+    const index = event.index ?? 0
     switch (event.type) {
       case 'message_start':
         message = { ...event.message }
         break
       case 'content_block_start':
-        content[event.index] = { ...event.content_block }
+        content[index] = { ...event.content_block }
         break
       case 'content_block_delta': {
-        const block = content[event.index]!
-        const delta = event.delta
-        if (delta.type === 'text_delta') block.text += delta.text
-        else if (delta.type === 'thinking_delta') block.thinking += delta.thinking
-        else if (delta.type === 'signature_delta') block.signature += delta.signature
-        else if (delta.type === 'input_json_delta') json.set(event.index, (json.get(event.index) ?? '') + delta.partial_json)
+        const block = content[index]!
+        const delta = event.delta ?? {}
+        if (delta.type === 'text_delta') block.text = `${block.text ?? ''}${delta.text ?? ''}`
+        else if (delta.type === 'thinking_delta') block.thinking = `${block.thinking ?? ''}${delta.thinking ?? ''}`
+        else if (delta.type === 'signature_delta') block.signature = `${block.signature ?? ''}${delta.signature ?? ''}`
+        else if (delta.type === 'input_json_delta') json.set(index, (json.get(index) ?? '') + (delta.partial_json ?? ''))
         break
       }
       case 'content_block_stop':
-        if (json.has(event.index)) {
-          const text = json.get(event.index)!
-          content[event.index]!.input = text ? JSON.parse(text) : {}
+        if (json.has(index)) {
+          const text = json.get(index)!
+          content[index]!.input = text ? JSON.parse(text) : {}
         }
         break
       case 'message_delta':
-        message.stop_reason = event.delta.stop_reason
-        message.stop_sequence = event.delta.stop_sequence
+        message.stop_reason = event.delta?.stop_reason
+        message.stop_sequence = event.delta?.stop_sequence
         message.usage = event.usage
         break
     }

@@ -26,6 +26,7 @@
  */
 
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 export type CacheProfileName = 'aggressive' | 'retain'
 
@@ -163,6 +164,8 @@ export function resolveProfileForProvider(
   baseUrl: string | undefined,
   model: string | undefined,
 ): CacheProfile {
+  // Converse writes no cache point (bedrockConverse/request.ts): nothing to retain.
+  if (transport === 'bedrock' && usesConverse(model)) return AGGRESSIVE_PROFILE
   if (
     transport === 'anthropic' ||
     transport === 'bedrock' ||

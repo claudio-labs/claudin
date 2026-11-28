@@ -17,6 +17,7 @@ import {
   createBedrockRuntimeClient,
   getInferenceProfileBackingModel,
   isFoundationModel,
+  usesConverse,
 } from 'src/providers/model/bedrock.js'
 import {
   getDefaultSonnetModel,
@@ -29,7 +30,6 @@ import { isToolReferenceBlock } from 'src/agent/tools/toolSearch.js'
 import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
 import { withTokenCountVCR } from 'src/providers/vcr.js'
-import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 // Minimal values for token counting with thinking enabled
 // API constraint: max_tokens must be greater than thinking.budget_tokens

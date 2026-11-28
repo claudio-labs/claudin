@@ -1,7 +1,8 @@
 {
   "test": [
     "src/providers/shims/bedrockConverse/converse.cassette.test.ts",
-    "src/shared/tokenEstimation.apiCount.test.ts"
+    "src/shared/tokenEstimation.apiCount.test.ts",
+    "src/agent/cache/cacheProfile.test.ts"
   ],
   "source": "src/providers/shims/bedrockConverse/request.ts",
   "probes": [
@@ -109,8 +110,8 @@
     {
       "name": "a rejected request keeps the SDK's error",
       "source": "src/providers/shims/bedrockConverse/client.ts",
-      "find": "        output = await client.send(new ConverseStreamCommand(buildConverseInput(params)), { abortSignal })\n      } catch (error) {\n        throw isAbort(error) ? error : converseApiError(error as never)",
-      "replace": "        output = await client.send(new ConverseStreamCommand(buildConverseInput(params)), { abortSignal })\n      } catch (error) {\n        throw error"
+      "find": "  return isAbort(error) ? error : converseApiError(error as never)",
+      "replace": "  return error"
     },
     {
       "name": "a non-streaming caller gets a stream",
@@ -121,8 +122,44 @@
     {
       "name": "Converse keeps the SDK's HTTP/2 default",
       "source": "src/providers/shims/bedrockConverse/client.ts",
-      "find": "createBedrockRuntimeClient({ http1: true })",
-      "replace": "createBedrockRuntimeClient()"
+      "find": "        http1: true,\n",
+      "replace": ""
+    },
+    {
+      "name": "a Claude alias takes Converse",
+      "source": "src/providers/shims/bedrockConverse/models.ts",
+      "find": "  if (!id.includes('.') || id.startsWith('arn:')) return false",
+      "replace": "  if (!id || id.startsWith('arn:')) return false"
+    },
+    {
+      "name": "Converse ignores the profile region",
+      "source": "src/providers/transport/client.ts",
+      "find": "      return createConverseClient({ region: awsRegion }) as unknown as Anthropic",
+      "replace": "      return createConverseClient() as unknown as Anthropic"
+    },
+    {
+      "name": "the runtime client ignores the region it is given",
+      "source": "src/providers/model/bedrock.ts",
+      "find": "  const region = options.region ?? getAWSRegion()",
+      "replace": "  const region = getAWSRegion()"
+    },
+    {
+      "name": "an abort waits for the next frame",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "      const next = await Promise.race([iterator.next(), aborted])",
+      "replace": "      const next = await iterator.next()"
+    },
+    {
+      "name": "an abort reads as an API error",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "  if (signal.aborted) return new APIUserAbortError()\n",
+      "replace": ""
+    },
+    {
+      "name": "Converse retains like Claude",
+      "source": "src/agent/cache/cacheProfile.ts",
+      "find": "  if (transport === 'bedrock' && usesConverse(model)) return AGGRESSIVE_PROFILE\n",
+      "replace": ""
     }
   ]
 }

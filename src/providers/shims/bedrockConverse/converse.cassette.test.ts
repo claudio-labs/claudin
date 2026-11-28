@@ -112,7 +112,7 @@ afterAll(() => {
 })
 
 type Messages = {
-  create: (params: Record<string, unknown>) => Promise<any> & {
+  create: (params: Record<string, unknown>, options?: { signal?: AbortSignal }) => Promise<any> & {
     withResponse: () => Promise<{ data: any; response: Response; request_id?: string }>
   }
   keepAlivePingParams?: (params: Record<string, unknown>) => unknown
@@ -327,7 +327,7 @@ describe('the recorded Converse exchanges', () => {
     const timer = setTimeout(() => controller.abort(), 5_000)
     try {
       const { data } = await (await messages())
-        .create({ model: NOVA, max_tokens: 16, stream: true, messages: [{ role: 'user', content: 'Say hello.' }] }, { signal: controller.signal } as never)
+        .create({ model: NOVA, max_tokens: 16, stream: true, messages: [{ role: 'user', content: 'Say hello.' }] }, { signal: controller.signal })
         .withResponse()
       const events: Array<Record<string, any>> = []
       for await (const event of data) events.push(event)
@@ -362,7 +362,7 @@ describe('the recorded Converse exchanges', () => {
 
     const controller = new AbortController()
     const { data } = await (await messages())
-      .create({ model: NOVA, max_tokens: 16, stream: true, messages: [{ role: 'user', content: 'hi' }] }, { signal: controller.signal } as never)
+      .create({ model: NOVA, max_tokens: 16, stream: true, messages: [{ role: 'user', content: 'hi' }] }, { signal: controller.signal })
       .withResponse()
     const drained = (async () => {
       for await (const event of data) if (event.type === 'content_block_delta') controller.abort()

@@ -138,7 +138,15 @@ declare module '@anthropic-ai/sandbox-runtime' {
 declare module '@aws-sdk/client-bedrock'
 /** Loaded by `utils/aws.ts` only when resolving AWS credentials. */
 declare module '@aws-sdk/client-sts'
-/** Loaded by `services/tokenEstimation.ts` only for Bedrock token counting. */
+
+// ---------------------------------------------------------------------------
+// Declared, installed and bundled into the binary, yet declared here too
+//
+// `@aws-sdk/client-bedrock-runtime` is a real dependency (Bedrock count_tokens,
+// Converse). This ambient block overrides its own types on purpose: it keeps
+// the commands `any` like every other declaration here, and the callers cast
+// the client they build (`createBedrockRuntimeClient`).
+// ---------------------------------------------------------------------------
 declare module '@aws-sdk/client-bedrock-runtime' {
   export type CountTokensCommandInput = any
   export const CountTokensCommand: any
