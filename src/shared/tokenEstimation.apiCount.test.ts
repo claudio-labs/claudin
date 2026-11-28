@@ -419,6 +419,18 @@ describe('countMessagesTokensWithAPI — Bedrock CountTokens', () => {
     expect(body).not.toHaveProperty('thinking')
   })
 
+  test('a Converse model is not counted: CountTokens takes the Anthropic body', async () => {
+    // Not an anthropic.* id, so without the guard it is looked up as an
+    // inference profile, through a control plane that is not installed.
+    const lookup = spyOn(bedrockModule, 'getInferenceProfileBackingModel')
+    spies.push(lookup)
+    useProfile(bedrockProfile('amazon.nova-micro-v1:0'))
+    expect(await countMessagesTokensWithAPI([{ role: 'user', content: 'nova hello' }], [])).toBeNull()
+    expect(requests).toEqual([])
+    expect(lookup).not.toHaveBeenCalled()
+    expect(logErrorSpy).not.toHaveBeenCalled()
+  })
+
   test('an empty history gets the dummy message; no tools and no betas → neither key', async () => {
     useProfile(bedrockProfile(BEDROCK_FOUNDATION))
     betas = []
