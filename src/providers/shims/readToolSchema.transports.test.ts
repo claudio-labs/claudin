@@ -133,8 +133,9 @@ describe('the default Read schema on every transport', () => {
   })
 
   test('OpenAI-compatible, strict shape: nothing required, nothing dropped', async () => {
+    // GPT-5 and later on api.openai.com take the Responses API (compatWires.ts).
     process.env.OPENAI_BASE_URL = 'https://api.openai.com/v1'
-    const parameters = await openAIWireParameters('gpt-5.5')
+    const parameters = await openAIWireParameters('gpt-4.1')
     expect(parameters.required).toEqual([])
     expect(parameters.additionalProperties).toBe(false)
     expect(parameters.$schema).toBeUndefined()

@@ -253,10 +253,10 @@ describe('resolveProviderRequest — reasoning effort', () => {
 })
 
 describe('resolveProviderRequest — OpenAI-compatible profile', () => {
-  test('a GPT-5 alias on api.openai.com stays on chat completions', () => {
+  test('a GPT-5 alias on api.openai.com takes the Responses API, not the Codex path', () => {
     useProfile({ model: 'gpt-5.4' })
     expect(resolveProviderRequest()).toMatchObject({
-      transport: 'chat_completions',
+      transport: 'openai_responses',
       resolvedModel: 'gpt-5.4',
       baseUrl: DEFAULT_OPENAI_BASE_URL,
     })

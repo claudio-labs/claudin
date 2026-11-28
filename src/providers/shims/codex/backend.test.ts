@@ -100,8 +100,8 @@ describe('the keep-alive ping on the Responses path', () => {
 
 describe('which sessions go to the Codex backend', () => {
   test.each([
-    [{ id: 'b-codex', name: 'Codex OAuth', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'codexplan' }, true],
-    [{ id: 'b-codex-model', name: 'Codex', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'gpt-5.6-terra' }, true],
+    [{ id: 'b-codex', name: 'Codex OAuth', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'codexplan' }, true, true],
+    [{ id: 'b-codex-model', name: 'Codex', provider: 'openai', baseUrl: CODEX_BASE_URL, model: 'gpt-5.6-terra' }, true, true],
     [
       {
         id: 'b-copilot',
@@ -112,14 +112,16 @@ describe('which sessions go to the Codex backend', () => {
         extras: { githubToken: 'gh' },
       },
       false,
+      false,
     ],
-    [{ id: 'b-openai', name: 'OpenAI', provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.5' }, false],
-    [{ id: 'b-local', name: 'Local', provider: 'openai', baseUrl: 'http://localhost:8000/v1', model: 'codexplan' }, false],
-    [{ id: 'b-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' }, false],
-  ] as Array<[ProviderProfile, boolean]>)('$1: %o', (profile, expected) => {
+    [{ id: 'b-openai', name: 'OpenAI', provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.5' }, false, true],
+    [{ id: 'b-local', name: 'Local', provider: 'openai', baseUrl: 'http://localhost:8000/v1', model: 'codexplan' }, false, false],
+    [{ id: 'b-anthropic', name: 'Anthropic', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5' }, false, false],
+  ] as Array<[ProviderProfile, boolean, boolean]>)('%o: on the backend %p, replays %p', (profile, onBackend, replays) => {
+    // The Responses API on api.openai.com replays the reasoning too, off the backend.
     useProfile(profile)
-    expect(activeSessionReplaysCodexItems()).toBe(expected)
-    expect(activeSessionOnCodexBackend()).toBe(expected)
+    expect(activeSessionReplaysCodexItems()).toBe(replays)
+    expect(activeSessionOnCodexBackend()).toBe(onBackend)
   })
 
   test('no profile is no Codex session', () => {

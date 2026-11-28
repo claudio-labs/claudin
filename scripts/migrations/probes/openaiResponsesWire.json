@@ -1,0 +1,102 @@
+{
+  "test": [
+    "src/providers/shims/openaiShim/responsesApi.cassette.test.ts",
+    "src/providers/presets/compatWires.test.ts",
+    "src/providers/presets/providerConfig.resolve.test.ts",
+    "src/providers/shims/codex/backend.test.ts",
+    "src/providers/shims/codex/providerNeutrality.invariant.test.ts",
+    "src/providers/shims/codexShim.test.ts"
+  ],
+  "source": "src/providers/shims/codexShim.ts",
+  "probes": [
+    {
+      "name": "the resolver never picks the Responses API",
+      "source": "src/providers/presets/providerConfig.ts",
+      "find": "    resolveCompatWire(baseUrl, resolvedModel).wire === 'responses'\n",
+      "replace": "    false\n"
+    },
+    {
+      "name": "OpenAI loses its row",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "  { id: 'openai', wire: 'responses', host: 'api.openai.com', models: GPT_5_PLUS_RE, verified: true },\n",
+      "replace": ""
+    },
+    {
+      "name": "xAI counts as verified",
+      "source": "src/providers/presets/compatWires.ts",
+      "find": "  { id: 'xai', wire: 'responses', host: 'api.x.ai', models: GROK_4_PLUS_RE, verified: false },",
+      "replace": "  { id: 'xai', wire: 'responses', host: 'api.x.ai', models: GROK_4_PLUS_RE, verified: true },"
+    },
+    {
+      "name": "the Codex headers reach api.openai.com",
+      "find": "  const codexPath = options.request.transport === 'codex_responses'\n",
+      "replace": "  const codexPath = true\n"
+    },
+    {
+      "name": "the Codex URL rewrite reaches api.openai.com",
+      "find": "    if (responsesApi) return isAzureOpenAIUrl(options.request.baseUrl) ? `${raw}?api-version=v1` : raw\n",
+      "replace": ""
+    },
+    {
+      "name": "Azure loses its api-version",
+      "find": "isAzureOpenAIUrl(options.request.baseUrl) ? `${raw}?api-version=v1` : raw",
+      "replace": "raw"
+    },
+    {
+      "name": "the reasoning is not asked back",
+      "find": "  } else if (replayCodexItems) {\n    body.include = ['reasoning.encrypted_content']\n  }",
+      "replace": "  }"
+    },
+    {
+      "name": "messages are replayed under their ids on the Responses API",
+      "find": "    replayMessageIds: onCodexBackend,\n",
+      "replace": "    replayMessageIds: true,\n"
+    },
+    {
+      "name": "OpenAI gets no prompt cache key",
+      "find": "    ...(responsesApi && isOfficialOpenAIUrl(options.request.baseUrl) && {",
+      "replace": "    ...(false && {"
+    },
+    {
+      "name": "no output cap on the Responses API",
+      "find": "  if (responsesApi && Number(options.params.max_tokens) > 0) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "the replay stays Codex-only",
+      "source": "src/providers/shims/codex/backend.ts",
+      "find": "  return codexReplayActive(request) || (request.transport === 'openai_responses' && isCodexReasoningReplayEnabled())",
+      "replace": "  return codexReplayActive(request)"
+    },
+    {
+      "name": "Azure gets a bearer instead of api-key",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "        authHeaders: isAzureOpenAIUrl(request.baseUrl) ? { 'api-key': apiKey } : undefined,",
+      "replace": "        authHeaders: undefined,"
+    },
+    {
+      "name": "a rejected first request is not retried over chat",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "        return this._doOpenAIRequest({ ...request, transport: 'chat_completions' }, params, options)\n      }\n      throw error",
+      "replace": "      }\n      throw error"
+    },
+    {
+      "name": "a refused replay falls back to chat",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "        !body.includes(CODEX_REPLAY_REFUSED_CODE) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "the effort is not clamped",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "    const clamped = effort && levels ? clampEffortToValues(effort, levels) : effort\n    try {",
+      "replace": "    const clamped = effort\n    try {"
+    },
+    {
+      "name": "the answer is read as chat",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "      if (request.transport === 'codex_responses' || responsesApiAnswers.has(response)) {",
+      "replace": "      if (request.transport === 'codex_responses') {"
+    }
+  ]
+}

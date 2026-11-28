@@ -37,7 +37,9 @@ import {
   codexReplayActive,
   codexBackendBodyFields,
   isCodexBackendRequest,
+  responsesReplayActive,
 } from 'src/providers/shims/codex/backend.js'
+import { isAzureOpenAIUrl, isOfficialOpenAIUrl } from 'src/providers/shims/openaiShim/providerModes.js'
 import {
   codexSocketEligible,
   requestOverCodexSocket,
@@ -283,8 +285,12 @@ function functionCallItem(
  * become that message again with its phase, and a call keeps its fc_ id.
  * Blocks without item state (a turn from before the replay, or another
  * provider's) keep their place, the synthetic call ids, and drop thinking.
+ *
+ * `messageIds` off replays a message without its id and phase, as the
+ * Responses API's recordings show it (cassettes/openai-responses): reasoning
+ * and calls keep theirs.
  */
-function replayAssistantItems(content: unknown): ResponsesInputItem[] {
+function replayAssistantItems(content: unknown, messageIds: boolean): ResponsesInputItem[] {
   if (!Array.isArray(content)) {
     const parts = convertContentBlocksToResponsesParts(content, 'assistant')
     return parts.length > 0 ? [{ type: 'message', role: 'assistant', content: parts }] : []
@@ -308,7 +314,7 @@ function replayAssistantItems(content: unknown): ResponsesInputItem[] {
     }
     const parts = convertContentBlocksToResponsesParts([block], 'assistant')
     if (parts.length === 0) continue
-    const state = codexStateOf(block)
+    const state = messageIds ? codexStateOf(block) : undefined
     if (message && message.id === state?.id) {
       message.content.push(...parts)
       continue
@@ -327,7 +333,7 @@ function replayAssistantItems(content: unknown): ResponsesInputItem[] {
 
 export function convertAnthropicMessagesToResponsesInput(
   messages: Array<{ role?: string; message?: { role?: string; content?: unknown }; content?: unknown }>,
-  options: { replayCodexItems?: boolean } = {},
+  options: { replayCodexItems?: boolean; replayMessageIds?: boolean } = {},
 ): ResponsesInputItem[] {
   const items: ResponsesInputItem[] = []
 
@@ -378,7 +384,7 @@ export function convertAnthropicMessagesToResponsesInput(
 
     if (role === 'assistant') {
       if (options.replayCodexItems) {
-        items.push(...replayAssistantItems(content))
+        items.push(...replayAssistantItems(content, options.replayMessageIds ?? true))
         continue
       }
 
@@ -598,11 +604,19 @@ export async function performCodexRequest(options: {
   credentials: ResolvedCodexCredentials
   params: ShimCreateParams
   defaultHeaders: Record<string, string>
+  /** Replaces `Authorization: Bearer <apiKey>` (Azure reads `api-key`). */
+  authHeaders?: Record<string, string>
   signal?: AbortSignal
 }): Promise<Response> {
   // On the Codex backend every item comes back as the backend produced it,
   // reasoning included, and the body asks for the reasoning (codex/backend.ts).
-  const replayCodexItems = codexReplayActive(options.request)
+  // A Responses API host (`openai_responses`) replays the reasoning and the
+  // calls the same way, and its messages without their ids.
+  const onCodexBackend = codexReplayActive(options.request)
+  const replayCodexItems = responsesReplayActive(options.request)
+  const responsesApi = options.request.transport === 'openai_responses'
+  // Copilot shares the Codex path, its headers included.
+  const codexPath = options.request.transport === 'codex_responses'
   // applyStableStubs runs at the API boundary so the stable bytes are
   // what goes on the wire. No ensureToolResultPairing analogue exists
   // here — convertAnthropicMessagesToResponsesInput handles orphan
@@ -618,6 +632,7 @@ export async function performCodexRequest(options: {
   )
   const input = convertAnthropicMessagesToResponsesInput(compressedMessages, {
     replayCodexItems,
+    replayMessageIds: onCodexBackend,
   })
   const body: Record<string, unknown> = {
     model: options.request.resolvedModel,
@@ -641,6 +656,11 @@ export async function performCodexRequest(options: {
     // backend rejects it with `400 Unsupported parameter: prompt_cache_retention`.
     ...(isCodexBaseUrl(options.request.baseUrl) && {
       prompt_cache_key: getSessionId(),
+    }),
+    // On api.openai.com the Responses API takes both, as the chat body does.
+    ...(responsesApi && isOfficialOpenAIUrl(options.request.baseUrl) && {
+      prompt_cache_key: getSessionId(),
+      prompt_cache_retention: '24h',
     }),
   }
 
@@ -673,13 +693,20 @@ export async function performCodexRequest(options: {
     body.reasoning = options.request.reasoning
   }
 
-  if (replayCodexItems) {
+  if (onCodexBackend) {
     Object.assign(body, codexBackendBodyFields(options.request.reasoning))
+  } else if (replayCodexItems) {
+    body.include = ['reasoning.encrypted_content']
   }
 
   // A keep-alive ping keeps its cap (codexKeepAlivePingParams).
   if (options.params[CODEX_HONOR_MAX_TOKENS] === true && isCodexBackendRequest(options.request)) {
     body.max_output_tokens = Math.max(CODEX_MIN_OUTPUT_TOKENS, Number(options.params.max_tokens) || 0)
+  }
+  // A Responses API host gets the cap the chat body sent as
+  // max_completion_tokens; a keep-alive ping's 1 becomes the floor.
+  if (responsesApi && Number(options.params.max_tokens) > 0) {
+    body.max_output_tokens = Math.max(CODEX_MIN_OUTPUT_TOKENS, Number(options.params.max_tokens))
   }
 
   const isTargetModel =
@@ -712,8 +739,8 @@ export async function performCodexRequest(options: {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...options.defaultHeaders,
-    'User-Agent': codexUserAgent,
-    Authorization: `Bearer ${options.credentials.apiKey}`,
+    ...(codexPath && { 'User-Agent': codexUserAgent }),
+    ...(options.authHeaders ?? { Authorization: `Bearer ${options.credentials.apiKey}` }),
   }
   if (options.credentials.accountId) {
     // Canonical casing matches the Codex CLI / OpenCode wire format. HTTP
@@ -721,16 +748,18 @@ export async function performCodexRequest(options: {
     // log pipelines fingerprint canonical case.
     headers['ChatGPT-Account-Id'] = options.credentials.accountId
   }
-  // Session affinity + rate-limit/abuse signals on the OpenAI Codex
-  // backend. OpenCode sets this from input.sessionID; we use our own
-  // process-wide session id. Required on long sessions for WS continuity.
-  headers['session-id'] = getSessionId()
-  // NOTE: we intentionally do not set `max_output_tokens` on the body
-  // above, except on a keep-alive ping. The Codex CLI strips it, and so does
-  // OpenCode (`chat.params` → `output.maxOutputTokens = undefined`).
-  // performCodexRequest builds the body from scratch and only forwards the
-  // fields Codex accepts, so no upstream `params.max_tokens` leak is possible here.
-  headers.originator ??= 'claudin'
+  if (codexPath) {
+    // Session affinity + rate-limit/abuse signals on the OpenAI Codex
+    // backend. OpenCode sets this from input.sessionID; we use our own
+    // process-wide session id. Required on long sessions for WS continuity.
+    headers['session-id'] = getSessionId()
+    // NOTE: we intentionally do not set `max_output_tokens` on the body
+    // above, except on a keep-alive ping. The Codex CLI strips it, and so does
+    // OpenCode (`chat.params` → `output.maxOutputTokens = undefined`).
+    // performCodexRequest builds the body from scratch and only forwards the
+    // fields Codex accepts, so no upstream `params.max_tokens` leak is possible here.
+    headers.originator ??= 'claudin'
+  }
 
   // Defensive URL normalization: if a user's profile stored a baseUrl that
   // already includes `/v1/responses` or `/chat/completions` (a common
@@ -740,6 +769,8 @@ export async function performCodexRequest(options: {
   // endpoint when those telltale segments appear.
   const codexUrl = (() => {
     const raw = `${options.request.baseUrl}/responses`
+    // Azure's v1 API, as recorded (cassettes/azure).
+    if (responsesApi) return isAzureOpenAIUrl(options.request.baseUrl) ? `${raw}?api-version=v1` : raw
     try {
       const parsed = new URL(raw)
       if (

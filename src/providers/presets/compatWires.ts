@@ -43,7 +43,24 @@ export type CompatWire =
 const CHAT: CompatWire = { wire: 'chat' }
 const TRAILING_SLASH_RE = /\/+$/
 
-export const COMPAT_WIRES: readonly CompatWireRow[] = []
+// GPT-5 and every later major, as providerConfig's GPT_REASONING_FAMILY_RE.
+const GPT_5_PLUS_RE = /^gpt-(?:[5-9]|[1-9]\d+)(?:[.-]|$)/
+const GROK_4_PLUS_RE = /^grok-(?:[4-9]|[1-9]\d+)(?:[.-]|$)/
+
+export const COMPAT_WIRES: readonly CompatWireRow[] = [
+  // Recorded: cassettes/openai-responses (reasoning replayed under store:false).
+  { id: 'openai', wire: 'responses', host: 'api.openai.com', models: GPT_5_PLUS_RE, verified: true },
+  // Recorded: cassettes/azure (the v1 API, `?api-version=v1`).
+  {
+    id: 'azure-openai',
+    wire: 'responses',
+    host: /^[a-z0-9-]+\.openai\.azure\.com$/,
+    path: '/openai/v1',
+    models: GPT_5_PLUS_RE,
+    verified: true,
+  },
+  { id: 'xai', wire: 'responses', host: 'api.x.ai', models: GROK_4_PLUS_RE, verified: false },
+]
 
 const ENV_OF: Record<CompatWireKind, string> = {
   responses: 'CLAUDIN_OPENAI_RESPONSES',

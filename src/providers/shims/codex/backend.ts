@@ -60,12 +60,26 @@ export function codexReplayActive(
 }
 
 /**
+ * Whether this request replays Responses items: the Codex backend, or a host
+ * the wire table sends to its Responses API (`openai_responses`), which takes
+ * the reasoning back encrypted under `store: false` the same way (recorded,
+ * cassettes/openai-responses). Message ids and phases stay Codex-only.
+ */
+export function responsesReplayActive(
+  request: Pick<ResolvedProviderRequest, 'transport' | 'baseUrl'>,
+): boolean {
+  return codexReplayActive(request) || (request.transport === 'openai_responses' && isCodexReasoningReplayEnabled())
+}
+
+/**
  * The keep-alive ping for `params` (src/agent/cache/anthropic/keepAlive.ts) on
  * this request's transport. The ping is a read with max_tokens at the floor,
  * which the Responses body drops:
  *  - Chat Completions keeps max_tokens, so the body goes as it is;
  *  - the Codex backend takes it as max_output_tokens when the body is marked
  *    (16 answered `response.incomplete` live, 2026-11-23);
+ *  - a Responses API host on `openai_responses` always gets max_output_tokens,
+ *    so the body goes as it is;
  *  - any other Responses host gets null, no ping: Copilot bills each request.
  */
 export function codexKeepAlivePingParams(
@@ -90,12 +104,14 @@ export function activeSessionOnCodexBackend(): boolean {
 }
 
 /**
- * Whether the active session replays Codex items. Decides, for everything that
- * runs before the shim (rendering, resume), whether Codex item state is kept
- * or redacted.
+ * Whether the active session replays Responses items. Decides, for everything
+ * that runs before the shim (rendering, resume), whether the item state is
+ * kept or redacted.
  */
 export function activeSessionReplaysCodexItems(): boolean {
-  return activeSessionOnCodexBackend() && isCodexReasoningReplayEnabled()
+  const provider = tryGetActiveProvider()
+  if (!provider) return false
+  return responsesReplayActive(resolveProviderRequest({ model: provider.model, baseUrl: provider.baseUrl }))
 }
 
 /**
