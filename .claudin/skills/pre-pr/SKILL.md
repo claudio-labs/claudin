@@ -47,9 +47,12 @@ checks after the build don't depend on each other:
    that deletes a suite along with the code it covered is what this catches.
    Raising the floor is deliberate — `bun run test:floor:update`, in the same
    commit that earned it.
-5. **Dead code** — `bun run deadcode:ci`, and `bun run deadcode:exports` beside
-   it (the unused-export ratchet from the Pre-PR checklist in `testing.md`: it
-   fails only on findings the branch adds). deadcode:ci covers unused files and
+5. **Dead code** — `bun run deadcode:ci`, `bun run deadcode:prod` and
+   `bun run deadcode:exports`, the three CI gates (`pr-checks.yml`). `:prod` is
+   `knip --production`: it ignores test imports, so a module only tests still
+   reach — a barrel left behind by a move — fails CI while `:ci` passes (#374).
+   `:exports` is the unused-export ratchet from the Pre-PR checklist in
+   `testing.md`: it fails only on findings the branch adds. deadcode:ci covers unused files and
    declared dependencies that nothing imports; both were cleared to zero on 2026-08-07,
    so any finding belongs to the branch. A file finding is a question, not a
    verdict — one of the nineteen deleted turned out to be a migration nobody
