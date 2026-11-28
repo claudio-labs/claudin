@@ -7,11 +7,13 @@
  * request is converted.
  *
  * Copilot running Claude goes through the native Anthropic client and is
- * left to it. The first-party, Bedrock-Claude, Vertex and Foundry clients are
- * never wrapped.
+ * left to it, and so is Claude on Bedrock; every other Bedrock model goes
+ * through Converse, which has no tool search. The first-party, Vertex and
+ * Foundry clients are never wrapped.
  */
 import { isGithubNativeAnthropicMode } from 'src/providers/model/providers.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 const CLIENT_SEARCH_TRANSPORTS: ReadonlySet<string> = new Set([
   'openai_compat',
@@ -22,7 +24,9 @@ const CLIENT_SEARCH_TRANSPORTS: ReadonlySet<string> = new Set([
 ])
 
 export function clientDefersTools(model?: string): boolean {
-  const transport = tryGetActiveProvider()?.transport
+  const profile = tryGetActiveProvider()
+  const transport = profile?.transport
+  if (transport === 'bedrock') return usesConverse(model?.trim() || profile?.model)
   if (!transport || !CLIENT_SEARCH_TRANSPORTS.has(transport)) return false
   return !(transport === 'github_copilot' && isGithubNativeAnthropicMode(model))
 }

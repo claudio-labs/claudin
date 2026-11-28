@@ -29,6 +29,7 @@ import { isToolReferenceBlock } from 'src/agent/tools/toolSearch.js'
 import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
 import { withTokenCountVCR } from 'src/providers/vcr.js'
+import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 // Minimal values for token counting with thinking enabled
 // API constraint: max_tokens must be greater than thinking.budget_tokens
@@ -636,6 +637,8 @@ async function countTokensWithBedrock({
   betas: string[]
   containsThinking: boolean
 }): Promise<number | null> {
+  // CountTokens takes the Anthropic body, which a Converse model does not read.
+  if (usesConverse(model)) return null
   try {
     const client = await createBedrockRuntimeClient()
     // Bedrock CountTokens requires a model ID, not an inference profile / ARN

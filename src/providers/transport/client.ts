@@ -36,6 +36,7 @@ import {
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { clientDefersTools } from 'src/providers/shims/clientToolSearch/capability.js'
 import { resolveCompatWire } from 'src/providers/presets/compatWires.js'
+import { usesConverse } from 'src/providers/shims/bedrockConverse/models.js'
 
 const importRuntimeModule = new Function(
   'specifier',
@@ -289,6 +290,11 @@ async function buildAnthropicClient({
     }) as unknown as Anthropic
   }
   if (transport === 'bedrock') {
+    // Every model on Bedrock but Claude speaks only Converse (bedrockConverse/models.ts).
+    if (usesConverse(model?.trim() || activeProvider?.model)) {
+      const { createConverseClient } = await import('src/providers/shims/bedrockConverse/client.js')
+      return createConverseClient() as unknown as Anthropic
+    }
     const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
     // Use region override for small fast model if specified
     const awsRegion =
