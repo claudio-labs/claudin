@@ -64,7 +64,7 @@ export type ConnectPlan = {
   probeTimeoutMs?: number
 }
 
-export const MAX_PROBE_TIMEOUT_MS = 5000
+const MAX_PROBE_TIMEOUT_MS = 5000
 const HOUR_MS = 60 * 60 * 1000
 export const MIN_MODERN_VERDICT_TTL_MS = HOUR_MS
 export const MAX_VERDICT_TTL_MS = 24 * HOUR_MS

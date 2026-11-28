@@ -35,7 +35,7 @@ export const TASK_POLL_DEFAULT_MS = 2_000
 export const MCP_TASK_INLINE_MS = 120_000
 
 /** The input requests a task may ask that Claudin answers. */
-export const SUPPORTED_TASK_INPUT_METHODS: ReadonlySet<string> = new Set(['elicitation/create', 'roots/list'])
+const SUPPORTED_TASK_INPUT_METHODS: ReadonlySet<string> = new Set(['elicitation/create', 'roots/list'])
 
 // Only the id and status are required: a field of the wrong type reads as
 // absent rather than failing the poll.

@@ -22,7 +22,7 @@ import type { RequestId } from '@modelcontextprotocol/client'
 type Listing = { cursors: Set<string>; pages: number }
 
 /** The most pages one listing is followed for. */
-export const MAX_LIST_PAGES = 100
+const MAX_LIST_PAGES = 100
 
 /** The `listMaxPages` every Client is built with: past MAX_LIST_PAGES, so it never throws first. */
 export const SDK_LIST_MAX_PAGES = MAX_LIST_PAGES + 1
@@ -31,7 +31,7 @@ export const SDK_LIST_MAX_PAGES = MAX_LIST_PAGES + 1
 const MAX_PENDING_PER_CURSOR = 4
 
 /** Why a listing was cut: a repeated cursor, or MAX_LIST_PAGES pages answered. */
-export type ListingCut = { reason: 'cycle'; cursor: string } | { reason: 'pages'; pages: number }
+type ListingCut = { reason: 'cycle'; cursor: string } | { reason: 'pages'; pages: number }
 
 export type CursorCycleGuard = {
   /** Notes which listing a request belongs to. */

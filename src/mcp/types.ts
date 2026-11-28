@@ -40,7 +40,7 @@ const timeoutFields = () => ({
 // servers negotiate, so only they take `protocol`; the other transports
 // always speak the 2025 protocol, where MCP skills still work, so sse, ws and
 // claude.ai proxy servers take `extensions` too.
-export const MCP_EXTENSION_NAMES = ['skills', 'tasks', 'events'] as const
+const MCP_EXTENSION_NAMES = ['skills', 'tasks', 'events'] as const
 export type McpExtensionName = (typeof MCP_EXTENSION_NAMES)[number]
 const extensionsField = () => ({
   extensions: z

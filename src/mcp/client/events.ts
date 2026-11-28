@@ -35,13 +35,13 @@ const STREAM_TOKEN_META_KEY = 'claudin/eventsStream'
 
 /** events/stream has no default timeout; this is the largest a timer takes. */
 export const EVENTS_STREAM_TIMEOUT_MS = 2 ** 31 - 1
-export const EVENTS_LIST_TIMEOUT_MS = 10_000
+const EVENTS_LIST_TIMEOUT_MS = 10_000
 export const EVENTS_LIST_MAX_PAGES = 10
 export const EVENTS_POLL_FLOOR_MS = 1_000
 /** Between polls when the server suggests no `nextPollMs`. */
-export const EVENTS_POLL_DEFAULT_MS = 5_000
+const EVENTS_POLL_DEFAULT_MS = 5_000
 /** Heartbeats a stream may miss before it counts as dropped. */
-export const EVENTS_HEARTBEAT_MISSES = 3
+const EVENTS_HEARTBEAT_MISSES = 3
 /**
  * How long a stream may take to say `active`. A stream the server cuts
  * without a response leaves the SDK's request pending. Over HTTP the
@@ -51,11 +51,11 @@ export const EVENTS_HEARTBEAT_MISSES = 3
  */
 export const EVENTS_OPEN_TIMEOUT_MS = 30_000
 /** Event ids remembered, so a resumed stream does not deliver one twice. */
-export const EVENTS_DEDUPE_SIZE = 100
+const EVENTS_DEDUPE_SIZE = 100
 /** Failed (re)connects in a row, with no `active` between them, before giving up. */
 export const EVENTS_MAX_RETRIES = 5
 /** The most of one server-supplied string a notification or summary quotes, JSON-encoded. */
-export const EVENTS_QUOTE_MAX = 200
+const EVENTS_QUOTE_MAX = 200
 const RECONNECT_BASE_MS = 1_000
 const RECONNECT_CAP_MS = 30_000
 
@@ -66,7 +66,7 @@ export type EventsClient = Pick<
 
 export type EventDelivery = 'push' | 'poll'
 
-export const McpEventTypeSchema = z.looseObject({
+const McpEventTypeSchema = z.looseObject({
   name: z.string().min(1),
   description: z.string().optional(),
   delivery: z.array(z.string()).optional(),
@@ -254,7 +254,7 @@ export type EventWatchSink = {
   onRetry(why: string): void
 }
 
-export type EventWatchEnd = { status: 'completed' | 'failed'; summary: string } | { status: 'stopped' }
+type EventWatchEnd = { status: 'completed' | 'failed'; summary: string } | { status: 'stopped' }
 
 export type EventWatchDeps = {
   /** The client to (re)connect through; a reconnect asks again. */

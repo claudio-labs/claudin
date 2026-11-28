@@ -24,16 +24,17 @@
  */
 import { createHash } from 'crypto'
 import { stableStringify } from 'src/shared/data/stableStringify.js'
+import { isValidTtlMs } from 'src/mcp/client/wireRules.js'
 
 export type McpListKind = 'tools' | 'prompts' | 'resources'
 
-export const MCP_LIST_KINDS: readonly McpListKind[] = ['tools', 'prompts', 'resources']
+const MCP_LIST_KINDS: readonly McpListKind[] = ['tools', 'prompts', 'resources']
 
 /** The shortest interval between two TTL reads of one list. */
 export const LIST_TTL_FLOOR_MS = 60_000
 
 /** The jitter is up to this fraction of the interval, drawn once per fetch. */
-export const LIST_TTL_JITTER_FRACTION = 0.1
+const LIST_TTL_JITTER_FRACTION = 0.1
 
 /** The longest wait after failed refreshes in a row. */
 export const LIST_TTL_MAX_BACKOFF_MS = 60 * 60_000
@@ -56,10 +57,6 @@ export type ListTtlServer = {
 }
 
 export type DueList = { readonly server: string; readonly kind: McpListKind }
-
-function isValidTtlMs(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
-}
 
 /** The `ttlMs` a list result carries, or 0. */
 export function readTtlMs(result: unknown): number {

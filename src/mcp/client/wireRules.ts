@@ -49,7 +49,8 @@ export type WireRequest = { method: string; params?: Record<string, unknown> } &
 /** Returns the request to send in place of `request`, which it leaves untouched. */
 export type SendRule = (request: WireRequest) => WireRequest
 
-function isValidTtlMs(value: unknown): boolean {
+/** A `ttlMs` the spec allows: a whole number of milliseconds, 0 included. */
+export function isValidTtlMs(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
@@ -81,7 +82,7 @@ export function withTaskMarker(result: WireResult): void {
 }
 
 /** A tool result as the SDK decodes it: a task turned into its marker, and any other result complete unless it says otherwise. */
-export function fillToolCallResult(result: WireResult): void {
+function fillToolCallResult(result: WireResult): void {
   withTaskMarker(result)
   fillResultType(result)
 }

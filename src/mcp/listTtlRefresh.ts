@@ -45,7 +45,7 @@ import { errorMessage } from 'src/shared/errors.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 
-export const LIST_TTL_REFRESH_BUDGET_MS = 1500
+const LIST_TTL_REFRESH_BUDGET_MS = 1500
 
 type McpState = AppState['mcp']
 

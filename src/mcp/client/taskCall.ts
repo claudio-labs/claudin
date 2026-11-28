@@ -213,7 +213,7 @@ export function taskResultSummary(content: MCPToolResult): string {
 }
 
 /** What the model reads when the call moves to the background, in the Bash shape. */
-export function backgroundTaskCallText(tool: string, serverName: string, taskId: string, outputFile: string): string {
+function backgroundTaskCallText(tool: string, serverName: string, taskId: string, outputFile: string): string {
   return `Tool "${tool}" on MCP server "${serverName}" is still running as an MCP task and was moved to the background with ID: ${taskId}. You will be notified when it completes. Output is being written to: ${outputFile}`
 }
 
@@ -261,7 +261,7 @@ async function finishInBackground(
  *
  * @internal Exported for testing.
  */
-export async function runTaskAugmentedCall({
+async function runTaskAugmentedCall({
   task,
   signal,
   onProgress,
