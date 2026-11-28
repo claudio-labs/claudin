@@ -21,10 +21,11 @@
  * the heartbeat watchdog, the reconnect backoff and the poll loop without
  * real timers.
  */
-import { type Client, ProtocolError, type Transport } from '@modelcontextprotocol/client'
+import { type Client, ProtocolError, type RequestId, type Transport } from '@modelcontextprotocol/client'
 import { z } from 'zod/v4'
 import { errorMessage } from 'src/shared/errors.js'
 import { cappedDoublingMs, sleep } from 'src/shared/sleep.js'
+import { isRecord } from 'src/mcp/client/listValidation.js'
 import { getMcpExtensionEnabled } from 'src/mcp/client/serverOptions.js'
 import type { McpServerConfig } from 'src/mcp/types.js'
 
@@ -94,12 +95,6 @@ const PollResultSchema = z.looseObject({
 const StreamResultSchema = z.looseObject({})
 const NotificationParamsSchema = z.looseObject({})
 
-type RequestId = string | number
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 /**
  * Why Monitor may not watch this server's events, or undefined when it may.
  * Nothing is sent to find out: the era and the extension come from the
@@ -150,7 +145,7 @@ export function reconnectDelayMs(attempt: number, random: number): number {
 }
 
 /** The wait before the next poll: the server's hint, never under the floor. */
-export function pollDelayMs(nextPollMs: number | undefined): number {
+export function eventPollDelayMs(nextPollMs: number | undefined): number {
   return Math.max(EVENTS_POLL_FLOOR_MS, nextPollMs ?? EVENTS_POLL_DEFAULT_MS)
 }
 
@@ -496,7 +491,7 @@ async function runPoll(
       if (!delivered) await deps.sleep(EVENTS_POLL_FLOOR_MS, signal)
       continue
     }
-    await deps.sleep(pollDelayMs(result.nextPollMs), signal)
+    await deps.sleep(eventPollDelayMs(result.nextPollMs), signal)
   }
   return { status: 'stopped' }
 }

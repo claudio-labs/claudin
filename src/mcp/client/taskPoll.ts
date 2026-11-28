@@ -75,14 +75,6 @@ export function pollDelayMs(task: Pick<McpTask, 'pollIntervalMs'>): number {
   return Math.min(TASK_POLL_CAP_MS, Math.max(TASK_POLL_FLOOR_MS, asked))
 }
 
-/**
- * How long a task may run inside the tool call before it moves to the
- * background: `inlineMs` (MCP_TASK_INLINE_MS), never past the tool timeout.
- */
-export function inlineTaskBudgetMs(inlineMs: number, toolTimeoutMs: number): number {
-  return Math.min(inlineMs, toolTimeoutMs)
-}
-
 /** The tool error for a task that asked for an input Claudin does not offer. */
 export function unsupportedTaskInputMessage(method: string): string {
   return `the MCP server asked for ${method}, which Claudin does not support`

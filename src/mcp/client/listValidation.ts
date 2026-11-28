@@ -35,7 +35,8 @@ export function isSchemaError(error: unknown): boolean {
   return error instanceof SdkError && error.code === SdkErrorCode.InvalidResult
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/** A JSON object: not null, not an array. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 

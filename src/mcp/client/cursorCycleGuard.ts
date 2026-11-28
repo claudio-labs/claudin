@@ -17,8 +17,8 @@
  * the cursor handed from one page to the next, so two listings of one method
  * in flight on one connection keep separate records.
  */
+import type { RequestId } from '@modelcontextprotocol/client'
 
-type RequestId = string | number
 type Listing = { cursors: Set<string>; pages: number }
 
 /** The most pages one listing is followed for. */

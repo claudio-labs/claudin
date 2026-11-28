@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
   cancelPolledTask,
-  inlineTaskBudgetMs,
   MCP_TASK_INLINE_MS,
   type McpTask,
   pollDelayMs,
@@ -55,11 +54,10 @@ describe('pollDelayMs', () => {
   })
 })
 
-describe('inlineTaskBudgetMs', () => {
-  test('120 s inline, never past the tool timeout', () => {
+// Never past the tool timeout either: taskCall.test.ts drives that end to end.
+describe('MCP_TASK_INLINE_MS', () => {
+  test("is 120 s, the user's number", () => {
     expect(MCP_TASK_INLINE_MS).toBe(120_000)
-    expect(inlineTaskBudgetMs(MCP_TASK_INLINE_MS, 300_000)).toBe(120_000)
-    expect(inlineTaskBudgetMs(MCP_TASK_INLINE_MS, 60_000)).toBe(60_000)
   })
 })
 

@@ -15,7 +15,7 @@ import {
   MCP_EVENTS_EXTENSION,
   type McpEvent,
   pickDelivery,
-  pollDelayMs,
+  eventPollDelayMs,
   reconnectDelayMs,
   watchEvents,
 } from 'src/mcp/client/events.js'
@@ -224,10 +224,10 @@ describe('the pure parts', () => {
     expect(reconnectDelayMs(10, 1)).toBe(30_000)
   })
 
-  test('pollDelayMs takes the hint over a 1 s floor, 5 s without one', () => {
-    expect(pollDelayMs(10)).toBe(1_000)
-    expect(pollDelayMs(2_500)).toBe(2_500)
-    expect(pollDelayMs(undefined)).toBe(5_000)
+  test('eventPollDelayMs takes the hint over a 1 s floor, 5 s without one', () => {
+    expect(eventPollDelayMs(10)).toBe(1_000)
+    expect(eventPollDelayMs(2_500)).toBe(2_500)
+    expect(eventPollDelayMs(undefined)).toBe(5_000)
   })
 
   test('the default timers sleep, wake early on abort, and fire or cancel a callback', async () => {

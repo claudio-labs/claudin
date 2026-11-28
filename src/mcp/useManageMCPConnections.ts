@@ -138,8 +138,7 @@ export function useManageMCPConnections(
   // (instead of queueMicrotask) ensures updates are batched even when
   // connection callbacks arrive at different times due to network I/O.
   const MCP_BATCH_FLUSH_MS = 16
-  type PendingUpdate = McpServerUpdate
-  const pendingUpdatesRef = useRef<PendingUpdate[]>([])
+  const pendingUpdatesRef = useRef<McpServerUpdate[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const flushPendingUpdates = useCallback(() => {
@@ -166,7 +165,7 @@ export function useManageMCPConnections(
   // see resolveUpdatedTools).
   // Updates are batched via setTimeout to coalesce updates arriving within MCP_BATCH_FLUSH_MS.
   const updateServer = useCallback(
-    (update: PendingUpdate) => {
+    (update: McpServerUpdate) => {
       pendingUpdatesRef.current.push(update)
       if (flushTimerRef.current === null) {
         flushTimerRef.current = setTimeout(

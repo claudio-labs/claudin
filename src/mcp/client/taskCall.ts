@@ -27,11 +27,11 @@ import {
 } from 'src/mcp/client/callTool.js'
 import { listRootsResult } from 'src/mcp/client/connection.js'
 import { McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/mcp/client/errors.js'
+import { isRecord } from 'src/mcp/client/listValidation.js'
 import { processMCPResult } from 'src/mcp/client/toolResult.js'
 import { getMcpToolTimeoutMs } from 'src/mcp/client/serverOptions.js'
 import {
   cancelPolledTask,
-  inlineTaskBudgetMs,
   MCP_TASK_INLINE_MS,
   type McpTask,
   McpTaskAckSchema,
@@ -97,10 +97,6 @@ type TaskCallContext = {
     signal: AbortSignal,
   ) => Promise<ElicitResult>
   deps: McpTaskCallDeps
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -285,7 +281,7 @@ export async function runTaskAugmentedCall({
   const mayBackground = ownsBackgroundAgents(agentId) && !deps.isBackgroundHidden()
   const toolTimeoutMs = getMcpToolTimeoutMs(config)
   const stopAt =
-    deps.now() + (mayBackground ? inlineTaskBudgetMs(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)
+    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)
   const io = taskPollIO(context, task.taskId)
 
   // An exit does not abort the turn's signal, so the inline poll has its own

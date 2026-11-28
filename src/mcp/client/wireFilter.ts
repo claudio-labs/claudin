@@ -22,10 +22,10 @@
  * the server's name. It lives here rather than beside the fetchers so that
  * attaching one does not pull in fetchCapabilities.ts.
  */
-import type { JSONRPCMessage, Transport } from '@modelcontextprotocol/client'
+import type { JSONRPCMessage, RequestId, Transport } from '@modelcontextprotocol/client'
 import { logError, logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { createCursorCycleGuard } from 'src/mcp/client/cursorCycleGuard.js'
-import type { SkippedEntry } from 'src/mcp/client/listValidation.js'
+import { isRecord, type SkippedEntry } from 'src/mcp/client/listValidation.js'
 import {
   SEND_RULES,
   type SendRule,
@@ -36,8 +36,6 @@ import {
   type WireRuleContext,
 } from 'src/mcp/client/wireRules.js'
 
-type RequestId = string | number
-
 export type WireFilterOptions = WireRuleContext & {
   /** The rule table; WIRE_RULES unless a test swaps it. */
   rules?: Readonly<Record<string, WireRule>>
@@ -47,10 +45,6 @@ export type WireFilterOptions = WireRuleContext & {
   onCursorCycle?: (method: string, cursor: string) => void
   /** A listing cut short at MAX_LIST_PAGES pages, with more to come. */
   onPageLimit?: (method: string, pages: number) => void
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function requestId(message: JSONRPCMessage): RequestId | undefined {
