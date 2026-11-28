@@ -111,7 +111,12 @@ async function createBedrockClient() {
   return new BedrockClient(clientConfig)
 }
 
-export async function createBedrockRuntimeClient() {
+/**
+ * `http1` keeps the request on HTTP/1.1, as AnthropicBedrock's fetch does: the
+ * runtime client defaults to HTTP/2, which never completes against a plain-HTTP
+ * endpoint (a gateway, a proxy, the smoke mock). A proxy brings its own handler.
+ */
+export async function createBedrockRuntimeClient(options: { http1?: boolean } = {}) {
   // BedrockRuntimeClient comes from a package this fork stubs, and (unlike
   // '@aws-sdk/client-bedrock', a bodyless ambient module that falls back to
   // `any` for every export) the client-bedrock-runtime stub in
@@ -148,6 +153,9 @@ export async function createBedrockRuntimeClient() {
       ],
       httpAuthSchemeProvider: () => [{ schemeId: 'smithy.api#noAuth' }],
     }),
+  }
+  if (options.http1 && !clientConfig.requestHandler) {
+    clientConfig.requestHandler = new (await import('@smithy/node-http-handler')).NodeHttpHandler()
   }
 
   if (!skipAuth && !process.env.AWS_BEARER_TOKEN_BEDROCK) {

@@ -6,7 +6,8 @@
  *
  * The AWS client is the one count_tokens already builds
  * (`createBedrockRuntimeClient`): the same region, endpoint override, proxy,
- * credentials and skip-auth. What the native path sends for Claude has no
+ * credentials and skip-auth, on HTTP/1.1 like AnthropicBedrock's fetch (its
+ * HTTP/2 default hangs on a plain-HTTP endpoint). What the native path sends for Claude has no
  * Converse form and stays behind (request.ts). The client answers
  * `keepAlivePingParams` with null, since no cache point is written, and has
  * no `countTokens`, so the estimate is local. Client-side tool search comes
@@ -55,7 +56,7 @@ export function createConverseClient(): Record<string, unknown> {
   function create(params: Record<string, any>, options?: CreateOptions): CreateResult {
     const answered = (async (): Promise<Result> => {
       const { ConverseStreamCommand } = await import('@aws-sdk/client-bedrock-runtime')
-      const client = await (runtime ??= createBedrockRuntimeClient() as unknown as Promise<RuntimeClient>)
+      const client = await (runtime ??= createBedrockRuntimeClient({ http1: true }) as unknown as Promise<RuntimeClient>)
       const controller = new AbortController()
       const abortSignal = options?.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal
       let output: Awaited<ReturnType<RuntimeClient['send']>>

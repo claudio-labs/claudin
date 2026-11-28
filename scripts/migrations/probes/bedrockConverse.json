@@ -1,5 +1,8 @@
 {
-  "test": ["src/providers/shims/bedrockConverse/converse.cassette.test.ts", "src/shared/tokenEstimation.apiCount.test.ts"],
+  "test": [
+    "src/providers/shims/bedrockConverse/converse.cassette.test.ts",
+    "src/shared/tokenEstimation.apiCount.test.ts"
+  ],
   "source": "src/providers/shims/bedrockConverse/request.ts",
   "probes": [
     {
@@ -114,6 +117,12 @@
       "source": "src/providers/shims/bedrockConverse/client.ts",
       "find": "      const data = params.stream\n",
       "replace": "      const data = true\n"
+    },
+    {
+      "name": "Converse keeps the SDK's HTTP/2 default",
+      "source": "src/providers/shims/bedrockConverse/client.ts",
+      "find": "createBedrockRuntimeClient({ http1: true })",
+      "replace": "createBedrockRuntimeClient()"
     }
   ]
 }
