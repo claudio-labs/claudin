@@ -141,9 +141,9 @@ describe('a listing longer than the SDK’s default page cap', () => {
   beforeEach(() => {
     savedMacro = macroHost.MACRO
     macroHost.MACRO = { ...(savedMacro as Record<string, unknown> | undefined), VERSION: '0.0.0-test' }
-    savedConfigDir = process.env.CLAUDE_CONFIG_DIR
+    savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
     dir = mkdtempSync(join(tmpdir(), 'pager-cap-'))
-    process.env.CLAUDE_CONFIG_DIR = dir
+    process.env.CLAUDIN_CONFIG_DIR = dir
     setEraCacheDirForTests(dir)
     _setSecureStorageForTesting({
       name: 'memory',
@@ -164,8 +164,8 @@ describe('a listing longer than the SDK’s default page cap', () => {
     fixture = undefined
     _setSecureStorageForTesting(null)
     setEraCacheDirForTests(undefined)
-    if (savedConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR
-    else process.env.CLAUDE_CONFIG_DIR = savedConfigDir
+    if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
     rmSync(dir, { recursive: true, force: true })
     if (savedMacro === undefined) delete macroHost.MACRO
     else macroHost.MACRO = savedMacro
