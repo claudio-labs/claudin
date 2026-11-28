@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import {
   resetGlobalConfigForTests,
   saveGlobalConfig,
@@ -16,6 +16,20 @@ import {
 
 const originalFetch = globalThis.fetch
 const originalNative = process.env.CLAUDIN_GEMINI_NATIVE
+
+// performGeminiRequest sends getClaudinUserAgent(), which reads the build-time
+// MACRO that bun test does not define; without this the file only passed when
+// another suite had left one behind.
+const macroHost = globalThis as { MACRO?: unknown }
+let savedMacro: unknown
+beforeAll(() => {
+  savedMacro = macroHost.MACRO
+  macroHost.MACRO = { VERSION: '0.0.0-test' }
+})
+afterAll(() => {
+  if (savedMacro === undefined) delete macroHost.MACRO
+  else macroHost.MACRO = savedMacro
+})
 
 function useProfile(profile: ProviderProfile): void {
   saveGlobalConfig(current => ({
@@ -153,6 +167,49 @@ describe('performGeminiRequest auth', () => {
       if (originalLocation !== undefined) process.env.GOOGLE_CLOUD_LOCATION = originalLocation
     }
     expect(calls[0]!.url).toContain('aiplatform.googleapis.com/v1/projects/adc-proj/locations/global/')
+  })
+
+  test('Vertex with no project anywhere is a 400 that names where to set it, before any fetch', async () => {
+    useProfile({ id: 'v3', name: 'Gemini Vertex', provider: 'gemini', baseUrl: 'https://aiplatform.googleapis.com', model: 'gemini-3-flash-preview' })
+    const calls = captureFetch()
+    const originalProject = process.env.GOOGLE_CLOUD_PROJECT
+    delete process.env.GOOGLE_CLOUD_PROJECT
+    try {
+      const error = await performGeminiRequest({
+        request,
+        params,
+        defaultHeaders: {},
+        resolveCredential: async () => ({ kind: 'adc', credential: 'ya29.token' }),
+      }).catch((e: unknown) => e)
+      expect((error as { status?: number }).status).toBe(400)
+      expect(String((error as Error).message)).toContain('GOOGLE_CLOUD_PROJECT')
+      expect(calls).toHaveLength(0)
+    } finally {
+      if (originalProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = originalProject
+    }
+  })
+
+  test('Vertex takes GOOGLE_CLOUD_PROJECT / GOOGLE_CLOUD_LOCATION when the profile has none', async () => {
+    useProfile({ id: 'v4', name: 'Gemini Vertex', provider: 'gemini', baseUrl: 'https://aiplatform.googleapis.com', model: 'gemini-3-flash-preview' })
+    const calls = captureFetch()
+    const originalProject = process.env.GOOGLE_CLOUD_PROJECT
+    const originalLocation = process.env.GOOGLE_CLOUD_LOCATION
+    process.env.GOOGLE_CLOUD_PROJECT = 'env-proj'
+    process.env.GOOGLE_CLOUD_LOCATION = 'us-east5'
+    try {
+      await performGeminiRequest({
+        request,
+        params,
+        defaultHeaders: {},
+        resolveCredential: async () => ({ kind: 'adc', credential: 'ya29.token', projectId: 'adc-proj' }),
+      })
+    } finally {
+      if (originalProject === undefined) delete process.env.GOOGLE_CLOUD_PROJECT
+      else process.env.GOOGLE_CLOUD_PROJECT = originalProject
+      if (originalLocation === undefined) delete process.env.GOOGLE_CLOUD_LOCATION
+      else process.env.GOOGLE_CLOUD_LOCATION = originalLocation
+    }
+    expect(calls[0]!.url).toContain('https://us-east5-aiplatform.googleapis.com/v1/projects/env-proj/locations/us-east5/')
   })
 
   test('no credential at all is a 401 that says how to sign in', async () => {

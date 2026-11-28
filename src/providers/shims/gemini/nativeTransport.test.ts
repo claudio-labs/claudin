@@ -319,6 +319,30 @@ describe('the native Gemini reply', () => {
     expect(String((error as Error).message)).toContain('MALFORMED_FUNCTION_CALL')
   })
 
+  test('a thought part that carries its own signature signs the thinking block it opened', async () => {
+    useGemini()
+    captureFetch(() =>
+      sse([
+        { candidates: [{ content: { parts: [{ text: 'plan', thought: true, thoughtSignature: 'sig-own' }] } }] },
+        { candidates: [{ content: { parts: [{ text: 'Answer.' }] }, finishReason: 'STOP' }] },
+      ]),
+    )
+    const response = await client().beta.messages.create({
+      model: 'gemini-3-flash-preview',
+      messages: [{ role: 'user', content: 'go' }],
+      max_tokens: 64,
+      stream: true,
+    }).withResponse()
+    const deltas = (await collect(response.data))
+      .filter(e => e.type === 'content_block_delta')
+      .map((e): Record<string, unknown> => ({ index: e.index, ...(e.delta as Record<string, unknown>) }))
+    expect(deltas).toEqual([
+      { index: 0, type: 'thinking_delta', thinking: 'plan' },
+      { index: 0, type: 'signature_delta', signature: 'sig-own' },
+      { index: 1, type: 'text_delta', text: 'Answer.' },
+    ])
+  })
+
   test('the non-streaming body converts to one Anthropic message', async () => {
     useGemini()
     const calls = captureFetch(
@@ -363,6 +387,51 @@ describe('the native Gemini reply', () => {
       stop_sequence: null,
       usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
     })
+  })
+
+  // The fallback after a failed stream must keep what the next request replays:
+  // Gemini's call id and the call's thought signature.
+  test('the non-streaming body: calls become tool_use with their id, args and signature', async () => {
+    useGemini()
+    captureFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    { text: 'first', thought: true },
+                    { functionCall: { id: 'call_1', name: 'Read', args: { file_path: '/a' } }, thoughtSignature: 'sig-c' },
+                    { text: 'again', thought: true },
+                    { functionCall: { name: 'Glob' } },
+                  ],
+                },
+                finishReason: 'STOP',
+              },
+            ],
+          }),
+          { headers: { 'Content-Type': 'application/json' } },
+        ),
+    )
+    const message = (await client().beta.messages.create({
+      model: 'gemini-3-flash-preview',
+      messages: [{ role: 'user', content: 'go' }],
+      max_tokens: 64,
+      stream: false,
+    })) as { content: Array<Record<string, unknown>>; stop_reason: string; model: string }
+
+    expect(message.stop_reason).toBe('tool_use')
+    expect(message.model).toBe('gemini-3-flash-preview')
+    // A thought after a call opens a new thinking block instead of extending the first.
+    expect(message.content.slice(0, 3)).toEqual([
+      { type: 'thinking', thinking: 'first', signature: '' },
+      { type: 'tool_use', id: 'call_1', name: 'Read', input: { file_path: '/a' }, signature: 'sig-c' },
+      { type: 'thinking', thinking: 'again', signature: '' },
+    ])
+    // No id from Gemini: one is made up; no args: an empty input; no signature: none.
+    expect(message.content[3]).toEqual({ type: 'tool_use', id: expect.stringMatching(/^toolu_gemini_/), name: 'Glob', input: {} })
+    expect(message.content).toHaveLength(4)
   })
 
   test('a blocked prompt is a 400 with the reason', async () => {
