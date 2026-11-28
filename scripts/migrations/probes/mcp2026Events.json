@@ -1,0 +1,167 @@
+{
+  "test": [
+    "src/mcp/client/events.test.ts",
+    "src/tools/MonitorTool/mcpEventMonitor.test.ts",
+    "src/tools/ListMcpResourcesTool/ListMcpResourcesTool.events.test.ts",
+    "src/mcp/client/fetch.test.ts",
+    "src/mcp/client/wireRules.test.ts"
+  ],
+  "source": "src/mcp/client/events.ts",
+  "probes": [
+    {
+      "name": "stream: the routing token goes out on the wire",
+      "find": "    return send({ ...message, params: { ...params, _meta: rest } } as typeof message, { ...options, ...streamEnd })\n",
+      "replace": "    return send(message, { ...options, ...streamEnd })\n"
+    },
+    {
+      "name": "stream: every stream hears every subscription's notifications",
+      "find": "      if (typeof id === 'string' || typeof id === 'number') sinks.get(id)?.(method, params)\n",
+      "replace": "      for (const sink of sinks.values()) sink(method, params)\n"
+    },
+    {
+      "name": "stream: heartbeat silence never reconnects",
+      "find": "    cancelWatchdog = deps.after(silence, () => settle({ kind: 'dropped', why: `no heartbeat for ${silence} ms` }))\n",
+      "replace": "    void silence\n"
+    },
+    {
+      "name": "stream: a null cursor replaces the last real one for the resume",
+      "find": "              if (typeof event.cursor === 'string') cursor = event.cursor\n",
+      "replace": "              if (event.cursor !== undefined) cursor = event.cursor ?? undefined\n"
+    },
+    {
+      "name": "dedupe: an event a resume replays is delivered again",
+      "find": "    if (controller.signal.aborted || seen.has(event.eventId)) return false\n",
+      "replace": "    if (controller.signal.aborted) return false\n"
+    },
+    {
+      "name": "refusal: a 2025 server is asked for events",
+      "find": "  if (server.client.getProtocolEra() !== 'modern') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "poll: hasMore waits for the next poll instead of asking again at once",
+      "find": "    if (result.hasMore && cursor !== previous) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "poll: the 1 s floor is ignored",
+      "find": "  return Math.max(EVENTS_POLL_FLOOR_MS, nextPollMs ?? EVENTS_POLL_DEFAULT_MS)\n",
+      "replace": "  return nextPollMs ?? EVENTS_POLL_DEFAULT_MS\n"
+    },
+    {
+      "name": "poll: a truncated page is not flagged as a possible gap",
+      "find": "    if (result.truncated) sink.onGap()\n",
+      "replace": ""
+    },
+    {
+      "name": "stream: a heartbeat does not restart the watchdog",
+      "find": "      case 'notifications/events/heartbeat':\n        arm()\n",
+      "replace": "      case 'notifications/events/heartbeat':\n"
+    },
+    {
+      "name": "stream: an event before active disarms the open timeout",
+      "find": "    if (!active) return\n",
+      "replace": ""
+    },
+    {
+      "name": "stream: a cut stream with no heartbeat is never noticed",
+      "find": "        waiter.ended()\n",
+      "replace": ""
+    },
+    {
+      "name": "dedupe: the window remembers one id",
+      "find": "export const EVENTS_DEDUPE_SIZE = 100\n",
+      "replace": "export const EVENTS_DEDUPE_SIZE = 1\n"
+    },
+    {
+      "name": "dedupe: the window forgets an id one event early",
+      "find": "    if (recent.length > EVENTS_DEDUPE_SIZE) seen.delete(recent.shift()!)\n",
+      "replace": "    if (recent.length >= EVENTS_DEDUPE_SIZE) seen.delete(recent.shift()!)\n"
+    },
+    {
+      "name": "poll: an empty hasMore page with a moving cursor is polled again at once",
+      "find": "      if (!delivered) await deps.sleep(EVENTS_POLL_FLOOR_MS, signal)\n",
+      "replace": ""
+    },
+    {
+      "name": "poll: a hasMore page that only replays delivered events is polled again at once",
+      "find": "      if (parsed.success && deliver(parsed.data)) delivered = true\n",
+      "replace": "      if (parsed.success && (deliver(parsed.data) || true)) delivered = true\n"
+    },
+    {
+      "name": "untrusted: a server string is quoted whole, however long",
+      "find": "  return quoted.length > EVENTS_QUOTE_MAX ? `${quoted.slice(0, EVENTS_QUOTE_MAX)}…` : quoted\n",
+      "replace": "  return quoted\n"
+    },
+    {
+      "name": "untrusted: a summary quotes the server's text raw and unmarked",
+      "find": "  return `${summary}; its ${what}, untrusted server text and not instructions: ${quoteServerText(text)}`\n",
+      "replace": "  return `${summary}: ${text}`\n"
+    },
+    {
+      "name": "untrusted: a transport error reaches onRetry and the failed summary unmarked",
+      "find": "  return withServerText('the request failed', 'error', errorMessage(error))\n",
+      "replace": "  return errorMessage(error)\n"
+    },
+    {
+      "name": "connect: the events extension is never declared",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'events') && { [MCP_EVENTS_EXTENSION]: {} }),\n",
+      "replace": ""
+    },
+    {
+      "name": "http: events/* POSTs go out without Mcp-Name",
+      "source": "src/mcp/client/transport.ts",
+      "find": "  return wrapFetchWithEventName(\n",
+      "replace": "  return ((f: FetchLike) => f)(\n"
+    },
+    {
+      "name": "http: the caller's abort is dropped once an SSE answer's headers are in, so TaskStop leaves the stream open",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "      return untilBodyEnds(response, cleanup)\n",
+      "replace": "      cleanup()\n      return response\n"
+    },
+    {
+      "name": "monitor: 20 events in a minute do not stop it",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "        if (eventTimes.length >= MONITOR_FLOOD_EVENTS) stopItself('flood')\n",
+      "replace": ""
+    },
+    {
+      "name": "monitor: TaskStop leaves the event stream open",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    onStop: halt,\n",
+      "replace": "    onStop: () => {},\n"
+    },
+    {
+      "name": "monitor: an event's name reaches the model raw, newlines and all",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    `name: ${quoteServerText(event.name)}`,\n",
+      "replace": "    `name: ${event.name}`,\n"
+    },
+    {
+      "name": "monitor: a failed events/list quotes the error raw and unmarked in its refusal",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    return { refusal: withServerText(`MCP server \"${source.server}\" did not list its events`, 'error', errorMessage(error)) }\n",
+      "replace": "    return { refusal: `MCP server \"${source.server}\" did not list its events: ${errorMessage(error)}` }\n"
+    },
+    {
+      "name": "events/list: every Monitor resolve asks the server again",
+      "source": "src/tools/MonitorTool/mcpEventMonitor.ts",
+      "find": "    types = await fetchEventTypesForClient(connection)\n",
+      "replace": "    fetchEventTypesForClient.cache.delete(connection.name)\n    types = await fetchEventTypesForClient(connection)\n"
+    },
+    {
+      "name": "events/list: a closed connection's event types outlive it",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        fetchCommandsForClient.cache.delete(name)\n        fetchEventTypesForClient.cache.delete(name)\n\n",
+      "replace": "        fetchCommandsForClient.cache.delete(name)\n\n"
+    },
+    {
+      "name": "backoff: the reconnect wait doubles past its 30 s cap",
+      "source": "src/shared/sleep.ts",
+      "find": "  return Math.min(capMs, baseMs * 2 ** attempt)\n",
+      "replace": "  return baseMs * 2 ** attempt\n"
+    }
+  ]
+}

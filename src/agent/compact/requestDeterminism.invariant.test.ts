@@ -53,7 +53,7 @@ const { createAssistantMessage, createUserMessage } = await import(
   'src/agent/messages/messages.js'
 )
 const { resolveUpdatedTools } = await import(
-  'src/mcp/useManageMCPConnections.js'
+  'src/mcp/serverUpdate.js'
 )
 const { clearBetaHeaderLatches, isLspDeferLatched, latchLspDefer } =
   await import('src/platform/bootstrap/state.js')

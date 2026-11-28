@@ -1,0 +1,69 @@
+{
+  "test": [
+    "src/terminal/suggestions/promptArgumentInput.test.ts",
+    "src/mcp/promptCompletions.test.ts",
+    "src/mcp/promptCompletions.integration.test.ts",
+    "src/terminal/suggestions/promptArgumentSuggestions.test.ts",
+    "src/terminal/hooks/useTypeahead.cover.test.tsx"
+  ],
+  "source": "src/terminal/suggestions/promptArgumentInput.ts",
+  "probes": [
+    {
+      "name": "an open quote is read as bare words, not the value being typed",
+      "find": "|[\"']([\\s\\S]*)$|",
+      "replace": "|"
+    },
+    {
+      "name": "a value with whitespace is inserted unquoted",
+      "find": "!WHITESPACE_RE.test(value) && ",
+      "replace": ""
+    },
+    {
+      "name": "required arguments lose their angle brackets in the hint",
+      "find": "(spec.required ? `<${spec.name}>` : `[${spec.name}]`)",
+      "replace": "`[${spec.name}]`"
+    },
+    {
+      "name": "a server without completions is asked anyway",
+      "source": "src/mcp/promptCompletions.ts",
+      "find": "if (!current.capabilities?.completions) return []",
+      "replace": "void 0"
+    },
+    {
+      "name": "the filled arguments are not sent as context",
+      "source": "src/mcp/promptCompletions.ts",
+      "find": "...(hasContext && { context: { arguments: { ...filledArgs } } }),",
+      "replace": ""
+    },
+    {
+      "name": "a repeat is not answered from the cache",
+      "source": "src/mcp/promptCompletions.ts",
+      "find": "const cached = cache.get(key)",
+      "replace": "const cached = undefined as string[] | undefined"
+    },
+    {
+      "name": "the completer is set whether or not the server declares completions",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "argSpecs.length > 0 && client.capabilities?.completions",
+      "replace": "argSpecs.length > 0"
+    },
+    {
+      "name": "the (MCP) word of the user-facing name is read as the first argument",
+      "source": "src/terminal/suggestions/promptArgumentSuggestions.ts",
+      "find": "if (value.startsWith(`${MCP_NAME_WORD} `, space + 1)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a stale prompt-argument response is not discarded",
+      "source": "src/terminal/hooks/useTypeahead.tsx",
+      "find": "if (latestPromptArgumentInputRef.current !== forInput || prevInputRef.current !== forInput) return;",
+      "replace": "if (false) return;"
+    },
+    {
+      "name": "the completion/complete fetch is not debounced",
+      "source": "src/terminal/hooks/useTypeahead.tsx",
+      "find": "useDebounceCallback(fetchPromptArgumentValues, 150)",
+      "replace": "useDebounceCallback(fetchPromptArgumentValues, 0)"
+    }
+  ]
+}

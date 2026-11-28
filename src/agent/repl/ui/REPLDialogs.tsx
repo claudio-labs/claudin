@@ -36,6 +36,7 @@ import { feature } from 'bun:bundle'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js'
 import { ElicitationDialog } from 'src/mcp/ui/ElicitationDialog.js'
+import { waitsForElicitationCompletion } from 'src/mcp/elicitationHandler.js'
 import { PromptDialog } from 'src/platform/lifecycleHooks/ui/PromptDialog.js'
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
@@ -82,6 +83,7 @@ export type REPLDialogsDeps = {
       serverName: string
       requestId: string
       params: { mode?: string }
+      awaitsCompletion?: boolean
       respond: (r: { action: unknown; content: unknown }) => void
       onWaitingDismiss?: (action: unknown) => void
     }>
@@ -227,9 +229,8 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
       if (!currentRequest) return
       // Call respond callback to resolve Promise
       currentRequest.respond({ action, content })
-      // For URL accept, keep in queue for phase 2
-      const isUrlAccept = currentRequest.params.mode === 'url' && action === 'accept'
-      if (!isUrlAccept) {
+      // A URL accept on a 2025 connection stays queued for phase 2
+      if (!waitsForElicitationCompletion(currentRequest, action)) {
         deps.setAppState((prev: unknown) => ({
           ...(prev as object),
           elicitation: { queue: (prev as { elicitation: { queue: unknown[] } }).elicitation.queue.slice(1) },

@@ -746,12 +746,6 @@
       "replace": "  const matchHere = false as boolean\n"
     },
     {
-      "name": "respectGitignore: matching here applies to directory listings too",
-      "source": "src/shared/fs/glob.ts",
-      "find": "  const matchHere = respectGitignore && type === 'file'\n",
-      "replace": "  const matchHere = respectGitignore\n"
-    },
-    {
       "name": "respectGitignore: a rooted pattern is not anchored",
       "source": "src/shared/fs/glob.ts",
       "find": "  const anchored = rootAnchored || searchPattern.includes('/')\n",

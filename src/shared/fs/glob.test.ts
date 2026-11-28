@@ -317,6 +317,9 @@ describe('glob — respectGitignore on a file the pattern names', () => {
         ['src/**/*.ts', dir, false],
         ['*.ts', join(dir, 'src'), false],
         ['./deep/*.ts', join(dir, 'src'), false],
+        // Neither rooted nor rebased (it starts with a wildcard), and anchored
+        // all the same by its `/`: the name alone would match nothing.
+        ['*/*.ts', dir, false],
       ]
       for (const [pattern, root, caseInsensitive] of cases) {
         const plain = names((await runWith(pattern, root, { sort: 'path', caseInsensitive })).files)

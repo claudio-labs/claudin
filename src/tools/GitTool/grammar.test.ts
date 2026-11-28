@@ -754,6 +754,18 @@ describe('a plain argument bash would misread is quoted and runs', () => {
     }
   })
 
+  // A word the tool cannot quote itself (the `|` beside the `(`) is still one
+  // argument: the refusal names it and its quoted form, not the list.
+  test('an operator inside an argument that also holds another one names the quoting fix', () => {
+    const parsed = parseGitCommand('git log --grep=(web|ui)')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) {
+      expect(parsed.reason).toContain('inside the argument `--grep=(web|ui)`')
+      expect(parsed.reason).toContain("--grep='(web|ui)'")
+      expect(parsed.reason).not.toContain('one plain command per list element')
+    }
+  })
+
   test('a refusal shows the command as it was sent, not as quoted', () => {
     const parsed = parseGitCommand('git log --grep=#1 # the recent ones')
     expect(parsed.ok).toBe(false)

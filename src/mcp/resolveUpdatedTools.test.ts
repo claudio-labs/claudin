@@ -14,7 +14,7 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Tool } from 'src/tools/Tool.js'
-import { resolveUpdatedTools } from 'src/mcp/useManageMCPConnections.js'
+import { resolveUpdatedTools } from 'src/mcp/serverUpdate.js'
 
 type ToolDouble = { name: string; description: string }
 
@@ -136,13 +136,13 @@ describe('resolveUpdatedTools — failure handling', () => {
 })
 
 // ── Wiring guard ─────────────────────────────────────────────────────────
-// resolveUpdatedTools being correct is worthless if the connection hook
+// resolveUpdatedTools being correct is worthless if the server update
 // regresses to the old `reject(prefix) + append` rebuild — pin the call
 // site so reverting the wiring fails this suite, not just code review.
-describe('useManageMCPConnections wiring (source guard)', () => {
+describe('applyServerUpdate wiring (source guard)', () => {
   test('the client-update path builds the pool via resolveUpdatedTools', () => {
     const hookSource = readFileSync(
-      join(import.meta.dir, 'useManageMCPConnections.ts'),
+      join(import.meta.dir, 'serverUpdate.ts'),
       'utf8',
     )
     expect(hookSource).toContain('const updatedTools = resolveUpdatedTools(')

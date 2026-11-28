@@ -6,7 +6,7 @@
 import {
   OAuthErrorResponseSchema,
   OAuthTokensSchema,
-} from '@modelcontextprotocol/sdk/shared/auth.js'
+} from '@modelcontextprotocol/core'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 /**

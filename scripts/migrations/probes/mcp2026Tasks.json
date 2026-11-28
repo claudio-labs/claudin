@@ -1,0 +1,153 @@
+{
+  "test": [
+    "src/mcp/client/taskCall.test.ts",
+    "src/mcp/client/taskPoll.test.ts",
+    "src/mcp/client/wireRules.test.ts"
+  ],
+  "source": "src/mcp/client/taskCall.ts",
+  "probes": [
+    {
+      "name": "wire: a task result reaches the SDK, which rejects it",
+      "source": "src/mcp/client/wireRules.ts",
+      "find": "  'tools/call': fillToolCallResult,\n",
+      "replace": "  'tools/call': fillResultType,\n"
+    },
+    {
+      "name": "wire: a tasks/update answer without ttlMs/cacheScope is not filled",
+      "source": "src/mcp/client/wireRules.ts",
+      "find": "  'tasks/update': fillListResultFields,\n",
+      "replace": ""
+    },
+    {
+      "name": "connect: the tasks extension is never declared",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),\n",
+      "replace": "        ...(false && { [MCP_TASKS_EXTENSION]: {} }),\n"
+    },
+    {
+      "name": "connect: extensions.tasks false still declares it",
+      "source": "src/mcp/client/connection.ts",
+      "find": "        ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),\n",
+      "replace": "        ...(true && { [MCP_TASKS_EXTENSION]: {} }),\n"
+    },
+    {
+      "name": "poll: the 1 s floor is ignored",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "  return Math.min(TASK_POLL_CAP_MS, Math.max(TASK_POLL_FLOOR_MS, asked))\n",
+      "replace": "  return Math.min(TASK_POLL_CAP_MS, asked)\n"
+    },
+    {
+      "name": "poll: an input request already answered is asked again",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "        if (answered.has(key)) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "poll: an abort sends no tasks/cancel",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "    await deps.cancelTask(taskId)\n",
+      "replace": "    void taskId\n"
+    },
+    {
+      "name": "poll: a task past its ttl is polled forever",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "    if (state.expiresAt !== undefined && now >= state.expiresAt) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "call: an elicitation inside a task never reaches the dialog",
+      "find": "  if (request.method !== 'elicitation/create' || typeof request.params?.message !== 'string') {\n",
+      "replace": "  if (true) {\n"
+    },
+    {
+      "name": "call: a sub-agent's task goes to the background",
+      "find": "  const mayBackground = ownsBackgroundAgents(agentId) && !deps.isBackgroundHidden()\n",
+      "replace": "  const mayBackground = !deps.isBackgroundHidden()\n"
+    },
+    {
+      "name": "call: -p or disabled background tasks still background",
+      "find": "  const mayBackground = ownsBackgroundAgents(agentId) && !deps.isBackgroundHidden()\n",
+      "replace": "  const mayBackground = ownsBackgroundAgents(agentId)\n"
+    },
+    {
+      "name": "poll: an unsupported input request is skipped and the task waits for its ttl",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "          return { kind: 'unsupported', method: request.data.method }\n",
+      "replace": "          continue\n"
+    },
+    {
+      "name": "poll: an unsupported input request ends the call without tasks/cancel",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "      await cancelPolledTask(task.taskId, deps)\n      return { kind: 'unsupported'",
+      "replace": "      return { kind: 'unsupported'"
+    },
+    {
+      "name": "call: roots/list inside a task goes unanswered",
+      "find": "  if (request.method === 'roots/list') return listRootsResult()\n",
+      "replace": ""
+    },
+    {
+      "name": "call: the main thread polls inline past the tool timeout",
+      "find": "    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)\n",
+      "replace": "    deps.now() + (mayBackground ? deps.inlineMs() : toolTimeoutMs)\n"
+    },
+    {
+      "name": "call: without a background the task is not bounded by the tool timeout",
+      "find": "    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : toolTimeoutMs)\n",
+      "replace": "    deps.now() + (mayBackground ? Math.min(deps.inlineMs(), toolTimeoutMs) : Infinity)\n"
+    },
+    {
+      "name": "call: a task cut at the tool timeout is not cancelled",
+      "find": "    await cancelPolledTask(task.taskId, io)\n",
+      "replace": ""
+    },
+    {
+      "name": "call: the background poll runs on the turn's signal, so TaskStop cannot cancel it",
+      "find": "  settled = finishInBackground(context, state, handle, background.signal).catch((error: unknown) =>\n",
+      "replace": "  settled = finishInBackground(context, state, handle, signal).catch((error: unknown) =>\n"
+    },
+    {
+      "name": "poll: a failed tasks/get leaves the task running on the server",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "      if (signal.aborted) return cancelled(state, deps)\n      return abandoned(state, deps, error)\n",
+      "replace": "      if (signal.aborted) return cancelled(state, deps)\n      throw error\n"
+    },
+    {
+      "name": "poll: a failed tasks/update leaves the task running on the server",
+      "source": "src/mcp/client/taskPoll.ts",
+      "find": "          if (signal.aborted) return cancelled(state, deps)\n          return abandoned(state, deps, error)\n",
+      "replace": "          if (signal.aborted) return cancelled(state, deps)\n          throw error\n"
+    },
+    {
+      "name": "call: process exit during the inline window sends no tasks/cancel",
+      "find": "    inlineStop.abort()\n    return stopWithin(",
+      "replace": "    return stopWithin("
+    },
+    {
+      "name": "call: the inline exit hook outlives the call",
+      "find": "    unregisterExit()\n",
+      "replace": ""
+    },
+    {
+      "name": "call: without a background a hung tasks/get holds the call past the tool timeout",
+      "find": "        inlineStop.abort()\n      }, toolTimeoutMs)\n",
+      "replace": "      }, toolTimeoutMs)\n"
+    },
+    {
+      "name": "call: a poll cut at the tool timeout mid-request ends as an esc, not a timeout",
+      "find": "  if (inline.kind === 'aborted' && timedOut && !signal.aborted) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "call: a task answer without a taskId reaches the model as an empty success",
+      "find": "      if (!readTaskMarker(result._meta)) {\n",
+      "replace": "      if (false) {\n",
+      "source": "src/mcp/client/callTool.ts"
+    },
+    {
+      "name": "call: a tool call answered with a task returns the empty stand-in result instead of polling",
+      "find": "  if (!task) return result\n",
+      "replace": "  if (task) return result\n"
+    }
+  ]
+}

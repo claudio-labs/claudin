@@ -14,6 +14,7 @@ export type FooterGroupKey =
   | 'agents'
   | 'shells'
   | 'monitors'
+  | 'mcpTasks'
   | 'containers'
   | 'mcp'
   | 'remote'
@@ -29,6 +30,7 @@ export const FOOTER_GROUP_ORDER: readonly FooterGroupKey[] = [
   'agents',
   'shells',
   'monitors',
+  'mcpTasks',
   'containers',
   'mcp',
   'remote',
@@ -43,6 +45,7 @@ export const FOOTER_GROUP_LABELS: Record<FooterGroupKey, string> = {
   agents: 'Agents',
   shells: 'Shells',
   monitors: 'Monitors',
+  mcpTasks: 'MCP tasks',
   containers: 'Containers',
   mcp: 'MCP',
   remote: 'Remote',
@@ -178,7 +181,9 @@ export function matchGroupKey(t: TaskState): FooterGroupKey | undefined {
     case 'local_bash':
       return t.kind === 'monitor' ? 'monitors' : 'shells'
     case 'monitor_mcp':
-      return 'monitors'
+      // An MCP event stream is watched like a shell Monitor; a backgrounded
+      // tool call is waited on, so it is listed apart.
+      return t.kind === 'call' ? 'mcpTasks' : 'monitors'
     case 'container':
       return 'containers'
     case 'mcp_server':

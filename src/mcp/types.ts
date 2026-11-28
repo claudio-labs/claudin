@@ -1,9 +1,9 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import type {
+  Client,
   Resource,
-  ResourceTemplate,
+  ResourceTemplateType,
   ServerCapabilities,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/client'
 import { z } from 'zod/v4'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 
@@ -35,6 +35,27 @@ const timeoutFields = () => ({
   toolTimeout: z.number().int().positive().max(MAX_TIMER_MS).optional(),
 })
 
+// Which protocol era a server is reached in, and which 2026-07-28 extensions
+// Claudin uses with it (src/mcp/client/serverOptions.ts). Only http and stdio
+// servers negotiate, so only they take `protocol`; the other transports
+// always speak the 2025 protocol, where MCP skills still work, so sse, ws and
+// claude.ai proxy servers take `extensions` too.
+const MCP_EXTENSION_NAMES = ['skills', 'tasks', 'events'] as const
+export type McpExtensionName = (typeof MCP_EXTENSION_NAMES)[number]
+const extensionsField = () => ({
+  extensions: z
+    .object({
+      skills: z.boolean().optional(),
+      tasks: z.boolean().optional(),
+      events: z.boolean().optional(),
+    })
+    .optional(),
+})
+const protocolFields = () => ({
+  protocol: z.enum(['auto', 'legacy']).optional(),
+  ...extensionsField(),
+})
+
 export const McpStdioServerConfigSchema = lazySchema(() =>
   z.object({
     type: z.literal('stdio').optional(), // Optional for backwards compatibility
@@ -44,6 +65,7 @@ export const McpStdioServerConfigSchema = lazySchema(() =>
     // Where the server runs: `~` is the home dir, a relative path is under the project dir.
     cwd: z.string().min(1).optional(),
     ...timeoutFields(),
+    ...protocolFields(),
   }),
 )
 
@@ -69,6 +91,7 @@ export const McpSSEServerConfigSchema = lazySchema(() =>
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
     ...timeoutFields(),
+    ...extensionsField(),
   }),
 )
 
@@ -101,6 +124,7 @@ export const McpHTTPServerConfigSchema = lazySchema(() =>
     headersHelper: z.string().optional(),
     oauth: McpOAuthConfigSchema().optional(),
     ...timeoutFields(),
+    ...protocolFields(),
   }),
 )
 
@@ -111,6 +135,7 @@ export const McpWebSocketServerConfigSchema = lazySchema(() =>
     headers: z.record(z.string(), z.string()).optional(),
     headersHelper: z.string().optional(),
     ...timeoutFields(),
+    ...extensionsField(),
   }),
 )
 
@@ -127,6 +152,7 @@ export const McpClaudeAIProxyServerConfigSchema = lazySchema(() =>
     type: z.literal('claudeai-proxy'),
     url: z.string(),
     id: z.string(),
+    ...extensionsField(),
   }),
 )
 
@@ -198,6 +224,11 @@ export type ConnectedMCPServer = {
   instructions?: string
   config: ScopedMcpServerConfig
   cleanup: () => Promise<void>
+  /**
+   * The protocol revision negotiated at connect, e.g. `2026-07-28` or
+   * `2025-11-25`; read while connected, since the SDK forgets it on close.
+   */
+  protocolVersion?: string
 }
 
 export type FailedMCPServer = {
@@ -236,4 +267,4 @@ export type MCPServerConnection =
 
 // Resource types
 export type ServerResource = Resource & { server: string }
-export type ServerResourceTemplate = ResourceTemplate & { server: string }
+export type ServerResourceTemplate = ResourceTemplateType & { server: string }

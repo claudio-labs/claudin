@@ -53,6 +53,11 @@ export function sleep(
   })
 }
 
+/** The wait before retry `attempt` (0-based): `baseMs`, doubled on each attempt, never past `capMs`. */
+export function cappedDoublingMs(attempt: number, baseMs: number, capMs: number): number {
+  return Math.min(capMs, baseMs * 2 ** attempt)
+}
+
 function rejectWithTimeout(reject: (e: Error) => void, message: string): void {
   reject(new Error(message))
 }

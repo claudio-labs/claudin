@@ -4,41 +4,39 @@
  *
  * The SDK's list schemas check a whole page at once, so one malformed tool
  * (an inputSchema of type "string", a name that is a number) failed the page
- * and the server lost every tool it had. Here a page is requested with its
- * entries unchecked, and each entry is checked on its own against the SDK's
+ * and the server lost every tool it had. Here each entry of a raw page is
+ * checked on its own (wireRules.ts runs this before the SDK decodes the
+ * page), against the SDK's
  * schema for that kind: a broken entry is skipped with its reason, and an
  * optional field of the wrong type is dropped from an entry that is
  * otherwise sound.
  */
 import {
   type Prompt,
-  PromptSchema,
   type Resource,
-  ResourceSchema,
-  type ResourceTemplate,
-  ResourceTemplateSchema,
+  type ResourceTemplateType,
+  SdkError,
+  SdkErrorCode,
   type Tool,
+} from '@modelcontextprotocol/client'
+import {
+  PromptSchema,
+  ResourceSchema,
+  ResourceTemplateSchema,
   ToolSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/core'
 import { z } from 'zod/v4'
 
 export type SkippedEntry = { name?: string; reason: string }
 export type ValidatedList<T> = { items: T[]; skipped: SkippedEntry[] }
 
-// Pages whose entries are left for the keepValid* functions below.
-const entries = z.array(z.unknown())
-const nextCursor = z.string().optional()
-export const LenientToolsPageSchema = z.object({ tools: entries, nextCursor }).passthrough()
-export const LenientPromptsPageSchema = z.object({ prompts: entries, nextCursor }).passthrough()
-export const LenientResourcesPageSchema = z.object({ resources: entries, nextCursor }).passthrough()
-export const LenientResourceTemplatesPageSchema = z.object({ resourceTemplates: entries, nextCursor }).passthrough()
-
 /** A list response that is itself malformed: retrying it gets the same answer. */
 export function isSchemaError(error: unknown): boolean {
-  return error instanceof z.core.$ZodError
+  return error instanceof SdkError && error.code === SdkErrorCode.InvalidResult
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/** A JSON object: not null, not an array. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
@@ -100,7 +98,9 @@ const RESOURCE_DROPPABLE = new Set(['title', 'description', 'mimeType', 'annotat
 // The top level of a tool's inputSchema is what providers check against the
 // JSON Schema metaschema, so a wrong-typed `properties` or `required` there is
 // dropped rather than sent; nested property schemas are left as the server
-// wrote them (as opencode does, packages/core/src/mcp/client.ts).
+// wrote them (as opencode does, packages/core/src/mcp/client.ts), except one
+// that is not an object at all, which skips the tool: the 1.x SDK schema
+// rejected it and the v2 one types properties as any JSON value.
 function normalizeTool(entry: Record<string, unknown>): Normalized {
   if (typeof entry.name !== 'string' || entry.name === '') return { skip: 'name is not a non-empty string' }
   const inputSchema = entry.inputSchema
@@ -109,6 +109,10 @@ function normalizeTool(entry: Record<string, unknown>): Normalized {
     return { skip: 'inputSchema type is not "object"' }
   }
   const { properties, required, ...rest } = inputSchema
+  if (isRecord(properties)) {
+    const notSchema = Object.keys(properties).find(key => typeof properties[key] !== 'object' || properties[key] === null)
+    if (notSchema !== undefined) return { skip: `inputSchema.properties.${notSchema}: not a schema` }
+  }
   return {
     entry: {
       ...entry,
@@ -134,6 +138,6 @@ export function keepValidResources(raw: readonly unknown[]): ValidatedList<Resou
   return keepValid(raw, ResourceSchema, RESOURCE_DROPPABLE)
 }
 
-export function keepValidResourceTemplates(raw: readonly unknown[]): ValidatedList<ResourceTemplate> {
+export function keepValidResourceTemplates(raw: readonly unknown[]): ValidatedList<ResourceTemplateType> {
   return keepValid(raw, ResourceTemplateSchema, RESOURCE_DROPPABLE)
 }

@@ -78,6 +78,7 @@ import { unassignTeammateTasks } from 'src/agent/tasks/tasks.js'
 import { getRunningTasks } from 'src/agent/tasks/framework.js'
 import { holdsHeadlessExit, isBackgroundTask } from 'src/agent/tasks/types.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
+import { refreshExpiredMcpLists } from 'src/mcp/listTtlRefresh.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
@@ -235,6 +236,19 @@ export async function runTurnLoop(
             }
           }
         }
+
+        // MCP lists whose TTL ran out are read again before this turn's tools
+        // are taken from the store below, as the REPL does (useOnQuery): a
+        // stream-json or SDK session is many turns. The wait is bounded and a
+        // failing server keeps its old list.
+        await refreshExpiredMcpLists({
+          getMcp: () => getAppState().mcp,
+          setMcp: update =>
+            setAppState(prev => {
+              const mcp = update(prev.mcp)
+              return mcp === prev.mcp ? prev : { ...prev, mcp }
+            }),
+        })
 
         // Combine all MCP clients. appState.mcp is populated incrementally
         // per-server by main.tsx (mirrors useManageMCPConnections). Reading

@@ -11,23 +11,18 @@ import {
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
+  fetchSkillsForClient,
   fetchToolsForClient,
   getMcpToolsCommandsAndResources,
   reconnectMcpServerImpl,
 } from 'src/mcp/client.js'
+import { fetchServerCommandsForClient } from 'src/mcp/client/fetchCapabilities.js'
 import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
   ServerResource,
 } from 'src/mcp/types.js'
 
-import {
-  PromptListChangedNotificationSchema,
-  ResourceListChangedNotificationSchema,
-  ToolListChangedNotificationSchema,
-} from '@modelcontextprotocol/sdk/types.js'
-import omit from 'lodash-es/omit.js'
-import reject from 'lodash-es/reject.js'
 import {
   dedupClaudeAiMcpServers,
   doesEnterpriseMcpConfigExist,
@@ -51,13 +46,15 @@ import {
   fetchClaudeAIMcpConfigsIfEligible,
 } from 'src/mcp/claudeai.js'
 import { registerElicitationHandler } from 'src/mcp/elicitationHandler.js'
-import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
+import { dropEraVerdict, getEraCacheKey } from 'src/mcp/client/eraCache.js'
+import { startMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import {
   clearSessionDisconnected,
   isSessionDisconnected,
   markSessionDisconnected,
 } from 'src/mcp/sessionDisconnects.js'
-import { commandBelongsToServer, excludeStalePluginClients } from 'src/mcp/utils.js'
+import { applyServerUpdate, type McpServerUpdate } from 'src/mcp/serverUpdate.js'
+import { excludeStalePluginClients } from 'src/mcp/utils.js'
 
 // Constants for reconnection with exponential backoff
 const MAX_RECONNECT_ATTEMPTS = 5
@@ -107,66 +104,6 @@ function addErrorsToAppState(
 }
 
 /**
- * Resolve the new mcp.tools array for one server update, keeping the pool
- * byte-stable for the prompt cache wherever possible. The tools array is
- * serialized into every request's cached prefix, so gratuitous churn here
- * is a full cache invalidation:
- *
- * - POSITIONAL replacement: tools the server already had in the pool keep
- *   their original indices (the VALUE is the fresh tool object, so calls
- *   route to the reconnected client); only genuinely new tools are
- *   appended; tools the server no longer announces are dropped. A
- *   reconnect with an identical tool set therefore serializes to
- *   byte-identical schemas in identical order — zero cache impact.
- *   (The old `reject(prefix) + append` moved the server's block to the
- *   END of the pool on every update — a reorder break even when nothing
- *   actually changed.)
- *
- * - KEEP schemas on 'failed': a crash/network drop is transitory; removing
- *   the tools (and re-adding them on reconnect) paid two full breaks per
- *   blip. The stale entries stay in the pool — a call against the dead
- *   client fails per-call and surfaces to the model as an is_error
- *   tool_result. 'disabled' is an explicit user action, so removal there
- *   is intentional and keeps its break.
- */
-export function resolveUpdatedTools(
-  current: Tool[],
-  clientType: MCPServerConnection['type'],
-  prefix: string,
-  rawTools: Tool[] | undefined,
-): Tool[] {
-  // Explicit disable clears; transitory failure preserves; otherwise an
-  // undefined payload means "no tool information in this update".
-  const tools =
-    clientType === 'disabled' ? (rawTools ?? []) : rawTools
-  if (tools === undefined) return current
-
-  const nextByName = new Map<string, Tool>()
-  for (const t of tools) {
-    if (t.name !== undefined) nextByName.set(t.name, t)
-  }
-
-  const out: Tool[] = []
-  const consumed = new Set<string>()
-  for (const t of current) {
-    if (!t.name?.startsWith(prefix)) {
-      out.push(t)
-      continue
-    }
-    const replacement = nextByName.get(t.name)
-    if (replacement) {
-      out.push(replacement)
-      consumed.add(t.name)
-    }
-    // else: the server no longer announces this tool — drop it.
-  }
-  for (const t of tools) {
-    if (t.name === undefined || !consumed.has(t.name)) out.push(t)
-  }
-  return out
-}
-
-/**
  * Hook to manage MCP (Model Context Protocol) server connections and updates
  *
  * This hook:
@@ -201,12 +138,7 @@ export function useManageMCPConnections(
   // (instead of queueMicrotask) ensures updates are batched even when
   // connection callbacks arrive at different times due to network I/O.
   const MCP_BATCH_FLUSH_MS = 16
-  type PendingUpdate = MCPServerConnection & {
-    tools?: Tool[]
-    commands?: Command[]
-    resources?: ServerResource[]
-  }
-  const pendingUpdatesRef = useRef<PendingUpdate[]>([])
+  const pendingUpdatesRef = useRef<McpServerUpdate[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const flushPendingUpdates = useCallback(() => {
@@ -219,67 +151,7 @@ export function useManageMCPConnections(
       let mcp = prevState.mcp
 
       for (const update of updates) {
-        const {
-          tools: rawTools,
-          commands: rawCmds,
-          resources: rawRes,
-          ...client
-        } = update
-        const commands =
-          client.type === 'disabled' || client.type === 'failed'
-            ? (rawCmds ?? [])
-            : rawCmds
-        const resources =
-          client.type === 'disabled' || client.type === 'failed'
-            ? (rawRes ?? [])
-            : rawRes
-
-        const prefix = getMcpPrefix(client.name)
-        const existingClientIndex = mcp.clients.findIndex(
-          c => c.name === client.name,
-        )
-
-        const updatedClients =
-          existingClientIndex === -1
-            ? [...mcp.clients, client]
-            : mcp.clients.map(c => (c.name === client.name ? client : c))
-
-        // Positional, failure-tolerant tool-pool update — see
-        // resolveUpdatedTools for the prompt-cache rationale.
-        const updatedTools = resolveUpdatedTools(
-          mcp.tools,
-          client.type,
-          prefix,
-          rawTools,
-        )
-
-        const updatedCommands =
-          commands === undefined
-            ? mcp.commands
-            : [
-                ...reject(mcp.commands, c =>
-                  commandBelongsToServer(c, client.name),
-                ),
-                ...commands,
-              ]
-
-        const updatedResources =
-          resources === undefined
-            ? mcp.resources
-            : {
-                ...mcp.resources,
-                ...(resources.length > 0
-                  ? { [client.name]: resources }
-                  : omit(mcp.resources, client.name)),
-              }
-
-        mcp = {
-          ...mcp,
-          clients: updatedClients,
-          tools: updatedTools,
-          commands: updatedCommands,
-          resources: updatedResources,
-        }
+        mcp = applyServerUpdate(mcp, update)
       }
 
       return { ...prevState, mcp }
@@ -293,7 +165,7 @@ export function useManageMCPConnections(
   // see resolveUpdatedTools).
   // Updates are batched via setTimeout to coalesce updates arriving within MCP_BATCH_FLUSH_MS.
   const updateServer = useCallback(
-    (update: PendingUpdate) => {
+    (update: McpServerUpdate) => {
       pendingUpdatesRef.current.push(update)
       if (flushTimerRef.current === null) {
         flushTimerRef.current = setTimeout(
@@ -479,7 +351,7 @@ export function useManageMCPConnections(
           // These allow the server to notify us when tools, prompts, or resources change
           if (client.capabilities?.tools?.listChanged) {
             client.client.setNotificationHandler(
-              ToolListChangedNotificationSchema,
+              'notifications/tools/list_changed',
               async () => {
                 logMCPDebug(
                   client.name,
@@ -501,7 +373,7 @@ export function useManageMCPConnections(
 
           if (client.capabilities?.prompts?.listChanged) {
             client.client.setNotificationHandler(
-              PromptListChangedNotificationSchema,
+              'notifications/prompts/list_changed',
               async () => {
                 logMCPDebug(
                   client.name,
@@ -509,10 +381,10 @@ export function useManageMCPConnections(
                 )
                 try {
                   fetchCommandsForClient.cache.delete(client.name)
-                  const mcpPrompts = await fetchCommandsForClient(client)
+                  // The server's skills share its slice of mcp.commands.
                   updateServer({
                     ...client,
-                    commands: [...mcpPrompts],
+                    commands: await fetchServerCommandsForClient(client),
                   })
                 } catch (error) {
                   logMCPError(
@@ -526,7 +398,7 @@ export function useManageMCPConnections(
 
           if (client.capabilities?.resources?.listChanged) {
             client.client.setNotificationHandler(
-              ResourceListChangedNotificationSchema,
+              'notifications/resources/list_changed',
               async () => {
                 logMCPDebug(
                   client.name,
@@ -535,8 +407,17 @@ export function useManageMCPConnections(
                 try {
                   fetchResourcesForClient.cache.delete(client.name)
                   fetchResourceTemplatesForClient.cache.delete(client.name)
-                  const newResources = await fetchResourcesForClient(client)
-                  updateServer({ ...client, resources: newResources })
+                  // Skills are resources: the extension announces a change here.
+                  fetchSkillsForClient.cache.delete(client.name)
+                  const [newResources, commands] = await Promise.all([
+                    fetchResourcesForClient(client),
+                    fetchServerCommandsForClient(client),
+                  ])
+                  updateServer({
+                    ...client,
+                    resources: newResources,
+                    commands,
+                  })
                 } catch (error) {
                   logMCPError(
                     client.name,
@@ -546,6 +427,10 @@ export function useManageMCPConnections(
               },
             )
           }
+
+          // A 2026-07-28 server sends these notifications only on a listen
+          // stream; opened after the handlers so none is missed.
+          startMcpSubscriptions(client.name, client.client)
           break
         }
 
@@ -834,6 +719,11 @@ export function useManageMCPConnections(
       // Dialling on purpose takes back a session disconnect — otherwise the
       // server comes up now and then never auto-reconnects again.
       clearSessionDisconnected(serverName)
+
+      // A reconnect the user asked for probes the server again (the automatic
+      // retry keeps the cache): a cached verdict replays the capabilities it
+      // was saved with, so one the server just gained would wait out the TTL.
+      await dropEraVerdict(getEraCacheKey(serverName, client.config))
 
       const result = await reconnectMcpServerImpl(serverName, client.config)
 

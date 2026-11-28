@@ -20,9 +20,10 @@ export function MonitorPermissionRequest({
   onReject,
   workerBadge,
 }: PermissionRequestProps) {
-  const { command, ws, description } = toolUseConfirm.input as {
+  const { command, ws, mcp_event, description } = toolUseConfirm.input as {
     command?: string
     ws?: { url: string }
+    mcp_event?: { server: string; event: string }
     description?: string
   }
   // Shared by Monitor and WaitFor — both delegate to the Bash rules — so the
@@ -77,9 +78,9 @@ export function MonitorPermissionRequest({
     onDone()
   }
 
-  // A Monitor `ws` source is asked for every time: there is no Bash rule
-  // that could stand for a socket.
-  const showAlwaysAllow = !ws && shouldShowAlwaysAllowOptions()
+  // A Monitor `ws` or `mcp_event` source is asked for every time: there is no
+  // Bash rule that could stand for a socket or an event stream.
+  const showAlwaysAllow = !ws && !mcp_event && shouldShowAlwaysAllowOptions()
   const originalCwd = getOriginalCwd()
 
   const options: PermissionPromptOption<OptionValue>[] = [
@@ -118,7 +119,7 @@ export function MonitorPermissionRequest({
     <PermissionDialog title={label} workerBadge={workerBadge}>
       <Box flexDirection="column" paddingX={2} paddingY={1}>
         <Text>
-          {label}({monitorSource({ command, ws })})
+          {label}({monitorSource({ command, ws, mcp_event })})
         </Text>
         {description ? (
           <Text dimColor>{description}</Text>

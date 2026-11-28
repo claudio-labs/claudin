@@ -60,6 +60,20 @@ A refused probe prints `?` and the spec never reaches its "every probe met its
 expectation" line, so read the tail of each run rather than its exit status. Repoint one by
 copying the current line, the way `feat/codex-gpt-6-models` did for the five it moved.
 
+**Stale count across all specs (2026-11-27).** A scratch checker walked every spec and counted each
+`find` in its source:
+- On `main` (b18319e1), **132 probes no longer match exactly once**, spread over the older specs.
+- The `feat/mcp-2026-07-28` branch made 13 more stale by moving the code they targeted.
+- Diffing the checker's output on `main` against HEAD isolates the probes a branch broke. Repoint those
+  before running its specs, and leave the pre-existing ones alone unless that spec is the job.
+- The checker is about 20 lines: for each probe, `text.split(probe.find).length - 1` against
+  `probe.source ?? spec.source`.
+
+**Never alongside another test run (2026-11-27).** A probe edits the source file on disk for the whole
+suite run, so any other `bun test` that imports it meanwhile sees the mutation — parallel agents'
+runs go red for no reason of theirs. With cover work fanned out to agents, each writes its spec and
+the main thread runs the specs one at a time after every agent has finished.
+
 **Token-count fixtures (2026-11-26).** A probe on code whose output is token-counted (Read's
 pages) changes what is counted, and the VCR layer records a `token-count-*.json` for each new
 body: one probe run left nine. Delete the untracked ones after the run and confirm the real

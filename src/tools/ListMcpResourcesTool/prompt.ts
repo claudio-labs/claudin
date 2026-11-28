@@ -15,6 +15,8 @@ Each returned resource will include all standard MCP resource fields plus a 'ser
 indicating which server the resource belongs to.
 An entry with a 'uriTemplate' instead of a 'uri' is a resource template: fill in its
 variables and read the resulting URI with ReadMcpResourceTool.
+A server that publishes MCP events also lists its event types, after the resources; watch
+one with Monitor's mcp_event.
 
 Parameters:
 - server (optional): The name of a specific MCP server to get resources from. If not provided,

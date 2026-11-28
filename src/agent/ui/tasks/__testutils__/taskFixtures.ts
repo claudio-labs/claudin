@@ -41,7 +41,7 @@ const RAW: Record<string, unknown> = {
   local_agent: { id: 'a1', type: 'local_agent', status: 'running', description: 'Audit the parser', startTime: 1 },
   in_process_teammate: { id: 't1', type: 'in_process_teammate', status: 'running', identity: { agentName: 'ada', teamName: 'core' }, startTime: 1 },
   local_workflow: { id: 'w1', type: 'local_workflow', status: 'running', description: 'Nightly', summary: 'Nightly sweep', startTime: 1 },
-  monitor_mcp: { id: 'm1', type: 'monitor_mcp', status: 'running', description: 'Tailing gateway', startTime: 1 },
+  monitor_mcp: { id: 'm1', type: 'monitor_mcp', status: 'running', kind: 'events', serverName: 'gateway', description: 'Tailing gateway', startTime: 1 },
   dream: { id: 'd1', type: 'dream', status: 'running', description: 'Reviewing sessions', phase: 'reading', filesTouched: [], sessionsReviewing: 2, startTime: 1 },
   container: { id: 'k1', type: 'container', status: 'running', container: containerInfo(), startedByUs: true, restartCount: 0, lastNotifiedSignature: null, diedAt: null, startTime: 1 },
   mcp_server: { id: 'p1', type: 'mcp_server', status: 'running', serverName: 'context7', connectionType: 'connected', transport: 'stdio', scope: 'local', toolCount: 2, resourceCount: 0, serverInfo: { name: 'Context7', version: '4.1.1' }, error: null, startTime: 1 },

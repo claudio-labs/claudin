@@ -1,12 +1,12 @@
 import { feature } from 'bun:bundle'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import {
-  ElicitRequestSchema,
-  ListRootsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+  Client,
+  StreamableHTTPClientTransport,
+  type Transport,
+  UnauthorizedError,
+} from '@modelcontextprotocol/client'
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
+import { SKILLS_EXTENSION_ID } from '@modelcontextprotocol/client/ext/skills'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { type Tool } from 'src/tools/Tool.js'
@@ -19,24 +19,51 @@ import {
 import { maybeNotifyIDEConnected } from 'src/platform/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { sleep } from 'src/shared/sleep.js'
+import { sleep, withTimeout } from 'src/shared/sleep.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
   ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
-import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
-import { getMcpConnectTimeoutMs } from 'src/mcp/client/serverOptions.js'
+import { httpStatusOf, isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
+import {
+  getMcpConnectTimeoutMs,
+  getMcpExtensionEnabled,
+  getMcpProtocolMode,
+} from 'src/mcp/client/serverOptions.js'
+import { MCP_TASKS_EXTENSION } from 'src/mcp/client/taskPoll.js'
+import { MCP_EVENTS_EXTENSION } from 'src/mcp/client/events.js'
 import { nextConnectRetryDelay } from 'src/mcp/client/connectRetry.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
 import {
+  dropEraVerdict,
+  getEraCacheKey,
+  readEraVerdict,
+  saveEraVerdict,
+} from 'src/mcp/client/eraCache.js'
+import {
+  confirmsPriorInPlace,
+  type EraOverride,
+  type NegotiableTransport,
+  nextEraStep,
+  planConnect,
+  probeTimeoutMs,
+  readsCachedVerdict,
+  verdictAfterConnect,
+} from 'src/mcp/client/negotiation.js'
+import { stopMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
+import { resumeMcpResourceWatches } from 'src/mcp/resourceWatch.js'
+import { SDK_LIST_MAX_PAGES } from 'src/mcp/client/cursorCycleGuard.js'
+import {
   fetchCommandsForClient,
+  fetchEventTypesForClient,
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
 import { createTransport, type InProcessMcpServer } from 'src/mcp/client/transport.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 
 // connection.ts <-> fetchCapabilities.ts form an intentional ESM cycle: each
 // references the other only inside function bodies (never at module-eval time),
@@ -63,6 +90,26 @@ export async function cleanupFailedConnection(
 
 export function isLocalMcpServer(config: ScopedMcpServerConfig): boolean {
   return !config.type || config.type === 'stdio' || config.type === 'sdk'
+}
+
+/**
+ * What Claudin answers a server's `roots/list` with: the directory it was
+ * started in. A task's `input_required` gets the same answer (taskCall.ts).
+ */
+export function listRootsResult(): { roots: Array<{ uri: string }> } {
+  return { roots: [{ uri: `file://${getOriginalCwd()}` }] }
+}
+
+/**
+ * Which SDK transport this is, for negotiation.ts. A stdio server is probed
+ * on a sibling process only through the SDK's own base class (a subclass is
+ * probed in place, which kills servers that exit on a pre-`initialize`
+ * request), and an in-process server has nothing to negotiate.
+ */
+function negotiableTransportOf(transport: Transport): NegotiableTransport {
+  if (transport instanceof StreamableHTTPClientTransport) return 'http'
+  if (Object.getPrototypeOf(transport) === StdioClientTransport.prototype) return 'stdio'
+  return 'other'
 }
 
 // For the IDE MCP servers, we only include specific tools
@@ -108,13 +155,39 @@ function handleRemoteAuthFailure(
   return { name, type: 'needs-auth', config: serverRef }
 }
 
+// Shutdown gives every registered cleanup 2 s in total (gracefulShutdown.ts).
+const SESSION_DELETE_TIMEOUT_MS = 1000
+
+/**
+ * Ends a Streamable HTTP session with the DELETE the transports spec asks of
+ * a client that no longer needs it. A 2026-07-28 connection has no session,
+ * so nothing is sent. A failure only costs the server a session it expires.
+ */
+async function endHttpSession(
+  name: string,
+  transport: StreamableHTTPClientTransport,
+): Promise<void> {
+  if (transport.sessionId === undefined) return
+  try {
+    await withTimeout(
+      transport.terminateSession(),
+      SESSION_DELETE_TIMEOUT_MS,
+      `the DELETE got no answer within ${SESSION_DELETE_TIMEOUT_MS} ms`,
+    )
+  } catch (error) {
+    logMCPDebug(name, `Error ending the HTTP session: ${errorMessage(error)}`)
+  }
+}
+
 /**
  * TODO (ollie): The memoization here increases complexity by a lot, and im not sure it really improves performance
  * Attempts to connect to a single MCP server
  * @param name Server name
  * @param serverRef Scoped server configuration
  * @param retry Internal: the attempt a transient-failure retry is on, and the
- *   startup deadline every attempt shares (connectRetry.ts)
+ *   startup deadline every attempt shares (connectRetry.ts); `era` when this
+ *   attempt follows a probe the server turned down or a failed cached verdict
+ *   (negotiation.ts)
  * @returns A wrapped client (either connected or failed)
  */
 export const connectToServer = memoize(
@@ -129,7 +202,7 @@ export const connectToServer = memoize(
       sseIdeCount: number
       wsIdeCount: number
     },
-    retry?: { attempt: number; deadline: number },
+    retry?: { attempt: number; deadline: number; era?: EraOverride },
   ): Promise<MCPServerConnection> {
     const connectStartTime = Date.now()
     const deadline =
@@ -139,6 +212,21 @@ export const connectToServer = memoize(
       const created = await createTransport(name, serverRef)
       const transport = created.transport
       inProcessServer = created.inProcessServer
+
+      const negotiable = negotiableTransportOf(transport)
+      const protocolMode = getMcpProtocolMode(serverRef)
+      const eraKey = getEraCacheKey(name, serverRef)
+      const negotiation = { mode: protocolMode, transport: negotiable, override: retry?.era }
+      const plan = planConnect({
+        ...negotiation,
+        verdict: readsCachedVerdict(negotiation) ? await readEraVerdict(eraKey) : undefined,
+        startupTimeoutMs: deadline - Date.now(),
+        now: Date.now(),
+      })
+      logMCPDebug(
+        name,
+        `Protocol negotiation: ${plan.prior ? `cached ${plan.prior.kind} verdict` : plan.mode === 'auto' ? `probe (${plan.probeTimeoutMs}ms)` : 'legacy'}`,
+      )
 
       // Set up stderr logging for stdio transport before connecting in case there are any stderr
       // outputs emitted during the connection start (this can be useful for debugging failed connections).
@@ -162,16 +250,39 @@ export const connectToServer = memoize(
         }
       }
 
+      const extensions = {
+        ...(getMcpExtensionEnabled(serverRef, 'skills') && { [SKILLS_EXTENSION_ID]: {} }),
+        ...(getMcpExtensionEnabled(serverRef, 'tasks') && { [MCP_TASKS_EXTENSION]: {} }),
+        ...(getMcpExtensionEnabled(serverRef, 'events') && { [MCP_EVENTS_EXTENSION]: {} }),
+      }
       const client = new Client(
         getMcpClientInfo(),
         {
           capabilities: {
             roots: {},
-            // Empty object declares the capability. Sending {form:{},url:{}}
-            // breaks Java MCP SDK servers (Spring AI) whose Elicitation class
-            // has zero fields and fails on unknown properties.
-            elicitation: {},
+            // A 2026-07-28 server asks for a URL only from a client that says
+            // url; the 2025 initialize says `elicitation: {}` (SEND_RULES in
+            // wireRules.ts), which Spring AI servers accept.
+            elicitation: { form: {}, url: {} },
+            // Every extension Claudin runs is declared: a server may answer a
+            // tools/call with a task only from a client that declares tasks
+            // (taskPoll.ts), offers events only to one that declares events
+            // (events.ts), and skills are declared because Claudin loads them
+            // (mcpSkills.ts). The 2025 initialize drops them with the rest
+            // (SEND_RULES), as extensions exist only in 2026-07-28.
+            ...(Object.keys(extensions).length > 0 && { extensions }),
           },
+          versionNegotiation:
+            plan.mode === 'auto'
+              ? {
+                  mode: 'auto',
+                  ...(plan.probeTimeoutMs !== undefined && {
+                    probe: { timeoutMs: plan.probeTimeoutMs },
+                  }),
+                }
+              : { mode: 'legacy' },
+          // The wire filter cuts a long listing first (cursorCycleGuard.ts).
+          listMaxPages: SDK_LIST_MAX_PAGES,
         },
       )
 
@@ -180,15 +291,9 @@ export const connectToServer = memoize(
         logMCPDebug(name, `Client created, setting up request handler`)
       }
 
-      client.setRequestHandler(ListRootsRequestSchema, async () => {
+      client.setRequestHandler('roots/list', async () => {
         logMCPDebug(name, `Received ListRoots request from server`)
-        return {
-          roots: [
-            {
-              uri: `file://${getOriginalCwd()}`,
-            },
-          ],
-        }
+        return listRootsResult()
       })
 
       // Add a timeout to connection attempts to prevent tests from hanging indefinitely
@@ -219,7 +324,17 @@ export const connectToServer = memoize(
         }
       }
 
-      const connectPromise = client.connect(transport)
+      // Before connect, which chains the filter's onmessage ahead of the
+      // SDK's decode (wireFilter.ts).
+      attachMcpWireFilter(name, transport)
+      const connectPromise = client
+        .connect(transport, plan.prior ? { prior: plan.prior } : undefined)
+        .then(async () => {
+          // A failure here drops the verdict and probes (negotiation.ts).
+          if (confirmsPriorInPlace(plan, negotiable)) {
+            await client.discover({ timeout: probeTimeoutMs(deadline - Date.now()) })
+          }
+        })
       const timeoutPromise = new Promise<never>((_, reject) => {
         const timeoutId = setTimeout(() => {
           const elapsed = Date.now() - connectStartTime
@@ -262,6 +377,23 @@ export const connectToServer = memoize(
           `Successfully connected (transport: ${serverRef.type || 'stdio'}) in ${elapsed}ms`,
         )
       } catch (error) {
+        // A probe an HTTP server turned down is tried again in the 2025
+        // protocol, and a failed cached verdict with a probe, each on a fresh
+        // transport and inside the same deadline. Neither counts as a retry.
+        const eraStep = nextEraStep(error, { plan, transport: negotiable })
+        if (eraStep !== null && deadline - Date.now() > 0) {
+          logMCPDebug(
+            name,
+            `Connection failed during protocol negotiation: ${errorMessage(error)}. ${eraStep.kind === 'probe' ? 'Dropping the cached verdict and probing again' : 'Connecting in the 2025 protocol'}`,
+          )
+          if (eraStep.kind === 'probe') await dropEraVerdict(eraKey)
+          await cleanupFailedConnection(transport)
+          return connectAttempt(name, serverRef, serverStats, {
+            attempt: retry?.attempt ?? 0,
+            deadline,
+            era: eraStep,
+          })
+        }
         // A transient failure of a remote server gets another attempt, which
         // calls this function directly: the memoized wrapper would hand back
         // this very attempt's promise.
@@ -281,6 +413,7 @@ export const connectToServer = memoize(
           return connectAttempt(name, serverRef, serverStats, {
             attempt: attempt + 1,
             deadline,
+            era: retry?.era,
           })
         }
         const elapsed = Date.now() - connectStartTime
@@ -326,9 +459,7 @@ export const connectToServer = memoize(
           )
           logMCPError(name, error)
 
-          // StreamableHTTPError has a `code` property with the HTTP status
-          const errorCode = (error as Error & { code?: number }).code
-          if (errorCode === 401) {
+          if (httpStatusOf(error) === 401) {
             return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')
           }
         } else         if (inProcessServer) {
@@ -345,6 +476,19 @@ export const connectToServer = memoize(
       const capabilities = client.getServerCapabilities()
       const serverVersion = client.getServerVersion()
       const rawInstructions = client.getInstructions()
+      // Read while connected: the SDK forgets the era once the client closes.
+      const protocolVersion = client.getNegotiatedProtocolVersion()
+      const era = client.getProtocolEra()
+      logMCPDebug(name, `Protocol ${protocolVersion ?? 'unknown'} (${era ?? 'unknown'} era)`)
+      const verdict = verdictAfterConnect({
+        plan,
+        transport: negotiable,
+        override: retry?.era,
+        era,
+        discover: client.getDiscoverResult(),
+        now: Date.now(),
+      })
+      if (verdict) await saveEraVerdict(eraKey, verdict)
       let instructions = rawInstructions
       if (
         rawInstructions &&
@@ -376,7 +520,7 @@ export const connectToServer = memoize(
       // Register default elicitation handler that returns cancel during the
       // window before registerElicitationHandler overwrites it in
       // onConnectionAttempt (useManageMCPConnections).
-      client.setRequestHandler(ElicitRequestSchema, async request => {
+      client.setRequestHandler('elicitation/create', async request => {
         logMCPDebug(
           name,
           `Elicitation request received during initialization: ${jsonStringify(request)}`,
@@ -416,7 +560,7 @@ export const connectToServer = memoize(
 
       // client.close() → transport.close() → transport.onclose → SDK's _onclose():
       // rejects all pending request handlers (so hung callTool() promises fail with
-      // McpError -32000 "Connection closed") and then invokes our client.onclose
+      // SdkError CONNECTION_CLOSED) and then invokes our client.onclose
       // handler below (which clears the memo cache so the next call reconnects).
       // Calling client.onclose?.() directly would only clear the cache — pending
       // tool calls would stay hung.
@@ -573,6 +717,7 @@ export const connectToServer = memoize(
         fetchResourcesForClient.cache.delete(name)
         fetchResourceTemplatesForClient.cache.delete(name)
         fetchCommandsForClient.cache.delete(name)
+        fetchEventTypesForClient.cache.delete(name)
 
         connectToServer.cache.delete(key)
         logMCPDebug(name, `Cleared connection cache for reconnection`)
@@ -583,6 +728,7 @@ export const connectToServer = memoize(
       }
 
       const cleanup = async () => {
+        await stopMcpSubscriptions(client)
         // In-process servers (e.g. Chrome MCP) don't have child processes or stderr
         if (inProcessServer) {
           try {
@@ -742,6 +888,10 @@ export const connectToServer = memoize(
           }
         }
 
+        if (transport instanceof StreamableHTTPClientTransport) {
+          await endHttpSession(name, transport)
+        }
+
         // Close the client connection (which also closes the transport)
         try {
           await client.close()
@@ -761,6 +911,9 @@ export const connectToServer = memoize(
       }
 
       const connectionDurationMs = Date.now() - connectStartTime
+      // A reconnect: the resources read on the connections before this one
+      // are subscribed again, or their changes would go untold.
+      void resumeMcpResourceWatches({ name, client })
       return {
         name,
         client,
@@ -770,6 +923,7 @@ export const connectToServer = memoize(
         instructions,
         config: serverRef,
         cleanup: wrappedCleanup,
+        protocolVersion,
       }
     } catch (error) {
       const connectionDurationMs = Date.now() - connectStartTime
@@ -821,6 +975,7 @@ export async function clearServerCache(
   fetchResourcesForClient.cache.delete(name)
   fetchResourceTemplatesForClient.cache.delete(name)
   fetchCommandsForClient.cache.delete(name)
+  fetchEventTypesForClient.cache.delete(name)
 }
 
 /**

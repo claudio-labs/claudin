@@ -1,17 +1,13 @@
 import { useEffect } from 'react'
 import { z } from 'zod/v4'
 import type { MCPServerConnection } from 'src/mcp/types.js'
-import { asMcpSchema } from 'src/mcp/zodCompat.js'
 import { getConnectedIdeClient } from 'src/platform/ide/ide.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 
-const LogEventSchema = lazySchema(() =>
+const LogEventParamsSchema = lazySchema(() =>
   z.object({
-    method: z.literal('log_event'),
-    params: z.object({
-      eventName: z.string(),
-      eventData: z.object({}).passthrough(),
-    }),
+    eventName: z.string(),
+    eventData: z.object({}).passthrough(),
   }),
 )
 
@@ -27,9 +23,10 @@ export function useIdeLogging(mcpClients: MCPServerConnection[]): void {
     if (ideClient) {
       // Register the log event handler
       ideClient.client.setNotificationHandler(
-        asMcpSchema(LogEventSchema()),
-        notification => {
-          const { eventName, eventData } = notification.params
+        'log_event',
+        { params: LogEventParamsSchema() },
+        params => {
+          const { eventName, eventData } = params
         },
       )
     }

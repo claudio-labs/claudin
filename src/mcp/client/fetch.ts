@@ -1,4 +1,4 @@
-import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js'
+import type { FetchLike } from '@modelcontextprotocol/client'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
@@ -93,6 +93,36 @@ export function requestTimeoutMs(
  */
 const MCP_STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream'
 
+function isEventStream(response: Response): boolean {
+  return response.body !== null && (response.headers.get('content-type') ?? '').includes('text/event-stream')
+}
+
+/** `response` with a body that calls `release` once it ends, fails or is cancelled. */
+function untilBodyEnds(response: Response, release: () => void): Response {
+  const reader = response.body!.getReader()
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          release()
+          controller.close()
+        } else {
+          controller.enqueue(value)
+        }
+      } catch (error) {
+        release()
+        controller.error(error)
+      }
+    },
+    cancel(reason) {
+      release()
+      return reader.cancel(reason)
+    },
+  })
+  return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
+}
+
 /**
  * Wraps a fetch function to apply a fresh timeout signal to each request.
  * This avoids the bug where a single AbortSignal.timeout() created at connection
@@ -167,12 +197,72 @@ export function wrapFetchWithTimeout(
         headers,
         signal: controller.signal,
       })
-      cleanup()
-      return response
+      clearTimeout(timer)
+      if (!parentSignal || !isEventStream(response)) {
+        cleanup()
+        return response
+      }
+      // A streamed answer stays tied to the caller's signal until its body
+      // ends. On 2026-07-28 aborting a request's stream IS its cancellation
+      // (the SDK sends no notifications/cancelled), and it is how an
+      // events/stream or subscriptions/listen is closed: released at the
+      // headers, the abort never reached the server, and the SDK went on
+      // reading a stream it had given up.
+      return untilBodyEnds(response, cleanup)
     } catch (error) {
       cleanup()
       throw error
     }
+  }
+}
+
+/**
+ * Sends a server's configured Authorization header in place of the one the
+ * SDK's auth provider sets. SDK 1.x merged `requestInit` headers after the
+ * provider's, so a static header beat stored OAuth tokens; 2.x merges them
+ * first, and the provider's token won.
+ */
+export function wrapFetchWithConfiguredAuthorization(
+  baseFetch: FetchLike,
+  authorization: string,
+): FetchLike {
+  return (url: string | URL, init?: RequestInit) => {
+    // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+    const headers = new Headers(init?.headers)
+    headers.set('authorization', authorization)
+    return baseFetch(url, { ...init, headers })
+  }
+}
+
+const EVENTS_BODY_RE = /"method"\s*:\s*"events\//
+
+/** The event name an `events/*` request POSTs, or undefined for any other body. */
+export function eventNameOfBody(body: unknown): string | undefined {
+  if (typeof body !== 'string' || !EVENTS_BODY_RE.test(body)) return undefined
+  try {
+    // Only an object or an array can hold the text the regex matched.
+    const message = JSON.parse(body) as { method?: unknown; params?: { name?: unknown } }
+    if (typeof message.method !== 'string' || !message.method.startsWith('events/')) return undefined
+    return typeof message.params?.name === 'string' ? message.params.name : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Sets `Mcp-Name: <event name>` on the `events/*` POSTs, as SEP-3415 asks of
+ * Streamable HTTP. The SDK adds the header for the core methods it knows
+ * and refuses to take any `mcp-*` header from request options, so the
+ * extension's has to be set here.
+ */
+export function wrapFetchWithEventName(baseFetch: FetchLike): FetchLike {
+  return (url: string | URL, init?: RequestInit) => {
+    const name = eventNameOfBody(init?.body)
+    if (name === undefined) return baseFetch(url, init)
+    // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+    const headers = new Headers(init?.headers)
+    headers.set('mcp-name', name)
+    return baseFetch(url, { ...init, headers })
   }
 }
 

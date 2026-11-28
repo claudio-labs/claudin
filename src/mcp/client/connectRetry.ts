@@ -8,7 +8,8 @@
  * still has room for the wait. A local server is never retried: its process
  * failing to start is not something waiting fixes.
  */
-import { SseError } from '@modelcontextprotocol/sdk/client/sse.js'
+import { SseError } from '@modelcontextprotocol/client'
+import { httpStatusOf } from 'src/mcp/client/errors.js'
 import { WebSocketOpenError } from 'src/mcp/mcpWebSocketTransport.js'
 
 const RETRY_DELAYS_MS = [250, 1000] as const
@@ -44,11 +45,10 @@ export function isTransientConnectError(error: unknown): boolean {
   // The SDK's SseError carries the HTTP status as `code`, and none when the
   // event stream could not be reached at all.
   if (error instanceof SseError && error.code === undefined) return true
+  // The SDK's SdkHttpError and SseError carry the HTTP status.
+  const status = httpStatusOf(error)
+  if (status !== undefined) return isTransientStatus(status)
   const code = codeOf(error)
-  // The SDK's StreamableHTTPError and SseError carry the HTTP status as `code`.
-  if (typeof code === 'number') {
-    return isTransientStatus(code)
-  }
   const cause = typeof error === 'object' && error !== null && 'cause' in error ? error.cause : undefined
   return [code, codeOf(cause)].some(c => typeof c === 'string' && TRANSIENT_NETWORK_CODES.has(c))
 }

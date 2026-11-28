@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import {
   createClaudeAiProxyFetch,
+  eventNameOfBody,
   getMcpServerConnectionBatchSize,
   getRemoteMcpServerConnectionBatchSize,
   MCP_REQUEST_TIMEOUT_MS,
   requestTimeoutMs,
+  wrapFetchWithEventName,
   wrapFetchWithTimeout,
 } from 'src/mcp/client/fetch.js'
 import { clearOAuthTokenCache } from 'src/providers/auth/auth.js'
@@ -192,6 +194,97 @@ describe('wrapFetchWithTimeout', () => {
     await expect(
       wrapFetchWithTimeout(fetchLike)('http://srv/mcp', { method: 'POST' }),
     ).rejects.toBe(boom)
+  })
+
+  // On 2026-07-28 the abort of a request's stream is its cancellation; it
+  // used to be dropped once the headers were in.
+  function sseFetch() {
+    let sent: RequestInit | undefined
+    let cancelled = false
+    const fetchLike = async (_url: string | URL, init?: RequestInit) => {
+      sent = init
+      let push!: ReadableStreamDefaultController<Uint8Array>
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          push = c
+        },
+        cancel() {
+          cancelled = true
+        },
+      })
+      init!.signal!.addEventListener('abort', () => push.error(init!.signal!.reason))
+      queueMicrotask(() => push.enqueue(new TextEncoder().encode('data: 1\n\n')))
+      return new Response(body, { status: 200, statusText: 'OK', headers: { 'content-type': 'text/event-stream' } })
+    }
+    return { fetchLike, signal: () => sent!.signal!, cancelled: () => cancelled }
+  }
+
+  test('an SSE answer stays tied to the caller signal until its body ends', async () => {
+    const parent = new AbortController()
+    const sse = sseFetch()
+    const response = await wrapFetchWithTimeout(sse.fetchLike)('http://srv/mcp', { method: 'POST', body: '{}', signal: parent.signal })
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('text/event-stream')
+    const reader = response.body!.getReader()
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe('data: 1\n\n')
+    parent.abort('stream closed')
+    expect(sse.signal().aborted).toBe(true)
+    await expect(reader.read()).rejects.toBe('stream closed')
+  })
+
+  test('an SSE body that ends or is cancelled lets the caller signal go', async () => {
+    const parent = new AbortController()
+    const done = await wrapFetchWithTimeout(async () => new Response('data: 1\n\n', { headers: { 'content-type': 'text/event-stream' } }))(
+      'http://srv/mcp',
+      { method: 'POST', signal: parent.signal },
+    )
+    expect(await done.text()).toBe('data: 1\n\n')
+
+    const sse = sseFetch()
+    const cancelled = await wrapFetchWithTimeout(sse.fetchLike)('http://srv/mcp', { method: 'POST', signal: parent.signal })
+    await cancelled.body!.cancel('not needed')
+    expect(sse.cancelled()).toBe(true)
+    parent.abort()
+    expect(sse.signal().aborted).toBe(false)
+  })
+
+  test('a JSON answer, or one without a caller signal, is released at the headers', async () => {
+    const parent = new AbortController()
+    const { seen, fetchLike } = recordingFetch(() => new Response('{}', { headers: { 'content-type': 'application/json' } }))
+    await wrapFetchWithTimeout(fetchLike)('http://srv/mcp', { method: 'POST', signal: parent.signal })
+    parent.abort()
+    expect(seen[0]!.init!.signal!.aborted).toBe(false)
+    const sse = sseFetch()
+    const unsignalled = await wrapFetchWithTimeout(sse.fetchLike)('http://srv/mcp', { method: 'POST' })
+    expect(unsignalled.body).toBeInstanceOf(ReadableStream)
+  })
+})
+
+describe('wrapFetchWithEventName', () => {
+  const body = (message: unknown) => JSON.stringify(message)
+
+  test('names the event of an events/* POST, and nothing else', () => {
+    expect(eventNameOfBody(body({ jsonrpc: '2.0', id: 1, method: 'events/stream', params: { name: 'build' } }))).toBe('build')
+    expect(eventNameOfBody(body({ method: 'events/poll', params: { name: 'deploy', cursor: null } }))).toBe('deploy')
+    expect(eventNameOfBody(body({ method: 'events/list', params: {} }))).toBeUndefined()
+    expect(eventNameOfBody(body({ method: 'tools/call', params: { name: 'events/x' } }))).toBeUndefined()
+    expect(eventNameOfBody(body({ result: { method: 'events/x' }, method: 'x' }))).toBeUndefined()
+    expect(eventNameOfBody(body([{ method: 'events/stream', params: { name: 'build' } }]))).toBeUndefined()
+    expect(eventNameOfBody('"method": "events/stream" {not json')).toBeUndefined()
+    expect(eventNameOfBody(undefined)).toBeUndefined()
+  })
+
+  test('sets Mcp-Name on an events POST and keeps the other headers', async () => {
+    const { seen, fetchLike } = recordingFetch()
+    const wrapped = wrapFetchWithEventName(fetchLike)
+    const init = { method: 'POST', headers: { 'X-A': '1' }, body: body({ method: 'events/stream', params: { name: 'build' } }) }
+    await wrapped('http://srv/mcp', init)
+    const headers = seen[0]!.init!.headers as Headers
+    expect(headers.get('mcp-name')).toBe('build')
+    expect(headers.get('x-a')).toBe('1')
+    const other = { method: 'POST', body: body({ method: 'tools/list' }) }
+    await wrapped('http://srv/mcp', other)
+    expect(seen[1]!.init).toBe(other)
   })
 })
 

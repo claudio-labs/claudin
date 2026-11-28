@@ -1,0 +1,78 @@
+{
+  "test": [
+    "src/tools/ReadMcpResourceTool/ReadMcpResourceTool.cover.test.ts",
+    "src/tools/ReadMcpResourceTool/ReadMcpResourceTool.test.ts",
+    "src/agent/attachments/services.cover.test.ts"
+  ],
+  "source": "src/tools/ReadMcpResourceTool/ReadMcpResourceTool.ts",
+  "probes": [
+    {
+      "name": "Read: an empty text is no longer a text item",
+      "find": "        if ('text' in c) {\n",
+      "replace": "        if ('text' in c && c.text !== '') {\n"
+    },
+    {
+      "name": "Read: the blob is written as its base64 text, not decoded",
+      "find": "          Buffer.from(c.blob, 'base64'),\n",
+      "replace": "          Buffer.from(c.blob),\n"
+    },
+    {
+      "name": "Read: the saved path is not returned",
+      "find": "          blobSavedTo: persisted.filepath,\n",
+      "replace": "          blobSavedTo: undefined,\n"
+    },
+    {
+      "name": "Read: the blob message loses its source prefix",
+      "find": "            `[Resource from ${serverName} at ${c.uri}] `,\n",
+      "replace": "            '',\n"
+    },
+    {
+      "name": "services: an @-mentioned uri with colons is cut at the first one",
+      "source": "src/agent/attachments/services.ts",
+      "find": "        const uri = uriParts.join(':') // Rejoin in case URI contains colons\n",
+      "replace": "        const uri = uriParts[0] ?? ''\n"
+    },
+    {
+      "name": "services: a resource missing from the listing is read anyway",
+      "source": "src/agent/attachments/services.ts",
+      "find": "        const resourceInfo = serverResources.find(r => r.uri === uri)\n        if (!resourceInfo) {\n          return null\n        }\n",
+      "replace": "        const resourceInfo = serverResources.find(r => r.uri === uri) ?? { uri, name: '', description: undefined }\n"
+    },
+    {
+      "name": "services: an unnamed listed resource is not named by its uri",
+      "source": "src/agent/attachments/services.ts",
+      "find": "            name: resourceInfo.name || uri,\n",
+      "replace": "            name: resourceInfo.name,\n"
+    },
+    {
+      "name": "services: the directory listing cap moves",
+      "source": "src/agent/attachments/services.ts",
+      "find": "              const MAX_DIR_ENTRIES = 1000\n",
+      "replace": "              const MAX_DIR_ENTRIES = 1001\n"
+    },
+    {
+      "name": "services: an @-mention line range is ignored",
+      "source": "src/agent/attachments/services.ts",
+      "find": "            offset: lineStart,\n",
+      "replace": "            offset: undefined,\n"
+    },
+    {
+      "name": "services: the IDE selection end line is off by one",
+      "source": "src/agent/attachments/services.ts",
+      "find": "      lineEnd: ideSelection.lineStart + ideSelection.lineCount - 1,\n",
+      "replace": "      lineEnd: ideSelection.lineStart + ideSelection.lineCount,\n"
+    },
+    {
+      "name": "services: dynamic skill triggers are not cleared",
+      "source": "src/agent/attachments/services.ts",
+      "find": "    toolUseContext.dynamicSkillDirTriggers.clear()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "services: idle notifications are not collapsed per agent",
+      "source": "src/agent/attachments/services.ts",
+      "find": "      return latestIdleByAgent.get(agent) === i\n",
+      "replace": "      return true\n"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { ElicitResult } from '@modelcontextprotocol/sdk/types.js'
+import type { ElicitResult } from '@modelcontextprotocol/client'
 import type { HookResultMessage } from 'src/shared/types/message.js'
 import type {
   HookCallback,

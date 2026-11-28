@@ -1,0 +1,56 @@
+{
+  "test": "src/platform/entrypoints/mcp.test.ts",
+  "source": "src/platform/entrypoints/mcp.ts",
+  "probes": [
+    {
+      "name": "serverInfo.name announces claudin",
+      "find": "name: 'claudin',",
+      "replace": "name: 'claude',"
+    },
+    {
+      "name": "the server runs in the cwd it was given",
+      "find": "setCwd(cwd)",
+      "replace": "void cwd"
+    },
+    {
+      "name": "a disabled tool is refused",
+      "find": "throw new Error(`Tool ${name} is not enabled`)",
+      "replace": "void 0"
+    },
+    {
+      "name": "a validateInput failure becomes an isError result",
+      "find": "if (validationResult && !validationResult.result) {",
+      "replace": "if (validationResult && false) {"
+    },
+    {
+      "name": "zod issue paths are joined by dots",
+      "find": "e.path.join('.')",
+      "replace": "e.path.join('/')"
+    },
+    {
+      "name": "an image block keeps its media type",
+      "find": "mimeType: block.source.media_type,",
+      "replace": "mimeType: 'image/jpeg',"
+    },
+    {
+      "name": "a tool result's isError is carried through",
+      "find": "isError: !!(finalResult as any).isError,",
+      "replace": "isError: false,"
+    },
+    {
+      "name": "an empty error answers a bare Error",
+      "find": "join('\\n').trim() || 'Error'",
+      "replace": "join('\\n').trim() || ''"
+    },
+    {
+      "name": "a client's cancel no longer aborts the running tool",
+      "find": "          requestSignal.addEventListener('abort', () => abortController.abort(requestSignal.reason), { once: true })\n",
+      "replace": "          void requestSignal\n"
+    },
+    {
+      "name": "every call shares the server's read-file cache",
+      "find": "readFileState: readFileStateCache,",
+      "replace": "readFileState: createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE),"
+    }
+  ]
+}

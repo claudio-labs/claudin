@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 
+import { connectRawMcpServer, type RawHandler, type RawMcpServer } from 'src/mcp/__testutils__/rawMcpServer.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { ListMcpResourcesTool } from 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool.js'
 
@@ -13,6 +14,11 @@ function ctxWithClients(mcpClients: unknown[]): ToolUseContext {
 }
 
 describe('ListMcpResourcesTool', () => {
+  const servers: RawMcpServer[] = []
+  afterEach(async () => {
+    for (const server of servers.splice(0)) await server.close()
+  })
+
   test('flags: read-only, concurrency-safe, defer', () => {
     expect(ListMcpResourcesTool.isReadOnly?.()).toBe(true)
     expect(ListMcpResourcesTool.isConcurrencySafe?.()).toBe(true)
@@ -62,36 +68,39 @@ describe('ListMcpResourcesTool', () => {
     expect(data).toEqual([])
   })
 
-  // An `sdk` server, so ensureConnectedClient hands it back as is; the fake
-  // validates each answer with the schema it is handed, as the SDK does.
-  function resourceServer(name: string, answers: Record<string, unknown>) {
-    const asked: Array<{ method: string; timeout?: number }> = []
-    return {
-      name,
-      type: 'connected',
-      capabilities: { resources: {} },
-      config: { type: 'sdk', name, scope: 'local' },
-      asked,
-      client: {
-        request: async (
-          req: { method: string },
-          schema: { parse: (v: unknown) => unknown },
-          options?: { timeout?: number },
-        ) => {
-          asked.push({ method: req.method, timeout: options?.timeout })
-          const answer = answers[req.method]
-          if (answer instanceof Error) throw answer
-          return schema.parse(answer)
-        },
-      },
+  // An `sdk` server, so ensureConnectedClient hands it back as is; a raw
+  // server behind the wire filter, which checks each entry as on the wire.
+  // `asked` records each request and the timeout the templates list was given.
+  async function resourceServer(name: string, answers: Record<string, unknown>) {
+    const handlers: Record<string, RawHandler> = {}
+    for (const [method, answer] of Object.entries(answers)) {
+      handlers[method] = () => {
+        if (answer instanceof Error) throw answer
+        return answer
+      }
     }
+    const server = await connectRawMcpServer(name, { capabilities: { resources: {} }, answers: handlers })
+    servers.push(server)
+    const { client } = server.connection
+    const asked: Array<{ method: string; timeout?: number }> = []
+    const listResources = client.listResources.bind(client)
+    client.listResources = (params, options) => {
+      asked.push({ method: 'resources/list', timeout: options?.timeout })
+      return listResources(params, options)
+    }
+    const listTemplates = client.listResourceTemplates.bind(client)
+    client.listResourceTemplates = (params, options) => {
+      asked.push({ method: 'resources/templates/list', timeout: options?.timeout })
+      return listTemplates(params, options)
+    }
+    return Object.assign(server.connection, { asked })
   }
 
   test('call() lists resources and resource templates, each with its server', async () => {
     const { data } = await ListMcpResourcesTool.call(
       {} as never,
       ctxWithClients([
-        resourceServer('files', {
+        await resourceServer('files', {
           'resources/list': { resources: [{ uri: 'file:///readme', name: 'readme' }] },
           'resources/templates/list': {
             resourceTemplates: [{ uriTemplate: 'file:///{path}', name: 'any file' }, { name: 'no template' }],
@@ -107,10 +116,10 @@ describe('ListMcpResourcesTool', () => {
   })
 
   test('call() treats a server without templates/list as having no templates, and asks it once', async () => {
-    const { McpError, ErrorCode } = await import('@modelcontextprotocol/sdk/types.js')
-    const server = resourceServer('no-templates', {
+    const { ProtocolError, ProtocolErrorCode } = await import('@modelcontextprotocol/client')
+    const server = await resourceServer('no-templates', {
       'resources/list': { resources: [{ uri: 'res://only', name: 'only' }] },
-      'resources/templates/list': new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+      'resources/templates/list': new ProtocolError(ProtocolErrorCode.MethodNotFound, 'Method not found'),
     })
     for (let call = 0; call < 2; call++) {
       const { data } = await ListMcpResourcesTool.call({} as never, ctxWithClients([server]))
@@ -124,11 +133,11 @@ describe('ListMcpResourcesTool', () => {
     const { data } = await ListMcpResourcesTool.call(
       {} as never,
       ctxWithClients([
-        resourceServer('flaky', {
+        await resourceServer('flaky', {
           'resources/list': { resources: [{ uri: 'res://f', name: 'f' }] },
           'resources/templates/list': new Error('socket hang up'),
         }),
-        resourceServer('steady', { 'resources/list': { resources: [{ uri: 'res://s', name: 's' }] }, 'resources/templates/list': { resourceTemplates: [] } }),
+        await resourceServer('steady', { 'resources/list': { resources: [{ uri: 'res://s', name: 's' }] }, 'resources/templates/list': { resourceTemplates: [] } }),
       ]),
     )
     expect(data).toEqual([
@@ -138,7 +147,7 @@ describe('ListMcpResourcesTool', () => {
   })
 
   test('call() takes any failed templates list as no templates, until the cache is cleared', async () => {
-    const server = resourceServer('broken-templates', {
+    const server = await resourceServer('broken-templates', {
       'resources/list': { resources: [{ uri: 'res://b', name: 'b' }] },
       'resources/templates/list': new Error('Internal error'),
     })
@@ -150,7 +159,7 @@ describe('ListMcpResourcesTool', () => {
   })
 
   test('call() gives the templates list 10 s, so a server that never answers cannot hold the tool for 60 s', async () => {
-    const server = resourceServer('slow-templates', {
+    const server = await resourceServer('slow-templates', {
       'resources/list': { resources: [] },
       'resources/templates/list': { resourceTemplates: [] },
     })

@@ -22,11 +22,11 @@ export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 // complete mirror of it.
 // ---------------------------------------------------------------------------
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type {
   CallToolResult,
+  McpServer,
   ToolAnnotations,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/server'
 import type { z } from 'zod/v4'
 import type {
   SDKControlGetContextUsageResponseSchema,

@@ -1,0 +1,66 @@
+{
+  "test": ["src/mcp/client/fetchCapabilities.cover.test.ts"],
+  "source": "src/mcp/client/fetchCapabilities.ts",
+  "probes": [
+    {
+      "name": "prompt() no longer truncates a long description",
+      "find": "                ? desc.slice(0, MAX_MCP_DESCRIPTION_LENGTH) + '… [truncated]'",
+      "replace": "                ? desc"
+    },
+    {
+      "name": "a tool without destructiveHint reads as destructive",
+      "find": "              return tool.annotations?.destructiveHint ?? false",
+      "replace": "              return tool.annotations?.destructiveHint ?? true"
+    },
+    {
+      "name": "userFacingName ignores the title annotation",
+      "find": "              const displayName = tool.annotations?.title || tool.name",
+      "replace": "              const displayName = tool.name"
+    },
+    {
+      "name": "alwaysLoad accepts any truthy _meta value",
+      "find": "            alwaysLoad: tool._meta?.['anthropic/alwaysLoad'] === true,",
+      "replace": "            alwaysLoad: !!tool._meta?.['anthropic/alwaysLoad'],"
+    },
+    {
+      "name": "an expired session is not retried",
+      "find": "attempt < MAX_SESSION_RETRIES",
+      "replace": "attempt < 0"
+    },
+    {
+      "name": "a wrapped McpError loses its JSON-RPC code",
+      "find": "                        `McpError ${error.code}`,",
+      "replace": "                        `McpError`,"
+    },
+    {
+      "name": "the prompt command name skips server-name normalization",
+      "find": "          name: 'mcp__' + normalizeNameForMCP(client.name) + '__' + prompt.name,",
+      "replace": "          name: 'mcp__' + client.name + '__' + prompt.name,"
+    },
+    {
+      "name": "getPromptForCommand returns one array per message",
+      "find": "              return transformed.flat()",
+      "replace": "              return transformed as never"
+    },
+    {
+      "name": "a missing templates/list is logged as an error",
+      "find": "      if (!(error instanceof ProtocolError && error.code === ProtocolErrorCode.MethodNotFound)) {",
+      "replace": "      if (true) {"
+    },
+    {
+      "name": "every server with resources brings its own resource tools",
+      "find": "      if (supportsResources && !resourceToolsAdded) {",
+      "replace": "      if (supportsResources) {"
+    },
+    {
+      "name": "prefetch resolves after the first server answers",
+      "find": "if (completedCount >= pendingCount) {",
+      "replace": "if (completedCount >= 1) {"
+    },
+    {
+      "name": "a needs-auth connect result loses the authenticate tool",
+      "find": "              ? [createMcpAuthTool(name, config)]",
+      "replace": "              ? []"
+    }
+  ]
+}

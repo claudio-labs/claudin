@@ -4,11 +4,14 @@ import {
   DEFAULT_MCP_CONNECT_TIMEOUT_MS,
   DEFAULT_MCP_TOOL_TIMEOUT_MS,
   getMcpConnectTimeoutMs,
+  getMcpExtensionEnabled,
+  getMcpProtocolMode,
   getMcpToolTimeoutMs,
   resolveStdioCwd,
 } from 'src/mcp/client/serverOptions.js'
+import { McpServerConfigSchema, type McpServerConfig } from 'src/mcp/types.js'
 
-const ENV_KEYS = ['MCP_TIMEOUT', 'MCP_TOOL_TIMEOUT'] as const
+const ENV_KEYS = ['MCP_TIMEOUT', 'MCP_TOOL_TIMEOUT', 'MCP_PROTOCOL_NEGOTIATION'] as const
 let savedEnv: Record<string, string | undefined> = {}
 
 beforeEach(() => {
@@ -110,5 +113,87 @@ describe('resolveStdioCwd', () => {
     expect(resolveStdioCwd('tools/srv', '/proj', '/home/me')).toBe('/proj/tools/srv')
     expect(resolveStdioCwd('../sibling', '/proj', '/home/me')).toBe('/sibling')
     expect(resolveStdioCwd('~other', '/proj', '/home/me')).toBe('/proj/~other')
+  })
+})
+
+describe('getMcpProtocolMode', () => {
+  const stdio: McpServerConfig = { command: 'srv', args: [] }
+  const http: McpServerConfig = { type: 'http', url: 'https://srv/mcp' }
+
+  test('http and stdio servers negotiate unless they say legacy', () => {
+    expect(getMcpProtocolMode(stdio)).toBe('auto')
+    expect(getMcpProtocolMode({ ...stdio, type: 'stdio' })).toBe('auto')
+    expect(getMcpProtocolMode(http)).toBe('auto')
+    expect(getMcpProtocolMode({ ...http, protocol: 'legacy' })).toBe('legacy')
+    expect(getMcpProtocolMode({ ...stdio, protocol: 'auto' })).toBe('auto')
+  })
+
+  test('every other transport speaks the 2025 protocol', () => {
+    const others: McpServerConfig[] = [
+      { type: 'sse', url: 'https://srv/sse' },
+      { type: 'ws', url: 'wss://srv' },
+      { type: 'sse-ide', url: 'http://127.0.0.1:1', ideName: 'vscode' },
+      { type: 'ws-ide', url: 'ws://127.0.0.1:1', ideName: 'vscode' },
+      { type: 'sdk', name: 'in-proc' },
+      { type: 'claudeai-proxy', url: 'https://claude.ai/x', id: 'srv' },
+    ]
+    for (const config of others) expect(getMcpProtocolMode(config)).toBe('legacy')
+  })
+
+  test('MCP_PROTOCOL_NEGOTIATION=legacy turns it off for every server', () => {
+    process.env.MCP_PROTOCOL_NEGOTIATION = 'legacy'
+    expect(getMcpProtocolMode(stdio)).toBe('legacy')
+    expect(getMcpProtocolMode({ ...http, protocol: 'auto' })).toBe('legacy')
+    process.env.MCP_PROTOCOL_NEGOTIATION = 'auto'
+    expect(getMcpProtocolMode(http)).toBe('auto')
+  })
+})
+
+describe('getMcpExtensionEnabled', () => {
+  test('each extension is on unless the server turns it off', () => {
+    const http: McpServerConfig = { type: 'http', url: 'https://srv/mcp', extensions: { tasks: false, events: true } }
+    expect(getMcpExtensionEnabled(http, 'tasks')).toBe(false)
+    expect(getMcpExtensionEnabled(http, 'events')).toBe(true)
+    expect(getMcpExtensionEnabled(http, 'skills')).toBe(true)
+    expect(getMcpExtensionEnabled({ command: 'srv', args: [] }, 'skills')).toBe(true)
+    expect(getMcpExtensionEnabled({ type: 'sse', url: 'https://srv/sse' }, 'events')).toBe(true)
+  })
+})
+
+describe('the protocol and extensions fields in .mcp.json', () => {
+  test('parse on http and stdio servers', () => {
+    const parsed = McpServerConfigSchema().parse({
+      type: 'http',
+      url: 'https://srv/mcp',
+      protocol: 'legacy',
+      extensions: { skills: false },
+    })
+    expect(parsed).toMatchObject({ protocol: 'legacy', extensions: { skills: false } })
+    expect(McpServerConfigSchema().parse({ command: 'srv', protocol: 'auto' })).toMatchObject({ protocol: 'auto' })
+  })
+
+  // sse, ws and claude.ai proxy servers get MCP skills too (on both eras), so
+  // each can turn them off; `protocol` stays theirs alone, as the others
+  // always speak the 2025 protocol.
+  test('extensions parse on sse, ws and claude.ai proxy servers too, and turn the extension off', () => {
+    const others = [
+      { type: 'sse', url: 'https://srv/sse' },
+      { type: 'ws', url: 'wss://srv' },
+      { type: 'claudeai-proxy', url: 'https://claude.ai/x', id: 'srv' },
+    ]
+    for (const config of others) {
+      const parsed = McpServerConfigSchema().parse({ ...config, extensions: { skills: false } })
+      expect(parsed).toMatchObject({ extensions: { skills: false } })
+      expect(getMcpExtensionEnabled(parsed, 'skills')).toBe(false)
+      expect(getMcpExtensionEnabled(parsed, 'tasks')).toBe(true)
+      expect(McpServerConfigSchema().parse({ ...config, protocol: 'auto' })).not.toHaveProperty('protocol')
+    }
+  })
+
+  test('a wrong value fails the config, like a wrong timeout', () => {
+    expect(McpServerConfigSchema().safeParse({ type: 'http', url: 'https://srv/mcp', protocol: 'modern' }).success).toBe(false)
+    expect(
+      McpServerConfigSchema().safeParse({ command: 'srv', extensions: { tasks: 'yes' } }).success,
+    ).toBe(false)
   })
 })

@@ -19,7 +19,6 @@
     "src/terminal/input/coalescedDeletes.test.ts",
     "src/vcs/git/gitDiff.test.ts",
     "src/vcs/git/worktree/createWorktree.test.ts",
-    "src/mcp/client/listPagination.test.ts",
     "src/mcp/client/fetchCapabilities.pagination.test.ts",
     "src/mcp/serverLookup.test.ts",
     "src/plugins/marketplaceHelpers.test.ts",
@@ -163,18 +162,6 @@
       "source": "src/vcs/git/worktree/createWorktree.ts",
       "find": "      baseRef: getInitialSettings().worktree?.baseRef ?? 'head',",
       "replace": "      baseRef: getInitialSettings().worktree?.baseRef ?? 'fresh',"
-    },
-    {
-      "name": "M1: the cursor is never sent back",
-      "source": "src/mcp/client/listPagination.ts",
-      "find": "    cursor = result.nextCursor",
-      "replace": "    cursor = undefined"
-    },
-    {
-      "name": "M1: a repeated cursor is followed again",
-      "source": "src/mcp/client/listPagination.ts",
-      "find": "    if (!result.nextCursor || seen.has(result.nextCursor)) break",
-      "replace": "    if (!result.nextCursor) break"
     },
     {
       "name": "M2: server names resolve through the prototype again",

@@ -38,7 +38,9 @@ export function redactSensitiveUrlParams(url: string): string {
 type OAuthCallbackParamValue = string | string[] | null | undefined
 
 type OAuthCallbackValidationResult =
-  | { type: 'code'; code: string }
+  // `iss` is the RFC 9207 issuer the authorization server named on the
+  // redirect, checked by the SDK against the one it discovered.
+  | { type: 'code'; code: string; iss?: string }
   | {
       type: 'error'
       error: string
@@ -65,6 +67,7 @@ export function validateOAuthCallbackParams(
     error?: OAuthCallbackParamValue
     error_description?: OAuthCallbackParamValue
     error_uri?: OAuthCallbackParamValue
+    iss?: OAuthCallbackParamValue
   },
   oauthState: string,
 ): OAuthCallbackValidationResult {
@@ -97,7 +100,8 @@ export function validateOAuthCallbackParams(
   }
 
   if (code) {
-    return { type: 'code', code }
+    const iss = getFirstOAuthCallbackParam(params.iss)
+    return iss === undefined ? { type: 'code', code } : { type: 'code', code, iss }
   }
 
   return { type: 'missing_result' }

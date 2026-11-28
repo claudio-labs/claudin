@@ -31,6 +31,7 @@ import { clearResolveGitDirCache } from 'src/vcs/git/gitFilesystem.js'
 import { fileReadCache } from 'src/shared/fs/fileReadCache.js'
 import { clearStoredImagePaths } from 'src/terminal/image/imageStore.js'
 import { clearSessionEnvVars } from 'src/sessions/sessionEnvVars.js'
+import { getMcpResourceChanges } from 'src/mcp/resourceChanges.js'
 
 /**
  * Clear all session-related caches.
@@ -112,6 +113,8 @@ export function clearSessionCaches(
   resetAllLSPDiagnosticState()
   // Clear session environment variables
   clearSessionEnvVars()
+  // What the old conversation read of MCP resources, and its pending notices
+  getMcpResourceChanges().clear(preservedAgentIds)
   // Clear WebFetch URL cache (up to 50MB of cached page content)
   void import('src/tools/WebFetchTool/utils.js').then(
     ({ clearWebFetchCache }) => clearWebFetchCache(),

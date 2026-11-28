@@ -13,6 +13,7 @@
 //   connection.ts        — connectToServer, getServerCacheKey, cleanup, config compare
 //   toolResult.ts        — transformResultContent/MCPResult, processMCPResult, schema
 //   callTool.ts          — callMCPTool(WithUrlElicitationRetry), tool timeouts
+//   taskCall.ts          — a call answered with a task: inline poll, background handoff
 //   fetchCapabilities.ts — fetch tools/resources/commands, getMcpToolsCommandsAndResources
 //   ide.ts               — callIdeRpc
 //   sdkClients.ts        — setupSdkMcpClients
@@ -57,6 +58,7 @@ export {
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
   fetchCommandsForClient,
+  fetchSkillsForClient,
   reconnectMcpServerImpl,
   getMcpToolsCommandsAndResources,
   prefetchAllMcpResources,

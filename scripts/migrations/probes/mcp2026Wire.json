@@ -1,0 +1,164 @@
+{
+  "test": [
+    "src/mcp/client/wireRules.test.ts",
+    "src/mcp/client/wireFilter.test.ts",
+    "src/mcp/client/listValidation.test.ts",
+    "src/mcp/client/fetchCapabilities.malformed.test.ts",
+    "src/mcp/client/fetchCapabilities.pagination.test.ts",
+    "src/mcp/client/connection.cover.test.ts",
+    "src/mcp/client/sdkClients.test.ts",
+    "src/mcp/client/cursorCycleGuard.test.ts",
+    "src/mcp/client/wireRules.modernResults.test.ts",
+    "src/mcp/client/serverOptions.test.ts"
+  ],
+  "source": "src/mcp/client/wireRules.ts",
+  "probes": [
+    {
+      "name": "a listed outputSchema reaches the SDK, which then fails a call without structuredContent",
+      "find": "  'tools/list': listRule('tools', 'tool', keepValidTools, withoutOutputSchema),\n",
+      "replace": "  'tools/list': listRule('tools', 'tool', keepValidTools),\n"
+    },
+    {
+      "name": "a 2026-07-28 list result without ttlMs is rejected whole",
+      "find": "  if (!isValidTtlMs(result.ttlMs)) result.ttlMs = 0\n",
+      "replace": ""
+    },
+    {
+      "name": "the checked entries never replace the raw page",
+      "find": "    result[field] = items.map(adjust)\n",
+      "replace": ""
+    },
+    {
+      "name": "a skipped entry is not reported",
+      "find": "    if (skipped.length > 0) context.onSkipped(kind, skipped)\n",
+      "replace": ""
+    },
+    {
+      "name": "no request is tracked, so no response is filtered",
+      "source": "src/mcp/client/wireFilter.ts",
+      "find": "      methods.set(id, method)\n",
+      "replace": ""
+    },
+    {
+      "name": "a numeric id and the same id as a string are taken for one request",
+      "source": "src/mcp/client/wireFilter.ts",
+      "find": "  return typeof id === 'string' || typeof id === 'number' ? id : undefined\n",
+      "replace": "  return typeof id === 'string' || typeof id === 'number' ? String(id) : undefined\n"
+    },
+    {
+      "name": "an onmessage set before the filter is dropped",
+      "source": "src/mcp/client/wireFilter.ts",
+      "find": "    previous?.(message, extra)\n",
+      "replace": ""
+    },
+    {
+      "name": "connectToServer connects without the wire filter",
+      "source": "src/mcp/client/connection.ts",
+      "find": "      attachMcpWireFilter(name, transport)\n",
+      "replace": ""
+    },
+    {
+      "name": "an SDK MCP server connects without the wire filter",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "        attachMcpWireFilter(name, transport, { keepInitialize: true })\n",
+      "replace": ""
+    },
+    {
+      "name": "a list that fails its schema is retried as if transient",
+      "source": "src/mcp/client/listValidation.ts",
+      "find": "  return error instanceof SdkError && error.code === SdkErrorCode.InvalidResult\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "a repeated cursor is followed again, so a cycling server pages until the SDK throws",
+      "source": "src/mcp/client/cursorCycleGuard.ts",
+      "find": "      if (listing.cursors.has(next)) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "a cut listing is not logged",
+      "source": "src/mcp/client/wireFilter.ts",
+      "find": "        if (cut?.reason === 'cycle') options.onCursorCycle?.(method, cut.cursor)\n",
+      "replace": ""
+    },
+    {
+      "name": "a modern resources/read without ttlMs and cacheScope is rejected",
+      "find": "  'resources/read': fillListResultFields,\n",
+      "replace": ""
+    },
+    {
+      "name": "a modern skills/list without ttlMs and cacheScope is rejected",
+      "find": "  'skills/list': fillListResultFields,\n",
+      "replace": ""
+    },
+    {
+      "name": "a modern tool result without resultType is rejected",
+      "find": "  'tools/call': fillToolCallResult,\n",
+      "replace": "  'tools/call': withTaskMarker,\n"
+    },
+    {
+      "name": "a modern prompts/get without resultType is rejected",
+      "find": "  'prompts/get': fillResultType,\n",
+      "replace": ""
+    },
+    {
+      "name": "a modern completion without resultType is rejected",
+      "find": "  'completion/complete': fillResultType,\n",
+      "replace": ""
+    },
+    {
+      "name": "a listing is followed past 100 pages",
+      "source": "src/mcp/client/cursorCycleGuard.ts",
+      "find": "      if (listing.pages >= MAX_LIST_PAGES) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "connectToServer keeps the SDK page cap of 64, which throws the listing away",
+      "source": "src/mcp/client/connection.ts",
+      "find": "          listMaxPages: SDK_LIST_MAX_PAGES,\n",
+      "replace": ""
+    },
+    {
+      "name": "an SDK MCP server keeps the SDK page cap of 64, which throws the listing away",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "          listMaxPages: SDK_LIST_MAX_PAGES,\n",
+      "replace": ""
+    },
+    {
+      "name": "a listing cut at 100 pages is not logged",
+      "source": "src/mcp/client/wireFilter.ts",
+      "find": "        if (cut?.reason === 'pages') options.onPageLimit?.(method, cut.pages)\n",
+      "replace": ""
+    },
+    {
+      "name": "an SDK MCP server announces roots and elicitation it cannot serve",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "        attachMcpWireFilter(name, transport, { keepInitialize: true })\n",
+      "replace": "        attachMcpWireFilter(name, transport, { keepInitialize: false })\n"
+    },
+    {
+      "name": "keepInitialize rewrites the initialize anyway",
+      "source": "src/mcp/client/wireFilter.ts",
+      "find": "    sendRules: options.keepInitialize ? otherSendRules : SEND_RULES,\n",
+      "replace": "    sendRules: SEND_RULES,\n"
+    },
+    {
+      "name": "an sse server cannot turn its extensions off",
+      "source": "src/mcp/types.ts",
+      "find": "    oauth: McpOAuthConfigSchema().optional(),\n    ...timeoutFields(),\n    ...extensionsField(),\n",
+      "replace": "    oauth: McpOAuthConfigSchema().optional(),\n    ...timeoutFields(),\n"
+    },
+    {
+      "name": "a ws server cannot turn its extensions off",
+      "source": "src/mcp/types.ts",
+      "find": "    headersHelper: z.string().optional(),\n    ...timeoutFields(),\n    ...extensionsField(),\n",
+      "replace": "    headersHelper: z.string().optional(),\n    ...timeoutFields(),\n"
+    },
+    {
+      "name": "a claude.ai proxy server cannot turn its extensions off",
+      "source": "src/mcp/types.ts",
+      "find": "    id: z.string(),\n    ...extensionsField(),\n",
+      "replace": "    id: z.string(),\n"
+    }
+  ]
+}

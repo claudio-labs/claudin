@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test'
 import { getTimeBasedMCConfig } from 'src/agent/compact/timeBasedMCConfig.js'
+import * as activeProvider from 'src/providers/presets/activeProvider.js'
 import {
   AGGRESSIVE_PROFILE,
   RETAIN_PROFILE,
@@ -52,11 +53,20 @@ describe('resolveProfileForProvider', () => {
 })
 
 describe('getCacheProfile env gating', () => {
+  // Pinned rather than assumed: an earlier file in the run can leave a real
+  // profile resolved, and auto then follows the developer's own provider.
+  beforeEach(() => {
+    spyOn(activeProvider, 'tryGetActiveProvider').mockReturnValue(null)
+  })
+  afterEach(() => {
+    mock.restore()
+  })
+
   test('unset env → auto (Phase 6 default; no active provider in tests → aggressive)', () => {
     setMode(undefined)
-    // In the test environment tryGetActiveProvider() returns null, so auto
-    // resolves to the aggressive profile — the assertion pins that the
-    // UNSET default routes through provider resolution, not a hard default.
+    // With no active provider, auto resolves to the aggressive profile — the
+    // assertion pins that the UNSET default routes through provider
+    // resolution, not a hard default.
     expect(getCacheProfile()).toBe(AGGRESSIVE_PROFILE)
   })
 

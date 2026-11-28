@@ -19,6 +19,7 @@ import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js
 // Type import is erased at build time — safe even though module is ant-gated.
 import type { LocalWorkflowTaskState } from 'src/agent/tasks/LocalWorkflowTask/LocalWorkflowTask.js';
 import type { MonitorMcpTaskState } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
+import { monitorMcpSectionLabel } from 'src/agent/tasks/MonitorMcpTask/notification.js';
 import { RemoteAgentTask, type RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js';
 import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
@@ -488,7 +489,7 @@ export function BackgroundTasksDialog({
 
             {mcpMonitors.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 ? 1 : 0}>
                 <Text dimColor>
-                  <Text bold>{'  '}Monitors</Text> ({mcpMonitors.length})
+                  <Text bold>{'  '}{monitorMcpSectionLabel(mcpMonitors.map(item_7 => item_7.task.kind))}</Text> ({mcpMonitors.length})
                 </Text>
                 <Box flexDirection="column">
                   {mcpMonitors.map(item_7 => <Item key={item_7.id} item={item_7} isSelected={item_7.id === currentSelection?.id} />)}

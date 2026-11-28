@@ -4,24 +4,19 @@
  */
 
 import {
+  type AuthorizationServerMetadata,
   discoverAuthorizationServerMetadata,
+  discoverOAuthProtectedResourceMetadata,
+  type OAuthClientMetadata,
   type OAuthClientProvider,
   type OAuthDiscoveryState,
+  OAuthError,
+  OAuthErrorCode,
+  type OAuthTokens,
   refreshAuthorization as sdkRefreshAuthorization,
-} from '@modelcontextprotocol/sdk/client/auth.js'
-import {
-  InvalidGrantError,
-  ServerError,
-  TemporarilyUnavailableError,
-  TooManyRequestsError,
-} from '@modelcontextprotocol/sdk/server/auth/errors.js'
-import type {
-  AuthorizationServerMetadata,
-  OAuthClientInformation,
-  OAuthClientInformationFull,
-  OAuthClientMetadata,
-  OAuthTokens,
-} from '@modelcontextprotocol/sdk/shared/auth.js'
+  type StoredOAuthClientInformation,
+  type StoredOAuthTokens,
+} from '@modelcontextprotocol/client'
 import { randomBytes, randomInt } from 'crypto'
 import { mkdir } from 'fs/promises'
 import { join } from 'path'
@@ -45,6 +40,31 @@ import { redactSensitiveUrlParams } from 'src/mcp/auth/callbackParams.js'
 import { getServerKey } from 'src/mcp/auth/serverKey.js'
 
 const MAX_LOCK_RETRIES = 5
+
+// The authorization server the last flow used, as persisted (URLs only).
+function storedDiscoveryState(
+  serverName: string,
+  serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
+): OAuthDiscoveryState | undefined {
+  const cached = getSecureStorage().read()?.mcpOAuth?.[getServerKey(serverName, serverConfig)]
+    ?.discoveryState
+  if (!cached?.authorizationServerUrl) return undefined
+  return {
+    authorizationServerUrl: cached.authorizationServerUrl,
+    resourceMetadataUrl: cached.resourceMetadataUrl,
+  }
+}
+
+const TRAILING_SLASHES_RE = /\/+$/
+const sameServerUrl = (a: string, b: string): boolean =>
+  a.replace(TRAILING_SLASHES_RE, '') === b.replace(TRAILING_SLASHES_RE, '')
+
+// The token-endpoint answers worth another refresh attempt.
+const TRANSIENT_OAUTH_ERROR_CODES: ReadonlySet<string> = new Set([
+  OAuthErrorCode.ServerError,
+  OAuthErrorCode.TemporarilyUnavailable,
+  OAuthErrorCode.TooManyRequests,
+])
 
 export class ClaudeAuthProvider implements OAuthClientProvider {
   private serverName: string
@@ -152,7 +172,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     return this._state
   }
 
-  async clientInformation(): Promise<OAuthClientInformation | undefined> {
+  async clientInformation(): Promise<StoredOAuthClientInformation | undefined> {
     const storage = getSecureStorage()
     const data = storage.read()
     const serverKey = getServerKey(this.serverName, this.serverConfig)
@@ -186,7 +206,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
   }
 
   async saveClientInformation(
-    clientInformation: OAuthClientInformationFull,
+    clientInformation: StoredOAuthClientInformation,
   ): Promise<void> {
     const storage = getSecureStorage()
     const existingData = storage.read() || {}
@@ -222,7 +242,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     storage.update(updatedData)
   }
 
-  async tokens(): Promise<OAuthTokens | undefined> {
+  async tokens(): Promise<StoredOAuthTokens | undefined> {
     // Cross-process token changes (another CC instance refreshed or invalidated)
     // are picked up via the keychain cache TTL (see macOsKeychainStorage.ts).
     // In-process writes already invalidate the cache via storage.update().
@@ -325,7 +345,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     return tokens
   }
 
-  async saveTokens(tokens: OAuthTokens): Promise<void> {
+  async saveTokens(tokens: StoredOAuthTokens): Promise<void> {
     this._pendingStepUpScope = undefined
     const storage = getSecureStorage()
     const existingData = storage.read() || {}
@@ -545,24 +565,45 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     storage.update(updatedData)
   }
 
+  /**
+   * The discovery state the SDK's auth() resumes from: the authorization
+   * server the last flow used, unless the resource's metadata now names
+   * others. Then nothing is returned, the SDK discovers again and follows
+   * the move, and its issuer stamps keep the old server's client and tokens
+   * away from the new one (SEP-2352). The metadata fetched for the check is
+   * handed over, so the SDK does not fetch it a second time. On the callback
+   * leg of a flow this provider started (its code verifier is saved) the
+   * recorded server is returned as is: the SDK checks the code against it.
+   */
   async discoveryState(): Promise<OAuthDiscoveryState | undefined> {
-    const storage = getSecureStorage()
-    const data = storage.read()
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-
-    const cached = data?.mcpOAuth?.[serverKey]?.discoveryState
-    if (cached?.authorizationServerUrl) {
+    const stored = storedDiscoveryState(this.serverName, this.serverConfig)
+    if (stored) {
       logMCPDebug(
         this.serverName,
-        `Returning cached discovery state (authServer: ${cached.authorizationServerUrl})`,
+        `Returning cached discovery state (authServer: ${stored.authorizationServerUrl})`,
       )
-
-      return {
-        authorizationServerUrl: cached.authorizationServerUrl,
-        resourceMetadataUrl: cached.resourceMetadataUrl,
-        // Only the URLs are ever persisted (see saveDiscoveryState) — the SDK
-        // re-fetches the metadata blobs with one HTTP GET on the next auth.
+      if (this._codeVerifier) return stored
+      let resourceMetadata: OAuthDiscoveryState['resourceMetadata']
+      try {
+        resourceMetadata = await discoverOAuthProtectedResourceMetadata(
+          this.serverConfig.url,
+          { resourceMetadataUrl: stored.resourceMetadataUrl },
+          createAuthFetch(),
+        )
+      } catch (error) {
+        // No metadata to compare against: keep the recorded server.
+        logMCPDebug(this.serverName, `Resource metadata unavailable: ${errorMessage(error)}`)
+        return stored
       }
+      const servers = resourceMetadata.authorization_servers ?? []
+      if (servers.length > 0 && !servers.some(s => sameServerUrl(String(s), stored.authorizationServerUrl))) {
+        logMCPDebug(
+          this.serverName,
+          `The resource moved from ${stored.authorizationServerUrl} to ${servers.join(', ')}; discovering again`,
+        )
+        return undefined
+      }
+      return { ...stored, resourceMetadata }
     }
 
     // Check config hint for direct metadata URL
@@ -705,7 +746,9 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
         // 3. Full RFC 9728 → RFC 8414 re-discovery via fetchAuthServerMetadata.
         let metadata = this._metadata
         if (!metadata) {
-          const cached = await this.discoveryState()
+          // The server the last flow used, whatever discovery answers now:
+          // a refresh token belongs to its issuer.
+          const cached = storedDiscoveryState(this.serverName, this.serverConfig)
           if (cached?.authorizationServerMetadata) {
             logMCPDebug(
               this.serverName,
@@ -766,7 +809,10 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       } catch (error) {
         // Invalid grant means the refresh token itself is invalid/revoked/expired.
         // But another process may have already refreshed successfully — check first.
-        if (error instanceof InvalidGrantError) {
+        if (
+          error instanceof OAuthError &&
+          error.code === OAuthErrorCode.InvalidGrant
+        ) {
           logMCPDebug(
             this.serverName,
             `Token refresh failed with invalid_grant: ${error.message}`,
@@ -805,9 +851,8 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
           error instanceof Error &&
           /timeout|timed out|etimedout|econnreset/i.test(error.message)
         const isTransientServerError =
-          error instanceof ServerError ||
-          error instanceof TemporarilyUnavailableError ||
-          error instanceof TooManyRequestsError
+          error instanceof OAuthError &&
+          TRANSIENT_OAUTH_ERROR_CODES.has(error.code)
         const isRetryable = isTimeoutError || isTransientServerError
 
         if (!isRetryable || attempt >= MAX_ATTEMPTS) {

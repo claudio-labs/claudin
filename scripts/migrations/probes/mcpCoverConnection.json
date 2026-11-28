@@ -1,0 +1,70 @@
+{
+  "test": [
+    "src/mcp/client/connection.cover.test.ts",
+    "src/mcp/client/connection.remote.test.ts"
+  ],
+  "source": "src/mcp/client/connection.ts",
+  "probes": [
+    {
+      "name": "the legacy initialize rewrite announces URL elicitation (breaks the Spring AI wire)",
+      "source": "src/mcp/client/wireRules.ts",
+      "find": "export const LEGACY_INITIALIZE_CAPABILITIES = { roots: {}, elicitation: {} } as const\n",
+      "replace": "export const LEGACY_INITIALIZE_CAPABILITIES = { roots: {}, elicitation: { form: {}, url: {} } } as const\n"
+    },
+    {
+      "name": "roots/list answers the original cwd as a file URI",
+      "find": "  return { roots: [{ uri: `file://${getOriginalCwd()}` }] }\n",
+      "replace": "  return { roots: [{ uri: 'file:///' }] }\n"
+    },
+    {
+      "name": "long instructions are cut at the cap and marked",
+      "find": "          rawInstructions.slice(0, MAX_MCP_DESCRIPTION_LENGTH) + '… [truncated]'\n",
+      "replace": "          rawInstructions\n"
+    },
+    {
+      "name": "three terminal errors close the transport",
+      "find": "      const MAX_ERRORS_BEFORE_RECONNECT = 3\n",
+      "replace": "      const MAX_ERRORS_BEFORE_RECONNECT = 4\n"
+    },
+    {
+      "name": "a non-terminal error resets the count",
+      "find": "            // Non-terminal error (e.g., transient issue), reset counter\n            consecutiveConnectionErrors = 0\n",
+      "replace": "            // Non-terminal error (e.g., transient issue), reset counter\n"
+    },
+    {
+      "name": "an exhausted SSE reconnect closes at once",
+      "find": "          if (error.message.includes('Maximum reconnection attempts')) {\n",
+      "replace": "          if (false) {\n"
+    },
+    {
+      "name": "an http session expiry closes at once",
+      "find": "          isMcpSessionExpiredError(error)\n",
+      "replace": "          false\n"
+    },
+    {
+      "name": "a claude.ai proxy 401 is needs-auth",
+      "find": "          if (httpStatusOf(error) === 401) {\n            return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')\n",
+      "replace": "          if (httpStatusOf(error) === 999) {\n            return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')\n"
+    },
+    {
+      "name": "a local failure closes the transport and the in-process server",
+      "find": "          await cleanupFailedConnection(transport, inProcessServer)\n",
+      "replace": "          void 0\n"
+    },
+    {
+      "name": "cleanup escalates a SIGINT-proof child to SIGTERM",
+      "find": "                        process.kill(childPid, 'SIGTERM')\n",
+      "replace": "                        void 0\n"
+    },
+    {
+      "name": "cleanup detaches the stderr listener",
+      "find": "          stdioTransport.stderr?.off('data', stderrHandler)\n",
+      "replace": "          void 0\n"
+    },
+    {
+      "name": "clearServerCache cleans up a connected server",
+      "find": "      await wrappedClient.cleanup()\n",
+      "replace": "      void 0\n"
+    }
+  ]
+}

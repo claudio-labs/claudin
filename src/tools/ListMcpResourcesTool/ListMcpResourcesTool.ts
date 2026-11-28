@@ -4,6 +4,9 @@ import {
   fetchResourcesForClient,
   fetchResourceTemplatesForClient,
 } from 'src/mcp/client.js'
+import { eventsRefusal } from 'src/mcp/client/events.js'
+import { fetchEventTypesForClient } from 'src/mcp/client/fetchCapabilities.js'
+import type { ConnectedMCPServer } from 'src/mcp/types.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -40,12 +43,46 @@ const outputSchema = lazySchema(() =>
         description: z.string().optional().describe('Template description'),
         server: z.string().describe('Server that provides this template'),
       }),
+      z.object({
+        event: z.string().describe("MCP event name; watch it with Monitor's mcp_event"),
+        description: z.string().optional().describe('Event description'),
+        delivery: z.array(z.string()).optional().describe('How the server delivers it: push, poll, webhook'),
+        inputSchema: z.record(z.string(), z.unknown()).optional().describe("JSON Schema of the event's args"),
+        server: z.string().describe('Server that publishes this event'),
+      }),
     ]),
   ),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
 
 export type Output = z.infer<OutputSchema>
+type Entry = Output[number]
+type EventEntry = Extract<Entry, { event: string }>
+
+function isEventEntry(entry: Entry): entry is EventEntry {
+  return 'event' in entry
+}
+
+/**
+ * The event types a server publishes (SEP-3415), or none: a server without
+ * the extension is not asked, and a failed list costs only its own section.
+ */
+async function eventEntries(connection: ConnectedMCPServer): Promise<EventEntry[]> {
+  if (eventsRefusal(connection)) return []
+  try {
+    const types = await fetchEventTypesForClient(connection)
+    return types.map(type => ({
+      event: type.name,
+      ...(type.description !== undefined && { description: type.description }),
+      ...(type.delivery !== undefined && { delivery: type.delivery }),
+      ...(type.inputSchema !== undefined && { inputSchema: type.inputSchema }),
+      server: connection.name,
+    }))
+  } catch (error) {
+    logMCPError(connection.name, `Failed to list events: ${errorMessage(error)}`)
+    return []
+  }
+}
 
 export const ListMcpResourcesTool = buildTool({
   isConcurrencySafe() {
@@ -97,11 +134,12 @@ export const ListMcpResourcesTool = buildTool({
         if (client.type !== 'connected') return []
         try {
           const fresh = await ensureConnectedClient(client)
-          const [resources, templates] = await Promise.all([
+          const [resources, templates, events] = await Promise.all([
             fetchResourcesForClient(fresh),
             fetchResourceTemplatesForClient(fresh),
+            eventEntries(fresh),
           ])
-          return [...resources, ...templates]
+          return [...resources, ...templates, ...events]
         } catch (error) {
           // One server's reconnect failure shouldn't sink the whole result.
           logMCPError(client.name, errorMessage(error))
@@ -121,18 +159,23 @@ export const ListMcpResourcesTool = buildTool({
     return isOutputLineTruncated(jsonStringify(output))
   },
   mapToolResultToToolResultBlockParam(content, toolUseID) {
-    if (!content || content.length === 0) {
-      return {
-        tool_use_id: toolUseID,
-        type: 'tool_result',
-        content:
-          'No resources found. MCP servers may still provide tools even if they have no resources.',
-      }
-    }
+    const entries = content ?? []
+    const resources = entries.filter(entry => !isEventEntry(entry))
+    const events = entries.filter(isEventEntry)
+    const listed =
+      resources.length === 0
+        ? 'No resources found. MCP servers may still provide tools even if they have no resources.'
+        : jsonStringify(resources)
+    // Only a server that publishes events adds the section, so every other
+    // result reads as it always has.
+    const section =
+      events.length === 0
+        ? ''
+        : `\n\nMCP event types (watch one with Monitor's mcp_event: {server, event, args?}):\n${jsonStringify(events)}`
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: jsonStringify(content),
+      content: listed + section,
     }
   },
 } satisfies ToolDef<InputSchema, Output>)

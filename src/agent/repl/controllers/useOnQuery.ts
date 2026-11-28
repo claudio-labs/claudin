@@ -77,6 +77,7 @@ import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
 import { getFallbackModel } from 'src/providers/model/fallbackModel.js';
 import { createCancelledTurns } from 'src/agent/repl/controllers/cancelledTurn.js';
+import { refreshExpiredMcpLists } from 'src/mcp/listTtlRefresh.js';
 
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
@@ -334,6 +335,16 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       setAbortController(null);
       return;
     }
+    // MCP lists whose TTL ran out are read again before the turn's tools are
+    // taken from the store below, so a changed list goes out with this
+    // request; the wait is bounded and a failing server keeps its old list.
+    await refreshExpiredMcpLists({
+      getMcp: () => store.getState().mcp,
+      setMcp: update => store.setState(prev => {
+        const mcp = update(prev.mcp);
+        return mcp === prev.mcp ? prev : { ...prev, mcp };
+      })
+    });
     const toolUseContext = getToolUseContext(messagesIncludingNewMessages, newMessages, abortController, mainLoopModelParam);
     // getToolUseContext reads tools/mcpClients fresh from store.getState()
     // (via computeTools/mergeClients). Use those rather than the closure-

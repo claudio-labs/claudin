@@ -11,7 +11,7 @@ import type { UUID } from 'crypto'
 import type {
   ContentBlockParam,
 } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js'
+import type { ReadResourceResult } from '@modelcontextprotocol/client'
 // DiscoverySignal lives in a stubbed/feature-gated module on external builds;
 // inline the structural shape used by the Attachment union to avoid an
 // unresolved-module error during typecheck.
@@ -385,6 +385,15 @@ export type Attachment =
       name: string
       description?: string
       content: ReadResourceResult
+    }
+  /**
+   * MCP resources that changed after this thread read them
+   * (src/mcp/resourceChanges.ts). Only the fact, never the content; renders
+   * from its own payload, so a resume re-sends the same bytes.
+   */
+  | {
+      type: 'mcp_resource_changed'
+      changes: { server: string; uri: string }[]
     }
   | {
       type: 'command_permissions'

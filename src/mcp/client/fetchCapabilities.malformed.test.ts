@@ -1,48 +1,46 @@
-import { describe, expect, spyOn, test } from 'bun:test'
+import { afterEach, describe, expect, spyOn, test } from 'bun:test'
 import * as log from 'src/shared/log.js'
 import {
   fetchCommandsForClient,
   fetchResourcesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
-import type { MCPServerConnection } from 'src/mcp/types.js'
+import { connectRawMcpServer, type RawHandler, type RawMcpServer } from 'src/mcp/__testutils__/rawMcpServer.js'
+import { callMCPTool } from 'src/mcp/client/callTool.js'
 
-type ListRequest = { method: string; params?: { cursor?: string } }
-type Schema = { parse: (value: unknown) => unknown }
 type PromptCommand = { getPromptForCommand: (args: string) => Promise<unknown> }
 
-// A server whose every list answers one fixed page. Like the SDK's
-// Client.request, the fake validates the result with the schema it is
-// handed, so a strict list schema fails here exactly as it does on the wire.
-// The config is `sdk` so ensureConnectedClient hands the fake straight back.
-function listServer(name: string, pages: Record<string, unknown>) {
-  const requests: ListRequest[] = []
+const servers: RawMcpServer[] = []
+afterEach(async () => {
+  for (const server of servers.splice(0)) await server.close()
+})
+
+// A raw server whose every list answers one fixed page, joined to a real v2
+// Client through the same wire filter connectToServer attaches, so a strict
+// list schema fails here exactly as it does on the wire.
+async function listServer(name: string, pages: Record<string, unknown>, extra: Record<string, RawHandler> = {}) {
   const prompts: unknown[] = []
-  const client = {
-    type: 'connected',
-    name,
-    capabilities: { tools: {}, resources: {}, prompts: {} },
-    config: { type: 'sdk', name, scope: 'local' },
-    cleanup: async () => {},
-    client: {
-      request: async (req: ListRequest, schema: Schema) => {
-        requests.push(req)
-        return schema.parse(pages[req.method])
-      },
-      getPrompt: async (params: unknown) => {
-        prompts.push(params)
-        return { messages: [] }
-      },
+  const answers: Record<string, RawHandler> = {
+    'prompts/get': params => {
+      prompts.push(params)
+      return { messages: [] }
     },
-  } as unknown as MCPServerConnection
-  return { client, requests, prompts }
+    ...extra,
+  }
+  for (const [method, page] of Object.entries(pages)) answers[method] = () => page
+  const server = await connectRawMcpServer(name, {
+    capabilities: { tools: {}, resources: {}, prompts: {} },
+    answers,
+  })
+  servers.push(server)
+  return { client: server.connection, requests: server.requests, prompts }
 }
 
 const goodTool = { name: 'good', inputSchema: { type: 'object', properties: { q: { type: 'string' } } } }
 
 describe('a tools/list with one malformed tool', () => {
   test('control: a well-formed list keeps every tool in one request', async () => {
-    const { client, requests } = listServer('ok-tools', {
+    const { client, requests } = await listServer('ok-tools', {
       'tools/list': { tools: [goodTool, { name: 'other', inputSchema: { type: 'object' } }] },
     })
     expect((await fetchToolsForClient(client)).map(t => t.mcpInfo?.toolName)).toEqual(['good', 'other'])
@@ -50,7 +48,7 @@ describe('a tools/list with one malformed tool', () => {
   })
 
   test('keeps the valid tools when one inputSchema is not an object schema', async () => {
-    const { client } = listServer('bad-schema-type', {
+    const { client } = await listServer('bad-schema-type', {
       'tools/list': { tools: [goodTool, { name: 'bad', inputSchema: { type: 'string' } }] },
     })
     const logged = spyOn(log, 'logMCPError')
@@ -63,14 +61,14 @@ describe('a tools/list with one malformed tool', () => {
   }, 10_000)
 
   test('keeps the valid tools when one name is not a string', async () => {
-    const { client } = listServer('bad-name', {
+    const { client } = await listServer('bad-name', {
       'tools/list': { tools: [goodTool, { name: 42, inputSchema: { type: 'object' } }] },
     })
     expect((await fetchToolsForClient(client)).map(t => t.mcpInfo?.toolName)).toEqual(['good'])
   }, 10_000)
 
   test('keeps a tool whose top-level required is malformed, without that field', async () => {
-    const { client } = listServer('bad-required', {
+    const { client } = await listServer('bad-required', {
       'tools/list': { tools: [{ name: 'loose', inputSchema: { type: 'object', required: 'q' } }] },
     })
     const tools = await fetchToolsForClient(client)
@@ -79,7 +77,7 @@ describe('a tools/list with one malformed tool', () => {
   }, 10_000)
 
   test('does not retry a list that fails its schema as if the failure were transient', async () => {
-    const { client, requests } = listServer('bad-no-retry', {
+    const { client, requests } = await listServer('bad-no-retry', {
       'tools/list': { tools: 'not a list' },
     })
     await fetchToolsForClient(client)
@@ -89,7 +87,7 @@ describe('a tools/list with one malformed tool', () => {
 
 describe('prompts and resources lists with one malformed entry', () => {
   test('keeps the valid prompts', async () => {
-    const { client } = listServer('bad-prompts', {
+    const { client } = await listServer('bad-prompts', {
       'prompts/list': { prompts: [{ name: 'good' }, { name: 'bad', arguments: 'x' }] },
     })
     const logged = spyOn(log, 'logMCPError')
@@ -102,7 +100,7 @@ describe('prompts and resources lists with one malformed entry', () => {
   })
 
   test('keeps the valid resources', async () => {
-    const { client } = listServer('bad-resources', {
+    const { client } = await listServer('bad-resources', {
       'resources/list': { resources: [{ uri: 'file:///ok', name: 'ok' }, { name: 'no-uri' }] },
     })
     const logged = spyOn(log, 'logMCPError')
@@ -123,14 +121,14 @@ describe('MCP prompt arguments', () => {
   }
 
   test('control: space-separated words fill the arguments in order', async () => {
-    const { client, prompts } = listServer('args-plain', reviewPrompt)
+    const { client, prompts } = await listServer('args-plain', reviewPrompt)
     const [command] = await fetchCommandsForClient(client)
     await (command as unknown as PromptCommand).getPromptForCommand('src/a.ts errors')
     expect(prompts).toEqual([{ name: 'review', arguments: { file: 'src/a.ts', focus: 'errors' } }])
   })
 
   test('a quoted argument keeps its spaces', async () => {
-    const { client, prompts } = listServer('args-quoted', reviewPrompt)
+    const { client, prompts } = await listServer('args-quoted', reviewPrompt)
     const [command] = await fetchCommandsForClient(client)
     await (command as unknown as PromptCommand).getPromptForCommand('src/a.ts "error handling"')
     expect(prompts).toEqual([{ name: 'review', arguments: { file: 'src/a.ts', focus: 'error handling' } }])
@@ -150,7 +148,7 @@ describe('MCP prompt arguments', () => {
   ]
   for (const [line, expected] of cases) {
     test(`${JSON.stringify(line)} reaches the prompt as typed`, async () => {
-      const { client, prompts } = listServer(`args-${line}`, reviewPrompt)
+      const { client, prompts } = await listServer(`args-${line}`, reviewPrompt)
       const [command] = await fetchCommandsForClient(client)
       await (command as unknown as PromptCommand).getPromptForCommand(line)
       expect(prompts).toEqual([{ name: 'review', arguments: expected }])
@@ -158,9 +156,48 @@ describe('MCP prompt arguments', () => {
   }
 
   test('no arguments send the first one empty, as before', async () => {
-    const { client, prompts } = listServer('args-none', reviewPrompt)
+    const { client, prompts } = await listServer('args-none', reviewPrompt)
     const [command] = await fetchCommandsForClient(client)
     await (command as unknown as PromptCommand).getPromptForCommand('')
     expect(JSON.stringify(prompts)).toBe(JSON.stringify([{ name: 'review', arguments: { file: '' } }]))
+  })
+})
+
+// The SDK's callTool checks a result against the outputSchema it listed, and
+// throws when structuredContent is missing; Claudin never did, and a server
+// that declares a schema it does not honour (Portainer, in the 10-15 census)
+// kept working.
+describe('a listed tool with an outputSchema whose call returns no structuredContent', () => {
+  const typedTool = {
+    name: 'typed',
+    inputSchema: { type: 'object' },
+    outputSchema: { type: 'object', properties: { n: { type: 'number' } }, required: ['n'] },
+  }
+  const answers = {
+    'tools/list': () => ({ tools: [typedTool] }),
+    'tools/call': () => ({ content: [{ type: 'text', text: 'plain answer' }] }),
+  }
+
+  test('control: the SDK alone refuses the call', async () => {
+    const server = await connectRawMcpServer('typed-bare', { capabilities: { tools: {} }, answers, wireFilter: false })
+    servers.push(server)
+    await server.connection.client.listTools()
+    await expect(server.connection.client.callTool({ name: 'typed', arguments: {} })).rejects.toThrow(
+      'has an output schema but did not return structured content',
+    )
+  })
+
+  test('still succeeds through callMCPTool', async () => {
+    const server = await connectRawMcpServer('typed-filtered', { capabilities: { tools: {} }, answers })
+    servers.push(server)
+    const [tool] = await fetchToolsForClient(server.connection)
+    expect(tool!.mcpInfo?.toolName).toBe('typed')
+    const result = await callMCPTool({
+      client: server.connection,
+      tool: 'typed',
+      args: {},
+      signal: new AbortController().signal,
+    })
+    expect(result.content).toEqual([{ type: 'text', text: 'plain answer' }])
   })
 })

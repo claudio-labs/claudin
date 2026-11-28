@@ -4,16 +4,14 @@
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { ZodError } from 'zod/v4'
 import {
-  CallToolRequestSchema,
   type CallToolResult,
-  ListToolsRequestSchema,
   type ListToolsResult,
+  Server,
   type Tool,
-} from '@modelcontextprotocol/sdk/types.js'
+} from '@modelcontextprotocol/server'
+import { serveStdio } from '@modelcontextprotocol/server/stdio'
+import { ZodError } from 'zod/v4'
 import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import review from 'src/commands/review.js'
 import type { Command } from 'src/commands/commands.js'
@@ -74,6 +72,28 @@ export async function loadReexposedMcpTools(): Promise<{
   return { mcpClients, mcpTools }
 }
 
+// The output schema tools/list advertises for a tool: its zod schema as JSON
+// Schema, only when the root is an object. The MCP SDK requires type
+// "object" at the root, so a schema with anyOf/oneOf there (z.union,
+// z.discriminatedUnion) is left off; see
+// https://github.com/anthropics/claude-code/issues/8014.
+function objectOutputSchema(tool: InternalTool): ToolOutput | undefined {
+  if (!tool.outputSchema) return undefined
+  let convertedSchema: unknown
+  try {
+    convertedSchema = zodToJsonSchema(tool.outputSchema)
+  } catch (error) {
+    logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)
+    return undefined
+  }
+  return typeof convertedSchema === 'object' &&
+    convertedSchema !== null &&
+    'type' in convertedSchema &&
+    convertedSchema.type === 'object'
+    ? (convertedSchema as ToolOutput)
+    : undefined
+}
+
 // What tools/list answers. A schema zod has no JSON Schema form for (the
 // workflow tools' z.custom outputs) used to throw out of the handler and fail
 // the list for every tool: an output schema that cannot be converted is left
@@ -91,26 +111,6 @@ export async function listToolsForMcpServe(
         logForDebugging(`[mcp serve] ${tool.name} left out of tools/list: ${errorMessage(error)}`)
         return null
       }
-      let outputSchema: ToolOutput | undefined
-      if (tool.outputSchema) {
-        let convertedSchema: unknown
-        try {
-          convertedSchema = zodToJsonSchema(tool.outputSchema)
-        } catch (error) {
-          logForDebugging(`[mcp serve] ${tool.name} listed without its output schema: ${errorMessage(error)}`)
-        }
-        // MCP SDK requires outputSchema to have type: "object" at root level
-        // Skip schemas with anyOf/oneOf at root (from z.union, z.discriminatedUnion, etc.)
-        // See: https://github.com/anthropics/claude-code/issues/8014
-        if (
-          typeof convertedSchema === 'object' &&
-          convertedSchema !== null &&
-          'type' in convertedSchema &&
-          convertedSchema.type === 'object'
-        ) {
-          outputSchema = convertedSchema as ToolOutput
-        }
-      }
       return {
         ...tool,
         description: await tool.prompt({
@@ -119,7 +119,7 @@ export async function listToolsForMcpServe(
           agents: [],
         }),
         inputSchema,
-        outputSchema,
+        outputSchema: objectOutputSchema(tool),
       }
     }),
   )
@@ -136,172 +136,195 @@ export async function startMCPServer(
     READ_FILE_STATE_CACHE_SIZE,
   )
   setCwd(cwd)
-  const server = new Server(
-    {
-      // Upstream sent `claude/<codename>` here — its internal codename, announced to
-      // every MCP client that connects to `claudin mcp serve`. This fork does
-      // not present itself as upstream, and `serverInfo.name` is informational
-      // in MCP (clients route on the transport, not on this string).
-      name: 'claudin',
-      version: MACRO.VERSION,
-    },
-    {
-      capabilities: {
-        tools: {},
-      },
-    },
-  )
-
   const { mcpClients, mcpTools } = await loadReexposedMcpTools()
 
-  server.setRequestHandler(
-    ListToolsRequestSchema,
-    async (): Promise<ListToolsResult> => {
-      const toolPermissionContext = getEmptyToolPermissionContext()
-      const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
-      return { tools: await listToolsForMcpServe(tools, toolPermissionContext) }
-    },
-  )
-
-  server.setRequestHandler(
-    CallToolRequestSchema,
-    async ({ params: { name, arguments: args } }): Promise<CallToolResult> => {
-      const toolPermissionContext = getEmptyToolPermissionContext()
-      const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
-      const tool = findToolByName(tools, name)
-      if (!tool) {
-        throw new Error(`Tool ${name} not found`)
-      }
-
-      // Assume MCP servers do not read messages separately from the tool
-      // call arguments.
-      const toolUseContext: ToolUseContext = {
-        abortController: createAbortController(),
-        options: {
-          commands: MCP_COMMANDS,
-          tools,
-          mainLoopModel: getMainLoopModel(),
-          thinkingConfig: { type: 'disabled' },
-          mcpClients,
-          mcpResources: {},
-          isNonInteractiveSession: true,
-          debug,
-          verbose,
-          agentDefinitions: { activeAgents: [], allAgents: [] },
+  // One server per connection, built by serveStdio for the era the client
+  // opens with: a 2025-era client gets the initialize handshake it always
+  // got, a 2026-07-28 one gets server/discover.
+  const createServer = (): Server => {
+    const server = new Server(
+      {
+        // Upstream sent `claude/<codename>` here — its internal codename, announced to
+        // every MCP client that connects to `claudin mcp serve`. This fork does
+        // not present itself as upstream, and `serverInfo.name` is informational
+        // in MCP (clients route on the transport, not on this string).
+        name: 'claudin',
+        version: MACRO.VERSION,
+      },
+      {
+        capabilities: {
+          tools: {},
         },
-        getAppState: () => getDefaultAppState(),
-        setAppState: () => {},
-        messages: [],
-        readFileState: readFileStateCache,
-        setInProgressToolUseIDs: () => {},
-        setResponseLength: () => {},
-        updateFileHistoryState: () => {},
-        updateAttributionState: () => {},
-      }
+      },
+    )
 
-      try {
-        if (!tool.isEnabled()) {
-          throw new Error(`Tool ${name} is not enabled`)
+    server.setRequestHandler(
+      'tools/list',
+      async (): Promise<ListToolsResult> => {
+        const toolPermissionContext = getEmptyToolPermissionContext()
+        const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
+        return { tools: await listToolsForMcpServe(tools, toolPermissionContext) }
+      },
+    )
+
+    server.setRequestHandler(
+      'tools/call',
+      async ({ params: { name, arguments: args } }, ctx): Promise<CallToolResult> => {
+        const toolPermissionContext = getEmptyToolPermissionContext()
+        const tools = getCombinedTools(getTools(toolPermissionContext), mcpTools)
+        const tool = findToolByName(tools, name)
+        if (!tool) {
+          throw new Error(`Tool ${name} not found`)
         }
 
-        // Validate input types with zod. Clients driving us through a
-        // strict-schema model send "" / null for optional args they mean to
-        // leave out — same normalization the in-process tool loop applies.
-        const parsedArgs = tool.inputSchema.parse(
-          stripPlaceholderOptionalFields(tool, args ?? {}),
-        )
-        // The same resolution the in-process tool loop applies (Tool.resolveInput).
-        const resolved = tool.resolveInput
-          ? await tool.resolveInput(parsedArgs as never, toolUseContext)
-          : ({ ok: true, input: parsedArgs } as const)
-        if (!resolved.ok) {
-          throw new Error(`Tool ${name} input is invalid: ${resolved.message}`)
-        }
-        const toolArgs = resolved.input
-
-        const validationResult = await tool.validateInput?.(
-          (toolArgs as never) ?? {},
-          toolUseContext,
-        )
-        if (validationResult && !validationResult.result) {
-          throw new Error(
-            `Tool ${name} input is invalid: ${validationResult.message}`,
-          )
-        }
-        const finalResult = await tool.call(
-          (toolArgs ?? {}) as never,
-          toolUseContext,
-          hasPermissionsToUseTool,
-          createAssistantMessage({
-            content: [],
-          }),
-        )
-
-        let content: CallToolResult['content']
-        const data = finalResult.data as string | { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] | unknown
-
-        if (typeof data === 'string') {
-          content = [{ type: 'text', text: data }]
-        } else if (Array.isArray(data)) {
-          content = data.map((block: any) => {
-            if (block.type === 'text') {
-              return { type: 'text', text: block.text || '' }
-            } else if (block.type === 'image' && block.source) {
-              return {
-                type: 'image',
-                data: block.source.data,
-                mimeType: block.source.media_type,
-              }
-            } else {
-              // eslint-disable-next-line custom-rules/no-top-level-side-effects, no-console
-              console.warn(`Unmapped content block type from tool ${name}: ${block.type || 'unknown'}`)
-              return { type: 'text', text: jsonStringify(block) }
-            }
-          }) as CallToolResult['content']
+        // A client that cancels the call (notifications/cancelled, or the
+        // request stream closing on 2026-07-28) stops the tool.
+        const abortController = createAbortController()
+        const requestSignal = ctx.mcpReq.signal
+        if (requestSignal.aborted) {
+          abortController.abort(requestSignal.reason)
         } else {
-          content = [{ type: 'text', text: jsonStringify(data) }]
+          requestSignal.addEventListener('abort', () => abortController.abort(requestSignal.reason), { once: true })
         }
 
-        return {
-          content,
-          isError: !!(finalResult as any).isError,
+        // Assume MCP servers do not read messages separately from the tool
+        // call arguments.
+        const toolUseContext: ToolUseContext = {
+          abortController,
+          options: {
+            commands: MCP_COMMANDS,
+            tools,
+            mainLoopModel: getMainLoopModel(),
+            thinkingConfig: { type: 'disabled' },
+            mcpClients,
+            mcpResources: {},
+            isNonInteractiveSession: true,
+            debug,
+            verbose,
+            agentDefinitions: { activeAgents: [], allAgents: [] },
+          },
+          getAppState: () => getDefaultAppState(),
+          setAppState: () => {},
+          messages: [],
+          readFileState: readFileStateCache,
+          setInProgressToolUseIDs: () => {},
+          setResponseLength: () => {},
+          updateFileHistoryState: () => {},
+          updateAttributionState: () => {},
         }
-      } catch (error) {
-        logError(error)
 
-        if (error instanceof ZodError) {
+        try {
+          if (!tool.isEnabled()) {
+            throw new Error(`Tool ${name} is not enabled`)
+          }
+
+          // Validate input types with zod. Clients driving us through a
+          // strict-schema model send "" / null for optional args they mean to
+          // leave out — same normalization the in-process tool loop applies.
+          const parsedArgs = tool.inputSchema.parse(
+            stripPlaceholderOptionalFields(tool, args ?? {}),
+          )
+          // The same resolution the in-process tool loop applies (Tool.resolveInput).
+          const resolved = tool.resolveInput
+            ? await tool.resolveInput(parsedArgs as never, toolUseContext)
+            : ({ ok: true, input: parsedArgs } as const)
+          if (!resolved.ok) {
+            throw new Error(`Tool ${name} input is invalid: ${resolved.message}`)
+          }
+          const toolArgs = resolved.input
+
+          const validationResult = await tool.validateInput?.(
+            (toolArgs as never) ?? {},
+            toolUseContext,
+          )
+          if (validationResult && !validationResult.result) {
+            throw new Error(
+              `Tool ${name} input is invalid: ${validationResult.message}`,
+            )
+          }
+          const finalResult = await tool.call(
+            (toolArgs ?? {}) as never,
+            toolUseContext,
+            hasPermissionsToUseTool,
+            createAssistantMessage({
+              content: [],
+            }),
+          )
+
+          let content: CallToolResult['content']
+          const data = finalResult.data as string | { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] | unknown
+
+          if (typeof data === 'string') {
+            content = [{ type: 'text', text: data }]
+          } else if (Array.isArray(data)) {
+            content = data.map((block: any) => {
+              if (block.type === 'text') {
+                return { type: 'text', text: block.text || '' }
+              } else if (block.type === 'image' && block.source) {
+                return {
+                  type: 'image',
+                  data: block.source.data,
+                  mimeType: block.source.media_type,
+                }
+              } else {
+                // eslint-disable-next-line custom-rules/no-top-level-side-effects, no-console
+                console.warn(`Unmapped content block type from tool ${name}: ${block.type || 'unknown'}`)
+                return { type: 'text', text: jsonStringify(block) }
+              }
+            }) as CallToolResult['content']
+          } else {
+            content = [{ type: 'text', text: jsonStringify(data) }]
+          }
+
+          // A tool listed with an output schema answers with structuredContent
+          // too: SDK clients reject a result that lacks it (-32600).
+          const structured =
+            objectOutputSchema(tool) !== undefined &&
+            typeof data === 'object' &&
+            data !== null &&
+            !Array.isArray(data)
+              ? (data as Record<string, unknown>)
+              : undefined
+
+          return {
+            content,
+            ...(structured && { structuredContent: structured }),
+            isError: !!(finalResult as any).isError,
+          }
+        } catch (error) {
+          logError(error)
+
+          if (error instanceof ZodError) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text',
+                  text: `Tool ${name} input is invalid:\n${error.issues.map(e => `- ${e.path.join('.')}: ${e.message}`).join('\n')}`,
+                },
+              ],
+            }
+          }
+
+          const parts =
+            error instanceof Error ? getErrorParts(error) : [String(error)]
+          const errorText = parts.filter(Boolean).join('\n').trim() || 'Error'
+
           return {
             isError: true,
             content: [
               {
                 type: 'text',
-                text: `Tool ${name} input is invalid:\n${error.issues.map(e => `- ${e.path.join('.')}: ${e.message}`).join('\n')}`,
+                text: errorText,
               },
             ],
           }
         }
+      },
+    )
 
-        const parts =
-          error instanceof Error ? getErrorParts(error) : [String(error)]
-        const errorText = parts.filter(Boolean).join('\n').trim() || 'Error'
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: errorText,
-            },
-          ],
-        }
-      }
-    },
-  )
-
-  async function runServer() {
-    const transport = new StdioServerTransport()
-    await server.connect(transport)
+    return server
   }
 
-  return await runServer()
+  serveStdio(createServer, { legacy: 'serve' })
 }

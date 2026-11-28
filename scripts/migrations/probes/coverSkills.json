@@ -1,0 +1,82 @@
+{
+  "test": [
+    "src/agent/attachments/skill-bash-gates.cover.test.ts",
+    "src/agent/attachments/skill-bash-gates.test.ts",
+    "src/skills/loadSkillsDir.cover.test.ts",
+    "src/skills/loadSkillsDir.dynamic.test.ts",
+    "src/skills/loadSkillsDir.test.ts",
+    "src/tools/SkillTool/SkillTool.cover.test.ts",
+    "src/tools/SkillTool/SkillTool.call.test.ts",
+    "src/tools/SkillTool/SkillTool.test.ts",
+    "src/commands/commands.test.ts"
+  ],
+  "source": "src/agent/attachments/skill-bash-gates.ts",
+  "probes": [
+    {
+      "name": "filterToBundledAndMcp drops MCP skills",
+      "find": "    cmd => cmd.loadedFrom === 'bundled' || cmd.loadedFrom === 'mcp',\n",
+      "replace": "    cmd => cmd.loadedFrom === 'bundled',\n"
+    },
+    {
+      "name": "the listing puts MCP skills before local ones (a duplicate name keeps the MCP copy)",
+      "find": "      ? uniqBy([...localCommands, ...mcpSkills], 'name')\n",
+      "replace": "      ? uniqBy([...mcpSkills, ...localCommands], 'name')\n"
+    },
+    {
+      "name": "every call re-sends the whole listing (no delta)",
+      "find": "  const newSkills = allCommands.filter(cmd => !sent.has(cmd.name))\n",
+      "replace": "  const newSkills = allCommands\n"
+    },
+    {
+      "name": "a later delta is reported as the initial listing",
+      "find": "  const isInitial = sent.size === 0\n",
+      "replace": "  const isInitial = true\n"
+    },
+    {
+      "name": "subagents share the main thread's sent set",
+      "find": "  const agentKey = toolUseContext.agentId ?? ''\n  let sent = sentSkillNames.get(agentKey)\n",
+      "replace": "  const agentKey = ''\n  let sent = sentSkillNames.get(agentKey)\n"
+    },
+    {
+      "name": "the resume suppress no longer marks the current set as sent",
+      "find": "    for (const cmd of allCommands) {\n      sent.add(cmd.name)\n    }\n    return []\n",
+      "replace": "    return []\n"
+    },
+    {
+      "name": "getMcpSkillCommands stops returning AppState's MCP skills",
+      "source": "src/commands/commands.ts",
+      "find": "      cmd.loadedFrom === 'mcp' &&\n      !cmd.disableModelInvocation,\n",
+      "replace": "      false &&\n      !cmd.disableModelInvocation,\n"
+    },
+    {
+      "name": "getSkillToolCommands lists a disable-model-invocation skill",
+      "source": "src/commands/commands.ts",
+      "find": "        !cmd.disableModelInvocation &&\n",
+      "replace": ""
+    },
+    {
+      "name": "an MCP skill's inline shell blocks are executed",
+      "source": "src/skills/loadSkillsDir.ts",
+      "find": "      if (!isRemote) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "a file skill's shell blocks run without its allowed-tools granted",
+      "source": "src/skills/loadSkillsDir.ts",
+      "find": "                    command: allowedTools,\n",
+      "replace": "                    command: [],\n"
+    },
+    {
+      "name": "SkillTool accepts a plain MCP prompt as a skill",
+      "source": "src/tools/SkillTool/SkillTool.ts",
+      "find": "      cmd => cmd.type === 'prompt' && cmd.loadedFrom === 'mcp',\n",
+      "replace": "      cmd => cmd.type === 'prompt',\n"
+    },
+    {
+      "name": "SkillTool lets an MCP skill shadow a disk skill of the same name",
+      "source": "src/tools/SkillTool/SkillTool.ts",
+      "find": "  return uniqBy([...localCommands, ...mcpSkills], 'name')\n",
+      "replace": "  return uniqBy([...mcpSkills, ...localCommands], 'name')\n"
+    }
+  ]
+}

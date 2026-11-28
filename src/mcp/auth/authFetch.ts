@@ -6,9 +6,9 @@
 import {
   discoverAuthorizationServerMetadata,
   discoverOAuthServerInfo,
-} from '@modelcontextprotocol/sdk/client/auth.js'
-import { OAuthMetadataSchema } from '@modelcontextprotocol/sdk/shared/auth.js'
-import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js'
+  type FetchLike,
+} from '@modelcontextprotocol/client'
+import { OAuthMetadataSchema } from '@modelcontextprotocol/core'
 import { errorMessage } from 'src/shared/errors.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { normalizeOAuthErrorBody } from 'src/mcp/auth/oauthErrors.js'
@@ -133,7 +133,11 @@ export async function fetchAuthServerMetadata(
   if (url.pathname === '/') {
     return undefined
   }
+  // The MCP server URL is not an authorization server identifier, so the
+  // RFC 8414 §3.3 issuer echo the v2 SDK checks cannot hold here: co-hosted
+  // metadata names the origin. The 1.x SDK did not check it either.
   return discoverAuthorizationServerMetadata(url, {
     ...(fetchFn && { fetchFn }),
+    skipIssuerValidation: true,
   })
 }

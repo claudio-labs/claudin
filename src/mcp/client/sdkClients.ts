@@ -1,11 +1,12 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
+import { Client, type JSONRPCMessage } from '@modelcontextprotocol/client'
 import type { Tool } from 'src/tools/Tool.js'
 import { logMCPError } from 'src/shared/log.js'
 import { SdkControlClientTransport } from 'src/mcp/SdkControlTransport.js'
 import type { McpSdkServerConfig, MCPServerConnection } from 'src/mcp/types.js'
 import { fetchToolsForClient } from 'src/mcp/client/fetchCapabilities.js'
+import { attachMcpWireFilter } from 'src/mcp/client/wireFilter.js'
 import { getMcpClientInfo } from 'src/mcp/client/clientInfo.js'
+import { SDK_LIST_MAX_PAGES } from 'src/mcp/client/cursorCycleGuard.js'
 
 /**
  * Sets up SDK MCP clients by creating transports and connecting them.
@@ -37,11 +38,15 @@ export async function setupSdkMcpClients(
         getMcpClientInfo(),
         {
           capabilities: {},
+          versionNegotiation: { mode: 'legacy' },
+          listMaxPages: SDK_LIST_MAX_PAGES,
         },
       )
 
       try {
-        // Connect the client
+        // Connect the client. Its initialize announces the `{}` it was built
+        // with: it serves no roots/list or elicitation.
+        attachMcpWireFilter(name, transport, { keepInitialize: true })
         await client.connect(transport)
 
         // Get capabilities from the server

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { SdkErrorCode, SdkHttpError } from '@modelcontextprotocol/client'
 
 import { areMcpConfigsEqual, getServerCacheKey } from 'src/mcp/client/connection.js'
 import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
@@ -21,37 +22,34 @@ const sseConfig = (url: string, scope = 'user'): ScopedMcpServerConfig =>
   ({ type: 'sse', url, scope }) as unknown as ScopedMcpServerConfig
 
 describe('isMcpSessionExpiredError', () => {
+  // What the Streamable HTTP transport throws for a non-OK response.
+  const httpError = (status: number, message: string) =>
+    new SdkHttpError(SdkErrorCode.ClientHttpNotImplemented, message, { status })
+
   test('404 with JSON-RPC -32001 code is a session expiry', () => {
-    const err = Object.assign(
-      new Error('{"error":{"code":-32001,"message":"Session not found"}}'),
-      { code: 404 },
-    )
+    const err = httpError(404, '{"error":{"code":-32001,"message":"Session not found"}}')
     expect(isMcpSessionExpiredError(err)).toBe(true)
   })
 
   test('404 with spaced JSON-RPC code variant is a session expiry', () => {
-    const err = Object.assign(
-      new Error('{"error":{"code": -32001,"message":"Session not found"}}'),
-      { code: 404 },
-    )
+    const err = httpError(404, '{"error":{"code": -32001,"message":"Session not found"}}')
     expect(isMcpSessionExpiredError(err)).toBe(true)
   })
 
   test('generic 404 without the JSON-RPC code is not a session expiry', () => {
-    const err = Object.assign(new Error('Not Found'), { code: 404 })
+    const err = httpError(404, 'Not Found')
     expect(isMcpSessionExpiredError(err)).toBe(false)
   })
 
   test('non-404 status is not a session expiry', () => {
-    const err = Object.assign(
-      new Error('{"error":{"code":-32001}}'),
-      { code: 500 },
-    )
+    const err = httpError(500, '{"error":{"code":-32001}}')
     expect(isMcpSessionExpiredError(err)).toBe(false)
   })
 
-  test('error without a code property is not a session expiry', () => {
+  test('error without an HTTP status is not a session expiry', () => {
     expect(isMcpSessionExpiredError(new Error('{"code":-32001}'))).toBe(false)
+    // A numeric `code` alone is not an HTTP status any more (the 1.x error shape).
+    expect(isMcpSessionExpiredError(Object.assign(new Error('{"code":-32001}'), { code: 404 }))).toBe(false)
   })
 })
 

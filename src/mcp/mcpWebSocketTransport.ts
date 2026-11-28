@@ -1,8 +1,5 @@
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
-import {
-  type JSONRPCMessage,
-  JSONRPCMessageSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+import type { JSONRPCMessage, Transport } from '@modelcontextprotocol/client'
+import { JSONRPCMessageSchema } from '@modelcontextprotocol/core'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { ClaudeError, toError } from 'src/shared/errors.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'

@@ -1,11 +1,10 @@
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
 import {
-  CallToolResultSchema,
   type ElicitRequestURLParams,
   type ElicitResult,
-  ErrorCode,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js'
+  ProtocolError,
+  ProtocolErrorCode,
+  UnauthorizedError,
+} from '@modelcontextprotocol/client'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { detectCodeIndexingFromMcpServerName } from 'src/shared/fs/codeIndexing.js'
@@ -25,6 +24,8 @@ import type {
 } from 'src/mcp/types.js'
 import { clearServerCache } from 'src/mcp/client/connection.js'
 import {
+  httpStatusOf,
+  isMcpConnectionClosedError,
   isMcpSessionExpiredError,
   McpAuthError,
   McpSessionExpiredError,
@@ -32,13 +33,15 @@ import {
 } from 'src/mcp/client/errors.js'
 import { processMCPResult } from 'src/mcp/client/toolResult.js'
 import { getMcpToolTimeoutMs } from 'src/mcp/client/serverOptions.js'
+import { readTaskMarker } from 'src/mcp/client/taskPoll.js'
+import { MCP_TASK_META_KEY } from 'src/mcp/client/wireRules.js'
 
 /**
  * Call an MCP tool, handling UrlElicitationRequiredError (-32042) by
  * displaying the URL elicitation to the user, waiting for the completion
  * notification, and retrying the tool call.
  */
-type MCPToolCallResult = {
+export type MCPToolCallResult = {
   content: MCPToolResult
   _meta?: Record<string, unknown>
   structuredContent?: Record<string, unknown>
@@ -89,8 +92,9 @@ export async function callMCPToolWithUrlElicitationRetry({
     if (signal.aborted) {
       throw new Error('Tool call aborted during URL elicitation')
     }
+    let result: MCPToolCallResult
     try {
-      return await callToolFn({
+      result = await callToolFn({
         client: connectedClient,
         tool,
         args,
@@ -99,11 +103,11 @@ export async function callMCPToolWithUrlElicitationRetry({
         onProgress,
       })
     } catch (error) {
-      // The MCP SDK's Protocol creates plain McpError (not UrlElicitationRequiredError)
+      // The MCP SDK's Protocol creates plain ProtocolError (not UrlElicitationRequiredError)
       // for error responses, so we check the error code instead of instanceof.
       if (
-        !(error instanceof McpError) ||
-        error.code !== ErrorCode.UrlElicitationRequired
+        !(error instanceof ProtocolError) ||
+        error.code !== ProtocolErrorCode.UrlElicitationRequired
       ) {
         throw error
       }
@@ -262,7 +266,9 @@ export async function callMCPToolWithUrlElicitationRetry({
       }
 
       // Loop back to retry the tool call
+      continue
     }
+    return result
   }
 }
 
@@ -313,12 +319,7 @@ export async function callMCPTool({
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(
         (reject, name, tool, timeoutMs) => {
-          reject(
-            new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
-              `MCP server "${name}" tool "${tool}" timed out after ${Math.floor(timeoutMs / 1000)}s`,
-              'MCP tool timeout',
-            ),
-          )
+          reject(toolTimeoutError(name, tool, timeoutMs))
         },
         timeoutMs,
         reject,
@@ -335,7 +336,6 @@ export async function callMCPTool({
           arguments: args,
           _meta: meta,
         },
-        CallToolResultSchema,
         {
           signal,
           timeout: timeoutMs,
@@ -361,35 +361,20 @@ export async function callMCPTool({
       }
     })
 
-    if ('isError' in result && result.isError) {
-      let errorDetails = 'Unknown error'
-      if (
-        'content' in result &&
-        Array.isArray(result.content) &&
-        result.content.length > 0
-      ) {
-        const firstContent = result.content[0]
-        if (
-          firstContent &&
-          typeof firstContent === 'object' &&
-          'text' in firstContent
-        ) {
-          errorDetails = firstContent.text
-        }
-      } else if ('error' in result) {
-        // Fallback for legacy error format
-        errorDetails = String(result.error)
+    // A task-augmented call: the caller polls the task (taskCall.ts).
+    // One it cannot poll is an error, not the empty result the wire rule
+    // left in the task's place.
+    if (result._meta?.[MCP_TASK_META_KEY] !== undefined) {
+      if (!readTaskMarker(result._meta)) {
+        const message = `MCP server "${name}" tool "${tool}" answered with a task that has no taskId or status`
+        logMCPError(name, message)
+        throw new McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(message, 'MCP task without an id')
       }
-      logMCPError(name, errorDetails)
-      // Include server and tool name in telemetry for debugging, but keep
-      // the human-readable message unchanged to avoid breaking error consumers
-      // that parse the message string.
-      throw new McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
-        errorDetails,
-        `MCP tool [${name}] ${tool}: ${errorDetails}`,
-        '_meta' in result && result._meta ? { _meta: result._meta } : undefined,
-      )
+      logMCPDebug(name, `Tool '${tool}' is running as an MCP task`)
+      return { content: undefined, _meta: result._meta }
     }
+
+    throwIfToolError(result, name, tool)
     const elapsed = Date.now() - toolStartTime
     const duration =
       elapsed < 1000
@@ -427,10 +412,9 @@ export async function callMCPTool({
     }
 
     // Check for 401 errors indicating expired/invalid OAuth tokens
-    // The MCP SDK's StreamableHTTPError has a `code` property with the HTTP status
+    // The MCP SDK's SdkHttpError carries the HTTP status
     if (e instanceof Error) {
-      const errorCode = 'code' in e ? (e.code as number | undefined) : undefined
-      if (errorCode === 401 || e instanceof UnauthorizedError) {
+      if (httpStatusOf(e) === 401 || e instanceof UnauthorizedError) {
         logMCPDebug(
           name,
           `Tool call returned 401 Unauthorized - token may have expired`,
@@ -442,17 +426,15 @@ export async function callMCPTool({
       }
 
       // Check for session expiry — two error shapes can surface here:
-      // 1. Direct 404 + JSON-RPC -32001 from the server (StreamableHTTPError)
-      // 2. -32000 "Connection closed" (McpError) — the SDK closes the transport
+      // 1. Direct 404 + JSON-RPC -32001 from the server (SdkHttpError)
+      // 2. "Connection closed" (SdkError) — the SDK closes the transport
       //    after the onerror handler fires, so the pending callTool() rejects
       //    with this derived error instead of the original 404.
       // In both cases, clear the connection cache so the next tool call
       // creates a fresh session.
       const isSessionExpired = isMcpSessionExpiredError(e)
       const isConnectionClosedOnHttp =
-        'code' in e &&
-        (e as Error & { code?: number }).code === -32000 &&
-        e.message.includes('Connection closed') &&
+        isMcpConnectionClosedError(e) &&
         (config.type === 'http' || config.type === 'claudeai-proxy')
       if (isSessionExpired || isConnectionClosedOnHttp) {
         logMCPDebug(
@@ -475,6 +457,49 @@ export async function callMCPTool({
       clearInterval(progressInterval)
     }
   }
+}
+
+type RawToolResult = {
+  isError?: unknown
+  content?: unknown
+  error?: unknown
+  _meta?: Record<string, unknown>
+}
+
+/** Throws the McpToolCallError an `isError` result stands for. */
+export function throwIfToolError(result: RawToolResult, name: string, tool: string): void {
+  if (!result.isError) return
+  let errorDetails = 'Unknown error'
+  if (Array.isArray(result.content) && result.content.length > 0) {
+    const firstContent: unknown = result.content[0]
+    if (
+      firstContent &&
+      typeof firstContent === 'object' &&
+      'text' in firstContent
+    ) {
+      errorDetails = String(firstContent.text)
+    }
+  } else if ('error' in result) {
+    // Fallback for legacy error format
+    errorDetails = String(result.error)
+  }
+  logMCPError(name, errorDetails)
+  // Include server and tool name in telemetry for debugging, but keep
+  // the human-readable message unchanged to avoid breaking error consumers
+  // that parse the message string.
+  throw new McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
+    errorDetails,
+    `MCP tool [${name}] ${tool}: ${errorDetails}`,
+    result._meta ? { _meta: result._meta } : undefined,
+  )
+}
+
+/** The error a tool call past its toolTimeout fails with, task or not. */
+export function toolTimeoutError(name: string, tool: string, timeoutMs: number): Error {
+  return new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
+    `MCP server "${name}" tool "${tool}" timed out after ${Math.floor(timeoutMs / 1000)}s`,
+    'MCP tool timeout',
+  )
 }
 
 export function extractToolUseId(

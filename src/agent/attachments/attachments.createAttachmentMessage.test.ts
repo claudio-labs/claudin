@@ -38,6 +38,7 @@ const ALL_ATTACHMENT_TYPES = [
   'goal_status',
   'plan_file_reference',
   'mcp_resource',
+  'mcp_resource_changed',
   'command_permissions',
   'agent_mention',
   'task_status',

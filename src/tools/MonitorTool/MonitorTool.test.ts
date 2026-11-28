@@ -310,10 +310,14 @@ describe('MonitorTool ws source', () => {
   beforeEach(() => resetCommandQueue())
   afterEach(() => resetCommandQueue())
 
-  const validate = (input: object) => MonitorTool.validateInput!(input as never)
+  const validate = (input: object) =>
+    MonitorTool.validateInput!(input as never, { options: { mcpClients: [] } } as unknown as ToolUseContext)
 
   test('validateInput wants exactly one of command and ws, and a well-formed ws', async () => {
-    expect(await validate({ description: 'd' })).toMatchObject({ result: false, message: 'Pass exactly one of `command` and `ws`.' })
+    expect(await validate({ description: 'd' })).toMatchObject({
+      result: false,
+      message: 'Pass exactly one of `command`, `ws` and `mcp_event`.',
+    })
     expect(await validate({ command: 'ls', ws: { url: 'wss://a.example' }, description: 'd' })).toMatchObject({ result: false })
     expect(await validate({ ws: { url: 'https://a.example' }, description: 'd' })).toMatchObject({ result: false, errorCode: 2 })
     expect(await validate({ ws: { url: 'wss://a.example/feed#x' }, description: 'd' })).toMatchObject({ result: false, errorCode: 2 })

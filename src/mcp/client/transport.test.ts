@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
+import {
+  type JSONRPCMessage,
+  SSEClientTransport,
+  StreamableHTTPClientTransport,
+  type Transport,
+} from '@modelcontextprotocol/client'
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 import type { Server } from 'bun'
 import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { createServer, type Server as NetServer, type Socket } from 'net'

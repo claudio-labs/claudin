@@ -141,6 +141,18 @@ function formatRan(ms: number): string {
   return ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.round(ms / 60_000)} min`
 }
 
+/**
+ * Why a monitor stopped itself, after its name: "expired after 5 min with 3
+ * events; …". The MCP events monitor (MonitorTool/mcpEventMonitor.ts) ends
+ * with the same words.
+ */
+export function monitorStopDetail(reason: MonitorEndReason, events: number, ranMs: number): string {
+  const counted = `${events} event${events === 1 ? '' : 's'}`
+  return reason === 'expired'
+    ? `expired after ${formatRan(ranMs)} with ${counted}; call Monitor again to keep watching`
+    : `stopped: ${counted} in under a minute; call Monitor again with a tighter filter`
+}
+
 /** The notice for a monitor the stream stopped itself. */
 export function formatMonitorStop(
   options: MonitorStreamOptions,
@@ -148,12 +160,7 @@ export function formatMonitorStop(
   events: number,
   ranMs: number,
 ): string {
-  const counted = `${events} event${events === 1 ? '' : 's'}`
-  const summary =
-    reason === 'expired'
-      ? `Monitor "${options.description}" expired after ${formatRan(ranMs)} with ${counted}; call Monitor again to keep watching`
-      : `Monitor "${options.description}" stopped: ${counted} in under a minute; call Monitor again with a tighter filter`
-  return header(options, 'killed', summary)
+  return header(options, 'killed', `Monitor "${options.description}" ${monitorStopDetail(reason, events, ranMs)}`)
 }
 
 export function startMonitorStream(options: MonitorStreamOptions, deps: MonitorStreamDeps): MonitorStream {

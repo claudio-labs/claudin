@@ -21,6 +21,7 @@ const GROUP_ICONS: Record<FooterGroupKey, string> = {
   agents: '\u{f06a9}', // nf-md-robot
   shells: '\u{f1183}', // nf-md-console_line
   monitors: '\u{f0379}', // nf-md-monitor
+  mcpTasks: '\u{f051f}', // nf-md-timer_sand
   containers: '\u{f0868}', // nf-md-docker
   // nf-md-power_plug was here first and collapsed into a vertical blob at one
   // cell — thin prongs over a solid body do not survive the downscale. The

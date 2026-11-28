@@ -45,6 +45,7 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "max_turns_reached",
   "mcp_instructions_delta",
   "mcp_resource",
+  "mcp_resource_changed",
   "memory_index",
   "nested_memory",
   "nested_memory_batch",

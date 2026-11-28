@@ -1,5 +1,10 @@
 import { feature } from 'bun:bundle'
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
+import {
+  ProtocolError,
+  ProtocolErrorCode,
+  SdkError,
+  type Transport,
+} from '@modelcontextprotocol/client'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
 import type { Command } from 'src/commands/commands.js'
@@ -29,20 +34,23 @@ import { markClaudeAiMcpConnected } from 'src/mcp/claudeai.js'
 import { getAllMcpConfigs, isMcpServerDisabled } from 'src/mcp/config.js'
 import { buildMcpToolName } from 'src/mcp/mcpStringUtils.js'
 import { normalizeNameForMCP } from 'src/mcp/normalization.js'
+import { listMcpSkillCommands } from 'src/mcp/mcpSkills.js'
+import { createPromptArgumentCompleter } from 'src/mcp/promptCompletions.js'
 import type {
+  ConnectedMCPServer,
   MCPServerConnection,
   ScopedMcpServerConfig,
   ServerResource,
   ServerResourceTemplate,
 } from 'src/mcp/types.js'
 import { isMcpAuthCached } from 'src/mcp/client/authCache.js'
-// callTool.js and connection.js below form intentional ESM cycles with this
-// module: every cross-module symbol is dereferenced inside function bodies, not
-// at module-eval time, so live bindings resolve safely. Do not collapse them.
-import {
-  callMCPToolWithUrlElicitationRetry,
-  extractToolUseId,
-} from 'src/mcp/client/callTool.js'
+import { listEventTypes, type McpEventType } from 'src/mcp/client/events.js'
+// callTool.js, taskCall.js and connection.js below form intentional ESM cycles
+// with this module: every cross-module symbol is dereferenced inside function
+// bodies, not at module-eval time, so live bindings resolve safely. Do not
+// collapse them.
+import { extractToolUseId } from 'src/mcp/client/callTool.js'
+import { callMCPToolWithTasks } from 'src/mcp/client/taskCall.js'
 import {
   clearServerCache,
   connectToServer,
@@ -57,30 +65,13 @@ import {
   getRemoteMcpServerConnectionBatchSize,
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
-import { collectListPages, pageParams } from 'src/mcp/client/listPagination.js'
 import { splitPromptArguments } from 'src/mcp/client/promptArguments.js'
-import {
-  isSchemaError,
-  keepValidPrompts,
-  keepValidResources,
-  keepValidResourceTemplates,
-  keepValidTools,
-  LenientPromptsPageSchema,
-  LenientResourcesPageSchema,
-  LenientResourceTemplatesPageSchema,
-  LenientToolsPageSchema,
-  type SkippedEntry,
-} from 'src/mcp/client/listValidation.js'
+import { isSchemaError } from 'src/mcp/client/listValidation.js'
+import { recordListFetch } from 'src/mcp/client/listTtl.js'
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
 const MCP_FETCH_CACHE_SIZE = 20
-
-function logSkippedEntries(server: string, kind: string, skipped: SkippedEntry[]): void {
-  for (const { name, reason } of skipped) {
-    logMCPError(server, `Skipped ${kind}${name ? ` "${name}"` : ''}: ${reason}`)
-  }
-}
 
 /**
  * Encode MCP tool input for the auto-mode security classifier.
@@ -109,19 +100,17 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      // Retry each page of the tool list up to 2 times on transient failures.
+      // Retry the tool list up to 2 times on transient failures.
       // Without retry, a single timeout during tools/list makes all MCP tools
       // silently disappear from the model's context until the next reconnect.
-      // A page that fails its schema answers the same on every try, so it is
-      // not retried; entries are checked one by one below.
-      const listToolsPage = async (cursor: string | undefined) => {
+      // A list that fails its schema answers the same on every try, so it is
+      // not retried; its entries were already checked one by one on the wire
+      // (attachMcpWireFilter, wireFilter.ts).
+      const listTools = async () => {
         let lastError: unknown
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            return await client.client.request(
-              { method: 'tools/list', ...pageParams(cursor) },
-              LenientToolsPageSchema,
-            )
+            return await client.client.listTools()
           } catch (err) {
             lastError = err
             if (isSchemaError(err)) break
@@ -136,12 +125,8 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         }
         throw lastError ?? new Error('tools/list failed after 3 attempts')
       }
-      const listed = await collectListPages(async cursor => {
-        const page = await listToolsPage(cursor)
-        return { items: page.tools, nextCursor: page.nextCursor }
-      })
-      const { items: tools, skipped } = keepValidTools(listed)
-      logSkippedEntries(client.name, 'tool', skipped)
+      const listed = await listTools()
+      const { tools } = listed
 
       // Sanitize tool data from MCP server
       const toolsToProcess = recursivelySanitizeUnicode(tools)
@@ -152,7 +137,7 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
         isEnvTruthy(process.env.CLAUDE_AGENT_SDK_MCP_NO_PREFIX)
 
       // Convert MCP tools to our Tool format
-      return toolsToProcess
+      const converted = toolsToProcess
         .map((tool): Tool => {
           const fullyQualifiedName = buildMcpToolName(client.name, tool.name)
           return {
@@ -250,7 +235,7 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
               for (let attempt = 0; ; attempt++) {
                 try {
                   const connectedClient = await ensureConnectedClient(client)
-                  const mcpResult = await callMCPToolWithUrlElicitationRetry({
+                  const mcpResult = await callMCPToolWithTasks({
                     client: connectedClient,
                     clientConnection: client,
                     tool: tool.name,
@@ -327,9 +312,9 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
                     })
                   }
                   // Wrap MCP SDK errors so telemetry gets useful context
-                  // instead of just "Error" or "McpError" (the constructor
-                  // name). MCP SDK errors are protocol-level messages and
-                  // don't contain user file paths or code.
+                  // instead of just "Error" or "ProtocolError" (the
+                  // constructor name). MCP SDK errors are protocol-level
+                  // messages and don't contain user file paths or code.
                   if (
                     error instanceof Error &&
                     !(
@@ -344,13 +329,9 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
                         error.message.slice(0, 200),
                       )
                     }
-                    // McpError has a numeric `code` with the JSON-RPC error
-                    // code (e.g. -32000 ConnectionClosed, -32001 RequestTimeout)
-                    if (
-                      name === 'McpError' &&
-                      'code' in error &&
-                      typeof error.code === 'number'
-                    ) {
+                    // ProtocolError carries the JSON-RPC error code (-32603…),
+                    // SdkError a local one (CONNECTION_CLOSED, REQUEST_TIMEOUT…)
+                    if (error instanceof ProtocolError || error instanceof SdkError) {
                       throw new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
                         error.message,
                         `McpError ${error.code}`,
@@ -369,6 +350,10 @@ export const fetchToolsForClient = memoizeWithLRUExceptFailures(
           }
         })
         .filter(isIncludedMcpTool)
+      // Recorded only once the whole fetch succeeded: a refresh on TTL
+      // (listTtlRefresh.ts) tells a failed read by the record not moving.
+      recordListFetch(client.name, 'tools', listed, tools)
+      return converted
     } catch (error) {
       logMCPError(client.name, `Failed to fetch tools: ${errorMessage(error)}`)
       throw error
@@ -388,21 +373,16 @@ export const fetchResourcesForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      const listed = await collectListPages(async cursor => {
-        const page = await client.client.request(
-          { method: 'resources/list', ...pageParams(cursor) },
-          LenientResourcesPageSchema,
-        )
-        return { items: page.resources, nextCursor: page.nextCursor }
-      })
-      const { items: resources, skipped } = keepValidResources(listed)
-      logSkippedEntries(client.name, 'resource', skipped)
+      const listed = await client.client.listResources()
+      const { resources } = listed
 
       // Add server name to each resource
-      return resources.map(resource => ({
+      const withServer = resources.map(resource => ({
         ...resource,
         server: client.name,
       }))
+      recordListFetch(client.name, 'resources', listed, resources)
+      return withServer
     } catch (error) {
       logMCPError(
         client.name,
@@ -429,19 +409,12 @@ export const fetchResourceTemplatesForClient = memoizeWithLRUExceptFailures(
     if (client.type !== 'connected' || !client.capabilities?.resources) return []
 
     try {
-      const listed = await collectListPages(async cursor => {
-        const page = await client.client.request(
-          { method: 'resources/templates/list', ...pageParams(cursor) },
-          LenientResourceTemplatesPageSchema,
-          { timeout: RESOURCE_TEMPLATES_TIMEOUT_MS },
-        )
-        return { items: page.resourceTemplates, nextCursor: page.nextCursor }
+      const { resourceTemplates } = await client.client.listResourceTemplates(undefined, {
+        timeout: RESOURCE_TEMPLATES_TIMEOUT_MS,
       })
-      const { items: templates, skipped } = keepValidResourceTemplates(listed)
-      logSkippedEntries(client.name, 'resource template', skipped)
-      return templates.map(template => ({ ...template, server: client.name }))
+      return resourceTemplates.map(template => ({ ...template, server: client.name }))
     } catch (error) {
-      if (!(error instanceof McpError && error.code === ErrorCode.MethodNotFound)) {
+      if (!(error instanceof ProtocolError && error.code === ProtocolErrorCode.MethodNotFound)) {
         logMCPError(
           client.name,
           `Failed to fetch resource templates, listing none: ${errorMessage(error)}`,
@@ -464,23 +437,26 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
         return []
       }
 
-      // Request every page of the prompts list from client
-      const listed = await collectListPages(async cursor => {
-        const page = await client.client.request(
-          { method: 'prompts/list', ...pageParams(cursor) },
-          LenientPromptsPageSchema,
-        )
-        return { items: page.prompts, nextCursor: page.nextCursor }
-      })
-      const { items: prompts, skipped } = keepValidPrompts(listed)
-      logSkippedEntries(client.name, 'prompt', skipped)
+      // Every page of the prompts list; the SDK follows the cursors
+      const listed = await client.client.listPrompts()
+      const { prompts } = listed
 
       // Sanitize prompt data from MCP server
       const promptsToProcess = recursivelySanitizeUnicode(prompts)
 
       // Convert MCP prompts to our Command format
-      return promptsToProcess.map(prompt => {
+      const commands = promptsToProcess.map((prompt): Command => {
         const argNames = Object.values(prompt.arguments ?? {}).map(k => k.name)
+        const argSpecs = (prompt.arguments ?? []).map(arg => ({
+          name: arg.name,
+          required: arg.required === true,
+          ...(arg.description && { description: arg.description }),
+        }))
+        // Only a server that declares completions is asked for values
+        const argumentValues =
+          argSpecs.length > 0 && client.capabilities?.completions
+            ? createPromptArgumentCompleter(client, prompt.name, ensureConnectedClient)
+            : undefined
         return {
           type: 'prompt' as const,
           name: 'mcp__' + normalizeNameForMCP(client.name) + '__' + prompt.name,
@@ -497,6 +473,8 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
             return `${client.name}:${prompt.name} (MCP)`
           },
           argNames,
+          ...(argSpecs.length > 0 && { argSpecs }),
+          ...(argumentValues && { argumentValues }),
           source: 'mcp',
           async getPromptForCommand(args: string) {
             const argsArray = splitPromptArguments(args)
@@ -522,6 +500,8 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
           },
         }
       })
+      recordListFetch(client.name, 'prompts', listed, prompts)
+      return commands
     } catch (error) {
       logMCPError(
         client.name,
@@ -534,6 +514,64 @@ export const fetchCommandsForClient = memoizeWithLRUExceptFailures(
   (client: MCPServerConnection) => client.name,
   MCP_FETCH_CACHE_SIZE,
 )
+
+// The event types a server publishes (events.ts), asked by ListMcpResources
+// and twice per Monitor call (validateInput, then call). The extension has
+// no list_changed, so a list lasts until the connection closes or is cleared
+// (connection.ts). A failure is not kept and still rejects: Monitor's refusal
+// and ListMcpResources' log quote it.
+export const fetchEventTypesForClient = memoizeWithLRUExceptFailures(
+  (client: ConnectedMCPServer): Promise<McpEventType[]> => listEventTypes(client.client),
+  (error: unknown): never => {
+    throw error
+  },
+  (client: ConnectedMCPServer) => client.name,
+  MCP_FETCH_CACHE_SIZE,
+)
+
+const fetchSkillsForConnection = memoizeWithLRUExceptFailures(
+  async (client: MCPServerConnection): Promise<Command[]> => {
+    if (client.type !== 'connected') return []
+    try {
+      return await listMcpSkillCommands(client, ensureConnectedClient)
+    } catch (error) {
+      logMCPError(client.name, `Failed to fetch skills: ${errorMessage(error)}`)
+      throw error
+    }
+  },
+  (): Command[] => [],
+  (client: MCPServerConnection) => client.name,
+  MCP_FETCH_CACHE_SIZE,
+)
+
+// The SDK client each memoized skills list was read from, by server name.
+const skillsListedBy = new Map<string, unknown>()
+
+/**
+ * The server's skills (src/mcp/mcpSkills.ts). They join its prompts in
+ * AppState's mcp.commands wherever those are set; the skills extension has no
+ * list_changed of its own, so resources/list_changed re-lists them.
+ *
+ * Memoized by server name like the other fetchers, but a list never outlives
+ * the connection it came from: the close and reconnect paths in connection.ts
+ * clear the other memos only, so a new SDK client lists again here.
+ */
+export function fetchSkillsForClient(client: MCPServerConnection): Promise<Command[]> {
+  const sdkClient = client.type === 'connected' ? client.client : undefined
+  if (skillsListedBy.get(client.name) !== sdkClient) {
+    fetchSkillsForConnection.cache.delete(client.name)
+    skillsListedBy.set(client.name, sdkClient)
+  }
+  return fetchSkillsForConnection(client)
+}
+fetchSkillsForClient.cache = fetchSkillsForConnection.cache
+
+/** The server's slice of AppState's mcp.commands: its prompts, then its skills. */
+export async function fetchServerCommandsForClient(client: MCPServerConnection): Promise<Command[]> {
+  const [prompts, skills] = await Promise.all([fetchCommandsForClient(client), fetchSkillsForClient(client)])
+  return [...prompts, ...skills]
+}
+
 /**
  * Note: This should not be called by UI components directly, they should use the reconnectMcpServer
  * function from useManageMcpConnections.
@@ -575,12 +613,11 @@ export async function reconnectMcpServerImpl(
 
     const supportsResources = !!client.capabilities?.resources
 
-    const [tools, mcpCommands, resources] = await Promise.all([
+    const [tools, commands, resources] = await Promise.all([
       fetchToolsForClient(client),
-      fetchCommandsForClient(client),
+      fetchServerCommandsForClient(client),
       supportsResources ? fetchResourcesForClient(client) : Promise.resolve([]),
     ])
-    const commands = [...mcpCommands]
 
     // Check if we need to add resource tools
     const resourceTools: Tool[] = []
@@ -745,15 +782,14 @@ export async function getMcpToolsCommandsAndResources(
 
       const supportsResources = !!client.capabilities?.resources
 
-      const [tools, mcpCommands, resources] = await Promise.all([
+      const [tools, commands, resources] = await Promise.all([
         fetchToolsForClient(client),
-        fetchCommandsForClient(client),
+        fetchServerCommandsForClient(client),
         // Fetch resources if supported
         supportsResources
           ? fetchResourcesForClient(client)
           : Promise.resolve([]),
       ])
-      const commands = [...mcpCommands]
 
       // If this server resources and we haven't added resource tools yet,
       // include our resource tools with this client's tools
