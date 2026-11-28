@@ -5,7 +5,12 @@
 
 import { afterEach, beforeEach, expect, test } from 'bun:test'
 import { connectToServer, getServerCacheKey } from 'src/mcp/client/connection.js'
-import { fetchToolsForClient } from 'src/mcp/client/fetchCapabilities.js'
+import {
+  fetchCommandsForClient,
+  fetchResourcesForClient,
+  fetchResourceTemplatesForClient,
+  fetchToolsForClient,
+} from 'src/mcp/client/fetchCapabilities.js'
 import { getMcpSubscriptions } from 'src/mcp/client/subscriptions.js'
 import {
   clientTypes,
@@ -47,6 +52,10 @@ afterEach(async () => {
   for (const connection of connections.splice(0)) {
     if (connection.type === 'connected') await connection.cleanup().catch(() => {})
     connectToServer.cache.delete(getServerCacheKey(connection.name, connection.config))
+    // The fetch memos are keyed by server name, which later suites reuse.
+    for (const fetch of [fetchToolsForClient, fetchCommandsForClient, fetchResourcesForClient, fetchResourceTemplatesForClient]) {
+      fetch.cache.delete(connection.name)
+    }
   }
   await fixture?.stop()
   fixture = undefined
