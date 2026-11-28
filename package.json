@@ -90,6 +90,8 @@
     "@anthropic-ai/foundry-sdk": "1.1.1",
     "@anthropic-ai/sdk": "^1.2.0",
     "@anthropic-ai/vertex-sdk": "^1.1.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1045.0",
+    "@aws-sdk/credential-providers": "^3.1045.0",
     "@commander-js/extra-typings": "15",
     "@mendable/firecrawl-js": "^4.29.1",
     "@modelcontextprotocol/client": "2.4.0",
