@@ -203,6 +203,21 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
+  test('renames a file with no hunks, its bytes untouched', async () => {
+    const src = join(dir, 'app.txt')
+    const dest = join(dir, 'main.txt')
+    writeFileSync(src, 'line1\r\nline2')
+    const { output } = await runApplyPatch(
+      { patchText: envelope(`*** Update File: ${src}\n*** Move to: ${dest}`) },
+      ctx,
+      randomUUID(),
+    )
+    expect(existsSync(src)).toBe(false)
+    expect(readFileSync(dest, 'utf8')).toBe('line1\r\nline2')
+    expect(output.files[0]).toMatchObject({ type: 'move' })
+    cleanup()
+  })
+
   test('applies multiple files in one call', async () => {
     const a = join(dir, 'a.ts')
     const b = join(dir, 'old.ts')
