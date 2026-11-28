@@ -27,7 +27,7 @@ export function mcpServerTaskId(serverName: string): string {
  * Tools each server currently contributes to the pool.
  *
  * Counted by the same `mcp__<server>__` prefix the tool pool itself is keyed on
- * (`resolveUpdatedTools` in `src/mcp/useManageMCPConnections.ts`), so the number
+ * (`resolveUpdatedTools` in `src/mcp/serverUpdate.ts`), so the number
  * on the row is the number of tools the model can actually call — not what the
  * server announced at some point.
  */

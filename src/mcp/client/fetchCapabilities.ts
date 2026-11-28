@@ -599,6 +599,12 @@ export function fetchSkillsForClient(client: MCPServerConnection): Promise<Comma
 }
 fetchSkillsForClient.cache = fetchSkillsForConnection.cache
 
+/** The server's slice of AppState's mcp.commands: its prompts, then its skills. */
+export async function fetchServerCommandsForClient(client: MCPServerConnection): Promise<Command[]> {
+  const [prompts, skills] = await Promise.all([fetchCommandsForClient(client), fetchSkillsForClient(client)])
+  return [...prompts, ...skills]
+}
+
 /**
  * Note: This should not be called by UI components directly, they should use the reconnectMcpServer
  * function from useManageMcpConnections.
@@ -640,13 +646,11 @@ export async function reconnectMcpServerImpl(
 
     const supportsResources = !!client.capabilities?.resources
 
-    const [tools, mcpCommands, mcpSkills, resources] = await Promise.all([
+    const [tools, commands, resources] = await Promise.all([
       fetchToolsForClient(client),
-      fetchCommandsForClient(client),
-      fetchSkillsForClient(client),
+      fetchServerCommandsForClient(client),
       supportsResources ? fetchResourcesForClient(client) : Promise.resolve([]),
     ])
-    const commands = [...mcpCommands, ...mcpSkills]
 
     // Check if we need to add resource tools
     const resourceTools: Tool[] = []
@@ -811,16 +815,14 @@ export async function getMcpToolsCommandsAndResources(
 
       const supportsResources = !!client.capabilities?.resources
 
-      const [tools, mcpCommands, mcpSkills, resources] = await Promise.all([
+      const [tools, commands, resources] = await Promise.all([
         fetchToolsForClient(client),
-        fetchCommandsForClient(client),
-        fetchSkillsForClient(client),
+        fetchServerCommandsForClient(client),
         // Fetch resources if supported
         supportsResources
           ? fetchResourcesForClient(client)
           : Promise.resolve([]),
       ])
-      const commands = [...mcpCommands, ...mcpSkills]
 
       // If this server resources and we haven't added resource tools yet,
       // include our resource tools with this client's tools
